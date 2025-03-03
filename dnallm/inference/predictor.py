@@ -5,6 +5,40 @@ from ..finetune.models import get_model
 from .config import InferenceConfig
 from .utils import batch_sequences, save_predictions
 
+"""
+DNA语言模型推理器模块
+
+本模块实现了模型推理的核心功能，主要包括：
+
+1. DNAPredictor类
+   - 模型加载和初始化
+   - 批量序列预测
+   - 结果后处理
+   - 设备管理
+   - 半精度推理支持
+
+2. 核心功能：
+   - 模型状态管理
+   - 批处理预测
+   - 结果合并
+   - 预测结果保存
+   - 内存优化
+
+3. 推理优化：
+   - 批处理并行
+   - GPU加速
+   - 半精度计算
+   - 内存效率优化
+
+使用示例：
+    predictor = DNAPredictor(
+        model_type="plant_dna",
+        model_path="models/checkpoint",
+        config=inference_config
+    )
+    results = predictor.predict(sequences)
+"""
+
 class DNAPredictor:
     """DNA sequence predictor using fine-tuned models"""
     
