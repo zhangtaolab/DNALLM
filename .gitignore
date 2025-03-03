@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# Jupyter & Marimo
+.ipynb_checkpoints
+*.ipynb
+.marimo-cache/
+.marimo-env/
+
+# Testing
+.coverage
+coverage.xml
+.pytest_cache/
+htmlcov/
+
+# Training outputs
+outputs/
+runs/
+wandb/
+checkpoints/
+logs/
+
+# Data
+*.fasta
+*.fa
+*.fna
+*.fastq
+*.fq
+*.sam
+*.bam
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
+*.db
+*.sqlite
+*.log
+
+# Project specific
+dnallm/models/downloads/
+dnallm/data/cache/ 

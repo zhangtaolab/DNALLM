@@ -1,0 +1,11 @@
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.12.0
+scikit-learn>=1.2.0
+numpy>=1.23.0
+pandas>=2.0.0
+click>=8.0.0
+wandb>=0.15.0
+jax>=0.4.0
+haiku>=0.0.9
+modelscope>=1.9.0 

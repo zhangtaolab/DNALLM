@@ -1,5 +1,14 @@
 from setuptools import setup, find_packages
 
+# Read requirements from files
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
+with open('requirements-dev.txt') as f:
+    dev_requirements = f.read().splitlines()
+    # Remove reference to requirements.txt
+    dev_requirements.remove('-r requirements.txt')
+
 setup(
     name="dnallm",
     version="0.1.0",
@@ -7,40 +16,33 @@ setup(
     author="Your Name",
     author_email="your.email@example.com",
     packages=find_packages(),
-    install_requires=[
-        "torch>=1.7.0",
-        "transformers>=4.15.0",
-        "datasets>=1.18.0",
-        "scikit-learn>=0.24.0",
-        "numpy>=1.19.0",
-        "pandas>=1.2.0",
-        "click>=7.0",
-        "wandb>=0.12.0",
-        "jax>=0.3.0",  # For Nucleotide Transformer
-        "haiku>=0.0.5", # For Nucleotide Transformer
-        "modelscope>=1.9.0",  # Add ModelScope support
-    ],
+    install_requires=requirements,
+    extras_require={
+        'dev': dev_requirements,
+        'test': [
+            'pytest>=6.0.0',
+            'pytest-cov>=2.0.0',
+        ],
+        'notebook': [
+            'marimo>=0.1.0',
+            'jupyter>=1.0.0',
+        ]
+    },
     entry_points={
         "console_scripts": [
             "dnallm-train=dnallm.cli.train:main",
             "dnallm-predict=dnallm.cli.predict:main",
         ],
     },
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering :: Bio-Informatics",
     ],
-    extras_require={
-        'test': [
-            'pytest>=6.0.0',
-            'pytest-cov>=2.0.0',
-        ],
-    },
 ) 
