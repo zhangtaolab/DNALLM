@@ -9,6 +9,12 @@ with open('requirements-dev.txt') as f:
     # Remove reference to requirements.txt
     dev_requirements.remove('-r requirements.txt')
 
+# MCP依赖
+mcp_requirements = [
+    "mcp>=0.3.0",
+    "asyncio>=3.4.3",
+]
+
 setup(
     name="dnallm",
     version="0.1.0",
@@ -26,12 +32,14 @@ setup(
         'notebook': [
             'marimo>=0.1.0',
             'jupyter>=1.0.0',
-        ]
+        ],
+        'mcp': mcp_requirements,
     },
     entry_points={
         "console_scripts": [
             "dnallm-train=dnallm.cli.train:main",
             "dnallm-predict=dnallm.cli.predict:main",
+            "dnallm-mcp-server=dnallm.mcp.server:main",
         ],
     },
     python_requires=">=3.10",
