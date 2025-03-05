@@ -48,3 +48,5 @@ Functionality:
     - inference
   - run_finetune_cli (命令行微调示例)
   - run_inference_cli (命令行推理示例)
+
+https://docs.pydantic.dev/latest/
