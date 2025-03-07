@@ -1,0 +1,12 @@
+[uv.project]
+python-packages-directory = ".venv/lib/python3.10/site-packages"
+
+[uv.venv]
+python-path = ".venv/bin/python"
+
+[uv.resolver]
+strategy = "highest"
+prefer-binary = true
+
+[uv.build]
+wheel-tag-platform = "manylinux_2_28_x86_64" 

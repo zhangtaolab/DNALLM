@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dnallm"
+version = "0.1.0"
+description = "A toolkit for fine-tuning and inference with DNA Language Models"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "datasets>=2.12.0",
+    "scikit-learn>=1.2.0",
+    "numpy>=1.23.0",
+    "pandas>=2.0.0",
+    "click>=8.0.0",
+    "wandb>=0.15.0",
+    "jax>=0.4.0",
+    "haiku>=0.0.9",
+    "modelscope>=1.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+notebook = [
+    "marimo>=0.1.0",
+    "jupyter>=2.0.0",
+]
+mcp = [
+    "mcp>=0.3.0",
+    "asyncio>=3.4.3",
+]
+
+[project.scripts]
+dnallm-train = "dnallm.cli.train:main"
+dnallm-predict = "dnallm.cli.predict:main"
+dnallm-mcp-server = "dnallm.mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dnallm"] 
