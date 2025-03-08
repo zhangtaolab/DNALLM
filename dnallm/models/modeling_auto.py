@@ -12,6 +12,7 @@ PRETRAIN_MODEL_MAPS = OrderedDict(
         ("GENA-LM", ["BertForMaskedLM", "110M", "AIRI-Institute/gena-lm-bert-base-t2t"]),
         ("GENA-LM-BigBird", ["BigBirdForMaskedLM", "110M", "AIRI-Institute/gena-lm-bigbird-base-t2t"]),
         ("GENERator", ["LlamaForCausalLM", "0.5B", "GenerTeam/GENERanno-eukaryote-0.5b-base"]),
+        ("GenomeOcean", ["MistralForCausalLM", "100M", "pGenomeOcean/GenomeOcean-100M"]),
         ("GPN", ["ConvNetForMaskedLM", None, "songlab/gpn-brassicales"]),
         ("GPN-MSA", ["GPNRoFormerForMaskedLM", None, "songlab/gpn-msa-sapiens"]),
         ("GROVER", ["BertForMaskedLM", None, "PoetschLab/GROVER"]),

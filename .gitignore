@@ -38,9 +38,11 @@ ENV/
 
 # Jupyter & Marimo
 .ipynb_checkpoints
-*.ipynb
 .marimo-cache/
 .marimo-env/
+
+# uv
+uv.lock
 
 # Testing
 .coverage

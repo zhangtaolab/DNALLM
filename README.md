@@ -1,5 +1,50 @@
-# DNALLM
-DNA Large Language Model Package
+# DNALLM - DNA Language Model Toolkit
+
+## 使用uv进行安装和开发
+
+DNALLM使用uv进行依赖管理和打包。uv是一个快速的Python包管理工具，比传统工具快10-100倍。
+
+### 安装uv
+
+```bash
+# 安装uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+### 安装DNALLM
+
+```bash
+# 克隆仓库
+git clone https://github.com/zhangtaolab/DNALLM.git
+cd DNALLM
+
+# 创建虚拟环境并安装依赖
+uv venv
+uv pip install -e ".[dev]"
+```
+
+### 常用uv命令
+
+```bash
+# 运行DNALLM工具
+uv run -m dnallm.cli.train --help
+
+# 添加新依赖
+uv add numpy pandas
+
+# 添加开发依赖
+uv add --dev pytest
+
+# 锁定依赖版本
+uv lock
+
+# 同步依赖
+uv sync
+```
+
+## 开发与贡献
+
+请参考[贡献指南](CONTRIBUTING.md)了解如何参与项目开发。
 
 Functionality:
 - dnallm
