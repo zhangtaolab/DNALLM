@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.python-version
 build/
 develop-eggs/
 dist/
@@ -42,6 +43,7 @@ ENV/
 .marimo-env/
 
 # uv
+.uv.toml
 uv.lock
 
 # Testing

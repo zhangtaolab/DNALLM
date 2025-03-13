@@ -3,9 +3,9 @@ name = "dnallm"
 version = "0.1.0"
 description = "A toolkit for fine-tuning and inference with DNA Language Models"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [
-    {name = "Zhangtaolab", email = "your.email@example.com"}
+    {name = "Zhangtaolab", email = "your.email@zhangtaolab.org"}
 ]
 license = {text = "MIT"}
 classifiers = [
@@ -16,15 +16,15 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
     "accelerate>=1.4.0",
-    "causal-conv1d>=1.5.0.post8",
     "datasets>=3.3.2",
     "evaluate>=0.4.3",
+    "huggingface-hub>=0.29.0",
     "jax>=0.5.2",
-    "mamba-ssm>=2.2.4",
     "mambapy>=1.2.0",
     "modelscope>=1.23.2",
     "numpy>=2.2.3",

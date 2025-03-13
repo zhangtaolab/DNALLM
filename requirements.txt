@@ -1,9 +1,8 @@
 accelerate>=1.4.0
-causal-conv1d>=1.4.0
 datasets>=3.3.2
 evaluate>=0.4.3
+huggingface-hub>=0.29.0
 jax>=0.5.2
-mamba-ssm>=2.2.4
 mambapy>=1.2.0
 modelscope>=1.23.2
 numpy>=2.2.3
