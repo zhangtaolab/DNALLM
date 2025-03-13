@@ -36,6 +36,7 @@ DNA语言模型微调任务定义模块
 
 class TaskType(Enum):
     EMBEDDING = "embedding"                   # Get embeddings, attention map and token probability for downstream analysis
+    MASK = "mask"                             # Mask task, for Masked Language Model
     GENERATION = "generation"                 # Generation task, for Causal Language Model
     BINARY = "binary_classification"          # Binary classification task with two labels
     MULTICLASS = "multi_class_classification" # Multi-class classification task that specific the input belongs to which class (more than two)
