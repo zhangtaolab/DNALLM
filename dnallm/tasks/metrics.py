@@ -3,7 +3,7 @@ import numpy as np
 from scipy.special import softmax
 import sklearn
 import evaluate
-from .base import TaskConfig, TaskType
+from ..configuration.configs import TaskConfig
 
 
 # Define evaluation metrics
@@ -38,11 +38,7 @@ def calculate_metric_with_sklearn(eval_pred):
 ## Load evaluate metrics locally to avoid downloading from Hugging Face
 
 def classification_metrics():
-    clf_metrics = evaluate.combine(["evaluate/metrics/accuracy/accuracy.py",
-                                    "evaluate/metrics/f1/f1.py",
-                                    "evaluate/metrics/precision/precision.py",
-                                    "evaluate/metrics/recall/recall.py",
-                                    "evaluate/metrics/matthews_correlation/matthews_correlation.py"])
+    clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall", "matthews_correlation"])
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -219,20 +215,20 @@ def metrics_for_dnabert2(task):
     return compute_metrics, preprocess_logits_for_metrics
 
 
-def compute_metrics(task_config: TaskConfig, eval_pred: tuple) -> dict:
+def compute_metrics(task_config: TaskConfig) -> dict:
     """Compute metrics based on task type"""
-    if task_config.task_type == TaskType.BINARY:
-        return classification_metrics()(eval_pred)
-    elif task_config.task_type == TaskType.MULTICLASS:
-        return multi_classification_metrics()(eval_pred)
-    elif task_config.task_type == TaskType.MULTILABEL:
-        return multi_labels_metrics()(eval_pred)
-    elif task_config.task_type == TaskType.REGRESSION:
-        return regression_metrics()(eval_pred)
-    elif task_config.task_type == TaskType.TOKEN_CLASSIFICATION:
-        return token_classification_metrics(task_config.label_list)(eval_pred)
+    if task_config.task_type == "binary":
+        return classification_metrics()
+    elif task_config.task_type == "multiclass":
+        return multi_classification_metrics()
+    elif task_config.task_type == "multilabel":
+        return multi_labels_metrics()
+    elif task_config.task_type == "regression":
+        return regression_metrics()
+    elif task_config.task_type == "token":
+        return token_classification_metrics(task_config.label_names)
     else:
-        raise ValueError(f"Invalid task type: {task_config.task_type}")
+        raise ValueError(f"Unsupported task type for evaluation: {task_config.task_type}")
 
 
 # def compute_metrics(task_config: TaskConfig, predictions: torch.Tensor, 
