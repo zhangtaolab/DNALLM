@@ -1,4 +1,4 @@
-# DNALLM - DNA Language Model Toolkit
+# DNALLM - DNA Large Language Model Toolkit
 
 ## 使用uv进行安装和开发
 
