@@ -1,12 +1,8 @@
 import os
-from typing import Optional, Dict, Any
-import torch
-from torch.utils.data import DataLoader
+from typing import Optional, Dict
 from transformers import Trainer, TrainingArguments
-from .models.base import BaseDNAModel
-from .data import DNADataset
-from .config import TrainingConfig
-from .tasks import TaskType, TaskConfig, TaskHead, compute_metrics
+from ..datasets.data import DNADataset
+from ..tasks.metrics import compute_metrics
 
 """
 DNA语言模型训练器模块
@@ -38,102 +34,97 @@ DNA语言模型训练器模块
 使用示例：
     trainer = DNALLMTrainer(
         model=model,
-        config=training_config,
-        task_config=task_config,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset
+        tokenizer=tokenizer,
+        config=config,
+        datasets=datasets
     )
     metrics = trainer.train()
 """
+
 
 class DNALLMTrainer:
     """DNA Language Model Trainer class that supports multiple model types"""
     
     def __init__(
         self,
-        model: BaseDNAModel,
-        config: TrainingConfig,
-        task_config: TaskConfig,
-        train_dataset: Optional[DNADataset] = None,
-        eval_dataset: Optional[DNADataset] = None,
+        model,
+        config: dict,
+        datasets: Optional[DNADataset] = None,
+        extra_args: Optional[Dict] = None,
     ):
+
         self.model = model
-        self.config = config
-        self.task_config = task_config
-        self.train_dataset = train_dataset
-        self.eval_dataset = eval_dataset
+        self.task_config = config['task']
+        self.train_config = config['finetune']
+        self.datasets = datasets
+        self.extra_args = extra_args
         
-        # Add task-specific head
-        base_model = model.get_model()
-        self.task_head = TaskHead(
-            task_config,
-            hidden_size=base_model.config.hidden_size
-        )
-        
+        self.set_up_trainer()
+    
+    def set_up_trainer(self):
         # Setup training arguments
+        training_args = self.train_config.model_dump()
+        if self.extra_args:
+            training_args.update(self.extra_args)
         self.training_args = TrainingArguments(
-            output_dir=config.output_dir,
-            num_train_epochs=config.num_epochs,
-            per_device_train_batch_size=config.batch_size,
-            per_device_eval_batch_size=config.eval_batch_size,
-            learning_rate=config.learning_rate,
-            weight_decay=config.weight_decay,
-            logging_dir=os.path.join(config.output_dir, "logs"),
-            logging_steps=config.logging_steps,
-            save_steps=config.save_steps,
-            eval_steps=config.eval_steps,
-            evaluation_strategy="steps",
-            load_best_model_at_end=True,
+            **training_args,
         )
+
+        # Get datasets
+        self.data_split = self.datasets.dataset.keys()
+        if "train" in self.data_split:
+            train_dataset = self.datasets.dataset["train"]
+        else:
+            if len(self.data_split) == 1:
+                train_dataset = self.datasets.dataset
+            else:
+                raise KeyError("Cannot find train data.")
+        eval_key = [x for x in self.data_split if x not in ['train', 'test']]
+        if eval_key:
+            eval_dataset = self.datasets.dataset[eval_key[0]]
+        elif "test" in self.data_split:
+            eval_dataset = self.datasets.dataset['test']
+        else:
+            eval_dataset = None
         
+        # Get compute metrics
+        compute_metrics = self.compute_task_metrics()
+
         # Initialize trainer
         self.trainer = Trainer(
-            model=self.model_with_head(),
+            model=self.model,
             args=self.training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            compute_metrics=self.compute_task_metrics,
+            compute_metrics=compute_metrics,
         )
-    
-    def model_with_head(self):
-        """Combine base model with task head"""
-        class CombinedModel(nn.Module):
-            def __init__(self, base_model, task_head):
-                super().__init__()
-                self.base_model = base_model
-                self.task_head = task_head
-                
-            def forward(self, **inputs):
-                outputs = self.base_model(**inputs)
-                logits = self.task_head(outputs.last_hidden_state[:, 0])
-                return logits
-                
-        return CombinedModel(self.model.get_model(), self.task_head)
-    
-    def compute_task_metrics(self, eval_pred):
+
+    def compute_task_metrics(self):
         """Compute task-specific metrics"""
-        predictions, labels = eval_pred
-        return compute_metrics(self.task_config, predictions, labels)
-    
-    def train(self) -> Dict[str, float]:
+        return compute_metrics(self.task_config)
+
+    def train(self, save_tokenizer: bool = False) -> Dict[str, float]:
         """Train the model and return metrics"""
+        self.model.train()
         train_result = self.trainer.train()
         metrics = train_result.metrics
-        
         # Save the model
         self.trainer.save_model()
-        
+        if save_tokenizer:
+            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)
         return metrics
     
     def evaluate(self) -> Dict[str, float]:
         """Evaluate the model and return metrics"""
-        return self.trainer.evaluate()
+        self.model.eval()
+        result = self.trainer.evaluate()
+        return result
     
-    def compute_metrics(self, eval_pred: Any) -> Dict[str, float]:
-        """Compute evaluation metrics"""
-        predictions, labels = eval_pred
-        # Implement your metric computation here
-        metrics = {
-            "accuracy": 0.0,  # Replace with actual metric computation
-        }
-        return metrics 
+    def predict(self) -> Dict[str, float]:
+        """Predict the model and return metrics"""
+        self.model.eval()
+        result = {}
+        if "test" in self.data_split:
+            test_dataset = self.datasets.dataset['test']
+            result = self.trainer.predict(test_dataset)
+        return result

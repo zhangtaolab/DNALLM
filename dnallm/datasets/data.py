@@ -141,42 +141,42 @@ class DNADataset:
 
     @classmethod
     def from_huggingface(cls, dataset_name: str,
-                         seq_field: str = "sequence", label_field: str = "labels",
+                         seq_col: str = "sequence", label_col: str = "labels",
                          tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
         """
         Load a dataset from the Hugging Face Hub.
         Args:
             dataset_name (str): Name of the dataset.
-            seq_field (str): Field name for the DNA sequence.
-            label_field (str): Field name for the label.
+            seq_col (str): Column name for the DNA sequence.
+            label_col (str): Column name for the label.
         """
         ds = load_dataset(dataset_name)
         # Rename columns if necessary
-        if seq_field != "sequence":
-            ds = ds.rename_column(seq_field, "sequence")
-        if label_field != "labels":
-            ds = ds.rename_column(label_field, "labels")
+        if seq_col != "sequence":
+            ds = ds.rename_column(seq_col, "sequence")
+        if label_col != "labels":
+            ds = ds.rename_column(label_col, "labels")
         return cls(ds, tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
     def from_modelscope(cls, dataset_name: str,
-                        seq_field: str = "sequence", label_field: str = "labels",
+                        seq_col: str = "sequence", label_col: str = "labels",
                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
         """
         Load a dataset from the ModelScope.
         Args:
             dataset_name (str): Name of the dataset.
-            seq_field (str): Field name for the DNA sequence.
-            label_field (str): Field name for the label.
+            seq_col (str): Column name for the DNA sequence.
+            label_col (str): Column name for the label.
         """
         from modelscope import MsDataset
         
         ds = MsDataset.load(dataset_name)
         # Rename columns if necessary
-        if seq_field != "sequence":
-            ds = ds.rename_column(seq_field, "sequence")
-        if label_field != "labels":
-            ds = ds.rename_column(label_field, "labels")
+        if seq_col != "sequence":
+            ds = ds.rename_column(seq_col, "sequence")
+        if label_col != "labels":
+            ds = ds.rename_column(label_col, "labels")
         return cls(ds, tokenizer=tokenizer, max_length=max_length)
 
     def encode_sequences(self, padding: str = "max_length", return_tensors: str = "pt",
@@ -205,8 +205,13 @@ class DNADataset:
         self.dataset = self.dataset.map(tokenize_fn, batched=True)
         if remove_unused_columns:
             used_cols = ['labels', 'input_ids', 'token_type_ids', 'attention_mask']
-            unused_cols = [f for f in self.dataset.features if f not in used_cols]
-            self.dataset = self.dataset.remove_columns(unused_cols)
+            if isinstance(self.dataset, DatasetDict):
+                for dt in self.dataset:
+                    unused_cols = [f for f in self.dataset[dt].features if f not in used_cols]
+                    self.dataset[dt] = self.dataset[dt].remove_columns(unused_cols)
+            else:
+                unused_cols = [f for f in self.dataset.features if f not in used_cols]
+                self.dataset = self.dataset.remove_columns(unused_cols)
         if return_tensors == "tf":
             self.dataset.set_format(type="tensorflow")
         elif return_tensors == "jax":
