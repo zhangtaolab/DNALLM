@@ -2,7 +2,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 from typing import Optional
-from ..tasks.base import TaskConfig, TaskType
+from ..configuration.configs import TaskConfig
 
 
 # class BaseDNAModel(ABC):
@@ -92,7 +92,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
     else:
         pass # do nothing
     # Get task type
-    task = task_config.task_type
+    task_type = task_config.task_type
     label_names = task_config.label_names
     num_labels = task_config.num_labels
     id2label = {i: label for i, label in enumerate(label_names)}
@@ -100,9 +100,11 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
     # Load model and tokenizer
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        if task == TaskType.GENERATION:
+        if task_type == "mask":
+            model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True)
+        elif task_type == "generation":
             model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
-        elif task == TaskType.BINARY:
+        elif task_type == "binary":
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
@@ -111,7 +113,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 problem_type="single_label_classification",
                 trust_remote_code=True
             )
-        elif task == TaskType.MULTICLASS:
+        elif task_type == "multiclass":
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
@@ -120,21 +122,21 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 problem_type="single_label_classification",
                 trust_remote_code=True
             )
-        elif task == TaskType.MULTILABEL:
+        elif task_type == "multilabel":
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
                 problem_type="multi_label_classification",
                 trust_remote_code=True
             )
-        elif task == TaskType.REGRESSION:
+        elif task_type == "regression":
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
                 problem_type="regression",
                 trust_remote_code=True
             )
-        elif task == TaskType.NER:
+        elif task_type == "token":
             model = AutoModelForTokenClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
@@ -147,4 +149,4 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}")
             
-    return model, tokenizer 
+    return model, tokenizer

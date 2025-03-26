@@ -10,6 +10,8 @@ PRETRAIN_MODEL_MAPS = OrderedDict(
         ("DNABERT", ["Zhihan1996", "Masked Language Model"]),
         ("DNABERT-2", ["Zhihan1996", "Masked Language Model"]),
         ("DNABERT-S", ["Zhihan1996", "Masked Language Model"]),
+        ("EVO-1", ["togethercomputer", "Casual Language Model"]),
+        ("EVO-2", ["arcinstitute", "Casual Language Model"]),
         ("GENA-LM", ["AIRI-Institute", "Masked Language Model"]),
         ("GENA-LM-BigBird", ["AIRI-Institute", "Masked Language Model"]),
         ("GENERator", ["GenerTeam", "Causal Language Model"]),
