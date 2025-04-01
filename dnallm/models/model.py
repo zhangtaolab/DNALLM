@@ -75,6 +75,8 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
 
     # Load model from local disk
     if source.lower() == "local":
+        from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
+                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
         if not os.path.exists(model_name):
             raise ValueError(f"Model {model_name} not found locally.")
     elif source.lower() == "huggingface":
