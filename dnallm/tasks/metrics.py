@@ -2,6 +2,9 @@ import os
 import numpy as np
 from scipy.special import softmax
 import sklearn
+
+metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
+
 import evaluate
 from ..configuration.configs import TaskConfig
 
@@ -38,7 +41,11 @@ def calculate_metric_with_sklearn(eval_pred):
 ## Load evaluate metrics locally to avoid downloading from Hugging Face
 
 def classification_metrics():
-    clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall", "matthews_correlation"])
+    clf_metrics = evaluate.combine([metrics_path + "accuracy/accuracy.py",
+                                    metrics_path + "f1/f1.py",
+                                    metrics_path + "precision/precision.py",
+                                    metrics_path + "recall/recall.py",
+                                    metrics_path + "matthews_correlation/matthews_correlation.py"])
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -50,10 +57,10 @@ def classification_metrics():
 
 
 def regression_metrics():
-    mse_metric = evaluate.load("evaluate/metrics/mse/mse.py")
-    mae_metric = evaluate.load("evaluate/metrics/mae/mae.py")
-    r2_metric = evaluate.load("evaluate/metrics/r_squared/r_squared.py")
-    spm_metric = evaluate.load("evaluate/metrics/spearmanr/spearmanr.py")
+    mse_metric = evaluate.load(metrics_path + "mse/mse.py")
+    mae_metric = evaluate.load(metrics_path + "mae/mae.py")
+    r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
+    spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -69,12 +76,12 @@ def regression_metrics():
 
 
 def multi_classification_metrics():
-    metric0 = evaluate.load("evaluate/metrics/accuracy/accuracy.py")
-    metric1 = evaluate.load("evaluate/metrics/precision/precision.py")
-    metric2 = evaluate.load("evaluate/metrics/recall/recall.py")
-    metric3 = evaluate.load("evaluate/metrics/f1/f1.py")
-    metric4 = evaluate.load("evaluate/metrics/matthews_correlation/matthews_correlation.py")
-    roc_metric = evaluate.load("evaluate/metrics/roc_auc/roc_auc.py", "multiclass")
+    metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
+    metric1 = evaluate.load(metrics_path + "precision/precision.py")
+    metric2 = evaluate.load(metrics_path + "recall/recall.py")
+    metric3 = evaluate.load(metrics_path + "f1/f1.py")
+    metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
+    roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multiclass")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -102,12 +109,12 @@ def multi_classification_metrics():
 
 
 def multi_labels_metrics():
-    metric0 = evaluate.load("evaluate/metrics/accuracy/accuracy.py")
-    metric1 = evaluate.load("evaluate/metrics/precision/precision.py")
-    metric2 = evaluate.load("evaluate/metrics/recall/recall.py")
-    metric3 = evaluate.load("evaluate/metrics/f1/f1.py")
-    metric4 = evaluate.load("evaluate/metrics/matthews_correlation/matthews_correlation.py")
-    roc_metric = evaluate.load("evaluate/metrics/roc_auc/roc_auc.py", "multilabel")
+    metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
+    metric1 = evaluate.load(metrics_path + "precision/precision.py")
+    metric2 = evaluate.load(metrics_path + "recall/recall.py")
+    metric3 = evaluate.load(metrics_path + "f1/f1.py")
+    metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
+    roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multilabel")
 
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
@@ -115,7 +122,7 @@ def multi_labels_metrics():
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         predictions = sigmoid(logits)
-        predictions = (predictions > 0.5).astype(int).reshape(-1)    
+        predictions = (predictions > 0.5).astype(int).reshape(-1)
         labels = labels.astype(int).reshape(-1)
 
         accuracy = metric0.compute(predictions=predictions, references=labels)
@@ -134,7 +141,7 @@ def multi_labels_metrics():
 
 
 def token_classification_metrics(label_list):
-    seqeval = evaluate.load("evaluate/metrics/seqeval/seqeval.py")
+    seqeval = evaluate.load(metrics_path + "seqeval/seqeval.py")
 
     def compute_metrics(pred):
         predictions, labels = pred
@@ -165,18 +172,14 @@ def token_classification_metrics(label_list):
 def metrics_for_dnabert2(task):
     import torch
 
-    r2_metric = evaluate.load("evaluate/metrics/r_squared/r_squared.py")
-    spm_metric = evaluate.load("evaluate/metrics/spearmanr/spearmanr.py")
-    clf_metrics = evaluate.combine(["e../valuate/metrics/accuracy/accuracy.py",
-                                    "evaluate/metrics/f1/f1.py",
-                                    "evaluate/metrics/precision/precision.py",
-                                    "evaluate/metrics/recall/recall.py",
-                                    "evaluate/metrics/matthews_correlation/matthews_correlation.py"])
-    metric1 = evaluate.load("evaluate/metrics/precision/precision.py")
-    metric2 = evaluate.load("evaluate/metrics/recall/recall.py")
-    metric3 = evaluate.load("evaluate/metrics/f1/f1.py")
-    metric4 = evaluate.load("evaluate/metrics/matthews_correlation/matthews_correlation.py")
-    roc_metric = evaluate.load("evaluate/metrics/roc_auc/roc_auc.py", "multiclass")
+    r2_metric = evaluate.load("r_squared")
+    spm_metric = evaluate.load("spearmanr")
+    clf_metrics = evaluate.combine(["accuracy", "f1", "precision", "recall", "matthews_correlation"])
+    metric1 = evaluate.load("precision")
+    metric2 = evaluate.load("recall")
+    metric3 = evaluate.load("f1")
+    metric4 = evaluate.load("matthews_correlation")
+    roc_metric = evaluate.load("roc_auc", "multiclass")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred

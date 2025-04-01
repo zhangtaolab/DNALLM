@@ -1,4 +1,5 @@
 from enum import Enum
+from pydantic import BaseModel, Field
 from typing import Optional, List
 
 
@@ -45,19 +46,16 @@ class TaskType(Enum):
     NER = "token_classification"              # Token classification task which is usually for Named Entity Recognition
 
 
-class TaskConfig:
+class TaskConfig(BaseModel):
     """Configuration for different fine-tuning tasks"""
     def __init__(
         self,
-        task_type: TaskType,
+        task_type: str = Field(..., regex="^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$"),
         num_labels: int = 2,
-        label_names: Optional[List[str]] = None,
+        label_names: Optional[List] = None,
         threshold: float = 0.5,  # For binary classification and multi label classification
     ):
         self.task_type = task_type
-        self.num_labels = num_labels
         self.label_names = label_names or [f"class_{i}" for i in range(num_labels)]
+        self.num_labels = len(self.label_names)
         self.threshold = threshold
-
-
-

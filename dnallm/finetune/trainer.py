@@ -32,9 +32,8 @@ DNA语言模型训练器模块
    - 分布式训练支持
 
 使用示例：
-    trainer = DNALLMTrainer(
+    trainer = DNATrainer(
         model=model,
-        tokenizer=tokenizer,
         config=config,
         datasets=datasets
     )
@@ -42,7 +41,7 @@ DNA语言模型训练器模块
 """
 
 
-class DNALLMTrainer:
+class DNATrainer:
     """DNA Language Model Trainer class that supports multiple model types"""
     
     def __init__(

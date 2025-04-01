@@ -78,6 +78,14 @@ class DNADataset:
         else:
             file_path = os.path.expanduser(file_path)
             file_type = os.path.basename(file_path).split(".")[-1].lower()
+        # Check if the file contains a header
+        if file_type in ["csv", "tsv", "txt"]:
+            if file_type == "csv":
+                sep = sep if sep else ","
+            with open(file_path, "r") as f:
+                header = f.readline().strip()
+                if not header or (seq_col not in header and label_col not in header):
+                    file_type = "txt"  # Treat as TXT if no header found
         # For structured formats that load via datasets.load_dataset
         if file_type in ["csv", "tsv", "json", "parquet", "arrow"]:
             if file_type in ["csv", "tsv"]:
@@ -110,15 +118,15 @@ class DNADataset:
                     if line.startswith(">"):
                         if seq and lab is not None:
                             sequences.append(seq)
-                            labels.append(lab)
+                            labels.append(int(lab))
                         lab = line[1:].strip().split(fasta_sep)[-1]  # Assume label is separated by `fasta_sep` in the header
                         seq = ""
                     else:
                         seq += line.strip()
                 if seq and lab is not None:
                     sequences.append(seq)
-                    labels.append(lab)
-            ds = Dataset.from_dict({"sequence": sequences, "label": labels})
+                    labels.append(int(lab))
+            ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
         elif file_type == "txt":
             # Assume each line contains a sequence and a label separated by whitespace or a custom sep.
             sequences, labels = [], []
@@ -132,8 +140,13 @@ class DNADataset:
                     record = line.strip().split(sep) if sep else line.strip().split()
                     if len(record) >= 2:
                         sequences.append(record[0])
-                        labels.append(record[1])
-            ds = Dataset.from_dict({"sequence": sequences, "label": labels})
+                        labels.append(int(record[1]))
+                    elif len(record) == 1:
+                        sequences.append(record[0])
+                        labels.append(None)
+                    else:
+                        continue
+            ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
         # Return processed dataset
@@ -142,6 +155,7 @@ class DNADataset:
     @classmethod
     def from_huggingface(cls, dataset_name: str,
                          seq_col: str = "sequence", label_col: str = "labels",
+                         data_dir: Union[str, None]=None,
                          tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
         """
         Load a dataset from the Hugging Face Hub.
@@ -150,7 +164,10 @@ class DNADataset:
             seq_col (str): Column name for the DNA sequence.
             label_col (str): Column name for the label.
         """
-        ds = load_dataset(dataset_name)
+        if data_dir:
+            ds = load_dataset(dataset_name, data_dir=data_dir)
+        else:
+            ds = load_dataset(dataset_name)
         # Rename columns if necessary
         if seq_col != "sequence":
             ds = ds.rename_column(seq_col, "sequence")
@@ -161,6 +178,7 @@ class DNADataset:
     @classmethod
     def from_modelscope(cls, dataset_name: str,
                         seq_col: str = "sequence", label_col: str = "labels",
+                        data_dir: Union[str, None]=None,
                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
         """
         Load a dataset from the ModelScope.
@@ -171,7 +189,10 @@ class DNADataset:
         """
         from modelscope import MsDataset
         
-        ds = MsDataset.load(dataset_name)
+        if data_dir:
+            ds = MsDataset.load(dataset_name, data_dir=data_dir)
+        else:
+            ds = MsDataset.load(dataset_name)
         # Rename columns if necessary
         if seq_col != "sequence":
             ds = ds.rename_column(seq_col, "sequence")
