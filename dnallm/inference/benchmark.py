@@ -12,6 +12,7 @@ from datasets import Dataset
 from ..models import *
 from ..datasets.data import DNADataset
 from .predictor import DNAPredictor, save_predictions, save_metrics
+from .plot import *
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
@@ -104,6 +105,7 @@ class Benchmark:
         task_config = self.config['task']
         pred_config = self.config['inference']
         all_results = {}
+        metrics_save = {}
         labels = self.dataset['labels']
         for model_name in model_names:
             print(model_name)
@@ -119,9 +121,9 @@ class Benchmark:
                 predictor = self.get_predictor(model, tokenizer)
             else:
                 # Check if the model is available in the model library
-                if model_path not in self.all_models[source]:
-                    print(f"Model \'{model_path}\' not found in our available models list.")
-                    continue
+                # if model_path not in self.all_models[source]:
+                #     print(f"Model \'{model_path}\' not found in our available models list.")
+                #     continue
                 model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config,
                                                             source=source, use_mirror=use_mirror)
                 predictor = self.get_predictor(model, tokenizer)
@@ -137,8 +139,49 @@ class Benchmark:
             logits, _ = predictor.batch_predict(dataloader, do_pred=False)
             if len(labels) == len(logits):
                 metrics = predictor.calculate_metrics(logits, labels)
-            all_results[model_name] = metrics
+                all_results[model_name] = metrics
+                metrics2 = dict(metrics)
+                if 'curve' in metrics2:
+                    del metrics2['curve']
+                metrics_save[model_name] = metrics2
         # Save the metrics
         if save_scores and pred_config.output_dir:
-            save_metrics(all_results, Path(pred_config.output_dir))
+            save_metrics(metrics_save, Path(pred_config.output_dir))
         return all_results
+
+    def plot(self, metrics: dict,
+             show_score: bool = True,
+             save_path: Optional[str] = None) -> None:
+        """
+        Plot the benchmark results.
+        Args:
+            metrics (dict): Dictionary containing model metrics.
+            show_score (bool): Whether to show the score on the plot.
+            ncol (int): Number of columns in the plot.
+            width (int): Width of the plot.
+            height (int): Height of the plot.
+            bar_width (int): Width of the bars in the plot.
+            save_path (Optional[str]): Path to save the plot.
+        Returns:
+            None
+        """
+        # Prepare data for plotting
+        bars_data, curves_data = prepare_data(metrics)
+        if save_path:
+            suffix = os.path.splitext(save_path)[-1]
+            if suffix:
+                bar_chart = save_path.replace(suffix, "_metrics" + suffix)
+                line_chart = save_path.replace(suffix, "_roc" + suffix)
+            else:
+                bar_chart = os.path.join(save_path, "metrics.pdf")
+                line_chart = os.path.join(save_path, "roc.pdf")
+        else:
+            bar_chart = None
+            line_chart = None
+        # Plot bar charts
+        pbar = plot_bars(bars_data, show_score=show_score,
+                         save_path=bar_chart)
+        # Plot curve charts
+        pline = plot_curve(curves_data,
+                            save_path=line_chart)
+        return pbar, pline

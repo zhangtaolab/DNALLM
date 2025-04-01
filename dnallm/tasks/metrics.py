@@ -1,7 +1,8 @@
 import os
 import numpy as np
 from scipy.special import softmax
-import sklearn
+from sklearn.metrics import (accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score,
+                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve)
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
 
@@ -23,17 +24,17 @@ def calculate_metric_with_sklearn(eval_pred):
     valid_labels = labels[valid_mask]
     print(valid_labels.shape, valid_predictions.shape)
     return {
-        "accuracy": sklearn.metrics.accuracy_score(valid_labels, valid_predictions),
-        "f1": sklearn.metrics.f1_score(
+        "accuracy": accuracy_score(valid_labels, valid_predictions),
+        "f1": f1_score(
             valid_labels, valid_predictions, average="macro", zero_division=0
         ),
-        "matthews_correlation": sklearn.metrics.matthews_corrcoef(
+        "matthews_correlation": matthews_corrcoef(
             valid_labels, valid_predictions
         ),
-        "precision": sklearn.metrics.precision_score(
+        "precision": precision_score(
             valid_labels, valid_predictions, average="macro", zero_division=0
         ),
-        "recall": sklearn.metrics.recall_score(
+        "recall": recall_score(
             valid_labels, valid_predictions, average="macro", zero_division=0
         ),
     }
@@ -46,12 +47,27 @@ def classification_metrics():
                                     metrics_path + "precision/precision.py",
                                     metrics_path + "recall/recall.py",
                                     metrics_path + "matthews_correlation/matthews_correlation.py"])
+    auc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "binary")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         predictions = np.argmax(logits, axis=-1)
-        return clf_metrics.compute(predictions=predictions, references=labels)
+        metrics = clf_metrics.compute(predictions=predictions, references=labels)
+        pred_probs = softmax(logits, axis=1)
+        roc_auc = auc_metric.compute(references=labels, prediction_scores=pred_probs[:, 1])
+        metrics["AUROC"] = roc_auc["roc_auc"]
+        pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
+        metrics["AUPRC"] = pr_auc
+        fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
+        precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
+        metrics["curve"] = {
+            "fpr": fpr,
+            "tpr": tpr,
+            "precision": precision,
+            "recall": recall,
+        }
+        return metrics
 
     return compute_metrics
 
@@ -96,11 +112,11 @@ def multi_classification_metrics():
         f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
         mcc = metric4.compute(predictions=predictions, references=labels)
         roc_auc_ovr = roc_metric.compute(references=labels,
-                                        prediction_scores=pred_probs,
-                                        multi_class='ovr')
+                                         prediction_scores=pred_probs,
+                                         multi_class='ovr')
         roc_auc_ovo = roc_metric.compute(references=labels,
-                                        prediction_scores=pred_probs,
-                                        multi_class='ovo')
+                                         prediction_scores=pred_probs,
+                                         multi_class='ovo')
 
         return {**accuracy, **precision, **recall, **f1, **mcc,
                 "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
@@ -131,8 +147,9 @@ def multi_labels_metrics():
         f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
         mcc = metric4.compute(predictions=predictions, references=labels)
         roc_auc = roc_metric.compute(references=labels,
-                                        prediction_scores=predictions,
-                                        average='micro')
+                                     prediction_scores=predictions,
+                                     average='micro')
+        auprc = average_precision_score(labels, predictions)
 
         return {**accuracy, **precision, **recall, **f1, **mcc,
                 "AUROC": roc_auc['roc_auc']}
@@ -199,11 +216,11 @@ def metrics_for_dnabert2(task):
                 f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
                 mcc = metric4.compute(predictions=predictions, references=labels)
                 roc_auc_ovr = roc_metric.compute(references=labels,
-                                        prediction_scores=pred_probs,
-                                        multi_class='ovr')
+                                                 prediction_scores=pred_probs,
+                                                 multi_class='ovr')
                 roc_auc_ovo = roc_metric.compute(references=labels,
-                                        prediction_scores=pred_probs,
-                                        multi_class='ovo')
+                                                 prediction_scores=pred_probs,
+                                                 multi_class='ovo')
                 return {**precision, **recall, **f1, **mcc, "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
 
     def preprocess_logits_for_metrics(logits, labels):

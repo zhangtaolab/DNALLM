@@ -287,7 +287,10 @@ class DNAPredictor:
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
             if save_to_file and self.config.output_dir:
-                save_metrics(metrics, Path(self.config.output_dir))
+                metrics_save = dict(metrics)
+                if 'curve' in metrics_save:
+                    del metrics_save['curve']
+                save_metrics(metrics_save, Path(self.config.output_dir))
             return predictions, metrics
 
         return predictions
@@ -328,10 +331,6 @@ class DNAPredictor:
         Returns:
             Dictionary containing evaluation metrics
         """
-        # Get task type and threshold from config
-        task_type = self.task_config.task_type
-        threshold = self.task_config.threshold
-        label_names = self.task_config.label_names
         # Calculate metrics based on task type
         compute_metrics = Metrics(self.task_config)
         metrics = compute_metrics((logits, labels))
@@ -345,7 +344,7 @@ def save_predictions(predictions: Dict, output_dir: Path) -> None:
     
     # Save predictions
     with open(output_dir / "predictions.json", "w") as f:
-        json.dump(predictions, f)
+        json.dump(predictions, f, indent=4)
 
 def save_metrics(metrics: Dict, output_dir: Path) -> None:
     """Save metrics to files"""
@@ -353,4 +352,4 @@ def save_metrics(metrics: Dict, output_dir: Path) -> None:
     
     # Save metrics
     with open(output_dir / "metrics.json", "w") as f:
-        json.dump(metrics, f)
+        json.dump(metrics, f, indent=4)
