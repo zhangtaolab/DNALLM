@@ -1,1 +1,1 @@
-from .trainer import DNALLMTrainer
+from .trainer import DNATrainer
