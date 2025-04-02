@@ -284,12 +284,12 @@ class DNAPredictor:
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
+            metrics_save = dict(metrics)
+            if 'curve' in metrics_save:
+                del metrics_save['curve']
+            if 'scatter' in metrics_save:
+                del metrics_save['scatter']
             if save_to_file and self.config.output_dir:
-                metrics_save = dict(metrics)
-                if 'curve' in metrics_save:
-                    del metrics_save['curve']
-                if 'scatter' in metrics_save:
-                    del metrics_save['scatter']
                 save_metrics(metrics_save, Path(self.config.output_dir))
             return predictions, metrics
 
@@ -317,12 +317,12 @@ class DNAPredictor:
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
+            metrics_save = dict(metrics)
+            if 'curve' in metrics_save:
+                del metrics_save['curve']
+            if 'scatter' in metrics_save:
+                del metrics_save['scatter']
             if save_to_file and self.config.output_dir:
-                metrics_save = dict(metrics)
-                if 'curve' in metrics_save:
-                    del metrics_save['curve']
-                if 'scatter' in metrics_save:
-                    del metrics_save['scatter']
                 save_metrics(metrics, Path(self.config.output_dir))
             # Whether to plot metrics
             if plot_metrics:
