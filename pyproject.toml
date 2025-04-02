@@ -23,6 +23,7 @@ dependencies = [
     "accelerate>=1.4.0",
     "altair[all]>=5.5.0",
     "datasets>=3.3.2",
+    "einops>=0.7.0",
     "evaluate>=0.4.3",
     "huggingface-hub>=0.29.0",
     "ipywidgets>=8",
@@ -42,10 +43,11 @@ dependencies = [
     "wandb>=0.19.8",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "black>=25.1.0",
     "flake8>=7.1.2",
+    "ipywidgets>=8",
     "isort>=6.0.1",
     "jupyter>=1.1.1",
     "marimo>=0.11.17",
@@ -59,6 +61,7 @@ test = [
     "pytest-cov>=6.0.0",
 ]
 notebook = [
+    "ipywidgets>=8",
     "jupyter>=1.1.1",
     "marimo>=0.11.17",
 ]

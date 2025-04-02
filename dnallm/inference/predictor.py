@@ -73,6 +73,7 @@ class DNAPredictor:
         self.device = self._get_device()
         if model:
             self.model.to(self.device)
+            print(f"Use device: {self.device}")
         self.sequences = []
         self.labels = []
 
@@ -296,7 +297,8 @@ class DNAPredictor:
 
 
     def predict_file(self, file_path: str, evaluate: bool = False,
-                     save_to_file: bool = False) -> Union[tuple, dict]:
+                     seq_col: str="sequence", label_col: str="labels",
+                     save_to_file: bool=False, plot_metrics: bool=False) -> Union[tuple, dict]:
         """
         Predict from a file containing sequences
         Args:
@@ -305,7 +307,8 @@ class DNAPredictor:
             List of dictionaries containing predictions
         """
         # Get dataset and dataloader from file
-        _, dataloader = self.generate_dataset(file_path, batch_size=self.pred_config.batch_size)
+        _, dataloader = self.generate_dataset(file_path, seq_col=seq_col, label_col=label_col,
+                                              batch_size=self.pred_config.batch_size)
         # Do batch prediction
         logits, predictions = self.batch_predict(dataloader)
         # Save predictions
@@ -321,7 +324,11 @@ class DNAPredictor:
                 if 'scatter' in metrics_save:
                     del metrics_save['scatter']
                 save_metrics(metrics, Path(self.config.output_dir))
-            return predictions, metrics
+            # Whether to plot metrics
+            if plot_metrics:
+                return predictions, metrics
+            else:
+                return predictions, metrics_save
 
         return predictions
 

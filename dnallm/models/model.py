@@ -10,7 +10,7 @@ from ..configuration.configs import TaskConfig
 #     def get_model(self) -> PreTrainedModel:
 #         """Return the underlying transformer model"""
 #         pass
-    
+
 #     @abstractmethod
 #     def preprocess(self, sequences: list[str]) -> dict:
 #         """Preprocess DNA sequences"""
@@ -41,7 +41,7 @@ def download_model(model_name: str, downloader, max_try: int=100):
                 reason = "repo is not found."
                 print(e)
                 break
-            
+
             else:
                 reason = e
             print(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
@@ -57,13 +57,13 @@ def download_model(model_name: str, downloader, max_try: int=100):
 def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: str="local", use_mirror: bool=False) -> tuple:
     """
     Load model and tokenizer from either HuggingFace or ModelScope
-    
+
     Args:
         model_name: Model name or path
         task_config: Task configuration object
         source: Source to load model and tokenizer from (local, huggingface, modelscope), default "local"
         use_mirror: Whether to use HuggingFace mirror (hf-mirror.com), default False
-        
+
     Returns:
         tuple: (model, tokenizer)
     """
@@ -75,15 +75,15 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
 
     # Load model from local disk
     if source.lower() == "local":
-        from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
-                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
         if not os.path.exists(model_name):
             raise ValueError(f"Model {model_name} not found locally.")
+        from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
+                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
     elif source.lower() == "huggingface":
         # Load HuggingFace SDK
         from huggingface_hub import snapshot_download
         from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
-                                AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
+                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
         model_path = download_model(model_name, downloader=snapshot_download)
     elif source.lower() == "modelscope":
         # Load ModelScope SDK
@@ -150,5 +150,9 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
             model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}")
-            
+
+    # check if pad_token_id is None
+    if model.config.pad_token_id is None:
+        model.config.pad_token_id = tokenizer.pad_token_id
+
     return model, tokenizer
