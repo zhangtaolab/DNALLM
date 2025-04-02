@@ -16,7 +16,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
@@ -37,7 +36,7 @@ dependencies = [
     "scipy>=1.15.2",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.6.0",
+    "torch>=2.4.0",
     "tqdm>=4.67.1",
     "transformers>=4.49.0",
     "wandb>=0.19.8",
@@ -68,6 +67,20 @@ notebook = [
 mcp = [
     "mcp>=1.3.0",
     "asyncio>=3.4.3",
+]
+all = [
+    "asyncio>=3.4.3",
+    "black>=25.1.0",
+    "flake8>=7.1.2",
+    "ipywidgets>=8",
+    "isort>=6.0.1",
+    "jupyter>=1.1.1",
+    "marimo>=0.11.17",
+    "mcp>=1.3.0",
+    "mypy>=1.15.0",
+    "pydantic>=2.10.6",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
 ]
 
 [project.scripts]

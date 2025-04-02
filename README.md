@@ -20,7 +20,8 @@ cd DNALLM
 
 # 创建虚拟环境并安装依赖
 uv venv
-uv pip install -e ".[dev]"
+source .venv/bin/activate
+uv pip install -e ".[all]"
 ```
 
 ### 常用uv命令
