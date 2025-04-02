@@ -81,32 +81,33 @@ class DNAPredictor:
         device = self.pred_config.device.lower()
         if device == 'cpu':
             return torch.device('cpu')
-        elif device == 'cuda':
+        elif device in ['cuda', 'nvidia']:
             if not torch.cuda.is_available():
                 warnings.warn("CUDA is not available. Please check your installation. Use CPU instead.")
                 return torch.device('cpu')
             else:
                 return torch.device('cuda')
-        elif device == 'mps':
+        elif device in ['mps', 'apple', 'mac']:
             if not torch.backends.mps.is_available():
                 warnings.warn("MPS is not available. Please check your installation. Use CPU instead.")
                 return torch.device('cpu')
             else:
                 return torch.device('mps')
-        elif device == 'rocm':
-            if not torch.backends.rocm.is_available():
+        elif device in ['rocm', 'amd']:
+            if not torch.cuda.is_available():
                 warnings.warn("ROCm is not available. Please check your installation. Use CPU instead.")
                 return torch.device('cpu')
             else:
-                return torch.device('rocm')
-        elif device == 'tpu':
-            if not torch.backends.tpu.is_available():
+                return torch.device('cuda')
+        elif device == ['tpu', 'xla', 'google']:
+            try:
+                import torch_xla.core.xla_model as xm
+                return torch.device('xla')
+            except:
                 warnings.warn("TPU is not available. Please check your installation. Use CPU instead.")
                 return torch.device('cpu')
-            else:
-                return torch.device('tpu')
-        elif device == 'xpu':
-            if not torch.backends.xpu.is_available():
+        elif device == ['xpu', 'intel']:
+            if not torch.xpu.is_available():
                 warnings.warn("XPU is not available. Please check your installation. Use CPU instead.")
                 return torch.device('cpu')
             else:
@@ -116,12 +117,8 @@ class DNAPredictor:
                 return torch.device('cuda')
             elif torch.backends.mps.is_available():
                 return torch.device('mps')
-            elif torch.backends.rocm.is_available():
-                return torch.device('rocm')
-            elif torch.backends.xpu.is_available():
+            elif torch.xpu.is_available():
                 return torch.device('xpu')
-            elif torch.backends.tpu.is_available():
-                return torch.device('tpu')
             else:
                 return torch.device('cpu')
         else:
@@ -290,6 +287,8 @@ class DNAPredictor:
                 metrics_save = dict(metrics)
                 if 'curve' in metrics_save:
                     del metrics_save['curve']
+                if 'scatter' in metrics_save:
+                    del metrics_save['scatter']
                 save_metrics(metrics_save, Path(self.config.output_dir))
             return predictions, metrics
 
@@ -316,6 +315,11 @@ class DNAPredictor:
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
             if save_to_file and self.config.output_dir:
+                metrics_save = dict(metrics)
+                if 'curve' in metrics_save:
+                    del metrics_save['curve']
+                if 'scatter' in metrics_save:
+                    del metrics_save['scatter']
                 save_metrics(metrics, Path(self.config.output_dir))
             return predictions, metrics
 

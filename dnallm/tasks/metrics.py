@@ -85,8 +85,13 @@ def regression_metrics():
         mae = mae_metric.compute(references=labels, predictions=logits)
         r2 = r2_metric.compute(references=labels, predictions=logits)
         spearmanr = spm_metric.compute(references=labels, predictions=logits)
+        metrics = {**mse, **mae, "r2": r2, **spearmanr}
+        metrics['scatter'] = {
+            'predicted': logits.numpy().flatten(),
+            'experiment': labels
+        }
 
-        return {**mse, **mae, "r2": r2, **spearmanr}
+        return metrics
 
     return compute_metrics
 

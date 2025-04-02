@@ -25,6 +25,7 @@ dependencies = [
     "datasets>=3.3.2",
     "evaluate>=0.4.3",
     "huggingface-hub>=0.29.0",
+    "ipywidgets>=8",
     "jax>=0.5.2",
     "mambapy>=1.2.0",
     "modelscope>=1.23.2",

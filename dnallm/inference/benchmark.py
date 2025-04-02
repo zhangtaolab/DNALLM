@@ -143,6 +143,8 @@ class Benchmark:
                 metrics2 = dict(metrics)
                 if 'curve' in metrics2:
                     del metrics2['curve']
+                if 'scatter' in metrics2:
+                    del metrics2['scatter']
                 metrics_save[model_name] = metrics2
         # Save the metrics
         if save_scores and pred_config.output_dir:
@@ -165,23 +167,47 @@ class Benchmark:
         Returns:
             None
         """
-        # Prepare data for plotting
-        bars_data, curves_data = prepare_data(metrics)
-        if save_path:
-            suffix = os.path.splitext(save_path)[-1]
-            if suffix:
-                bar_chart = save_path.replace(suffix, "_metrics" + suffix)
-                line_chart = save_path.replace(suffix, "_roc" + suffix)
+        task_config = self.config['task']
+        task_type = task_config.task_type
+        if task_type in ['binary', 'multiclass', 'multilabel']:
+            # Prepare data for plotting
+            bars_data, curves_data = prepare_data(metrics, task_type=task_type)
+            if save_path:
+                suffix = os.path.splitext(save_path)[-1]
+                if suffix:
+                    bar_chart = save_path.replace(suffix, "_metrics" + suffix)
+                    line_chart = save_path.replace(suffix, "_roc" + suffix)
+                else:
+                    bar_chart = os.path.join(save_path, "metrics.pdf")
+                    line_chart = os.path.join(save_path, "roc.pdf")
             else:
-                bar_chart = os.path.join(save_path, "metrics.pdf")
-                line_chart = os.path.join(save_path, "roc.pdf")
-        else:
-            bar_chart = None
-            line_chart = None
-        # Plot bar charts
-        pbar = plot_bars(bars_data, show_score=show_score,
-                         save_path=bar_chart)
-        # Plot curve charts
-        pline = plot_curve(curves_data,
-                            save_path=line_chart)
-        return pbar, pline
+                bar_chart = None
+                line_chart = None
+            # Plot bar charts
+            pbar = plot_bars(bars_data, show_score=show_score,
+                             save_path=bar_chart)
+            # Plot curve charts
+            pline = plot_curve(curves_data,
+                               save_path=line_chart)
+            return pbar, pline
+        elif task_type == 'regression':
+            # Prepare data for plotting
+            bars_data, scatter_data = prepare_data(metrics, task_type=task_type)
+            if save_path:
+                suffix = os.path.splitext(save_path)[-1]
+                if suffix:
+                    bar_chart = save_path.replace(suffix, "_metrics" + suffix)
+                    scatter_plot = save_path.replace(suffix, "_scatter" + suffix)
+                else:
+                    bar_chart = os.path.join(save_path, "metrics.pdf")
+                    scatter_plot = os.path.join(save_path, "scatter.pdf")
+            else:
+                bar_chart = None
+            # Plot bar charts
+            pbar = plot_bars(bars_data, show_score=show_score,
+                             save_path=bar_chart)
+            # Plot scatter plots
+            pdot = plot_scatter(scatter_data, show_score=show_score,
+                                save_path=scatter_plot)
+            return pbar, pdot
+            
