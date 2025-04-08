@@ -5,7 +5,7 @@
 task:
     # 'mask' - mask language model; 'generation' - casual language model;
     # 'binary' - binary classification; 'multiclass' - multi-class classification; 'multilabel' - multi-label classification;
-    # 'regression' - regression; 'token' - token classification;
+    # 'regression' - regression; 'token' - token classification, such as NER;
     # 'embedding' - get embedding, attention map and token probability
     task_type: "binary"
     # Labels information
@@ -15,7 +15,7 @@ task:
     threshold: 0.5
 finetune:
     # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
-    # Unlisted arguments can be added in the `extra_args` of DNALLMTrainer
+    # Unlisted arguments can be added in the `extra_args` of DNATrainer
     output_dir: "./outputs"
     num_train_epochs: 3
     per_device_train_batch_size: 8

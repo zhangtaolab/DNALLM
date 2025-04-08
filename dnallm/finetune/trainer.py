@@ -1,6 +1,8 @@
 import os
 from typing import Optional, Dict
 from transformers import Trainer, TrainingArguments
+from datasets import DatasetDict
+
 from ..datasets.data import DNADataset
 from ..tasks.metrics import compute_metrics
 
@@ -68,9 +70,12 @@ class DNATrainer:
         self.training_args = TrainingArguments(
             **training_args,
         )
-
+        # Check if the dataset has been split
+        if isinstance(self.datasets.dataset, DatasetDict):        
+            self.data_split = self.datasets.dataset.keys()
+        else:
+            self.data_split = [None]
         # Get datasets
-        self.data_split = self.datasets.dataset.keys()
         if "train" in self.data_split:
             train_dataset = self.datasets.dataset["train"]
         else:
@@ -88,7 +93,23 @@ class DNATrainer:
         
         # Get compute metrics
         compute_metrics = self.compute_task_metrics()
-
+        # Set data collator
+        if self.task_config.task_type == "mask":
+            from transformers import DataCollatorForLanguageModeling
+            mlm_probability = self.task_config.mlm_probability
+            mlm_probability = mlm_probability if mlm_probability else 0.15
+            data_collator = DataCollatorForLanguageModeling(
+                tokenizer=self.datasets.tokenizer,
+                mlm=True, mlm_probability=mlm_probability
+            )
+        elif self.task_config.task_type == "generation":
+            from transformers import DataCollatorForLanguageModeling
+            data_collator = DataCollatorForLanguageModeling(
+                tokenizer=self.datasets.tokenizer,
+                mlm=False
+            )
+        else:
+            data_collator = None
         # Initialize trainer
         self.trainer = Trainer(
             model=self.model,
@@ -96,6 +117,7 @@ class DNATrainer:
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             compute_metrics=compute_metrics,
+            data_collator=data_collator,
         )
 
     def compute_task_metrics(self):

@@ -41,7 +41,7 @@ def calculate_metric_with_sklearn(eval_pred):
 
 ## Load evaluate metrics locally to avoid downloading from Hugging Face
 
-def classification_metrics():
+def classification_metrics(plot=False):
     clf_metrics = evaluate.combine([metrics_path + "accuracy/accuracy.py",
                                     metrics_path + "f1/f1.py",
                                     metrics_path + "precision/precision.py",
@@ -59,20 +59,21 @@ def classification_metrics():
         metrics["AUROC"] = roc_auc["roc_auc"]
         pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
         metrics["AUPRC"] = pr_auc
-        fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
-        precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
-        metrics["curve"] = {
-            "fpr": fpr,
-            "tpr": tpr,
-            "precision": precision,
-            "recall": recall,
-        }
+        if plot:
+            fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
+            precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
+            metrics["curve"] = {
+                "fpr": fpr,
+                "tpr": tpr,
+                "precision": precision,
+                "recall": recall,
+            }
         return metrics
 
     return compute_metrics
 
 
-def regression_metrics():
+def regression_metrics(plot=False):
     mse_metric = evaluate.load(metrics_path + "mse/mse.py")
     mae_metric = evaluate.load(metrics_path + "mae/mae.py")
     r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
@@ -86,17 +87,17 @@ def regression_metrics():
         r2 = r2_metric.compute(references=labels, predictions=logits)
         spearmanr = spm_metric.compute(references=labels, predictions=logits)
         metrics = {**mse, **mae, "r2": r2, **spearmanr}
-        metrics['scatter'] = {
-            'predicted': logits.numpy().flatten(),
-            'experiment': labels
-        }
-
+        if plot:
+            metrics['scatter'] = {
+                'predicted': logits.numpy().flatten(),
+                'experiment': labels
+            }
         return metrics
 
     return compute_metrics
 
 
-def multi_classification_metrics():
+def multi_classification_metrics(plot=False):
     metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
     metric1 = evaluate.load(metrics_path + "precision/precision.py")
     metric2 = evaluate.load(metrics_path + "recall/recall.py")
@@ -122,42 +123,72 @@ def multi_classification_metrics():
         roc_auc_ovo = roc_metric.compute(references=labels,
                                          prediction_scores=pred_probs,
                                          multi_class='ovo')
-
-        return {**accuracy, **precision, **recall, **f1, **mcc,
-                "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
+        metrics = {**accuracy, **precision, **recall, **f1, **mcc,
+                   "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
+        if plot:
+            fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
+            prec, rec, _ = precision_recall_curve(labels, pred_probs[:, 1])
+            metrics["curve"] = {
+                "fpr": fpr,
+                "tpr": tpr,
+                "precision": prec,
+                "recall": rec,
+            }
+        return metrics
 
     return compute_metrics
 
 
-def multi_labels_metrics():
+def multi_labels_metrics(label_list, plot=False):
     metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
     metric1 = evaluate.load(metrics_path + "precision/precision.py")
     metric2 = evaluate.load(metrics_path + "recall/recall.py")
     metric3 = evaluate.load(metrics_path + "f1/f1.py")
-    metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
-    roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multilabel")
 
     def sigmoid(x):
-        return 1 / (1 + np.exp(-x))
+        return 1/(1 + np.exp(-x))
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
-        predictions = sigmoid(logits)
-        predictions = (predictions > 0.5).astype(int).reshape(-1)
-        labels = labels.astype(int).reshape(-1)
+        pred_probs = sigmoid(logits)
+        raw_pred = (pred_probs > 0.5).astype(int)
+        predictions = (pred_probs > 0.5).astype(int).reshape(-1)
+        y_true = labels.astype(int).reshape(-1)
 
-        accuracy = metric0.compute(predictions=predictions, references=labels)
-        precision = metric1.compute(predictions=predictions, references=labels, average="micro")
-        recall = metric2.compute(predictions=predictions, references=labels, average="micro")
-        f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
-        mcc = metric4.compute(predictions=predictions, references=labels)
-        roc_auc = roc_metric.compute(references=labels,
-                                     prediction_scores=predictions,
-                                     average='micro')
-        auprc = average_precision_score(labels, predictions)
-
-        return {**accuracy, **precision, **recall, **f1, **mcc,
-                "AUROC": roc_auc['roc_auc']}
+        accuracy = metric0.compute(predictions=predictions, references=y_true)
+        precision = metric1.compute(predictions=predictions, references=y_true, average="micro")
+        recall = metric2.compute(predictions=predictions, references=y_true, average="micro")
+        f1 = metric3.compute(predictions=predictions, references=y_true, average="micro")
+        metrics = {**accuracy, **precision, **recall, **f1}
+        mcc_per_label = {}
+        roc_data, roc_auc = {}, {}
+        pr_data, pr_auc = {}, {}
+        for i in range(labels.shape[1]):
+            # Compute matthews correlation coefficient for each class
+            mcc_per_label[label_list[i]] = matthews_corrcoef(labels[:, i], raw_pred[:, i])
+            # Compute ROC curve and ROC area for each class
+            fpr, tpr, _ = roc_curve(labels[:, i], pred_probs[:, i])
+            auc = roc_auc_score(labels[:, i], pred_probs[:, i])
+            roc_data[label_list[i]] = (fpr, tpr)
+            roc_auc[label_list[i]] = auc
+            # Compute PR curve and PR area for each class
+            prec, rec, _ = precision_recall_curve(labels[:, i], pred_probs[:, i])
+            ap = average_precision_score(labels[:, i], pred_probs[:, i])
+            pr_data[label_list[i]] = (prec, rec)
+            pr_auc[label_list[i]] = ap
+        metrics['MCC'] = np.mean(list(mcc_per_label.values()))
+        metrics['AUROC'] = np.mean(list(roc_auc.values()))
+        metrics['AUPRC'] = np.mean(list(pr_auc.values()))
+        if plot:
+            metrics["curve"] = {}
+            for label in label_list:
+                metrics["curve"][label] = {
+                    "fpr": roc_data[label][0],
+                    "tpr": roc_data[label][1],
+                    "precision": pr_data[label][0],
+                    "recall": pr_data[label][1],
+                }
+        return metrics
 
     return compute_metrics
 
@@ -183,6 +214,7 @@ def token_classification_metrics(label_list):
         result = seqeval.compute(predictions=true_predictions, references=true_labels, mode="strict", scheme="IOB2")
 
         return {
+            "accuracy": result["overall_accuracy"],
             "precision": result["overall_precision"],
             "recall": result["overall_recall"],
             "f1": result["overall_f1"]
@@ -240,18 +272,18 @@ def metrics_for_dnabert2(task):
     return compute_metrics, preprocess_logits_for_metrics
 
 
-def compute_metrics(task_config: TaskConfig) -> dict:
+def compute_metrics(task_config: TaskConfig, plot: bool=False) -> dict:
     """Compute metrics based on task type"""
     if task_config.task_type == "binary":
-        return classification_metrics()
+        return classification_metrics(plot=plot)
     elif task_config.task_type == "multiclass":
-        return multi_classification_metrics()
+        return multi_classification_metrics(plot=plot)
     elif task_config.task_type == "multilabel":
-        return multi_labels_metrics()
+        return multi_labels_metrics(task_config.label_names, plot=plot)
     elif task_config.task_type == "regression":
-        return regression_metrics()
+        return regression_metrics(plot=plot)
     elif task_config.task_type == "token":
-        return token_classification_metrics(task_config.label_names)
+        return token_classification_metrics(task_config.label_names, plot=plot)
     else:
         raise ValueError(f"Unsupported task type for evaluation: {task_config.task_type}")
 

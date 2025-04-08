@@ -303,6 +303,11 @@ class DNAPredictor:
         Predict from a file containing sequences
         Args:
             file_path: Path to the file containing sequences
+            evaluate: Whether to evaluate the predictions
+            seq_col: Column name for sequences
+            label_col: Column name for labels
+            save_to_file: Whether to save predictions to file
+            plot_metrics: Whether to plot metrics
         Returns:
             List of dictionaries containing predictions
         """
@@ -316,7 +321,7 @@ class DNAPredictor:
             save_predictions(predictions, Path(self.config.output_dir))
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
-            metrics = self.calculate_metrics(logits, self.labels)
+            metrics = self.calculate_metrics(logits, self.labels, plot=plot_metrics)
             metrics_save = dict(metrics)
             if 'curve' in metrics_save:
                 del metrics_save['curve']
@@ -333,17 +338,18 @@ class DNAPredictor:
         return predictions
 
     def calculate_metrics(self, logits: Union[List, torch.Tensor],
-                          labels: Union[List, torch.Tensor]) -> dict:
+                          labels: Union[List, torch.Tensor], plot: bool=False) -> dict:
         """
         Calculate evaluation metrics
         Args:
             logits: Model predictions
             labels: True labels
+            plot: Whether to plot metrics
         Returns:
             Dictionary containing evaluation metrics
         """
         # Calculate metrics based on task type
-        compute_metrics = Metrics(self.task_config)
+        compute_metrics = Metrics(self.task_config, plot=plot)
         metrics = compute_metrics((logits, labels))
         
         return metrics

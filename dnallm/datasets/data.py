@@ -2,7 +2,6 @@ import os
 import random
 from typing import Union, Optional
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 from datasets import Dataset, DatasetDict, load_dataset, concatenate_datasets
 from transformers import PreTrainedTokenizerBase
 
@@ -20,10 +19,13 @@ class DNADataset:
         self.dataset = ds
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.sep = None
+        self.multi_label_sep = None
 
     @classmethod
     def load_local_data(cls, file_paths, seq_col: str = "sequence", label_col: str = "labels",
                         sep: str = None, fasta_sep: str = "|",
+                        multi_label_sep: Union[str, None] = None,
                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
         """
         Load DNA sequence datasets from one or multiple local files.
@@ -37,25 +39,32 @@ class DNADataset:
             seq_col (str): Column name for DNA sequences.
             label_col (str): Column name for labels.
             sep (str, optional): Delimiter for CSV, TSV, or TXT.
+            fasta_sep (str, optional): Delimiter for FASTA files.
+            multi_label_sep (str, optional): Delimiter for multi-label sequences.
             tokenizer (PreTrainedTokenizerBase, optional): A tokenizer.
             max_length (int, optional): Max token length.
         
         Returns:
             DNADataset: An instance wrapping a Dataset or DatasetDict.
         """
+        # Set separators
+        cls.sep = sep
+        cls.multi_label_sep = multi_label_sep
+        # Check if input is a list or dict
         if isinstance(file_paths, dict):  # Handling multiple files (pre-split datasets)
             ds_dict = {}
             for split, path in file_paths.items():
-                ds_dict[split] = cls._load_single_data(path, seq_col, label_col, sep, fasta_sep)
+                ds_dict[split] = cls._load_single_data(path, seq_col, label_col, sep, fasta_sep, multi_label_sep)
             dataset = DatasetDict(ds_dict)
         else:  # Handling a single file
-            dataset = cls._load_single_data(file_paths, seq_col, label_col, sep, fasta_sep)
+            dataset = cls._load_single_data(file_paths, seq_col, label_col, sep, fasta_sep, multi_label_sep)
 
         return cls(dataset, tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
     def _load_single_data(cls, file_path, seq_col: str = "sequence", label_col: str = "labels",
-                          sep: str = None, fasta_sep: str = "|"):
+                          sep: str = None, fasta_sep: str = "|",
+                          multi_label_sep: Union[str, None] = None) -> Dataset:
         """
         Load DNA data (sequences and labels) from a local file.
         Supported file types: 
@@ -67,6 +76,7 @@ class DNADataset:
             label_col (str): Name of the column containing the label.
             sep (str, optional): Delimiter for CSV, TSV, or TXT files.
             fasta_sep (str, optional): Delimiter for FASTA files.
+            multi_label_sep (str, optional): Delimiter for multi-label sequences.
             tokenizer (PreTrainedTokenizerBase, optional): A tokenizer to pass along.
             max_length (int): Maximum length for tokenization.
         Returns:
@@ -78,6 +88,10 @@ class DNADataset:
         else:
             file_path = os.path.expanduser(file_path)
             file_type = os.path.basename(file_path).split(".")[-1].lower()
+        # Define data type
+        default_types = ["csv", "tsv", "json", "parquet", "arrow"]
+        dict_types = ["pkl", "pickle", "dict"]
+        fasta_types = ["fa", "fna", "fas", "fasta"]
         # Check if the file contains a header
         if file_type in ["csv", "tsv", "txt"]:
             if file_type == "csv":
@@ -87,7 +101,7 @@ class DNADataset:
                 if not header or (seq_col not in header and label_col not in header):
                     file_type = "txt"  # Treat as TXT if no header found
         # For structured formats that load via datasets.load_dataset
-        if file_type in ["csv", "tsv", "json", "parquet", "arrow"]:
+        if file_type in default_types:
             if file_type in ["csv", "tsv"]:
                 sep = sep or ("," if file_type == "csv" else "\t")
                 ds = load_dataset("csv", data_files=file_path, split="train", delimiter=sep)
@@ -100,15 +114,17 @@ class DNADataset:
                 ds = ds.rename_column(seq_col, "sequence")
             if label_col != "labels":
                 ds = ds.rename_column(label_col, "labels")
-        elif file_type in ["pkl", "pickle"]:
+        elif file_type in dict_types:
             # Here, file_path is assumed to be a dictionary.
-            ds = Dataset.from_dict(file_path)
+            import pickle
+            data = pickle.load(open(file_path, 'rb'))
+            ds = Dataset.from_dict(data)
             if seq_col != "sequence" or label_col != "labels":
                 if seq_col in ds.column_names:
                     ds = ds.rename_column(seq_col, "sequence")
                 if label_col in ds.column_names:
                     ds = ds.rename_column(label_col, "labels")
-        elif file_type in ["fa", "fna", "fas", "fasta"]:
+        elif file_type in fasta_types:
             sequences, labels = [], []
             with open(file_path, "r") as f:
                 seq = ""
@@ -118,14 +134,14 @@ class DNADataset:
                     if line.startswith(">"):
                         if seq and lab is not None:
                             sequences.append(seq)
-                            labels.append(int(lab))
+                            labels.append(lab)
                         lab = line[1:].strip().split(fasta_sep)[-1]  # Assume label is separated by `fasta_sep` in the header
                         seq = ""
                     else:
                         seq += line.strip()
                 if seq and lab is not None:
                     sequences.append(seq)
-                    labels.append(int(lab))
+                    labels.append(lab)
             ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
         elif file_type == "txt":
             # Assume each line contains a sequence and a label separated by whitespace or a custom sep.
@@ -140,15 +156,22 @@ class DNADataset:
                     record = line.strip().split(sep) if sep else line.strip().split()
                     if len(record) >= 2:
                         sequences.append(record[0])
-                        labels.append(int(record[1]))
-                    elif len(record) == 1:
-                        sequences.append(record[0])
-                        labels.append(None)
+                        labels.append(record[1])
                     else:
                         continue
             ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
+        # Convert string labels to integer
+        def format_labels(example):
+            labels = example['labels']
+            if isinstance(labels, str):
+                if multi_label_sep:
+                    example['labels'] = [float(x) for x in labels.split(multi_label_sep)]
+                else:
+                    example['labels'] = float(labels) if '.' in labels else int(labels)
+            return example
+        ds = ds.map(format_labels, desc="Format labels")
         # Return processed dataset
         return ds
 
@@ -201,7 +224,8 @@ class DNADataset:
         return cls(ds, tokenizer=tokenizer, max_length=max_length)
 
     def encode_sequences(self, padding: str = "max_length", return_tensors: str = "pt",
-                         remove_unused_columns: bool = False):
+                         remove_unused_columns: bool = False,
+                         task: Optional[str] = 'SequenceClassification'):
         """
         Encode all sequences using the provided tokenizer.
         The dataset is mapped to include tokenized fields along with the label,
@@ -212,18 +236,83 @@ class DNADataset:
                            Use 'longest' to pad to the length of the longest sequence in case of memory outage.
             return_tensors (str | TensorType): Returned tensor types, can be 'pt' or 'tf' or 'np'.
             remove_unused_columns: Whether to remove the original 'sequence' and 'label' columns
+            task (str, optional): Task type for the tokenizer. If not provided, defaults to 'SequenceClassification'.
         """
-        if not self.tokenizer:
+        if self.tokenizer:
+            sp_token_map = self.tokenizer.special_tokens_map
+            pad_token = sp_token_map['pad_token'] if 'pad_token' in sp_token_map else None
+            pad_id = self.tokenizer.encode(pad_token)[-1] if pad_token else None
+            cls_token = sp_token_map['cls_token'] if 'cls_token' in sp_token_map else None
+            sep_token = sp_token_map['sep_token'] if 'sep_token' in sp_token_map else None
+            max_length = self.max_length
+        else:
             raise ValueError("Tokenizer not provided.")
-        def tokenize_fn(example, padding=padding):
+        def tokenize_for_sequence_classification(example):
             tokenized = self.tokenizer(
                 example["sequence"],
                 truncation=True,
                 padding=padding,
-                max_length=self.max_length
+                max_length=max_length
             )
             return tokenized
-        self.dataset = self.dataset.map(tokenize_fn, batched=True)
+        def tokenize_for_token_classification(examples):
+            tokenized_examples = {'sequence': [],
+                                  'input_ids': [],
+                                  'token_type_ids': [],
+                                  'attention_mask': [],
+                                  'labels': []}
+            input_seqs = examples['sequence']
+            if isinstance(input_seqs, str):
+                input_seqs = input_seqs.split(self.multi_label_sep)
+            for i, example_tokens in enumerate(input_seqs):
+                all_ids = [x for x in self.tokenizer.encode(example_tokens, is_split_into_words=True) if x>=0]
+                example_ner_tags = examples['labels'][i]
+                pad_len = max_length - len(all_ids)
+                if pad_len >= 0:
+                    all_masks = [1] * len(all_ids) + [0] * pad_len
+                    all_ids = all_ids + [pad_id] * pad_len
+                    if cls_token:
+                        if sep_token:
+                            example_tokens = [cls_token] + example_tokens + [sep_token] + [pad_token] * pad_len
+                            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
+                        else:
+                            example_tokens = [cls_token] + example_tokens + [pad_token] * pad_len
+                            example_ner_tags = [-100] + example_ner_tags + [-100] * pad_len
+                    else:
+                        example_tokens = example_tokens + [pad_token] * pad_len
+                        example_ner_tags = example_ner_tags + [-100] * pad_len
+                elif pad_len < 0:
+                    all_ids = all_ids[:max_length]
+                    all_masks = [1] * (max_length)
+                    if cls_token:
+                        if sep_token:
+                            example_tokens = [cls_token] + example_tokens[:max_length - 2] + [sep_token]
+                            example_ner_tags = [-100] + example_ner_tags[:max_length - 2] + [-100]
+                        else:
+                            example_tokens = [cls_token] + example_tokens[:max_length - 1]
+                            example_ner_tags = [-100] + example_ner_tags[:max_length - 1]
+                    else:
+                        example_tokens = example_tokens[:max_length]
+                        example_ner_tags = example_ner_tags[:max_length]
+                tokenized_examples['sequence'].append(example_tokens)
+                tokenized_examples['input_ids'].append(all_ids)
+                tokenized_examples['token_type_ids'].append([0] * max_length)
+                tokenized_examples['attention_mask'].append(all_masks)
+                tokenized_examples['labels'].append(example_ner_tags)
+            return BatchEncoding(tokenized_examples)
+        # Judge the task type
+        task = task.lower()
+        if task in ['sequenceclassification', 'binary', 'multiclass', 'multilabel', 'regression']:
+            self.dataset = self.dataset.map(tokenize_for_sequence_classification, batched=True, desc="Encoding inputs")
+        elif task in ['tokenclassification', 'token', 'ner']:
+            from transformers.tokenization_utils_base import BatchEncoding
+            self.dataset = self.dataset.map(tokenize_for_token_classification, batched=True, desc="Encoding inputs")
+        elif task in ['maskedlm', 'mlm', 'mask', 'embedding']:
+            self.dataset = self.dataset.map(tokenize_for_sequence_classification, batched=True, desc="Encoding inputs")
+        elif task in ['causallm', 'clm', 'causal', 'generation', 'embedding']:
+            self.dataset = self.dataset.map(tokenize_for_sequence_classification, batched=True)
+        else:
+            self.dataset = self.dataset.map(tokenize_for_sequence_classification, batched=True, desc="Encoding inputs")
         if remove_unused_columns:
             used_cols = ['labels', 'input_ids', 'token_type_ids', 'attention_mask']
             if isinstance(self.dataset, DatasetDict):
@@ -354,7 +443,7 @@ class DNADataset:
                     example["sequence"] = rc
                 return example
             # Create a dataset with random reverse complement.
-            ds.map(concat_fn, with_indices=True)
+            ds.map(concat_fn, with_indices=True, desc="Reverse complementary")
             return ds
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
@@ -378,9 +467,9 @@ class DNADataset:
                     example["sequence"], reverse=reverse, complement=complement
                 )
                 return example
-            ds_with_rc = ds.map(add_rc)
+            ds_with_rc = ds.map(add_rc, desc="Reverse complementary")
             # Build a new dataset where the reverse complement becomes the 'sequence'
-            rc_ds = ds_with_rc.map(lambda ex: {"sequence": ex["rc_sequence"], "labels": ex["labels"]})
+            rc_ds = ds_with_rc.map(lambda ex: {"sequence": ex["rc_sequence"], "labels": ex["labels"]}, desc="Data augment")
             ds = concatenate_datasets([ds, rc_ds])
             ds.remove_columns(["rc_sequence"])
             return ds
@@ -404,7 +493,7 @@ class DNADataset:
                 rc = reverse_complement(example["sequence"], reverse=reverse, complement=complement)
                 example["sequence"] = example["sequence"] + sep + rc
                 return example
-            ds = ds.map(concat_fn)
+            ds = ds.map(concat_fn, desc="Data augment")
             return ds
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:

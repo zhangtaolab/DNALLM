@@ -138,7 +138,7 @@ class Benchmark:
             # Perform the prediction
             logits, _ = predictor.batch_predict(dataloader, do_pred=False)
             if len(labels) == len(logits):
-                metrics = predictor.calculate_metrics(logits, labels)
+                metrics = predictor.calculate_metrics(logits, labels, plot=True)
                 all_results[model_name] = metrics
                 metrics2 = dict(metrics)
                 if 'curve' in metrics2:

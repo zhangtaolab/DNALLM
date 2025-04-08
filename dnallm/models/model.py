@@ -139,6 +139,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 trust_remote_code=True
             )
         elif task_type == "token":
+            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, add_prefix_space=True)
             model = AutoModelForTokenClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
