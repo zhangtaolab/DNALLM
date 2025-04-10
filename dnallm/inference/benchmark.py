@@ -153,13 +153,15 @@ class Benchmark:
 
     def plot(self, metrics: dict,
              show_score: bool = True,
-             save_path: Optional[str] = None) -> None:
+             save_path: Optional[str] = None,
+             separate: bool = False) -> None:
         """
         Plot the benchmark results.
         Args:
             metrics (dict): Dictionary containing model metrics.
             show_score (bool): Whether to show the score on the plot.
             save_path (Optional[str]): Path to save the plot.
+            separate (bool): Whether to save the plots separately.
         Returns:
             None
         """
@@ -181,10 +183,10 @@ class Benchmark:
                 line_chart = None
             # Plot bar charts
             pbar = plot_bars(bars_data, show_score=show_score,
-                             save_path=bar_chart)
+                             save_path=bar_chart, separate=separate)
             # Plot curve charts
             pline = plot_curve(curves_data,
-                               save_path=line_chart)
+                               save_path=line_chart, separate=separate)
             return pbar, pline
         elif task_type == 'regression':
             # Prepare data for plotting
@@ -201,9 +203,9 @@ class Benchmark:
                 bar_chart = None
             # Plot bar charts
             pbar = plot_bars(bars_data, show_score=show_score,
-                             save_path=bar_chart)
+                             save_path=bar_chart, separate=separate)
             # Plot scatter plots
             pdot = plot_scatter(scatter_data, show_score=show_score,
-                                save_path=scatter_plot)
+                                save_path=scatter_plot, separate=separate)
             return pbar, pdot
             

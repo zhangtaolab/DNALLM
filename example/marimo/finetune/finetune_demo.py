@@ -19,20 +19,24 @@ def __(__file__):
 @app.cell
 def __(mo):
     title = mo.md(
-        "# Finetune a DNA model with a custom dataset"
+        "<center><h2>Finetune a DNA model with a custom dataset</h2></center>"
     )
-    config_text = mo.ui.text(value="finetune_config.yaml", placeholder="config.yaml", label="Config file (*.yaml)", full_width=True)
-    model_text = mo.ui.text(value="zhangtaolab/plant-dnagpt-BPE", placeholder="zhangtaolab/plant-dnagpt-BPE", label="Model name or path", full_width=True)
+    config_text = mo.ui.text(value="finetune_config.yaml", placeholder="config.yaml",
+                             label="Config file (*.yaml)", full_width=True)
+    model_text = mo.ui.text(value="zhangtaolab/plant-dnagpt-BPE", placeholder="zhangtaolab/plant-dnagpt-BPE",
+                            label="Model name or path", full_width=True)
     source1_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope", label="Model source", full_width=True)
-    datasets_text = mo.ui.text(value="/mnt/extend2/plant-genomic-benchmark/pro_seq/m_esculenta_train.fa", placeholder="zhangtaolab/plant-multi-species-core-promoters", label="Datasets name or path", full_width=True)
-    source2_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope", label="Model source", full_width=True)
+    datasets_text = mo.ui.text(value="/mnt/extend2/plant-genomic-benchmark/pro_seq/m_esculenta_train.fa", placeholder="zhangtaolab/plant-multi-species-core-promoters",
+                               label="Datasets name or path", full_width=True)
+    source2_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope", label="Dataset source", full_width=True)
     seq_col_text = mo.ui.text(value="sequence", placeholder="sequence", label="Sequence column name", full_width=True)
     label_col_text = mo.ui.text(value="labels", placeholder="labels", label="Label column name", full_width=True)
     maxlen_text = mo.ui.text(value="512", placeholder="512", label="Max token length", full_width=True)
-    model_stack = mo.hstack([model_text, source1_text], align='center', justify='center')
-    datasets_stack = mo.hstack([datasets_text, source2_text], align='center', justify='center')
+    model_stack = mo.hstack([model_text.style(width="75ch"), source1_text], align='center', justify='center')
+    datasets_stack = mo.hstack([datasets_text.style(width="75ch"), source2_text], align='center', justify='center')
     options_stack = mo.hstack([seq_col_text, label_col_text, maxlen_text], align='center', justify='center')
-    mo.vstack([title, config_text, model_stack, datasets_stack, options_stack], align='start', justify='center')
+    mo.vstack([title, config_text.style(width="30ch"), model_stack, datasets_stack, options_stack],
+              align='center', justify='center')
     return (config_text, model_text, source1_text, datasets_text, source2_text, seq_col_text, label_col_text, maxlen_text, )
 
 
@@ -88,7 +92,7 @@ def __(mo, config_text, load_config,
                                     model_text, source1_text, load_model_and_tokenizer,
                                     datasets_text, source2_text, seq_col_text, label_col_text, maxlen_text, DNADataset
                                 ))
-    train_button
+    mo.vstack([train_button], align='center', justify='center')
     return (train_button,)
 
 
@@ -101,36 +105,51 @@ def __(mo):
 @app.cell
 def __(mo, train_button, DNATrainer, text_output):
     from transformers import TrainerCallback
+    from math import ceil
+    def get_total_steps(trainer):
+        if trainer.args.max_steps and trainer.args.max_steps > 0:
+            total_steps = trainer.args.max_steps
+        else:
+            # 2️⃣ else compute from dataloader
+            train_dl = trainer.get_train_dataloader()
+            # number of optimizer updates per epoch
+            steps_per_epoch = ceil(
+                len(train_dl) / trainer.args.gradient_accumulation_steps
+            )
+            total_steps = steps_per_epoch * trainer.args.num_train_epochs
+        return total_steps
+
     class MarimoCallback(TrainerCallback):
         def __init__(self, text_out):
             self.text_out = text_out
             self.steps = []
-            self.train_losses = []
-            self.eval_losses = []
-            self.eval_accs = []
+            self.epochs = []
+            self.all_logs = ""
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             # logs might contain 'loss', 'eval_loss', 'eval_accuracy', etc.
             step = state.global_step
             self.steps.append(step)
+            increment = self.steps[-1] - self.steps[-2] if len(self.steps) > 1 else 0
+            # update progress bar
+            self.bar.update(increment=increment)
 
             # collect
             if "loss" in logs:
-                self.train_losses.append(logs["loss"])
+                txt = f"**Step {step}**<br>" + ", ".join(
+                    f"{k}: {v:.4f}" for k, v in logs.items()
+                )
             if "eval_loss" in logs:
-                self.eval_losses.append(logs["eval_loss"])
-            if "eval_accuracy" in logs:
-                self.eval_accs.append(logs["eval_accuracy"])
-
-            txt = f"**Step {step}**\n" + "\n".join(
-                f"- {k}: {v:.4f}" for k, v in logs.items()
-            )
+                txt = ", ".join(
+                    f"{k}: {v:.4f}" for k, v in logs.items()
+                )
+            if txt:
+                self.all_logs += txt + "<br>"
             self.text_out.clear()
-            self.text_out.display(mo.md(txt))
+            self.text_out.replace(mo.md(self.all_logs))
 
     if train_button.value:
-        configs, model, tokenizer, datasets = train_button.value
-        print(tokenizer)
+        configs, model, _, datasets = train_button.value
         trainer = DNATrainer(
             model=model,
             config=configs,

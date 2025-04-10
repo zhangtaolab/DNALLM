@@ -26,6 +26,15 @@ Usage:
 marimo run inference_demo.py
 ```
 
+#### benchmark
+A demo that allows benchmark of multiple DNA LLMs.
+* config.yaml (config file)
+* benchmark_demo.py (entrypoint)
+* test.csv (example dataset)
+Usage:
+```bash
+marimo run benchmark_demo.py
+```
 
 ### notebooks
 Examples with Jupyter Notebook

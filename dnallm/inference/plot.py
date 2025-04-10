@@ -60,7 +60,7 @@ def prepare_data(metrics: dict, task_type: str="binary") -> tuple:
 def plot_bars(data: dict, show_score: bool = True, ncols: int = 3,
               width: int = 200, height: int = 50, bar_width: int = 30,
               domain: Union[tuple, list]= (0.0, 1.0),
-              save_path: str = None) -> alt.Chart:
+              save_path: str = None, separate: bool=False) -> alt.Chart:
     """
     Plot bar chart.
     Args:
@@ -77,6 +77,7 @@ def plot_bars(data: dict, show_score: bool = True, ncols: int = 3,
     # Plot bar charts
     dbar = pd.DataFrame(data)
     pbar = {}
+    p_separate = {}
     for n, metric in enumerate([x for x in data if x != 'models']):
         if metric in ['mae', 'mse']:
             domain_use = [0, dbar[metric].max()*1.1]
@@ -100,6 +101,8 @@ def plot_bars(data: dict, show_score: bool = True, ncols: int = 3,
             p = bar + text
         else:
             p = bar
+        if separate:
+            p_separate[metric] = p.configure_axis(grid=False)
         idx = n // ncols
         if n % ncols == 0:
             pbar[idx] = p
@@ -117,12 +120,15 @@ def plot_bars(data: dict, show_score: bool = True, ncols: int = 3,
     if save_path:
         pbars.save(save_path)
         print(f"Metrics bar charts saved to {save_path}")
-    return pbars
+    if separate:
+        return p_separate
+    else:
+        return pbars
 
 
 def plot_curve(data: dict, show_score: bool = True,
                width: int = 400, height: int = 400,
-               save_path: str = None) -> alt.Chart:
+               save_path: str = None, separate: bool=False) -> alt.Chart:
     """
     Plot curve chart.
     Args:
@@ -136,6 +142,7 @@ def plot_curve(data: dict, show_score: bool = True,
     """
     # Plot curves
     pline = {}
+    p_separate = {}
     # Plot ROC curve
     roc_data = pd.DataFrame(data['ROC'])
     pline[0] = alt.Chart(roc_data).mark_line().encode(
@@ -143,6 +150,8 @@ def plot_curve(data: dict, show_score: bool = True,
         y=alt.Y("tpr").scale(domain=(0.0, 1.0)),
         color="models",
     ).properties(width=width, height=height)
+    if separate:
+        p_separate['ROC'] = pline[0]
     # Plot PR curve
     pr_data = pd.DataFrame(data['PR'])
     pline[1] = alt.Chart(pr_data).mark_line().encode(
@@ -150,6 +159,8 @@ def plot_curve(data: dict, show_score: bool = True,
         y=alt.Y("precision").scale(domain=(0.0, 1.0)),
         color="models",
     ).properties(width=width, height=height)
+    if separate:
+        p_separate['PR'] = pline[1]
     # Combine the plots
     for i, p in enumerate(pline):
         if i == 0:
@@ -162,12 +173,15 @@ def plot_curve(data: dict, show_score: bool = True,
     if save_path:
         plines.save(save_path)
         print(f"ROC curves saved to {save_path}")
-    return plines
+    if separate:
+        return p_separate
+    else:
+        return plines
 
 
 def plot_scatter(data: dict, show_score: bool = True, ncols: int = 3,
                  width: int = 400, height: int = 400,
-                 save_path: str = None) -> alt.Chart:
+                 save_path: str = None, separate: bool=False) -> alt.Chart:
     """
     Plot scatter chart.
     Args:
@@ -182,6 +196,7 @@ def plot_scatter(data: dict, show_score: bool = True, ncols: int = 3,
     """
     # Plot bar charts
     pdot = {}
+    p_separate = {}
     for n, model in enumerate(data):
         scatter_data = dict(data[model])
         r2 = scatter_data['r2']
@@ -202,6 +217,8 @@ def plot_scatter(data: dict, show_score: bool = True, ncols: int = 3,
             p = dot + text
         else:
             p = dot
+        if separate:
+            p_separate[model] = p.configure_axis(grid=False)
         idx = n // ncols
         if n % ncols == 0:
             pdot[idx] = p
@@ -219,7 +236,10 @@ def plot_scatter(data: dict, show_score: bool = True, ncols: int = 3,
     if save_path:
         pdots.save(save_path)
         print(f"Metrics scatter plots saved to {save_path}")
-    return pdots
+    if separate:
+        return p_separate
+    else:
+        return pdots
 
 
 def plot_attention_map(attentions: Union[tuple, list], sequences: list, tokenizer,
@@ -280,7 +300,7 @@ def plot_attention_map(attentions: Union[tuple, list], sequences: list, tokenize
 def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tuple, list], reducer: str="t-SNE",
                     labels: Union[tuple, list]=None, label_names: Union[str, list]=None,
                     ncols: int=4, width: int=300, height: int=300,
-                    save_path: str = None) -> alt.Chart:
+                    save_path: str = None, separate: bool=False) -> alt.Chart:
     '''
     Plot 
     '''
@@ -298,6 +318,7 @@ def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tup
         raise("Unsupported dim reducer, please try PCA, t-SNE or UMAP.")
     
     pdot = {}
+    p_separate = {}
     for i, hidden in enumerate(hidden_states):
         embeddings = hidden.numpy()
         mean_sequence_embeddings = torch.sum(attention_mask*embeddings, axis=-2) / torch.sum(attention_mask, axis=1)
@@ -315,6 +336,8 @@ def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tup
             y=alt.Y("Dimension 2:Q"),
             color=alt.Color("labels:N", legend=alt.Legend(title="Labels")),
         ).properties(width=width, height=height)
+        if separate:
+            p_separate[f"Layer{i+1}"] = dot.configure_axis(grid=False)
         idx = i // ncols
         if i % ncols == 0:
             pdot[idx] = dot
@@ -332,4 +355,7 @@ def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tup
     if save_path:
         pdots.save(save_path)
         print(f"Embeddings visualization saved to {save_path}")
-    return pdots
+    if separate:
+        return p_separate
+    else:
+        return pdots
