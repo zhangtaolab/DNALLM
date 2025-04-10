@@ -3,6 +3,7 @@ import warnings
 import json
 from typing import Optional, List, Dict, Union
 from pathlib import Path
+import numpy as np
 from tqdm import tqdm
 
 import torch
@@ -11,6 +12,7 @@ from datasets import Dataset
 
 from ..datasets.data import DNADataset
 from ..tasks.metrics import compute_metrics as Metrics
+from .plot import *
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
@@ -133,6 +135,9 @@ class DNAPredictor:
         Args:
             seq_or_path: Single sequence or path to a file containing sequences
             batch_size: Batch size for DataLoader
+            seq_col: Column name for sequences
+            label_col: Column name for labels
+            keep_seqs: Whether to keep sequences in the dataset
             do_encode: Whether to encode sequences
         Returns:
             Dataset object
@@ -230,17 +235,42 @@ class DNAPredictor:
         return formatted_predictions
 
     @torch.no_grad()
-    def batch_predict(self, dataloader: DataLoader, do_pred=True) -> tuple[torch.Tensor, list]:
+    def batch_predict(self, dataloader: DataLoader, do_pred: bool=True,
+                      output_hidden_states: bool=False,
+                      output_attentions: bool=False) -> tuple[torch.Tensor, list]:
         """
         Predict for a batch of sequences
         Args:
             dataloader: DataLoader object containing sequences
+            do_pred: Whether to do prediction
+            output_hidden_states: Whether to output hidden states
+            output_attentions: Whether to output attentions
         Returns:
             Dictionary containing predictions
         """
         # Set model to evaluation mode
         self.model.eval()
         all_logits = []
+        # Whether or not to output hidden states
+        params = None
+        embeddings = {}
+        if output_hidden_states:
+            import inspect
+            sig = inspect.signature(self.model.forward)
+            params = sig.parameters
+            if 'output_hidden_states' in params:
+                self.model.config.output_hidden_states = True
+                embeddings['hidden_states'] = None
+                embeddings['attention_mask'] = []
+                embeddings['labels'] = []
+        if output_attentions:
+            if not params:
+                import inspect
+                sig = inspect.signature(self.model.forward)
+                params = sig.parameters
+            if 'output_attentions' in params:
+                self.model.config.output_attentions = True
+                embeddings['attentions'] = None
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Predicting"):
             inputs = {k: v.to(self.device) for k, v in batch.items()}
@@ -250,34 +280,74 @@ class DNAPredictor:
                     outputs = self.model(**inputs)
             else:
                 outputs = self.model(**inputs)
+            # Get logits
             logits = outputs.logits.cpu().detach()
             all_logits.append(logits)
+            # Get hidden states
+            if output_hidden_states:
+                hidden_states = [h.cpu().detach() for h in outputs.hidden_states] if hasattr(outputs, 'hidden_states') else None
+                if embeddings['hidden_states'] is None:
+                    embeddings['hidden_states'] = [[h] for h in hidden_states]
+                else:
+                    for i, h in enumerate(hidden_states):
+                        embeddings['hidden_states'][i].append(h)
+                attention_mask = inputs['attention_mask'].cpu().detach() if 'attention_mask' in inputs else None
+                embeddings['attention_mask'].append(attention_mask)
+                labels = inputs['labels'].cpu().detach() if 'labels' in inputs else None
+                embeddings['labels'].append(labels)
+            # Get attentions
+            if output_attentions:
+                attentions = [a.cpu().detach() for a in outputs.attentions] if hasattr(outputs, 'attentions') else None
+                if embeddings['attentions'] is None:
+                    embeddings['attentions'] = [[a] for a in attentions]
+                else:
+                    for i, a in enumerate(attentions):
+                        embeddings['attentions'][i].append(a)
+        # Concatenate logits
         all_logits = torch.cat(all_logits, dim=0)
+        if output_hidden_states:
+            if embeddings['hidden_states']:
+                embeddings['hidden_states'] = tuple(torch.cat(lst, dim=0) for lst in embeddings['hidden_states'])
+            if embeddings['attention_mask']:
+                embeddings['attention_mask'] = torch.cat(embeddings['attention_mask'], dim=0)
+            if embeddings['labels']:
+                embeddings['labels'] = torch.cat(embeddings['labels'], dim=0)
+        if output_attentions:
+            if embeddings['attentions']:
+                embeddings['attentions'] = tuple(torch.cat(lst, dim=0) for lst in embeddings['attentions'])
         # Get predictions
         predictions = None
         if do_pred:
             predictions = self.logits_to_preds(all_logits)
             predictions = self.format_output(predictions)
-
-        return all_logits, predictions
+        return all_logits, predictions, embeddings
 
     def predict_seqs(self, sequences: Union[str, List[str]], 
                      evaluate: bool = False,
+                     output_hidden_states: bool=False,
+                     output_attentions: bool=False,
                      save_to_file: bool = False) -> Union[tuple, dict]:
         """
         Predict for sequences
         
         Args:
             sequences: Single sequence or list of sequences
+            evaluate: Whether to evaluate the predictions
+            output_hidden_states: Whether to output hidden states and attentions
+            output_attentions: Whether to output attentions
             save_to_file: Whether to save predictions to file
-            
         Returns:
             Dictionary containing predictions
         """
         # Get dataset and dataloader from sequences
         _, dataloader = self.generate_dataset(sequences, batch_size=self.pred_config.batch_size)
         # Do batch prediction
-        logits, predictions = self.batch_predict(dataloader)
+        logits, predictions, embeddings = self.batch_predict(dataloader,
+                                                             output_hidden_states=output_hidden_states,
+                                                             output_attentions=output_attentions)
+        # Keep hidden states
+        if output_hidden_states or output_attentions:
+            self.embeddings = embeddings
         # Save predictions
         if save_to_file and self.config.output_dir:
             save_predictions(predictions, Path(self.config.output_dir))
@@ -297,6 +367,8 @@ class DNAPredictor:
 
 
     def predict_file(self, file_path: str, evaluate: bool = False,
+                     output_hidden_states: bool=False,
+                     output_attentions: bool=False,
                      seq_col: str="sequence", label_col: str="labels",
                      save_to_file: bool=False, plot_metrics: bool=False) -> Union[tuple, dict]:
         """
@@ -304,6 +376,8 @@ class DNAPredictor:
         Args:
             file_path: Path to the file containing sequences
             evaluate: Whether to evaluate the predictions
+            output_hidden_states: Whether to output hidden states
+            output_attentions: Whether to output attentions
             seq_col: Column name for sequences
             label_col: Column name for labels
             save_to_file: Whether to save predictions to file
@@ -315,7 +389,14 @@ class DNAPredictor:
         _, dataloader = self.generate_dataset(file_path, seq_col=seq_col, label_col=label_col,
                                               batch_size=self.pred_config.batch_size)
         # Do batch prediction
-        logits, predictions = self.batch_predict(dataloader)
+        if output_attentions:
+            warnings.warn("Cautions: output_attentions may consume a lot of memory.\n")
+        logits, predictions, embeddings = self.batch_predict(dataloader,
+                                                             output_hidden_states=output_hidden_states,
+                                                             output_attentions=output_attentions)
+        # Keep hidden states
+        if output_hidden_states or output_attentions:
+            self.embeddings = embeddings
         # Save predictions
         if save_to_file and self.config.output_dir:
             save_predictions(predictions, Path(self.config.output_dir))
@@ -353,6 +434,68 @@ class DNAPredictor:
         metrics = compute_metrics((logits, labels))
         
         return metrics
+
+    def plot_attentions(self, seq_idx: int = 0, layer: int = -1, head: int = -1,
+                        width: int = 800, height: int = 800,
+                        save_path: Optional[str] = None) -> None:
+        """
+        Plot attention map
+        Args:
+            seq_idx (int): Index of the sequence to plot.
+            layer (int): Layer index to plot.
+            head (int): Head index to plot.
+            width (int): Width of the plot.
+            height (int): Height of the plot.
+            save_path (Optional[str]): Path to save the plot.
+        """
+        if hasattr(self, 'embeddings'):
+            attentions = self.embeddings['attentions']
+            if save_path:
+                suffix = os.path.splitext(save_path)[-1]
+                if suffix:
+                    heatmap = save_path.replace(suffix, "_heatmap" + suffix)
+                else:
+                    heatmap = os.path.join(save_path, "heatmap.pdf")
+            else:
+                heatmap = None
+            # Plot attention map
+            attn_map = plot_attention_map(attentions, self.sequences, self.tokenizer,
+                                          seq_idx=seq_idx, layer=layer, head=head,
+                                          width=width, height=height,
+                                          save_path=heatmap)
+            return attn_map
+        else:
+            print("No attention weights available to plot.")
+
+    def plot_hidden_states(self, reducer: str="t-SNE",
+                           ncols: int=4, width: int = 300, height: int = 300,
+                           save_path: Optional[str] = None) -> None:
+        """
+        Embedding visualization
+        Args:
+            output_dir: Directory to save the plots
+        """
+        if hasattr(self, 'embeddings'):
+            hidden_states = self.embeddings['hidden_states']
+            attention_mask = torch.unsqueeze(self.embeddings['attention_mask'], dim=-1)
+            labels = self.embeddings['labels']
+            if save_path:
+                suffix = os.path.splitext(save_path)[-1]
+                if suffix:
+                    embedding = save_path.replace(suffix, "_embedding" + suffix)
+                else:
+                    embedding = os.path.join(save_path, "embedding.pdf")
+            else:
+                embedding = None
+            # Plot hidden states
+            label_names = self.task_config.label_names
+            embeddings_vis = plot_embeddings(hidden_states, attention_mask, reducer=reducer,
+                                             labels=labels, label_names=label_names,
+                                             ncols=ncols, width=width, height=height,
+                                             save_path=embedding)
+            return embeddings_vis
+        else:
+            print("No hidden states available to plot.")
 
 
 def save_predictions(predictions: Dict, output_dir: Path) -> None:

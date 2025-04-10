@@ -20,7 +20,10 @@ cd DNALLM
 
 # 创建虚拟环境并安装依赖
 uv venv
+## For Linux & MacOS user
 source .venv/bin/activate
+## For Windows user
+.venv\Scripts\activate
 uv pip install -e ".[all]"
 ```
 

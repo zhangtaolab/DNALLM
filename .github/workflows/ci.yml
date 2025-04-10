@@ -24,6 +24,6 @@ jobs:
     - name: Create venv and install dependencies
       run: |
         uv venv
-        uv pip install -e ".[dev]"
+        uv pip install -e ".[all]"
     #- name: Run tests
     #  run: uvx pytest

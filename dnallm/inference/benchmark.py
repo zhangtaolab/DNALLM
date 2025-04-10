@@ -136,7 +136,7 @@ class Benchmark:
                 num_workers=pred_config.num_workers
             )
             # Perform the prediction
-            logits, _ = predictor.batch_predict(dataloader, do_pred=False)
+            logits, _, _ = predictor.batch_predict(dataloader, do_pred=False)
             if len(labels) == len(logits):
                 metrics = predictor.calculate_metrics(logits, labels, plot=True)
                 all_results[model_name] = metrics
@@ -159,10 +159,6 @@ class Benchmark:
         Args:
             metrics (dict): Dictionary containing model metrics.
             show_score (bool): Whether to show the score on the plot.
-            ncol (int): Number of columns in the plot.
-            width (int): Width of the plot.
-            height (int): Height of the plot.
-            bar_width (int): Width of the bars in the plot.
             save_path (Optional[str]): Path to save the plot.
         Returns:
             None
