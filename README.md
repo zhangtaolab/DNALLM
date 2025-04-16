@@ -34,6 +34,13 @@ source .venv/bin/activate
 uv pip install -e ".[all]"
 ```
 
+### 启动jupyter lab
+```bash
+uv run jupyter lab
+```
+
+
+
 ## DNALLM功能简介
 
 - dnallm
