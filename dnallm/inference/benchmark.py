@@ -124,8 +124,13 @@ class Benchmark:
                 # if model_path not in self.all_models[source]:
                 #     print(f"Model \'{model_path}\' not found in our available models list.")
                 #     continue
-                model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config,
-                                                            source=source, use_mirror=use_mirror)
+                try:
+                    model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config,
+                                                                source=source, use_mirror=use_mirror)
+                except:
+                    model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config)
+                else:
+                    raise NameError("Cannot find model in either the given source or local.")
                 predictor = self.get_predictor(model, tokenizer)
             # Load the dataset
             dataset = DNADataset(self.dataset, tokenizer=tokenizer, max_length=pred_config.max_length)
@@ -167,7 +172,7 @@ class Benchmark:
         """
         task_config = self.config['task']
         task_type = task_config.task_type
-        if task_type in ['binary', 'multiclass', 'multilabel']:
+        if task_type in ['binary', 'multiclass', 'multilabel', 'token']:
             # Prepare data for plotting
             bars_data, curves_data = prepare_data(metrics, task_type=task_type)
             if save_path:
@@ -185,8 +190,11 @@ class Benchmark:
             pbar = plot_bars(bars_data, show_score=show_score,
                              save_path=bar_chart, separate=separate)
             # Plot curve charts
-            pline = plot_curve(curves_data,
-                               save_path=line_chart, separate=separate)
+            if task_type == 'token':
+                pline = None
+            else:
+                pline = plot_curve(curves_data, show_score=show_score,
+                                save_path=line_chart, separate=separate)
             return pbar, pline
         elif task_type == 'regression':
             # Prepare data for plotting
@@ -208,4 +216,3 @@ class Benchmark:
             pdot = plot_scatter(scatter_data, show_score=show_score,
                                 save_path=scatter_plot, separate=separate)
             return pbar, pdot
-            

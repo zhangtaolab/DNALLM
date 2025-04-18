@@ -14,7 +14,7 @@ def prepare_data(metrics: dict, task_type: str="binary") -> tuple:
     """
     # Load the data
     bars_data = {'models': []}
-    if task_type in ['binary', 'multiclass', 'multilabel']:
+    if task_type in ['binary', 'multiclass', 'multilabel', 'token']:
         curves_data = {'ROC': {'models': [], 'fpr': [], 'tpr': []},
                     'PR': {'models': [], 'recall': [], 'precision': []}}
         for model in metrics:
@@ -284,7 +284,7 @@ def plot_attention_map(attentions: Union[tuple, list], sequences: list, tokenize
     # Plot the attention map
     attn_map = alt.Chart(source).mark_rect().encode(
         x=alt.X('token1:O').title(None),
-        y=alt.X('token2:O').title(None),
+        y=alt.Y('token2:O').title(None),
         color=alt.Color('attn:Q').scale(scheme='viridis'),
     ).properties(
         width=width,
@@ -302,7 +302,21 @@ def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tup
                     ncols: int=4, width: int=300, height: int=300,
                     save_path: str = None, separate: bool=False) -> alt.Chart:
     '''
-    Plot 
+    Visualize embeddings
+    
+    Args:
+        hidden_states (tuple): Tuple containing hidden states.
+        attention_mask (tuple): Tuple containing attention mask.
+        reducer (str): Dimensionality reduction method. Options: PCA, t-SNE, UMAP.
+        labels (list): List of labels for the data points.
+        label_names (list): List of label names.
+        ncols (int): Number of columns in the plot.
+        width (int): Width of the plot.
+        height (int): Height of the plot.
+        save_path (str): Path to save the plot.
+        separate (bool): Whether to return separate plots for each layer.
+    Returns:
+        pdots: Altair chart object.
     '''
     import torch
     if reducer.lower() == "pca":
@@ -359,3 +373,124 @@ def plot_embeddings(hidden_states: Union[tuple, list], attention_mask: Union[tup
         return p_separate
     else:
         return pdots
+
+
+def plot_muts(data: dict, show_score: bool = False,
+              width: int = None, height: int = 100,
+              save_path: str = None) -> alt.Chart:
+    '''
+    Visualize mutation effects
+    '''
+    # Create dataframe
+    seqlen = len(data['raw']['sequence'])
+    flen = len(str(seqlen))
+    mut_list = [x for x in data.keys() if x != 'raw']
+    raw_bases = [base for base in data['raw']['sequence']]
+    dheat = {"base": [], 'mut': [], 'score': []}
+    dline = {"x": [str(i).zfill(flen)+x for i,x in enumerate(raw_bases)] * 2,
+             "score": [0.0]*seqlen*2,
+             "type": ["gain"]*seqlen + ["loss"]*seqlen}
+    dbar = {"x": [], "score": [], "base": []}
+    # Iterate through mutations
+    for i, base1 in enumerate(raw_bases):
+        ref = "mut_" + str(i) + "_" + base1 + "_" + base1
+        # replacement
+        mut_prefix = "mut_" + str(i) + "_" + base1 + "_"
+        maxabs = 0.0
+        maxscore = 0.0
+        maxabs_index = base1
+        for mut in sorted([x for x in mut_list if x.startswith(mut_prefix)] + [ref]):
+            if mut in data:
+                # for heatmap
+                base2 = mut.split("_")[-1]
+                score = data[mut]['score']
+                dheat["base"].append(str(i).zfill(flen)+base1)
+                dheat["mut"].append(base2)
+                dheat["score"].append(score)
+                # for line
+                if score >= 0:
+                    dline["score"][i] += score
+                elif score < 0:
+                    dline["score"][i+seqlen] -= score
+                # for bar chart
+                if abs(score) > maxabs:
+                    maxabs = abs(score)
+                    maxscore = score
+                    maxabs_index = base2
+            else:
+                dheat["base"].append(str(i).zfill(flen)+base1)
+                dheat["mut"].append(base1)
+                dheat["score"].append(0.0)
+        # for bar chart
+        dbar["x"].append(str(i).zfill(flen)+base1)
+        dbar["score"].append(maxscore)
+        dbar["base"].append(maxabs_index)
+        # deletion
+        del_prefix = "del_" + str(i) + "_"
+        for mut in [x for x in mut_list if x.startswith(del_prefix)]:
+            base2 = "del_" + mut.split("_")[-1]
+            score = data[mut]['score']
+            dheat["base"].append(str(i).zfill(flen)+base1)
+            dheat["mut"].append(base2)
+            dheat["score"].append(score)
+        # insertion
+        ins_prefix = "ins_" + str(i) + "_"
+        for mut in [x for x in mut_list if x.startswith(ins_prefix)]:
+            base2 = "ins_" + mut.split("_")[-1]
+            score = data[mut]['score']
+            dheat["base"].append(str(i).zfill(flen)+base1)
+            dheat["mut"].append(base2)
+            dheat["score"].append(score)
+    # Set color domain and range
+    domain1_min = min([data[mut]['score'] for mut in data])
+    domain1_max = max([data[mut]['score'] for mut in data])
+    domain1 = [-max([abs(domain1_min), abs(domain1_max)]),
+               0.0,
+               max([abs(domain1_min), abs(domain1_max)])]
+    range1_ = ['#2166ac', '#f7f7f7', '#b2182b']
+    domain2 = sorted([x for x in set(dbar['base'])])
+    range2_ = ["#33a02c", "#e31a1c", "#1f78b4", "#ff7f00", "#cab2d6"][:len(domain2)]
+    # Enable VegaFusion for Altair
+    alt.data_transformers.enable("vegafusion")
+    # Plot the heatmap
+    if width is None:
+        width = int(height * len(raw_bases) / len(set(dheat['mut'])))
+    if dheat['base']:
+        pheat = alt.Chart(pd.DataFrame(dheat)).mark_rect().encode(
+            x=alt.X('base:O', axis=alt.Axis(
+                    labelExpr = f"substring(datum.value, {flen}, {flen}+1)",
+                    labelAngle=0,
+                    )
+                ).title(None),
+            y=alt.Y('mut:O').title("mutation"),
+            color=alt.Color('score:Q').scale(domain=domain1, range=range1_),
+        ).properties(
+            width=width, height=height
+        )
+        # Plot gain and loss
+        pline = alt.Chart(pd.DataFrame(dline)).mark_line().encode(
+            x=alt.X('x:O').title(None).axis(labels=False),
+            y=alt.Y('score:Q'),
+            color=alt.Color('type:N').scale(
+                domain=['gain', 'loss'], range=['#b2182b', '#2166ac']
+            ),
+        ).properties(
+            width=width, height=height
+        )
+        pbar = alt.Chart(pd.DataFrame(dbar)).mark_bar().encode(
+            x=alt.X('x:O').title(None).axis(labels=False),
+            y=alt.Y('score:Q'),
+            color=alt.Color('base:N').scale(
+                domain=domain2, range=range2_
+            ),
+        ).properties(
+            width=width, height=height
+        )
+        pmerge = pheat & pbar & pline
+        pmerge = pmerge.configure_axis(grid=False)
+        # Save the plot
+        if save_path:
+            pmerge.save(save_path)
+            print(f"Mutation effects visualization saved to {save_path}")
+    return pheat
+

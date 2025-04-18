@@ -193,7 +193,7 @@ def multi_labels_metrics(label_list, plot=False):
     return compute_metrics
 
 
-def token_classification_metrics(label_list):
+def token_classification_metrics(label_list, plot=False):
     seqeval = evaluate.load(metrics_path + "seqeval/seqeval.py")
 
     def compute_metrics(pred):
@@ -286,30 +286,3 @@ def compute_metrics(task_config: TaskConfig, plot: bool=False) -> dict:
         return token_classification_metrics(task_config.label_names, plot=plot)
     else:
         raise ValueError(f"Unsupported task type for evaluation: {task_config.task_type}")
-
-
-# def compute_metrics(task_config: TaskConfig, predictions: torch.Tensor, 
-#                    labels: torch.Tensor) -> dict:
-#     """Compute metrics based on task type"""
-#     predictions = predictions.cpu().numpy()
-#     labels = labels.cpu().numpy()
-    
-#     metrics = {}
-    
-#     if task_config.task_type == TaskType.BINARY:
-#         probs = torch.sigmoid(torch.tensor(predictions)).numpy()
-#         preds = (probs > task_config.threshold).astype(int)
-#         metrics["accuracy"] = accuracy_score(labels, preds)
-#         metrics["f1"] = f1_score(labels, preds)
-        
-#     elif task_config.task_type == TaskType.MULTICLASS:
-#         preds = predictions.argmax(axis=1)
-#         metrics["accuracy"] = accuracy_score(labels, preds)
-#         metrics["f1_macro"] = f1_score(labels, preds, average="macro")
-#         metrics["f1_weighted"] = f1_score(labels, preds, average="weighted")
-        
-#     else:  # Regression
-#         metrics["mse"] = mean_squared_error(labels, predictions)
-#         metrics["r2"] = r2_score(labels, predictions)
-        
-#     return metrics

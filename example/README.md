@@ -7,37 +7,35 @@ This directory contains example scripts demonstrating how to use DNALLM for fine
 ### marimo
 Interactive examples with [marimo](https://marimo.io/)
 
+Usage:
+```bash
+uv run marimo run xxx_demo.py
+```
+
 #### finetune
 A demo that allows finetuning different DNA LLM.
 * finetune_config.yaml (config file)
 * finetune_demo.py (entrypoint)
-Usage:
-```bash
-marimo run finetune_demo.py
-```
 
 #### inference
 A demo that allows inference on different DNA LLM.
 * inference_config.yaml (config file)
 * inference_demo.py (entrypoint)
 * plant_DNA_LLMs_finetune_list.xlsx (model list)
-Usage:
-```bash
-marimo run inference_demo.py
-```
 
 #### benchmark
 A demo that allows benchmark of multiple DNA LLMs.
 * config.yaml (config file)
 * benchmark_demo.py (entrypoint)
 * test.csv (example dataset)
-Usage:
-```bash
-marimo run benchmark_demo.py
-```
 
 ### notebooks
 Examples with Jupyter Notebook
+
+Usage:
+```bash
+uv run jupyter lab
+```
 
 #### finetune_demo
 An example that shows how to finetune a DNA language model (here using Plant DNABERT model for promoter classification) with DNALLM package.
@@ -61,3 +59,8 @@ An example that shows how to predict with a finetuned model and how to benchmark
 * inference_config.yaml (config file)
 * inference_and_benchmark.ipynb (notebook file)
 * test.csv (a test dataset)
+
+#### in_silico_mutagenesis
+An example that shows how to evaluate mutation effects using a saturation mutations.
+* inference_config.yaml (config file)
+* in_silico_mutagenesis.ipynb (notebook file)
