@@ -108,9 +108,11 @@ def multi_classification_metrics(plot=False):
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
+        if logits.ndim == 3:
+            logits = logits[:, 0, :]  # 调整此处以适应模型结构
         # predictions = np.argmax(logits, axis=-1)
         pred_probs = softmax(logits, axis=1)
-        predictions = [x.tolist().index(max(x)) for x in pred_probs]
+        predictions = np.argmax(logits, axis=-1)
 
         accuracy = metric0.compute(predictions=predictions, references=labels)
         precision = metric1.compute(predictions=predictions, references=labels, average="micro")
