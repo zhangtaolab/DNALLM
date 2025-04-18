@@ -171,7 +171,8 @@ class DNADataset:
                 else:
                     example['labels'] = float(labels) if '.' in labels else int(labels)
             return example
-        ds = ds.map(format_labels, desc="Format labels")
+        if 'labels' in ds.column_names:
+            ds = ds.map(format_labels, desc="Format labels")
         # Return processed dataset
         return ds
 
