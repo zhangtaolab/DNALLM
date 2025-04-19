@@ -38,13 +38,13 @@ def reverse_complement(seq: str, reverse=True, complement=True):
 
 def seq2kmer(seqs: str, k: int):
     '''
-    Convert DNA sequences to overlaped k-mers, seq2kmer(["ATGC"], 2) should return ['AT TG GC'] 
+    Convert DNA sequences to k-mers (For overlapped k-mer tokenization)
     
     input:
         seqs: list, DNA sequences
         k: int, k-mer length
     output:
-        list of str, overlaped k-mers, 
+        list of str, k-m
     '''
     all_kmers = []
     for seq in seqs:
@@ -54,14 +54,14 @@ def seq2kmer(seqs: str, k: int):
     return all_kmers
 
 
-def check_sequence(seq: str, minl: int = 20, maxl: int = 6000, gc: tuple = (0,1), valid_chars: str = "ACGTN"):
+def check_sequence(seq: str, minl: int = 1, maxl: int = 500000000, gc: tuple = (0,1), valid_chars: str = "ACGTN"):
     '''
     Check if a DNA sequence is valid.
     
     input:
         seq: str, DNA sequence
-        minl: int, minimum length of the sequence, default 20
-        maxl: int, maximum length of the sequence, default 6000
+        minl: int, minimum length of the sequence, default 1
+        maxl: int, maximum length of the sequence, default 500000000
         valid_chars: str, valid characters in the sequence, default "ACGTN"
     output:
         bool, whether the sequence is valid

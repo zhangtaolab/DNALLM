@@ -31,7 +31,12 @@ source .venv/bin/activate
 .venv\Scripts\activate
 
 # 安装依赖
-uv pip install -e ".[all]"
+uv sync --extra all
+## 如果需要指定GPU对应cuda版本，运行如下命令(支持cpu, cuda121, cuda124, cuda126)
+uv sync --extra all --extra cuda124
+
+# 安装DNALLM
+uv pip install -e .
 ```
 
 ### 启动jupyter lab
@@ -39,6 +44,10 @@ uv pip install -e ".[all]"
 uv run jupyter lab
 ```
 
+### 启动marimo
+```bash
+uv run marimo run xxx.py
+```
 
 
 ## DNALLM功能简介
@@ -56,6 +65,7 @@ uv run jupyter lab
     * trainer (模型微调训练器)
   - inference
     * benchmark (多模型benchmark)
+    * mutagenesis (突变效应分析)
     * plot (推理结果可视化)
     * predictor (模型推理)
   - mcp (模型上下文协议)
