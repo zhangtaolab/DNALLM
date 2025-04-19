@@ -65,7 +65,7 @@ def test_check_sequence():
     assert check_sequence("ATGCX", valid_chars="ACGTN") == False
     
     # Test GC content
-    assert check_sequence("ATGC", gc=(0.4, 0.6)) == True
+    assert check_sequence("ATGC", gc=(0.4, 0.6), minl=4) == True
     assert check_sequence("AAAA", gc=(0.4, 0.6)) == False
 
 def test_random_generate_sequences():
