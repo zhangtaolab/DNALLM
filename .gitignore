@@ -82,3 +82,12 @@ Thumbs.db
 # Project specific
 dnallm/models/downloads/
 dnallm/data/cache/ 
+
+# Jupyter Notebook tmp files
+.ipynb_checkpoints/
+*.output.txt
+
+# Marimo cache
+.marimo-cache/
+.marimo-env/
+
