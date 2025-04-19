@@ -38,13 +38,13 @@ def reverse_complement(seq: str, reverse=True, complement=True):
 
 def seq2kmer(seqs: str, k: int):
     '''
-    Convert DNA sequences to k-mers
+    Convert DNA sequences to overlaped k-mers, seq2kmer(["ATGC"], 2) should return ['AT TG GC'] 
     
     input:
         seqs: list, DNA sequences
         k: int, k-mer length
     output:
-        list of str, k-m
+        list of str, overlaped k-mers, 
     '''
     all_kmers = []
     for seq in seqs:
