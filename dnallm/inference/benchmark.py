@@ -1,11 +1,9 @@
 import os
 import numpy as np
-import json
 from typing import Optional, List, Dict, Union
 from pathlib import Path
 from tqdm import tqdm
 
-import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
 
@@ -128,9 +126,10 @@ class Benchmark:
                     model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config,
                                                                 source=source, use_mirror=use_mirror)
                 except:
-                    model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config)
-                else:
-                    raise NameError("Cannot find model in either the given source or local.")
+                    if os.path.exists(model_path):
+                        model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config)
+                    else:
+                        raise NameError("Cannot find model in either the given source or local.")
                 predictor = self.get_predictor(model, tokenizer)
             # Load the dataset
             dataset = DNADataset(self.dataset, tokenizer=tokenizer, max_length=pred_config.max_length)
