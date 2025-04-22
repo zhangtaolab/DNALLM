@@ -26,6 +26,7 @@ dependencies = [
     "einops>=0.7.0",
     "evaluate>=0.4.3",
     "huggingface-hub>=0.29.0",
+    "ipykernel>=6.29.5",
     "ipywidgets>=8",
     "jax>=0.5.2",
     "mambapy>=1.2.0",
