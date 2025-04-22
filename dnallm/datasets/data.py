@@ -121,9 +121,11 @@ class DNADataset:
             ds = Dataset.from_dict(data)
             if seq_col != "sequence" or label_col != "labels":
                 if seq_col in ds.column_names:
-                    ds = ds.rename_column(seq_col, "sequence")
+                    if "sequence" not in ds.features:
+                        ds = ds.rename_column(seq_col, "sequence")
                 if label_col in ds.column_names:
-                    ds = ds.rename_column(label_col, "labels")
+                    if "labels" not in ds.features:
+                        ds = ds.rename_column(label_col, "labels")
         elif file_type in fasta_types:
             sequences, labels = [], []
             with open(file_path, "r") as f:
