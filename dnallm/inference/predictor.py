@@ -163,7 +163,8 @@ class DNAPredictor:
             self.sequences = dataset.dataset["sequence"]
         # Encode sequences
         if do_encode:
-            dataset.encode_sequences(remove_unused_columns=True)
+            task_type = self.task_config.task_type
+            dataset.encode_sequences(remove_unused_columns=True, task=task_type)
         if "labels" in dataset.dataset.features:
             self.labels = dataset.dataset["labels"]
         # Create DataLoader
@@ -208,6 +209,13 @@ class DNAPredictor:
             preds = logits.squeeze(-1)
             probs = preds
             labels = preds.tolist()
+        elif task_type == "token":
+            probs = torch.softmax(logits, dim=-1)
+            preds = torch.argmax(logits, dim=-1)
+            labels = []
+            for pred in preds:
+                label = [label_names[pred[i]] for i in range(len(pred))]
+                labels.append(label)
         else:
             raise ValueError(f"Unsupported task type: {task_type}")
         return probs, labels
@@ -220,6 +228,8 @@ class DNAPredictor:
         Returns:
             Dictionaries containing formatted predictions
         """
+        # Get task type from config
+        task_type = self.task_config.task_type
         formatted_predictions = {}
         probs, labels = predictions
         probs = probs.numpy().tolist()
@@ -230,7 +240,8 @@ class DNAPredictor:
             formatted_predictions[i] = {
                 'sequence': self.sequences[i] if keep_seqs else '',
                 'label': label,
-                'scores': {label_names[j]: p for j, p in enumerate(prob)}
+                'scores': {label_names[j]: p for j, p in enumerate(prob)} if task_type != "token" 
+                          else [max(x) for x in prob],
             }
         return formatted_predictions
 

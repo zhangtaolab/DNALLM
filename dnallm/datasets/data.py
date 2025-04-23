@@ -261,15 +261,19 @@ class DNADataset:
         def tokenize_for_token_classification(examples):
             tokenized_examples = {'sequence': [],
                                   'input_ids': [],
-                                  'token_type_ids': [],
-                                  'attention_mask': [],
-                                  'labels': []}
+                                  # 'token_type_ids': [],
+                                  'attention_mask': []}
+            if 'labels' in examples:
+                tokenized_examples['labels'] = []
             input_seqs = examples['sequence']
             if isinstance(input_seqs, str):
                 input_seqs = input_seqs.split(self.multi_label_sep)
             for i, example_tokens in enumerate(input_seqs):
                 all_ids = [x for x in self.tokenizer.encode(example_tokens, is_split_into_words=True) if x>=0]
-                example_ner_tags = examples['labels'][i]
+                if 'labels' in examples:
+                    example_ner_tags = examples['labels'][i]
+                else:
+                    example_ner_tags = [0] * len(example_tokens)
                 pad_len = max_length - len(all_ids)
                 if pad_len >= 0:
                     all_masks = [1] * len(all_ids) + [0] * pad_len
@@ -299,9 +303,10 @@ class DNADataset:
                         example_ner_tags = example_ner_tags[:max_length]
                 tokenized_examples['sequence'].append(example_tokens)
                 tokenized_examples['input_ids'].append(all_ids)
-                tokenized_examples['token_type_ids'].append([0] * max_length)
+                # tokenized_examples['token_type_ids'].append([0] * max_length)
                 tokenized_examples['attention_mask'].append(all_masks)
-                tokenized_examples['labels'].append(example_ner_tags)
+                if 'labels' in examples:
+                    tokenized_examples['labels'].append(example_ner_tags)
             return BatchEncoding(tokenized_examples)
         # Judge the task type
         task = task.lower()
@@ -317,7 +322,7 @@ class DNADataset:
         else:
             self.dataset = self.dataset.map(tokenize_for_sequence_classification, batched=True, desc="Encoding inputs")
         if remove_unused_columns:
-            used_cols = ['labels', 'input_ids', 'token_type_ids', 'attention_mask']
+            used_cols = ['labels', 'input_ids', 'attention_mask']
             if isinstance(self.dataset, DatasetDict):
                 for dt in self.dataset:
                     unused_cols = [f for f in self.dataset[dt].features if f not in used_cols]

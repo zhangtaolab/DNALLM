@@ -195,7 +195,7 @@ def multi_labels_metrics(label_list, plot=False):
     return compute_metrics
 
 
-def token_classification_metrics(label_list, plot=False):
+def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
     seqeval = evaluate.load(metrics_path + "seqeval/seqeval.py")
 
     def compute_metrics(pred):
@@ -213,7 +213,7 @@ def token_classification_metrics(label_list, plot=False):
             for prediction, label in zip(predictions, labels) 
         ]
 
-        result = seqeval.compute(predictions=true_predictions, references=true_labels, mode="strict", scheme="IOB2")
+        result = seqeval.compute(predictions=true_predictions, references=true_labels, mode="strict", scheme=scheme)
 
         return {
             "accuracy": result["overall_accuracy"],
