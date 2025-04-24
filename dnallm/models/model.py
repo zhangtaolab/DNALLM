@@ -36,12 +36,16 @@ def download_model(model_name: str, downloader, max_try: int=100):
             # network issue
             if "connection" in str(e):
                 reason = "unstable network connection."
-            # model not found
+            # model not found in HuggingFace
             elif "not found" in str(e).lower():
                 reason = "repo is not found."
                 print(e)
                 break
-
+            # model not exist in ModelScope
+            elif "response [404]" in str(e).lower():
+                reason = "repo is not existed."
+                print(e)
+                break
             else:
                 reason = e
             print(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
@@ -79,6 +83,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
             raise ValueError(f"Model {model_name} not found locally.")
         from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
                                   AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
+        model_path = model_name
     elif source.lower() == "huggingface":
         # Load HuggingFace SDK
         from huggingface_hub import snapshot_download
