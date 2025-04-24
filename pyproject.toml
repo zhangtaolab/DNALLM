@@ -32,6 +32,7 @@ dependencies = [
     "mambapy>=1.2.0",
     "modelscope[framework]>=1.23.2",
     "nbstripout>=0.8.1",
+    "ninja>1",
     "numpy<2",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
@@ -42,11 +43,12 @@ dependencies = [
     "seqeval>=1.2.2",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.4.0",
+    "torch>=2.4.0,<2.7",
     "tqdm>=4.67.1",
     "transformers>=4.49.0",
     "umap-learn>=0.5.7",
     "wandb>=0.19.8",
+    "wheel>=0.45.0",
 ]
 
 [project.optional-dependencies]
@@ -90,19 +92,23 @@ all = [
     "pytest-cov>=6.0.0",
 ]
 cpu = [
-    "torch>=2.4.0",
+    "torch>=2.4.0,<2.7",
 ]
 cuda121 = [
-    "torch>=2.2.0",
+    "torch>=2.2.0,<2.7",
 ]
 cuda124 = [
-    "torch>=2.4.0",
+    "torch>=2.4.0,<2.7",
 ]
 cuda126 = [
-    "torch>=2.6.0",
+    "torch>=2.6.0,<2.7",
 ]
 rocm = [
-    "torch>=2.5.0",
+    "torch>=2.5.0,<2.7",
+]
+mamba = [
+    "mamba-ssm>=2.2",
+    "causal_conv1d>=1.4",
 ]
 
 [[tool.uv.index]]

@@ -33,11 +33,18 @@ source .venv/bin/activate
 # 安装依赖
 uv sync --extra all
 ## 如果需要指定GPU对应cuda版本，运行如下命令(支持cpu, cuda121, cuda124, cuda126)
-uv sync --extra all --extra cuda124
+# uv sync --extra all --extra cuda124
 
 # 安装DNALLM
 uv pip install -e .
 ```
+
+原生mamba架构的运行速度显著优于transformer兼容的mamba架构，不过原生mamba依赖于Nvidia显卡  
+如果需要原生mamba架构支持，安装完DNALLM依赖后，使用以下命令安装：
+```bash
+uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+```
+
 
 ### 启动jupyter lab
 ```bash
