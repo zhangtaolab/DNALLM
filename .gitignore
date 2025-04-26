@@ -86,6 +86,7 @@ dnallm/data/cache/
 # Jupyter Notebook tmp files
 .ipynb_checkpoints/
 *.output.txt
+example/notebooks/*/outputs*/
 
 # Marimo cache
 .marimo-cache/
