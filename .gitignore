@@ -87,6 +87,8 @@ dnallm/data/cache/
 .ipynb_checkpoints/
 *.output.txt
 example/notebooks/*/outputs*/
+example/notebooks/*/*.pdf
+example/notebooks/*/results*/
 
 # Marimo cache
 .marimo-cache/
