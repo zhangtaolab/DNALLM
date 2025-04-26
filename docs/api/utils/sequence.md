@@ -1,3 +1,3 @@
-# utils API
+# utils/sequence API
 
 ::: dnallm.utils.sequence

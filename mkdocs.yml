@@ -42,7 +42,8 @@ nav:
     - Evaluation: concepts/evaluation.md
     - Inference: concepts/inference.md
   - API: 
-    - Utils: api/utils.md
+    - Utils: 
+      - Sequence: api/utils/sequence.md
   - FAQ: faq/faq.md
 
 
@@ -50,5 +51,10 @@ nav:
 
 plugins:
   - search
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+            python:
+              options:
+                docstring_style: google  # 或 numpy, 取决于你的风格
+                show_source: true
 
