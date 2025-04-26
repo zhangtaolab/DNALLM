@@ -30,13 +30,11 @@ source .venv/bin/activate
 # Windows 用户
 .venv\Scripts\activate
 
-# 安装依赖
-uv sync --extra all
-## 如果需要指定GPU对应cuda版本，运行如下命令(支持cpu, cuda121, cuda124, cuda126)
-# uv sync --extra all --extra cuda124
+# 安装基础依赖
+uv pip install -e '.[base]'
+## 如果需要指定GPU对应cuda版本，安装完基础依赖后运行如下命令(支持cpu, cuda121, cuda124, cuda126)
+# uv pip install -e '.[cuda124]'
 
-# 安装DNALLM
-uv pip install -e .
 ```
 
 原生mamba架构的运行速度显著优于transformer兼容的mamba架构，不过原生mamba依赖于Nvidia显卡  
@@ -44,6 +42,7 @@ uv pip install -e .
 ```bash
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 ```
+请确保你的机器能够连接到GitHub，不然可能会导致mamba依赖下载失败。
 
 
 ### 启动jupyter lab
@@ -86,6 +85,7 @@ uv run marimo run xxx.py
     * task (模型训练和微调支持的任务：二分类、多分类、多标签、回归、命名体识别、MLM、CLM)
   - utils
     * sequence (序列相关处理函数)
+- docs
 - example
   - marimo (交互式模型训练和推理)
     - benchmark
