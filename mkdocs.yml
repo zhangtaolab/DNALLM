@@ -41,11 +41,14 @@ nav:
     - Training: concepts/training.md
     - Evaluation: concepts/evaluation.md
     - Inference: concepts/inference.md
-  - API: api/changeme.md
+  - API: 
+    - Utils: api/utils.md
   - FAQ: faq/faq.md
 
 
 
 
-
+plugins:
+  - search
+  - mkdocstrings
 
