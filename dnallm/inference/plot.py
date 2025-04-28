@@ -272,19 +272,29 @@ def plot_attention_map(attentions: Union[tuple, list], sequences: list, tokenize
     except:
         tokens = tokenizer.decode(seq).split()
     # Create a DataFrame for the attention map
+    num_tokens = len(tokens)
+    flen = len(str(num_tokens))
     df = {"token1": [], 'token2': [], 'attn': []}
     for i, t1 in enumerate(tokens):
         for j, t2 in enumerate(tokens):
-            df["token1"].append(t1)
-            df["token2"].append(t2)
+            df["token1"].append(str(i).zfill(flen)+t1)
+            df["token2"].append(str(num_tokens-j).zfill(flen)+t2)
             df["attn"].append(attn_head[i][j])
     source = pd.DataFrame(df)
     # Enable VegaFusion for Altair
     alt.data_transformers.enable("vegafusion")
     # Plot the attention map
     attn_map = alt.Chart(source).mark_rect().encode(
-        x=alt.X('token1:O').title(None),
-        y=alt.Y('token2:O').title(None),
+        x=alt.X('token1:O', axis=alt.Axis(
+                    labelExpr = f"substring(datum.value, {flen}, 100)",
+                    labelAngle=-45,
+                    )
+                ).title(None),
+        y=alt.Y('token2:O', axis=alt.Axis(
+                    labelExpr = f"substring(datum.value, {flen}, 100)",
+                    labelAngle=0,
+                    )
+                ).title(None),
         color=alt.Color('attn:Q').scale(scheme='viridis'),
     ).properties(
         width=width,
