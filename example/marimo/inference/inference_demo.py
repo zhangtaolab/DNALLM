@@ -1,14 +1,14 @@
 import marimo
 
 __generated_with = "0.11.17"
-app = marimo.App(width="full")
+app = marimo.App(width="medium")
 
 
 @app.cell
 def __(__file__):
     import sys
-    from os import path
-    sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
+    # from os import path
+    # sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
     import marimo as mo
     import pandas as pd
     from dnallm import load_config, load_model_and_tokenizer, DNAPredictor
@@ -93,8 +93,11 @@ def __(
     task_dropdown,
     tokenizer_dropdown,
 ):
+    title = mo.md(
+        "<center><h2>Model inference</h2></center>"
+    )
     hstack=mo.hstack([task_dropdown, model_dropdown, tokenizer_dropdown, source_dropdown], align='center', justify='center')
-    mo.vstack([dnaseq_entry_box, hstack])
+    mo.vstack([title, dnaseq_entry_box, hstack])
     return (hstack,)
 
 
@@ -174,7 +177,7 @@ def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenize
         predictor = None
     mo.hstack([predict_button], align='center', justify='center')
     return (predict_button, predictor,)
-    
+
 
 @app.cell
 def __(predict_button):
@@ -220,10 +223,12 @@ def __(mo, seq_number, layer_slider, head_slider, figure_size, predictor):
 def __(mo, plot_button, figure_size):
     plot_out = plot_button.value
     if plot_out:
-        chart = mo.ui.altair_chart(plot_out).properties(width=figure_size.value, height=figure_size.value)
+        chart = mo.ui.altair_chart(plot_out).properties(
+            width=figure_size.value, height=figure_size.value
+            )
     else:
         chart = None
-    chart
+    mo.vstack([chart], align='center', justify='center')
     return
 
 
