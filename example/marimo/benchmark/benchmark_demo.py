@@ -23,7 +23,7 @@ def __(mo):
     )
     config_text = mo.ui.text(value="config.yaml", placeholder="config.yaml",
                              label="Config file (*.yaml)", full_width=True)
-    datasets_text = mo.ui.text(placeholder="local dataset path",
+    datasets_text = mo.ui.text(value="test.csv", placeholder="local dataset path",
                                label="Datasets file", full_width=True)
     source_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope",
                                  label="Model source", full_width=True)
