@@ -271,9 +271,9 @@ class DNAPredictor:
             params = sig.parameters
             if 'output_hidden_states' in params:
                 self.model.config.output_hidden_states = True
-                embeddings['hidden_states'] = None
-                embeddings['attention_mask'] = []
-                embeddings['labels'] = []
+            embeddings['hidden_states'] = None
+            embeddings['attention_mask'] = []
+            embeddings['labels'] = []
         if output_attentions:
             if not params:
                 import inspect
@@ -281,7 +281,7 @@ class DNAPredictor:
                 params = sig.parameters
             if 'output_attentions' in params:
                 self.model.config.output_attentions = True
-                embeddings['attentions'] = None
+            embeddings['attentions'] = None
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Predicting"):
             inputs = {k: v.to(self.device) for k, v in batch.items()}
@@ -309,11 +309,12 @@ class DNAPredictor:
             # Get attentions
             if output_attentions:
                 attentions = [a.cpu().detach() for a in outputs.attentions] if hasattr(outputs, 'attentions') else None
-                if embeddings['attentions'] is None:
-                    embeddings['attentions'] = [[a] for a in attentions]
-                else:
-                    for i, a in enumerate(attentions):
-                        embeddings['attentions'][i].append(a)
+                if attentions:
+                    if embeddings['attentions'] is None:
+                        embeddings['attentions'] = [[a] for a in attentions]
+                    else:
+                        for i, a in enumerate(attentions):
+                            embeddings['attentions'][i].append(a)
         # Concatenate logits
         all_logits = torch.cat(all_logits, dim=0)
         if output_hidden_states:

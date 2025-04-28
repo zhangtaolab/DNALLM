@@ -21,6 +21,7 @@ class DNADataset:
         self.max_length = max_length
         self.sep = None
         self.multi_label_sep = None
+        self.stats = None
 
     @classmethod
     def load_local_data(cls, file_paths, seq_col: str = "sequence", label_col: str = "labels",
@@ -228,6 +229,7 @@ class DNADataset:
 
     def encode_sequences(self, padding: str = "max_length", return_tensors: str = "pt",
                          remove_unused_columns: bool = False,
+                         uppercase: bool=False, lowercase: bool=False,
                          task: Optional[str] = 'SequenceClassification'):
         """
         Encode all sequences using the provided tokenizer.
@@ -239,6 +241,8 @@ class DNADataset:
                            Use 'longest' to pad to the length of the longest sequence in case of memory outage.
             return_tensors (str | TensorType): Returned tensor types, can be 'pt' or 'tf' or 'np'.
             remove_unused_columns: Whether to remove the original 'sequence' and 'label' columns
+            uppercase (bool): Whether to convert sequences to uppercase.
+            lowercase (bool): Whether to convert sequences to lowercase.
             task (str, optional): Task type for the tokenizer. If not provided, defaults to 'SequenceClassification'.
         """
         if self.tokenizer:
@@ -251,14 +255,20 @@ class DNADataset:
         else:
             raise ValueError("Tokenizer not provided.")
         def tokenize_for_sequence_classification(example):
+            sequences = example["sequence"]
+            if uppercase:
+                sequences = [x.upper() for x in sequences]
+            if lowercase:
+                sequences = [x.lower() for x in sequences]
             tokenized = self.tokenizer(
-                example["sequence"],
+                sequences,
                 truncation=True,
                 padding=padding,
                 max_length=max_length
             )
             return tokenized
         def tokenize_for_token_classification(examples):
+            
             tokenized_examples = {'sequence': [],
                                   'input_ids': [],
                                   # 'token_type_ids': [],
@@ -339,7 +349,7 @@ class DNADataset:
         else:
             self.dataset.set_format(type="torch")
 
-    def split_data(self, test_size: float = 0.2, val_size: float = 0.1, seed: int = 42):
+    def split_data(self, test_size: float = 0.2, val_size: float = 0.1, seed: int = None):
         """
         Split the dataset into train, test, and validation sets.
         
@@ -364,7 +374,7 @@ class DNADataset:
         else:
             self.dataset = DatasetDict({'train': train_ds, 'test': test_ds})
     
-    def shuffle(self, seed: int = 42):
+    def shuffle(self, seed: int = None):
         """
         Shuffle the dataset
         
@@ -433,7 +443,7 @@ class DNADataset:
             return example["sequence"] and example["labels"] is not None and example["sequence"].strip() != ""
         self.dataset = self.dataset.filter(non_missing)
 
-    def raw_reverse_complement(self, ratio: float = 0.5, seed: int = 42):
+    def raw_reverse_complement(self, ratio: float = 0.5, seed: int = None):
         """
         Do reverse complement of sequences in the dataset.
         
@@ -508,6 +518,76 @@ class DNADataset:
                 self.dataset[dt] = process(self.dataset[dt], reverse, complement, sep)
         else:
             self.dataset = process(self.dataset, reverse, complement, sep)
+    
+    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False):
+        """
+        Randomly sample a fraction of the dataset.
+        Args:
+            ratio (float): Fraction of the dataset to sample. Default is 1.0 (no sampling).
+            seed (int): Random seed for reproducibility.
+            overwrite (bool): Whether to overwrite the original dataset with the sampled one.
+        Returns:
+            A sampled dataset.
+        """
+        dataset = self.dataset
+        if isinstance(dataset, DatasetDict):
+            for dt in dataset.keys():
+                random.seed(seed)
+                random_idx = random.sample(range(len(dataset[dt])), int(len(dataset[dt]) * ratio))
+                dataset[dt] = dataset[dt].select(random_idx)
+        else:
+            random_idx = random.sample(range(len(dataset)), int(len(dataset) * ratio))
+            dataset = dataset.select(random_idx)
+        if overwrite:
+            self.dataset = dataset
+        else:
+            return dataset
+    
+    def head(self, head: int=10, show: bool=False):
+        """
+        Fetch the head n data from the dataset
+        
+        Args:
+            head (int): Number of samples to fetch.
+            show (bool): Whether to print the data or return it.
+        Returns:
+            dict: A dictionary containing the first n samples.
+        """
+        import pprint
+        def format_convert(data):
+            df = {}
+            length = len(data["sequence"])
+            for i in range(length):
+                df[i] = {}
+                for key in data.keys():
+                    df[i][key] = data[key][i]
+            return df
+        dataset = self.dataset
+        if isinstance(dataset, DatasetDict):
+            df = {}
+            for dt in dataset.keys():
+                data = dataset[dt][:head]
+                if show:
+                    print(f"Dataset: {dt}")
+                    pprint.pp(format_convert(data))
+                else:
+                    df[dt] = data
+                    return df
+        else:
+            data = dataset[dt][:head]
+            if show:
+                pprint.pp(format_convert(data))
+            else:
+                return data
+    
+    def show(self, head: int=10):
+        """
+        Display the dataset
+        
+        Args:
+            head (int): Number of samples to display.
+        """
+        self.head(head=head, show=True)            
 
     def iter_batches(self, batch_size: int):
         """
