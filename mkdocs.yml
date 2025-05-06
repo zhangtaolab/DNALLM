@@ -44,6 +44,8 @@ nav:
   - API: 
     - Utils: 
       - Sequence: api/utils/sequence.md
+    - Inference:
+      - Predictor: api/inference/predictor.md
   - FAQ: faq/faq.md
 
 
