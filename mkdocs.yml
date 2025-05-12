@@ -46,6 +46,8 @@ nav:
       - Sequence: api/utils/sequence.md
     - Inference:
       - Predictor: api/inference/predictor.md
+    - Finetune:
+      - Trainer: api/finetune/trainer.md
   - FAQ: faq/faq.md
 
 
