@@ -61,8 +61,8 @@ class DNAPredictor:
     
     def __init__(
         self,
-        model,
-        tokenizer,
+        model: any,
+        tokenizer: any,
         config: dict
     ):
         """Initialize the predictor.
@@ -142,7 +142,7 @@ class DNAPredictor:
 
     def generate_dataset(self, seq_or_path: Union[str, List[str]], batch_size: int=1,
                          seq_col: str="sequence", label_col: str="labels",
-                         keep_seqs: bool=True, do_encode: bool=True):
+                         keep_seqs: bool=True, do_encode: bool=True) -> tuple:
         """Generate dataset from sequences.
         
         Args:

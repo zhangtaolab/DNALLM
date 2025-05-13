@@ -44,6 +44,8 @@ nav:
   - API: 
     - Utils: 
       - Sequence: api/utils/sequence.md
+    - Datasets:
+      - Data: api/datasets/data.md
     - Inference:
       - Predictor: api/inference/predictor.md
     - Finetune:
@@ -62,3 +64,9 @@ plugins:
                 docstring_style: google  # 或 numpy, 取决于你的风格
                 show_source: true
 
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences

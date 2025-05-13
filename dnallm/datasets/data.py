@@ -27,7 +27,7 @@ class DNADataset:
     def load_local_data(cls, file_paths, seq_col: str = "sequence", label_col: str = "labels",
                         sep: str = None, fasta_sep: str = "|",
                         multi_label_sep: Union[str, None] = None,
-                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
+                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> any:
         """
         Load DNA sequence datasets from one or multiple local files.
         
@@ -68,9 +68,11 @@ class DNADataset:
                           multi_label_sep: Union[str, None] = None) -> Dataset:
         """
         Load DNA data (sequences and labels) from a local file.
+
         Supported file types: 
           - For structured formats (CSV, TSV, JSON, Parquet, Arrow, dict), uses load_dataset from datasets.
           - For FASTA and TXT, uses custom parsing.
+
         Args:
             file_path: For most file types, a path (or pattern) to the file(s). For 'dict', a dictionary.
             seq_col (str): Name of the column containing the DNA sequence.
@@ -78,8 +80,7 @@ class DNADataset:
             sep (str, optional): Delimiter for CSV, TSV, or TXT files.
             fasta_sep (str, optional): Delimiter for FASTA files.
             multi_label_sep (str, optional): Delimiter for multi-label sequences.
-            tokenizer (PreTrainedTokenizerBase, optional): A tokenizer to pass along.
-            max_length (int): Maximum length for tokenization.
+
         Returns:
             DNADataset: An instance wrapping a datasets.Dataset.
         """
@@ -183,13 +184,20 @@ class DNADataset:
     def from_huggingface(cls, dataset_name: str,
                          seq_col: str = "sequence", label_col: str = "labels",
                          data_dir: Union[str, None]=None,
-                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
+                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> any:
         """
         Load a dataset from the Hugging Face Hub.
+
         Args:
             dataset_name (str): Name of the dataset.
             seq_col (str): Column name for the DNA sequence.
             label_col (str): Column name for the label.
+            data_dir (str): Data directory in a dataset.
+            tokenizer (PreTrainedTokenizerBase): Tokenizer.
+            max_length (int): Max token length.
+
+        Returns:
+            DNADataset: An instance wrapping a datasets.Dataset.
         """
         if data_dir:
             ds = load_dataset(dataset_name, data_dir=data_dir)
@@ -206,13 +214,20 @@ class DNADataset:
     def from_modelscope(cls, dataset_name: str,
                         seq_col: str = "sequence", label_col: str = "labels",
                         data_dir: Union[str, None]=None,
-                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
+                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> any:
         """
         Load a dataset from the ModelScope.
+
         Args:
             dataset_name (str): Name of the dataset.
             seq_col (str): Column name for the DNA sequence.
             label_col (str): Column name for the label.
+            data_dir (str): Data directory in a dataset.
+            tokenizer: Tokenizer.
+            max_length: Max token length.
+
+        Returns:
+            DNADataset: An instance wrapping a datasets.Dataset.
         """
         from modelscope import MsDataset
         
@@ -357,8 +372,6 @@ class DNADataset:
             test_size (float): Proportion of the dataset to include in the test split.
             val_size (float): Proportion of the dataset to include in the validation split.
             seed (int): Random seed for reproducibility.
-        Returns:
-            A tuple of DNADataset instances: (train, test, validation)
         """
         # First, split off test+validation from training data
         split_result = self.dataset.train_test_split(test_size=test_size + val_size, seed=seed)
@@ -376,7 +389,7 @@ class DNADataset:
     
     def shuffle(self, seed: int = None):
         """
-        Shuffle the dataset
+        Shuffle the dataset.
         
         Args:
             seed (int): Random seed for reproducibility.
@@ -390,7 +403,7 @@ class DNADataset:
         Args:
             minl (int): Minimum length of the sequences.
             maxl (int): Maximum length of the sequences.
-            gc (tuple): GC content range.
+            gc (tuple): GC content range between 0 and 1.
             valid_chars (str): Allowed characters in the sequences.
         """
         self.dataset = self.dataset.filter(
@@ -403,12 +416,13 @@ class DNADataset:
                               label_func = None, append: bool = False):
         """
         Replace the current dataset with randomly generated DNA sequences.
+
         Args:
             minl: int, minimum length of the sequences
             maxl: int, maximum length of the sequences, default is the same as minl
             samples: int, number of sequences to generate, default 1
-            with_N: bool, whether to include N in the base map, default False
             gc: tuple, GC content range, default (0,1)
+            N_ratio: float, include N base in the generated sequence, default 0.0
             padding_size: int, padding size for sequence length, default 0
             seed: int, random seed, default None
             label_func (callable, optional): A function that generates a label from a sequence.
@@ -519,13 +533,15 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, reverse, complement, sep)
     
-    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False):
+    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False) -> any:
         """
         Randomly sample a fraction of the dataset.
+
         Args:
             ratio (float): Fraction of the dataset to sample. Default is 1.0 (no sampling).
             seed (int): Random seed for reproducibility.
             overwrite (bool): Whether to overwrite the original dataset with the sampled one.
+
         Returns:
             A sampled dataset.
         """
@@ -543,13 +559,14 @@ class DNADataset:
         else:
             return dataset
     
-    def head(self, head: int=10, show: bool=False):
+    def head(self, head: int=10, show: bool=False) -> dict:
         """
         Fetch the head n data from the dataset
         
         Args:
             head (int): Number of samples to fetch.
             show (bool): Whether to print the data or return it.
+
         Returns:
             dict: A dictionary containing the first n samples.
         """
@@ -589,12 +606,13 @@ class DNADataset:
         """
         self.head(head=head, show=True)            
 
-    def iter_batches(self, batch_size: int):
+    def iter_batches(self, batch_size: int) -> Dataset:
         """
         Generator that yields batches of examples from the dataset.
         
         Args:
             batch_size (int): Size of each batch.
+
         Yields:
             A batch of examples.
         """
@@ -616,67 +634,3 @@ class DNADataset:
         else:
             return self.dataset[idx]
 
-
-
-# Load data (fasta or csv format)
-def load_fasta_data(data, labels=None, data_type='', sample=1e8, seed=7):
-    # check if the data is existed
-    if not data:
-        return {}
-    if not os.path.exists(data):
-        return {}
-
-    # Generate data dictionary
-    dic = {'idx': [], 'sequence': [], 'label': []}
-    idx = 0
-    with open(data) as infile:
-        for line in tqdm(infile, desc=data_type):
-            if line.startswith(">"):
-                name = line.strip()[1:].split("|")[0]
-                name = "_".join(name.split("_")[:-1])
-                label_info = line.strip()[1:].split("|")[1:]
-                label = label_info[0]
-            else:
-                seq = line.strip()
-                dic['idx'].append(name)
-                dic['sequence'].append(seq)
-                if labels:
-                    dic['label'].append(int(label))
-                else:
-                    dic['label'].append(float(label))
-                idx += 1
-    # random sampling for fasta format data
-    if sample < idx:
-        random.seed(seed)
-        print('Downsampling %s data to %s.' % (data_type, sample))
-        indices = random.sample(range(idx), k=sample)
-        sampled_dic = {'idx': [], 'sequence': [], 'label': []}
-        # for label in labels:
-        #     sampled_dic.update({label: []})
-        for i in tqdm(indices):
-            sampled_dic['idx'].append(dic['idx'][i])
-            sampled_dic['sequence'].append(dic['sequence'][i])
-            sampled_dic['label'].append(dic['label'][i])
-        return sampled_dic
-    else:
-        return dic
-
-
-def load_csv_data(train_data, eval_data=None, test_data=None, labels=None, split=0.1, shuffle=False, sample=1e8, seed=7):
-    dataset ={}
-    if train_data.endswith(".csv"):
-        if eval_data and test_data:
-            data_files = {'train': train_data, 'dev': eval_data, 'test': test_data}
-            dataset = load_dataset('csv', data_files=data_files)
-        elif eval_data:
-            data_files = {'train': train_data, 'dev': eval_data}
-            dataset = load_dataset('csv', data_files=data_files)
-        elif test_data:
-            data_files = {'train': train_data, 'test': test_data}
-            dataset = load_dataset('csv', data_files=data_files)
-        else:
-            dataset = load_dataset('csv', data_files=train_data)
-            dataset = dataset['train'].train_test_split(test_size=split)
-        if shuffle:
-            dataset["train"] = dataset["train"].shuffle(seed)
-    return dataset

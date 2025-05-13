@@ -1,5 +1,6 @@
 import os
 from typing import Optional, Dict
+from collections.abc import Callable
 from transformers import Trainer, TrainingArguments
 from datasets import DatasetDict
 
@@ -11,7 +12,7 @@ DNA Language Model Trainer Module
 
 This module implements the training process management for DNA language models, with the following main features:
 
-1. DNALLMTrainer Class
+1. DNATrainer Class
    - Unified management of model training, evaluation, and prediction processes
    - Support for multiple task types (classification, regression)
    - Integration of task-specific prediction heads
@@ -70,7 +71,7 @@ class DNATrainer:
     
     def __init__(
         self,
-        model,
+        model: any,
         config: dict,
         datasets: Optional[DNADataset] = None,
         extra_args: Optional[Dict] = None,
@@ -158,7 +159,7 @@ class DNATrainer:
             data_collator=data_collator,
         )
 
-    def compute_task_metrics(self):
+    def compute_task_metrics(self) -> Callable:
         """Compute task-specific evaluation metrics.
 
         Returns:
