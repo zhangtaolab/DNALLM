@@ -54,11 +54,11 @@ Example:
 
 class DNAPredictor:
     """DNA sequence predictor using fine-tuned models.
-    
+
     This class provides functionality for making predictions using DNA language models.
     It handles model loading, inference, and result processing.
     """
-    
+
     def __init__(
         self,
         model: any,
@@ -66,13 +66,13 @@ class DNAPredictor:
         config: dict
     ):
         """Initialize the predictor.
-        
+
         Args:
             model: Fine-tuned model instance.
             tokenizer: Tokenizer for the model.
             config: Configuration dictionary containing task settings and inference parameters.
         """
-        
+
         self.model = model
         self.tokenizer = tokenizer
         self.task_config = config['task']
@@ -86,10 +86,10 @@ class DNAPredictor:
 
     def _get_device(self):
         """Get the appropriate device for model inference.
-        
+
         Returns:
             torch.device: The device to use for model inference.
-            
+
         Raises:
             ValueError: If the specified device type is not supported.
         """
@@ -144,9 +144,10 @@ class DNAPredictor:
                          seq_col: str="sequence", label_col: str="labels",
                          sep: str = None, fasta_sep: str = "|",
                          multi_label_sep: Union[str, None] = None,
+                         uppercase: bool=False, lowercase: bool=False,
                          keep_seqs: bool=True, do_encode: bool=True) -> tuple:
         """Generate dataset from sequences.
-        
+
         Args:
             seq_or_path: Single sequence or path to a file containing sequences.
             batch_size: Batch size for DataLoader.
@@ -155,14 +156,16 @@ class DNAPredictor:
             sep (str, optional): Delimiter for CSV, TSV, or TXT files.
             fasta_sep (str, optional): Delimiter for FASTA files.
             multi_label_sep (str, optional): Delimiter for multi-label sequences.
+            uppercase (bool): Whether to convert sequences to uppercase.
+            lowercase (bool): Whether to convert sequences to lowercase.
             keep_seqs: Whether to keep sequences in the dataset.
             do_encode: Whether to encode sequences.
-            
+
         Returns:
             tuple: A tuple containing:
                 - Dataset object
                 - DataLoader object
-                
+
         Raises:
             ValueError: If input is neither a file path nor a list of sequences.
         """
@@ -188,7 +191,7 @@ class DNAPredictor:
         # Encode sequences
         if do_encode:
             task_type = self.task_config.task_type
-            dataset.encode_sequences(remove_unused_columns=True, task=task_type)
+            dataset.encode_sequences(remove_unused_columns=True, task=task_type, uppercase=uppercase, lowercase=lowercase)
         if "labels" in dataset.dataset.features:
             self.labels = dataset.dataset["labels"]
         # Create DataLoader
@@ -202,15 +205,15 @@ class DNAPredictor:
 
     def logits_to_preds(self, logits: list) -> tuple[torch.Tensor, list]:
         """Convert model logits to predictions.
-        
+
         Args:
             logits: Model output logits.
-            
+
         Returns:
             tuple: A tuple containing:
                 - torch.Tensor: Model predictions
                 - list: Human-readable labels
-                
+
         Raises:
             ValueError: If task type is not supported.
         """
@@ -251,10 +254,10 @@ class DNAPredictor:
 
     def format_output(self, predictions: tuple[torch.Tensor, list]) -> dict:
         """Format output predictions.
-        
+
         Args:
             predictions: Tuple containing predictions.
-            
+
         Returns:
             dict: Dictionary containing formatted predictions.
         """
@@ -270,7 +273,7 @@ class DNAPredictor:
             formatted_predictions[i] = {
                 'sequence': self.sequences[i] if keep_seqs else '',
                 'label': label,
-                'scores': {label_names[j]: p for j, p in enumerate(prob)} if task_type != "token" 
+                'scores': {label_names[j]: p for j, p in enumerate(prob)} if task_type != "token"
                           else [max(x) for x in prob],
             }
         return formatted_predictions
@@ -280,13 +283,13 @@ class DNAPredictor:
                       output_hidden_states: bool=False,
                       output_attentions: bool=False) -> tuple[torch.Tensor, list]:
         """Predict for a batch of sequences.
-        
+
         Args:
             dataloader: DataLoader object containing sequences.
             do_pred: Whether to do prediction.
             output_hidden_states: Whether to output hidden states.
             output_attentions: Whether to output attentions.
-            
+
         Returns:
             tuple: A tuple containing:
                 - torch.Tensor: All logits
@@ -368,20 +371,20 @@ class DNAPredictor:
             predictions = self.format_output(predictions)
         return all_logits, predictions, embeddings
 
-    def predict_seqs(self, sequences: Union[str, List[str]], 
+    def predict_seqs(self, sequences: Union[str, List[str]],
                      evaluate: bool = False,
                      output_hidden_states: bool=False,
                      output_attentions: bool=False,
                      save_to_file: bool = False) -> Union[tuple, dict]:
         """Predict for sequences.
-        
+
         Args:
             sequences: Single sequence or list of sequences.
             evaluate: Whether to evaluate the predictions.
             output_hidden_states: Whether to output hidden states and attentions.
             output_attentions: Whether to output attentions.
             save_to_file: Whether to save predictions to file.
-            
+
         Returns:
             Union[tuple, dict]: Either:
                 - Dictionary containing predictions
@@ -397,8 +400,8 @@ class DNAPredictor:
         if output_hidden_states or output_attentions:
             self.embeddings = embeddings
         # Save predictions
-        if save_to_file and self.config.output_dir:
-            save_predictions(predictions, Path(self.config.output_dir))
+        if save_to_file and self.pred_config.output_dir:
+            save_predictions(predictions, Path(self.pred_config.output_dir))
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
@@ -407,8 +410,8 @@ class DNAPredictor:
                 del metrics_save['curve']
             if 'scatter' in metrics_save:
                 del metrics_save['scatter']
-            if save_to_file and self.config.output_dir:
-                save_metrics(metrics_save, Path(self.config.output_dir))
+            if save_to_file and self.pred_config.output_dir:
+                save_metrics(metrics_save, Path(self.pred_config.output_dir))
             return predictions, metrics
 
         return predictions
@@ -420,9 +423,10 @@ class DNAPredictor:
                      seq_col: str="sequence", label_col: str="labels",
                      sep: str = None, fasta_sep: str = "|",
                      multi_label_sep: Union[str, None] = None,
+                     uppercase: bool=False, lowercase: bool=False,
                      save_to_file: bool=False, plot_metrics: bool=False) -> Union[tuple, dict]:
         """Predict from a file containing sequences.
-        
+
         Args:
             file_path: Path to the file containing sequences.
             evaluate: Whether to evaluate the predictions.
@@ -433,9 +437,11 @@ class DNAPredictor:
             sep (str, optional): Delimiter for CSV, TSV, or TXT files.
             fasta_sep (str, optional): Delimiter for FASTA files.
             multi_label_sep (str, optional): Delimiter for multi-label sequences.
+            uppercase (bool): Whether to convert sequences to uppercase.
+            lowercase (bool): Whether to convert sequences to lowercase.
             save_to_file: Whether to save predictions to file.
             plot_metrics: Whether to plot metrics.
-            
+
         Returns:
             Union[tuple, dict]: Either:
                 - List of dictionaries containing predictions
@@ -444,6 +450,7 @@ class DNAPredictor:
         # Get dataset and dataloader from file
         _, dataloader = self.generate_dataset(file_path, seq_col=seq_col, label_col=label_col,
                                               sep=sep, fasta_sep=fasta_sep, multi_label_sep=multi_label_sep,
+                                              uppercase=uppercase, lowercase=lowercase,
                                               batch_size=self.pred_config.batch_size)
         # Do batch prediction
         if output_attentions:
@@ -455,8 +462,8 @@ class DNAPredictor:
         if output_hidden_states or output_attentions:
             self.embeddings = embeddings
         # Save predictions
-        if save_to_file and self.config.output_dir:
-            save_predictions(predictions, Path(self.config.output_dir))
+        if save_to_file and self.pred_config.output_dir:
+            save_predictions(predictions, Path(self.pred_config.output_dir))
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels, plot=plot_metrics)
@@ -465,8 +472,8 @@ class DNAPredictor:
                 del metrics_save['curve']
             if 'scatter' in metrics_save:
                 del metrics_save['scatter']
-            if save_to_file and self.config.output_dir:
-                save_metrics(metrics, Path(self.config.output_dir))
+            if save_to_file and self.pred_config.output_dir:
+                save_metrics(metrics, Path(self.pred_config.output_dir))
             # Whether to plot metrics
             if plot_metrics:
                 return predictions, metrics
@@ -478,26 +485,26 @@ class DNAPredictor:
     def calculate_metrics(self, logits: Union[List, torch.Tensor],
                           labels: Union[List, torch.Tensor], plot: bool=False) -> dict:
         """Calculate evaluation metrics.
-        
+
         Args:
             logits: Model predictions.
             labels: True labels.
             plot: Whether to plot metrics.
-            
+
         Returns:
             dict: Dictionary containing evaluation metrics.
         """
         # Calculate metrics based on task type
         compute_metrics = Metrics(self.task_config, plot=plot)
         metrics = compute_metrics((logits, labels))
-        
+
         return metrics
 
     def plot_attentions(self, seq_idx: int = 0, layer: int = -1, head: int = -1,
                         width: int = 800, height: int = 800,
                         save_path: Optional[str] = None) -> None:
         """Plot attention map.
-        
+
         Args:
             seq_idx: Index of the sequence to plot.
             layer: Layer index to plot.
@@ -505,7 +512,7 @@ class DNAPredictor:
             width: Width of the plot.
             height: Height of the plot.
             save_path: Path to save the plot.
-            
+
         Returns:
             None: If no attention weights are available.
             object: Attention map visualization if available.
@@ -533,14 +540,14 @@ class DNAPredictor:
                            ncols: int=4, width: int = 300, height: int = 300,
                            save_path: Optional[str] = None) -> None:
         """Embedding visualization.
-        
+
         Args:
             reducer: Dimensionality reduction method to use.
             ncols: Number of columns in the plot grid.
             width: Width of the plot.
             height: Height of the plot.
             save_path: Path to save the plot.
-            
+
         Returns:
             None: If no hidden states are available.
             object: Embedding visualization if available.
@@ -570,26 +577,26 @@ class DNAPredictor:
 
 def save_predictions(predictions: Dict, output_dir: Path) -> None:
     """Save predictions to files.
-    
+
     Args:
         predictions: Dictionary containing predictions.
         output_dir: Directory to save predictions.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save predictions
     with open(output_dir / "predictions.json", "w") as f:
         json.dump(predictions, f, indent=4)
 
 def save_metrics(metrics: Dict, output_dir: Path) -> None:
     """Save metrics to files.
-    
+
     Args:
         metrics: Dictionary containing metrics.
         output_dir: Directory to save metrics.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save metrics
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=4)
