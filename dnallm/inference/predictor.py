@@ -142,6 +142,8 @@ class DNAPredictor:
 
     def generate_dataset(self, seq_or_path: Union[str, List[str]], batch_size: int=1,
                          seq_col: str="sequence", label_col: str="labels",
+                         sep: str = None, fasta_sep: str = "|",
+                         multi_label_sep: Union[str, None] = None,
                          keep_seqs: bool=True, do_encode: bool=True) -> tuple:
         """Generate dataset from sequences.
         
@@ -150,6 +152,9 @@ class DNAPredictor:
             batch_size: Batch size for DataLoader.
             seq_col: Column name for sequences.
             label_col: Column name for labels.
+            sep (str, optional): Delimiter for CSV, TSV, or TXT files.
+            fasta_sep (str, optional): Delimiter for FASTA files.
+            multi_label_sep (str, optional): Delimiter for multi-label sequences.
             keep_seqs: Whether to keep sequences in the dataset.
             do_encode: Whether to encode sequences.
             
@@ -166,6 +171,7 @@ class DNAPredictor:
             if suffix and os.path.isfile(seq_or_path):
                 sequences = []
                 dataset = DNADataset.load_local_data(seq_or_path, seq_col=seq_col, label_col=label_col,
+                                                     sep=sep, fasta_sep=fasta_sep, multi_label_sep=multi_label_sep,
                                                      tokenizer=self.tokenizer, max_length=self.pred_config.max_length)
             else:
                 sequences = [seq_or_path]
@@ -412,6 +418,8 @@ class DNAPredictor:
                      output_hidden_states: bool=False,
                      output_attentions: bool=False,
                      seq_col: str="sequence", label_col: str="labels",
+                     sep: str = None, fasta_sep: str = "|",
+                     multi_label_sep: Union[str, None] = None,
                      save_to_file: bool=False, plot_metrics: bool=False) -> Union[tuple, dict]:
         """Predict from a file containing sequences.
         
@@ -422,6 +430,9 @@ class DNAPredictor:
             output_attentions: Whether to output attentions.
             seq_col: Column name for sequences.
             label_col: Column name for labels.
+            sep (str, optional): Delimiter for CSV, TSV, or TXT files.
+            fasta_sep (str, optional): Delimiter for FASTA files.
+            multi_label_sep (str, optional): Delimiter for multi-label sequences.
             save_to_file: Whether to save predictions to file.
             plot_metrics: Whether to plot metrics.
             
@@ -432,6 +443,7 @@ class DNAPredictor:
         """
         # Get dataset and dataloader from file
         _, dataloader = self.generate_dataset(file_path, seq_col=seq_col, label_col=label_col,
+                                              sep=sep, fasta_sep=fasta_sep, multi_label_sep=multi_label_sep,
                                               batch_size=self.pred_config.batch_size)
         # Do batch prediction
         if output_attentions:

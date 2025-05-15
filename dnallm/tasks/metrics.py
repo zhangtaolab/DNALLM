@@ -1,8 +1,11 @@
 import os
 import numpy as np
 from scipy.special import softmax
+from scipy.stats import spearmanr
 from sklearn.metrics import (accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score,
-                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve)
+                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve,
+                             confusion_matrix)
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
 
@@ -59,6 +62,11 @@ def classification_metrics(plot=False):
         metrics["AUROC"] = roc_auc["roc_auc"]
         pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
         metrics["AUPRC"] = pr_auc
+        tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
+        metrics["tpr"] = tp / (tp + fn) if (tp + fn) > 0 else 0
+        metrics["tnr"] = tn / (tn + fp) if (tn + fp) > 0 else 0
+        metrics["fpr"] = fp / (fp + tn) if (fp + tn) > 0 else 0
+        metrics["fnr"] = fn / (fn + tp) if (fn + tp) > 0 else 0
         if plot:
             fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
             precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
@@ -74,24 +82,30 @@ def classification_metrics(plot=False):
 
 
 def regression_metrics(plot=False):
-    mse_metric = evaluate.load(metrics_path + "mse/mse.py")
-    mae_metric = evaluate.load(metrics_path + "mae/mae.py")
-    r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
-    spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
-
-        mse = mse_metric.compute(references=labels, predictions=logits)
-        mae = mae_metric.compute(references=labels, predictions=logits)
-        r2 = r2_metric.compute(references=labels, predictions=logits)
-        spearmanr = spm_metric.compute(references=labels, predictions=logits)
-        metrics = {**mse, **mae, "r2": r2, **spearmanr}
-        if plot:
-            metrics['scatter'] = {
-                'predicted': logits.numpy().flatten(),
-                'experiment': labels
-            }
+        num_outputs = logits.shape[1]
+        if num_outputs > 1:
+            mse = mean_squared_error(labels, logits)
+            mae = mean_absolute_error(labels, logits)
+            r2  = r2_score(labels, logits, multioutput='uniform_average')
+            metrics = {'mse': mse, 'mae': mae, "r2": r2}
+        else:
+            mse_metric = evaluate.load(metrics_path + "mse/mse.py")
+            mae_metric = evaluate.load(metrics_path + "mae/mae.py")
+            r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
+            spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
+            mse = mse_metric.compute(references=labels, predictions=logits)
+            mae = mae_metric.compute(references=labels, predictions=logits)
+            r2 = r2_metric.compute(references=labels, predictions=logits)
+            spearmanr = spm_metric.compute(references=labels, predictions=logits)
+            metrics = {**mse, **mae, "r2": r2, **spearmanr}
+            if plot:
+                metrics['scatter'] = {
+                    'predicted': logits.numpy().flatten(),
+                    'experiment': labels
+                }
         return metrics
 
     return compute_metrics
@@ -152,6 +166,8 @@ def multi_labels_metrics(label_list, plot=False):
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        logits = logits.numpy()
+        labels = labels.numpy()
         pred_probs = sigmoid(logits)
         raw_pred = (pred_probs > 0.5).astype(int)
         predictions = (pred_probs > 0.5).astype(int).reshape(-1)
@@ -181,6 +197,22 @@ def multi_labels_metrics(label_list, plot=False):
         metrics['MCC'] = np.mean(list(mcc_per_label.values()))
         metrics['AUROC'] = np.mean(list(roc_auc.values()))
         metrics['AUPRC'] = np.mean(list(pr_auc.values()))
+        tpr_list, tnr_list, fpr_list, fnr_list = [], [], [], []
+        for y_p, y_t in zip(raw_pred, labels):
+            tp = int(np.logical_and(y_t==1, y_p==1).sum())
+            tn = int(np.logical_and(y_t==0, y_p==0).sum())
+            fp = int(np.logical_and(y_t==0, y_p==1).sum())
+            fn = int(np.logical_and(y_t==1, y_p==0).sum())
+            # 避免除 0
+            tpr_list.append(tp/(tp+fn) if (tp+fn)>0 else 0)
+            tnr_list.append(tn/(tn+fp) if (tn+fp)>0 else 0)
+            fpr_list.append(fp/(fp+tn) if (fp+tn)>0 else 0)
+            fnr_list.append(fn/(fn+tp) if (fn+tp)>0 else 0)
+        metrics["tpr"] = float(np.mean(tpr_list))
+        metrics["tnr"] = float(np.mean(tnr_list))
+        metrics["fpr"] = float(np.mean(fpr_list))
+        metrics["fnr"] = float(np.mean(fnr_list))
+
         if plot:
             metrics["curve"] = {}
             for label in label_list:
