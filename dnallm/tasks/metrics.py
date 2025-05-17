@@ -4,7 +4,7 @@ from scipy.special import softmax
 from scipy.stats import spearmanr
 from sklearn.metrics import (accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score,
                              average_precision_score, roc_curve, roc_auc_score, precision_recall_curve,
-                             confusion_matrix)
+                             confusion_matrix, multilabel_confusion_matrix)
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
@@ -56,17 +56,25 @@ def classification_metrics(plot=False):
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         predictions = np.argmax(logits, axis=-1)
-        metrics = clf_metrics.compute(predictions=predictions, references=labels)
         pred_probs = softmax(logits, axis=1)
-        roc_auc = auc_metric.compute(references=labels, prediction_scores=pred_probs[:, 1])
-        metrics["AUROC"] = roc_auc["roc_auc"]
-        pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
-        metrics["AUPRC"] = pr_auc
+        # metrics = clf_metrics.compute(predictions=predictions, references=labels)
+        # roc_auc = auc_metric.compute(references=labels, prediction_scores=pred_probs[:, 1])
+        # pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
+        # metrics["AUROC"] = roc_auc["roc_auc"]
+        # metrics["AUPRC"] = pr_auc
+        metrics = {}
+        metrics["accuracy"] = accuracy_score(labels, predictions)
+        metrics["precision"] = precision_score(labels, predictions)
+        metrics["recall"] = recall_score(labels, predictions)
+        metrics["f1"] = f1_score(labels, predictions)
+        metrics["mcc"] = matthews_corrcoef(labels, predictions)
+        metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
+        metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
         tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
-        metrics["tpr"] = tp / (tp + fn) if (tp + fn) > 0 else 0
-        metrics["tnr"] = tn / (tn + fp) if (tn + fp) > 0 else 0
-        metrics["fpr"] = fp / (fp + tn) if (fp + tn) > 0 else 0
-        metrics["fnr"] = fn / (fn + tp) if (fn + tp) > 0 else 0
+        metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
+        metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
+        metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0
+        metrics["FNR"] = fn / (fn + tp) if (fn + tp) > 0 else 0
         if plot:
             fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
             precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
@@ -112,35 +120,62 @@ def regression_metrics(plot=False):
 
 
 def multi_classification_metrics(plot=False):
-    metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
-    metric1 = evaluate.load(metrics_path + "precision/precision.py")
-    metric2 = evaluate.load(metrics_path + "recall/recall.py")
-    metric3 = evaluate.load(metrics_path + "f1/f1.py")
-    metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
-    roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multiclass")
+    # metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
+    # metric1 = evaluate.load(metrics_path + "precision/precision.py")
+    # metric2 = evaluate.load(metrics_path + "recall/recall.py")
+    # metric3 = evaluate.load(metrics_path + "f1/f1.py")
+    # metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
+    # roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multiclass")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         if logits.ndim == 3:
             logits = logits[:, 0, :]  # 调整此处以适应模型结构
-        # predictions = np.argmax(logits, axis=-1)
         pred_probs = softmax(logits, axis=1)
         predictions = np.argmax(logits, axis=-1)
 
-        accuracy = metric0.compute(predictions=predictions, references=labels)
-        precision = metric1.compute(predictions=predictions, references=labels, average="micro")
-        recall = metric2.compute(predictions=predictions, references=labels, average="micro")
-        f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
-        mcc = metric4.compute(predictions=predictions, references=labels)
-        roc_auc_ovr = roc_metric.compute(references=labels,
-                                         prediction_scores=pred_probs,
-                                         multi_class='ovr')
-        roc_auc_ovo = roc_metric.compute(references=labels,
-                                         prediction_scores=pred_probs,
-                                         multi_class='ovo')
-        metrics = {**accuracy, **precision, **recall, **f1, **mcc,
-                   "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
+        metrics = {}
+        metrics["accuracy"] = accuracy_score(labels, predictions)
+        metrics["precision"] = precision_score(labels, predictions, average="macro")
+        metrics["recall"] = recall_score(labels, predictions, average="macro")
+        metrics["f1"] = f1_score(labels, predictions, average="macro")
+        metrics["precision_micro"] = precision_score(labels, predictions, average="micro")
+        metrics["recall_micro"] = recall_score(labels, predictions, average="micro")
+        metrics["f1_micro"] = f1_score(labels, predictions, average="micro")
+        metrics["precision_weighted"] = precision_score(labels, predictions, average="weighted")
+        metrics["recall_weighted"] = recall_score(labels, predictions, average="weighted")
+        metrics["f1_weighted"] = f1_score(labels, predictions, average="weighted")
+        metrics["mcc"] = matthews_corrcoef(labels, predictions)
+        metrics["AUROC"] = roc_auc_score(labels, pred_probs, average="macro", multi_class="ovr")
+        metrics["AUPRC"] = average_precision_score(labels, pred_probs, average="macro")
+        tpr_list, tnr_list, fpr_list, fnr_list = [], [], [], []
+        for label_cnt in multilabel_confusion_matrix(labels, predictions):
+            tn, fp, fn, tp = label_cnt.ravel()
+            # 避免除 0
+            tpr_list.append(tp/(tp+fn) if (tp+fn)>0 else 0)
+            tnr_list.append(tn/(tn+fp) if (tn+fp)>0 else 0)
+            fpr_list.append(fp/(fp+tn) if (fp+tn)>0 else 0)
+            fnr_list.append(fn/(fn+tp) if (fn+tp)>0 else 0)
+        metrics["TPR"] = float(np.mean(tpr_list))
+        metrics["TNR"] = float(np.mean(tnr_list))
+        metrics["FPR"] = float(np.mean(fpr_list))
+        metrics["FNR"] = float(np.mean(fnr_list))
+        # accuracy = metric0.compute(predictions=predictions, references=labels)
+        # precision = metric1.compute(predictions=predictions, references=labels, average="micro")
+        # recall = metric2.compute(predictions=predictions, references=labels, average="micro")
+        # f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
+        # mcc = metric4.compute(predictions=predictions, references=labels)
+        # roc_auc_ovr = roc_metric.compute(references=labels,
+        #                                  prediction_scores=pred_probs,
+        #                                  multi_class='ovr')
+        # roc_auc_ovo = roc_metric.compute(references=labels,
+        #                                  prediction_scores=pred_probs,
+        #                                  multi_class='ovo')
+        # metrics = {**accuracy, **precision, **recall, **f1, **mcc,
+        #            "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
+        # metrics["AUROC_ovr"] = roc_auc_ovr['roc_auc']
+        # metrics["AUROC_ovo"] = roc_auc_ovo['roc_auc']
         if plot:
             fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
             prec, rec, _ = precision_recall_curve(labels, pred_probs[:, 1])
@@ -156,10 +191,10 @@ def multi_classification_metrics(plot=False):
 
 
 def multi_labels_metrics(label_list, plot=False):
-    metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
-    metric1 = evaluate.load(metrics_path + "precision/precision.py")
-    metric2 = evaluate.load(metrics_path + "recall/recall.py")
-    metric3 = evaluate.load(metrics_path + "f1/f1.py")
+    # metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
+    # metric1 = evaluate.load(metrics_path + "precision/precision.py")
+    # metric2 = evaluate.load(metrics_path + "recall/recall.py")
+    # metric3 = evaluate.load(metrics_path + "f1/f1.py")
 
     def sigmoid(x):
         return 1/(1 + np.exp(-x))
@@ -170,14 +205,28 @@ def multi_labels_metrics(label_list, plot=False):
         labels = labels.numpy()
         pred_probs = sigmoid(logits)
         raw_pred = (pred_probs > 0.5).astype(int)
-        predictions = (pred_probs > 0.5).astype(int).reshape(-1)
+        predictions = raw_pred.reshape(-1)
         y_true = labels.astype(int).reshape(-1)
 
-        accuracy = metric0.compute(predictions=predictions, references=y_true)
-        precision = metric1.compute(predictions=predictions, references=y_true, average="micro")
-        recall = metric2.compute(predictions=predictions, references=y_true, average="micro")
-        f1 = metric3.compute(predictions=predictions, references=y_true, average="micro")
-        metrics = {**accuracy, **precision, **recall, **f1}
+        # accuracy = metric0.compute(predictions=predictions, references=y_true)
+        # precision = metric1.compute(predictions=predictions, references=y_true, average="macro")
+        # recall = metric2.compute(predictions=predictions, references=y_true, average="macro")
+        # f1 = metric3.compute(predictions=predictions, references=y_true, average="macro")
+        # metrics = {**accuracy, **precision, **recall, **f1}
+        metrics = {}
+        metrics["accuracy"] = accuracy_score(labels, raw_pred)
+        metrics["precision"] = precision_score(labels, raw_pred, average="macro")
+        metrics["recall"] = recall_score(labels, raw_pred, average="macro")
+        metrics["f1"] = f1_score(labels, raw_pred, average="macro")
+        metrics["precision_micro"] = precision_score(labels, raw_pred, average="micro")
+        metrics["recall_micro"] = recall_score(labels, raw_pred, average="micro")
+        metrics["f1_micro"] = f1_score(labels, raw_pred, average="micro")
+        metrics["precision_weighted"] = precision_score(labels, raw_pred, average="weighted")
+        metrics["recall_weighted"] = recall_score(labels, raw_pred, average="weighted")
+        metrics["f1_weighted"] = f1_score(labels, raw_pred, average="weighted")
+        metrics["precision_samples"] = precision_score(labels, raw_pred, average="samples")
+        metrics["recall_samples"] = recall_score(labels, raw_pred, average="samples")
+        metrics["f1_samples"] = f1_score(labels, raw_pred, average="samples")
         mcc_per_label = {}
         roc_data, roc_auc = {}, {}
         pr_data, pr_auc = {}, {}
@@ -194,24 +243,21 @@ def multi_labels_metrics(label_list, plot=False):
             ap = average_precision_score(labels[:, i], pred_probs[:, i])
             pr_data[label_list[i]] = (prec, rec)
             pr_auc[label_list[i]] = ap
-        metrics['MCC'] = np.mean(list(mcc_per_label.values()))
+        metrics['mcc'] = np.mean(list(mcc_per_label.values()))
         metrics['AUROC'] = np.mean(list(roc_auc.values()))
         metrics['AUPRC'] = np.mean(list(pr_auc.values()))
         tpr_list, tnr_list, fpr_list, fnr_list = [], [], [], []
-        for y_p, y_t in zip(raw_pred, labels):
-            tp = int(np.logical_and(y_t==1, y_p==1).sum())
-            tn = int(np.logical_and(y_t==0, y_p==0).sum())
-            fp = int(np.logical_and(y_t==0, y_p==1).sum())
-            fn = int(np.logical_and(y_t==1, y_p==0).sum())
+        for label_cnt in multilabel_confusion_matrix(labels, raw_pred):
+            tn, fp, fn, tp = label_cnt.ravel()
             # 避免除 0
             tpr_list.append(tp/(tp+fn) if (tp+fn)>0 else 0)
             tnr_list.append(tn/(tn+fp) if (tn+fp)>0 else 0)
             fpr_list.append(fp/(fp+tn) if (fp+tn)>0 else 0)
             fnr_list.append(fn/(fn+tp) if (fn+tp)>0 else 0)
-        metrics["tpr"] = float(np.mean(tpr_list))
-        metrics["tnr"] = float(np.mean(tnr_list))
-        metrics["fpr"] = float(np.mean(fpr_list))
-        metrics["fnr"] = float(np.mean(fnr_list))
+        metrics["TPR"] = float(np.mean(tpr_list))
+        metrics["TNR"] = float(np.mean(tnr_list))
+        metrics["FPR"] = float(np.mean(fpr_list))
+        metrics["FNR"] = float(np.mean(fnr_list))
 
         if plot:
             metrics["curve"] = {}
