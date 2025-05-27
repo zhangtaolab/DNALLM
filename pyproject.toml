@@ -107,6 +107,9 @@ cuda124 = [
 cuda126 = [
     "torch>=2.6.0,<2.7",
 ]
+cuda128 = [
+    "torch>=2.7.0",
+]
 rocm = [
     "torch>=2.5.0,<2.7",
 ]
@@ -141,6 +144,11 @@ url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [[tool.uv.index]]
+name = "torch-cuda128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
 name = "torch-rocm"
 url = "https://download.pytorch.org/whl/rocm6.2"
 explicit = true
@@ -151,6 +159,7 @@ torch = [
   { index = "torch-cuda121", extra = "cuda121" },
   { index = "torch-cuda124", extra = "cuda124" },
   { index = "torch-cuda126", extra = "cuda126" },
+  { index = "torch-cuda128", extra = "cuda128" },
 #   { index = "torch-rocm", extra = "rocm" },
 ]
 
@@ -159,10 +168,14 @@ conflicts = [
   [ { extra = "cpu" }, { extra = "cuda121" } ],
   [ { extra = "cpu" }, { extra = "cuda124" } ],
   [ { extra = "cpu" }, { extra = "cuda126" } ],
-  [ { extra = "cpu" }, { extra = "rocm" } ],
+  [ { extra = "cpu" }, { extra = "cuda128" } ],
+#   [ { extra = "cpu" }, { extra = "rocm" } ],
   [ { extra = "cuda121" }, { extra = "cuda124" } ],
   [ { extra = "cuda121" }, { extra = "cuda126" } ],
+  [ { extra = "cuda121" }, { extra = "cuda128" } ],
   [ { extra = "cuda124" }, { extra = "cuda126" } ],
+  [ { extra = "cuda124" }, { extra = "cuda128" } ],
+  [ { extra = "cuda126" }, { extra = "cuda128" } ],
 #   [ { extra = "cuda121" }, { extra = "rocm" } ],
 #   [ { extra = "cuda124" }, { extra = "rocm" } ],
 #   [ { extra = "cuda126" }, { extra = "rocm" } ],

@@ -59,10 +59,11 @@ plugins:
   - search
   - mkdocstrings:
       handlers:
-            python:
-              options:
-                docstring_style: google  # 或 numpy, 取决于你的风格
-                show_source: true
+        python:
+          options:
+            docstring_style: google  # 或 numpy, 取决于你的风格
+            show_source: true
+            strict: false
 
 markdown_extensions:
   - admonition
