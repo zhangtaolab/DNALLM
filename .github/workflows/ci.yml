@@ -2,10 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - master
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,16 +18,31 @@ jobs:
         python-version: ['3.10', '3.11', '3.12']
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
-    - name: Create venv and install dependencies
-      run: |
-        uv venv
-        uv pip install -e ".[all]"
-    #- name: Run tests
-    #  run: uvx pytest
+      - uses: actions/checkout@v4
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Configure mkdocs cache
+        run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
+      - uses: actions/cache@v3
+        with:
+          key: mkdocs-material-${{ env.cache_id }}
+          path: .cache
+          restore-keys: |
+            mkdocs-material-
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Create venv and install dependencies
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+          uv pip install -e ".[docs]"
+      #- name: Run tests
+      #  run: uvx pytest
+      - name: Deploy mkdocs
+        run: uv run mkdocs gh-deploy --force
