@@ -1,10 +1,10 @@
 import os
 import numpy as np
 from scipy.special import softmax
-from sklearn import metrics as sm
-from sklearn.metrics import accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score, \
-                            average_precision_score, roc_curve, roc_auc_score, precision_recall_curve
-from sklearn.metrics import multilabel_confusion_matrix
+from scipy.stats import spearmanr
+from sklearn.metrics import (accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score,
+                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve,
+                             confusion_matrix, multilabel_confusion_matrix)
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
@@ -70,7 +70,7 @@ def classification_metrics(plot=False):
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
         metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
         metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
-        tn, fp, fn, tp = sm.confusion_matrix(labels, predictions).ravel()
+        tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
         metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
         metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0
@@ -201,8 +201,10 @@ def multi_labels_metrics(label_list, plot=False):
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
-        logits = logits.numpy()
-        labels = labels.numpy()
+        if hasattr(logits, 'numpy'):
+            logits = logits.numpy()
+        if hasattr(labels, 'numpy'):
+            labels = labels.numpy()
         pred_probs = sigmoid(logits)
         raw_pred = (pred_probs > 0.5).astype(int)
         predictions = raw_pred.reshape(-1)

@@ -266,6 +266,7 @@ class DNADataset:
             pad_id = self.tokenizer.encode(pad_token)[-1] if pad_token else None
             cls_token = sp_token_map['cls_token'] if 'cls_token' in sp_token_map else None
             sep_token = sp_token_map['sep_token'] if 'sep_token' in sp_token_map else None
+            eos_token = sp_token_map['eos_token'] if 'eos_token' in sp_token_map else None
             max_length = self.max_length
         else:
             raise ValueError("Tokenizer not provided.")
@@ -294,7 +295,7 @@ class DNADataset:
             if isinstance(input_seqs, str):
                 input_seqs = input_seqs.split(self.multi_label_sep)
             for i, example_tokens in enumerate(input_seqs):
-                all_ids = [x for x in self.tokenizer.encode(example_tokens, is_split_into_words=True) if x>=0]
+                all_ids = [x for x in self.tokenizer.encode(example_tokens, is_split_into_words=True)]
                 if 'labels' in examples:
                     example_ner_tags = examples['labels'][i]
                 else:
@@ -306,6 +307,9 @@ class DNADataset:
                     if cls_token:
                         if sep_token:
                             example_tokens = [cls_token] + example_tokens + [sep_token] + [pad_token] * pad_len
+                            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
+                        elif eos_token:
+                            example_tokens = [cls_token] + example_tokens + [eos_token] + [pad_token] * pad_len
                             example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
                         else:
                             example_tokens = [cls_token] + example_tokens + [pad_token] * pad_len

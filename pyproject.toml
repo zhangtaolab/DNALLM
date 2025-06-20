@@ -182,6 +182,7 @@ conflicts = [
 ]
 
 [project.scripts]
+dnallm = "dnallm.cli.cli:cli"
 dnallm-train = "dnallm.cli.train:main"
 dnallm-predict = "dnallm.cli.predict:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"

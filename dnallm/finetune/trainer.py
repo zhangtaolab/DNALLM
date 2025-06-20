@@ -1,8 +1,10 @@
 import os
 from typing import Optional, Dict
 from collections.abc import Callable
-from transformers import Trainer, TrainingArguments
+import torch
 from datasets import DatasetDict
+from transformers import Trainer, TrainingArguments
+from peft import get_peft_model, LoraConfig, TaskType
 
 from ..datasets.data import DNADataset
 from ..tasks.metrics import compute_metrics
@@ -75,6 +77,7 @@ class DNATrainer:
         config: dict,
         datasets: Optional[DNADataset] = None,
         extra_args: Optional[Dict] = None,
+        use_lora: bool = False,
     ):
         """Initialize the DNA trainer.
 
@@ -83,12 +86,27 @@ class DNATrainer:
             config (dict): Configuration dictionary containing task and training settings.
             datasets (DNADataset, optional): Dataset for training and evaluation.
             extra_args (Dict, optional): Additional training arguments to override defaults.
+            use_lora (bool): Use LoRA for finetuning.
         """
         self.model = model
         self.task_config = config['task']
         self.train_config = config['finetune']
         self.datasets = datasets
         self.extra_args = extra_args
+
+        # LoRA
+        if use_lora:
+            print("[Info] Applying LoRA to the model...")
+            lora_config = LoraConfig(
+                **config["lora"]
+            )
+            self.model = get_peft_model(self.model, lora_config)
+            self.model.print_trainable_parameters()
+        
+        # Multi-GPU support
+        if torch.cuda.device_count() > 1:
+            print(f"[Info] Using {torch.cuda.device_count()} GPUs.")
+            self.model = torch.nn.DataParallel(self.model)
         
         self.set_up_trainer()
     
@@ -113,12 +131,12 @@ class DNATrainer:
         if isinstance(self.datasets.dataset, DatasetDict):        
             self.data_split = self.datasets.dataset.keys()
         else:
-            self.data_split = [None]
+            self.data_split = []
         # Get datasets
         if "train" in self.data_split:
             train_dataset = self.datasets.dataset["train"]
         else:
-            if len(self.data_split) == 1:
+            if len(self.data_split) == 0:
                 train_dataset = self.datasets.dataset
             else:
                 raise KeyError("Cannot find train data.")
@@ -129,6 +147,7 @@ class DNATrainer:
             eval_dataset = self.datasets.dataset['test']
         else:
             eval_dataset = None
+            self.training_args.eval_strategy = "no"
         
         # Get compute metrics
         compute_metrics = self.compute_task_metrics()
@@ -167,12 +186,12 @@ class DNATrainer:
         """
         return compute_metrics(self.task_config)
 
-    def train(self, save_tokenizer: bool = False) -> Dict[str, float]:
+    def train(self, save_tokenizer: bool = True) -> Dict[str, float]:
         """Train the model and return training metrics.
 
         Args:
             save_tokenizer (bool, optional): Whether to save the tokenizer along with the model.
-                Defaults to False.
+                Defaults to True.
 
         Returns:
             Dict[str, float]: Dictionary containing training metrics.
