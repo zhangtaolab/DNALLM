@@ -44,6 +44,7 @@ MODEL_INFO = {
         "model_tags": ["1b"],
         "huggingface": ["InstaDeepAI/agro-nucleotide-transformer-1b"],
         "modelscope": ["ZhejiangLab-LifeScience/agro-nucleotide-transformer-1b"],
+        "default": "lgq12697/agro-nucleotide-transformer-1b",
     },
     "Caduceus-Ph": {
         "title": "Caduceus: Bi-Directional Equivariant Long-Range DNA Sequence Modeling",
@@ -60,6 +61,7 @@ MODEL_INFO = {
             "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
     },
     "Caduceus-PS": {
         "title": "Caduceus: Bi-Directional Equivariant Long-Range DNA Sequence Modeling",
@@ -76,6 +78,7 @@ MODEL_INFO = {
             "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
     },
     "PlantCaduceus": {
         "title": "Cross-species modeling of plant genomes at single nucleotide resolution using a pre-trained DNA language model",
@@ -89,6 +92,7 @@ MODEL_INFO = {
             "kuleshov-group/PlantCaduceus_l32",
         ],
         "modelscope": [None, None, None, None,],
+        "default": "lgq12697/PlantCaduceus_l20",
     },
     "DNABERT": {
         "title": "DNABERT: pre-trained Bidirectional Encoder Representations from Transformers model for DNA-language in genome",
@@ -97,6 +101,7 @@ MODEL_INFO = {
         "model_tags": ["3mer", "4mer", "5mer", "6mer"],
         "huggingface": ["zhihan1996/DNA_bert_3", "zhihan1996/DNA_bert_4", "zhihan1996/DNA_bert_5", "zhihan1996/DNA_bert_6"],
         "modelscope": [None, "ZhejiangLab-LifeScience/DNA_bert_4", "ZhejiangLab-LifeScience/DNA_bert_5", "ZhejiangLab-LifeScience/DNA_bert_6"],
+        "default": "lgq12697/DNA_bert_6",
     },
     "DNABERT-2": {
         "title": "DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome",
@@ -105,6 +110,7 @@ MODEL_INFO = {
         "model_tags": ["117M"],
         "huggingface": ["zhihan1996/DNABERT-2-117M"],
         "modelscope": ["ZhejiangLab-LifeScience/DNABERT-2-117M"],
+        "default": "lgq12697/DNABERT-2-117M",
     },
     "DNABERT-S": {
         "title": "DNABERT-S: Pioneering Species Differentiation with Species-Aware DNA Embeddings",
@@ -113,6 +119,7 @@ MODEL_INFO = {
         "model_tags": ["base"],
         "huggingface": ["zhihan1996/DNABERT-S"],
         "modelscope": [None,],
+        "default": "lgq12697/DNABERT-S",
     },
     "GENA-LM": {
         "title": "GENA-LM: a family of open-source foundational DNA language models for long sequences",
@@ -129,6 +136,7 @@ MODEL_INFO = {
             "AIRI-Institute/gena-lm-bert-base-large-t2t",
         ],
         "modelscope": [None, None, None, None, None, None, None,],
+        "default": "lgq12697/gena-lm-bert-base",
     },
     "GENA-LM-BigBird": {
         "title": "GENA-LM: a family of open-source foundational DNA language models for long sequences",
@@ -141,6 +149,7 @@ MODEL_INFO = {
             "AIRI-Institute/gena-lm-bigbird-base-t2t",
         ],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/gena-lm-bigbird-base-sparse",
     },
     "GENERator": {
         "title": "GENERator: A Long-Context Generative Genomic Foundation Model",
@@ -154,6 +163,7 @@ MODEL_INFO = {
             "GenerTeam/GENERanno-eukaryote-3b-base",
         ],
         "modelscope": [None, None, None, None,],
+        "default": "lgq12697/GENERanno-eukaryote-0.5b-base",
     },
     "GenomeOcean": {
         "title": "GenomeOcean: An Efficient Genome Foundation Model Trained on Large-Scale Metagenomic Assemblies",
@@ -166,6 +176,7 @@ MODEL_INFO = {
             "pGenomeOcean/GenomeOcean-4B",
         ],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/GenomeOcean-100M",
     },
     "GPN": {
         "title": "DNA language models are powerful predictors of genome-wide variant effects",
@@ -174,6 +185,7 @@ MODEL_INFO = {
         "model_tags": ["brassicales"],
         "huggingface": ["songlab/gpn-brassicales"],
         "modelscope": [None,],
+        "default": "lgq12697/gpn-brassicales",
         "dependencies": "pip install git+https://github.com/songlab-cal/gpn.git",
     },
     "GROVER": {
@@ -183,6 +195,7 @@ MODEL_INFO = {
         "model_tags": ["base"],
         "huggingface": ["PoetschLab/GROVER"],
         "modelscope": [None,],
+        "default": "lgq12697/GROVER",
     },
     "HyenaDNA": {
         "title": "HyenaDNA: Long-Range Genomic Sequence Modeling at Single Nucleotide Resolution",
@@ -212,6 +225,7 @@ MODEL_INFO = {
             None,
             "ZhejiangLab-LifeScience/hyenadna-large-1m-seqlen-hf",
         ],
+        "default": "lgq12697/hyenadna-tiny-1k-seqlen-hf",
     },
     "Jamba-DNA": {
         "title": "Training on large language models for genomics",
@@ -220,6 +234,7 @@ MODEL_INFO = {
         "model_tags": ["v1-114M-hg38",],
         "huggingface": ["RaphaelMourad/Jamba-DNA-v1-114M-hg38",],
         "modelscope": [None,],
+        "default": "lgq12697/Jamba-DNA-v1-114M-hg38",
     },
     "Mistral-DNA": {
         "title": "Mistral-DNA: Mistral large language model for DNA sequences",
@@ -236,6 +251,7 @@ MODEL_INFO = {
                         "RaphaelMourad/Mistral-DNA-v1-138M-yeast", "RaphaelMourad/Mistral-DNA-v1-138M-bacteriophage",
                         "RaphaelMourad/Mistral-DNA-v1-138M-plasmid", "RaphaelMourad/Mistral-DNA-v1-417M-Athaliana",],
         "modelscope": [None, None, None, None, None, None, None, None, None, None,],
+        "default": "lgq12697/Mistral-DNA-v1-138M-hg38",
     },
     "ModernBERT-DNA": {
         "title": "Training on large language models for genomics",
@@ -245,6 +261,7 @@ MODEL_INFO = {
         "huggingface": ["RaphaelMourad/ModernBERT-DNA-v1-37M-hg38", "RaphaelMourad/ModernBERT-DNA-v1-37M-Athaliana",
                         "RaphaelMourad/ModernBert-DNA-v1-37M-virus"],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/ModernBERT-DNA-v1-37M-hg38",
     },
     "MutBERT": {
         "title": "MutBERT: Probabilistic Genome Representation Improves Genomics Foundation Models",
@@ -254,6 +271,7 @@ MODEL_INFO = {
         "huggingface": ["JadenLong/MutBERT-Human-Ref", "JadenLong/MutBERT",
                         "JadenLong/MutBERT-Multi"],
         "modelscope": [None, None, None,],
+        "default": "lgq12697/MutBERT-Human-Ref",
     },
     "Nucleotide Transformer": {
         "title": "Nucleotide Transformer: building and evaluating robust foundation models for human genomics",
@@ -283,6 +301,7 @@ MODEL_INFO = {
             None,
             None,
         ],
+        "default": "lgq12697/nucleotide-transformer-v2-100m-multi-species",
     },
     "OmniNA": {
         "title": "OmniNA: A foundation model for nucleotide sequences",
@@ -291,6 +310,7 @@ MODEL_INFO = {
         "model_tags": ["66m", "220m"],
         "huggingface": ["XLS/OmniNA-66m", "XLS/OmniNA-220m"],
         "modelscope": [None, None,],
+        "default": "lgq12697/OmniNA-66m",
     },
     "Omni-DNA": {
         "title": "Omni-DNA: A Unified Genomic Foundation Model for Cross-Modal and Multi-Task Learning",
@@ -299,6 +319,7 @@ MODEL_INFO = {
         "model_tags": ["20M", "60M", "116M", "300M", "700M", "1B"],
         "huggingface": ["zehui127/Omni-DNA-20M", "zehui127/Omni-DNA-60M", "zehui127/Omni-DNA-116M", "zehui127/Omni-DNA-300M", "zehui127/Omni-DNA-700M", "zehui127/Omni-DNA-1B"],
         "modelscope": [None, None, None, None, None, None,],
+        "default": "lgq12697/Omni-DNA-20M",
         "dependencies": "pip install ai2-olmo",
     },
     "ProkBERT": {
@@ -307,6 +328,7 @@ MODEL_INFO = {
         "model_architecture": "MegatronBertForMaskedLM",
         "model_tags": ["mini", "mini-c", "mini-long"],
         "huggingface": ["neuralbioinfo/prokbert-mini", "neuralbioinfo/prokbert-mini-c", "neuralbioinfo/prokbert-mini-long"],
+        "default": "lgq12697/prokbert-mini",
         "modelscope": [None, None, None,],
     },
     "Plant DNABERT": {
@@ -316,6 +338,7 @@ MODEL_INFO = {
         "model_tags": ["BPE", "6mer", "singlebase"],
         "huggingface": ["zhangtaolab/plant-dnabert-BPE", "zhangtaolab/plant-dnabert-6mer", "zhangtaolab/plant-dnabert-singlebase"],
         "modelscope": ["zhangtaolab/plant-dnabert-BPE", "zhangtaolab/plant-dnabert-6mer", "zhangtaolab/plant-dnabert-singlebase"],
+        "default": "zhangtaolab/plant-dnabert-BPE",
     },
     "Plant DNAGemma": {
         "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
@@ -324,6 +347,7 @@ MODEL_INFO = {
         "model_tags": ["BPE", "6mer", "singlebase"],
         "huggingface": ["zhangtaolab/plant-dnagemma-BPE", "zhangtaolab/plant-dnagemma-6mer", "zhangtaolab/plant-dnagemma-singlebase"],
         "modelscope": ["zhangtaolab/plant-dnagemma-BPE", "zhangtaolab/plant-dnagemma-6mer", "zhangtaolab/plant-dnagemma-singlebase"],
+        "default": "zhangtaolab/plant-dnagemma-BPE",
     },
     "Plant DNAGPT": {
         "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
@@ -332,6 +356,7 @@ MODEL_INFO = {
         "model_tags": ["BPE", "6mer", "singlebase"],
         "huggingface": ["zhangtaolab/plant-dnagpt-BPE", "zhangtaolab/plant-dnagpt-6mer", "zhangtaolab/plant-dnagpt-singlebase"],
         "modelscope": ["zhangtaolab/plant-dnagpt-BPE", "zhangtaolab/plant-dnagpt-6mer", "zhangtaolab/plant-dnagpt-singlebase"],
+        "default": "zhangtaolab/plant-dnagpt-BPE",
     },
     "Plant DNAMamba": {
         "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
@@ -348,6 +373,7 @@ MODEL_INFO = {
             "zhangtaolab/plant-dnamamba-2mer", "zhangtaolab/plant-dnamamba-3mer", "zhangtaolab/plant-dnamamba-4mer", "zhangtaolab/plant-dnamamba-5mer", "zhangtaolab/plant-dnamamba-6mer",
             "zhangtaolab/plant-dnamamba-singlebase",
         ],
+        "default": "zhangtaolab/plant-dnamamba-BPE",
         "dependencies": "pip install 'mamba-ssm<2' 'causal-conv1d<=1.3'",
     },
     "Plant NT": {
@@ -357,6 +383,7 @@ MODEL_INFO = {
         "model_tags": ["BPE", "6mer", "singlebase"],
         "huggingface": ["zhangtaolab/plant-nucleotide-transformer-BPE", "zhangtaolab/plant-nucleotide-transformer-6mer", "zhangtaolab/plant-nucleotide-transformer-singlebase"],
         "modelscope": ["zhangtaolab/plant-nucleotide-transformer-BPE", "zhangtaolab/plant-nucleotide-transformer-6mer", "zhangtaolab/plant-nucleotide-transformer-singlebase"],
+        "default": "zhangtaolab/plant-nucleotide-transformer-BPE",
     },
     "Plant DNAModernBert": {
         "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
@@ -365,5 +392,6 @@ MODEL_INFO = {
         "model_tags": ["BPE"],
         "huggingface": ["zhangtaolab/plant-dnamodernbert-BPE"],
         "modelscope": ["zhangtaolab/plant-dnamodernbert-BPE"],
+        "default": "zhangtaolab/plant-dnamodernbert-BPE",
     },
 }
