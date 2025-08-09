@@ -1,106 +1,106 @@
 # DNALLM - DNA Large Language Model Toolkit
 
-## DNALLM环境构建
+## DNALLM Environment Setup
 
-### 使用uv进行安装和开发
+### Installation and Development with uv
 
-DNALLM使用uv进行依赖管理和打包。
+DNALLM uses uv for dependency management and packaging.
 
-【什么是uv】[uv](https://docs.astral.sh/uv/)是一个快速的Python包管理工具，比pip等传统工具快10-100倍。
+**What is uv?** [uv](https://docs.astral.sh/uv/) is a fast Python package manager that is 10-100x faster than traditional tools like pip.
 
-#### 安装uv
+#### Install uv
 
 ```bash
-# 安装uv
+# Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-#### 安装DNALLM
+#### Install DNALLM
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
 
-# 创建虚拟环境并安装依赖
+# Create virtual environment and install dependencies
 uv venv
 
-# Linux & MacOS 用户
+# Linux & MacOS users
 source .venv/bin/activate
-# Windows 用户
+# Windows users
 .venv\Scripts\activate
 
-# 安装基础依赖
+# Install base dependencies
 uv pip install -e '.[base]'
-## 如果需要指定GPU对应cuda版本，安装完基础依赖后运行如下命令(支持cpu, cuda121, cuda124, cuda126)
+## If you need to specify GPU-corresponding CUDA version, run the following command after installing base dependencies (supports cpu, cuda121, cuda124, cuda126)
 # uv pip install -e '.[cuda124]'
 
 ```
 
-原生mamba架构的运行速度显著优于transformer兼容的mamba架构，不过原生mamba依赖于Nvidia显卡  
-如果需要原生mamba架构支持，安装完DNALLM依赖后，使用以下命令安装：
+Native mamba architecture runs significantly faster than transformer-compatible mamba architecture, but native mamba requires Nvidia GPUs.  
+If you need native mamba architecture support, install it with the following command after installing DNALLM dependencies:
 ```bash
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 ```
-请确保你的机器能够连接到GitHub，不然可能会导致mamba依赖下载失败。
+Please ensure your machine can connect to GitHub, otherwise mamba dependency downloads may fail.
 
 
-### 启动jupyter lab
+### Launch Jupyter Lab
 ```bash
 uv run jupyter lab
 ```
 
-### 启动marimo
+### Launch Marimo
 ```bash
 uv run marimo run xxx.py
 ```
 
 
-## DNALLM功能简介
+## DNALLM Features Overview
 
 - dnallm
   - cli
-    * train (命令行开始训练)
-    * predict (命令行开始推理)
+    * train (command-line training)
+    * predict (command-line inference)
   - configuration
-    * config (模型训练和推理所需的config定义)
+    * config (configuration definitions for model training and inference)
   - datasets
-    * data (数据集生成、读取、清洗、格式化等)
-    * README (使用说明)
+    * data (dataset generation, loading, cleaning, formatting, etc.)
+    * README (usage instructions)
   - finetune
-    * trainer (模型微调训练器)
+    * trainer (model fine-tuning trainer)
   - inference
-    * benchmark (多模型benchmark)
-    * mutagenesis (突变效应分析)
-    * plot (推理结果可视化)
-    * predictor (模型推理)
-  - mcp (模型上下文协议)
-    * server (服务端)
-    * client (客户端)
+    * benchmark (multi-model benchmarking)
+    * mutagenesis (mutation effect analysis)
+    * plot (inference result visualization)
+    * predictor (model inference)
+  - mcp (Model Context Protocol)
+    * server (server side)
+    * client (client side)
   - models
-    * model (读取模型和tokenizer)
-    * modeling_auto (所有支持/待支持的模型说明)
+    * model (load models and tokenizers)
+    * modeling_auto (documentation for all supported/planned models)
   - tasks
-    * metrics (各类任务的评估函数)
-    * task (模型训练和微调支持的任务：二分类、多分类、多标签、回归、命名体识别、MLM、CLM)
+    * metrics (evaluation functions for various tasks)
+    * task (tasks supported for model training and fine-tuning: binary classification, multi-classification, multi-label, regression, named entity recognition, MLM, CLM)
   - utils
-    * sequence (序列相关处理函数)
+    * sequence (sequence-related processing functions)
 - docs
 - example
-  - marimo (交互式模型训练和推理)
+  - marimo (interactive model training and inference)
     - benchmark
     - finetune
     - inference
-  - notebooks (可调用式模型训练和推理)
-    - finetune_multi_labels (多标签任务微调)
-    - finetune_NER_task (命名体识别任务微调)
-    - finetune_plant_dnabert (分类任务微调)
-    - inference_and_benchmark (推理和多模型benchmark)
-- scripts (其他脚本)
-- tests (测试所有功能)
-- pyproject.toml (DNALLM依赖)
+  - notebooks (callable model training and inference)
+    - finetune_multi_labels (multi-label task fine-tuning)
+    - finetune_NER_task (named entity recognition task fine-tuning)
+    - finetune_plant_dnabert (classification task fine-tuning)
+    - inference_and_benchmark (inference and multi-model benchmarking)
+- scripts (other scripts)
+- tests (test all functionality)
+- pyproject.toml (DNALLM dependencies)
 
 
-## 开发与贡献
+## Development and Contribution
 
-请参考[贡献指南](CONTRIBUTING.md)了解如何参与项目开发。
+Please refer to the [Contributing Guide](CONTRIBUTING.md) to learn how to participate in project development.
