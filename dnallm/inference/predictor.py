@@ -600,3 +600,19 @@ def save_metrics(metrics: Dict, output_dir: Path) -> None:
     # Save metrics
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=4)
+
+
+def generate(self, dataloader: DataLoader, n_tokens: int=400, temperature: float=1.0,
+             top_k: int=4) -> dict:
+    """Function for generation task"""
+    if "evo2" in str(self.model):
+        for data in tqdm(dataloader, desc="Generating"):
+            prompt_seqs = data['sequence']
+            if isinstance(prompt_seqs, list):
+                prompt_seqs = [seq for seq in prompt_seqs if seq]
+            if not prompt_seqs:
+                continue
+            # Generate sequences
+            output = self.model.generate(prompt_seqs=prompt_seqs, n_tokens=n_tokens,
+                                         temperature=temperature, top_k=top_k)
+            return output

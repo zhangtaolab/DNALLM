@@ -1,10 +1,11 @@
 import os
 import numpy as np
 from scipy.special import softmax
-from scipy.stats import spearmanr
+# from scipy.stats import spearmanr
+import sklearn.metrics
 from sklearn.metrics import (accuracy_score, matthews_corrcoef, precision_score, recall_score, f1_score,
-                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve,
-                             confusion_matrix, multilabel_confusion_matrix)
+                             average_precision_score, roc_curve, roc_auc_score, precision_recall_curve)
+from sklearn.metrics import multilabel_confusion_matrix
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
@@ -70,7 +71,7 @@ def classification_metrics(plot=False):
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
         metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
         metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
-        tn, fp, fn, tp = confusion_matrix(labels, predictions).ravel()
+        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(labels, predictions).ravel()
         metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
         metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0

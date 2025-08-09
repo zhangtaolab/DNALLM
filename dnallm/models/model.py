@@ -1,8 +1,10 @@
 import os
 import time
+from glob import glob
 from abc import ABC, abstractmethod
 from typing import Optional
 from ..configuration.configs import TaskConfig
+import torch
 
 
 # class BaseDNAModel(ABC):
@@ -17,7 +19,7 @@ from ..configuration.configs import TaskConfig
 #         pass
 
 
-def download_model(model_name: str, downloader, max_try: int=100):
+def download_model(model_name: str, downloader, max_try: int=10):
     # In case network issue, try to download multi-times
     cnt = 0
     while True:
@@ -57,6 +59,11 @@ def download_model(model_name: str, downloader, max_try: int=100):
     return status
 
 
+def is_fp8_capable():
+    major, minor = torch.cuda.get_device_capability()
+    # Hopper (H100) has compute capability 9.0
+    return (major, minor) >= (9, 0)
+
 
 def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: str="local", use_mirror: bool=False) -> tuple:
     """
@@ -71,6 +78,20 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
     Returns:
         tuple: (model, tokenizer)
     """
+    # Special case for models
+    # EVO2 models
+    evo_models = ["evo2_1b_base", "evo2_7b_base", "evo2_40b_base", "evo2_7b", "evo2_40b"]
+    for m in evo_models:
+        if m in model_name.lower():
+            from evo2 import Evo2
+            model_path = glob(model_name + "/*.pt")[0] if os.path.isdir(model_name) else model_name
+            if source.lower() == "local":
+                model = Evo2(m, local_path=model_path, use_fp8=is_fp8_capable())
+            else:
+                model = Evo2(m, use_fp8=is_fp8_capable())
+            tokenizer = model.tokenizer
+            return model, tokenizer
+    
     # Define huggingface mirror
     if use_mirror:
         os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
@@ -162,3 +183,35 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
         model.config.pad_token_id = tokenizer.pad_token_id
 
     return model, tokenizer
+
+
+def load_preset_model(
+    model_name: str,
+    task_config: TaskConfig
+) -> tuple:
+    """
+    Load a preset model and tokenizer based on the task configuration.
+
+    Args:
+        model_name: Name or path of the model.
+        task_config: Task configuration object.
+
+    Returns:
+        tuple: (model, tokenizer)
+    """
+    from modeling_auto import MODEL_INFO
+
+    source = "modelscope"
+    use_mirror = False
+
+    # Load model and tokenizer
+    preset_models = sum([model['preset'] for model in MODEL_INFO], [])
+    if model_name in MODEL_INFO:
+        model_info = MODEL_INFO[model_name]
+        model_name = model_info['model_name']['default']
+    elif model_name in preset_models:
+        pass
+    else:
+        print(f"Model {model_name} not found in preset models. Please check the model name or use `load_model_and_tokenizer` function.")
+        return 0
+    return load_model_and_tokenizer(model_name, task_config, source, use_mirror)
