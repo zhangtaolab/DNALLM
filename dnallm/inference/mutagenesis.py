@@ -59,6 +59,7 @@ class Mutagenesis:
             tokenizer=tokenizer,
             config=self.config
         )
+  
         return predictor
 
     def mutate_sequence(self, sequence, batch_size: int=1,
@@ -166,7 +167,7 @@ class Mutagenesis:
         return raw_score, mut_score, logfc
         
 
-    def evaluate(self, strategy: Union[str, int]="last") -> List[Dict]:
+    def evaluate(self, strategy: Union[str, int]="last", target_index: Union[int]=0) -> List[Dict]:
         """
         Predict using the model.
         
@@ -224,9 +225,12 @@ class Mutagenesis:
             elif strategy == "max":
                 idx = raw_score.index(max(raw_score))
                 score = logfc[idx]
+            elif strategy == "target_index":
+                score = logfc[target_index]
             elif isinstance(strategy, int):
                 score = logfc[strategy]
             all_predictions[mut_name]['score'] = score
+
         
         return all_predictions
 

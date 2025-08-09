@@ -114,9 +114,15 @@ rocm = [
     "torch>=2.5.0,<2.7",
 ]
 mamba = [
-    "mamba-ssm>=2.2",
-    "causal_conv1d>=1.4",
+    "mamba-ssm==2.2.4",
+    "causal_conv1d==1.5.0.post8",
 ]
+
+#mamba = [
+#    "mamba-ssm>=2.2",
+#    "causal_conv1d>=1.4",
+#]
+
 
 [[tool.uv.index]]
 name = "pypi"
