@@ -638,3 +638,40 @@ class DNADataset:
         else:
             return self.dataset[idx]
 
+
+def show_preset_dataset() -> dict:
+    """
+    Show all preset datasets available in Hugging Face or ModelScope.
+
+    Returns:
+        dict: A dictionary containing dataset names and their descriptions.
+    """
+    from .dataset_auto import PRESET_DATASETS
+    return PRESET_DATASETS
+
+
+def load_preset_dataset(dataset_name: str, task: str=None) -> any:
+    """
+    Load a preset dataset from Hugging Face or ModelScope.
+
+    Args:
+        dataset_name (str): Name of the dataset.
+        task (str, optional): Task directory in a dataset.
+
+    Returns:
+        Dataset: An instance wrapping a datasets.Dataset.
+    """
+    from modelscope import MsDataset
+    from .dataset_auto import PRESET_DATASETS
+
+    if dataset_name in PRESET_DATASETS:
+        ds_info = PRESET_DATASETS[dataset_name]
+        dataset_name = ds_info["name"]
+        if task in ds_info["tasks"]:
+            ds = MsDataset.load(dataset_name, data_dir=task)
+        else:
+            ds = MsDataset.load(dataset_name)
+    else:
+        raise ValueError(f"Dataset {dataset_name} not found in preset datasets.")
+    
+    return ds
