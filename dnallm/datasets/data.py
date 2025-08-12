@@ -2,10 +2,11 @@ import os
 import random
 from typing import Union, Optional
 from tqdm import tqdm
+import numpy as np
 from datasets import Dataset, DatasetDict, load_dataset, concatenate_datasets
 from transformers import PreTrainedTokenizerBase
 
-from ..utils.sequence import check_sequence, reverse_complement, random_generate_sequences
+from ..utils.sequence import check_sequence, calc_gc_content, reverse_complement, random_generate_sequences
 
 
 class DNADataset:
@@ -21,7 +22,10 @@ class DNADataset:
         self.max_length = max_length
         self.sep = None
         self.multi_label_sep = None
+        self.data_type = None
         self.stats = None
+        self.stats_for_plot = None
+        self.__data_type__()  # Determine the data type of the dataset
 
     @classmethod
     def load_local_data(cls, file_paths, seq_col: str = "sequence", label_col: str = "labels",
@@ -59,6 +63,7 @@ class DNADataset:
             dataset = DatasetDict(ds_dict)
         else:  # Handling a single file
             dataset = cls._load_single_data(file_paths, seq_col, label_col, sep, fasta_sep, multi_label_sep)
+        dataset.stats = None  # Initialize stats as None
 
         return cls(dataset, tokenizer=tokenizer, max_length=max_length)
 
@@ -367,6 +372,7 @@ class DNADataset:
             self.dataset.set_format(type="numpy")
         else:
             self.dataset.set_format(type="torch")
+        self.dataset._is_encoded = True  # Mark the dataset as encoded
 
     def split_data(self, test_size: float = 0.2, val_size: float = 0.1, seed: int = None):
         """
@@ -638,6 +644,224 @@ class DNADataset:
         else:
             return self.dataset[idx]
 
+    def __data_type__(self):
+        """
+        Get the data type of the dataset (classification, regression, etc.).
+        """
+        if isinstance(self.dataset, DatasetDict):
+            keys = list(self.dataset.keys())
+            if not keys:
+                raise ValueError("DatasetDict is empty.")
+            if "labels" in self.dataset[keys[0]].column_names:
+                labels = self.dataset[keys[0]]["labels"]
+            else:
+                labels = None
+        else:
+            if "labels" in self.dataset.column_names:
+                labels = self.dataset["labels"]
+            else:
+                labels = None
+        if labels is not None:
+            if isinstance(labels[0], str):
+                if self.multi_label_sep and self.multi_label_sep in labels:
+                    multi_labels = labels.split(self.multi_label_sep)
+                    if '.' in multi_labels[0]:
+                        self.data_type = "multi_regression"
+                    else:
+                        self.data_type = "multi_label"
+                else:
+                    if '.' in labels[0]:
+                        self.data_type = "regression"
+                    else:
+                        self.data_type = "classification"
+            else:
+                if isinstance(labels[0], int):
+                    self.data_type = "classification"
+                else:
+                    self.data_type = "regression"
+    
+    def statistics(self) -> dict:
+        """
+        Get statistics of the dataset, including number of samples, sequence length ( min, max, average, median), 
+        label distribution, GC content (by labels), nucleotide composition (by labels).
+        
+        Returns:
+            dict: A dictionary containing statistics of the dataset.
+        """
+        if self.stats is None:
+            self.stats = {}
+            self.stats_for_plot = {}
+            if isinstance(self.dataset, DatasetDict):
+                for dt in self.dataset:
+                    ds = self.dataset[dt]
+                    if "sequence" not in ds.column_names or "labels" not in ds.column_names:
+                        continue  # Skip datasets without required columns
+                    labels = ds["labels"]
+                    df = ds.to_pandas()
+                    df['GC_content'] = df['sequence'].apply(calc_gc_content)
+                    self.stats[dt] = {
+                        "num_samples": len(ds),
+                        "sequence_length": {
+                            "min": min(len(seq) for seq in ds["sequence"]),
+                            "max": max(len(seq) for seq in ds["sequence"]),
+                            "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
+                            "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
+                        },
+                        "label_distribution": dict(zip(*np.unique(ds["labels"], return_counts=True))),
+                        "mean_gc_content": df.groupby('labels')['GC_content'].mean().to_dict(),
+                    }
+                    self.stats_for_plot[dt] = {
+                        "sequence_length": {
+                            "min": min(len(seq) for seq in ds["sequence"]),
+                            "max": max(len(seq) for seq in ds["sequence"]),
+                            "all": [len(seq) for seq in ds["sequence"]]
+                        },
+                        "gc_contents": df['GC_content'].tolist(),
+                        "labels": labels
+                    }
+            else:
+                ds = self.dataset
+                labels = ds["labels"]
+                if "sequence" in ds.column_names and "labels" in ds.column_names:
+                    df = ds.to_pandas()
+                    df['GC_content'] = df['sequence'].apply(calc_gc_content)
+                    self.stats = {
+                        "num_samples": len(ds),
+                        "sequence_length": {
+                            "min": min(len(seq) for seq in ds["sequence"]),
+                            "max": max(len(seq) for seq in ds["sequence"]),
+                            "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
+                            "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
+                        },
+                        "label_distribution": dict(zip(*np.unique(ds["labels"], return_counts=True))),
+                        "mean_gc_content": df.groupby('labels')['GC_content'].mean().to_dict(),
+                    }
+                    self.stats_for_plot = {
+                        "sequence_length": {
+                            "min": min(len(seq) for seq in ds["sequence"]),
+                            "max": max(len(seq) for seq in ds["sequence"]),
+                            "all": [len(seq) for seq in ds["sequence"]]
+                        },
+                        "gc_contents": df['GC_content'].tolist(),
+                        "labels": labels
+                    }
+        else:
+            if isinstance(self.stats, dict):
+                return self.stats
+            else:
+                raise ValueError("Statistics have not been computed yet. Please call `statistics()` method first.")
+
+        return self.stats
+
+    def plot_statistics(self, save_path: str = None):
+        """
+        Plot statistics of the dataset, including sequence length distribution (histogram), 
+        GC content distribution (box plot) for each sequence.
+        If dataset is a DatasetDict, length plots and GC content plots from different datasets will be 
+        concatenated into a single chart, respectively.
+        Sequence length distribution is shown as a histogram, with min and max lengths for its' limit.
+
+        Args:
+            save_path (str): Path to save the plots. If None, plots will be shown interactively.
+        """
+        import pandas as pd
+        import altair as alt
+        alt.data_transformers.enable("vegafusion")
+
+        if self.stats is None:
+            raise ValueError("Statistics have not been computed yet. Please call `statistics()` method first.")
+        if isinstance(self.dataset, DatasetDict):
+            combined_charts = []
+            for dt in self.stats_for_plot:
+                if "sequence_length" in self.stats_for_plot[dt]:
+                    seq_len_df = pd.DataFrame({
+                        "length": self.stats_for_plot[dt]["sequence_length"]["all"],
+                        "label": self.stats_for_plot[dt]["labels"]
+                    })
+                    min_length = self.stats_for_plot[dt]["sequence_length"]["min"]
+                    max_length = self.stats_for_plot[dt]["sequence_length"]["max"]
+                    if min_length == max_length:
+                        # If min and max lengths are the same, use a single bin
+                        seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
+                            alt.X("length:Q", bin=alt.Bin(step=1)),
+                            alt.Y("count()"),
+                            alt.Color("label:N")
+                        ).properties(title=f"Sequence Length Distribution")
+                    else:
+                        # Use binning for sequence length distribution
+                        seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
+                            alt.X("length:Q", bin=alt.Bin(maxbins=30,
+                                                          extent=[min_length, max_length])),
+                            alt.Y("count()"),
+                            alt.Color("label:N")
+                        ).properties(title=f"Sequence Length Distribution")
+                if "gc_contents" in self.stats_for_plot[dt]:
+                    gc_df = pd.DataFrame({
+                        "GC content": self.stats_for_plot[dt]["gc_contents"],
+                        "label": self.stats_for_plot[dt]["labels"]
+                    })
+                    gc_chart = alt.Chart(gc_df).mark_boxplot().encode(
+                        alt.X("label:N"),
+                        alt.Y("GC content:Q"),
+                        alt.Color("label:N")
+                    ).properties(title=f"GC Content Distribution")
+                # concatenate charts
+                if 'seq_len_chart' in locals() and 'gc_chart' in locals():
+                    combined_chart = alt.hconcat(seq_len_chart, gc_chart
+                    ).properties(title=f"Statistics for {dt}")
+                    combined_charts.append(combined_chart)
+            if combined_charts:
+                combined_chart = alt.vconcat(*combined_charts)
+                if save_path:
+                    combined_chart.save(f"{save_path}_stats.pdf")
+                else:
+                    combined_chart.show()
+        else:
+            if "sequence_length" in self.stats_for_plot:
+                seq_len_df = pd.DataFrame({
+                    "length": self.stats_for_plot["sequence_length"]["all"],
+                    "label": self.stats_for_plot[dt]["labels"]
+                })
+                min_length = self.stats_for_plot["sequence_length"]["min"]
+                max_length = self.stats_for_plot["sequence_length"]["max"]
+                if min_length == max_length:
+                    # If min and max lengths are the same, use a single bin
+                    seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
+                        alt.X("length:Q", bin=alt.Bin(step=1)),
+                        alt.Y("count()"),
+                        alt.Color("label:N")
+                    ).properties(title=f"Sequence Length Distribution")
+                else:
+                    # Use binning for sequence length distribution
+                    seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
+                        alt.X("length:Q", bin=alt.Bin(maxbins=30,
+                                                      extent=[min_length, max_length])),
+                        alt.Y("count()"),
+                        alt.Color("label:N")
+                    ).properties(title=f"Sequence Length Distribution")
+            if "gc_contents" in self.stats_for_plot:
+                gc_df = pd.DataFrame({
+                    "GC content": self.stats_for_plot["gc_contents"],
+                    "label": self.stats_for_plot[dt]["labels"]
+                })
+                gc_chart = alt.Chart(gc_df).mark_boxplot().encode(
+                    alt.X("label:N"),
+                    alt.Y("GC content:Q"),
+                    alt.Color("label:N")
+                ).properties(title="GC Content Distribution")
+            if 'seq_len_chart' in locals() and 'gc_chart' in locals():
+                combined_chart = alt.hconcat(seq_len_chart, gc_chart
+                ).properties(title="Statistics for Dataset")
+                if save_path:
+                    combined_chart.save(f"{save_path}_stats.pdf")
+                else:
+                    combined_chart.show()
+
+        if save_path:
+            print(f"Statistics plots saved to {save_path}")
+        else:
+            print("Statistics plots generated successfully.")
+
 
 def show_preset_dataset() -> dict:
     """
@@ -673,5 +897,58 @@ def load_preset_dataset(dataset_name: str, task: str=None) -> any:
             ds = MsDataset.load(dataset_name)
     else:
         raise ValueError(f"Dataset {dataset_name} not found in preset datasets.")
+
+    seq_cols = ["s", "seq", "sequence", "sequences"]
+    label_cols = ["l", "label", "labels", "target", "targets"]
+    seq_col = "sequence"
+    label_col = "labels"
+    if isinstance(ds, DatasetDict):
+        # Check if the dataset is a DatasetDict
+        for dt in ds:
+            # Rename columns if necessary
+            for s in seq_cols:
+                if s in ds[dt].column_names:
+                    seq_col = s
+                    break
+            for l in label_cols:
+                if l in ds[dt].column_names:
+                    label_col = l
+                    break
+            if seq_col != "sequence":
+                ds[dt] = ds[dt].rename_column(seq_col, "sequence")
+            if label_col != "labels":
+                ds[dt] = ds[dt].rename_column(label_col, "labels")
+    else:
+        # If it's a single dataset, rename columns directly
+        if seq_col != "sequence":
+            ds = ds.rename_column(seq_col, "sequence")
+        if label_col != "labels":
+            ds = ds.rename_column(label_col, "labels")
+        if seq_col != "sequence":
+            ds = ds.rename_column(seq_col, "sequence")
+        if label_col != "labels":
+            ds = ds.rename_column(label_col, "labels")
     
-    return ds
+    dna_ds = DNADataset(ds, tokenizer=None, max_length=1024)
+    dna_ds.sep = ds_info.get("separator", ",")
+    dna_ds.multi_label_sep = ds_info.get("multi_separator", ";")
+
+    return dna_ds
+
+"""
+# Example for viewing preset datasets
+
+from dnallm import DNADataset
+from dnallm.datasets import show_preset_dataset, load_preset_dataset
+
+show_preset_dataset()
+
+ds = load_preset_dataset("nucleotide_transformer_downstream_tasks", task="enhancers_types")
+
+ds.statistics()
+
+ds.plot_statistics()
+
+"""
+
+
