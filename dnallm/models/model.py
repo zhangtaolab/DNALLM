@@ -1,3 +1,9 @@
+"""DNA Model loading and management utilities.
+
+This module provides functions for downloading, loading, and managing DNA language models
+from various sources including Hugging Face Hub, ModelScope, and local storage.
+"""
+
 import os
 import time
 from glob import glob
@@ -19,7 +25,23 @@ import torch
 #         pass
 
 
-def download_model(model_name: str, downloader, max_try: int=10):
+def download_model(model_name: str, downloader, max_try: int = 10) -> str:
+    """Download a model with retry mechanism for network issues.
+    
+    In case of network issues, this function will attempt to download the model
+    multiple times before giving up.
+    
+    Args:
+        model_name: Name of the model to download
+        downloader: Download function to use (e.g., snapshot_download)
+        max_try: Maximum number of download attempts, default 10
+        
+    Returns:
+        Path where the model files are stored
+        
+    Raises:
+        ValueError: If model download fails after all attempts
+    """
     # In case network issue, try to download multi-times
     cnt = 0
     while True:
@@ -60,23 +82,34 @@ def download_model(model_name: str, downloader, max_try: int=10):
 
 
 def is_fp8_capable():
+    """Check if the current CUDA device supports FP8 precision.
+    
+    Returns:
+        True if the device supports FP8 (compute capability >= 9.0), False otherwise
+    """
     major, minor = torch.cuda.get_device_capability()
     # Hopper (H100) has compute capability 9.0
     return (major, minor) >= (9, 0)
 
 
-def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: str="local", use_mirror: bool=False) -> tuple:
-    """
-    Load model and tokenizer from either HuggingFace or ModelScope
+def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: str = "local", use_mirror: bool = False) -> tuple:
+    """Load model and tokenizer from either HuggingFace or ModelScope.
+
+    This function handles loading of various model types based on the task configuration,
+    including sequence classification, token classification, masked language modeling,
+    and causal language modeling.
 
     Args:
         model_name: Model name or path
-        task_config: Task configuration object
-        source: Source to load model and tokenizer from (local, huggingface, modelscope), default "local"
+        task_config: Task configuration object containing task type and label information
+        source: Source to load model and tokenizer from ('local', 'huggingface', 'modelscope'), default 'local'
         use_mirror: Whether to use HuggingFace mirror (hf-mirror.com), default False
 
     Returns:
-        tuple: (model, tokenizer)
+        Tuple containing (model, tokenizer)
+        
+    Raises:
+        ValueError: If model is not found locally or loading fails
     """
     # Special case for models
     # EVO2 models
@@ -189,15 +222,21 @@ def load_preset_model(
     model_name: str,
     task_config: TaskConfig
 ) -> tuple:
-    """
-    Load a preset model and tokenizer based on the task configuration.
+    """Load a preset model and tokenizer based on the task configuration.
+
+    This function loads models from the preset model registry, which contains
+    pre-configured models for various DNA analysis tasks.
 
     Args:
-        model_name: Name or path of the model.
-        task_config: Task configuration object.
+        model_name: Name or path of the model
+        task_config: Task configuration object containing task type and label information
 
     Returns:
-        tuple: (model, tokenizer)
+        Tuple containing (model, tokenizer) if successful, 0 if model not found
+        
+    Note:
+        If the model is not found in preset models, the function will print a warning
+        and return 0. Use `load_model_and_tokenizer` function for custom model loading.
     """
     from modeling_auto import MODEL_INFO
 
