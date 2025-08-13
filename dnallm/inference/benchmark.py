@@ -1,3 +1,9 @@
+"""DNA Language Model Benchmarking Module.
+
+This module provides comprehensive benchmarking capabilities for DNA language models,
+including performance evaluation, metrics calculation, and result visualization.
+"""
+
 import os
 import numpy as np
 from typing import Optional, List, Dict, Union
@@ -16,28 +22,36 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
 
 class Benchmark:
-    """
-    Class for benchmarking DNA LLMs.
+    """Class for benchmarking DNA Language Models.
+    
+    This class provides methods to evaluate the performance of different DNA language
+    models on various tasks, including classification, regression, and token classification.
+    
+    Attributes:
+        config: Configuration dictionary containing task settings and inference parameters
+        all_models: Dictionary mapping source names to sets of available model names
+        dataset: The dataset used for benchmarking
     """
     
     def __init__(self, config: dict):
-        """
-        Initialize the Benchmark class.
+        """Initialize the Benchmark class.
+        
         Args:
-            config (dict): Configuration object containing task settings and inference parameters
+            config: Configuration object containing task settings and inference parameters
         """
         self.config = config
         self.all_models = {'huggingface': set(np.concatenate([MODEL_INFO[m]['huggingface'] for m in MODEL_INFO]).tolist()),
                            'modelscope': set(np.concatenate([MODEL_INFO[m]['modelscope'] for m in MODEL_INFO]).tolist())}
 
     def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """
-        Create a predictor object for the model.
+        """Create a predictor object for the model.
+        
         Args:
-            model: The model to be used for prediction.
-            tokenizer: The tokenizer to be used for encoding sequences.
+            model: The model to be used for prediction
+            tokenizer: The tokenizer to be used for encoding sequences
+            
         Returns:
-            DNAPredictor: The predictor object.
+            DNAPredictor: The predictor object configured with the given model and tokenizer
         """
         
         predictor = DNAPredictor(
@@ -49,12 +63,15 @@ class Benchmark:
     
     def get_dataset(self, seq_or_path: Union[str, List[str]],
                     seq_col: str="sequence", label_col: str="labels") -> DNADataset:
-        """
-        Load the dataset from the specified path or list of sequences.
+        """Load the dataset from the specified path or list of sequences.
+        
         Args:
-            seq_or_path (Union[str, List[str]]): Path to the sequence file or list of sequences.
+            seq_or_path: Path to the sequence file or list of sequences
+            seq_col: Column name for DNA sequences, default "sequence"
+            label_col: Column name for labels, default "labels"
+            
         Returns:
-            DNADataset: Dataset object containing the sequences.
+            DNADataset: Dataset object containing the sequences and labels
         """
         predictor = DNAPredictor(
             model=None,
@@ -72,12 +89,13 @@ class Benchmark:
         return ds
 
     def available_models(self, show_all: bool=True) -> List[str]:
-        """
-        List all available models.
+        """List all available models.
+        
         Args:
-            show_all (bool): If True, show all models. If False, show only the models that are available.
+            show_all: If True, show all models. If False, show only the models that are available
+            
         Returns:
-            List[str]: List of model names.
+            List of model names if show_all=True, otherwise dictionary mapping model names to tags
         """
         # Load the model information
         if show_all:
@@ -89,16 +107,23 @@ class Benchmark:
     def run(self, model_names: Union[List[str], Dict] = None,
             source: str="local", use_mirror: bool=False,
             save_preds: bool=False, save_scores: bool=True) -> None:
-        """
-        Perform the benchmark.
+        """Perform the benchmark evaluation on multiple models.
+        
+        This method loads each model, runs predictions on the dataset, calculates metrics,
+        and optionally saves the results.
+        
         Args:
-            model_names (Union[List[str], Dict]): List of model names or a dictionary mapping model names to paths.
-            source (str): Source of the models ('local', 'huggingface', 'modelscope').
-            use_mirror (bool): Whether to use a mirror for downloading models.
-            save_preds (bool): Whether to save the predictions.
-            save_scores (bool): Whether to save the metrics.
+            model_names: List of model names or a dictionary mapping model names to paths
+            source: Source of the models ('local', 'huggingface', 'modelscope')
+            use_mirror: Whether to use a mirror for downloading models
+            save_preds: Whether to save the predictions
+            save_scores: Whether to save the metrics
+            
         Returns:
             None
+            
+        Raises:
+            NameError: If model cannot be found in either the given source or local storage
         """
         task_config = self.config['task']
         pred_config = self.config['inference']
@@ -159,13 +184,19 @@ class Benchmark:
              show_score: bool = True,
              save_path: Optional[str] = None,
              separate: bool = False) -> None:
-        """
-        Plot the benchmark results.
+        """Plot the benchmark results.
+        
+        This method generates various types of plots based on the task type:
+        - For classification tasks: bar charts for metrics and ROC curves
+        - For regression tasks: bar charts for metrics and scatter plots
+        - For token classification: bar charts for metrics only
+        
         Args:
-            metrics (dict): Dictionary containing model metrics.
-            show_score (bool): Whether to show the score on the plot.
-            save_path (Optional[str]): Path to save the plot.
-            separate (bool): Whether to save the plots separately.
+            metrics: Dictionary containing model metrics
+            show_score: Whether to show the score on the plot
+            save_path: Path to save the plot. If None, plots will be shown interactively
+            separate: Whether to save the plots separately
+            
         Returns:
             None
         """

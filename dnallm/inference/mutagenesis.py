@@ -1,3 +1,9 @@
+"""In Silico Mutagenesis Analysis Module.
+
+This module provides tools for evaluating the impact of sequence mutations on model predictions,
+including single nucleotide polymorphisms (SNPs), deletions, insertions, and other sequence variations.
+"""
+
 import os
 import warnings
 import json
@@ -20,8 +26,18 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
 
 class Mutagenesis:
-    """
-    Class for evaluating in silico mutagenesis.
+    """Class for evaluating in silico mutagenesis.
+    
+    This class provides methods to analyze how sequence mutations affect model predictions,
+    including single base substitutions, deletions, and insertions. It can be used to
+    identify important positions in DNA sequences and understand model interpretability.
+    
+    Attributes:
+        model: Fine-tuned model for prediction
+        tokenizer: Tokenizer for the model
+        config: Configuration object containing task settings and inference parameters
+        sequences: Dictionary containing original and mutated sequences
+        dataloader: DataLoader for batch processing of sequences
     """
     
     def __init__(
@@ -30,12 +46,11 @@ class Mutagenesis:
         tokenizer,
         config: dict
     ):
-        """
-        Initialize Mutagenesis class.
+        """Initialize Mutagenesis class.
         
         Args:
-            model: Fine-tuned model
-            tokenizer: Tokenizer for the model
+            model: Fine-tuned model for making predictions
+            tokenizer: Tokenizer for encoding DNA sequences
             config: Configuration object containing task settings and inference parameters
         """
         
@@ -45,13 +60,14 @@ class Mutagenesis:
         self.sequences = None
 
     def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """
-        Create a predictor object for the model.
+        """Create a predictor object for the model.
+        
         Args:
-            model: The model to be used for prediction.
-            tokenizer: The tokenizer to be used for encoding sequences.
+            model: The model to be used for prediction
+            tokenizer: The tokenizer to be used for encoding sequences
+            
         Returns:
-            DNAPredictor: The predictor object.
+            DNAPredictor: The predictor object configured with the given model and tokenizer
         """
         
         predictor = DNAPredictor(
@@ -67,15 +83,27 @@ class Mutagenesis:
                         delete_size: int=0, fill_gap: bool=False,
                         insert_seq: str=None, lowercase: bool=False,
                         do_encode: bool=True):
-        """
-        Generate dataset from sequences
+        """Generate dataset from sequences with various mutation types.
+        
+        This method creates mutated versions of the input sequence including:
+        - Single base substitutions (A, C, G, T, optionally N)
+        - Deletions of specified size
+        - Insertions of specified sequences
+        - Case transformations
+        
         Args:
             sequence: Single sequence for mutagenesis
             batch_size: Batch size for DataLoader
-            do_encode: Whether to encode sequences
+            replace_mut: Whether to perform single base substitutions
+            include_n: Whether to include N base in substitutions
+            delete_size: Size of deletions to create (0 for no deletions)
+            fill_gap: Whether to fill deletion gaps with N bases
+            insert_seq: Sequence to insert at various positions
+            lowercase: Whether to convert sequences to lowercase
+            do_encode: Whether to encode sequences for the model
+            
         Returns:
-            Dataset object
-            DataLoader object
+            None (modifies internal state)
         """
         # Get the inference config
         pred_config = self.config['inference']
@@ -131,15 +159,23 @@ class Mutagenesis:
         )
 
     def pred_comparison(self, raw_pred, mut_pred):
-        """
-        Compare raw and mutated predictions.
+        """Compare raw and mutated predictions.
+        
+        This method calculates the difference between predictions on the original sequence
+        and mutated sequences, providing insights into mutation effects.
         
         Args:
-            raw_pred: Raw predictions
-            mut_pred: Mutated predictions
-            mut_name: Name of the mutated sequence
+            raw_pred: Raw predictions from the original sequence
+            mut_pred: Predictions from the mutated sequence
+            
         Returns:
-            Comparison results
+            Tuple containing (raw_score, mut_score, logfc):
+            - raw_score: Processed scores from original sequence
+            - mut_score: Processed scores from mutated sequence  
+            - logfc: Log fold change between mutated and original scores
+            
+        Raises:
+            ValueError: If task type is not supported
         """
         # Get the task config
         task_config = self.config['task']
@@ -168,8 +204,10 @@ class Mutagenesis:
         
 
     def evaluate(self, strategy: Union[str, int]="last") -> List[Dict]:
-        """
-        Predict using the model.
+        """Evaluate the impact of mutations on model predictions.
+        
+        This method runs predictions on all mutated sequences and compares them
+        with the original sequence to calculate mutation effects.
         
         Args:
             strategy: Strategy for selecting the score from the log fold change
@@ -181,7 +219,9 @@ class Mutagenesis:
                 - int: Use the log fold change at the specified index
             
         Returns:
-            Dictionaries containing predictions and metadata
+            Dictionary containing predictions and metadata for all sequences:
+            - 'raw': Original sequence predictions and metadata
+            - mutation names: Individual mutation results with scores and log fold changes
         """
         # Load predictor
         predictor = self.get_predictor(self.model, self.tokenizer)
@@ -236,14 +276,18 @@ class Mutagenesis:
     def plot(self, preds: dict,
              show_score: bool = False,
              save_path: Optional[str] = None) -> None:
-        """
-        Plot the benchmark results.
+        """Plot the mutagenesis analysis results.
+        
+        This method generates visualizations of mutation effects, typically as heatmaps
+        showing how different mutations affect model predictions at various positions.
+        
         Args:
-            preds (dict): Dictionary containing model predicted scores.
-            show_score (bool): Whether to show the score on the plot.
-            save_path (Optional[str]): Path to save the plot.
+            preds: Dictionary containing model predicted scores and metadata
+            show_score: Whether to show the score values on the plot
+            save_path: Path to save the plot. If None, plot will be shown interactively
+            
         Returns:
-            None
+            Plot object (typically a heatmap visualization)
         """
         if save_path:
             suffix = os.path.splitext(save_path)[-1]
