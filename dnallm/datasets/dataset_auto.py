@@ -81,7 +81,7 @@ PRESET_DATASETS = {
         "multi_separator": ";",
     },
     "plant-genomic-benchmark": {
-        "name": "plant-genomic-benchmark",
+        "name": "lgq12697/plant-genomic-benchmark",
         "description": "A benchmark dataset for plant genomic tasks from AgroNT.",
         "reference": "https://doi.org/10.1038/s42003-024-06465-2",
         "tasks": [
@@ -99,7 +99,6 @@ PRESET_DATASETS = {
             "lncrna.s_lycopersicum",
             "lncrna.t_aestivum",
             "lncrna.s_bicolor",
-            "lncrna.multi_species",
             "promoter_strength.leaf",
             "promoter_strength.protoplast",
             "terminator_strength.leaf",

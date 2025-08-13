@@ -8,6 +8,7 @@ import os
 import random
 from typing import Union, Optional
 from tqdm import tqdm
+import pandas as pd
 import numpy as np
 from datasets import Dataset, DatasetDict, load_dataset, concatenate_datasets
 from transformers import PreTrainedTokenizerBase
@@ -732,63 +733,71 @@ class DNADataset:
         Raises:
             ValueError: If statistics have not been computed yet
         """
+
+        def get_stats(ds):
+            """
+            label_distribution: Distribution of labels in the dataset
+            mean_gc_content: Mean GC content of sequences from each label in the dataset
+            """
+            if "sequence" not in ds.column_names or "labels" not in ds.column_names:
+                raise ValueError("Dataset must contain 'sequence' and 'labels' columns.")
+            df = ds.to_pandas()
+            df['GC_content'] = df['sequence'].apply(calc_gc_content)
+            if self.data_type == "multi_label" and self.multi_label_sep:
+                df_split = df['labels'].str.split(self.multi_label_sep, expand=True).astype(int)
+                df_split.columns = [f'label_{i+1}' for i in range(df_split.shape[1])]
+                df = df.drop(columns=['labels']).join(df_split)
+                label_distribution = df.filter(like='label_').apply(lambda col: col.value_counts())
+            elif self.data_type == "multi_regression":
+                df['labels'] = df['labels'].apply(lambda x: [float(i) for i in x.split(self.multi_label_sep)])
+                label_distribution = None
+            elif self.data_type == "regression":
+                df['labels'] = df['labels'].astype(float)
+                # Split labels into 10 groups based on the values
+                bins = pd.cut(df['labels'], bins=10)
+                label_distribution = bins.value_counts().to_dict()
+                mean_gc_content = df.groupby(bins)['GC_content'].mean().to_dict()
+                labels = df['labels']
+            elif self.data_type == "classification":
+                df['labels'] = df['labels'].astype(int)
+                label_distribution = df['labels'].value_counts().to_dict()
+                mean_gc_content = df.groupby('labels')['GC_content'].mean().to_dict()
+                labels = df['labels']
+            else:
+                raise ValueError("Unsupported data type for statistics calculation.")
+            # Calculate statistics
+            stats = {
+                "num_samples": len(ds),
+                "sequence_length": {
+                    "min": min(len(seq) for seq in ds["sequence"]),
+                    "max": max(len(seq) for seq in ds["sequence"]),
+                    "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
+                    "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
+                },
+                "label_distribution": label_distribution,
+                "mean_gc_content": mean_gc_content
+            }
+            stats_for_plot = {
+                "sequence_length": {
+                    "all": [len(seq) for seq in ds["sequence"]],
+                    "min": stats["sequence_length"]["min"],
+                    "max": stats["sequence_length"]["max"],
+                },
+                "gc_contents": df['GC_content'].tolist(),
+                "labels": labels
+            }
+            return stats, stats_for_plot
+
         if self.stats is None:
             self.stats = {}
             self.stats_for_plot = {}
             if isinstance(self.dataset, DatasetDict):
                 for dt in self.dataset:
                     ds = self.dataset[dt]
-                    if "sequence" not in ds.column_names or "labels" not in ds.column_names:
-                        continue  # Skip datasets without required columns
-                    labels = ds["labels"]
-                    df = ds.to_pandas()
-                    df['GC_content'] = df['sequence'].apply(calc_gc_content)
-                    self.stats[dt] = {
-                        "num_samples": len(ds),
-                        "sequence_length": {
-                            "min": min(len(seq) for seq in ds["sequence"]),
-                            "max": max(len(seq) for seq in ds["sequence"]),
-                            "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
-                            "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
-                        },
-                        "label_distribution": dict(zip(*np.unique(ds["labels"], return_counts=True))),
-                        "mean_gc_content": df.groupby('labels')['GC_content'].mean().to_dict(),
-                    }
-                    self.stats_for_plot[dt] = {
-                        "sequence_length": {
-                            "min": min(len(seq) for seq in ds["sequence"]),
-                            "max": max(len(seq) for seq in ds["sequence"]),
-                            "all": [len(seq) for seq in ds["sequence"]]
-                        },
-                        "gc_contents": df['GC_content'].tolist(),
-                        "labels": labels
-                    }
+                    self.stats[dt], self.stats_for_plot[dt] = get_stats(ds)
             else:
                 ds = self.dataset
-                labels = ds["labels"]
-                if "sequence" in ds.column_names and "labels" in ds.column_names:
-                    df = ds.to_pandas()
-                    df['GC_content'] = df['sequence'].apply(calc_gc_content)
-                    self.stats = {
-                        "num_samples": len(ds),
-                        "sequence_length": {
-                            "min": min(len(seq) for seq in ds["sequence"]),
-                            "max": max(len(seq) for seq in ds["sequence"]),
-                            "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
-                            "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
-                        },
-                        "label_distribution": dict(zip(*np.unique(ds["labels"], return_counts=True))),
-                        "mean_gc_content": df.groupby('labels')['GC_content'].mean().to_dict(),
-                    }
-                    self.stats_for_plot = {
-                        "sequence_length": {
-                            "min": min(len(seq) for seq in ds["sequence"]),
-                            "max": max(len(seq) for seq in ds["sequence"]),
-                            "all": [len(seq) for seq in ds["sequence"]]
-                        },
-                        "gc_contents": df['GC_content'].tolist(),
-                        "labels": labels
-                    }
+                self.stats, self.stats_for_plot = get_stats(ds)
         else:
             if isinstance(self.stats, dict):
                 return self.stats
@@ -812,7 +821,6 @@ class DNADataset:
         Raises:
             ValueError: If statistics have not been computed yet
         """
-        import pandas as pd
         import altair as alt
         alt.data_transformers.enable("vegafusion")
 
