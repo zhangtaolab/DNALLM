@@ -1,23 +1,4 @@
-import os
-import warnings
-import json
-from typing import Optional, List, Dict, Union
-from pathlib import Path
-import numpy as np
-from tqdm import tqdm
-
-import torch
-from torch.utils.data import DataLoader
-from datasets import Dataset
-
-from ..datasets.data import DNADataset
-from ..tasks.metrics import compute_metrics as Metrics
-from .plot import *
-
-os.environ['TOKENIZERS_PARALLELISM'] = 'true'
-
-"""
-DNA Language Model Inference Module
+"""DNA Language Model Inference Module.
 
 This module implements core model inference functionality, including:
 
@@ -52,25 +33,55 @@ Example:
     ```
 """
 
+import os
+import warnings
+import json
+from typing import Optional, List, Dict, Union, Tuple, Any
+from pathlib import Path
+import numpy as np
+from tqdm import tqdm
+
+import torch
+from torch.utils.data import DataLoader
+from datasets import Dataset
+
+from ..datasets.data import DNADataset
+from ..tasks.metrics import compute_metrics as Metrics
+from .plot import *
+
+os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+
+
 class DNAPredictor:
     """DNA sequence predictor using fine-tuned models.
 
-    This class provides functionality for making predictions using DNA language models.
-    It handles model loading, inference, and result processing.
+    This class provides comprehensive functionality for making predictions using DNA language models.
+    It handles model loading, inference, result processing, and various output formats including
+    hidden states and attention weights for model interpretability.
+
+    Attributes:
+        model: Fine-tuned model instance for inference
+        tokenizer: Tokenizer for encoding DNA sequences
+        task_config: Configuration object containing task settings
+        pred_config: Configuration object containing inference parameters
+        device: Device (CPU/GPU/MPS) for model inference
+        sequences: List of input sequences
+        labels: List of true labels (if available)
+        embeddings: Dictionary containing hidden states and attention weights
     """
 
     def __init__(
         self,
-        model: any,
-        tokenizer: any,
+        model: Any,
+        tokenizer: Any,
         config: dict
     ):
         """Initialize the predictor.
 
         Args:
-            model: Fine-tuned model instance.
-            tokenizer: Tokenizer for the model.
-            config: Configuration dictionary containing task settings and inference parameters.
+            model: Fine-tuned model instance for inference
+            tokenizer: Tokenizer for encoding DNA sequences
+            config: Configuration dictionary containing task settings and inference parameters
         """
 
         self.model = model
@@ -84,14 +95,17 @@ class DNAPredictor:
         self.sequences = []
         self.labels = []
 
-    def _get_device(self):
+    def _get_device(self) -> torch.device:
         """Get the appropriate device for model inference.
 
+        This method automatically detects and selects the best available device for inference,
+        supporting CPU, CUDA (NVIDIA), MPS (Apple Silicon), ROCm (AMD), TPU, and XPU (Intel).
+
         Returns:
-            torch.device: The device to use for model inference.
+            torch.device: The device to use for model inference
 
         Raises:
-            ValueError: If the specified device type is not supported.
+            ValueError: If the specified device type is not supported
         """
         # Get the device type
         device = self.pred_config.device.lower()
@@ -140,34 +154,37 @@ class DNAPredictor:
         else:
             raise ValueError(f"Unsupported device type: {device}")
 
-    def generate_dataset(self, seq_or_path: Union[str, List[str]], batch_size: int=1,
-                         seq_col: str="sequence", label_col: str="labels",
+    def generate_dataset(self, seq_or_path: Union[str, List[str]], batch_size: int = 1,
+                         seq_col: str = "sequence", label_col: str = "labels",
                          sep: str = None, fasta_sep: str = "|",
                          multi_label_sep: Union[str, None] = None,
-                         uppercase: bool=False, lowercase: bool=False,
-                         keep_seqs: bool=True, do_encode: bool=True) -> tuple:
-        """Generate dataset from sequences.
+                         uppercase: bool = False, lowercase: bool = False,
+                         keep_seqs: bool = True, do_encode: bool = True) -> Tuple[DNADataset, DataLoader]:
+        """Generate dataset from sequences or file path.
+
+        This method creates a DNADataset and DataLoader from either a list of sequences
+        or a file path, supporting various file formats and preprocessing options.
 
         Args:
-            seq_or_path: Single sequence or path to a file containing sequences.
-            batch_size: Batch size for DataLoader.
-            seq_col: Column name for sequences.
-            label_col: Column name for labels.
-            sep (str, optional): Delimiter for CSV, TSV, or TXT files.
-            fasta_sep (str, optional): Delimiter for FASTA files.
-            multi_label_sep (str, optional): Delimiter for multi-label sequences.
-            uppercase (bool): Whether to convert sequences to uppercase.
-            lowercase (bool): Whether to convert sequences to lowercase.
-            keep_seqs: Whether to keep sequences in the dataset.
-            do_encode: Whether to encode sequences.
+            seq_or_path: Single sequence, list of sequences, or path to a file containing sequences
+            batch_size: Batch size for DataLoader
+            seq_col: Column name for sequences in the file
+            label_col: Column name for labels in the file
+            sep: Delimiter for CSV, TSV, or TXT files
+            fasta_sep: Delimiter for FASTA files
+            multi_label_sep: Delimiter for multi-label sequences
+            uppercase: Whether to convert sequences to uppercase
+            lowercase: Whether to convert sequences to lowercase
+            keep_seqs: Whether to keep sequences in the dataset for later use
+            do_encode: Whether to encode sequences for the model
 
         Returns:
-            tuple: A tuple containing:
-                - Dataset object
-                - DataLoader object
+            Tuple containing:
+                - DNADataset: Dataset object with sequences and labels
+                - DataLoader: DataLoader object for batch processing
 
         Raises:
-            ValueError: If input is neither a file path nor a list of sequences.
+            ValueError: If input is neither a file path nor a list of sequences
         """
         if isinstance(seq_or_path, str):
             suffix = seq_or_path.split(".")[-1]
@@ -203,19 +220,22 @@ class DNAPredictor:
 
         return dataset, dataloader
 
-    def logits_to_preds(self, logits: list) -> tuple[torch.Tensor, list]:
-        """Convert model logits to predictions.
+    def logits_to_preds(self, logits: torch.Tensor) -> Tuple[torch.Tensor, List]:
+        """Convert model logits to predictions and human-readable labels.
+
+        This method processes raw model outputs based on the task type to generate
+        appropriate predictions and convert them to human-readable labels.
 
         Args:
-            logits: Model output logits.
+            logits: Model output logits tensor
 
         Returns:
-            tuple: A tuple containing:
-                - torch.Tensor: Model predictions
-                - list: Human-readable labels
+            Tuple containing:
+                - torch.Tensor: Model predictions (probabilities or raw values)
+                - List: Human-readable labels corresponding to predictions
 
         Raises:
-            ValueError: If task type is not supported.
+            ValueError: If task type is not supported
         """
         # Get task type and threshold from config
         task_type = self.task_config.task_type
@@ -252,14 +272,18 @@ class DNAPredictor:
             raise ValueError(f"Unsupported task type: {task_type}")
         return probs, labels
 
-    def format_output(self, predictions: tuple[torch.Tensor, list]) -> dict:
-        """Format output predictions.
+    def format_output(self, predictions: Tuple[torch.Tensor, List]) -> Dict:
+        """Format output predictions into a structured dictionary.
+
+        This method converts raw predictions into a user-friendly format with
+        sequences, labels, and confidence scores.
 
         Args:
-            predictions: Tuple containing predictions.
+            predictions: Tuple containing (probabilities, labels)
 
         Returns:
-            dict: Dictionary containing formatted predictions.
+            Dictionary containing formatted predictions with structure:
+            {index: {'sequence': str, 'label': str/list, 'scores': dict/list}}
         """
         # Get task type from config
         task_type = self.task_config.task_type
@@ -279,22 +303,29 @@ class DNAPredictor:
         return formatted_predictions
 
     @torch.no_grad()
-    def batch_predict(self, dataloader: DataLoader, do_pred: bool=True,
-                      output_hidden_states: bool=False,
-                      output_attentions: bool=False) -> tuple[torch.Tensor, list]:
-        """Predict for a batch of sequences.
+    def batch_predict(self, dataloader: DataLoader, do_pred: bool = True,
+                      output_hidden_states: bool = False,
+                      output_attentions: bool = False) -> Tuple[torch.Tensor, Optional[Dict], Dict]:
+        """Perform batch prediction on sequences.
+
+        This method runs inference on batches of sequences and optionally extracts
+        hidden states and attention weights for model interpretability.
 
         Args:
-            dataloader: DataLoader object containing sequences.
-            do_pred: Whether to do prediction.
-            output_hidden_states: Whether to output hidden states.
-            output_attentions: Whether to output attentions.
+            dataloader: DataLoader object containing sequences for inference
+            do_pred: Whether to convert logits to predictions
+            output_hidden_states: Whether to output hidden states from all layers
+            output_attentions: Whether to output attention weights from all layers
 
         Returns:
-            tuple: A tuple containing:
-                - torch.Tensor: All logits
-                - dict: Predictions dictionary
-                - dict: Embeddings dictionary
+            Tuple containing:
+                - torch.Tensor: All logits from the model
+                - Optional[Dict]: Predictions dictionary if do_pred=True, otherwise None
+                - Dict: Embeddings dictionary containing hidden states and/or attention weights
+
+        Note:
+            Setting output_hidden_states or output_attentions to True will consume
+            significant memory, especially for long sequences or large models.
         """
         # Set model to evaluation mode
         self.model.eval()
@@ -373,22 +404,28 @@ class DNAPredictor:
 
     def predict_seqs(self, sequences: Union[str, List[str]],
                      evaluate: bool = False,
-                     output_hidden_states: bool=False,
-                     output_attentions: bool=False,
-                     save_to_file: bool = False) -> Union[tuple, dict]:
-        """Predict for sequences.
+                     output_hidden_states: bool = False,
+                     output_attentions: bool = False,
+                     save_to_file: bool = False) -> Union[Dict, Tuple[Dict, Dict]]:
+        """Predict for a list of sequences.
+
+        This method provides a convenient interface for predicting on sequences,
+        with optional evaluation and saving capabilities.
 
         Args:
-            sequences: Single sequence or list of sequences.
-            evaluate: Whether to evaluate the predictions.
-            output_hidden_states: Whether to output hidden states and attentions.
-            output_attentions: Whether to output attentions.
-            save_to_file: Whether to save predictions to file.
+            sequences: Single sequence or list of sequences for prediction
+            evaluate: Whether to evaluate predictions against true labels
+            output_hidden_states: Whether to output hidden states for visualization
+            output_attentions: Whether to output attention weights for visualization
+            save_to_file: Whether to save predictions to output directory
 
         Returns:
-            Union[tuple, dict]: Either:
-                - Dictionary containing predictions
-                - Tuple of (predictions, metrics) if evaluate=True
+            Either:
+                - Dict: Dictionary containing predictions
+                - Tuple[Dict, Dict]: (predictions, metrics) if evaluate=True
+
+        Note:
+            Evaluation requires that labels are available in the dataset
         """
         # Get dataset and dataloader from sequences
         _, dataloader = self.generate_dataset(sequences, batch_size=self.pred_config.batch_size)
@@ -418,34 +455,40 @@ class DNAPredictor:
 
 
     def predict_file(self, file_path: str, evaluate: bool = False,
-                     output_hidden_states: bool=False,
-                     output_attentions: bool=False,
-                     seq_col: str="sequence", label_col: str="labels",
+                     output_hidden_states: bool = False,
+                     output_attentions: bool = False,
+                     seq_col: str = "sequence", label_col: str = "labels",
                      sep: str = None, fasta_sep: str = "|",
                      multi_label_sep: Union[str, None] = None,
-                     uppercase: bool=False, lowercase: bool=False,
-                     save_to_file: bool=False, plot_metrics: bool=False) -> Union[tuple, dict]:
+                     uppercase: bool = False, lowercase: bool = False,
+                     save_to_file: bool = False, plot_metrics: bool = False) -> Union[Dict, Tuple[Dict, Dict]]:
         """Predict from a file containing sequences.
 
+        This method loads sequences from a file and performs prediction,
+        with optional evaluation, visualization, and saving capabilities.
+
         Args:
-            file_path: Path to the file containing sequences.
-            evaluate: Whether to evaluate the predictions.
-            output_hidden_states: Whether to output hidden states.
-            output_attentions: Whether to output attentions.
-            seq_col: Column name for sequences.
-            label_col: Column name for labels.
-            sep (str, optional): Delimiter for CSV, TSV, or TXT files.
-            fasta_sep (str, optional): Delimiter for FASTA files.
-            multi_label_sep (str, optional): Delimiter for multi-label sequences.
-            uppercase (bool): Whether to convert sequences to uppercase.
-            lowercase (bool): Whether to convert sequences to lowercase.
-            save_to_file: Whether to save predictions to file.
-            plot_metrics: Whether to plot metrics.
+            file_path: Path to the file containing sequences
+            evaluate: Whether to evaluate predictions against true labels
+            output_hidden_states: Whether to output hidden states for visualization
+            output_attentions: Whether to output attention weights for visualization
+            seq_col: Column name for sequences in the file
+            label_col: Column name for labels in the file
+            sep: Delimiter for CSV, TSV, or TXT files
+            fasta_sep: Delimiter for FASTA files
+            multi_label_sep: Delimiter for multi-label sequences
+            uppercase: Whether to convert sequences to uppercase
+            lowercase: Whether to convert sequences to lowercase
+            save_to_file: Whether to save predictions and metrics to output directory
+            plot_metrics: Whether to generate metric plots
 
         Returns:
-            Union[tuple, dict]: Either:
-                - List of dictionaries containing predictions
-                - Tuple of (predictions, metrics) if evaluate=True
+            Either:
+                - Dict: Dictionary containing predictions
+                - Tuple[Dict, Dict]: (predictions, metrics) if evaluate=True
+
+        Note:
+            Setting output_attentions=True may consume significant memory
         """
         # Get dataset and dataloader from file
         _, dataloader = self.generate_dataset(file_path, seq_col=seq_col, label_col=label_col,
@@ -483,16 +526,19 @@ class DNAPredictor:
         return predictions
 
     def calculate_metrics(self, logits: Union[List, torch.Tensor],
-                          labels: Union[List, torch.Tensor], plot: bool=False) -> dict:
-        """Calculate evaluation metrics.
+                          labels: Union[List, torch.Tensor], plot: bool = False) -> Dict:
+        """Calculate evaluation metrics for model predictions.
+
+        This method computes task-specific evaluation metrics using the configured
+        metrics computation module.
 
         Args:
-            logits: Model predictions.
-            labels: True labels.
-            plot: Whether to plot metrics.
+            logits: Model predictions (logits or probabilities)
+            labels: True labels for evaluation
+            plot: Whether to generate metric plots
 
         Returns:
-            dict: Dictionary containing evaluation metrics.
+            Dictionary containing evaluation metrics for the task
         """
         # Calculate metrics based on task type
         compute_metrics = Metrics(self.task_config, plot=plot)
@@ -502,20 +548,26 @@ class DNAPredictor:
 
     def plot_attentions(self, seq_idx: int = 0, layer: int = -1, head: int = -1,
                         width: int = 800, height: int = 800,
-                        save_path: Optional[str] = None) -> None:
-        """Plot attention map.
+                        save_path: Optional[str] = None) -> Optional[Any]:
+        """Plot attention map visualization.
+
+        This method creates a heatmap visualization of attention weights between tokens
+        in a sequence, showing how the model attends to different parts of the input.
 
         Args:
-            seq_idx: Index of the sequence to plot.
-            layer: Layer index to plot.
-            head: Head index to plot.
-            width: Width of the plot.
-            height: Height of the plot.
-            save_path: Path to save the plot.
+            seq_idx: Index of the sequence to plot, default 0
+            layer: Layer index to visualize, default -1 (last layer)
+            head: Attention head index to visualize, default -1 (last head)
+            width: Width of the plot
+            height: Height of the plot
+            save_path: Path to save the plot. If None, plot will be shown interactively
 
         Returns:
-            None: If no attention weights are available.
-            object: Attention map visualization if available.
+            Attention map visualization if available, otherwise None
+
+        Note:
+            This method requires that attention weights were collected during inference
+            by setting output_attentions=True in prediction methods
         """
         if hasattr(self, 'embeddings'):
             attentions = self.embeddings['attentions']
@@ -536,21 +588,27 @@ class DNAPredictor:
         else:
             print("No attention weights available to plot.")
 
-    def plot_hidden_states(self, reducer: str="t-SNE",
-                           ncols: int=4, width: int = 300, height: int = 300,
-                           save_path: Optional[str] = None) -> None:
-        """Embedding visualization.
+    def plot_hidden_states(self, reducer: str = "t-SNE",
+                           ncols: int = 4, width: int = 300, height: int = 300,
+                           save_path: Optional[str] = None) -> Optional[Any]:
+        """Visualize embeddings using dimensionality reduction.
+
+        This method creates 2D visualizations of high-dimensional embeddings from
+        different model layers using PCA, t-SNE, or UMAP dimensionality reduction.
 
         Args:
-            reducer: Dimensionality reduction method to use.
-            ncols: Number of columns in the plot grid.
-            width: Width of the plot.
-            height: Height of the plot.
-            save_path: Path to save the plot.
+            reducer: Dimensionality reduction method to use ('PCA', 't-SNE', 'UMAP')
+            ncols: Number of columns in the plot grid
+            width: Width of each plot
+            height: Height of each plot
+            save_path: Path to save the plot. If None, plot will be shown interactively
 
         Returns:
-            None: If no hidden states are available.
-            object: Embedding visualization if available.
+            Embedding visualization if available, otherwise None
+
+        Note:
+            This method requires that hidden states were collected during inference
+            by setting output_hidden_states=True in prediction methods
         """
         if hasattr(self, 'embeddings'):
             hidden_states = self.embeddings['hidden_states']
@@ -576,11 +634,13 @@ class DNAPredictor:
 
 
 def save_predictions(predictions: Dict, output_dir: Path) -> None:
-    """Save predictions to files.
+    """Save predictions to JSON file.
+
+    This function saves model predictions in JSON format to the specified output directory.
 
     Args:
-        predictions: Dictionary containing predictions.
-        output_dir: Directory to save predictions.
+        predictions: Dictionary containing predictions to save
+        output_dir: Directory path where predictions will be saved
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -589,11 +649,13 @@ def save_predictions(predictions: Dict, output_dir: Path) -> None:
         json.dump(predictions, f, indent=4)
 
 def save_metrics(metrics: Dict, output_dir: Path) -> None:
-    """Save metrics to files.
+    """Save evaluation metrics to JSON file.
+
+    This function saves computed evaluation metrics in JSON format to the specified output directory.
 
     Args:
-        metrics: Dictionary containing metrics.
-        output_dir: Directory to save metrics.
+        metrics: Dictionary containing metrics to save
+        output_dir: Directory path where metrics will be saved
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -602,9 +664,25 @@ def save_metrics(metrics: Dict, output_dir: Path) -> None:
         json.dump(metrics, f, indent=4)
 
 
-def generate(self, dataloader: DataLoader, n_tokens: int=400, temperature: float=1.0,
-             top_k: int=4) -> dict:
-    """Function for generation task"""
+def generate(self, dataloader: DataLoader, n_tokens: int = 400, temperature: float = 1.0,
+             top_k: int = 4) -> Dict:
+    """Generate DNA sequences using the model.
+
+    This function performs sequence generation tasks using the loaded model,
+    currently supporting EVO2 models for DNA sequence generation.
+
+    Args:
+        dataloader: DataLoader containing prompt sequences
+        n_tokens: Number of tokens to generate, default 400
+        temperature: Sampling temperature for generation, default 1.0
+        top_k: Top-k sampling parameter, default 4
+
+    Returns:
+        Dictionary containing generated sequences
+
+    Note:
+        Currently only supports EVO2 models for sequence generation
+    """
     if "evo2" in str(self.model):
         for data in tqdm(dataloader, desc="Generating"):
             prompt_seqs = data['sequence']
