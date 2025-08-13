@@ -619,7 +619,7 @@ class DNADataset:
                     df[dt] = data
                     return df
         else:
-            data = dataset[:head]
+            data = dataset[dt][:head]
             if show:
                 pprint.pp(format_convert(data))
             else:
