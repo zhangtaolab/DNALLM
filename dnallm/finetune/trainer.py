@@ -1,22 +1,10 @@
-import os
-from typing import Optional, Dict
-from collections.abc import Callable
-import torch
-from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments
-from peft import get_peft_model, LoraConfig, TaskType
-
-from ..datasets.data import DNADataset
-from ..tasks.metrics import compute_metrics
-
-"""
-DNA Language Model Trainer Module
+"""DNA Language Model Trainer Module.
 
 This module implements the training process management for DNA language models, with the following main features:
 
 1. DNATrainer Class
    - Unified management of model training, evaluation, and prediction processes
-   - Support for multiple task types (classification, regression)
+   - Support for multiple task types (classification, regression, masked language modeling)
    - Integration of task-specific prediction heads
    - Training parameter configuration
    - Training process monitoring and model saving
@@ -35,15 +23,29 @@ This module implements the training process management for DNA language models, 
    - Flexible batch size settings
    - Learning rate and weight decay configuration
    - Distributed training support
+   - LoRA (Low-Rank Adaptation) for efficient fine-tuning
 
 Usage Example:
+    ```python
     trainer = DNATrainer(
         model=model,
         config=config,
         datasets=datasets
     )
     metrics = trainer.train()
+    ```
 """
+
+import os
+from typing import Optional, Dict, Any
+from collections.abc import Callable
+import torch
+from datasets import DatasetDict
+from transformers import Trainer, TrainingArguments
+from peft import get_peft_model, LoraConfig, TaskType
+
+from ..datasets.data import DNADataset
+from ..tasks.metrics import compute_metrics
 
 
 class DNATrainer:
@@ -54,11 +56,14 @@ class DNATrainer:
     regression, and masked language modeling.
 
     Attributes:
-        model: The DNA language model to be trained.
-        task_config (dict): Configuration for the specific task.
-        train_config (dict): Configuration for training parameters.
-        datasets (DNADataset, optional): Dataset for training and evaluation.
-        extra_args (Dict, optional): Additional training arguments.
+        model: The DNA language model to be trained
+        task_config: Configuration for the specific task
+        train_config: Configuration for training parameters
+        datasets: Dataset for training and evaluation
+        extra_args: Additional training arguments
+        trainer: HuggingFace Trainer instance
+        training_args: Training arguments configuration
+        data_split: Available dataset splits
 
     Examples:
         ```python
@@ -73,7 +78,7 @@ class DNATrainer:
     
     def __init__(
         self,
-        model: any,
+        model: Any,
         config: dict,
         datasets: Optional[DNADataset] = None,
         extra_args: Optional[Dict] = None,
@@ -82,11 +87,11 @@ class DNATrainer:
         """Initialize the DNA trainer.
 
         Args:
-            model: The DNA language model to be trained.
-            config (dict): Configuration dictionary containing task and training settings.
-            datasets (DNADataset, optional): Dataset for training and evaluation.
-            extra_args (Dict, optional): Additional training arguments to override defaults.
-            use_lora (bool): Use LoRA for finetuning.
+            model: The DNA language model to be trained
+            config: Configuration dictionary containing task and training settings
+            datasets: Dataset for training and evaluation
+            extra_args: Additional training arguments to override defaults
+            use_lora: Whether to use LoRA for efficient fine-tuning
         """
         self.model = model
         self.task_config = config['task']
@@ -113,12 +118,18 @@ class DNATrainer:
     def set_up_trainer(self):
         """Set up the HuggingFace Trainer with appropriate configurations.
         
-        This method:
-        1. Configures training arguments
-        2. Sets up dataset splits
-        3. Configures task-specific metrics
-        4. Sets up appropriate data collator
-        5. Initializes the HuggingFace Trainer
+        This method configures the training environment by:
+        1. Setting up training arguments from configuration
+        2. Configuring dataset splits (train/eval/test)
+        3. Setting up task-specific metrics computation
+        4. Configuring appropriate data collator for different task types
+        5. Initializing the HuggingFace Trainer instance
+        
+        The method automatically handles:
+        - Dataset split detection and validation
+        - Task-specific data collator selection
+        - Evaluation strategy configuration
+        - Metrics computation setup
         """
         # Setup training arguments
         training_args = self.train_config.model_dump()
@@ -181,20 +192,25 @@ class DNATrainer:
     def compute_task_metrics(self) -> Callable:
         """Compute task-specific evaluation metrics.
 
+        This method returns a callable function that computes appropriate metrics
+        for the specific task type (classification, regression, etc.).
+
         Returns:
-            Callable: A function that computes metrics for the specific task type.
+            Callable: A function that computes metrics for the specific task type
         """
         return compute_metrics(self.task_config)
 
     def train(self, save_tokenizer: bool = True) -> Dict[str, float]:
         """Train the model and return training metrics.
 
+        This method executes the training process using the configured HuggingFace Trainer,
+        automatically saving the best model and optionally the tokenizer.
+
         Args:
-            save_tokenizer (bool, optional): Whether to save the tokenizer along with the model.
-                Defaults to True.
+            save_tokenizer: Whether to save the tokenizer along with the model, default True
 
         Returns:
-            Dict[str, float]: Dictionary containing training metrics.
+            Dictionary containing training metrics including loss, learning rate, etc.
         """
         self.model.train()
         train_result = self.trainer.train()
@@ -208,8 +224,11 @@ class DNATrainer:
     def evaluate(self) -> Dict[str, float]:
         """Evaluate the model on the evaluation dataset.
 
+        This method runs evaluation on the configured evaluation dataset and returns
+        task-specific metrics.
+
         Returns:
-            Dict[str, float]: Dictionary containing evaluation metrics.
+            Dictionary containing evaluation metrics for the current model state
         """
         self.model.eval()
         result = self.trainer.evaluate()
@@ -218,8 +237,12 @@ class DNATrainer:
     def predict(self) -> Dict[str, float]:
         """Generate predictions on the test dataset.
 
+        This method generates predictions on the test dataset if available and returns
+        both predictions and evaluation metrics.
+
         Returns:
-            Dict[str, float]: Dictionary containing prediction results and metrics.
+            Dictionary containing prediction results and metrics if test dataset exists,
+            otherwise empty dictionary
         """
         self.model.eval()
         result = {}
