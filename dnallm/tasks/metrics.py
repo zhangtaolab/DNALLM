@@ -1,3 +1,19 @@
+"""DNA Language Model Evaluation Metrics Module.
+
+This module provides comprehensive evaluation metrics for DNA language models across
+various task types including classification, regression, and token classification.
+
+Supported task types:
+- Binary classification: accuracy, precision, recall, F1, MCC, AUROC, AUPRC
+- Multi-class classification: macro/micro/weighted metrics
+- Multi-label classification: per-label and overall metrics
+- Regression: MSE, MAE, R², Spearman correlation
+- Token classification: sequence-level accuracy, precision, recall, F1
+
+The module integrates both scikit-learn metrics and HuggingFace evaluate library
+for comprehensive model evaluation.
+"""
+
 import os
 import numpy as np
 from scipy.special import softmax
@@ -16,6 +32,17 @@ from ..configuration.configs import TaskConfig
 
 # Define evaluation metrics
 def calculate_metric_with_sklearn(eval_pred):
+    """Calculate basic classification metrics using scikit-learn.
+    
+    This function computes standard classification metrics for token classification tasks,
+    handling padding tokens and reshaping logits as needed.
+    
+    Args:
+        eval_pred: Tuple containing (logits, labels)
+        
+    Returns:
+        Dictionary containing accuracy, F1, Matthews correlation, precision, and recall
+    """
     logits, labels = eval_pred
     if isinstance(logits, tuple):  # Unpack logits if it's a tuple
         logits = logits[0]
@@ -46,6 +73,18 @@ def calculate_metric_with_sklearn(eval_pred):
 ## Load evaluate metrics locally to avoid downloading from Hugging Face
 
 def classification_metrics(plot=False):
+    """Create metrics computation function for binary classification tasks.
+    
+    This function returns a callable that computes comprehensive binary classification
+    metrics including accuracy, precision, recall, F1, MCC, AUROC, AUPRC, and
+    confusion matrix derived metrics.
+    
+    Args:
+        plot: Whether to include curve data for plotting (ROC and PR curves)
+        
+    Returns:
+        Callable function that computes binary classification metrics
+    """
     clf_metrics = evaluate.combine([metrics_path + "accuracy/accuracy.py",
                                     metrics_path + "f1/f1.py",
                                     metrics_path + "precision/precision.py",
@@ -91,6 +130,18 @@ def classification_metrics(plot=False):
 
 
 def regression_metrics(plot=False):
+    """Create metrics computation function for regression tasks.
+    
+    This function returns a callable that computes regression metrics including
+    MSE, MAE, R², and Spearman correlation. For multi-output regression,
+    it uses scikit-learn metrics directly.
+    
+    Args:
+        plot: Whether to include scatter plot data for visualization
+        
+    Returns:
+        Callable function that computes regression metrics
+    """
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -121,6 +172,18 @@ def regression_metrics(plot=False):
 
 
 def multi_classification_metrics(plot=False):
+    """Create metrics computation function for multi-class classification tasks.
+    
+    This function returns a callable that computes comprehensive multi-class
+    classification metrics including accuracy, precision, recall, F1, MCC,
+    AUROC, AUPRC, and confusion matrix derived metrics with multiple averaging strategies.
+    
+    Args:
+        plot: Whether to include curve data for plotting (ROC and PR curves)
+        
+    Returns:
+        Callable function that computes multi-class classification metrics
+    """
     # metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
     # metric1 = evaluate.load(metrics_path + "precision/precision.py")
     # metric2 = evaluate.load(metrics_path + "recall/recall.py")
@@ -192,6 +255,19 @@ def multi_classification_metrics(plot=False):
 
 
 def multi_labels_metrics(label_list, plot=False):
+    """Create metrics computation function for multi-label classification tasks.
+    
+    This function returns a callable that computes comprehensive multi-label
+    classification metrics including per-label and overall metrics, with support
+    for ROC curves and precision-recall curves for each label.
+    
+    Args:
+        label_list: List of label names for multi-label classification
+        plot: Whether to include curve data for plotting (ROC and PR curves)
+        
+    Returns:
+        Callable function that computes multi-label classification metrics
+    """
     # metric0 = evaluate.load(metrics_path + "accuracy/accuracy.py")
     # metric1 = evaluate.load(metrics_path + "precision/precision.py")
     # metric2 = evaluate.load(metrics_path + "recall/recall.py")
@@ -277,6 +353,20 @@ def multi_labels_metrics(label_list, plot=False):
 
 
 def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
+    """Create metrics computation function for token classification tasks.
+    
+    This function returns a callable that computes sequence-level metrics for
+    token classification tasks using the seqeval library, supporting various
+    tagging schemes like IOB2.
+    
+    Args:
+        label_list: List of label names for token classification
+        plot: Whether to include plotting data (currently not implemented)
+        scheme: Tagging scheme for sequence evaluation (e.g., "IOB2", "BIOES")
+        
+    Returns:
+        Callable function that computes token classification metrics
+    """
     seqeval = evaluate.load(metrics_path + "seqeval/seqeval.py")
 
     def compute_metrics(pred):
@@ -307,6 +397,20 @@ def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
 
 
 def metrics_for_dnabert2(task):
+    """Create metrics computation function for DNABERT2 model evaluation.
+    
+    This function provides specialized metrics computation for DNABERT2 models,
+    supporting both regression and classification tasks with appropriate
+    metric selection for each task type.
+    
+    Args:
+        task: Task type ('regression' or 'classification')
+        
+    Returns:
+        Tuple containing:
+            - compute_metrics: Function for computing task-specific metrics
+            - preprocess_logits_for_metrics: Function for preprocessing logits
+    """
     import torch
 
     r2_metric = evaluate.load("r_squared")
@@ -344,9 +448,17 @@ def metrics_for_dnabert2(task):
                 return {**precision, **recall, **f1, **mcc, "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
 
     def preprocess_logits_for_metrics(logits, labels):
-        """
-        Original Trainer may have a memory leak.
-        This is a workaround to avoid storing too many tensors that are not needed.
+        """Preprocess logits for metrics computation.
+        
+        This function handles logits preprocessing to avoid memory leaks
+        in the original Trainer implementation.
+        
+        Args:
+            logits: Model output logits
+            labels: Ground truth labels
+            
+        Returns:
+            Tuple of (processed_logits, labels)
         """
         logits = logits[0] if isinstance(logits, tuple) else logits
         # pred_ids = torch.argmax(logits, dim=-1)
@@ -355,8 +467,23 @@ def metrics_for_dnabert2(task):
     return compute_metrics, preprocess_logits_for_metrics
 
 
-def compute_metrics(task_config: TaskConfig, plot: bool=False) -> dict:
-    """Compute metrics based on task type"""
+def compute_metrics(task_config: TaskConfig, plot: bool = False) -> dict:
+    """Compute metrics based on task type.
+    
+    This function serves as the main entry point for metrics computation,
+    automatically selecting the appropriate metrics function based on the
+    task configuration.
+    
+    Args:
+        task_config: Task configuration object containing task type and parameters
+        plot: Whether to include plotting data for visualization
+        
+    Returns:
+        Callable function that computes appropriate metrics for the task type
+        
+    Raises:
+        ValueError: If task type is not supported for evaluation
+    """
     if task_config.task_type == "binary":
         return classification_metrics(plot=plot)
     elif task_config.task_type == "multiclass":
