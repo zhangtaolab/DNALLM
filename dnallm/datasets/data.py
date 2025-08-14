@@ -7,6 +7,7 @@ It supports various file formats, data augmentation techniques, and statistical 
 import os
 import random
 from typing import Union, Optional
+from scipy import stats
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
@@ -734,77 +735,57 @@ class DNADataset:
             ValueError: If statistics have not been computed yet
         """
 
-        def get_stats(ds):
-            """
-            label_distribution: Distribution of labels in the dataset
-            mean_gc_content: Mean GC content of sequences from each label in the dataset
-            """
-            if "sequence" not in ds.column_names or "labels" not in ds.column_names:
-                raise ValueError("Dataset must contain 'sequence' and 'labels' columns.")
-            df = ds.to_pandas()
-            df['GC_content'] = df['sequence'].apply(calc_gc_content)
-            if self.data_type == "multi_label" and self.multi_label_sep:
-                df_split = df['labels'].str.split(self.multi_label_sep, expand=True).astype(int)
-                df_split.columns = [f'label_{i+1}' for i in range(df_split.shape[1])]
-                df = df.drop(columns=['labels']).join(df_split)
-                label_distribution = df.filter(like='label_').apply(lambda col: col.value_counts())
-            elif self.data_type == "multi_regression":
-                df['labels'] = df['labels'].apply(lambda x: [float(i) for i in x.split(self.multi_label_sep)])
-                label_distribution = None
-            elif self.data_type == "regression":
-                df['labels'] = df['labels'].astype(float)
-                # Split labels into 10 groups based on the values
-                bins = pd.cut(df['labels'], bins=10)
-                label_distribution = bins.value_counts().to_dict()
-                mean_gc_content = df.groupby(bins)['GC_content'].mean().to_dict()
-                labels = df['labels']
-            elif self.data_type == "classification":
-                df['labels'] = df['labels'].astype(int)
-                label_distribution = df['labels'].value_counts().to_dict()
-                mean_gc_content = df.groupby('labels')['GC_content'].mean().to_dict()
-                labels = df['labels']
-            else:
-                raise ValueError("Unsupported data type for statistics calculation.")
-            # Calculate statistics
-            stats = {
-                "num_samples": len(ds),
-                "sequence_length": {
-                    "min": min(len(seq) for seq in ds["sequence"]),
-                    "max": max(len(seq) for seq in ds["sequence"]),
-                    "average": sum(len(seq) for seq in ds["sequence"]) / len(ds),
-                    "median": sorted(len(seq) for seq in ds["sequence"])[len(ds) // 2],
-                },
-                "label_distribution": label_distribution,
-                "mean_gc_content": mean_gc_content
-            }
-            stats_for_plot = {
-                "sequence_length": {
-                    "all": [len(seq) for seq in ds["sequence"]],
-                    "min": stats["sequence_length"]["min"],
-                    "max": stats["sequence_length"]["max"],
-                },
-                "gc_contents": df['GC_content'].tolist(),
-                "labels": labels
-            }
-            return stats, stats_for_plot
+        def prepare_dataframe(dataset) -> pd.DataFrame:
+            """Convert a datasets.Dataset to pandas DataFrame if needed.
 
-        if self.stats is None:
-            self.stats = {}
-            self.stats_for_plot = {}
-            if isinstance(self.dataset, DatasetDict):
-                for dt in self.dataset:
-                    ds = self.dataset[dt]
-                    self.stats[dt], self.stats_for_plot[dt] = get_stats(ds)
+            If the input is already a pandas DataFrame, return a copy.
+            """
+            # avoid importing datasets at top-level to keep dependency optional
+            try:
+                from datasets import Dataset
+                is_dataset = isinstance(dataset, Dataset)
+            except Exception:
+                is_dataset = False
+
+            if is_dataset:
+                df = dataset.to_pandas()
+            elif isinstance(dataset, pd.DataFrame):
+                df = dataset.copy()
             else:
-                ds = self.dataset
-                self.stats, self.stats_for_plot = get_stats(ds)
+                raise ValueError('prepare_dataframe expects a datasets.Dataset or pandas.DataFrame')
+            return df
+
+        def compute_basic_stats(df: pd.DataFrame, seq_col: str = 'sequence') -> dict:
+            """Compute number of samples and sequence length statistics."""
+            seqs = df[seq_col].fillna('').astype(str)
+            lens = seqs.str.len()
+            return {
+                'n_samples': int(len(lens)),
+                'min_len': int(lens.min()) if len(lens) > 0 else 0,
+                'max_len': int(lens.max()) if len(lens) > 0 else 0,
+                'mean_len': float(lens.mean()) if len(lens) > 0 else float('nan'),
+                'median_len': float(lens.median()) if len(lens) > 0 else float('nan'),
+            }
+
+        stats = {}
+        seq_col = "sequence"
+        label_col = "labels"
+        if isinstance(self.dataset, DatasetDict):
+            for split_name, split_ds in self.dataset.items():
+                df = prepare_dataframe(split_ds)
+                data_type = self.data_type
+                basic = compute_basic_stats(df, seq_col)
+                stats[split_name] = {'data_type': data_type, **basic}
         else:
-            if isinstance(self.stats, dict):
-                return self.stats
-            else:
-                raise ValueError("Statistics have not been computed yet. Please call `statistics()` method first.")
+            df = prepare_dataframe(self.dataset)
+            data_type = self.data_type
+            basic = compute_basic_stats(df, seq_col)
+            stats['full'] = {'data_type': data_type, **basic}
+        
+        self.stats = stats  # Store stats in the instance for later use
+        self.stats_for_plot = df
 
-        return self.stats
+        return stats
 
     def plot_statistics(self, save_path: str = None):
         """Plot statistics of the dataset.
@@ -821,102 +802,174 @@ class DNADataset:
         Raises:
             ValueError: If statistics have not been computed yet
         """
+
         import altair as alt
+        from typing import Tuple
         alt.data_transformers.enable("vegafusion")
 
-        if self.stats is None:
+        def parse_multi_labels(series: pd.Series) -> pd.DataFrame:
+            """Split semicolon-separated labels in a Series into a dataframe of columns.
+
+            Example: '0;1;1' -> columns ['label_0','label_1','label_2']
+            """
+            rows = []
+            maxlen = 0
+            for v in series.fillna(''):
+                if v == '':
+                    parts = []
+                else:
+                    parts = [p.strip() for p in str(v).split(';')]
+                rows.append(parts)
+                if len(parts) > maxlen:
+                    maxlen = len(parts)
+            cols = [f'label_{i}' for i in range(maxlen)]
+            parsed = [r + [''] * (maxlen - len(r)) for r in rows]
+            df = pd.DataFrame(parsed, columns=cols)
+
+            # try convert numeric types
+            for c in df.columns:
+                df[c] = pd.to_numeric(df[c].replace('', np.nan))
+            return df
+
+        def classification_plots(df: pd.DataFrame, label_col: str = 'labels', seq_col: str = 'sequence') -> alt.Chart:
+            """Build histogram of seq lengths colorized by label and GC boxplot grouped by label.
+
+            For multi-label (where label column contains semicolon), this function expects the
+            caller to have split and called per-sublabel as necessary.
+            """
+            # ensure label is a categorical column
+            df = df.copy()
+            df['label_str'] = df[label_col].astype(str)
+            df['seq_len'] = df[seq_col].fillna('').astype(str).str.len()
+            df['gc'] = df[seq_col].fillna('').astype(str).map(calc_gc_content)
+
+            # histogram: seq length, colored by label
+            hist = alt.Chart(df).mark_bar(opacity=0.7).encode(
+                x=alt.X('seq_len:Q', bin=alt.Bin(maxbins=60), title='Sequence length'),
+                y=alt.Y('count():Q', title='Count'),
+                color=alt.Color('label_str:N', title='Label')
+            ).properties(width=300, height=240)
+
+            # GC boxplot grouped by label
+            box = alt.Chart(df).mark_boxplot(size=20).encode(
+                x=alt.X('label_str:N', title='Label'),
+                y=alt.Y('gc:Q', title='GC content'),
+                color=alt.Color('label_str:N', legend=None)
+            ).properties(width=300, height=240)
+
+            return hist, box
+
+        def regression_plots(df: pd.DataFrame, label_col: str = 'labels', seq_col: str = 'sequence') -> Tuple[alt.Chart, alt.Chart]:
+            """Build histogram of seq lengths (ungrouped) and GC scatter (GC vs label value).
+
+            For multi-regression, caller should split and call per target.
+            """
+            df = df.copy()
+            df['seq_len'] = df[seq_col].fillna('').astype(str).str.len()
+            df['gc'] = df[seq_col].fillna('').astype(str).map(calc_gc_content)
+
+            hist = alt.Chart(df).mark_bar(opacity=0.7).encode(
+                x=alt.X('seq_len:Q', bin=alt.Bin(maxbins=60), title='Sequence length'),
+                y=alt.Y('count():Q', title='Count')
+            ).properties(width=300, height=240)
+
+            # ensure numeric label
+            df['label_val'] = pd.to_numeric(df[label_col], errors='coerce')
+            scatter = alt.Chart(df).mark_point().encode(
+                x=alt.X('gc:Q', title='GC content'),
+                y=alt.Y('label_val:Q', title='Label value'),
+                tooltip=[alt.Tooltip('seq_len:Q'), alt.Tooltip('gc:Q'), alt.Tooltip('label_val:Q')]
+            ).properties(width=300, height=240)
+
+            return hist, scatter
+
+        def per_split_charts(df: pd.DataFrame, data_type: str, seq_col: str, label_col: str) -> alt.Chart:
+            """Return a combined Altair chart for a single split (DataFrame) based on data_type.
+
+            Behavior aligned with user requirement:
+            - For 'classification' or 'regression' (single-label): seq_len and GC plots are concatenated horizontally.
+            - For 'multi-classification' and 'multi-regression': sublabels' results are concatenated horizontally
+            and the pair (seq_len, GC) for each sublabel are concatenated vertically.
+            """
+            if data_type == 'classification':
+                hist, box = classification_plots(df, label_col, seq_col)
+                combined = alt.hconcat(hist, box)
+                return combined.properties(title='Classification stats')
+
+            if data_type == 'regression':
+                hist, scatter = regression_plots(df, label_col, seq_col)
+                combined = alt.hconcat(hist, scatter)
+                return combined.properties(title='Regression stats')
+
+            if data_type in ('multi-classification', 'multi-regression'):
+                # split labels into subcolumns
+                lbls_df = parse_multi_labels(df[label_col])
+                per_subcharts = []
+                for c in lbls_df.columns:
+                    subdf = df.copy()
+                    subdf[c] = lbls_df[c]
+                    # drop nan labels (optional) but keep sequences
+                    if data_type == 'multi-classification':
+                        # treat each sublabel like single classification
+                        subdf_for_plot = subdf.copy()
+                        subdf_for_plot['labels_for_plot'] = subdf[c].astype('Int64').astype(str)
+                        hist = alt.Chart(subdf_for_plot).mark_bar(opacity=0.7).encode(
+                            x=alt.X('seq_len:Q', bin=alt.Bin(maxbins=50), title='Sequence length'),
+                            y='count():Q',
+                            color=alt.Color('labels_for_plot:N', title=f'{c}')
+                        ).properties(width=260, height=200)
+
+                        box = alt.Chart(subdf_for_plot).mark_boxplot(size=20).encode(
+                            x=alt.X('labels_for_plot:N', title=f'{c}'),
+                            y=alt.Y('gc:Q', title='GC content'),
+                            color=alt.Color('labels_for_plot:N', legend=None)
+                        ).properties(width=260, height=200)
+                        pair = alt.vconcat(hist, box).properties(title=f'Sub-label {c}')
+                        per_subcharts.append(pair)
+
+                    else:  # multi-regression
+                        subdf_for_plot = subdf.copy()
+                        subdf_for_plot['label_val'] = pd.to_numeric(subdf[c], errors='coerce')
+                        hist = alt.Chart(subdf_for_plot).mark_bar(opacity=0.7).encode(
+                            x=alt.X('seq_len:Q', bin=alt.Bin(maxbins=50), title='Sequence length'),
+                            y='count():Q'
+                        ).properties(width=260, height=200)
+
+                        scatter = alt.Chart(subdf_for_plot).mark_point().encode(
+                            x=alt.X('gc:Q', title='GC content'),
+                            y=alt.Y('label_val:Q', title='Label value'),
+                            tooltip=[alt.Tooltip('seq_len:Q'), alt.Tooltip('gc:Q'), alt.Tooltip('label_val:Q')]
+                        ).properties(width=260, height=200)
+                        pair = alt.vconcat(hist, scatter).properties(title=f'Sub-target {c}')
+                        per_subcharts.append(pair)
+
+                # concat all subcharts horizontally
+                combined = alt.hconcat(*per_subcharts)
+                return combined.properties(title='Multi-target stats')
+
+            raise ValueError(f'Unknown data_type: {data_type}')
+
+        if self.stats is None or self.stats_for_plot is None:
             raise ValueError("Statistics have not been computed yet. Please call `statistics()` method first.")
-        if isinstance(self.dataset, DatasetDict):
-            combined_charts = []
-            for dt in self.stats_for_plot:
-                if "sequence_length" in self.stats_for_plot[dt]:
-                    seq_len_df = pd.DataFrame({
-                        "length": self.stats_for_plot[dt]["sequence_length"]["all"],
-                        "label": self.stats_for_plot[dt]["labels"]
-                    })
-                    min_length = self.stats_for_plot[dt]["sequence_length"]["min"]
-                    max_length = self.stats_for_plot[dt]["sequence_length"]["max"]
-                    if min_length == max_length:
-                        # If min and max lengths are the same, use a single bin
-                        seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
-                            alt.X("length:Q", bin=alt.Bin(step=1)),
-                            alt.Y("count()"),
-                            alt.Color("label:N")
-                        ).properties(title=f"Sequence Length Distribution")
-                    else:
-                        # Use binning for sequence length distribution
-                        seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
-                            alt.X("length:Q", bin=alt.Bin(maxbins=30,
-                                                          extent=[min_length, max_length])),
-                            alt.Y("count()"),
-                            alt.Color("label:N")
-                        ).properties(title=f"Sequence Length Distribution")
-                if "gc_contents" in self.stats_for_plot[dt]:
-                    gc_df = pd.DataFrame({
-                        "GC content": self.stats_for_plot[dt]["gc_contents"],
-                        "label": self.stats_for_plot[dt]["labels"]
-                    })
-                    gc_chart = alt.Chart(gc_df).mark_boxplot().encode(
-                        alt.X("label:N"),
-                        alt.Y("GC content:Q"),
-                        alt.Color("label:N")
-                    ).properties(title=f"GC Content Distribution")
-                # concatenate charts
-                if 'seq_len_chart' in locals() and 'gc_chart' in locals():
-                    combined_chart = alt.hconcat(seq_len_chart, gc_chart
-                    ).properties(title=f"Statistics for {dt}")
-                    combined_charts.append(combined_chart)
-            if combined_charts:
-                combined_chart = alt.vconcat(*combined_charts)
-                if save_path:
-                    combined_chart.save(f"{save_path}_stats.pdf")
-                else:
-                    combined_chart.show()
+        task_type = self.data_type
+        df = self.stats_for_plot.copy()
+        seq_col = "sequence"
+        label_col = "labels"
+        split_charts = []
+        if isinstance(self.stats, dict):
+            for split_name, split_stats in self.stats.items():
+                chart = per_split_charts(df, task_type, seq_col, label_col).properties(title=split_name)
+                split_charts.append(chart)
+            # concatenate splits horizontally
+            final = alt.hconcat(*split_charts).properties(title='Dataset splits')
         else:
-            if "sequence_length" in self.stats_for_plot:
-                seq_len_df = pd.DataFrame({
-                    "length": self.stats_for_plot["sequence_length"]["all"],
-                    "label": self.stats_for_plot[dt]["labels"]
-                })
-                min_length = self.stats_for_plot["sequence_length"]["min"]
-                max_length = self.stats_for_plot["sequence_length"]["max"]
-                if min_length == max_length:
-                    # If min and max lengths are the same, use a single bin
-                    seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
-                        alt.X("length:Q", bin=alt.Bin(step=1)),
-                        alt.Y("count()"),
-                        alt.Color("label:N")
-                    ).properties(title=f"Sequence Length Distribution")
-                else:
-                    # Use binning for sequence length distribution
-                    seq_len_chart = alt.Chart(seq_len_df).mark_bar().encode(
-                        alt.X("length:Q", bin=alt.Bin(maxbins=30,
-                                                      extent=[min_length, max_length])),
-                        alt.Y("count()"),
-                        alt.Color("label:N")
-                    ).properties(title=f"Sequence Length Distribution")
-            if "gc_contents" in self.stats_for_plot:
-                gc_df = pd.DataFrame({
-                    "GC content": self.stats_for_plot["gc_contents"],
-                    "label": self.stats_for_plot[dt]["labels"]
-                })
-                gc_chart = alt.Chart(gc_df).mark_boxplot().encode(
-                    alt.X("label:N"),
-                    alt.Y("GC content:Q"),
-                    alt.Color("label:N")
-                ).properties(title="GC Content Distribution")
-            if 'seq_len_chart' in locals() and 'gc_chart' in locals():
-                combined_chart = alt.hconcat(seq_len_chart, gc_chart
-                ).properties(title="Statistics for Dataset")
-                if save_path:
-                    combined_chart.save(f"{save_path}_stats.pdf")
-                else:
-                    combined_chart.show()
+            final = per_split_charts(df, task_type, seq_col, label_col).properties(title='Full dataset')
 
         if save_path:
-            print(f"Statistics plots saved to {save_path}")
+            final.save(save_path)
         else:
-            print("Statistics plots generated successfully.")
+            final.show()
+            print("Successfully plotted dataset statistics.")
 
 
 def show_preset_dataset() -> dict:
