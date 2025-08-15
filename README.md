@@ -242,10 +242,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **Zhangtaolab** - Core development team
 - **Hugging Face** - Model hosting and transformers library
 - **ModelScope** - Alternative model repository
-- **Open Source Community** - Contributors and users
 
 ## 📞 Support
 
