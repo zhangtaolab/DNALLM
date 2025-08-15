@@ -14,7 +14,6 @@ DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and infe
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment
-- **⚡ Performance**: Native Mamba architecture support for faster inference
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
 
 ## 🧬 Supported Models
