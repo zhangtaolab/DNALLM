@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset
 
 from ..models import *
-from ..datasets.data import DNADataset
+from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics as Metrics
 from .predictor import DNAPredictor
 from .plot import plot_muts

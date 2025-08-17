@@ -29,7 +29,7 @@ uv pip install dnallm
 ```python
 from dnallm import load_config, Benchmark
 from dnallm.inference import load_model_and_tokenizer
-from dnallm.datasets import DNADataset
+from dnallm.datahandling import DNADataset
 ```
 
 ### 2. Create a Simple Configuration
@@ -156,7 +156,7 @@ Here's a complete working example:
 ```python
 import os
 from dnallm import load_config, Benchmark
-from dnallm.datasets import DNADataset
+from dnallm.datahandling import DNADataset
 
 # 1. Prepare your data
 data_path = "path/to/your/dna_sequences.csv"

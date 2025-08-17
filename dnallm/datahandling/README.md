@@ -1,7 +1,7 @@
-### 测试Datasets模块功能
+### 测试Datahandling模块功能
 
 ```python
-from dnallm.datasets.data import DNADataset
+from dnallm.datahandling.data import DNADataset
 from transformers import AutoTokenizer
 ```
 ```python

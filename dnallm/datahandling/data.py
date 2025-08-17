@@ -1045,7 +1045,7 @@ def load_preset_dataset(dataset_name: str, task: str=None) -> 'DNADataset':
 # Example usage:
 """
 from dnallm import DNADataset
-from dnallm.datasets import show_preset_dataset, load_preset_dataset
+from dnallm.datahandling import show_preset_dataset, load_preset_dataset
 
 # Show available preset datasets
 show_preset_dataset()

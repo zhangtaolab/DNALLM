@@ -1,4 +1,4 @@
-# datasets
+# datahandling
 该模块主要用于读取在线或者本地的数据集、生成数据集或处理已读取的数据集。模块定义了一个 `DNADataset` 的类。  
 常用功能主要包含以下几种：
 
@@ -91,5 +91,5 @@ dna_ds.encode_sequences()
 
 ## 函数及参数说明
 
-请参考 [API](../api/datasets/data.md) 部分说明
+请参考 [API](../api/datahandling/data.md) 部分说明
 

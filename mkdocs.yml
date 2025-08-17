@@ -46,8 +46,8 @@ nav:
     - Data Preprocessing: tutorials/data_preprocessing/changeme.md
   - Resources:
     - Model Zoo: resources/model_zoo.md
-    - Datasets: resources/datasets.md
-    - Datasets (中文): resources/datasets_zh.md
+    - Datahandling: resources/datahandling.md
+- Datahandling (中文): resources/datahandling_zh.md
   - Concepts:
     - Model Architecture: concepts/model_architecture.md
     - Training: concepts/training.md
@@ -56,8 +56,8 @@ nav:
   - API: 
     - Utils: 
       - Sequence: api/utils/sequence.md
-    - Datasets:
-      - Data: api/datasets/data.md
+    - Datahandling:
+- Data: api/datahandling/data.md
     - Inference:
       - Predictor: api/inference/predictor.md
     - Finetune:

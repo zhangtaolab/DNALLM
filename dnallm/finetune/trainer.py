@@ -44,7 +44,7 @@ from datasets import DatasetDict
 from transformers import Trainer, TrainingArguments
 from peft import get_peft_model, LoraConfig, TaskType
 
-from ..datasets.data import DNADataset
+from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
 
 

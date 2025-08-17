@@ -64,7 +64,7 @@ uv run marimo run xxx.py
     * predict (命令行开始推理)
   - configuration
     * config (模型训练和推理所需的config定义)
-  - datasets
+  - datahandling
     * data (数据集生成、读取、清洗、格式化等)
     * README (使用说明)
   - finetune

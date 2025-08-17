@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset
 
 from ..models import *
-from ..datasets.data import DNADataset
+from ..datahandling.data import DNADataset
 from .predictor import DNAPredictor, save_predictions, save_metrics
 from .plot import *
 

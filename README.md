@@ -132,7 +132,7 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ### 3. Model Fine-tuning
 
 ```python
-from dnallm.datasets import DNADataset
+from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
 # Prepare dataset
@@ -189,7 +189,7 @@ DNALLM/
 ├── dnallm/                    # Core library
 │   ├── cli/                  # Command-line interface
 │   ├── configuration/        # Configuration management
-│   ├── datasets/            # Dataset handling and processing
+│   ├── datahandling/        # Dataset handling and processing
 │   ├── finetune/            # Model fine-tuning pipeline
 │   ├── inference/           # Inference and analysis tools
 │   ├── models/              # Model loading and management
