@@ -28,14 +28,26 @@ nav:
   - Getting Started: 
     - Quick Start: getting_started/quick_start.md
     - Installation: getting_started/installation.md
+    - Installation (中文): getting_started/installation_zh.md
   - Tutorials:
-    - Data Preprocessing: tutorials/data_preprocessing/changeme.md
-    - Fine Tuning: tutorials/fine_tuning/changeme.md
+    - Fine Tuning:
+      - Overview: tutorials/fine_tuning/index.md
+      - Getting Started: tutorials/fine_tuning/getting_started.md
+      - Configuration: tutorials/fine_tuning/configuration.md
+      - Advanced Techniques: tutorials/fine_tuning/advanced_techniques.md
+      - Task Guides: tutorials/fine_tuning/task_guides.md
+    - Benchmark:
+      - Overview: tutorials/benchmark/index.md
+      - Getting Started: tutorials/benchmark/getting_started.md
+      - Configuration: tutorials/benchmark/configuration.md
+      - Advanced Techniques: tutorials/benchmark/advanced_techniques.md
+      - Examples: tutorials/benchmark/examples.md
     - Inference: tutorials/inference/changeme.md
-    - Benchmark: tutorials/benchmark/changeme.md
+    - Data Preprocessing: tutorials/data_preprocessing/changeme.md
   - Resources:
     - Model Zoo: resources/model_zoo.md
     - Datasets: resources/datasets.md
+    - Datasets (中文): resources/datasets_zh.md
   - Concepts:
     - Model Architecture: concepts/model_architecture.md
     - Training: concepts/training.md
@@ -51,9 +63,6 @@ nav:
     - Finetune:
       - Trainer: api/finetune/trainer.md
   - FAQ: faq/faq.md
-
-
-
 
 plugins:
   - search
