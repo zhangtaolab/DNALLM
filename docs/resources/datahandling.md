@@ -1,4 +1,4 @@
-# Datasets
+# Datahandling
 
 The datasets module is primarily used for reading online or local datasets, generating datasets, or processing already loaded datasets. The module defines a `DNADataset` class.
 

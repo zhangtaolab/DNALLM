@@ -45,7 +45,7 @@ import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
 
-from ..datasets.data import DNADataset
+from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics as Metrics
 from .plot import *
 

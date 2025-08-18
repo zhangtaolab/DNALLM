@@ -81,7 +81,7 @@ print(f"Prediction: {prediction}")
 ### Prepare your dataset
 
 ```python
-from dnallm.datasets import DatasetAuto
+from dnallm.datahandling import DatasetAuto
 
 # Load or create your dataset
 dataset = DatasetAuto(
