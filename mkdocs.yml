@@ -57,7 +57,7 @@ nav:
     - Utils: 
       - Sequence: api/utils/sequence.md
     - Datahandling:
-- Data: api/datahandling/data.md
+      - Data: api/datahandling/data.md
     - Inference:
       - Predictor: api/inference/predictor.md
     - Finetune:
