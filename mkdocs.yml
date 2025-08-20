@@ -28,7 +28,7 @@ nav:
   - Getting Started: 
     - Quick Start: getting_started/quick_start.md
     - Installation: getting_started/installation.md
-    - Installation (中文): getting_started/installation_zh.md
+    # - Installation (中文): getting_started/installation_zh.md
   - Tutorials:
     - Fine Tuning:
       - Overview: tutorials/fine_tuning/index.md
@@ -47,7 +47,7 @@ nav:
   - Resources:
     - Model Zoo: resources/model_zoo.md
     - Datahandling: resources/datahandling.md
-    - Datahandling (中文): resources/datahandling_zh.md
+    # - Datahandling (中文): resources/datahandling_zh.md
   - Concepts:
     - Model Architecture: concepts/model_architecture.md
     - Training: concepts/training.md
