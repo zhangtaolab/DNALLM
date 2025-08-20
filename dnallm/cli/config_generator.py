@@ -29,6 +29,16 @@ class ConfigGenerator:
         '7': 'masked_language_modeling',
         '8': 'generation'
     }
+    TASK_ALIAS = {
+        'binary_classification': 'binary',
+        'multiclass_classification': 'multiclass',
+        'multilabel_classification': 'multilabel',
+        'regression': 'regression',
+        'token_classification': 'token',
+        'embedding': 'embedding',
+        'masked_language_modeling': 'mask',
+        'generation': 'generation'
+    }
     
     MODEL_TASK_TYPES = {
         '1': 'classification',
@@ -98,8 +108,15 @@ class ConfigGenerator:
         # Fine-tuning configuration
         self.config['finetune'] = self._configure_finetune()
         
-        # Inference configuration (for evaluation)
-        self.config['inference'] = self._configure_inference()
+        # Inference configuration (for evaluation; when do fine-tuning, use default inference config)
+        self.config['inference'] = {
+            'batch_size': 16,
+            'max_length': 512,
+            'num_workers': 4,
+            'device': 'auto',
+            'use_fp16': False,
+            'output_dir': './results'
+        }
         
         click.echo("✅ Fine-tuning configuration generated successfully!")
     
@@ -152,10 +169,11 @@ class ConfigGenerator:
             choice = click.prompt("Choose task type", type=str)
             if choice in self.TASK_TYPES:
                 task_type = self.TASK_TYPES[choice]
+                task_alias = self.TASK_ALIAS[task_type]
                 break
             click.echo("❌ Invalid choice. Please try again.")
         
-        task_config = {'task_type': task_type}
+        task_config = {'task_type': task_alias}
         
         # Number of labels (for classification tasks)
         if 'classification' in task_type:
@@ -264,27 +282,30 @@ class ConfigGenerator:
             finetune_config['bf16'] = click.confirm("Use bfloat16?", default=False)
             finetune_config['fp16'] = click.confirm("Use float16?", default=False)
         
-        # Logging and saving
-        finetune_config['logging_strategy'] = "steps"
-        finetune_config['logging_steps'] = click.prompt(
-            "Logging steps", 
-            type=int, 
-            default=100
-        )
-        
-        finetune_config['eval_strategy'] = "steps"
-        finetune_config['eval_steps'] = click.prompt(
-            "Evaluation steps", 
-            type=int, 
-            default=100
-        )
-        
-        finetune_config['save_strategy'] = "steps"
-        finetune_config['save_steps'] = click.prompt(
-            "Save steps", 
-            type=int, 
-            default=500
-        )
+        # Logging and saving (Let user judge whether to use epoch or steps)
+        if click.confirm("Use epoch-based logging and saving?", default=False):
+            finetune_config['logging_strategy'] = "epoch"
+            finetune_config['eval_strategy'] = "epoch"
+            finetune_config['save_strategy'] = "epoch"
+        else:
+            finetune_config['logging_strategy'] = "steps"
+            finetune_config['logging_steps'] = click.prompt(
+                "Logging steps", 
+                type=int, 
+                default=100
+            )
+            finetune_config['eval_strategy'] = "steps"
+            finetune_config['eval_steps'] = click.prompt(
+                "Evaluation steps", 
+                type=int, 
+                default=100
+            )
+            finetune_config['save_strategy'] = "steps"
+            finetune_config['save_steps'] = click.prompt(
+                "Save steps", 
+                type=int, 
+                default=500
+            )
         
         finetune_config['save_total_limit'] = click.prompt(
             "Save total limit", 
@@ -296,7 +317,7 @@ class ConfigGenerator:
     
     def _configure_device_selection(self) -> str:
         """Common method for device selection"""
-        devices = ['auto', 'cpu', 'cuda', 'cuda:0', 'cuda:1']
+        devices = ['auto', 'cpu', 'cuda', 'mps', 'rocm', 'xpu', 'tpu']
         click.echo("Available devices:")
         for i, device in enumerate(devices, 1):
             click.echo(f"  {i}. {device}")
@@ -496,7 +517,7 @@ class ConfigGenerator:
         metric_categories = {
             'Classification': ['accuracy', 'f1_score', 'precision', 'recall', 'roc_auc', 'pr_auc', 'matthews_correlation'],
             'Regression': ['mse', 'mae', 'rmse', 'r2_score', 'pearson_correlation', 'spearman_correlation'],
-            'General': ['perplexity', 'bleu', 'rouge', 'meteor']
+            'General': ['perplexity']
         }
         
         click.echo("Available metrics by category:")
