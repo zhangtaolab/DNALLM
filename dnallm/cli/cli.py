@@ -10,7 +10,7 @@ from ..configuration.configs import TaskConfig, TrainingConfig, InferenceConfig
 @click.group()
 def cli():
     """
-    DNALLM CLI: train, predict, benchmark, mutagenesis.
+    DNALLM CLI: train, predict, benchmark, mutagenesis, config-generator.
     """
     pass
 
@@ -147,6 +147,21 @@ def mutagenesis(config, model_path, sequence, output_dir, batch_size, strategy):
     os.makedirs(output_dir, exist_ok=True)
     engine.plot(results, output_dir)
     click.echo(f"Mutagenesis complete. Outputs in {output_dir}")
+
+# ------------------------
+# Config Generator subcommand
+# ------------------------
+@cli.command()
+@click.option('--output', '-o', type=click.Path(), help='Output file path for the configuration')
+@click.option('--type', '-t', type=click.Choice(['finetune', 'inference', 'benchmark']), 
+              help='Configuration type to generate')
+def config_generator(output, type):
+    """
+    Generate DNALLM configuration files interactively.
+    """
+    from .config_gen import main as config_gen_main
+    config_gen_main.callback(output=output, type=type)
+
 
 if __name__ == '__main__':
     cli()
