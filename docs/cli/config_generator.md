@@ -117,11 +117,11 @@ benchmark:
   description: Comparing DNA language models
 models:
   - name: Plant DNABERT
-    path: zhangtaolab/plant-dnabert-BPE
+    path: zhangtaolab/plant-dnabert-BPE-promoter
     source: huggingface
     task_type: classification
   - name: Plant DNAGPT
-    path: zhangtaolab/plant-dnagpt-BPE
+    path: zhangtaolab/plant-dnagpt-BPE-promoter
     source: huggingface
     task_type: generation
 datasets:
@@ -279,12 +279,12 @@ Configure multiple variants of the same model:
 
 ```yaml
 models:
-  - name: DNABERT-Base
-    path: zhangtaolab/plant-dnabert-BPE
+  - name: plant-dnamamba-6mer-open_chromatin
+    path: zhangtaolab/plant-dnamamba-6mer-open_chromatin
     source: huggingface
     task_type: classification
-  - name: DNABERT-Large
-    path: zhangtaolab/plant-dnabert-large-BPE
+  - name: plant-dnabert-BPE-open_chromatin
+    path: zhangtaolab/plant-dnabert-BPE-open_chromatin
     source: huggingface
     task_type: classification
 ```
