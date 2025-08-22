@@ -93,6 +93,7 @@ example/notebooks/*/results*/
 # Marimo cache
 .marimo-cache/
 .marimo-env/
+example/marimo/*/__marimo__/
 
 # Mkdocs cache
 site
