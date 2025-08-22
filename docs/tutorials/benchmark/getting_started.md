@@ -41,24 +41,27 @@ Create a `benchmark_config.yaml` file:
 benchmark:
   name: "My First Benchmark"
   description: "Comparing DNA models on promoter prediction"
-  
+
   models:
     - name: "Plant DNABERT"
       path: "zhangtaolab/plant-dnabert-BPE"
       source: "huggingface"
-      task_type: "classification"
-    
+
     - name: "Plant DNAGPT"
       path: "zhangtaolab/plant-dnagpt-BPE"
       source: "huggingface"
-      task_type: "generation"
 
   datasets:
     - name: "promoter_data"
       path: "path/to/your/data.csv"
-      task: "binary_classification"
       text_column: "sequence"
       label_column: "label"
+      task_type: "binary"
+      num_labels: 2
+      label_names:
+        - "negative"
+        - "postive"
+      threshold: 0.5
 
   metrics:
     - "accuracy"
@@ -66,33 +69,20 @@ benchmark:
     - "precision"
     - "recall"
 
-  evaluation:
+  plot:
+    format: "pdf"
+
+
+inference:
     batch_size: 16
     max_length: 512
-    device: "cuda"  # or "cpu"
-    
-  output:
-    format: "html"
-    path: "benchmark_results"
+    device: "auto"
+    num_workers: 4
+    use_fp16: False
+    output_dir: "benchmark_results"
 ```
 
-### 3. Load Your Data
-
-```python
-# Load your dataset
-dataset = DNADataset.load_local_data(
-    "path/to/your/data.csv",
-    seq_col="sequence",
-    label_col="label",
-    max_length=512
-)
-
-# Split if needed
-if not dataset.is_split:
-    dataset.split_data(test_size=0.2, val_size=0.1)
-```
-
-### 4. Run the Benchmark
+### 3. Run the Benchmark
 
 ```python
 # Load configuration
@@ -107,10 +97,10 @@ results = benchmark.run()
 # Display results
 print("Benchmark Results:")
 print("=" * 50)
-for model_name, model_results in results.items():
-    print(f"\n{model_name}:")
-    for dataset_name, metrics in model_results.items():
-        print(f"  {dataset_name}:")
+for dataset_name, dataset_results in results.items():
+    print(f"\n{dataset_name}:")
+    for model_name, metrics in model_results.items():
+        print(f"  {model_name}:")
         for metric, value in metrics.items():
             print(f"    {metric}: {value:.4f}")
 ```
