@@ -154,6 +154,83 @@ class DNAPredictor:
         else:
             raise ValueError(f"Unsupported device type: {device}")
 
+    def _check_attention_support(self) -> bool:
+        """Check if the current model supports attention output.
+        
+        This method checks whether the model can output attention weights
+        based on its current configuration and attention implementation.
+        
+        Returns:
+            bool: True if attention output is supported, False otherwise
+        """
+        try:
+            # Check if the model supports output_attentions
+            if hasattr(self.model, 'config') and hasattr(self.model.config, 'output_attentions'):
+                # Try to set it temporarily to see if it works
+                original_value = self.model.config.output_attentions
+                self.model.config.output_attentions = True
+                self.model.config.output_attentions = original_value
+                return True
+        except (ValueError, AttributeError) as e:
+            if "attn_implementation" in str(e) and "sdpa" in str(e):
+                # Try to switch to eager implementation
+                try:
+                    if hasattr(self.model, 'config') and hasattr(self.model.config, 'attn_implementation'):
+                        self.model.config.attn_implementation = "eager"
+                        self.model.config.output_attentions = True
+                        return True
+                except Exception:
+                    pass
+            else:
+                # For other errors, try to switch to eager implementation as a fallback
+                try:
+                    if hasattr(self.model, 'config') and hasattr(self.model.config, 'attn_implementation'):
+                        self.model.config.attn_implementation = "eager"
+                        self.model.config.output_attentions = True
+                        return True
+                except Exception:
+                    pass
+        return False
+
+    def force_eager_attention(self) -> bool:
+        """Force the model to use eager attention implementation.
+        
+        This method attempts to switch the model from SDPA to eager attention
+        implementation to ensure compatibility with output_attentions=True.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            if hasattr(self.model, 'config') and hasattr(self.model.config, 'attn_implementation'):
+                self.model.config.attn_implementation = "eager"
+                print("✅ Switched to eager attention implementation")
+                return True
+        except Exception as e:
+            print(f"❌ Failed to switch to eager attention: {e}")
+        return False
+
+    def _check_hidden_states_support(self) -> bool:
+        """Check if the current model supports hidden states output.
+        
+        This method checks whether the model can output hidden states
+        based on its current configuration.
+        
+        Returns:
+            bool: True if hidden states output is supported, False otherwise
+        """
+        try:
+            # Check if the model supports output_hidden_states
+            if hasattr(self.model, 'config') and hasattr(self.model.config, 'output_hidden_states'):
+                # Try to set it temporarily to see if it works
+                original_value = self.model.config.output_hidden_states
+                self.model.config.output_hidden_states = True
+                self.model.config.output_hidden_states = original_value
+                return True
+        except (ValueError, AttributeError) as e:
+            warnings.warn(f"Cannot enable output_hidden_states: {e}")
+        return False
+
     def generate_dataset(self, seq_or_path: Union[str, List[str]], batch_size: int = 1,
                          seq_col: str = "sequence", label_col: str = "labels",
                          sep: str = None, fasta_sep: str = "|",
@@ -338,7 +415,11 @@ class DNAPredictor:
             sig = inspect.signature(self.model.forward)
             params = sig.parameters
             if 'output_hidden_states' in params:
-                self.model.config.output_hidden_states = True
+                try:
+                    self.model.config.output_hidden_states = True
+                except ValueError as e:
+                    warnings.warn(f"Cannot enable output_hidden_states: {e}")
+                    output_hidden_states = False
             embeddings['hidden_states'] = None
             embeddings['attention_mask'] = []
             embeddings['labels'] = []
@@ -348,7 +429,21 @@ class DNAPredictor:
                 sig = inspect.signature(self.model.forward)
                 params = sig.parameters
             if 'output_attentions' in params:
-                self.model.config.output_attentions = True
+                try:
+                    self.model.config.output_attentions = True
+                except ValueError as e:
+                    if "attn_implementation" in str(e) and "sdpa" in str(e):
+                        # Try to switch to eager attention implementation
+                        try:
+                            self.model.config.attn_implementation = "eager"
+                            self.model.config.output_attentions = True
+                            warnings.warn("Switched to 'eager' attention implementation to support output_attentions")
+                        except Exception:
+                            warnings.warn("Cannot enable output_attentions with current attention implementation. Attention weights will not be available.")
+                            output_attentions = False
+                    else:
+                        warnings.warn(f"Cannot enable output_attentions: {e}")
+                        output_attentions = False
             embeddings['attentions'] = None
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Predicting"):
@@ -631,6 +726,127 @@ class DNAPredictor:
             return embeddings_vis
         else:
             print("No hidden states available to plot.")
+
+    def get_model_info(self) -> Dict[str, Any]:
+        """Get information about the loaded model.
+        
+        Returns:
+            Dict containing model information including type, device, and attention support
+        """
+        info = {
+            'model_type': type(self.model).__name__,
+            'device': str(self.device),
+            'attention_supported': self._check_attention_support(),
+            'hidden_states_supported': self._check_hidden_states_support(),
+            'dtype': str(next(self.model.parameters()).dtype) if self.model.parameters() else 'Unknown',
+            'current_attn_implementation': getattr(self.model.config, 'attn_implementation', 'Not set') if hasattr(self.model, 'config') else 'Unknown'
+        }
+        
+        # Add model-specific information
+        if hasattr(self.model, 'config'):
+            config = self.model.config
+            if hasattr(config, 'model_type'):
+                info['model_type'] = config.model_type
+            if hasattr(config, 'attn_implementation'):
+                info['attn_implementation'] = config.attn_implementation
+            if hasattr(config, 'num_attention_heads'):
+                info['num_attention_heads'] = config.num_attention_heads
+            if hasattr(config, 'num_hidden_layers'):
+                info['num_hidden_layers'] = config.num_hidden_layers
+            if hasattr(config, 'hidden_size'):
+                info['hidden_size'] = config.hidden_size
+            if hasattr(config, 'vocab_size'):
+                info['vocab_size'] = config.vocab_size
+        
+        # Add parameter information
+        try:
+            info['num_parameters'] = self.get_model_parameters()
+        except Exception:
+            info['num_parameters'] = {'error': 'Could not retrieve parameter information'}
+        
+        # Add configuration as a dictionary
+        if hasattr(self.model, 'config'):
+            try:
+                config_dict = {}
+                for key, value in self.model.config.__dict__.items():
+                    if not key.startswith('_') and not callable(value):
+                        config_dict[key] = value
+                info['config'] = config_dict
+            except Exception:
+                info['config'] = {'error': 'Could not retrieve configuration'}
+        
+        return info
+
+    def get_model_parameters(self) -> Dict[str, int]:
+        """Get information about model parameters.
+        
+        Returns:
+            Dict containing parameter counts
+        """
+        try:
+            total_params = sum(p.numel() for p in self.model.parameters())
+            trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            frozen_params = total_params - trainable_params
+            
+            return {
+                'total': total_params,
+                'trainable': trainable_params,
+                'frozen': frozen_params
+            }
+        except Exception as e:
+            return {'error': str(e)}
+
+    def get_available_outputs(self) -> Dict[str, Any]:
+        """Get information about available model outputs.
+        
+        Returns:
+            Dict containing information about what outputs are available and collected
+        """
+        capabilities = {
+            'hidden_states_available': self._check_hidden_states_support(),
+            'attentions_available': self._check_attention_support(),
+            'hidden_states_collected': hasattr(self, 'embeddings') and 'hidden_states' in self.embeddings and self.embeddings['hidden_states'] is not None,
+            'attentions_collected': hasattr(self, 'embeddings') and 'attentions' in self.embeddings and self.embeddings['attentions'] is not None
+        }
+        return capabilities
+
+    def estimate_memory_usage(self, batch_size: int = 1, sequence_length: int = 1000) -> Dict[str, Any]:
+        """Estimate memory usage for inference.
+        
+        Args:
+            batch_size: Batch size for inference
+            sequence_length: Maximum sequence length
+            
+        Returns:
+            Dict containing memory usage estimates
+        """
+        try:
+            # Get model parameters
+            total_params = sum(p.numel() for p in self.model.parameters())
+            param_memory_mb = (total_params * 4) / (1024 * 1024)  # Assuming float32
+            
+            # Estimate activation memory (rough approximation)
+            if hasattr(self.model, 'config'):
+                config = self.model.config
+                hidden_size = getattr(config, 'hidden_size', 768)
+                num_layers = getattr(config, 'num_hidden_layers', 12)
+                num_heads = getattr(config, 'num_attention_heads', 12)
+            else:
+                hidden_size, num_layers, num_heads = 768, 12, 12
+            
+            # Rough estimate for activations
+            activation_memory_mb = (batch_size * sequence_length * hidden_size * num_layers * 2) / (1024 * 1024)
+            
+            total_memory_mb = param_memory_mb + activation_memory_mb
+            
+            return {
+                'total_estimated_mb': f"{total_memory_mb:.1f}",
+                'parameter_memory_mb': f"{param_memory_mb:.1f}",
+                'activation_memory_mb': f"{activation_memory_mb:.1f}",
+                'note': "Estimates are approximate and may vary based on actual usage"
+            }
+        except Exception as e:
+            return {'error': str(e)}
 
 
 def save_predictions(predictions: Dict, output_dir: Path) -> None:
