@@ -565,7 +565,7 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, reverse, complement, sep)
     
-    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False) -> Union[Dataset, DatasetDict]:
+    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False) -> 'DNADataset':
         """Randomly sample a fraction of the dataset.
 
         Args:
@@ -574,7 +574,7 @@ class DNADataset:
             overwrite: Whether to overwrite the original dataset with the sampled one
 
         Returns:
-            A sampled dataset if overwrite=False, otherwise None
+            A DNADataset object with sampled data
         """
         dataset = self.dataset
         if isinstance(dataset, DatasetDict):
@@ -585,10 +585,13 @@ class DNADataset:
         else:
             random_idx = random.sample(range(len(dataset)), int(len(dataset) * ratio))
             dataset = dataset.select(random_idx)
+        
         if overwrite:
             self.dataset = dataset
+            return self
         else:
-            return dataset
+            # Create a new DNADataset object with the sampled data
+            return DNADataset(dataset, self.tokenizer, self.max_length)
     
     def head(self, head: int=10, show: bool=False) -> Union[dict, None]:
         """Fetch the head n data from the dataset.
