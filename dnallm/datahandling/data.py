@@ -36,13 +36,19 @@ class DNADataset:
     """
     
     def __init__(self, ds: Union[Dataset, DatasetDict], tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
-        """Initialize the DNADataset.
+        """Initialize a DNADataset.
         
         Args:
             ds: A Hugging Face Dataset containing at least 'sequence' and 'label' fields
             tokenizer: A Hugging Face tokenizer for encoding sequences
             max_length: Maximum length for tokenization
         """
+        if ds is None:
+            raise TypeError("Dataset cannot be None")
+        
+        if max_length <= 0:
+            raise ValueError("max_length must be positive")
+        
         self.dataset = ds
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -173,7 +179,13 @@ class DNADataset:
                         if seq and lab is not None:
                             sequences.append(seq)
                             labels.append(lab)
-                        lab = line[1:].strip().split(fasta_sep)[-1]  # Assume label is separated by `fasta_sep` in the header
+                        # Extract label from header, handle different formats
+                        header = line[1:].strip()
+                        if fasta_sep in header:
+                            lab = header.split(fasta_sep)[-1]
+                        else:
+                            # If no separator, try to extract label from end of header
+                            lab = header
                         seq = ""
                     else:
                         seq += line.strip()
@@ -200,17 +212,29 @@ class DNADataset:
             ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
         else:
             raise ValueError(f"Unsupported file type: {file_type}")
-        # Convert string labels to integer
+        
+        # Convert string labels to appropriate types, with error handling
         def format_labels(example):
             labels = example['labels']
             if isinstance(labels, str):
-                if multi_label_sep:
-                    example['labels'] = [float(x) for x in labels.split(multi_label_sep)]
-                else:
-                    example['labels'] = float(labels) if '.' in labels else int(labels)
+                try:
+                    if multi_label_sep and multi_label_sep in labels:
+                        example['labels'] = [float(x) for x in labels.split(multi_label_sep)]
+                    else:
+                        # Try to convert to float first, then int if that fails
+                        try:
+                            example['labels'] = float(labels)
+                        except ValueError:
+                            # If it's not a number, keep as string
+                            example['labels'] = labels
+                except (ValueError, TypeError):
+                    # If conversion fails, keep original value
+                    example['labels'] = labels
             return example
+        
         if 'labels' in ds.column_names:
             ds = ds.map(format_labels, desc="Format labels")
+        
         # Return processed dataset
         return ds
 
@@ -304,7 +328,7 @@ class DNADataset:
             eos_token = sp_token_map['eos_token'] if 'eos_token' in sp_token_map else None
             max_length = self.max_length
         else:
-            raise ValueError("Tokenizer not provided.")
+            raise ValueError("Tokenizer is required")
         def tokenize_for_sequence_classification(example):
             sequences = example["sequence"]
             if uppercase:
@@ -576,6 +600,9 @@ class DNADataset:
         Returns:
             A DNADataset object with sampled data
         """
+        if ratio <= 0 or ratio > 1:
+            raise ValueError("ratio must be between 0 and 1")
+        
         dataset = self.dataset
         if isinstance(dataset, DatasetDict):
             for dt in dataset.keys():
@@ -660,12 +687,24 @@ class DNADataset:
         """Return the length of the dataset.
         
         Returns:
-            Length of the dataset or dict of lengths for DatasetDict
+            Length of the dataset or total length for DatasetDict
+        """
+        if isinstance(self.dataset, DatasetDict):
+            # Return total length across all splits
+            return sum(len(self.dataset[dt]) for dt in self.dataset)
+        else:
+            return len(self.dataset)
+    
+    def get_split_lengths(self):
+        """Get lengths of individual splits for DatasetDict.
+        
+        Returns:
+            Dictionary of split names and their lengths, or None for single dataset
         """
         if isinstance(self.dataset, DatasetDict):
             return {dt: len(self.dataset[dt]) for dt in self.dataset}
         else:
-            return len(self.dataset)
+            return None
 
     def __getitem__(self, idx):
         """Get an item from the dataset.
@@ -686,7 +725,7 @@ class DNADataset:
 
     def __data_type__(self):
         """Get the data type of the dataset (classification, regression, etc.).
-        
+
         This method analyzes the labels to determine if the dataset is for:
         - classification (integer or string labels)
         - regression (float labels)
@@ -706,24 +745,53 @@ class DNADataset:
                 labels = self.dataset["labels"]
             else:
                 labels = None
-        if labels is not None:
-            if isinstance(labels[0], str):
-                if self.multi_label_sep and self.multi_label_sep in labels:
-                    multi_labels = labels.split(self.multi_label_sep)
-                    if '.' in multi_labels[0]:
-                        self.data_type = "multi_regression"
-                    else:
-                        self.data_type = "multi_label"
-                else:
-                    if '.' in labels[0]:
-                        self.data_type = "regression"
-                    else:
-                        self.data_type = "classification"
+        
+        # Handle empty datasets
+        if labels is None:
+            self.data_type = "unknown"
+            return
+        
+        # Check if labels is empty
+        try:
+            if hasattr(labels, '__len__'):
+                if len(labels) == 0:
+                    self.data_type = "unknown"
+                    return
             else:
-                if isinstance(labels[0], int):
-                    self.data_type = "classification"
+                self.data_type = "unknown"
+                return
+        except (TypeError, AttributeError):
+            self.data_type = "unknown"
+            return
+        
+        # Check if labels is a list-like object
+        if hasattr(labels, '__getitem__'):
+            try:
+                first_label = labels[0]
+            except IndexError:
+                self.data_type = "unknown"
+                return
+        else:
+            self.data_type = "unknown"
+            return
+        
+        if isinstance(first_label, str):
+            if self.multi_label_sep and self.multi_label_sep in str(first_label):
+                multi_labels = str(first_label).split(self.multi_label_sep)
+                if '.' in multi_labels[0]:
+                    self.data_type = "multi_regression"
                 else:
+                    self.data_type = "multi_label"
+            else:
+                if '.' in str(first_label):
                     self.data_type = "regression"
+                else:
+                    self.data_type = "classification"
+        else:
+            if isinstance(first_label, int):
+                self.data_type = "classification"
+            else:
+                self.data_type = "regression"
     
     def statistics(self) -> dict:
         """Get statistics of the dataset.

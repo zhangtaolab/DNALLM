@@ -297,11 +297,19 @@ class TestDNADatasetUtilityMethods:
         ds = Dataset.from_dict(test_data)
         ds_dict = DatasetDict({"train": ds, "test": ds})
         dna_ds = DNADataset(ds_dict)
+
+        # Test that len() returns total length
+        total_length = len(dna_ds)
+        assert isinstance(total_length, int)
+        assert total_length == 6  # 3 + 3
         
-        lengths = dna_ds.__len__()
-        assert isinstance(lengths, dict)
-        assert lengths["train"] == 3
-        assert lengths["test"] == 3
+        # Test that we can get individual split lengths
+        split_lengths = dna_ds.get_split_lengths()
+        assert isinstance(split_lengths, dict)
+        assert "train" in split_lengths
+        assert "test" in split_lengths
+        assert split_lengths["train"] == 3
+        assert split_lengths["test"] == 3
     
     def test_getitem_single_dataset(self):
         """Test __getitem__ for single dataset."""
