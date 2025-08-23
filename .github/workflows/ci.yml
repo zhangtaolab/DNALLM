@@ -5,8 +5,9 @@ on:
     branches:
       - main
       - master
+      - develop
   pull_request:
-    branches: [ main ]
+    branches: [ main, master, develop ]
 
 permissions:
   contents: write
@@ -18,47 +19,148 @@ jobs:
       matrix:
         python-version: ['3.10', '3.11', '3.12']
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      - name: Create venv and install dependencies
+        
+      - name: Create virtual environment and install dependencies
         run: |
           uv venv
-          uv pip install -e ".[base]"
-      #- name: Run tests
-      #  run: uvx pytest
-  deploy:
+          uv pip install -e ".[test,dev]"
+          
+      - name: Run linting and code quality checks
+        run: |
+          source .venv/bin/activate
+          black --check --diff .
+          isort --check-only --diff .
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+          
+      - name: Run type checking
+        run: |
+          source .venv/bin/activate
+          mypy dnallm/ --ignore-missing-imports --no-strict-optional
+          
+      - name: Run tests with coverage
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v --cov=dnallm --cov-report=xml --cov-report=term-missing
+          
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          
+  test-cuda:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+        cuda-version: ['12.1', '12.4']
     steps:
-      - uses: actions/checkout@v4
-      - name: Configure Git Credentials
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install CUDA dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nvidia-cuda-toolkit
+          
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+      - name: Create virtual environment and install CUDA dependencies
+        run: |
+          uv venv
+          if [ "${{ matrix.cuda-version }}" = "12.1" ]; then
+            uv pip install -e ".[test,dev,cuda121]"
+          elif [ "${{ matrix.cuda-version }}" = "12.4" ]; then
+            uv pip install -e ".[test,dev,cuda124]"
+          fi
+          
+      - name: Run GPU-enabled tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v -m "not slow" --tb=short
+          
+  test-mamba:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        
+      - name: Create virtual environment and install mamba dependencies
+        run: |
+          uv venv
+          uv pip install -e ".[test,dev,mamba]"
+          
+      - name: Run mamba-specific tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v -m "not slow" --tb=short
+          
+  deploy:
+    needs: [test, test-cuda, test-mamba]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Configure Git credentials
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+          
       - name: Configure mkdocs cache
         run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
-      - uses: actions/cache@v3
+        
+      - name: Cache mkdocs dependencies
+        uses: actions/cache@v3
         with:
           key: mkdocs-material-${{ env.cache_id }}
           path: .cache
           restore-keys: |
             mkdocs-material-
+            
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      - name: Create venv and install dependencies
+        
+      - name: Create virtual environment and install documentation dependencies
         run: |
           uv venv
-          uv pip install -e ".[base]"
-          uv pip install -e ".[docs]"
-      - name: Deploy mkdocs
+          uv pip install -e ".[base,docs]"
+          
+      - name: Deploy documentation to GitHub Pages
         run: |
           source .venv/bin/activate
           mkdocs gh-deploy --force
