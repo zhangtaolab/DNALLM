@@ -48,6 +48,7 @@ uv.lock
 
 # Testing
 .coverage
+.coverage.*
 coverage.xml
 .pytest_cache/
 htmlcov/
