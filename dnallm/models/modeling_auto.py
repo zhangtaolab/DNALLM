@@ -46,7 +46,7 @@ MODEL_INFO = {
         "modelscope": ["ZhejiangLab-LifeScience/agro-nucleotide-transformer-1b"],
         "default": "lgq12697/agro-nucleotide-transformer-1b",
     },
-    "Caduceus-Ph": {
+    "Caduceus-PH": {
         "title": "Caduceus: Bi-Directional Equivariant Long-Range DNA Sequence Modeling",
         "reference": "https://doi.org/10.48550/arXiv.2403.03234",
         "model_architecture": "CaduceusForMaskedLM",
@@ -155,14 +155,24 @@ MODEL_INFO = {
         "title": "GENERator: A Long-Context Generative Genomic Foundation Model",
         "reference": "https://doi.org/10.48550/arXiv.2502.07272",
         "model_architecture": "LlamaForCausalLM",
-        "model_tags": ["prokaryote-0.5b", "eukaryote-0.5b", "eukaryote-1.2b", "eukaryote-3b"],
+        "model_tags": ["eukaryote-1.2b", "eukaryote-3b"],
+        "huggingface": [
+            "GenerTeam/GENERator-eukaryote-1.2b-base",
+            "GenerTeam/GENERator-eukaryote-3b-base",
+        ],
+        "modelscope": [None, None,],
+        "default": "lgq12697/GENERator-eukaryote-0.5b-base",
+    },
+    "GENERanno": {
+        "title": "Generanno: A Genomic Foundation Model for Metagenomic Annotation",
+        "reference": "https://www.biorxiv.org/content/10.1101/2025.06.04.656517v3",
+        "model_architecture": "GenerannoForMaskedLM",
+        "model_tags": ["prokaryote-0.5b", "eukaryote-0.5b"],
         "huggingface": [
             "GenerTeam/GENERanno-prokaryote-0.5b-base",
             "GenerTeam/GENERanno-eukaryote-0.5b-base",
-            "GenerTeam/GENERanno-eukaryote-1.2b-base",
-            "GenerTeam/GENERanno-eukaryote-3b-base",
         ],
-        "modelscope": [None, None, None, None,],
+        "modelscope": [None, None,],
         "default": "lgq12697/GENERanno-eukaryote-0.5b-base",
     },
     "GenomeOcean": {
@@ -389,9 +399,9 @@ MODEL_INFO = {
         "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "ModernBertForMaskedLM",
-        "model_tags": ["BPE"],
-        "huggingface": ["zhangtaolab/plant-dnamodernbert-BPE"],
-        "modelscope": ["zhangtaolab/plant-dnamodernbert-BPE"],
+        "model_tags": ["BPE", "singlebase"],
+        "huggingface": ["zhangtaolab/plant-dnamodernbert-BPE", "zhangtaolab/plant-dnamodernbert-singlebase"],
+        "modelscope": ["zhangtaolab/plant-dnamodernbert-BPE", "zhangtaolab/plant-dnamodernbert-singlebase"],
         "default": "zhangtaolab/plant-dnamodernbert-BPE",
     },
 }

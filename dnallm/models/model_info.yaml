@@ -1,0 +1,1411 @@
+pretrained:
+  - name: "AgroNT"
+    model: "InstaDeepAI/agro-nucleotide-transformer-1b"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Caduceus-PH"
+    model: "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Caduceus-PS"
+    model: "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "PlantCaduceus"
+    model: "kuleshov-group/PlantCaduceus_l32"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "DNABERT"
+    model: "zhihan1996/DNA_bert_6"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "DNABERT-2"
+    model: "zhihan1996/DNABERT-2-117M"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "GENA-LM"
+    model: "AIRI-Institute/gena-lm-bert-base"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "GENA-LM-BigBird"
+    model: "AIRI-Institute/gena-lm-bigbird-base-sparse"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "GENERator"
+    model: "GenerTeam/GENERator-eukaryote-1.2b-base"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "GENERanno"
+    model: "GenerTeam/GENERanno-eukaryote-1.2b-base"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "GenomeOcean"
+    model: "pGenomeOcean/GenomeOcean-100M"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "GPN"
+    model: "songlab/gpn-brassicales"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "GROVER"
+    model: "PoetschLab/GROVER"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "HyenaDNA"
+    model: "LongSafari/hyenadna-small-32k-seqlen-hf"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Jamba-DNA"
+    model: "RaphaelMourad/Jamba-DNA-v1-114M-hg38"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Mistral-DNA"
+    model: "RaphaelMourad/Mistral-DNA-v1-138M-hg38"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "ModernBERT-DNA"
+    model: "RaphaelMourad/ModernBERT-DNA-v1-37M-hg38"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "MutBERT"
+    model: "JadenLong/MutBERT-Human-Ref"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Nucleotide Transformer"
+    model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "OmniNA"
+    model: "XLS/OmniNA-66m"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Omni-DNA"
+    model: "zehui127/Omni-DNA-116M"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "ProkBERT"
+    model: "neuralbioinfo/prokbert-mini"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant NT"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Plant DNAModernBert"
+    model: "zhangtaolab/plant-dnamodernbert-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+
+finetuned:
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-promoter"
+    task:
+      describe: "Predict whether a DNA sequence is a core promoter in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not promoter", "Core promoter"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-conservation"
+    task:
+      describe: "Predict whether a DNA sequence is conserved in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not conserved", "Conserved"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-lncRNAs"
+    task:
+      describe: "Predict whether a DNA sequence is a lncRNA in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not lncRNA", "lncRNA"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-H3K27ac"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27ac in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27ac", "H3K27ac"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-H3K4me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K4me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K4me3", "H3K4me3"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-H3K27me3"
+    task:
+      describe: "Predict whether a DNA sequence is enriched with H3K27me3 in plants."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not H3K27me3", "H3K27me3"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-open_chromatin"
+    task:
+      describe: "Predict whether a DNA sequence is in open chromatin regions in plants."
+      task_type: "multiclass"
+      num_labels: 3
+      label_names: ["Not open", "Full open", "Partial open"]
+      threshold: 0.5
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-promoter_strength_leaf"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in tobacco leaves."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in tobacco leaves"
+
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "DNABERT-2"
+    model: "zhangtaolab/dnabert2-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Nucleotide Transformer"
+    model: "zhangtaolab/nucleotide-transformer-v2-100m-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "AgroNT"
+    model: "zhangtaolab/agront-1b-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-6mer-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-6mer-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-6mer-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-6mer-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-singlebase-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-singlebase-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant Nucleotide Transformer"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-singlebase-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-singlebase-promoter_strength_protoplast"
+    task:
+      describe: "Predict promoter strength of a DNA sequence in maize protoplasts."
+      task_type: "regression"
+      num_labels: 1
+      label_names: "promoter strength in maize protoplasts"
