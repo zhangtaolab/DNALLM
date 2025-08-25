@@ -131,10 +131,6 @@ def __(mo, model_names, source_text, benchmark):
 def __(predict_button):
     if predict_button.value:
         results = predict_button.value
-        if 'curve' in results:
-            del results['curve']
-        if 'scatter' in results:
-            del results['scatter']
     else:
         results = None
     results

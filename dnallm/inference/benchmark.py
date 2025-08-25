@@ -186,14 +186,8 @@ class Benchmark:
             print("Dataset name:", dname)
             all_results[dname] = {}
             selected_results[dname] = {}
-            labels = self.dataset[di]['labels']
-            dataset = DNADataset(self.dataset[di], tokenizer=tokenizer, max_length=pred_config.max_length)
-            dataset.encode_sequences(remove_unused_columns=True)
-            dataloader = DataLoader(
-                dataset,
-                batch_size=pred_config.batch_size,
-                num_workers=pred_config.num_workers
-            )
+            metrics_save[dname] = {}
+            labels = self.datasets[di]['labels']
             task_config = task_configs[di] if di < len(task_configs) else task_configs[0]
             for mi, model_name in enumerate(model_names):
                 print("Model name:", model_name)
@@ -221,12 +215,19 @@ class Benchmark:
                             model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config)
                         else:
                             raise NameError("Cannot find model in either the given source or local.")
+                dataset = DNADataset(self.datasets[di], tokenizer=tokenizer, max_length=pred_config.max_length)
+                dataset.encode_sequences(remove_unused_columns=True)
+                dataloader = DataLoader(
+                    dataset,
+                    batch_size=pred_config.batch_size,
+                    num_workers=pred_config.num_workers
+                )
                 predictor = self.get_predictor(model, tokenizer)
                 # Perform the prediction
                 logits, _, _ = predictor.batch_predict(dataloader, do_pred=False)
                 if len(labels) == len(logits):
                     metrics = predictor.calculate_metrics(logits, labels, plot=True)
-                    all_results[dname][model_name] = {}
+                    all_results[dname][model_name] = metrics
                     selected_results[dname][model_name] = {}
                     # keep selected metrics
                     if selected_metrics:
@@ -247,8 +248,8 @@ class Benchmark:
         # Save the metrics
         if save_scores and pred_config.output_dir:
             save_metrics(metrics_save, Path(pred_config.output_dir))
-        if selected_metrics:
-            return selected_metrics
+        if self.prepared:
+            return selected_results
         else:
             return all_results
 
