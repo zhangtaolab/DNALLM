@@ -7,6 +7,8 @@ without complex import path issues.
 """
 
 import os
+os.environ['GRADIO_TEMP_DIR'] = "tmp/gradio"
+
 import sys
 import argparse
 from pathlib import Path

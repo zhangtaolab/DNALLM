@@ -25,12 +25,12 @@ A web-based interface for generating configuration files for DNALLM fine-tuning,
 ### **Installation**
 ```bash
 cd dnallm/ui
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ### **Launch Application**
 ```bash
-python run_app.py
+python run_config_app.py
 ```
 
 ### **Access UI**
@@ -87,9 +87,9 @@ Description: Predict whether a DNA sequence is a core promoter in plants.
 ```
 dnallm/ui/
 ├── config_generator_app.py    # Main Gradio application
-├── run_app.py                 # Launch script
+├── run_config_app.py          # Launch script
 ├── requirements.txt           # Python dependencies
-└── README.md                 # This documentation
+└── README.md                  # This documentation
 ```
 
 ## 🔧 Customization
