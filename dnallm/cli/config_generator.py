@@ -16,7 +16,7 @@ from typing import Dict, Any, List, Optional
 
 
 class ConfigGenerator:
-    """Interactive configuration generator for DNALLM"""
+    """Interactive configuration generator for DNALLM with model template support"""
     
     # Define consistent task types across all methods
     TASK_TYPES = {
@@ -58,6 +58,394 @@ class ConfigGenerator:
     def __init__(self):
         self.config = {}
         self.config_type = None
+        self.model_info = {}
+        self.available_models = []
+        self.model_templates = {}
+        
+        # Load model information from YAML file
+        self._load_model_info()
+    
+    def _load_model_info(self):
+        """Load model information from model_info.yaml file"""
+        try:
+            # Try to find model_info.yaml in the models directory
+            current_file = Path(__file__).resolve()
+            yaml_path = current_file.parent.parent / "models" / "model_info.yaml"
+            
+            if yaml_path.exists():
+                with open(yaml_path, 'r', encoding='utf-8') as f:
+                    self.model_info = yaml.safe_load(f)
+                
+                # Extract available models and templates
+                self._extract_model_templates()
+                click.echo(f"✅ Loaded {len(self.available_models)} model templates from {yaml_path}")
+            else:
+                click.echo(f"⚠️  Model info file not found at {yaml_path}")
+                click.echo("   Continuing with manual configuration mode...")
+                
+        except Exception as e:
+            click.echo(f"⚠️  Warning: Could not load model info: {e}")
+            click.echo("   Continuing with manual configuration mode...")
+    
+    def _extract_model_templates(self):
+        """Extract model templates from loaded YAML data"""
+        self.available_models = []
+        self.model_templates = {}
+        
+        # Process pretrained models
+        if 'pretrained' in self.model_info:
+            for model in self.model_info['pretrained']:
+                model_name = model['name']
+                model_path = model['model']
+                self.available_models.append(model_name)
+                self.model_templates[model_name] = {
+                    'path': model_path,
+                    'type': 'pretrained',
+                    'task': model.get('task', {})
+                }
+        
+        # Process finetuned models (these are more useful for configuration)
+        if 'finetuned' in self.model_info:
+            for model in self.model_info['finetuned']:
+                model_name = model['name']
+                model_path = model['model']
+                self.available_models.append(model_name)
+                self.model_templates[model_name] = {
+                    'path': model_path,
+                    'type': 'finetuned',
+                    'task': model.get('task', {})
+                }
+        
+        # Sort models: zhangtaolab models first, then others
+        self._sort_models_by_priority()
+    
+    def _sort_models_by_priority(self):
+        """Sort models with zhangtaolab models first"""
+        def get_model_priority(model_name):
+            model_info = self.model_templates.get(model_name, {})
+            model_path = model_info.get('path', '')
+            
+            # zhangtaolab models get highest priority
+            if 'zhangtaolab' in model_path:
+                return 0
+            # finetuned models get medium priority
+            elif model_info.get('type') == 'finetuned':
+                return 1
+            # pretrained models get lowest priority
+            else:
+                return 2
+        
+        # Sort by priority
+        self.available_models.sort(key=get_model_priority)
+    
+    def _search_models(self, query: str) -> List[str]:
+        """Search models by name or description"""
+        if not query:
+            return self.available_models[:10]  # Return first 10 if no query
+        
+        query = query.lower()
+        results = []
+        
+        for model_name in self.available_models:
+            if query in model_name.lower():
+                results.append(model_name)
+                continue
+            
+            # Search in model path
+            model_info = self.model_templates.get(model_name, {})
+            if 'path' in model_info and query in model_info['path'].lower():
+                results.append(model_name)
+                continue
+            
+            # Search in task description
+            task = model_info.get('task', {})
+            if 'describe' in task and query in task['describe'].lower():
+                results.append(model_name)
+        
+        return results[:20]  # Limit results
+    
+    def _select_model_from_templates(self, config_type: str = None) -> Optional[Dict[str, Any]]:
+        """Let user select a model from available templates based on configuration type"""
+        if not self.available_models:
+            return None
+        
+        # Filter models based on configuration type
+        if config_type == 'finetune':
+            # For fine-tuning, show pretrained models (base models for fine-tuning)
+            filtered_models = []
+            for model_name in self.available_models:
+                model_info = self.model_templates.get(model_name, {})
+                if model_info.get('type') == 'pretrained':
+                    filtered_models.append(model_name)
+            
+            if not filtered_models:
+                click.echo("❌ No pretrained models found for fine-tuning")
+                return None
+            
+            models_to_show = filtered_models
+            click.echo(f"   Showing pretrained models only (base models for fine-tuning)")
+            
+        elif config_type == 'inference':
+            # For inference, show finetuned models (ready for prediction)
+            filtered_models = []
+            for model_name in self.available_models:
+                model_info = self.model_templates.get(model_name, {})
+                if model_info.get('type') == 'finetuned':
+                    filtered_models.append(model_name)
+            
+            if not filtered_models:
+                click.echo("❌ No finetuned models found for inference")
+                return None
+            
+            models_to_show = filtered_models
+            click.echo(f"   Showing finetuned models only (ready for prediction)")
+            
+        elif config_type == 'benchmark':
+            # For benchmark, show all model types
+            models_to_show = self.available_models
+            click.echo(f"   Showing all model types (suitable for benchmarking)")
+            
+        else:
+            # Default: show all models
+            models_to_show = self.available_models
+            click.echo(f"   Showing all available models")
+        
+        click.echo(f"\n🔍 Available model templates ({len(models_to_show)} models):")
+        
+        # Show first 10 models with option to search
+        click.echo("\n📋 First 10 models (zhangtaolab models prioritized):")
+        for i, model_name in enumerate(models_to_show[:10], 1):
+            model_info = self.model_templates.get(model_name, {})
+            task_type = model_info.get('task', {}).get('task_type', 'unknown')
+            model_path = model_info.get('path', 'N/A')
+            click.echo(f"  {i}. {model_name}")
+            click.echo(f"     Path: {model_path}")
+            click.echo(f"     Task: {task_type}")
+            click.echo()
+        
+        if len(models_to_show) > 10:
+            click.echo(f"  ... and {len(models_to_show) - 10} more")
+        
+        click.echo("\nOptions:")
+        click.echo("1. Select from list above (1-10)")
+        click.echo("2. Search models")
+        click.echo("3. Enter custom model path")
+        click.echo("4. Show all models")
+        
+        while True:
+            choice = click.prompt("Enter your choice (1-4)", type=int)
+            
+            if choice == 1:
+                # Select from first 10
+                if len(models_to_show) < 10:
+                    max_choice = len(models_to_show)
+                else:
+                    max_choice = 10
+                
+                model_choice = click.prompt(f"Enter model number (1-{max_choice})", type=int)
+                if 1 <= model_choice <= max_choice:
+                    selected_model = models_to_show[model_choice - 1]
+                    return self.model_templates.get(selected_model, {})
+                else:
+                    click.echo("❌ Invalid choice. Please try again.")
+            
+            elif choice == 2:
+                # Search models
+                search_query = click.prompt("Enter search term")
+                search_results = self._search_models(search_query)
+                
+                if not search_results:
+                    click.echo("❌ No models found matching your search")
+                    continue
+                
+                click.echo(f"\n🔍 Search results ({len(search_results)} models):")
+                for i, model_name in enumerate(search_results, 1):
+                    model_info = self.model_templates.get(model_name, {})
+                    task_type = model_info.get('task', {}).get('task_type', 'unknown')
+                    model_path = model_info.get('path', 'N/A')
+                    click.echo(f"  {i}. {model_name}")
+                    click.echo(f"     Path: {model_path}")
+                    click.echo(f"     Task: {task_type}")
+                    click.echo()
+                
+                if len(search_results) == 1:
+                    selected_model = search_results[0]
+                    click.echo(f"✅ Auto-selected: {selected_model}")
+                    return self.model_templates.get(selected_model, {})
+                else:
+                    model_choice = click.prompt(f"Enter model number (1-{len(search_results)})", type=int)
+                    if 1 <= model_choice <= len(search_results):
+                        selected_model = search_results[model_choice - 1]
+                        return self.model_templates.get(selected_model, {})
+                    else:
+                        click.echo("❌ Invalid choice. Please try again.")
+            
+            elif choice == 3:
+                # Custom model path
+                return None
+            
+            elif choice == 4:
+                # Show all models
+                click.echo(f"\n📋 All {len(models_to_show)} models (zhangtaolab models prioritized):")
+                for i, model_name in enumerate(models_to_show, 1):
+                    model_info = self.model_templates.get(model_name, {})
+                    task_type = model_info.get('task', {}).get('task_type', 'unknown')
+                    model_path = model_info.get('path', 'N/A')
+                    click.echo(f"  {i}. {model_name}")
+                    click.echo(f"     Path: {model_path}")
+                    click.echo(f"     Task: {task_type}")
+                    click.echo()
+                
+                model_choice = click.prompt(f"Enter model number (1-{len(models_to_show)})", type=int)
+                if 1 <= model_choice <= len(models_to_show):
+                    selected_model = models_to_show[model_choice - 1]
+                    return self.model_templates.get(selected_model, {})
+                else:
+                    click.echo("❌ Invalid choice. Please try again.")
+            
+            else:
+                click.echo("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+    
+    def _auto_fill_from_template(self, model_template: Dict[str, Any]) -> Dict[str, Any]:
+        """Auto-fill configuration from model template with comprehensive defaults"""
+        auto_config = {}
+        task = model_template.get('task', {})
+        
+        # Auto-fill task configuration
+        if task:
+            task_type = task.get('task_type', 'binary')
+            auto_config['task_type'] = task_type
+            
+            # Map YAML task types to our internal types
+            task_type_mapping = {
+                'binary': 'binary_classification',
+                'multiclass': 'multiclass_classification',
+                'regression': 'regression',
+                'mask': 'masked_language_modeling',
+                'generation': 'generation'
+            }
+            
+            auto_config['mapped_task_type'] = task_type_mapping.get(task_type, 'binary_classification')
+            auto_config['num_labels'] = task.get('num_labels', 2)
+            auto_config['label_names'] = task.get('label_names', [])
+            auto_config['threshold'] = task.get('threshold', 0.5)
+            auto_config['description'] = task.get('describe', '')
+        
+        # Auto-fill model path
+        auto_config['model_path'] = model_template.get('path', '')
+        auto_config['model_type'] = model_template.get('type', 'unknown')
+        
+        # Add comprehensive default parameters based on configuration type
+        auto_config['defaults'] = self._get_default_parameters()
+        
+        return auto_config
+    
+    def _get_default_parameters(self) -> Dict[str, Any]:
+        """Get comprehensive default parameters for different configuration types"""
+        defaults = {}
+        
+        # Common task defaults
+        defaults['task'] = {
+            'task_type': 'binary',
+            'num_labels': 2,
+            'label_names': ['negative', 'positive'],
+            'threshold': 0.5
+        }
+        
+        # Fine-tuning defaults (based on finetune_config.yaml)
+        defaults['finetune'] = {
+            'output_dir': './outputs',
+            'num_train_epochs': 3,
+            'per_device_train_batch_size': 8,
+            'per_device_eval_batch_size': 16,
+            'gradient_accumulation_steps': 1,
+            'max_steps': -1,
+            'logging_strategy': 'steps',
+            'logging_steps': 2000,
+            'eval_strategy': 'steps',
+            'eval_steps': 2000,
+            'save_strategy': 'steps',
+            'save_steps': 2000,
+            'save_total_limit': 20,
+            'save_safetensors': True,
+            'learning_rate': 2e-5,
+            'weight_decay': 0.01,
+            'adam_beta1': 0.9,
+            'adam_beta2': 0.999,
+            'adam_epsilon': 1e-8,
+            'max_grad_norm': 1.0,
+            'warmup_ratio': 0.1,
+            'lr_scheduler_type': 'linear',
+            'seed': 42,
+            'bf16': False,
+            'fp16': False,
+            'load_best_model_at_end': True,
+            'metric_for_best_model': 'eval_loss',
+            'report_to': 'tensorboard'
+        }
+        
+        # Inference defaults (based on inference_config.yaml)
+        defaults['inference'] = {
+            'batch_size': 16,
+            'max_length': 512,
+            'device': 'auto',
+            'num_workers': 4,
+            'use_fp16': False,
+            'output_dir': './results'
+        }
+        
+        # Benchmark defaults (based on benchmark_config.yaml)
+        defaults['benchmark'] = {
+            'name': 'Model Benchmark',
+            'description': 'Comparing DNA models on various tasks',
+            'metrics': ['accuracy', 'f1_score', 'precision', 'recall'],
+            'plot': {'format': 'pdf'},
+            'inference': {
+                'batch_size': 16,
+                'max_length': 512,
+                'device': 'auto',
+                'num_workers': 4,
+                'use_fp16': False,
+                'output_dir': 'benchmark_results'
+            }
+        }
+        
+        return defaults
+    
+    def _confirm_auto_fill(self, auto_config: Dict[str, Any]) -> bool:
+        """Show auto-filled configuration and ask for confirmation"""
+        click.echo("\n🎯 Auto-filled configuration from template:")
+        click.echo("=" * 40)
+        
+        if 'description' in auto_config:
+            click.echo(f"📝 Description: {auto_config['description']}")
+        
+        click.echo(f"🔧 Task Type: {auto_config.get('mapped_task_type', 'Unknown')}")
+        click.echo(f"🏷️  Number of Labels: {auto_config.get('num_labels', 'Unknown')}")
+        
+        if 'label_names' in auto_config and auto_config['label_names']:
+            if isinstance(auto_config['label_names'], list):
+                labels_str = ', '.join(auto_config['label_names'])
+            else:
+                labels_str = str(auto_config['label_names'])
+            click.echo(f"📋 Label Names: {labels_str}")
+        
+        if 'threshold' in auto_config:
+            click.echo(f"⚖️  Threshold: {auto_config['threshold']}")
+        
+        click.echo(f"🤖 Model Path: {auto_config.get('model_path', 'Unknown')}")
+        click.echo(f"📚 Model Type: {auto_config.get('model_type', 'Unknown')}")
+        
+        # Show available default parameters
+        if 'defaults' in auto_config:
+            click.echo("\n📋 Available default parameters:")
+            click.echo("-" * 30)
+            click.echo("🔧 Task defaults: task_type, num_labels, label_names, threshold")
+            click.echo("🎯 Fine-tuning defaults: learning_rate, batch_size, epochs, etc.")
+            click.echo("🔮 Inference defaults: batch_size, max_length, device, etc.")
+            click.echo("📊 Benchmark defaults: metrics, plot format, etc.")
+        
+        return click.confirm("\n✅ Use this auto-filled configuration?")
         
     def generate_config(self) -> Dict[str, Any]:
         """Main method to generate configuration interactively"""
@@ -102,11 +490,33 @@ class ConfigGenerator:
         """Generate fine-tuning configuration"""
         click.echo("\n🔧 Generating Fine-tuning Configuration...")
         
-        # Task configuration
-        self.config['task'] = self._configure_task()
+        # Model selection with template support
+        click.echo("\n🤖 Model Selection:")
+        click.echo("1. Use model template (recommended)")
+        click.echo("2. Enter custom model path")
+        
+        model_choice = click.prompt("Choose option (1-2)", type=int)
+        
+        auto_config = None
+        if model_choice == 1:
+            # Use model template - for finetune, show pretrained models (base for fine-tuning)
+            model_template = self._select_model_from_templates('finetune')
+            if model_template:
+                auto_config = self._auto_fill_from_template(model_template)
+                if auto_config and self._confirm_auto_fill(auto_config):
+                    click.echo("✅ Using auto-filled configuration from template")
+                else:
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
+                    auto_config = None
+        
+        # Task configuration (use auto-filled if available)
+        if auto_config:
+            task_config = self._configure_task_with_template(auto_config)
+        else:
+            task_config = self._configure_task()
         
         # Fine-tuning configuration
-        self.config['finetune'] = self._configure_finetune()
+        finetune_config = self._configure_finetune(auto_config)
         
         # Inference configuration (for evaluation; when do fine-tuning, use default inference config)
         self.config['inference'] = {
@@ -118,17 +528,47 @@ class ConfigGenerator:
             'output_dir': './results'
         }
         
+        # Store the configuration
+        self.config['task'] = task_config
+        self.config['finetune'] = finetune_config
+        
         click.echo("✅ Fine-tuning configuration generated successfully!")
     
     def _generate_inference_config(self):
         """Generate inference configuration"""
         click.echo("\n🔮 Generating Inference Configuration...")
         
-        # Task configuration
-        self.config['task'] = self._configure_task()
+        # Model selection with template support
+        click.echo("\n🤖 Model Selection:")
+        click.echo("1. Use model template (recommended)")
+        click.echo("2. Enter custom model path")
+        
+        model_choice = click.prompt("Choose option (1-2)", type=int)
+        
+        auto_config = None
+        if model_choice == 1:
+            # Use model template - for inference, show finetuned models (ready for prediction)
+            model_template = self._select_model_from_templates('inference')
+            if model_template:
+                auto_config = self._auto_fill_from_template(model_template)
+                if auto_config and self._confirm_auto_fill(auto_config):
+                    click.echo("✅ Using auto-filled configuration from template")
+                else:
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
+                    auto_config = None
+        
+        # Task configuration (use auto-filled if available)
+        if auto_config:
+            task_config = self._configure_task_with_template(auto_config)
+        else:
+            task_config = self._configure_task()
         
         # Inference configuration
-        self.config['inference'] = self._configure_inference()
+        inference_config = self._configure_inference(auto_config)
+        
+        # Store the configuration
+        self.config['task'] = task_config
+        self.config['inference'] = inference_config
         
         click.echo("✅ Inference configuration generated successfully!")
     
@@ -139,20 +579,48 @@ class ConfigGenerator:
         # Basic benchmark info
         self.config['benchmark'] = self._configure_benchmark_basic()
         
-        # Models configuration
-        self.config['models'] = self._configure_models()
+        # Model selection with template support for benchmarking
+        click.echo("\n🤖 Model Selection for Benchmarking:")
+        click.echo("1. Use model template (recommended)")
+        click.echo("2. Enter custom model path")
+        
+        model_choice = click.prompt("Choose option (1-2)", type=int)
+        
+        auto_config = None
+        if model_choice == 1:
+            # Use model template - for benchmark, show all model types
+            model_template = self._select_model_from_templates('benchmark')
+            if model_template:
+                auto_config = self._auto_fill_from_template(model_template)
+                if auto_config and self._confirm_auto_fill(auto_config):
+                    click.echo("✅ Using auto-filled configuration from template")
+                else:
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
+                    auto_config = None
+        
+        # Models configuration (use auto-filled if available)
+        if auto_config:
+            models_config = self._configure_models_with_template(auto_config)
+        else:
+            models_config = self._configure_models()
         
         # Datasets configuration
-        self.config['datasets'] = self._configure_datasets()
+        datasets_config = self._configure_datasets()
         
         # Metrics configuration
         self.config['metrics'] = self._configure_metrics()
         
         # Evaluation configuration
-        self.config['evaluation'] = self._configure_evaluation()
+        evaluation_config = self._configure_evaluation()
         
         # Output configuration
-        self.config['output'] = self._configure_output()
+        output_config = self._configure_output()
+        
+        # Store the configuration
+        self.config['models'] = models_config
+        self.config['datasets'] = datasets_config
+        self.config['evaluation'] = evaluation_config
+        self.config['output'] = output_config
         
         click.echo("✅ Benchmark configuration generated successfully!")
     
@@ -203,62 +671,127 @@ class ConfigGenerator:
         
         return task_config
     
-    def _configure_finetune(self) -> Dict[str, Any]:
-        """Configure fine-tuning settings"""
+    def _configure_task_with_template(self, auto_config: Dict[str, Any]) -> Dict[str, Any]:
+        """Configure task settings using template information with smart defaults"""
+        click.echo("\n📝 Task Configuration (from template):")
+        
+        # Get defaults
+        defaults = auto_config.get('defaults', {}).get('task', {})
+        
+        # Use template values with fallback to defaults
+        task_type = auto_config.get('mapped_task_type', defaults.get('task_type', 'binary_classification'))
+        num_labels = auto_config.get('num_labels', defaults.get('num_labels', 2))
+        label_names = auto_config.get('label_names', defaults.get('label_names', ['negative', 'positive']))
+        threshold = auto_config.get('threshold', defaults.get('threshold', 0.5))
+        
+        click.echo(f"✅ Task Type: {task_type}")
+        click.echo(f"✅ Number of Labels: {num_labels}")
+        
+        if label_names:
+            if isinstance(label_names, list):
+                labels_str = ', '.join(label_names)
+            else:
+                labels_str = str(label_names)
+            click.echo(f"✅ Label Names: {labels_str}")
+        
+        if 'classification' in task_type:
+            click.echo(f"✅ Threshold: {threshold}")
+        
+        # Show available defaults
+        click.echo(f"\n📋 Smart defaults available:")
+        click.echo(f"   • Task: {defaults.get('task_type', 'binary')} with {defaults.get('num_labels', 2)} labels")
+        click.echo(f"   • Threshold: {defaults.get('threshold', 0.5)}")
+        click.echo(f"   • Labels: {', '.join(defaults.get('label_names', ['negative', 'positive']))}")
+        
+        # Ask if user wants to modify any values
+        if click.confirm("\n🔧 Modify any of these values?"):
+            return self._configure_task()  # Fall back to manual configuration
+        else:
+            # Create task config from template
+            task_config = {'task_type': self.TASK_ALIAS.get(task_type, task_type)}
+            
+            if 'classification' in task_type:
+                task_config['num_labels'] = num_labels
+                if label_names:
+                    if isinstance(label_names, list):
+                        task_config['label_names'] = label_names
+                    else:
+                        task_config['label_names'] = [name.strip() for name in str(label_names).split(',')]
+                
+                if 'binary' in task_type or 'multilabel' in task_type:
+                    task_config['threshold'] = threshold
+            
+            return task_config
+    
+    def _configure_finetune(self, auto_config: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Configure fine-tuning settings with smart defaults"""
         click.echo("\n🎯 Fine-tuning Configuration:")
+        
+        # Get defaults if available
+        defaults = {}
+        if auto_config and 'defaults' in auto_config:
+            defaults = auto_config['defaults'].get('finetune', {})
         
         finetune_config = {}
         
-        # Basic settings
+        # Basic settings with smart defaults
         finetune_config['output_dir'] = click.prompt(
             "Output directory", 
             type=str, 
-            default="./outputs"
+            default=defaults.get('output_dir', "./outputs")
         )
         
         finetune_config['num_train_epochs'] = click.prompt(
             "Number of training epochs", 
             type=int, 
-            default=3
+            default=defaults.get('num_train_epochs', 3)
         )
         
         finetune_config['per_device_train_batch_size'] = click.prompt(
             "Training batch size per device", 
             type=int, 
-            default=8
+            default=defaults.get('per_device_train_batch_size', 8)
         )
         
         finetune_config['per_device_eval_batch_size'] = click.prompt(
             "Evaluation batch size per device", 
             type=int, 
-            default=16
+            default=defaults.get('per_device_eval_batch_size', 16)
         )
         
-        # Learning rate and optimization
+        # Learning rate and optimization with smart defaults
         finetune_config['learning_rate'] = click.prompt(
             "Learning rate", 
             type=float, 
-            default=2e-5
+            default=defaults.get('learning_rate', 2e-5)
         )
         
         finetune_config['weight_decay'] = click.prompt(
             "Weight decay", 
             type=float, 
-            default=0.01
+            default=defaults.get('weight_decay', 0.01)
         )
         
         finetune_config['warmup_ratio'] = click.prompt(
             "Warmup ratio", 
             type=float, 
-            default=0.1
+            default=defaults.get('warmup_ratio', 0.1)
         )
+        
+        # Show available defaults
+        if defaults:
+            click.echo(f"\n📋 Smart defaults available for:")
+            click.echo(f"   • Logging: {defaults.get('logging_steps', 2000)} steps")
+            click.echo(f"   • Evaluation: {defaults.get('eval_steps', 2000)} steps")
+            click.echo(f"   • Saving: {defaults.get('save_steps', 2000)} steps")
+            click.echo(f"   • Seed: {defaults.get('seed', 42)}")
         
         # Advanced settings
         if click.confirm("Configure advanced settings?"):
             finetune_config['gradient_accumulation_steps'] = click.prompt(
                 "Gradient accumulation steps", 
                 type=int, 
-                default=1
+                default=defaults.get('gradient_accumulation_steps', 1)
             )
             
             finetune_config['max_grad_norm'] = click.prompt(
@@ -328,22 +861,27 @@ class ConfigGenerator:
                 return devices[choice - 1]
             click.echo("❌ Invalid choice. Please try again.")
     
-    def _configure_inference(self) -> Dict[str, Any]:
-        """Configure inference settings"""
+    def _configure_inference(self, auto_config: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Configure inference settings with smart defaults"""
         click.echo("\n🔮 Inference Configuration:")
+        
+        # Get defaults if available
+        defaults = {}
+        if auto_config and 'defaults' in auto_config:
+            defaults = auto_config['defaults'].get('inference', {})
         
         inference_config = {}
         
         inference_config['batch_size'] = click.prompt(
             "Batch size", 
             type=int, 
-            default=16
+            default=defaults.get('batch_size', 16)
         )
         
         inference_config['max_length'] = click.prompt(
             "Maximum sequence length", 
             type=int, 
-            default=512
+            default=defaults.get('max_length', 512)
         )
         
         # Device selection using common method
@@ -352,16 +890,26 @@ class ConfigGenerator:
         inference_config['num_workers'] = click.prompt(
             "Number of workers", 
             type=int, 
-            default=4
+            default=defaults.get('num_workers', 4)
         )
         
-        inference_config['use_fp16'] = click.confirm("Use float16?", default=False)
+        inference_config['use_fp16'] = click.confirm(
+            "Use float16?", 
+            default=defaults.get('use_fp16', False)
+        )
         
         inference_config['output_dir'] = click.prompt(
             "Output directory", 
             type=str, 
-            default="./results"
+            default=defaults.get('output_dir', './results')
         )
+        
+        # Show available defaults
+        if defaults:
+            click.echo(f"\n📋 Smart defaults available for:")
+            click.echo(f"   • Batch size: {defaults.get('batch_size', 16)}")
+            click.echo(f"   • Max length: {defaults.get('max_length', 512)}")
+            click.echo(f"   • Workers: {defaults.get('num_workers', 4)}")
         
         return inference_config
     
@@ -450,6 +998,41 @@ class ConfigGenerator:
                 break
         
         return models
+    
+    def _configure_models_with_template(self, auto_config: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Configure models for benchmarking using template information"""
+        click.echo("\n🤖 Model Configuration (from template):")
+        
+        # Use template values
+        model_name = auto_config.get('model_path', '').split('/')[-1] if '/' in auto_config.get('model_path', '') else 'Model'
+        model_path = auto_config.get('model_path', '')
+        task_type = auto_config.get('mapped_task_type', 'classification')
+        
+        click.echo(f"✅ Model Name: {model_name}")
+        click.echo(f"✅ Model Path: {model_path}")
+        click.echo(f"✅ Task Type: {task_type}")
+        
+        # Ask if user wants to modify any values
+        if click.confirm("\n🔧 Modify any of these values?"):
+            return self._configure_models()  # Fall back to manual configuration
+        else:
+            # Create model config from template
+            model = {
+                'name': model_name,
+                'source': 'huggingface',
+                'path': model_path,
+                'task_type': task_type,
+                'trust_remote_code': True,
+                'torch_dtype': 'float32'
+            }
+            
+            # Ask if user wants to add more models
+            models = [model]
+            if click.confirm("Add another model?"):
+                additional_models = self._configure_models()
+                models.extend(additional_models)
+            
+            return models
     
     def _configure_datasets(self) -> List[Dict[str, Any]]:
         """Configure datasets for benchmarking"""
