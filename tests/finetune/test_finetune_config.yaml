@@ -21,6 +21,14 @@ finetune:
   save_total_limit: 20
   warmup_ratio: 0.1
   weight_decay: 0.01
+  lr_scheduler_kwargs: {}
+  resume_from_checkpoint: null
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+  lr_scheduler_type: linear
+  seed: 42
+  bf16: false
+  fp16: false
 task:
   label_names:
   - negative

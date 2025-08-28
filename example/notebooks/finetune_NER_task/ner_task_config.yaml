@@ -38,7 +38,14 @@ finetune:
     max_grad_norm: 1.0
     warmup_ratio: 0.1
     lr_scheduler_type: "linear"
-    lr_scheduler_kwargs: 
+    lr_scheduler_kwargs: {}  # Empty dict for linear scheduler, or add specific parameters for other schedulers
+    # Examples for other schedulers:
+    # lr_scheduler_type: "cosine_with_restarts"
+    # lr_scheduler_kwargs: {"num_restarts": 2}
+    # lr_scheduler_type: "polynomial" 
+    # lr_scheduler_kwargs: {"power": 1.0}
+    # lr_scheduler_type: "reduce_lr_on_plateau"
+    # lr_scheduler_kwargs: {"patience": 10, "factor": 0.1}
     seed: 42
     bf16: False
     fp16: False

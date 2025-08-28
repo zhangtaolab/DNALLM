@@ -6,6 +6,9 @@ This tool provides an interactive way to generate configuration files for:
 - Fine-tuning tasks
 - Inference tasks  
 - Benchmarking tasks
+
+For detailed TrainingArguments documentation, please refer to:
+https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
 """
 
 import click
@@ -16,7 +19,11 @@ from typing import Dict, Any, List, Optional
 
 
 class ConfigGenerator:
-    """Interactive configuration generator for DNALLM with model template support"""
+    """Interactive configuration generator for DNALLM with model template support
+    
+    For detailed TrainingArguments documentation, please refer to:
+    https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+    """
     
     # Define consistent task types across all methods
     TASK_TYPES = {
@@ -353,6 +360,7 @@ class ConfigGenerator:
         }
         
         # Fine-tuning defaults (based on finetune_config.yaml)
+        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         defaults['finetune'] = {
             'output_dir': './outputs',
             'num_train_epochs': 3,
@@ -376,6 +384,7 @@ class ConfigGenerator:
             'max_grad_norm': 1.0,
             'warmup_ratio': 0.1,
             'lr_scheduler_type': 'linear',
+            'lr_scheduler_kwargs': {},  # Always include empty dict for lr_scheduler_kwargs
             'seed': 42,
             'bf16': False,
             'fp16': False,
@@ -714,7 +723,10 @@ class ConfigGenerator:
             return task_config
     
     def _configure_finetune(self, auto_config: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Configure fine-tuning settings with smart defaults"""
+        """Configure fine-tuning settings with smart defaults
+        
+        For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        """
         click.echo("\n🎯 Fine-tuning Configuration:")
         
         # Get defaults if available
@@ -794,6 +806,60 @@ class ConfigGenerator:
             default=defaults.get('max_steps', -1)
         )
         
+        # Learning rate scheduler configuration (always included)
+        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        click.echo("\n📚 Learning Rate Scheduler Configuration:")
+        click.echo("Available scheduler types:")
+        scheduler_types = [
+            'linear', 'cosine', 'cosine_with_restarts', 'polynomial', 
+            'constant', 'constant_with_warmup', 'inverse_sqrt', 'reduce_lr_on_plateau'
+        ]
+        for i, scheduler in enumerate(scheduler_types, 1):
+            click.echo(f"  {i}. {scheduler}")
+        
+        while True:
+            choice = click.prompt("Choose scheduler type", type=int)
+            if 1 <= choice <= len(scheduler_types):
+                finetune_config['lr_scheduler_type'] = scheduler_types[choice - 1]
+                break
+            click.echo("❌ Invalid choice. Please try again.")
+        
+        # Always include lr_scheduler_kwargs (required by TrainingArguments)
+        finetune_config['lr_scheduler_kwargs'] = {}
+        
+        # Configure scheduler-specific parameters
+        if click.confirm("Configure scheduler-specific parameters?"):
+            scheduler = finetune_config['lr_scheduler_type']
+            click.echo(f"\n🔧 Configuring parameters for {scheduler} scheduler:")
+            
+            if scheduler in ['cosine', 'cosine_with_restarts']:
+                if click.confirm("Set number of restarts for cosine_with_restarts?"):
+                    restarts = click.prompt("Number of restarts", type=int, default=1)
+                    finetune_config['lr_scheduler_kwargs']['num_restarts'] = restarts
+            
+            if scheduler == 'polynomial':
+                if click.confirm("Set power for polynomial decay?"):
+                    power = click.prompt("Power value", type=float, default=1.0)
+                    finetune_config['lr_scheduler_kwargs']['power'] = power
+            
+            if scheduler == 'reduce_lr_on_plateau':
+                if click.confirm("Set patience for reduce_lr_on_plateau?"):
+                    patience = click.prompt("Patience value", type=int, default=10)
+                    finetune_config['lr_scheduler_kwargs']['patience'] = patience
+                
+                if click.confirm("Set factor for reduce_lr_on_plateau?"):
+                    factor = click.prompt("Factor value", type=float, default=0.1)
+                    finetune_config['lr_scheduler_kwargs']['factor'] = factor
+            
+            # Generic scheduler parameters
+            if click.confirm("Add custom scheduler parameters?"):
+                while True:
+                    key = click.prompt("Enter parameter name (or 'done' to finish)", type=str)
+                    if key.lower() == 'done':
+                        break
+                    value = click.prompt(f"Enter value for {key}", type=str)
+                    finetune_config['lr_scheduler_kwargs'][key] = value
+        
         # Show available defaults
         if defaults:
             click.echo(f"\n📋 Smart defaults available for:")
@@ -815,26 +881,6 @@ class ConfigGenerator:
                 type=float, 
                 default=1.0
             )
-            
-            finetune_config['lr_scheduler_type'] = click.prompt(
-                "Learning rate scheduler type", 
-                type=str, 
-                default="linear"
-            )
-            
-            # Optional learning rate scheduler kwargs
-            if click.confirm("Configure learning rate scheduler kwargs?"):
-                lr_scheduler_kwargs = {}
-                if click.confirm("Add custom scheduler parameters?"):
-                    while True:
-                        key = click.prompt("Enter parameter name (or 'done' to finish)", type=str)
-                        if key.lower() == 'done':
-                            break
-                        value = click.prompt(f"Enter value for {key}", type=str)
-                        lr_scheduler_kwargs[key] = value
-                    
-                    if lr_scheduler_kwargs:
-                        finetune_config['lr_scheduler_kwargs'] = lr_scheduler_kwargs
             
             finetune_config['seed'] = click.prompt(
                 "Random seed", 
@@ -1323,53 +1369,18 @@ class ConfigGenerator:
         return output_config
     
     def save_config(self, filepath: str = None) -> str:
-        """Save configuration to YAML file with user choice for filename"""
+        """Save configuration to YAML file"""
         if filepath is None:
-            # Generate default filename based on config type
             if self.config_type == "finetune":
-                default_filename = "finetune_config.yaml"
+                filepath = "finetune_config.yaml"
             elif self.config_type == "inference":
-                default_filename = "inference_config.yaml"
+                filepath = "inference_config.yaml"
             elif self.config_type == "benchmark":
-                default_filename = "benchmark_config.yaml"
-            else:
-                default_filename = "config.yaml"
-            
-            # Ask user if they want to use default filename or customize
-            click.echo(f"\n💾 Save Configuration:")
-            click.echo(f"Default filename: {default_filename}")
-            
-            if click.confirm("Use default filename?", default=True):
-                filepath = default_filename
-            else:
-                # Let user customize filename
-                while True:
-                    custom_filename = click.prompt(
-                        "Enter custom filename (with or without .yaml extension)",
-                        type=str,
-                        default=default_filename
-                    )
-                    
-                    # Ensure .yaml extension
-                    if not custom_filename.endswith(('.yaml', '.yml')):
-                        custom_filename += '.yaml'
-                    
-                    # Check if file already exists
-                    if os.path.exists(custom_filename):
-                        if click.confirm(f"File '{custom_filename}' already exists. Overwrite?", default=False):
-                            filepath = custom_filename
-                            break
-                        else:
-                            click.echo("Please choose a different filename.")
-                            continue
-                    else:
-                        filepath = custom_filename
-                        break
-        else:
-            # User provided filepath via command line option
-            # Ensure .yaml extension
-            if not filepath.endswith(('.yaml', '.yml')):
-                filepath += '.yaml'
+                filepath = "benchmark_config.yaml"
+        
+        # Ensure .yaml extension
+        if not filepath.endswith(('.yaml', '.yml')):
+            filepath += '.yaml'
         
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else '.', exist_ok=True)

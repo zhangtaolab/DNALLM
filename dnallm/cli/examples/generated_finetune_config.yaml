@@ -32,7 +32,7 @@ finetune:
   max_grad_norm: 1.0
   warmup_ratio: 0.1
   lr_scheduler_type: linear
-  lr_scheduler_kwargs: null
+  lr_scheduler_kwargs: {}
   seed: 42
   bf16: false
   fp16: false
