@@ -58,9 +58,21 @@ class InferenceConfig(BaseModel):
 def load_config(config_path: str):
     with open(config_path, "r", encoding="utf-8") as f:
         config_dict = yaml.safe_load(f)
-    # 转换为预定义的配置类，训练配置中嵌入任务配置
-    task_config = TaskConfig(**config_dict['task'])
-    finetune_config = TrainingConfig(**config_dict['finetune'])
-    inference_config = InferenceConfig(**config_dict['inference'])
-    return {'task': task_config, 'finetune': finetune_config, "inference": inference_config}
+    
+    # 根据配置文件内容动态创建配置
+    configs = {}
+    
+    # 任务配置
+    if 'task' in config_dict:
+        configs['task'] = TaskConfig(**config_dict['task'])
+    
+    # 推理配置
+    if 'inference' in config_dict:
+        configs['inference'] = InferenceConfig(**config_dict['inference'])
+    
+    # 训练配置（可选）
+    if 'finetune' in config_dict:
+        configs['finetune'] = TrainingConfig(**config_dict['finetune'])
+    
+    return configs
 
