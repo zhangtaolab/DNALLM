@@ -1,0 +1,30 @@
+finetune:
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1.0e-08
+  eval_steps: 1000
+  eval_strategy: steps
+  learning_rate: 2.0e-05
+  load_best_model_at_end: true
+  logging_steps: 1000
+  logging_strategy: steps
+  max_steps: -1
+  metric_for_best_model: eval_loss
+  num_train_epochs: 3
+  output_dir: ./outputs
+  per_device_eval_batch_size: 16
+  per_device_train_batch_size: 16
+  report_to: tensorboard
+  save_safetensors: true
+  save_steps: 1000
+  save_strategy: steps
+  save_total_limit: 20
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+task:
+  label_names:
+  - negative
+  - positive
+  num_labels: 2
+  task_type: binary
+  threshold: 0.5

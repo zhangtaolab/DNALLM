@@ -356,16 +356,16 @@ class ConfigGenerator:
         defaults['finetune'] = {
             'output_dir': './outputs',
             'num_train_epochs': 3,
-            'per_device_train_batch_size': 8,
+            'per_device_train_batch_size': 16,  # Updated to match example
             'per_device_eval_batch_size': 16,
             'gradient_accumulation_steps': 1,
             'max_steps': -1,
             'logging_strategy': 'steps',
-            'logging_steps': 2000,
+            'logging_steps': 1000,  # Updated to match example
             'eval_strategy': 'steps',
-            'eval_steps': 2000,
+            'eval_steps': 1000,  # Updated to match example
             'save_strategy': 'steps',
-            'save_steps': 2000,
+            'save_steps': 1000,  # Updated to match example
             'save_total_limit': 20,
             'save_safetensors': True,
             'learning_rate': 2e-5,
@@ -517,16 +517,6 @@ class ConfigGenerator:
         
         # Fine-tuning configuration
         finetune_config = self._configure_finetune(auto_config)
-        
-        # Inference configuration (for evaluation; when do fine-tuning, use default inference config)
-        self.config['inference'] = {
-            'batch_size': 16,
-            'max_length': 512,
-            'num_workers': 4,
-            'device': 'auto',
-            'use_fp16': False,
-            'output_dir': './results'
-        }
         
         # Store the configuration
         self.config['task'] = task_config
@@ -750,7 +740,7 @@ class ConfigGenerator:
         finetune_config['per_device_train_batch_size'] = click.prompt(
             "Training batch size per device", 
             type=int, 
-            default=defaults.get('per_device_train_batch_size', 8)
+            default=defaults.get('per_device_train_batch_size', 16)
         )
         
         finetune_config['per_device_eval_batch_size'] = click.prompt(
@@ -772,10 +762,36 @@ class ConfigGenerator:
             default=defaults.get('weight_decay', 0.01)
         )
         
+        # Adam optimizer parameters
+        finetune_config['adam_beta1'] = click.prompt(
+            "Adam beta1", 
+            type=float, 
+            default=defaults.get('adam_beta1', 0.9)
+        )
+        
+        finetune_config['adam_beta2'] = click.prompt(
+            "Adam beta2", 
+            type=float, 
+            default=defaults.get('adam_beta2', 0.999)
+        )
+        
+        finetune_config['adam_epsilon'] = click.prompt(
+            "Adam epsilon", 
+            type=float, 
+            default=defaults.get('adam_epsilon', 1e-8)
+        )
+        
         finetune_config['warmup_ratio'] = click.prompt(
             "Warmup ratio", 
             type=float, 
             default=defaults.get('warmup_ratio', 0.1)
+        )
+        
+        # Max steps configuration
+        finetune_config['max_steps'] = click.prompt(
+            "Maximum training steps (-1 for epoch-based)", 
+            type=int, 
+            default=defaults.get('max_steps', -1)
         )
         
         # Show available defaults
@@ -806,6 +822,20 @@ class ConfigGenerator:
                 default="linear"
             )
             
+            # Optional learning rate scheduler kwargs
+            if click.confirm("Configure learning rate scheduler kwargs?"):
+                lr_scheduler_kwargs = {}
+                if click.confirm("Add custom scheduler parameters?"):
+                    while True:
+                        key = click.prompt("Enter parameter name (or 'done' to finish)", type=str)
+                        if key.lower() == 'done':
+                            break
+                        value = click.prompt(f"Enter value for {key}", type=str)
+                        lr_scheduler_kwargs[key] = value
+                    
+                    if lr_scheduler_kwargs:
+                        finetune_config['lr_scheduler_kwargs'] = lr_scheduler_kwargs
+            
             finetune_config['seed'] = click.prompt(
                 "Random seed", 
                 type=int, 
@@ -825,19 +855,19 @@ class ConfigGenerator:
             finetune_config['logging_steps'] = click.prompt(
                 "Logging steps", 
                 type=int, 
-                default=100
+                default=1000
             )
             finetune_config['eval_strategy'] = "steps"
             finetune_config['eval_steps'] = click.prompt(
                 "Evaluation steps", 
                 type=int, 
-                default=100
+                default=1000
             )
             finetune_config['save_strategy'] = "steps"
             finetune_config['save_steps'] = click.prompt(
                 "Save steps", 
                 type=int, 
-                default=500
+                default=1000
             )
         
         finetune_config['save_total_limit'] = click.prompt(
@@ -845,6 +875,47 @@ class ConfigGenerator:
             type=int, 
             default=20
         )
+        
+        # Model saving and evaluation options
+        finetune_config['save_safetensors'] = click.confirm(
+            "Save model in safetensors format?", 
+            default=defaults.get('save_safetensors', True)
+        )
+        
+        finetune_config['load_best_model_at_end'] = click.confirm(
+            "Load best model at end of training?", 
+            default=defaults.get('load_best_model_at_end', True)
+        )
+        
+        if finetune_config['load_best_model_at_end']:
+            finetune_config['metric_for_best_model'] = click.prompt(
+                "Metric for best model selection", 
+                type=str, 
+                default=defaults.get('metric_for_best_model', 'eval_loss')
+            )
+        
+        # Reporting options
+        report_options = ['tensorboard', 'wandb', 'none']
+        click.echo("Available reporting options:")
+        for i, option in enumerate(report_options, 1):
+            click.echo(f"  {i}. {option}")
+        
+        while True:
+            choice = click.prompt("Choose reporting option", type=int)
+            if 1 <= choice <= len(report_options):
+                finetune_config['report_to'] = report_options[choice - 1]
+                break
+            click.echo("❌ Invalid choice. Please try again.")
+        
+        # Optional resume from checkpoint
+        if click.confirm("Configure resume from checkpoint?"):
+            finetune_config['resume_from_checkpoint'] = click.prompt(
+                "Checkpoint path to resume from (leave empty for none)", 
+                type=str, 
+                default=""
+            )
+            if not finetune_config['resume_from_checkpoint']:
+                finetune_config['resume_from_checkpoint'] = None
         
         return finetune_config
     
@@ -1252,18 +1323,53 @@ class ConfigGenerator:
         return output_config
     
     def save_config(self, filepath: str = None) -> str:
-        """Save configuration to YAML file"""
+        """Save configuration to YAML file with user choice for filename"""
         if filepath is None:
+            # Generate default filename based on config type
             if self.config_type == "finetune":
-                filepath = "finetune_config.yaml"
+                default_filename = "finetune_config.yaml"
             elif self.config_type == "inference":
-                filepath = "inference_config.yaml"
+                default_filename = "inference_config.yaml"
             elif self.config_type == "benchmark":
-                filepath = "benchmark_config.yaml"
-        
-        # Ensure .yaml extension
-        if not filepath.endswith(('.yaml', '.yml')):
-            filepath += '.yaml'
+                default_filename = "benchmark_config.yaml"
+            else:
+                default_filename = "config.yaml"
+            
+            # Ask user if they want to use default filename or customize
+            click.echo(f"\n💾 Save Configuration:")
+            click.echo(f"Default filename: {default_filename}")
+            
+            if click.confirm("Use default filename?", default=True):
+                filepath = default_filename
+            else:
+                # Let user customize filename
+                while True:
+                    custom_filename = click.prompt(
+                        "Enter custom filename (with or without .yaml extension)",
+                        type=str,
+                        default=default_filename
+                    )
+                    
+                    # Ensure .yaml extension
+                    if not custom_filename.endswith(('.yaml', '.yml')):
+                        custom_filename += '.yaml'
+                    
+                    # Check if file already exists
+                    if os.path.exists(custom_filename):
+                        if click.confirm(f"File '{custom_filename}' already exists. Overwrite?", default=False):
+                            filepath = custom_filename
+                            break
+                        else:
+                            click.echo("Please choose a different filename.")
+                            continue
+                    else:
+                        filepath = custom_filename
+                        break
+        else:
+            # User provided filepath via command line option
+            # Ensure .yaml extension
+            if not filepath.endswith(('.yaml', '.yml')):
+                filepath += '.yaml'
         
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else '.', exist_ok=True)
