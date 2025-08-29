@@ -1372,11 +1372,11 @@ class ConfigGenerator:
         """Save configuration to YAML file"""
         if filepath is None:
             if self.config_type == "finetune":
-                filepath = "finetune_config.yaml"
+                filepath = "finetune_model_config.yaml"
             elif self.config_type == "inference":
-                filepath = "inference_config.yaml"
+                filepath = "inference_model_config.yaml"
             elif self.config_type == "benchmark":
-                filepath = "benchmark_config.yaml"
+                filepath = "benchmark_model_config.yaml"
         
         # Ensure .yaml extension
         if not filepath.endswith(('.yaml', '.yml')):
