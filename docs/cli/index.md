@@ -52,6 +52,7 @@ dnallm --help
 
 ## Next Steps
 
+- [Usage Guide](usage.md) - Complete CLI usage instructions and examples
 - [Configuration Generator](config_generator.md) - Learn how to create configuration files
-- [Fine-tuning Tutorials](../tutorials/fine_tuning/) - Learn to train models
-- [Benchmark Tutorials](../tutorials/benchmark/) - Compare model performance
+- [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Learn to train models
+- [Benchmark Tutorials](../tutorials/benchmark/index.md) - Compare model performance

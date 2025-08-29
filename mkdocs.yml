@@ -1,8 +1,31 @@
 site_name: DNALLM Documentation
+site_description: A comprehensive toolkit for fine-tuning and inference with DNA Language Models
+site_author: Zhangtaolab
 # site_url: https://zhangtaolab.org/DNALLM/
+repo_url: https://github.com/zhangtaolab/DNALLM
+repo_name: zhangtaolab/DNALLM
+edit_uri: edit/main/docs/
 
 theme:
   name: material
+  
+  # Logo and favicon
+  logo: assets/logo.png
+  favicon: assets/favicon.png
+  
+  # Features
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
 
   palette:
     # Palette toggle for automatic mode
@@ -31,6 +54,7 @@ nav:
     # - Installation (中文): getting_started/installation_zh.md
   - CLI Tools:
     - Overview: cli/index.md
+    - Usage Guide: cli/usage.md
     - Configuration Generator: cli/config_generator.md
   - Tutorials:
     - Fine Tuning:
@@ -46,7 +70,7 @@ nav:
       - Advanced Techniques: tutorials/benchmark/advanced_techniques.md
       - Examples: tutorials/benchmark/examples.md
     - Inference: tutorials/inference/changeme.md
-    - Data Preprocessing: tutorials/data_preprocessing/changeme.md
+
   - Resources:
     - Model Zoo: resources/model_zoo.md
     - Datahandling: resources/datahandling.md
@@ -54,7 +78,6 @@ nav:
   - Concepts:
     - Model Architecture: concepts/model_architecture.md
     - Training: concepts/training.md
-    - Evaluation: concepts/evaluation.md
     - Inference: concepts/inference.md
   - API: 
     - Utils: 
@@ -73,10 +96,13 @@ plugins:
       handlers:
         python:
           options:
-            docstring_style: google  # 或 numpy, 取决于你的风格
+            docstring_style: google
             extra:
               show_source: true
               strict: false
+              show_root_heading: true
+              show_root_toc_entry: true
+
 
 markdown_extensions:
   - admonition

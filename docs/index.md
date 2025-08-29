@@ -47,4 +47,4 @@ uv run marimo run xxx.py
 - `scripts/` : Utility scripts
 - `tests/` : Test suite
 
-For more details, please refer to the [README.md](../README.md) and contribution guidelines.
+For more details, please refer to the [README.md](https://github.com/zhangtaolab/DNALLM/blob/main/README.md) and contribution guidelines.

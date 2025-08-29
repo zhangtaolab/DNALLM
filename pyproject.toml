@@ -7,11 +7,11 @@ requires-python = ">=3.10"
 authors = [
     {name = "Zhangtaolab", email = "your.email@zhangtaolab.org"}
 ]
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -187,8 +187,15 @@ conflicts = [
 #   [ { extra = "cuda126" }, { extra = "rocm" } ],
 ]
 
+[tool.setuptools.packages.find]
+include = ["dnallm*"]
+
+[tool.setuptools.package-data]
+"dnallm" = ["*.yaml", "*.yml", "*.json"]
+
 [project.scripts]
-dnallm = "dnallm.cli.cli:cli"
-dnallm-train = "dnallm.cli.train:main"
-dnallm-predict = "dnallm.cli.predict:main"
+dnallm = "cli.cli:main"
+dnallm-train = "cli.train:main"
+dnallm-predict = "cli.predict:main"
+dnallm-model-config-generator = "cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
