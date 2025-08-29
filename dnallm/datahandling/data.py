@@ -6,7 +6,7 @@ It supports various file formats, data augmentation techniques, and statistical 
 
 import os
 import random
-from typing import Union, Optional
+from typing import Union, Optional, Callable
 from scipy import stats
 from tqdm import tqdm
 import pandas as pd
@@ -35,7 +35,7 @@ class DNADataset:
         stats_for_plot: Cached statistics for plotting
     """
     
-    def __init__(self, ds: Union[Dataset, DatasetDict], tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512):
+    def __init__(self, ds: Union[Dataset, DatasetDict], tokenizer: Optional[PreTrainedTokenizerBase] = None, max_length: int = 512) -> None:
         """Initialize a DNADataset.
         
         Args:
@@ -60,10 +60,10 @@ class DNADataset:
         self.__data_type__()  # Determine the data type of the dataset
 
     @classmethod
-    def load_local_data(cls, file_paths, seq_col: str = "sequence", label_col: str = "labels",
-                        sep: str = None, fasta_sep: str = "|",
-                        multi_label_sep: Union[str, None] = None,
-                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> 'DNADataset':
+    def load_local_data(cls, file_paths: Union[str, list, dict], seq_col: str = "sequence", label_col: str = "labels",
+                        sep: Optional[str] = None, fasta_sep: str = "|",
+                        multi_label_sep: Optional[str] = None,
+                        tokenizer: Optional[PreTrainedTokenizerBase] = None, max_length: int = 512) -> 'DNADataset':
         """Load DNA sequence datasets from one or multiple local files.
         
         Supports input formats: csv, tsv, json, parquet, arrow, dict, fasta, txt.
@@ -80,7 +80,7 @@ class DNADataset:
             max_length: Max token length
         
         Returns:
-            DNADataset: An instance wrapping a Dataset or DatasetDict
+            An instance wrapping a Dataset or DatasetDict
             
         Raises:
             ValueError: If file type is not supported
@@ -101,9 +101,9 @@ class DNADataset:
         return cls(dataset, tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
-    def _load_single_data(cls, file_path, seq_col: str = "sequence", label_col: str = "labels",
-                          sep: str = None, fasta_sep: str = "|",
-                          multi_label_sep: Union[str, None] = None) -> Dataset:
+    def _load_single_data(cls, file_path: Union[str, list], seq_col: str = "sequence", label_col: str = "labels",
+                          sep: Optional[str] = None, fasta_sep: str = "|",
+                          multi_label_sep: Optional[str] = None) -> Dataset:
         """Load DNA data (sequences and labels) from a local file.
 
         Supported file types: 
@@ -119,7 +119,7 @@ class DNADataset:
             multi_label_sep: Delimiter for multi-label sequences
 
         Returns:
-            Dataset: A Hugging Face Dataset with 'sequence' and 'labels' columns
+            A Hugging Face Dataset with 'sequence' and 'labels' columns
             
         Raises:
             ValueError: If file type is not supported
@@ -241,8 +241,8 @@ class DNADataset:
     @classmethod
     def from_huggingface(cls, dataset_name: str,
                          seq_col: str = "sequence", label_col: str = "labels",
-                         data_dir: Union[str, None]=None,
-                         tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> 'DNADataset':
+                         data_dir: Optional[str] = None,
+                         tokenizer: Optional[PreTrainedTokenizerBase] = None, max_length: int = 512) -> 'DNADataset':
         """Load a dataset from the Hugging Face Hub.
 
         Args:
@@ -254,7 +254,7 @@ class DNADataset:
             max_length: Max token length
 
         Returns:
-            DNADataset: An instance wrapping a datasets.Dataset
+            An instance wrapping a datasets.Dataset
         """
         if data_dir:
             ds = load_dataset(dataset_name, data_dir=data_dir)
@@ -270,8 +270,8 @@ class DNADataset:
     @classmethod
     def from_modelscope(cls, dataset_name: str,
                         seq_col: str = "sequence", label_col: str = "labels",
-                        data_dir: Union[str, None]=None,
-                        tokenizer: PreTrainedTokenizerBase = None, max_length: int = 512) -> 'DNADataset':
+                        data_dir: Optional[str] = None,
+                        tokenizer: Optional[PreTrainedTokenizerBase] = None, max_length: int = 512) -> 'DNADataset':
         """Load a dataset from the ModelScope.
 
         Args:
@@ -283,7 +283,7 @@ class DNADataset:
             max_length: Max token length
 
         Returns:
-            DNADataset: An instance wrapping a datasets.Dataset
+            An instance wrapping a datasets.Dataset
         """
         from modelscope import MsDataset
         
@@ -300,8 +300,8 @@ class DNADataset:
 
     def encode_sequences(self, padding: str = "max_length", return_tensors: str = "pt",
                          remove_unused_columns: bool = False,
-                         uppercase: bool=False, lowercase: bool=False,
-                         task: Optional[str] = 'SequenceClassification'):
+                         uppercase: bool = False, lowercase: bool = False,
+                         task: Optional[str] = 'SequenceClassification') -> None:
         """Encode all sequences using the provided tokenizer.
         
         The dataset is mapped to include tokenized fields along with the label,
@@ -428,7 +428,7 @@ class DNADataset:
             self.dataset.set_format(type="torch")
         self.dataset._is_encoded = True  # Mark the dataset as encoded
 
-    def split_data(self, test_size: float = 0.2, val_size: float = 0.1, seed: int = None):
+    def split_data(self, test_size: float = 0.2, val_size: float = 0.1, seed: Optional[int] = None) -> None:
         """Split the dataset into train, test, and validation sets.
         
         Args:
@@ -450,7 +450,7 @@ class DNADataset:
         else:
             self.dataset = DatasetDict({'train': train_ds, 'test': temp_ds})
     
-    def shuffle(self, seed: int = None):
+    def shuffle(self, seed: Optional[int] = None) -> None:
         """Shuffle the dataset.
         
         Args:
@@ -458,7 +458,7 @@ class DNADataset:
         """
         self.dataset.shuffle(seed=seed)
 
-    def validate_sequences(self, minl: int = 20, maxl: int = 6000, gc: tuple = (0,1), valid_chars: str = "ACGTN"):
+    def validate_sequences(self, minl: int = 20, maxl: int = 6000, gc: tuple = (0, 1), valid_chars: str = "ACGTN") -> None:
         """Filter the dataset to keep sequences containing valid DNA bases or allowed length.
         
         Args:
@@ -472,9 +472,9 @@ class DNADataset:
         )
 
     def random_generate(self, minl: int, maxl: int = 0, samples: int = 1,
-                              gc: tuple = (0,1), N_ratio: float = 0.0,
-                              padding_size: int = 0, seed: int = None,
-                              label_func = None, append: bool = False):
+                              gc: tuple = (0, 1), N_ratio: float = 0.0,
+                              padding_size: int = 0, seed: Optional[int] = None,
+                              label_func: Optional[Callable] = None, append: bool = False) -> None:
         """Replace the current dataset with randomly generated DNA sequences.
 
         Args:
@@ -509,13 +509,13 @@ class DNADataset:
         else:
             self.dataset = process(minl, maxl, samples, gc, N_ratio, padding_size, seed, label_func)
 
-    def process_missing_data(self):
+    def process_missing_data(self) -> None:
         """Filter out samples with missing or empty sequences or labels."""
         def non_missing(example):
             return example["sequence"] and example["labels"] is not None and example["sequence"].strip() != ""
         self.dataset = self.dataset.filter(non_missing)
 
-    def raw_reverse_complement(self, ratio: float = 0.5, seed: int = None):
+    def raw_reverse_complement(self, ratio: float = 0.5, seed: Optional[int] = None) -> None:
         """Do reverse complement of sequences in the dataset.
         
         Args:
@@ -540,7 +540,7 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, ratio, seed)
 
-    def augment_reverse_complement(self, reverse=True, complement=True):
+    def augment_reverse_complement(self, reverse: bool = True, complement: bool = True) -> None:
         """Augment the dataset by adding reverse complement sequences.
         
         This method doubles the dataset size.
@@ -568,7 +568,7 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, reverse, complement)
 
-    def concat_reverse_complement(self, reverse=True, complement=True, sep: str = ""):
+    def concat_reverse_complement(self, reverse: bool = True, complement: bool = True, sep: str = "") -> None:
         """Augment each sample by concatenating the sequence with its reverse complement.
         
         Args:
@@ -589,7 +589,7 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, reverse, complement, sep)
     
-    def sampling(self, ratio: float=1.0, seed: int = None, overwrite: bool=False) -> 'DNADataset':
+    def sampling(self, ratio: float = 1.0, seed: Optional[int] = None, overwrite: bool = False) -> 'DNADataset':
         """Randomly sample a fraction of the dataset.
 
         Args:
@@ -620,7 +620,7 @@ class DNADataset:
             # Create a new DNADataset object with the sampled data
             return DNADataset(dataset, self.tokenizer, self.max_length)
     
-    def head(self, head: int=10, show: bool=False) -> Union[dict, None]:
+    def head(self, head: int = 10, show: bool = False) -> Optional[dict]:
         """Fetch the head n data from the dataset.
         
         Args:
@@ -657,7 +657,7 @@ class DNADataset:
             else:
                 return data
     
-    def show(self, head: int=10):
+    def show(self, head: int = 10) -> None:
         """Display the dataset.
         
         Args:
@@ -683,7 +683,7 @@ class DNADataset:
             for i in range(0, len(self.dataset), batch_size):
                 yield self.dataset[i: i + batch_size]
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the length of the dataset.
         
         Returns:
@@ -695,7 +695,7 @@ class DNADataset:
         else:
             return len(self.dataset)
     
-    def get_split_lengths(self):
+    def get_split_lengths(self) -> Optional[dict]:
         """Get lengths of individual splits for DatasetDict.
         
         Returns:
@@ -706,7 +706,7 @@ class DNADataset:
         else:
             return None
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         """Get an item from the dataset.
         
         Args:
@@ -723,7 +723,7 @@ class DNADataset:
         else:
             return self.dataset[idx]
 
-    def __data_type__(self):
+    def __data_type__(self) -> None:
         """Get the data type of the dataset (classification, regression, etc.).
 
         This method analyzes the labels to determine if the dataset is for:
@@ -858,7 +858,7 @@ class DNADataset:
 
         return stats
 
-    def plot_statistics(self, save_path: str = None):
+    def plot_statistics(self, save_path: Optional[str] = None) -> None:
         """Plot statistics of the dataset.
         
         Includes sequence length distribution (histogram), 
@@ -1053,7 +1053,7 @@ def show_preset_dataset() -> dict:
     return PRESET_DATASETS
 
 
-def load_preset_dataset(dataset_name: str, task: str=None) -> 'DNADataset':
+def load_preset_dataset(dataset_name: str, task: Optional[str] = None) -> 'DNADataset':
     """Load a preset dataset from Hugging Face or ModelScope.
 
     Args:
@@ -1061,7 +1061,7 @@ def load_preset_dataset(dataset_name: str, task: str=None) -> 'DNADataset':
         task: Task directory in a dataset
 
     Returns:
-        DNADataset: An instance wrapping a datasets.Dataset
+        An instance wrapping a datasets.Dataset
         
     Raises:
         ValueError: If dataset is not found in preset datasets
