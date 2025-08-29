@@ -16,14 +16,24 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import sys
 
-# Add parent directory to path to import dnallm modules
+# Add dnallm package to path to import dnallm modules
 current_file = Path(__file__).resolve()
-parent_dir = current_file.parent.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+dnallm_path = current_file.parent.parent / "dnallm"
+if str(dnallm_path) not in sys.path:
+    sys.path.insert(0, str(dnallm_path))
 
 try:
-    from models.modeling_auto import MODEL_INFO, PRETRAIN_MODEL_MAPS
+    # Try to import directly from the file to avoid relative import issues
+    import importlib.util
+    modeling_auto_path = dnallm_path / "models" / "modeling_auto.py"
+    spec = importlib.util.spec_from_file_location("modeling_auto", modeling_auto_path)
+    modeling_auto = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modeling_auto)
+    
+    MODEL_INFO = modeling_auto.MODEL_INFO
+    PRETRAIN_MODEL_MAPS = modeling_auto.PRETRAIN_MODEL_MAPS
+    print("✅ Successfully loaded MODEL_INFO and PRETRAIN_MODEL_MAPS from modeling_auto.py")
+    
 except ImportError as e:
     print(f"Warning: Could not import DNALLM models: {e}")
     print("Using mock data for demonstration...")
@@ -53,7 +63,7 @@ except ImportError as e:
 def load_model_info_from_yaml():
     """Load model information from model_info.yaml file"""
     try:
-        yaml_path = parent_dir / "models" / "model_info.yaml"
+        yaml_path = dnallm_path / "models" / "model_info.yaml"
         if yaml_path.exists():
             with open(yaml_path, 'r', encoding='utf-8') as f:
                 model_info = yaml.safe_load(f)

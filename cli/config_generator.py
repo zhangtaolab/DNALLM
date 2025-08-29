@@ -77,7 +77,7 @@ class ConfigGenerator:
         try:
             # Try to find model_info.yaml in the models directory
             current_file = Path(__file__).resolve()
-            yaml_path = current_file.parent.parent / "models" / "model_info.yaml"
+            yaml_path = current_file.parent.parent / "dnallm" / "models" / "model_info.yaml"
             
             if yaml_path.exists():
                 with open(yaml_path, 'r', encoding='utf-8') as f:
