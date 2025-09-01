@@ -10,8 +10,8 @@ theme:
   name: material
   
   # Logo and favicon
-  logo: assets/logo.png
-  favicon: assets/favicon.png
+  logo: pic/DNALLM_logo_white.svg
+  favicon: pic/DNALLM_logo_white.svg
   
   # Features
   features:

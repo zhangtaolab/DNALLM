@@ -1,5 +1,9 @@
 # DNALLM - DNA Large Language Model Toolkit
 
+<div align="center">
+  <img src="docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
+</div>
+
 ## DNALLM环境构建
 
 ### 使用uv进行安装和开发

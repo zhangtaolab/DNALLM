@@ -1,5 +1,9 @@
 # DNALLM - DNA Large Language Model Toolkit
 
+<div align="center">
+  <img src="pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
+</div>
+
 DNALLM is an open-source toolkit designed for large language model (LLM) applications in DNA sequence analysis and bioinformatics. It provides a comprehensive suite for model training, fine-tuning, inference, benchmarking, and evaluation, specifically tailored for DNA and genomics tasks.
 
 ## Key Features
