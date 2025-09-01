@@ -3,7 +3,7 @@
 ## Overview
 
 DNALLM provides two ways to use the command-line interface:
-1. **After package installation**: Using the `dnallm` command
+1. **After package installation**: Using the `dnallm-*` commands
 2. **Development environment**: Running directly from the project root
 
 ## Usage After Installation
@@ -11,28 +11,20 @@ DNALLM provides two ways to use the command-line interface:
 After installing the DNALLM package, you can use the following commands:
 
 ```bash
-# Main command
-dnallm --help
-
-# Train a model
-dnallm train --config config.yaml
-dnallm train --model model_name --data data_path --output output_dir
+# Training
+dnallm-train --config config.yaml
+dnallm-train --model model_name --data data_path --output output_dir
 
 # Run inference
-dnallm predict --config config.yaml
-dnallm predict --model model_name --input input_file
-
-# Run benchmark evaluation
-dnallm benchmark --config config.yaml
-dnallm benchmark --model model_name --data data_path
-
-# Run mutagenesis analysis
-dnallm mutagenesis --config config.yaml
-dnallm mutagenesis --model model_name --sequence "ATCG..."
+dnallm-predict --config config.yaml
+dnallm-predict --model model_name --input input_file
 
 # Generate configuration files
-dnallm model-config-generator --output config.yaml
-dnallm model-config-generator --preview
+dnallm-model-config-generator --output config.yaml
+dnallm-model-config-generator --preview
+
+# MCP server
+dnallm-mcp-server --config config.yaml
 ```
 
 ## Development Environment Usage
@@ -89,7 +81,7 @@ python -m dnallm.cli.model_config_generator --output config.yaml
 
 ## Command Reference
 
-### `dnallm train`
+### `dnallm-train`
 
 Train a DNA language model with specified configuration.
 
@@ -102,13 +94,13 @@ Train a DNA language model with specified configuration.
 **Examples:**
 ```bash
 # Using configuration file
-dnallm train --config finetune_config.yaml
+dnallm-train --config finetune_config.yaml
 
 # Using command line arguments
-dnallm train --model microsoft/DialoGPT-medium --data ./data --output ./outputs
+dnallm-train --model zhangtaolab/plant-dnagpt-BPE --data ./data --output ./outputs
 ```
 
-### `dnallm predict`
+### `dnallm-predict`
 
 Run inference with a trained DNA language model.
 
@@ -121,66 +113,46 @@ Run inference with a trained DNA language model.
 **Examples:**
 ```bash
 # Using configuration file
-dnallm predict --config inference_config.yaml
+dnallm-predict --config inference_config.yaml
 
 # Using command line arguments
-dnallm predict --model ./models/trained_model --input ./test_data.csv
+dnallm-predict --model ./models/trained_model --input ./test_data.csv
 ```
 
-### `dnallm benchmark`
+### `dnallm-model-config-generator`
 
-Run benchmark evaluation on DNA language models.
+Generate configuration files for DNALLM tasks.
 
 **Options:**
-- `--config, -c`: Path to benchmark configuration file
-- `--model, -m`: Model name or path
-- `--data, -d`: Path to benchmark data
-- `--output, -o`: Output directory for benchmark results
+- `--output, -o`: Output file path for configuration
+- `--preview`: Preview configuration without saving
+- `--template`: Template type (training, inference, benchmark)
 
 **Examples:**
 ```bash
-# Using configuration file
-dnallm benchmark --config benchmark_config.yaml
+# Generate training configuration
+dnallm-model-config-generator --output training_config.yaml
 
-# Using command line arguments
-dnallm benchmark --model ./models/model1 --data ./benchmark_data
+# Preview configuration
+dnallm-model-config-generator --preview
 ```
 
-### `dnallm mutagenesis`
+### `dnallm-mcp-server`
 
-Run in-silico mutagenesis analysis.
+Start MCP (Model Context Protocol) server.
 
 **Options:**
-- `--config, -c`: Path to mutagenesis configuration file
-- `--model, -m`: Model name or path
-- `--sequence, -s`: DNA sequence for analysis
-- `--output, -o`: Output file path
+- `--config, -c`: Path to configuration file
+- `--port, -p`: Server port (default: 8000)
+- `--host, -h`: Server host (default: localhost)
 
 **Examples:**
 ```bash
-# Using configuration file
-dnallm mutagenesis --config mutagenesis_config.yaml
+# Start server with configuration
+dnallm-mcp-server --config mcp_config.yaml
 
-# Using command line arguments
-dnallm mutagenesis --model ./models/model1 --sequence "ATCGATCG"
-```
-
-### `dnallm model-config-generator`
-
-Generate DNALLM configuration files interactively.
-
-**Options:**
-- `--output, -o`: Output file path for the configuration
-- `--preview, -p`: Preview configuration before saving
-- `--non-interactive, -n`: Use non-interactive mode with defaults
-
-**Examples:**
-```bash
-# Generate configuration with preview
-dnallm model-config-generator --output my_config.yaml --preview
-
-# Generate configuration in non-interactive mode
-dnallm model-config-generator --non-interactive --output quick_config.yaml
+# Start server on specific port
+dnallm-mcp-server --port 9000
 ```
 
 ## Configuration Examples
@@ -188,12 +160,24 @@ dnallm model-config-generator --non-interactive --output quick_config.yaml
 ### Training Configuration (config.yaml)
 
 ```yaml
-model_name_or_path: "microsoft/DialoGPT-medium"
-data_path: "path/to/training/data"
-output_dir: "outputs"
-training_args:
+model:
+  name_or_path: "zhangtaolab/plant-dnagpt-BPE"
+  source: "huggingface"
+
+task:
+  task_type: "binary_classification"
+  num_labels: 2
+  label_names: ["negative", "positive"]
+
+data:
+  train_file: "path/to/train.csv"
+  eval_file: "path/to/eval.csv"
+  text_column: "sequence"
+  label_column: "label"
+
+training:
   num_train_epochs: 3
-  per_device_train_batch_size: 4
+  per_device_train_batch_size: 8
   learning_rate: 5e-5
   save_steps: 1000
   eval_steps: 1000
@@ -202,9 +186,17 @@ training_args:
 ### Inference Configuration (config.yaml)
 
 ```yaml
-model_name_or_path: "path/to/trained/model"
-data_path: "path/to/input/data"
-output_file: "predictions.csv"
+model:
+  name_or_path: "path/to/trained/model"
+  source: "local"
+
+task:
+  task_type: "binary_classification"
+  num_labels: 2
+
+data:
+  input_file: "path/to/input/data"
+  output_file: "predictions.csv"
 ```
 
 ### Benchmark Configuration (config.yaml)
@@ -213,21 +205,27 @@ output_file: "predictions.csv"
 benchmark:
   name: "DNA Model Benchmark"
   description: "Comparing DNA language models on various tasks"
+
 models:
   - name: "Model 1"
     source: "huggingface"
-    path: "microsoft/DialoGPT-medium"
-    task_type: "classification"
+    path: "zhangtaolab/plant-dnagpt-BPE"
+    task_type: "binary_classification"
+  - name: "Model 2"
+    source: "modelscope"
+    path: "zhangtaolab/plant-dnabert"
+    task_type: "binary_classification"
+
 datasets:
   - name: "Test Dataset"
     path: "path/to/dataset.csv"
     format: "csv"
     task: "binary_classification"
-metrics:
-  - "accuracy"
-  - "f1_score"
-  - "precision"
-  - "recall"
+
+evaluation:
+  metrics: ["accuracy", "precision", "recall", "f1", "mcc"]
+  save_predictions: true
+  output_dir: "./benchmark_results"
 ```
 
 ## Project Structure
@@ -280,13 +278,13 @@ DNALLM/
 
 ```bash
 # Show help for a specific command
-dnallm train --help
-
-# Show general help
-dnallm --help
+dnallm-train --help
 
 # Show help for configuration generator
-dnallm model-config-generator --help
+dnallm-model-config-generator --help
+
+# Show help for MCP server
+dnallm-mcp-server --help
 ```
 
 ## Next Steps

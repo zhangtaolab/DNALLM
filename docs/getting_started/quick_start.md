@@ -27,6 +27,26 @@ source .venv/bin/activate  # Linux/MacOS
 uv pip install -e '.[base]'
 ```
 
+### GPU Support (Optional)
+
+For GPU acceleration, install the appropriate CUDA version:
+
+```bash
+# CUDA 12.4 (recommended for recent GPUs)
+uv pip install -e '.[cuda124]'
+
+# Other supported versions: cpu, cuda121, cuda126, cuda128
+uv pip install -e '.[cuda121]'
+```
+
+### Native Mamba Support (Optional)
+
+For faster inference with native Mamba architecture (Nvidia GPUs only):
+
+```bash
+uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+```
+
 ### Verify installation
 
 ```bash
@@ -63,10 +83,10 @@ model, tokenizer = load_model_and_tokenizer(
 ### Make predictions
 
 ```python
-from dnallm import Predictor
+from dnallm import DNAPredictor
 
 # Initialize predictor
-predictor = Predictor(config=configs, model=model, tokenizer=tokenizer)
+predictor = DNAPredictor(config=configs, model=model, tokenizer=tokenizer)
 
 # Input DNA sequence
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
@@ -81,12 +101,12 @@ print(f"Prediction: {prediction}")
 ### Prepare your dataset
 
 ```python
-from dnallm.datahandling import DatasetAuto
+from dnallm.datahandling import DNADataset
 
 # Load or create your dataset
-dataset = DatasetAuto(
+dataset = DNADataset(
     data_path="path/to/your/data.csv",
-    task_type="classification",  # or "regression", "generation"
+    task_type="binary_classification",  # or "multi_class_classification", "regression", "token_classification"
     text_column="sequence",
     label_column="label"
 )
@@ -98,10 +118,10 @@ train_dataset, eval_dataset = dataset.split(train_ratio=0.8)
 ### Fine-tune the model
 
 ```python
-from dnallm.finetune import Trainer
+from dnallm.finetune import DNATrainer
 
 # Initialize trainer
-trainer = Trainer(
+trainer = DNATrainer(
     config=configs,
     model=model,
     tokenizer=tokenizer,
@@ -111,9 +131,6 @@ trainer = Trainer(
 
 # Start training
 trainer.train()
-
-# Save the fine-tuned model
-trainer.save_model("path/to/save/finetuned_model")
 ```
 
 ## 4. Advanced Features
@@ -166,6 +183,9 @@ dnallm-train --config path/to/config.yaml
 # Prediction
 dnallm-predict --config path/to/config.yaml --input path/to/sequences.txt
 
+# Model configuration generator
+dnallm-model-config-generator
+
 # MCP server
 dnallm-mcp-server --config path/to/config.yaml
 ```
@@ -176,8 +196,9 @@ Create a configuration file (`config.yaml`) for your task:
 
 ```yaml
 task:
-  type: "classification"  # or "regression", "generation"
+  task_type: "binary_classification"  # or "multi_class_classification", "regression", "token_classification"
   num_labels: 2
+  label_names: ["negative", "positive"]
   
 model:
   name: "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
@@ -203,7 +224,28 @@ Check out the example notebooks in the `example/notebooks/` directory:
 - **Inference**: Basic prediction and benchmarking
 - **Advanced**: In-silico mutagenesis, embedding analysis
 
-## 8. Next Steps
+## 8. Interactive Development
+
+### Jupyter Lab
+
+```bash
+# Launch Jupyter Lab
+uv run jupyter lab
+```
+
+### Marimo
+
+```bash
+# Launch Marimo
+uv run marimo run xxx.py
+
+# Available demos:
+# - example/marimo/finetune/finetune_demo.py
+# - example/marimo/inference/inference_demo.py
+# - example/marimo/benchmark/benchmark_demo.py
+```
+
+## 9. Next Steps
 
 - Explore the [API documentation](../api/) for detailed function references
 - Check out [tutorials](../tutorials/) for specific use cases

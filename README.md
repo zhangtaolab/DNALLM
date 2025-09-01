@@ -48,10 +48,20 @@ DNALLM supports a wide range of DNA language models including:
 
 ### Quick Installation with uv (Recommended)
 
+DNALLM uses uv for dependency management and packaging.
+
+[What is uv](https://docs.astral.sh/uv/) is a fast Python package manager that is 10-100x faster than traditional tools like pip.
+
+#### Install uv
+
 ```bash
 # Install uv package manager
 curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
+#### Install DNALLM
+
+```bash
 # Clone repository
 git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
@@ -82,11 +92,15 @@ uv pip install -e '.[cuda121]'
 
 ### Native Mamba Support
 
-For faster inference with native Mamba architecture (Nvidia GPUs only):
+Native Mamba architecture runs significantly faster than transformer-compatible Mamba architecture, but native Mamba depends on Nvidia GPUs.
+
+If you need native Mamba architecture support, after installing DNALLM dependencies, use the following command:
 
 ```bash
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 ```
+
+Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
 
 ## 🚀 Quick Start
 
@@ -163,6 +177,12 @@ trainer.train()
 
 ### Interactive Demos (Marimo)
 ```bash
+# Launch Jupyter Lab
+uv run jupyter lab
+
+# Launch Marimo
+uv run marimo run xxx.py
+
 # Fine-tuning demo
 uv run marimo run example/marimo/finetune/finetune_demo.py
 
@@ -184,6 +204,7 @@ uv run jupyter lab
 # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
 # - example/notebooks/inference_and_benchmark/ - Model evaluation
 # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
+# - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
 ```
 
 ## 🏗️ Project Structure
@@ -192,13 +213,22 @@ uv run jupyter lab
 DNALLM/
 ├── dnallm/                    # Core library
 │   ├── cli/                  # Command-line interface
+│   │   ├── train.py         # Training command
+│   │   ├── predict.py       # Inference command
+│   │   └── model_config_generator.py # Configuration generator
 │   ├── configuration/        # Configuration management
 │   ├── datahandling/        # Dataset handling and processing
 │   ├── finetune/            # Model fine-tuning pipeline
 │   ├── inference/           # Inference and analysis tools
+│   │   ├── benchmark.py     # Multi-model benchmark
+│   │   ├── mutagenesis.py   # Mutation effect analysis
+│   │   ├── plot.py          # Inference result visualization
+│   │   └── predictor.py     # Model inference
 │   ├── models/              # Model loading and management
 │   ├── tasks/               # Task definitions and metrics
-│   ├── utils/               # Utility functions
+│   │   ├── task.py          # Supported task types
+│   │   └── metrics/         # Evaluation functions for various tasks
+│   ├── utils/               # Sequence processing and utility functions
 │   └── mcp/                 # Model Context Protocol
 ├── example/                  # Examples and tutorials
 │   ├── marimo/              # Interactive Marimo demos
@@ -219,9 +249,25 @@ dnallm-train --config path/to/config.yaml
 # Prediction
 dnallm-predict --config path/to/config.yaml --input path/to/sequences.txt
 
+# Model configuration generator
+dnallm-model-config-generator
+
 # MCP server
 dnallm-mcp-server --config path/to/config.yaml
 ```
+
+## 🎯 Supported Task Types
+
+DNALLM supports the following task types:
+
+- **EMBEDDING**: Extract embeddings, attention maps, and token probabilities for downstream analysis
+- **MASK**: Masked language modeling task for pre-training
+- **GENERATION**: Text generation task for causal language models
+- **BINARY**: Binary classification task with two possible labels
+- **MULTICLASS**: Multi-class classification task that specifies which class the input belongs to (more than two)
+- **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
+- **REGRESSION**: Regression task which returns a continuous score
+- **NER**: Token classification task which is usually for Named Entity Recognition
 
 ## 📖 Documentation
 
