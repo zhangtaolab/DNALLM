@@ -13,7 +13,6 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 import torch
-import numpy as np
 import pandas as pd
 from datasets import Dataset
 
@@ -143,39 +142,59 @@ output:
         self.assertIsInstance(model_tags, dict)
         self.assertIn("Plant NT", model_tags)
 
-    # @patch('dnallm.inference.benchmark.load_model_and_tokenizer')
-    # @patch.object(DNAPredictor, 'batch_predict')
-    # @patch.object(DNAPredictor, 'calculate_metrics')
-    # def test_run_benchmark_flow(self, mock_calculate_metrics, mock_batch_predict, mock_load_model_tokenizer):
-    #     """Test the main benchmark execution flow using mocks."""
-    #     # --- Mock setup ---
-    #     mock_model = MagicMock()
-    #     mock_tokenizer = MagicMock()
-    #     mock_load_model_tokenizer.return_value = (mock_model, mock_tokenizer)
-    #     mock_logits = torch.randn(4, 2)
-    #     mock_batch_predict.return_value = (mock_logits, None, None)
-    #     mock_calculate_metrics.return_value = {'accuracy': 0.95, 'f1': 0.92, 'curve': ([0,1], [0,1])}
-
-    #     # --- Instantiate and run the benchmark ---
-    #     benchmark = Benchmark(self.config)
-    #     results = benchmark.run(save_scores=True)
-
-    #     # --- Assertions ---
-    #     self.assertIsNotNone(results)
-    #     self.assertIn('test_dataset', results)
-    #     self.assertIn('test_model_1', results['test_dataset'])
-    #     self.assertIn('test_model_2', results['test_dataset'])
-    #     self.assertEqual(results['test_dataset']['test_model_1']['accuracy'], 0.95)
-    #     self.assertEqual(results['test_dataset']['test_model_2']['f1'], 0.92)
-
-    #     # Check that the metrics file was created
-    #     expected_metrics_path = Path(self.results_dir) / "metrics.json"
-    #     self.assertTrue(expected_metrics_path.exists())
+    @patch('dnallm.inference.benchmark.load_model_and_tokenizer')
+    @patch.object(DNAPredictor, 'batch_predict')
+    @patch.object(DNAPredictor, 'calculate_metrics')
+    def test_run_benchmark_flow(self, mock_calculate_metrics, mock_batch_predict, mock_load_model_tokenizer):
+        """Test the main benchmark execution flow using mocks."""
+        # --- Mock setup ---
+        mock_model = MagicMock()
+        mock_tokenizer = MagicMock()
         
-    #     # Verify that dependencies were called correctly
-    #     self.assertEqual(mock_load_model_tokenizer.call_count, 2)
-    #     self.assertEqual(mock_batch_predict.call_count, 2)
-    #     self.assertEqual(mock_calculate_metrics.call_count, 2)
+        # Mock tokenizer to return proper tokenization results
+        mock_tokenizer.special_tokens_map = {
+            'pad_token': '<pad>',
+            'cls_token': '<cls>',
+            'sep_token': '<sep>',
+            'eos_token': '<eos>'
+        }
+        mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5]
+        # Mock tokenizer to return proper tokenization results for batch processing
+        def mock_tokenizer_call(sequences, **kwargs):
+            # Return tokenized data for each sequence in the batch
+            batch_size = len(sequences) if isinstance(sequences, list) else 1
+            return {
+                'input_ids': [[1, 2, 3, 4, 5, 0, 0, 0] for _ in range(batch_size)],
+                'attention_mask': [[1, 1, 1, 1, 1, 0, 0, 0] for _ in range(batch_size)]
+            }
+        
+        mock_tokenizer.side_effect = mock_tokenizer_call
+        
+        mock_load_model_tokenizer.return_value = (mock_model, mock_tokenizer)
+        mock_logits = torch.randn(4, 2)
+        mock_batch_predict.return_value = (mock_logits, None, None)
+        mock_calculate_metrics.return_value = {'accuracy': 0.95, 'f1': 0.92, 'curve': ([0,1], [0,1])}
+
+        # --- Instantiate and run the benchmark ---
+        benchmark = Benchmark(self.config)
+        results = benchmark.run(save_scores=True)
+
+        # --- Assertions ---
+        self.assertIsNotNone(results)
+        self.assertIn('test_dataset', results)
+        self.assertIn('test_model_1', results['test_dataset'])
+        self.assertIn('test_model_2', results['test_dataset'])
+        self.assertEqual(results['test_dataset']['test_model_1']['accuracy'], 0.95)
+        self.assertEqual(results['test_dataset']['test_model_2']['f1'], 0.92)
+
+        # Check that the metrics file was created
+        expected_metrics_path = Path(self.results_dir) / "metrics.json"
+        self.assertTrue(expected_metrics_path.exists())
+        
+        # Verify that dependencies were called correctly
+        self.assertEqual(mock_load_model_tokenizer.call_count, 2)
+        self.assertEqual(mock_batch_predict.call_count, 2)
+        self.assertEqual(mock_calculate_metrics.call_count, 2)
 
     @patch('dnallm.inference.plot.plot_bars')
     @patch('dnallm.inference.plot.plot_curve')
