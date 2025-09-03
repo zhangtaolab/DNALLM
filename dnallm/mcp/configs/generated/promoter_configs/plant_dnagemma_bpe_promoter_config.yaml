@@ -1,0 +1,27 @@
+inference:
+  batch_size: 16
+  device: auto
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+model:
+  name: Plant DNAGemma BPE promoter
+  path: zhangtaolab/plant-dnagemma-BPE-promoter
+  source: huggingface
+  task_info:
+    describe: Predict whether a DNA sequence is a core promoter in plants by using
+      Plant DNAGemma model with BPE tokenizer.
+    label_names: &id001
+    - Not promoter
+    - Core promoter
+    num_labels: 2
+    task_type: binary
+    threshold: 0.5
+  torch_dtype: float32
+  trust_remote_code: true
+task:
+  label_names: *id001
+  num_labels: 2
+  task_type: binary
+  threshold: 0.5

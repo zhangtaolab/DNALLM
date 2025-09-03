@@ -1,0 +1,27 @@
+inference:
+  batch_size: 16
+  device: auto
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+model:
+  name: Plant DNAGPT BPE H3K4me3
+  path: zhangtaolab/plant-dnagpt-BPE-H3K4me3
+  source: huggingface
+  task_info:
+    describe: Predict whether a DNA sequence is enriched with H3K4me3 in plants by
+      using Plant DNAGPT model with BPE tokenizer.
+    label_names: &id001
+    - Not H3K4me3
+    - H3K4me3
+    num_labels: 2
+    task_type: binary
+    threshold: 0.5
+  torch_dtype: float32
+  trust_remote_code: true
+task:
+  label_names: *id001
+  num_labels: 2
+  task_type: binary
+  threshold: 0.5

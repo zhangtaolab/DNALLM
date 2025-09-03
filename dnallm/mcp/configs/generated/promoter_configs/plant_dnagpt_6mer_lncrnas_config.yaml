@@ -1,0 +1,27 @@
+inference:
+  batch_size: 16
+  device: auto
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+model:
+  name: Plant DNAGPT 6mer lncRNAs
+  path: zhangtaolab/plant-dnagpt-6mer-lncRNAs
+  source: huggingface
+  task_info:
+    describe: Predict whether a DNA sequence is a lncRNA in plants by using Plant
+      DNAGPT model with 6mer tokenizer.
+    label_names: &id001
+    - Not lncRNA
+    - lncRNA
+    num_labels: 2
+    task_type: binary
+    threshold: 0.5
+  torch_dtype: float32
+  trust_remote_code: true
+task:
+  label_names: *id001
+  num_labels: 2
+  task_type: binary
+  threshold: 0.5
