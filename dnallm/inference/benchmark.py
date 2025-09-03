@@ -15,6 +15,7 @@ from datasets import Dataset
 
 from ..models import *
 from ..datahandling.data import DNADataset
+from ..configuration.configs import TaskConfig, InferenceConfig
 from .predictor import DNAPredictor, save_predictions, save_metrics
 from .plot import *
 
@@ -51,27 +52,30 @@ class Benchmark:
             self.prepared = None
 
     def __load_from_config(self):
-        """Load the model and tokenizer from the configuration."""
-        benckmark_config = self.config['benchmark']
-        models = benckmark_config['models']
-        model_names = {m['name']: m['path'] for m in models}
-        sources = [m['source'] for m in models]
-        if 'datasets' in benckmark_config:
-            datasets = benckmark_config['datasets']
-            if isinstance(datasets[0], DNADataset):
-                self.datasets = [d.dataset for d in datasets]
-                task_configs = [self.config['task']] * len(datasets)
-                datasets = [{'name': f'custom{i}'} for i in range(len(datasets))]
-            else:
-                for d in datasets:
-                    self.get_dataset(d['path'], d['text_column'], d['label_column'])
-                    task_configs = [{k: d[k]} for k in d.keys() if k not in ['name', 'path', 'text_column', 'label_column']]
+        """Load the benchmark-specific parameters from the configuration."""
+        benchmark_config = self.config['benchmark']
+        models = benchmark_config.models
+        model_names = {m.name: m.path for m in models}
+        sources = [m.source for m in models]
+        self.config['inference'] = InferenceConfig
+        for k, v in dict(benchmark_config.evaluation).items():
+            setattr(self.config['inference'], k, v)
+        self.config['inference'].output_dir = benchmark_config.output.path
+        if hasattr(benchmark_config, 'datasets'):
+            datasets = benchmark_config.datasets
+            for d in datasets:
+                self.config['task'] = TaskConfig
+                self.config['task'].task_type = d.task
+                self.config['task'].threshold = d.threshold
+                self.config['task'].label_names = d.label_names
+                self.get_dataset(d.path, d.text_column, d.label_column)
+            task_configs = [d.task for d in datasets]
         else:
             datasets = []
             task_configs = [self.config['task']]
-        metrics = benckmark_config['metrics']
-        plot_format = benckmark_config['plot']['format']
-        self.prepared = {
+        metrics = benchmark_config.metrics
+        plot_format = benchmark_config.output.format
+        return {
             "models": model_names,
             "sources": sources,
             "tasks": task_configs,
@@ -169,7 +173,7 @@ class Benchmark:
             task_configs = self.prepared['tasks']
             pred_config = self.config['inference']
             # Get datasets and model names from preset config
-            dataset_names = [d['name'] for d in self.prepared['dataset']]
+            dataset_names = [d.name for d in self.prepared['dataset']]
             model_names = self.prepared['models']
             sources = self.prepared['sources']
             selected_metrics = self.prepared['metrics']
@@ -276,17 +280,17 @@ class Benchmark:
         """
         task_config = self.config['task']
         task_type = task_config.task_type
-        if task_type in ['binary', 'multiclass', 'multilabel', 'token']:
-            # Select dataset if multiple datasets are provided
-            if isinstance(dataset, int):
-                metrics = metrics[list(metrics.keys())[dataset]]
-            elif isinstance(dataset, str):
-                if dataset in metrics:
-                    metrics = metrics[dataset]
-                else:
-                    raise ValueError(f"Dataset name '{dataset}' not found in metrics.")
+        # Select dataset if multiple datasets are provided
+        if isinstance(dataset, int):
+            metrics = metrics[list(metrics.keys())[dataset]]
+        elif isinstance(dataset, str):
+            if dataset in metrics:
+                metrics = metrics[dataset]
             else:
-                metrics = metrics[list(metrics.keys())[0]]
+                raise ValueError(f"Dataset name '{dataset}' not found in metrics.")
+        else:
+            metrics = metrics[list(metrics.keys())[0]]
+        if task_type in ['binary', 'multiclass', 'multilabel', 'token']:
             # Prepare data for plotting
             bars_data, curves_data = prepare_data(metrics, task_type=task_type)
             if save_path:

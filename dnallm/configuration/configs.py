@@ -55,6 +55,84 @@ class InferenceConfig(BaseModel):
     output_dir: Optional[str] = None
 
 
+class BenchmarkInfoConfig(BaseModel):
+    """Configuration for the benchmark's metadata."""
+    name: str = Field(..., description="The overall name for the benchmark.")
+    description: Optional[str] = Field(None, description="A brief description of the benchmark's purpose.")
+
+
+class ModelConfig(BaseModel):
+    """Configuration for a single model to be benchmarked."""
+    name: str = Field(..., description="A unique name for the model in the benchmark.")
+    path: str = Field(..., description="Path to the model, can be a local path or a Hugging Face model identifier.")
+    source: Optional[str] = "huggingface"
+    task_type: Optional[str] = "classification"
+    revision: Optional[str] = "main"
+    trust_remote_code: bool = True
+    torch_dtype: Optional[str] = "float32"
+
+
+class DatasetConfig(BaseModel):
+    """Configuration for a single dataset used in the benchmark."""
+    name: str = Field(..., description="A unique name for the dataset.")
+    path: str = Field(..., description="Path to the dataset file (e.g., .csv, .json).")
+    task: str = Field(..., description="The primary task associated with this dataset (e.g., binary_classification).")
+    format: Optional[str] = "csv"
+    text_column: str = "sequence"
+    label_column: Optional[str] = "label"
+    max_length: int = 512
+    truncation: bool = True
+    padding: str = "max_length"
+    test_size: Optional[float] = 0.2
+    val_size: Optional[float] = 0.1
+    random_state: Optional[int] = 42
+    threshold: Optional[float] = 0.5
+    label_names: Optional[List] = None
+
+
+class EvaluationConfig(BaseModel):
+    """Configuration for the evaluation phase of the benchmark."""
+    batch_size: int = 32
+    max_length: int = 512
+    device: str = "auto"
+    num_workers: int = 4
+    use_fp16: bool = False
+    use_bf16: bool = False
+    mixed_precision: bool = True
+    pin_memory: bool = True
+    memory_efficient_attention: bool = False
+    seed: int = 42
+    deterministic: bool = True
+
+
+class OutputConfig(BaseModel):
+    """Configuration for generating benchmark reports and artifacts."""
+    path: str = "benchmark_results"
+    format: str = "html"
+    save_predictions: bool = True
+    save_embeddings: bool = False
+    save_attention_maps: bool = False
+    generate_plots: bool = True
+    report_title: str = "DNA Model Benchmark Report"
+    include_summary: bool = True
+    include_details: bool = True
+    include_recommendations: bool = True
+
+
+class BenchmarkConfig(BaseModel):
+    """
+    Top-level configuration for the DNA Language Model benchmark.
+    This class validates and structures the entire YAML configuration file,
+    where each top-level key in the YAML corresponds to an attribute of this class.
+    """
+    benchmark: BenchmarkInfoConfig = Field(..., description="General metadata and information about the benchmark.")
+    models: List[ModelConfig] = Field(..., description="A list of models to be evaluated.")
+    datasets: List[DatasetConfig] = Field(..., description="A list of datasets to run the benchmark on.")
+    metrics: Optional[List[str]] = Field(None, description="A list of evaluation metrics to compute.")
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig, description="Configuration for the evaluation phase.")
+    output: OutputConfig = Field(..., description="Configuration for benchmark outputs and reports.")
+
+
 def load_config(config_path: str):
     with open(config_path, "r", encoding="utf-8") as f:
         config_dict = yaml.safe_load(f)
@@ -73,6 +151,9 @@ def load_config(config_path: str):
     # 训练配置（可选）
     if 'finetune' in config_dict:
         configs['finetune'] = TrainingConfig(**config_dict['finetune'])
+    
+    if 'benchmark' in config_dict:
+        configs['benchmark'] = BenchmarkConfig(**config_dict)
     
     return configs
 

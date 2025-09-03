@@ -1,0 +1,32 @@
+benchmark:
+  description: Comparing DNA language models on various tasks
+  name: DNA Model Benchmark
+datasets:
+- format: csv
+  label_column: label
+  name: test
+  path: test.csv
+  task: binary_classification
+  text_column: sequence
+evaluation:
+  batch_size: 32
+  deterministic: true
+  device: auto
+  max_length: 512
+  num_workers: 4
+  seed: 42
+metrics: []
+models:
+- name: plant-dnagemma-BPE
+  path: zhangtaolab/plant-dnagemma-BPE
+  source: huggingface
+  task_type: generation
+  torch_dtype: float32
+  trust_remote_code: true
+output:
+  format: html
+  generate_plots: true
+  path: benchmark_results
+  save_attention_maps: false
+  save_embeddings: false
+  save_predictions: true

@@ -55,7 +55,7 @@ def main():
     
     try:
         # Import and launch the app
-        from config_generator_app import GradioConfigGenerator
+        from model_config_generator_app import GradioConfigGenerator
         
         generator = GradioConfigGenerator()
         interface = generator.create_interface()

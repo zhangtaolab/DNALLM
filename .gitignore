@@ -79,6 +79,7 @@ Thumbs.db
 *.db
 *.sqlite
 *.log
+*.bak
 
 # Project specific
 dnallm/models/downloads/
