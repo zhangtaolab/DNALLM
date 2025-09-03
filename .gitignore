@@ -100,3 +100,6 @@ example/marimo/*/__marimo__/
 
 # Mkdocs cache
 site
+
+.cursor
+.cursorignore
