@@ -18,11 +18,12 @@
 ## 技术架构
 
 ### 核心技术栈
-- **MCP Python SDK (>=1.3.0)**: 符合 MCP 规范的服务器实现，使用 `FastMCP` 类
-- **FastMCP**: MCP Python SDK 提供的标准化服务器类，内置 SSE 支持
+- **MCP Python SDK (>=1.3.0)**: 符合 MCP 规范的服务器实现
+- **FastMCP**: 高级服务器框架，提供简化的装饰器 API
+- **SSE (Server-Sent Events)**: 传输协议，支持实时数据推送和流式响应
+- **@mcp.tool()**: 工具注册装饰器
 - **Pydantic (>=2.10.6)**: 数据验证和配置管理
 - **PyYAML (>=6.0)**: 配置文件解析
-- **asyncio**: 异步任务处理（Python 内置）
 - **aiohttp (>=3.9.0)**: 异步 HTTP 客户端/服务器（可选）
 - **websockets (>=12.0)**: WebSocket 支持（可选）
 - **python-dotenv (>=1.0.0)**: 环境变量管理（可选）
@@ -34,7 +35,7 @@
 │   MCP Client    │    │   MCP Server     │    │  DNA Models     │
 │                 │    │                  │    │                 │
 │ - SSE Client    │◄──►│ - FastMCP Server │◄──►│ - Model Pool    │
-│ - HTTP Client   │    │ - MCP Protocol   │    │ - DNAPredictor  │
+│ - HTTP Client   │    │ - SSE Transport  │    │ - DNAPredictor  │
 │                 │    │ - Task Router    │    │ - Config Mgmt   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
@@ -57,17 +58,16 @@
 #### 1. 环境搭建与依赖安装 (2-3 小时)
 - [ ] 创建 `dnallm/mcp` 目录结构
 - [ ] 安装 MCP Python SDK: `pip install mcp>=1.3.0`
-- [ ] 安装核心依赖: `pydantic>=2.10.6`, `pyyaml>=6.0`, `asyncio`
+- [ ] 安装核心依赖: `pydantic>=2.10.6`, `pyyaml>=6.0`
 - [ ] 安装可选依赖: `aiohttp>=3.9.0`, `websockets>=12.0`, `python-dotenv>=1.0.0`
 - [ ] 创建 `requirements.txt` 文件
 
 **MCP 服务器依赖包说明：**
 
 核心依赖：
-- mcp>=1.3.0: MCP Python SDK，提供 FastMCP 类
+- mcp>=1.3.0: MCP Python SDK，提供 FastMCP 框架和 SSE 传输
 - pydantic>=2.10.6: 数据验证和配置管理
 - pyyaml>=6.0: YAML 配置文件解析
-- asyncio: 异步任务处理（Python 内置）
 
 可选依赖：
 - aiohttp>=3.9.0: 异步 HTTP 客户端/服务器
@@ -85,7 +85,7 @@
 **与项目现有依赖的关系：**
 - 项目已在 `pyproject.toml` 中配置了 `mcp>=1.3.0` 依赖
 - 现有的 `pydantic>=2.10.6` 版本符合 MCP SDK 要求
-- 无需额外安装 FastAPI 和 uvicorn（FastMCP 内置服务器功能）
+- FastMCP 提供完整的服务器功能，无需额外安装 FastAPI 和 uvicorn
 
 #### 2. 配置文件设计 (1-2 小时)
 - [ ] 设计 `mcp_server_config.yaml` 结构
@@ -95,6 +95,7 @@
   
 #### 3. MCP 服务器框架搭建 (4-5 小时)
 - [ ] 实现基于 FastMCP 的服务器类 (`mcp_server.py`)
+- [ ] 集成 SSE 传输支持
 - [ ] 创建 MCP 工具注册器 (`tool_registry.py`)
 - [ ] 实现配置管理器 (`config_manager.py`)
 - [ ] 创建模型管理器 (`model_manager.py`)
@@ -133,7 +134,7 @@
 - [ ] 实现结果格式化器
 
 #### 6. 实现 MCP 工具和流式推送 (2-3 小时)
-- [ ] 使用 FastMCP 内置 SSE 功能
+- [ ] 使用 FastMCP + SSE 组合实现实时推送
 - [ ] 实现预测结果流式推送
 - [ ] 处理客户端连接管理
 - [ ] 实现错误处理和重连机制
@@ -168,25 +169,27 @@
 
 ### 核心组件设计
 
-#### 0. 基于 FastMCP 的服务器实现 (`mcp_server.py`)
+#### 0. 基于 FastMCP + SSE 的服务器实现 (`mcp_server.py`)
 
-**使用 MCP Python SDK 的 FastMCP 类：**
+**使用 FastMCP 框架和 SSE 传输协议：**
 
 主要功能：
-- 创建 DNALLMMCPServer 类，基于 FastMCP 实现
+- 创建 DNALLMMCPServer 类，基于 FastMCP 框架实现
+- 集成 SSE 传输支持，实现实时数据推送
 - 支持异步配置加载和模型初始化
 - 集成模型信息生成器，从 model_info.yaml 获取模型信息
 - 实现多模型并行加载和管理
-- 注册 MCP 工具：dna_predict, dna_batch_predict, dna_multi_predict, list_models 等
+- 注册 MCP 工具：dna_sequence_predict, dna_batch_predict, dna_multi_model_predict, list_models 等
 
-**FastMCP 的优势：**
+**FastMCP + SSE 组合的优势：**
 
-1. **标准化实现**：符合 MCP 协议规范，无需手动实现协议细节
-2. **内置 SSE 支持**：自动处理 Server-Sent Events，无需自定义 SSE 管理器
-3. **工具装饰器**：使用 `@mcp.tool()` 装饰器简化工具注册
-4. **自动文档生成**：自动生成 API 文档和工具描述
-5. **客户端兼容性**：与所有 MCP 客户端完全兼容
-6. **简化维护**：由 MCP 团队维护，减少维护负担
+1. **简化开发**：FastMCP 提供装饰器基础的 API，简化服务器创建
+2. **实时推送**：SSE 支持实时数据推送和流式响应
+3. **标准化实现**：符合 MCP 协议规范，无需手动实现协议细节
+4. **工具装饰器**：使用 `@mcp.tool()` 装饰器简化工具注册
+5. **自动文档生成**：自动生成 API 文档和工具描述
+6. **客户端兼容性**：与所有 MCP 客户端完全兼容
+7. **简化维护**：由 MCP 团队维护，减少维护负担
 
 #### 1. 模型配置生成器 (`model_config_generator.py`)
 
@@ -367,11 +370,11 @@ mcp_server_config.yaml (主配置文件 - 1个)
 - **singlebase**: 单碱基分词器
 
 #### 4. MCP 协议支持的任务类型
-- `dna_predict`: 单序列预测
+- `dna_sequence_predict`: 单序列预测
 - `dna_batch_predict`: 批量序列预测
-- `dna_multi_predict`: 多模型并行预测（核心功能）
+- `dna_multi_model_predict`: 多模型并行预测（核心功能）
 - `dna_stream_predict`: 流式预测（SSE）
-- `list_models`: 列出已加载的模型
+- `list_loaded_models`: 列出已加载的模型
 - `get_model_info`: 获取模型详细信息
 - `list_models_by_task_type`: 按任务类型列出所有可用模型（从 model_info.yaml）
 - `get_all_available_models`: 获取所有可用模型（从 model_info.yaml）
@@ -418,6 +421,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 - 序列格式错误
 - 序列长度超限
 - 预测超时
+- 工具调用失败时设置 `isError` 字段
 
 #### 4. 网络错误
 - SSE 连接断开
@@ -491,9 +495,9 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 4. **启动 MCP 服务器**
    - 初始化 FastMCP 应用
+   - 集成 SSE 传输支持
    - 注册 MCP 工具（支持多模型）
-   - 启动内置 SSE 服务
-   - 开始监听请求
+   - 启动服务器并开始监听请求
 
 **启动流程总结（配置文件分离架构）：**
 
@@ -515,9 +519,9 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 4. **服务器启动阶段**：
    - 初始化 FastMCP 应用
+   - 集成 SSE 传输支持
    - 注册所有 MCP 工具（支持多模型）
-   - 启动内置 SSE 服务
-   - 开始监听客户端请求
+   - 启动服务器并开始监听客户端请求
 
 **关键优势：**
 - **配置驱动**：无需修改代码即可添加/删除模型
@@ -546,7 +550,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 ### 技术风险
 1. **MCP SDK 兼容性**: 确保使用最新稳定版本的 MCP Python SDK (>=1.3.0)
-2. **FastMCP 版本兼容性**: 确保 FastMCP 类与 MCP 协议版本兼容
+2. **FastMCP 版本兼容性**: 确保 FastMCP 框架与 MCP 协议版本兼容
 3. **依赖包版本冲突**: 确保 MCP SDK 依赖与项目现有依赖兼容
 4. **内存管理**: 实现模型卸载和内存监控
 5. **并发限制**: 实现请求队列和限流机制
@@ -555,7 +559,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 ### 性能风险
 1. **模型加载时间**: 实现预加载和缓存策略
-2. **FastMCP SSE 性能**: 利用 FastMCP 内置 SSE 优化
+2. **SSE 传输性能**: 利用 FastMCP + SSE 组合优化实时推送性能
 3. **资源竞争**: 实现资源池和调度策略
 
 ### 运维风险
@@ -567,7 +571,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 ### 功能标准
 - [ ] 支持所有任务类型（binary, multiclass, multilabel, regression）
-- [ ] FastMCP 内置 SSE 实时推送正常工作
+- [ ] FastMCP + SSE 实时推送正常工作
 - [ ] 多模型并发运行稳定
 - [ ] 配置文件驱动，无需修改代码
 - [ ] 支持 ModelScope 和 HuggingFace 模型源
@@ -604,39 +608,43 @@ mcp_server_config.yaml (主配置文件 - 1个)
 - 集成更多预训练模型
 - 实现模型版本管理
 
-## FastMCP 迁移优势
+## FastMCP + SSE 组合优势
 
-### 从自定义 FastAPI 到 FastMCP 的优势
+### 使用 FastMCP + SSE 组合的优势
 
-1. **标准化实现**
-   - 符合 MCP 协议规范，无需手动实现协议细节
-   - 自动处理 MCP 消息格式和错误处理
-   - 与所有 MCP 客户端完全兼容
-
-2. **简化开发**
+1. **简化开发**
+   - FastMCP 提供装饰器基础的 API，简化服务器创建
    - 使用 `@mcp.tool()` 装饰器简化工具注册
    - 自动生成工具文档和类型定义
    - 内置参数验证和错误处理
 
-3. **内置功能**
-   - 自动 SSE 支持，无需自定义 SSE 管理器
+2. **实时推送能力**
+   - SSE 支持实时数据推送和流式响应
    - 内置连接管理和心跳机制
    - 自动处理客户端连接和断开
+   - 适合长时间运行的预测任务
+
+3. **标准化实现**
+   - 符合 MCP 协议规范，无需手动实现协议细节
+   - 自动处理 MCP 消息格式和错误处理
+   - 与所有 MCP 客户端完全兼容
 
 4. **维护优势**
    - 由 MCP 团队维护，减少维护负担
    - 自动获得协议更新和 bug 修复
    - 社区支持和文档完善
 
-### 迁移建议
+### 实现建议
 
-**第一阶段：基础迁移**
-- 将现有的 FastAPI 服务器改为使用 FastMCP
-- 使用 `@mcp.tool()` 装饰器注册现有 API 端点
+**第一阶段：基础实现**
+- 使用 FastMCP 创建服务器框架
+- 集成 SSE 传输支持
+- 使用 `@mcp.tool()` 装饰器注册工具
 - 保持现有的配置和模型加载逻辑
 
 **第二阶段：功能优化**
-- 利用 FastMCP 的内置功能优化性能
+- 利用 FastMCP + SSE 组合优化性能
+- 实现实时预测进度推送
 - 简化错误处理和日志记录
 - 添加更多 MCP 工具
 
@@ -644,6 +652,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 - 实现流式预测功能
 - 添加模型管理工具
 - 优化多模型并发处理
+- 增强 SSE 连接管理
 
 ## 使用 model_info.yaml 的配置生成流程
 
@@ -669,7 +678,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 ## 总结
 
-本计划提供了一个基于 FastMCP 的完整 MCP 服务器实现方案，预计在 2-3 天内完成核心功能。通过使用 MCP Python SDK 的 FastMCP 类，我们获得了标准化实现、简化开发和内置功能等优势。通过模块化设计和配置文件驱动的方式，确保系统的可维护性和扩展性。
+本计划提供了一个基于 FastMCP + SSE 组合的完整 MCP 服务器实现方案，预计在 2-3 天内完成核心功能。通过使用 FastMCP 框架和 SSE 传输协议，我们获得了简化开发、实时推送能力和标准化实现等优势。通过模块化设计和配置文件驱动的方式，确保系统的可维护性和扩展性。
 
 **关键特性：**
 
@@ -684,9 +693,10 @@ mcp_server_config.yaml (主配置文件 - 1个)
    - 支持按任务类型（binary, multiclass, regression）分类管理
    - 自动生成推理配置文件和 MCP 服务器配置
 
-3. **FastMCP 集成**：
+3. **FastMCP + SSE 集成**：
+   - 使用 FastMCP 框架简化服务器创建
    - 使用 `@mcp.tool()` 装饰器简化工具注册
-   - 内置 SSE 支持，无需自定义 SSE 管理器
+   - 通过 SSE 传输协议实现实时数据推送
    - 与所有 MCP 客户端完全兼容
 
 4. **多模型支持**：
@@ -699,4 +709,4 @@ mcp_server_config.yaml (主配置文件 - 1个)
    - 支持动态模型发现和配置生成
    - 完善的错误处理和日志记录
 
-重点关注 MCP 工具注册、多模型支持和错误处理，以满足 DNA 序列预测的实际需求。
+重点关注 FastMCP 工具注册、SSE 实时推送、多模型支持和错误处理，以满足 DNA 序列预测的实际需求。
