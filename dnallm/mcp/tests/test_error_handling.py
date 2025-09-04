@@ -286,7 +286,7 @@ class TestDNAPredictorErrorHandling:
         
         # 测试获取模型信息（未加载）
         model_info = adapter.get_model_info()
-        assert model_info["is_loaded"] is False
+        assert model_info["loaded"] is False
     
     async def test_prediction_without_loaded_model(self):
         """测试未加载模型时的预测"""
@@ -347,7 +347,8 @@ class TestValidatorErrorHandling:
                 with pytest.raises(TypeError):
                     validate_dna_sequence(seq)
             else:
-                assert not validate_dna_sequence(seq)
+                result = validate_dna_sequence(seq)
+                assert not result['is_valid']
     
     def test_dna_sequence_validation_edge_cases(self):
         """测试DNA序列验证边界情况"""

@@ -29,7 +29,7 @@ class TestMCPModelConfigGenerator:
     
     def test_get_models_by_task_type(self):
         """测试按任务类型获取模型"""
-        generator = MCPModelConfigGenerator("../../models/model_info.yaml")
+        generator = MCPModelConfigGenerator("../../dnallm/models/model_info.yaml")
         
         # 测试二分类模型
         binary_models = generator.get_models_by_task_type("binary")
@@ -51,7 +51,7 @@ class TestMCPModelConfigGenerator:
     
     def test_get_all_task_types(self):
         """测试获取所有任务类型"""
-        generator = MCPModelConfigGenerator("../../models/model_info.yaml")
+        generator = MCPModelConfigGenerator("../../dnallm/models/model_info.yaml")
         task_types = generator.get_all_task_types()
         
         expected_types = ["binary", "multiclass", "regression"]
@@ -60,7 +60,7 @@ class TestMCPModelConfigGenerator:
     
     def test_generate_mcp_server_config(self):
         """测试生成 MCP 服务器配置"""
-        generator = MCPModelConfigGenerator("../../models/model_info.yaml")
+        generator = MCPModelConfigGenerator("../../dnallm/models/model_info.yaml")
         
         # 选择一些模型
         selected_models = [
@@ -89,7 +89,7 @@ class TestMCPModelConfigGenerator:
     
     def test_generate_inference_configs(self):
         """测试生成推理配置"""
-        generator = MCPModelConfigGenerator("../../models/model_info.yaml")
+        generator = MCPModelConfigGenerator("../../dnallm/models/model_info.yaml")
         
         with tempfile.TemporaryDirectory() as temp_dir:
             generated_files = generator.generate_inference_configs(temp_dir)
@@ -116,7 +116,7 @@ class TestMCPModelConfigGenerator:
     
     def test_get_model_capabilities(self):
         """测试获取模型能力信息"""
-        generator = MCPModelConfigGenerator("../../models/model_info.yaml")
+        generator = MCPModelConfigGenerator("../../dnallm/models/model_info.yaml")
         
         # 测试存在的模型
         capabilities = generator.get_model_capabilities("Plant DNABERT BPE promoter")

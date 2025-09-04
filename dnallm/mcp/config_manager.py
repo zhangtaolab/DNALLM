@@ -8,7 +8,7 @@ import os
 import yaml
 from typing import Dict, Any, Optional, List
 from pathlib import Path
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import logging
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,8 @@ class ModelConfig(BaseModel):
     task_type: str
     description: str
     
-    @validator('task_type')
+    @field_validator('task_type')
+    @classmethod
     def validate_task_type(cls, v):
         allowed_types = ['binary', 'multiclass', 'multilabel', 'regression']
         if v not in allowed_types:

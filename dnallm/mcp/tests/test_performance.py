@@ -333,7 +333,12 @@ class TestTaskRouterPerformance:
         start_time = time.time()
         formatted_results = []
         for result in results:
-            formatted = format_prediction_result(result)
+            formatted = format_prediction_result(
+                result, 
+                model_name="test_model", 
+                sequence="ATCGATCG", 
+                task_type="binary"
+            )
             formatted_results.append(formatted)
         end_time = time.time()
         
