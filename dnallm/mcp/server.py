@@ -327,9 +327,10 @@ class DNALLMMCPServer:
         
         logger.info(f"Starting DNALLM MCP Server on {host}:{port}")
         
-        # Start the FastMCP server with HTTP transport
+        # Start the FastMCP server
         # FastMCP.run() is a blocking call, not async
-        self.app.run(transport="http", host=host, port=port)
+        # Note: FastMCP uses stdio transport by default for MCP protocol
+        self.app.run()
     
     def get_server_info(self) -> Dict[str, Any]:
         """Get server information.

@@ -49,11 +49,16 @@ async def test_mcp_functionality():
         logger.info("Testing promoter prediction...")
         promoter_result = await server.model_manager.predict_sequence("promoter_model", dna_sequence)
         
-        if promoter_result:
+        if promoter_result and 0 in promoter_result:
+            result = promoter_result[0]
             logger.info("Promoter prediction result:")
-            logger.info(f"  Prediction: {promoter_result.get('prediction', 'N/A')}")
-            logger.info(f"  Confidence: {promoter_result.get('confidence', 'N/A')}")
-            logger.info(f"  Label: {promoter_result.get('label', 'N/A')}")
+            logger.info(f"  Label: {result.get('label', 'N/A')}")
+            logger.info(f"  Scores: {result.get('scores', 'N/A')}")
+            # Get confidence (max score)
+            scores = result.get('scores', {})
+            if scores:
+                max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
+                logger.info(f"  Confidence: {max_score:.4f}")
         else:
             logger.error("Promoter prediction failed")
         
@@ -61,11 +66,16 @@ async def test_mcp_functionality():
         logger.info("Testing conservation prediction...")
         conservation_result = await server.model_manager.predict_sequence("conservation_model", dna_sequence)
         
-        if conservation_result:
+        if conservation_result and 0 in conservation_result:
+            result = conservation_result[0]
             logger.info("Conservation prediction result:")
-            logger.info(f"  Prediction: {conservation_result.get('prediction', 'N/A')}")
-            logger.info(f"  Confidence: {conservation_result.get('confidence', 'N/A')}")
-            logger.info(f"  Label: {conservation_result.get('label', 'N/A')}")
+            logger.info(f"  Label: {result.get('label', 'N/A')}")
+            logger.info(f"  Scores: {result.get('scores', 'N/A')}")
+            # Get confidence (max score)
+            scores = result.get('scores', {})
+            if scores:
+                max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
+                logger.info(f"  Confidence: {max_score:.4f}")
         else:
             logger.error("Conservation prediction failed")
         
@@ -73,11 +83,16 @@ async def test_mcp_functionality():
         logger.info("Testing open chromatin prediction...")
         chromatin_result = await server.model_manager.predict_sequence("open_chromatin_model", dna_sequence)
         
-        if chromatin_result:
+        if chromatin_result and 0 in chromatin_result:
+            result = chromatin_result[0]
             logger.info("Open chromatin prediction result:")
-            logger.info(f"  Prediction: {chromatin_result.get('prediction', 'N/A')}")
-            logger.info(f"  Confidence: {chromatin_result.get('confidence', 'N/A')}")
-            logger.info(f"  Label: {chromatin_result.get('label', 'N/A')}")
+            logger.info(f"  Label: {result.get('label', 'N/A')}")
+            logger.info(f"  Scores: {result.get('scores', 'N/A')}")
+            # Get confidence (max score)
+            scores = result.get('scores', {})
+            if scores:
+                max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
+                logger.info(f"  Confidence: {max_score:.4f}")
         else:
             logger.error("Open chromatin prediction failed")
         
@@ -88,12 +103,21 @@ async def test_mcp_functionality():
         logger.info(f"DNA Sequence: {dna_sequence[:50]}...")
         logger.info(f"Sequence Length: {len(dna_sequence)} bp")
         
-        if promoter_result:
-            logger.info(f"Promoter Prediction: {promoter_result.get('label', 'N/A')} (confidence: {promoter_result.get('confidence', 'N/A')})")
-        if conservation_result:
-            logger.info(f"Conservation Prediction: {conservation_result.get('label', 'N/A')} (confidence: {conservation_result.get('confidence', 'N/A')})")
-        if chromatin_result:
-            logger.info(f"Open Chromatin Prediction: {chromatin_result.get('label', 'N/A')} (confidence: {chromatin_result.get('confidence', 'N/A')})")
+        if promoter_result and 0 in promoter_result:
+            result = promoter_result[0]
+            scores = result.get('scores', {})
+            max_score = max(scores.values()) if scores else 0
+            logger.info(f"Promoter Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})")
+        if conservation_result and 0 in conservation_result:
+            result = conservation_result[0]
+            scores = result.get('scores', {})
+            max_score = max(scores.values()) if scores else 0
+            logger.info(f"Conservation Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})")
+        if chromatin_result and 0 in chromatin_result:
+            result = chromatin_result[0]
+            scores = result.get('scores', {})
+            max_score = max(scores.values()) if scores else 0
+            logger.info(f"Open Chromatin Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})")
         
         # Shutdown server
         await server.shutdown()
