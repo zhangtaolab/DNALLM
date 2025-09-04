@@ -63,26 +63,24 @@
 
 **MCP 服务器依赖包说明：**
 
-```txt
-# MCP 服务器核心依赖
-mcp>=1.3.0                    # MCP Python SDK，提供 FastMCP 类
-pydantic>=2.10.6              # 数据验证和配置管理
-pyyaml>=6.0                   # YAML 配置文件解析
-asyncio                       # 异步任务处理（Python 内置）
+核心依赖：
+- mcp>=1.3.0: MCP Python SDK，提供 FastMCP 类
+- pydantic>=2.10.6: 数据验证和配置管理
+- pyyaml>=6.0: YAML 配置文件解析
+- asyncio: 异步任务处理（Python 内置）
 
-# 可选依赖（根据需求安装）
-aiohttp>=3.9.0                # 异步 HTTP 客户端/服务器
-websockets>=12.0              # WebSocket 支持
-python-dotenv>=1.0.0          # 环境变量管理
-loguru>=0.7.0                 # 增强的日志库
-rich>=13.7.0                  # 美化终端输出
+可选依赖：
+- aiohttp>=3.9.0: 异步 HTTP 客户端/服务器
+- websockets>=12.0: WebSocket 支持
+- python-dotenv>=1.0.0: 环境变量管理
+- loguru>=0.7.0: 增强的日志库
+- rich>=13.7.0: 美化终端输出
 
-# 开发和测试依赖
-pytest>=8.3.5                 # 测试框架
-pytest-asyncio>=0.21.1        # 异步测试支持
-black>=25.1.0                 # 代码格式化
-flake8>=7.1.2                 # 代码检查
-```
+开发和测试依赖：
+- pytest>=8.3.5: 测试框架
+- pytest-asyncio>=0.21.1: 异步测试支持
+- black>=25.1.0: 代码格式化
+- flake8>=7.1.2: 代码检查
 
 **与项目现有依赖的关系：**
 - 项目已在 `pyproject.toml` 中配置了 `mcp>=1.3.0` 依赖
@@ -115,85 +113,16 @@ flake8>=7.1.2                 # 代码检查
 
 #### 4.1. 模型加载实现细节
 
-**统一模型加载接口：**
-```python
-class ModelLoader:
-    """统一的模型加载器，支持多种模型源"""
-    
-    def __init__(self):
-        self.loaded_models = {}
-        self.model_cache = {}
-    
-    async def load_model(self, config_path: str) -> Tuple[Any, Any]:
-        """异步加载模型和分词器"""
-        try:
-            # 加载配置文件
-            configs = load_config(config_path)
-            
-            # 获取模型信息
-            model_name = configs['model']['path']
-            task_config = configs['task']
-            source = configs['model']['source']
-            
-            # 检查缓存
-            cache_key = f"{model_name}_{source}"
-            if cache_key in self.model_cache:
-                return self.model_cache[cache_key]
-            
-            # 在线程池中加载模型（避免阻塞事件循环）
-            loop = asyncio.get_event_loop()
-            model, tokenizer = await loop.run_in_executor(
-                None,
-                self._load_model_sync,
-                model_name,
-                task_config,
-                source
-            )
-            
-            # 缓存模型
-            self.model_cache[cache_key] = (model, tokenizer)
-            self.loaded_models[model_name] = {
-                'model': model,
-                'tokenizer': tokenizer,
-                'config': configs,
-                'source': source
-            }
-            
-            return model, tokenizer
-            
-        except Exception as e:
-            logger.error(f"Failed to load model from {config_path}: {e}")
-            raise
-    
-    def _load_model_sync(self, model_name: str, task_config: dict, source: str):
-        """同步加载模型（在线程池中执行）"""
-        return load_model_and_tokenizer(
-            model_name=model_name,
-            task_config=task_config,
-            source=source
-        )
-```
+**统一模型加载接口设计：**
+- 创建 ModelLoader 类，支持多种模型源
+- 实现异步模型加载，避免阻塞事件循环
+- 支持模型缓存机制，提高加载效率
+- 在线程池中执行同步模型加载操作
 
 **ModelScope 模型下载验证：**
-```python
-def verify_modelscope_download(model_name: str) -> bool:
-    """验证 ModelScope 模型是否已下载"""
-    try:
-        # 检查本地缓存目录
-        cache_dir = os.path.expanduser("~/.cache/modelscope/hub/models")
-        model_dir = os.path.join(cache_dir, model_name.replace("/", "--"))
-        
-        if os.path.exists(model_dir):
-            # 检查关键文件是否存在
-            required_files = ['config.json', 'modeling_mamba.py', 'tokenizer.json']
-            for file in required_files:
-                if not os.path.exists(os.path.join(model_dir, file)):
-                    return False
-            return True
-        return False
-    except Exception:
-        return False
-```
+- 检查本地缓存目录是否存在
+- 验证关键模型文件完整性
+- 支持模型下载状态检查
 
 #### 5. 实现分类和回归任务支持 (3-4 小时)
 - [ ] 实现任务类型路由器 (`task_router.py`)
@@ -235,41 +164,7 @@ def verify_modelscope_download(model_name: str) -> bool:
 ## 详细任务清单
 
 ### 目录结构
-```
-dnallm/mcp/
-├── __init__.py
-├── mcp_server.py              # 基于 FastMCP 的主服务器
-├── tool_registry.py           # MCP 工具注册器
-├── config_manager.py          # 配置管理
-├── model_manager.py           # 模型管理
-├── dna_prediction_service.py  # DNA 预测服务
-├── task_router.py             # 任务路由
-├── model_pool.py              # 模型池管理
-├── model_config_generator.py  # 基于 model_info.yaml 的配置生成器
-├── utils/
-│   ├── __init__.py
-│   ├── validators.py          # 数据验证
-│   ├── formatters.py          # 结果格式化
-│   └── model_info_loader.py   # 加载 model_info.yaml
-├── configs/
-│   ├── mcp_server_config.yaml.example
-│   ├── inference_model_config.yaml.example
-│   └── generated/             # 自动生成的配置文件
-│       ├── promoter_configs/
-│       ├── conservation_configs/
-│       ├── open_chromatin_configs/
-│       └── promoter_strength_configs/
-├── tests/
-│   ├── __init__.py
-│   ├── test_mcp_server.py
-│   ├── test_prediction_service.py
-│   ├── test_tool_registry.py
-│   └── test_model_config_generator.py
-└── docs/
-    ├── README.md
-    ├── API.md
-    └── CONFIG.md
-```
+
 
 ### 核心组件设计
 
@@ -277,221 +172,12 @@ dnallm/mcp/
 
 **使用 MCP Python SDK 的 FastMCP 类：**
 
-```python
-from mcp.server.fastmcp import FastMCP
-from dnallm.models.model import load_model_and_tokenizer
-from dnallm.configuration.configs import load_config
-import asyncio
-import yaml
-
-class DNALLMMCPServer:
-    """基于 FastMCP 的 DNA 预测服务器"""
-    
-    def __init__(self, config_path: str):
-        self.mcp = FastMCP("DNALLM DNA Prediction Server")
-        self.config_path = config_path
-        self.loaded_models = {}
-        self.model_configs = {}
-        
-    async def initialize(self):
-        """初始化服务器和模型"""
-        # 加载配置
-        await self._load_configurations()
-        
-        # 加载模型
-        await self._load_models()
-        
-        # 注册工具
-        self._register_tools()
-    
-    async def _load_configurations(self):
-        """加载配置文件"""
-        with open(self.config_path, 'r') as f:
-            self.mcp_config = yaml.safe_load(f)
-        
-        # 初始化模型信息生成器
-        self.model_generator = MCPModelConfigGenerator("dnallm/models/model_info.yaml")
-        
-        # 加载每个模型的推理配置
-        for model_info in self.mcp_config['models']:
-            if model_info.get('enabled', True):
-                config_path = model_info['config_path']
-                model_config = load_config(config_path)
-                
-                # 从 model_info.yaml 获取完整的模型信息
-                model_name = model_info['model_name']
-                full_model_info = self.model_generator.get_model_by_name(model_name)
-                
-                self.model_configs[model_info['name']] = {
-                    'mcp_info': model_info,
-                    'inference_config': model_config,
-                    'model_info_yaml': full_model_info  # 添加完整的模型信息
-                }
-    
-    async def _load_models(self):
-        """异步加载模型"""
-        for model_name, config_data in self.model_configs.items():
-            inference_config = config_data['inference_config']
-            model_path = inference_config['model']['path']
-            source = inference_config['model']['source']
-            task_config = inference_config['task']
-            
-            # 在线程池中加载模型
-            loop = asyncio.get_event_loop()
-            model, tokenizer = await loop.run_in_executor(
-                None,
-                load_model_and_tokenizer,
-                model_path,
-                task_config,
-                source
-            )
-            
-            self.loaded_models[model_name] = {
-                'model': model,
-                'tokenizer': tokenizer,
-                'config': config_data
-            }
-    
-    def _register_tools(self):
-        """注册 MCP 工具"""
-        
-        @self.mcp.tool()
-        def dna_predict(model_name: str, sequence: str, task_type: str = None) -> dict:
-            """DNA 序列预测工具"""
-            if model_name not in self.loaded_models:
-                raise ValueError(f"Model {model_name} not loaded")
-            
-            model_data = self.loaded_models[model_name]
-            model = model_data['model']
-            tokenizer = model_data['tokenizer']
-            config = model_data['config']['inference_config']
-            
-            # 执行预测
-            # ... 预测逻辑 ...
-            
-            return {
-                "model_name": model_name,
-                "sequence": sequence,
-                "prediction": prediction_result,
-                "confidence": confidence_score,
-                "task_type": config['task']['task_type']
-            }
-        
-        @self.mcp.tool()
-        def dna_batch_predict(model_name: str, sequences: list, task_type: str = None) -> dict:
-            """批量 DNA 序列预测工具"""
-            results = []
-            for sequence in sequences:
-                result = dna_predict(model_name, sequence, task_type)
-                results.append(result)
-            
-            return {
-                "model_name": model_name,
-                "total_sequences": len(sequences),
-                "results": results
-            }
-        
-        @self.mcp.tool()
-        def dna_multi_predict(sequence: str, models: list) -> dict:
-            """多模型并行预测工具"""
-            results = {}
-            for model_name in models:
-                if model_name in self.loaded_models:
-                    result = dna_predict(model_name, sequence)
-                    results[model_name] = result
-            
-            return {
-                "sequence": sequence,
-                "predictions": results,
-                "total_models": len(results)
-            }
-        
-        @self.mcp.tool()
-        def list_models() -> list:
-            """列出可用模型"""
-            return [
-                {
-                    "name": name,
-                    "task_type": data['config']['inference_config']['task']['task_type'],
-                    "description": data['config']['mcp_info'].get('description', ''),
-                    "enabled": data['config']['mcp_info'].get('enabled', True)
-                }
-                for name, data in self.loaded_models.items()
-            ]
-        
-        @self.mcp.tool()
-        def list_models_by_task_type(task_type: str) -> list:
-            """按任务类型列出模型"""
-            if not self.model_generator:
-                return []
-            
-            models = self.model_generator.get_available_models(task_type)
-            return [
-                {
-                    "name": model['name'],
-                    "model_path": model['model'],
-                    "task_type": model['task']['task_type'],
-                    "num_labels": model['task']['num_labels'],
-                    "label_names": model['task']['label_names'],
-                    "description": model['task']['describe']
-                }
-                for model in models
-            ]
-        
-        @self.mcp.tool()
-        def get_all_available_models() -> dict:
-            """获取所有可用模型（从 model_info.yaml）"""
-            if not self.model_generator:
-                return {}
-            
-            task_groups = self.model_generator.get_models_by_task_type()
-            result = {}
-            
-            for task_type, models in task_groups.items():
-                result[task_type] = [
-                    {
-                        "name": model['name'],
-                        "model_path": model['model'],
-                        "num_labels": model['task']['num_labels'],
-                        "label_names": model['task']['label_names'],
-                        "description": model['task']['describe']
-                    }
-                    for model in models
-                ]
-            
-            return result
-        
-        @self.mcp.tool()
-        def get_model_info(model_name: str) -> dict:
-            """获取模型详细信息"""
-            if model_name not in self.loaded_models:
-                raise ValueError(f"Model {model_name} not found")
-            
-            model_data = self.loaded_models[model_name]
-            config = model_data['config']
-            
-            return {
-                "name": model_name,
-                "model_path": config['inference_config']['model']['path'],
-                "source": config['inference_config']['model']['source'],
-                "task_type": config['inference_config']['task']['task_type'],
-                "num_labels": config['inference_config']['task']['num_labels'],
-                "label_names": config['inference_config']['task']['label_names'],
-                "description": config['mcp_info'].get('description', ''),
-                "max_concurrent_requests": config['mcp_info'].get('max_concurrent_requests', 10)
-            }
-    
-    def run(self):
-        """启动服务器"""
-        asyncio.run(self.initialize())
-        self.mcp.run()
-
-# 启动脚本
-if __name__ == "__main__":
-    config_path = "configs/mcp_server_config.yaml"
-    server = DNALLMMCPServer(config_path)
-    server.run()
-```
+主要功能：
+- 创建 DNALLMMCPServer 类，基于 FastMCP 实现
+- 支持异步配置加载和模型初始化
+- 集成模型信息生成器，从 model_info.yaml 获取模型信息
+- 实现多模型并行加载和管理
+- 注册 MCP 工具：dna_predict, dna_batch_predict, dna_multi_predict, list_models 等
 
 **FastMCP 的优势：**
 
@@ -506,208 +192,12 @@ if __name__ == "__main__":
 
 基于 `model_info.yaml` 中的 finetuned 模型信息，自动生成 MCP 服务器配置：
 
-```python
-import yaml
-import os
-from typing import Dict, List, Optional
-from pathlib import Path
-
-class MCPModelConfigGenerator:
-    """基于 model_info.yaml 生成 MCP 服务器配置"""
-    
-    def __init__(self, model_info_path: str = "dnallm/models/model_info.yaml"):
-        self.model_info_path = model_info_path
-        self.model_info = self._load_model_info(model_info_path)
-        self.finetuned_models = self.model_info.get('finetuned', [])
-        self.pretrained_models = self.model_info.get('pretrained', [])
-    
-    def _load_model_info(self, model_info_path: str) -> Dict:
-        """加载 model_info.yaml 文件"""
-        try:
-            with open(model_info_path, 'r', encoding='utf-8') as f:
-                model_info = yaml.safe_load(f)
-            print(f"✅ 成功加载模型信息: {len(model_info.get('finetuned', []))} 个微调模型, {len(model_info.get('pretrained', []))} 个预训练模型")
-            return model_info
-        except Exception as e:
-            print(f"❌ 加载 model_info.yaml 失败: {e}")
-            raise
-    
-    def get_available_models(self, task_type: Optional[str] = None) -> List[Dict]:
-        """获取可用模型列表，可按任务类型过滤"""
-        if task_type:
-            return [model for model in self.finetuned_models if model['task']['task_type'] == task_type]
-        return self.finetuned_models
-    
-    def get_model_by_name(self, model_name: str) -> Optional[Dict]:
-        """根据模型名称获取模型信息"""
-        for model in self.finetuned_models:
-            if model['name'] == model_name:
-                return model
-        return None
-    
-    def get_models_by_task_type(self) -> Dict[str, List[Dict]]:
-        """按任务类型分组获取模型"""
-        task_groups = {}
-        for model in self.finetuned_models:
-            task_type = model['task']['task_type']
-            if task_type not in task_groups:
-                task_groups[task_type] = []
-            task_groups[task_type].append(model)
-        return task_groups
-    
-    def generate_mcp_server_config(self, selected_models: List[str] = None) -> Dict:
-        """生成 MCP 服务器配置"""
-        if selected_models is None:
-            # 默认选择一些代表性的模型
-            selected_models = [
-                "Plant DNABERT BPE promoter",
-                "Plant DNABERT BPE conservation", 
-                "Plant DNABERT BPE open chromatin",
-                "Plant DNABERT BPE promoter strength leaf"
-            ]
-        
-        models_config = []
-        for model_name in selected_models:
-            model_info = self.get_model_by_name(model_name)
-            if model_info:
-                config = self._create_model_config(model_info)
-                models_config.append(config)
-            else:
-                print(f"⚠️  未找到模型: {model_name}")
-        
-        return {
-            "server": self._get_server_config(),
-            "mcp": self._get_mcp_config(),
-            "models": models_config,
-            "sse": self._get_sse_config(),
-            "logging": self._get_logging_config()
-        }
-    
-    def generate_inference_configs(self, output_dir: str = "./configs/generated"):
-        """为每个模型生成独立的推理配置文件"""
-        os.makedirs(output_dir, exist_ok=True)
-        
-        for model in self.finetuned_models:
-            config = self._create_inference_config(model)
-            filename = f"{model['name'].lower().replace(' ', '_')}_config.yaml"
-            filepath = os.path.join(output_dir, filename)
-            self._save_config(config, filepath)
-            print(f"✅ 生成配置文件: {filepath}")
-    
-    def _create_model_config(self, model_info: Dict) -> Dict:
-        """为单个模型创建 MCP 配置"""
-        model_name = model_info['name']
-        model_path = model_info['model']
-        task_info = model_info['task']
-        
-        # 生成配置文件路径
-        config_filename = f"{model_name.lower().replace(' ', '_')}_config.yaml"
-        config_path = f"./configs/generated/{config_filename}"
-        
-        return {
-            "name": model_name.lower().replace(' ', '_'),
-            "model_name": model_name,
-            "config_path": config_path,
-            "enabled": True,
-            "max_concurrent_requests": 10,
-            "task_type": task_info['task_type'],
-            "description": task_info['describe']
-        }
-    
-    def _create_inference_config(self, model_info: Dict) -> Dict:
-        """为单个模型创建推理配置"""
-        model_name = model_info['name']
-        model_path = model_info['model']
-        task_info = model_info['task']
-        
-        # 确定模型源（ModelScope 或 HuggingFace）
-        source = "modelscope" if "zhangtaolab" in model_path else "huggingface"
-        
-        return {
-            "task": {
-                "task_type": task_info['task_type'],
-                "num_labels": task_info['num_labels'],
-                "label_names": task_info['label_names'],
-                "threshold": task_info.get('threshold', 0.5)
-            },
-            "inference": {
-                "batch_size": 16,
-                "max_length": 512,
-                "device": "auto",
-                "num_workers": 4,
-                "use_fp16": False,
-                "output_dir": "./results"
-            },
-            "model": {
-                "name": model_name,
-                "path": model_path,
-                "source": source,
-                "trust_remote_code": True,
-                "torch_dtype": "float32",
-                "task_info": task_info
-            }
-        }
-    
-    def _get_server_config(self) -> Dict:
-        """获取服务器配置"""
-        return {
-            "host": "0.0.0.0",
-            "port": 8000,
-            "workers": 1,
-            "log_level": "info",
-            "cors_origins": ["*"]
-        }
-    
-    def _get_mcp_config(self) -> Dict:
-        """获取 MCP 配置"""
-        return {
-            "name": "DNALLM MCP Server",
-            "version": "1.0.0",
-            "description": "DNA sequence prediction server using MCP protocol"
-        }
-    
-    def _get_sse_config(self) -> Dict:
-        """获取 SSE 配置"""
-        return {
-            "heartbeat_interval": 30,
-            "max_connections": 100,
-            "buffer_size": 1000
-        }
-    
-    def _get_logging_config(self) -> Dict:
-        """获取日志配置"""
-        return {
-            "level": "INFO",
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            "file": "./logs/mcp_server.log"
-        }
-    
-    def _save_config(self, config: Dict, filepath: str):
-        """保存配置文件"""
-        with open(filepath, 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, default_flow_style=False, allow_unicode=True, indent=2)
-
-# 使用示例
-if __name__ == "__main__":
-    generator = MCPModelConfigGenerator()
-    
-    # 获取所有可用模型
-    all_models = generator.get_available_models()
-    print(f"总共有 {len(all_models)} 个微调模型")
-    
-    # 按任务类型分组
-    task_groups = generator.get_models_by_task_type()
-    for task_type, models in task_groups.items():
-        print(f"{task_type}: {len(models)} 个模型")
-    
-    # 生成配置文件
-    generator.generate_inference_configs("./configs/generated")
-    
-    # 生成 MCP 服务器配置
-    mcp_config = generator.generate_mcp_server_config()
-    with open("mcp_server_config.yaml", 'w', encoding='utf-8') as f:
-        yaml.dump(mcp_config, f, default_flow_style=False, allow_unicode=True, indent=2)
-```
+主要功能：
+- 创建 MCPModelConfigGenerator 类，从 model_info.yaml 加载模型信息
+- 支持按任务类型过滤和分组模型
+- 自动生成 MCP 服务器配置和推理配置文件
+- 支持模型源自动识别（ModelScope 或 HuggingFace）
+- 提供模型信息查询和配置生成功能
 
 #### 1. MCP 服务器配置 (`mcp_server_config.yaml`)
 
@@ -733,98 +223,13 @@ MCP 服务器采用**主配置文件 + 模型配置文件**的分离架构设计
 - **可维护**：修改某个模型配置不影响其他模型
 - **并行运行**：服务器可以同时加载和运行多个模型
 
-```yaml
-server:
-  host: "0.0.0.0"
-  port: 8000
-  workers: 1
-  log_level: "info"
-  cors_origins: ["*"]
-
-mcp:
-  name: "DNALLM MCP Server"
-  version: "1.0.0"
-  description: "DNA sequence prediction server using MCP protocol"
-
-models:
-  # 基于 model_info.yaml 中的 finetuned 模型
-  - name: "promoter_model"
-    model_name: "Plant DNABERT BPE promoter"
-    config_path: "./configs/promoter_inference_config.yaml"  # 指向推理配置文件
-    enabled: true
-    max_concurrent_requests: 10
-    task_type: "binary"
-    description: "Predict whether a DNA sequence is a core promoter in plants"
-    
-  - name: "conservation_model"
-    model_name: "Plant DNABERT BPE conservation"
-    config_path: "./configs/conservation_inference_config.yaml"  # 指向推理配置文件
-    enabled: true
-    max_concurrent_requests: 8
-    task_type: "binary"
-    description: "Predict whether a DNA sequence is conserved in plants"
-    
-  - name: "open_chromatin_model"
-    model_name: "Plant DNABERT BPE open chromatin"
-    config_path: "./configs/open_chromatin_inference_config.yaml"  # 指向推理配置文件
-    enabled: true
-    max_concurrent_requests: 6
-    task_type: "multiclass"
-    description: "Predict open chromatin regions in plants"
-    
-  - name: "promoter_strength_model"
-    model_name: "Plant DNABERT BPE promoter strength leaf"
-    config_path: "./configs/promoter_strength_inference_config.yaml"  # 指向推理配置文件
-    enabled: true
-    max_concurrent_requests: 5
-    task_type: "regression"
-    description: "Predict promoter strength in tobacco leaves"
-
-# 多模型并行预测配置
-multi_model:
-  enabled: true
-  max_parallel_models: 8
-  default_model_sets:
-    comprehensive_analysis:
-      name: "Comprehensive DNA Analysis"
-      description: "Analyze DNA sequence for multiple functional elements"
-      models:
-        - "Plant DNABERT BPE open chromatin"
-        - "Plant DNABERT BPE promoter"
-        - "Plant DNABERT BPE H3K27me3"
-        - "Plant DNABERT BPE H3K27ac"
-        - "Plant DNABERT BPE H3K4me3"
-        - "Plant DNABERT BPE conservation"
-        - "Plant DNABERT BPE lncRNAs"
-    
-    regulatory_analysis:
-      name: "Regulatory Element Analysis"
-      description: "Focus on regulatory elements"
-      models:
-        - "Plant DNABERT BPE promoter"
-        - "Plant DNABERT BPE H3K27ac"
-        - "Plant DNABERT BPE H3K4me3"
-        - "Plant DNABERT BPE H3K27me3"
-    
-    chromatin_analysis:
-      name: "Chromatin State Analysis"
-      description: "Analyze chromatin accessibility and modifications"
-      models:
-        - "Plant DNABERT BPE open chromatin"
-        - "Plant DNABERT BPE H3K27ac"
-        - "Plant DNABERT BPE H3K4me3"
-        - "Plant DNABERT BPE H3K27me3"
-
-sse:
-  heartbeat_interval: 30
-  max_connections: 100
-  buffer_size: 1000
-
-logging:
-  level: "INFO"
-  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  file: "./logs/mcp_server.log"
-```
+**主配置文件结构：**
+- `server`: 服务器运行参数（host, port, workers, log_level等）
+- `mcp`: MCP协议配置（name, version, description）
+- `models`: 模型列表，每个模型包含name, model_name, config_path, enabled等字段
+- `multi_model`: 多模型并行预测配置，包含预定义的模型组合
+- `sse`: SSE服务配置（心跳间隔、最大连接数等）
+- `logging`: 日志配置
 
 #### 2. 推理模型配置 (`inference_model_config.yaml`)
 
@@ -889,140 +294,44 @@ mcp_server_config.yaml (主配置文件 - 1个)
 **推理配置文件结构：**
 
 每个模型的 `inference_model_config.yaml` 包含：
-- **task**: 任务类型和标签信息
-- **inference**: 推理参数（batch_size, device 等）
-- **model**: 模型路径、来源和详细信息
-
-```yaml
-# 继承现有的 inference_config.yaml 结构
-task:
-  task_type: "binary"  # binary, multiclass, multilabel, regression
-  num_labels: 2
-  label_names: ["Not promoter", "Core promoter"]
-  threshold: 0.5
-
-inference:
-  batch_size: 16
-  max_length: 512
-  device: "auto"
-  num_workers: 4
-  use_fp16: false
-  output_dir: "./results"
-
-model:
-  name: "Plant DNABERT BPE promoter"
-  path: "zhangtaolab/plant-dnabert-BPE-promoter"  # 模型路径
-  source: "huggingface"  # huggingface, modelscope, local
-  trust_remote_code: true
-  torch_dtype: "float32"
-  task_info:
-    describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNABERT model with BPE tokenizer."
-    task_type: "binary"
-    num_labels: 2
-    label_names: ["Not promoter", "Core promoter"]
-    threshold: 0.5
-```
+- **task**: 任务类型和标签信息（task_type, num_labels, label_names, threshold）
+- **inference**: 推理参数（batch_size, max_length, device, num_workers等）
+- **model**: 模型路径、来源和详细信息（name, path, source, task_info）
 
 #### 2.1. 模型和分词器加载方式
 
 **正确的模型加载函数调用：**
-```python
-from dnallm.models.model import load_model_and_tokenizer
-from dnallm.configuration.configs import load_config
+- 使用 `load_model_and_tokenizer` 函数加载模型和分词器
+- 从配置文件获取模型路径、任务配置和模型源
+- 支持 "huggingface" 和 "modelscope" 两种模型源
 
-# 加载配置文件
-configs = load_config("path/to/inference_model_config.yaml")
+**ModelScope 模型加载：**
+- 模型名称格式：zhangtaolab/plant-dnamamba-BPE-open_chromatin
+- 支持多分类任务配置
+- 自动处理 ModelScope 特定的下载和缓存机制
 
-# 加载模型和分词器
-model, tokenizer = load_model_and_tokenizer(
-    model_name=configs['model']['path'],
-    task_config=configs['task'],
-    source=configs['model']['source']  # "huggingface" 或 "modelscope"
-)
-```
-
-**ModelScope 模型加载示例：**
-```python
-# ModelScope 配置示例
-model_name = "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
-task_config = {
-    'task_type': 'multiclass',
-    'num_labels': 3,
-    'label_names': ['Not open', 'Partial open', 'Full open']
-}
-
-model, tokenizer = load_model_and_tokenizer(
-    model_name=model_name,
-    task_config=task_config,
-    source="modelscope"
-)
-```
-
-**HuggingFace 模型加载示例：**
-```python
-# HuggingFace 配置示例
-model_name = "zhangtaolab/plant-dnabert-BPE-promoter"
-task_config = {
-    'task_type': 'binary',
-    'num_labels': 2,
-    'label_names': ['Not promoter', 'Core promoter']
-}
-
-model, tokenizer = load_model_and_tokenizer(
-    model_name=model_name,
-    task_config=task_config,
-    source="huggingface"
-)
-```
+**HuggingFace 模型加载：**
+- 模型名称格式：zhangtaolab/plant-dnabert-BPE-promoter
+- 支持二分类任务配置
+- 使用 HuggingFace transformers 库加载模型
 
 #### 3. 基于 model_info.yaml 的模型信息获取
 
 **从 model_info.yaml 获取模型信息的方法：**
 
-```python
-from dnallm.mcp.model_config_generator import MCPModelConfigGenerator
-import yaml
-
-# 初始化配置生成器
-generator = MCPModelConfigGenerator("dnallm/models/model_info.yaml")
-
-# 1. 获取所有可用模型
-all_models = generator.get_available_models()
-print(f"总共有 {len(all_models)} 个微调模型")
-
-# 2. 按任务类型获取模型
-binary_models = generator.get_available_models("binary")
-multiclass_models = generator.get_available_models("multiclass")
-regression_models = generator.get_available_models("regression")
-
-# 3. 按任务类型分组
-task_groups = generator.get_models_by_task_type()
-for task_type, models in task_groups.items():
-    print(f"{task_type}: {len(models)} 个模型")
-
-# 4. 根据模型名称获取详细信息
-model_info = generator.get_model_by_name("Plant DNABERT BPE promoter")
-if model_info:
-    print(f"模型名称: {model_info['name']}")
-    print(f"模型路径: {model_info['model']}")
-    print(f"任务类型: {model_info['task']['task_type']}")
-    print(f"标签数量: {model_info['task']['num_labels']}")
-    print(f"标签名称: {model_info['task']['label_names']}")
-```
+主要功能：
+- 初始化 MCPModelConfigGenerator 配置生成器
+- 获取所有可用模型列表
+- 按任务类型过滤和分组模型
+- 根据模型名称获取详细信息
+- 支持动态模型发现和配置生成
 
 **模型信息结构说明：**
 
-每个模型在 `model_info.yaml` 中的结构：
-```yaml
-- name: "Plant DNABERT BPE promoter"
-  model: "zhangtaolab/plant-dnabert-BPE-promoter"
-  task:
-    describe: "Predict whether a DNA sequence is a core promoter in plants by using Plant DNABERT model with BPE tokenizer."
-    task_type: "binary"
-    num_labels: 2
-    label_names: ["Not promoter", "Core promoter"]
-    threshold: 0.5
-```
+每个模型在 `model_info.yaml` 中的结构包含：
+- `name`: 模型名称
+- `model`: 模型路径
+- `task`: 任务信息（describe, task_type, num_labels, label_names, threshold）
 
 **可用的模型分类：**
 
@@ -1078,233 +387,20 @@ if model_info:
 ### API 接口设计
 
 #### HTTP 接口
-```python
-# 单序列预测
-POST /mcp/dna_predict
-{
-  "model_name": "Plant DNABERT BPE promoter",
-  "sequence": "ATCGATCGATCG...",
-  "task_type": "binary"
-}
-
-# 批量预测
-POST /mcp/dna_batch_predict
-{
-  "model_name": "Plant DNABERT BPE promoter",
-  "sequences": ["ATCG...", "GCTA..."],
-  "task_type": "binary"
-}
-
-# 多模型并行预测（核心功能）
-POST /mcp/dna_multi_predict
-{
-  "sequence": "ATCGATCGATCG...",
-  "models": [
-    "Plant DNABERT BPE open chromatin",
-    "Plant DNABERT BPE promoter", 
-    "Plant DNABERT BPE H3K27me3",
-    "Plant DNABERT BPE H3K27ac"
-  ]
-}
-
-# 使用预设模型集进行预测
-POST /mcp/dna_predict_set
-{
-  "sequence": "ATCGATCGATCG...",
-  "model_set": "comprehensive_analysis"  # 或 "regulatory_analysis", "chromatin_analysis"
-}
-
-# SSE 流式预测
-GET /mcp/dna_stream_predict?model_name=Plant DNABERT BPE promoter&sequence=ATCG...
-
-# 模型信息
-GET /mcp/models
-GET /mcp/models/{model_name}
-
-# 按任务类型列出模型
-GET /mcp/models/task/{task_type}  # binary, multiclass, regression
-
-# 获取模型能力信息
-GET /mcp/models/{model_name}/capabilities
-
-# 列出所有可用的任务类型
-GET /mcp/task_types
-```
+- 基于 FastMCP 的内置 HTTP 服务
+- 支持标准 MCP 协议端点
+- 自动生成 API 文档
 
 #### MCP 工具定义
-```python
-tools = [
-    {
-        "name": "dna_predict",
-        "description": "Predict DNA sequence using specified model",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "model_name": {
-                    "type": "string",
-                    "description": "Model name from model_info.yaml (e.g., 'Plant DNABERT BPE promoter')"
-                },
-                "sequence": {
-                    "type": "string",
-                    "description": "DNA sequence to predict"
-                },
-                "task_type": {
-                    "type": "string", 
-                    "enum": ["binary", "multiclass", "multilabel", "regression"],
-                    "description": "Task type: binary (promoter, conservation, lncRNAs, H3K27ac, H3K4me3, H3K27me3), multiclass (open chromatin), regression (promoter strength)"
-                }
-            },
-            "required": ["model_name", "sequence"]
-        }
-    },
-    {
-        "name": "dna_batch_predict",
-        "description": "Batch predict multiple DNA sequences",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "model_name": {
-                    "type": "string",
-                    "description": "Model name from model_info.yaml"
-                },
-                "sequences": {
-                    "type": "array", 
-                    "items": {"type": "string"},
-                    "description": "List of DNA sequences to predict"
-                },
-                "task_type": {
-                    "type": "string",
-                    "description": "Task type for the model"
-                }
-            },
-            "required": ["model_name", "sequences"]
-        }
-    },
-    {
-        "name": "list_models_by_task",
-        "description": "List available models by task type",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "task_type": {
-                    "type": "string",
-                    "enum": ["binary", "multiclass", "regression"],
-                    "description": "Task type to filter models"
-                }
-            },
-            "required": ["task_type"]
-        }
-    },
-    {
-        "name": "dna_multi_predict",
-        "description": "Predict DNA sequence using multiple models in parallel",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "sequence": {
-                    "type": "string",
-                    "description": "DNA sequence to predict"
-                },
-                "models": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of model names to use for prediction (e.g., ['Plant DNABERT BPE open chromatin', 'Plant DNABERT BPE promoter', 'Plant DNABERT BPE H3K27me3', 'Plant DNABERT BPE H3K27ac'])"
-                }
-            },
-            "required": ["sequence", "models"]
-        }
-    },
-    {
-        "name": "get_model_info",
-        "description": "Get detailed information about a specific model",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "model_name": {
-                    "type": "string",
-                    "description": "Model name from model_info.yaml"
-                }
-            },
-            "required": ["model_name"]
-        }
-    },
-    {
-        "name": "list_models_by_task_type",
-        "description": "List available models by task type (binary, multiclass, regression)",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "task_type": {
-                    "type": "string",
-                    "enum": ["binary", "multiclass", "regression"],
-                    "description": "Task type to filter models"
-                }
-            },
-            "required": ["task_type"]
-        }
-    },
-    {
-        "name": "get_all_available_models",
-        "description": "Get all available models from model_info.yaml organized by task type",
-        "inputSchema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    }
-]
-```
+- 使用 `@mcp.tool()` 装饰器注册工具
+- 支持参数验证和类型检查
+- 自动生成工具文档
 
-#### 多模型并行预测响应示例
-```json
-{
-  "sequence": "ATCGATCGATCG...",
-  "predictions": {
-    "Plant DNABERT BPE open chromatin": {
-      "task_type": "multiclass",
-      "prediction": "Full open",
-      "confidence": 0.85,
-      "probabilities": {
-        "Not open": 0.05,
-        "Partial open": 0.10,
-        "Full open": 0.85
-      }
-    },
-    "Plant DNABERT BPE promoter": {
-      "task_type": "binary",
-      "prediction": "Core promoter",
-      "confidence": 0.92,
-      "probabilities": {
-        "Not promoter": 0.08,
-        "Core promoter": 0.92
-      }
-    },
-    "Plant DNABERT BPE H3K27me3": {
-      "task_type": "binary",
-      "prediction": "Not H3K27me3",
-      "confidence": 0.78,
-      "probabilities": {
-        "Not H3K27me3": 0.78,
-        "H3K27me3": 0.22
-      }
-    },
-    "Plant DNABERT BPE H3K27ac": {
-      "task_type": "binary",
-      "prediction": "H3K27ac",
-      "confidence": 0.88,
-      "probabilities": {
-        "Not H3K27ac": 0.12,
-        "H3K27ac": 0.88
-      }
-    }
-  },
-  "summary": {
-    "total_models": 4,
-    "processing_time": 1.23,
-    "sequence_length": 512
-  }
-}
-```
+#### 多模型并行预测响应
+- 统一的响应格式
+- 包含模型名称、预测结果、置信度等信息
+- 支持错误处理和状态码
+
 
 ### 错误处理策略
 
@@ -1366,84 +462,9 @@ tools = [
 - 响应时间测试
 
 #### 4. ModelScope 模型下载测试
-```python
-import pytest
-import asyncio
-from dnallm.models.model import load_model_and_tokenizer
-from dnallm.configuration.configs import load_config
-
-class TestModelScopeDownload:
-    """ModelScope 模型下载测试"""
-    
-    @pytest.mark.asyncio
-    async def test_modelscope_model_download(self):
-        """测试 ModelScope 模型下载功能"""
-        # 测试配置
-        model_name = "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
-        task_config = {
-            'task_type': 'multiclass',
-            'num_labels': 3,
-            'label_names': ['Not open', 'Partial open', 'Full open']
-        }
-        
-        try:
-            # 测试模型下载
-            model, tokenizer = load_model_and_tokenizer(
-                model_name=model_name,
-                task_config=task_config,
-                source="modelscope"
-            )
-            
-            # 验证模型和分词器已加载
-            assert model is not None
-            assert tokenizer is not None
-            
-            # 验证模型文件已下载到本地缓存
-            cache_dir = os.path.expanduser("~/.cache/modelscope/hub/models")
-            model_dir = os.path.join(cache_dir, model_name.replace("/", "--"))
-            assert os.path.exists(model_dir)
-            
-            print(f"✅ ModelScope 模型下载测试成功: {model_name}")
-            
-        except Exception as e:
-            pytest.fail(f"ModelScope 模型下载失败: {e}")
-    
-    def test_modelscope_vs_huggingface_comparison(self):
-        """对比 ModelScope 和 HuggingFace 下载速度"""
-        import time
-        
-        # ModelScope 测试
-        modelscope_start = time.time()
-        try:
-            model_ms, tokenizer_ms = load_model_and_tokenizer(
-                model_name="zhangtaolab/plant-dnamamba-BPE-promoter",
-                task_config={'task_type': 'binary', 'num_labels': 2, 'label_names': ['Not promoter', 'Core promoter']},
-                source="modelscope"
-            )
-            modelscope_time = time.time() - modelscope_start
-            print(f"ModelScope 下载时间: {modelscope_time:.2f} 秒")
-        except Exception as e:
-            print(f"ModelScope 下载失败: {e}")
-            modelscope_time = None
-        
-        # HuggingFace 测试
-        huggingface_start = time.time()
-        try:
-            model_hf, tokenizer_hf = load_model_and_tokenizer(
-                model_name="zhangtaolab/plant-dnabert-BPE-promoter",
-                task_config={'task_type': 'binary', 'num_labels': 2, 'label_names': ['Not promoter', 'Core promoter']},
-                source="huggingface"
-            )
-            huggingface_time = time.time() - huggingface_start
-            print(f"HuggingFace 下载时间: {huggingface_time:.2f} 秒")
-        except Exception as e:
-            print(f"HuggingFace 下载失败: {e}")
-            huggingface_time = None
-        
-        # 输出对比结果
-        if modelscope_time and huggingface_time:
-            print(f"下载速度对比: ModelScope {modelscope_time:.2f}s vs HuggingFace {huggingface_time:.2f}s")
-```
+- 测试 ModelScope 模型下载和缓存
+- 验证模型文件完整性
+- 测试不同网络环境下的下载稳定性
 
 ### 部署和运维
 
@@ -1473,165 +494,6 @@ class TestModelScopeDownload:
    - 注册 MCP 工具（支持多模型）
    - 启动内置 SSE 服务
    - 开始监听请求
-
-**详细启动流程实现：**
-
-```python
-class MCPServerLauncher:
-    """MCP 服务器启动器"""
-    
-    def __init__(self, config_path: str):
-        self.config_path = config_path
-        self.mcp_config = None
-        self.model_configs = {}
-        self.loaded_models = {}
-    
-    async def start_server(self):
-        """启动 MCP 服务器"""
-        try:
-            # 步骤 1: 读取 MCP 服务器配置
-            await self._load_mcp_config()
-            
-            # 步骤 2: 加载模型配置
-            await self._load_model_configs()
-            
-            # 步骤 3: 下载和加载模型
-            await self._download_and_load_models()
-            
-            # 步骤 4: 启动 MCP 服务器
-            await self._start_fastmcp_server()
-            
-        except Exception as e:
-            logger.error(f"Failed to start MCP server: {e}")
-            raise
-    
-    async def _load_mcp_config(self):
-        """步骤 1: 读取 MCP 服务器配置"""
-        logger.info(f"Loading MCP server config from {self.config_path}")
-        
-        with open(self.config_path, 'r') as f:
-            self.mcp_config = yaml.safe_load(f)
-        
-        # 验证配置
-        self._validate_mcp_config()
-        
-        logger.info(f"✅ MCP server config loaded successfully")
-        logger.info(f"   Server: {self.mcp_config['mcp']['name']} v{self.mcp_config['mcp']['version']}")
-        logger.info(f"   Host: {self.mcp_config['server']['host']}:{self.mcp_config['server']['port']}")
-        logger.info(f"   Models to load: {len(self.mcp_config['models'])}")
-    
-    async def _load_model_configs(self):
-        """步骤 2: 加载模型配置"""
-        logger.info("Loading model configurations...")
-        
-        for model_info in self.mcp_config['models']:
-            if not model_info.get('enabled', True):
-                logger.info(f"⏭️  Skipping disabled model: {model_info['name']}")
-                continue
-            
-            config_path = model_info['config_path']
-            logger.info(f"📄 Loading config for {model_info['name']}: {config_path}")
-            
-            try:
-                # 加载推理配置
-                model_config = load_config(config_path)
-                self.model_configs[model_info['name']] = {
-                    'mcp_info': model_info,
-                    'inference_config': model_config
-                }
-                logger.info(f"✅ Config loaded for {model_info['name']}")
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to load config for {model_info['name']}: {e}")
-                raise
-        
-        logger.info(f"✅ Loaded {len(self.model_configs)} model configurations")
-    
-    async def _download_and_load_models(self):
-        """步骤 3: 下载和加载模型"""
-        logger.info("Downloading and loading models...")
-        
-        for model_name, config_data in self.model_configs.items():
-            logger.info(f"🔄 Loading model: {model_name}")
-            
-            try:
-                inference_config = config_data['inference_config']
-                model_path = inference_config['model']['path']
-                source = inference_config['model']['source']
-                task_config = inference_config['task']
-                
-                logger.info(f"   Model path: {model_path}")
-                logger.info(f"   Source: {source}")
-                logger.info(f"   Task type: {task_config['task_type']}")
-                
-                # 下载和加载模型
-                model, tokenizer = load_model_and_tokenizer(
-                    model_name=model_path,
-                    task_config=task_config,
-                    source=source
-                )
-                
-                # 创建预测器
-                predictor = DNAPredictor(model, tokenizer, inference_config)
-                
-                self.loaded_models[model_name] = {
-                    'model': model,
-                    'tokenizer': tokenizer,
-                    'predictor': predictor,
-                    'config': config_data
-                }
-                
-                logger.info(f"✅ Model loaded successfully: {model_name}")
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to load model {model_name}: {e}")
-                raise
-        
-        logger.info(f"✅ Successfully loaded {len(self.loaded_models)} models")
-    
-    async def _start_fastmcp_server(self):
-        """步骤 4: 启动 MCP 服务器"""
-        logger.info("Starting FastMCP server...")
-        
-        # 创建基于 FastMCP 的服务器实例
-        server = DNALLMMCPServer(self.config_path)
-        await server.initialize()
-        
-        # 启动服务器
-        host = self.mcp_config['server']['host']
-        port = self.mcp_config['server']['port']
-        
-        logger.info(f"🚀 Starting FastMCP server on {host}:{port}")
-        logger.info(f"📖 MCP tools available via MCP protocol")
-        logger.info(f"🔍 Health check: http://{host}:{port}/health")
-        
-        # FastMCP 自动处理服务器启动
-        server.run()
-    
-    def _validate_mcp_config(self):
-        """验证 MCP 配置"""
-        required_sections = ['server', 'mcp', 'models']
-        for section in required_sections:
-            if section not in self.mcp_config:
-                raise ValueError(f"Missing required section: {section}")
-        
-        # 验证模型配置
-        for model in self.mcp_config['models']:
-            required_fields = ['name', 'config_path']
-            for field in required_fields:
-                if field not in model:
-                    raise ValueError(f"Model missing required field '{field}': {model}")
-
-# 启动脚本
-async def main():
-    """主启动函数"""
-    config_path = "configs/mcp_server_config.yaml"
-    launcher = MCPServerLauncher(config_path)
-    await launcher.start_server()
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
 
 **启动流程总结（配置文件分离架构）：**
 
@@ -1665,41 +527,14 @@ if __name__ == "__main__":
 - **资源管理**：合理的模型缓存和内存管理
 
 #### 2. 启动脚本
-```bash
-# 启动 MCP 服务器（推荐）
-python dnallm/mcp/mcp_server.py --config ./configs/mcp_server_config.yaml
-
-# 使用启动器启动
-python dnallm/mcp/start_server.py --server --config ./configs/mcp_server_config.yaml
-
-# 直接运行 FastMCP 服务器
-python -c "
-from dnallm.mcp.mcp_server import DNALLMMCPServer
-server = DNALLMMCPServer('configs/mcp_server_config.yaml')
-server.run()
-"
-```
+- 创建 `start_mcp_server.py` 启动脚本
+- 支持配置文件路径参数
+- 包含错误处理和日志记录
 
 #### 3. Docker 支持
-```dockerfile
-FROM python:3.10-slim
-COPY . /app
-WORKDIR /app
-
-# 安装基础依赖
-RUN pip install --no-cache-dir \
-    mcp>=1.3.0 \
-    pydantic>=2.10.6 \
-    pyyaml>=6.0 \
-    aiohttp>=3.9.0 \
-    websockets>=12.0 \
-    python-dotenv>=1.0.0
-
-# 安装项目依赖
-RUN pip install --no-cache-dir -e .
-
-CMD ["python", "dnallm/mcp/mcp_server.py", "--config", "configs/mcp_server_config.yaml"]
-```
+- 创建 Dockerfile 和 docker-compose.yml
+- 支持环境变量配置
+- 包含健康检查机制
 
 #### 4. 监控和日志
 - 结构化日志记录
@@ -1813,86 +648,24 @@ CMD ["python", "dnallm/mcp/mcp_server.py", "--config", "configs/mcp_server_confi
 ## 使用 model_info.yaml 的配置生成流程
 
 ### 1. 自动生成配置文件
-
-```bash
-# 生成所有模型的推理配置文件
-python -c "
-from dnallm.mcp.model_config_generator import MCPModelConfigGenerator
-generator = MCPModelConfigGenerator()
-generator.generate_inference_configs('./configs/generated')
-"
-
-# 生成 MCP 服务器配置
-python -c "
-from dnallm.mcp.model_config_generator import MCPModelConfigGenerator
-import yaml
-
-generator = MCPModelConfigGenerator()
-
-# 选择要加载的模型
-selected_models = [
-    'Plant DNABERT BPE promoter',
-    'Plant DNABERT BPE conservation',
-    'Plant DNABERT BPE open chromatin',
-    'Plant DNABERT BPE promoter strength leaf'
-]
-
-# 生成配置
-config = generator.generate_mcp_server_config(selected_models)
-
-# 保存配置
-with open('mcp_server_config.yaml', 'w') as f:
-    yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
-"
-```
+- 基于 model_info.yaml 中的模型信息自动生成 MCP 服务器配置
+- 支持按任务类型过滤和分组模型
+- 自动识别模型源（ModelScope 或 HuggingFace）
 
 ### 2. 动态模型发现
-
-```python
-# 在运行时动态发现可用模型
-from dnallm.mcp.model_config_generator import MCPModelConfigGenerator
-
-generator = MCPModelConfigGenerator()
-
-# 获取所有二分类模型
-binary_models = generator.get_available_models("binary")
-print(f"找到 {len(binary_models)} 个二分类模型")
-
-# 获取所有多分类模型
-multiclass_models = generator.get_available_models("multiclass")
-print(f"找到 {len(multiclass_models)} 个多分类模型")
-
-# 获取所有回归模型
-regression_models = generator.get_available_models("regression")
-print(f"找到 {len(regression_models)} 个回归模型")
-```
+- 实时扫描 model_info.yaml 获取最新模型信息
+- 支持模型信息的增量更新
+- 提供模型状态检查和验证
 
 ### 3. 模型信息查询
-
-```python
-# 查询特定模型信息
-model_info = generator.get_model_by_name("Plant DNABERT BPE promoter")
-if model_info:
-    print(f"模型名称: {model_info['name']}")
-    print(f"模型路径: {model_info['model']}")
-    print(f"任务类型: {model_info['task']['task_type']}")
-    print(f"标签: {model_info['task']['label_names']}")
-    print(f"描述: {model_info['task']['describe']}")
-```
+- 提供模型信息查询接口
+- 支持按任务类型、模型架构、分词器类型等条件过滤
+- 返回详细的模型元数据
 
 ### 4. 按任务类型组织模型
-
-```python
-# 按任务类型分组
-task_groups = generator.get_models_by_task_type()
-
-for task_type, models in task_groups.items():
-    print(f"\n{task_type.upper()} 模型 ({len(models)} 个):")
-    for model in models[:3]:  # 显示前3个
-        print(f"  - {model['name']}")
-    if len(models) > 3:
-        print(f"  ... 还有 {len(models) - 3} 个模型")
-```
+- 自动将模型按任务类型分类（binary, multiclass, regression）
+- 支持预定义模型组合配置
+- 提供模型推荐和选择建议
 
 ## 总结
 
