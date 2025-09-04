@@ -51,11 +51,7 @@ class DNALLMMCPServer:
         
         self.app = FastMCP(
             name=server_config.mcp.name,
-            instructions=server_config.mcp.description,
-            host=server_config.server.host,
-            port=server_config.server.port,
-            debug=server_config.server.debug,
-            log_level=server_config.server.log_level.upper()
+            instructions=server_config.mcp.description
         )
         
         # Register tools
@@ -331,10 +327,9 @@ class DNALLMMCPServer:
         
         logger.info(f"Starting DNALLM MCP Server on {host}:{port}")
         
-        # Start the FastMCP server (includes SSE support)
+        # Start the FastMCP server with HTTP transport
         # FastMCP.run() is a blocking call, not async
-        # Note: FastMCP handles host/port through its initialization
-        self.app.run()
+        self.app.run(transport="http", host=host, port=port)
     
     def get_server_info(self) -> Dict[str, Any]:
         """Get server information.
