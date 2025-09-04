@@ -273,7 +273,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
                                                                     │   └── device: "auto"
                                                                     └── model: 模型信息
                                                                         ├── path: "zhangtaolab/plant-dnabert-BPE-promoter"
-                                                                        ├── source: "huggingface" 或 "modelscope"
+                                                                        ├── source: "modelscope" (默认) 或 "huggingface"
                                                                         └── task_info: 任务详细信息
 ```
 
@@ -305,18 +305,22 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 **正确的模型加载函数调用：**
 - 使用 `load_model_and_tokenizer` 函数加载模型和分词器
+- 调用格式：`model, tokenizer = load_model_and_tokenizer(model_name="zhangtaolab/plant-dnabert-BPE-open_chromatin", task_config=configs['task'], source="modelscope")`
 - 从配置文件获取模型路径、任务配置和模型源
 - 支持 "huggingface" 和 "modelscope" 两种模型源
 
-**ModelScope 模型加载：**
-- 模型名称格式：zhangtaolab/plant-dnamamba-BPE-open_chromatin
-- 支持多分类任务配置
-- 自动处理 ModelScope 特定的下载和缓存机制
+**默认模型源：ModelScope**
+- **默认配置**：MCP 服务器默认从 ModelScope 下载模型
+- **模型名称格式**：zhangtaolab/plant-dnamamba-BPE-open_chromatin
+- **支持多分类任务配置**
+- **自动处理 ModelScope 特定的下载和缓存机制**
+- **优势**：ModelScope 在国内网络环境下下载速度更快，稳定性更好
 
-**HuggingFace 模型加载：**
+**HuggingFace 模型加载（可选）：**
 - 模型名称格式：zhangtaolab/plant-dnabert-BPE-promoter
 - 支持二分类任务配置
 - 使用 HuggingFace transformers 库加载模型
+- **配置方式**：在模型配置文件中设置 `source: "huggingface"`
 
 #### 3. 基于 model_info.yaml 的模型信息获取
 
@@ -512,6 +516,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
    - 验证每个模型配置文件的独立性和正确性
 
 3. **模型下载和加载阶段**：
+   - **默认从 ModelScope 下载模型**（除非配置文件中明确指定 `source: "huggingface"`）
    - 根据每个模型的 `source` 字段决定从 ModelScope 或 HuggingFace 下载模型
    - 使用 `load_model_and_tokenizer()` 函数下载和加载模型
    - 创建多个 `DNAPredictor` 实例用于多模型预测
@@ -525,6 +530,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 **关键优势：**
 - **配置驱动**：无需修改代码即可添加/删除模型
+- **默认 ModelScope**：默认从 ModelScope 下载模型，国内网络环境更稳定
 - **多源支持**：同时支持 ModelScope 和 HuggingFace
 - **异步加载**：避免阻塞事件循环
 - **错误处理**：完善的错误处理和日志记录
@@ -701,7 +707,7 @@ mcp_server_config.yaml (主配置文件 - 1个)
 
 4. **多模型支持**：
    - 支持同时加载多个模型
-   - 支持 ModelScope 和 HuggingFace 模型源
+   - **默认从 ModelScope 下载模型**，支持 HuggingFace 作为备选
    - 支持多模型并行预测
 
 5. **配置驱动**：

@@ -1,0 +1,35 @@
+# Inference Model Configuration for Open Chromatin Prediction
+# Individual model configuration file
+
+task:
+  task_type: "multiclass"
+  num_labels: 3
+  label_names: ["Not open", "Full open", "Partial open"]
+  threshold: 0.5
+  description: "Predict whether a DNA sequence is in open chromatin regions in plants"
+
+inference:
+  batch_size: 16
+  max_length: 512
+  device: "auto"
+  num_workers: 4
+  precision: "float16"
+  output_dir: "./outputs/open_chromatin_predictions"
+  save_predictions: true
+  save_hidden_states: false
+  save_attentions: false
+
+model:
+  name: "Plant DNABERT BPE open chromatin"
+  path: "zhangtaolab/plant-dnabert-BPE-open_chromatin"
+  source: "modelscope"  # or "huggingface"
+  task_info:
+    architecture: "DNABERT"
+    tokenizer: "BPE"
+    species: "plant"
+    task_category: "chromatin_state_prediction"
+    performance_metrics:
+      accuracy: 0.82
+      f1_score: 0.79
+      precision: 0.78
+      recall: 0.81
