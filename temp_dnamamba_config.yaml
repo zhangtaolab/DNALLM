@@ -1,0 +1,77 @@
+logging:
+  file: ./logs/mcp_server.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+mcp:
+  description: DNA sequence prediction server with DNAMamba BPE models
+  name: DNALLM MCP Server - DNAMamba BPE
+  version: 1.0.0
+models:
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_promoter_config.yaml
+  description: Predict whether a DNA sequence is a core promoter in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE promoter
+  name: Plant DNAMamba BPE promoter
+  task_type: binary
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_lncrnas_config.yaml
+  description: Predict long non-coding RNAs in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE lncrnas
+  name: Plant DNAMamba BPE lncrnas
+  task_type: binary
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_h3k4me3_config.yaml
+  description: Predict H3K4me3 histone modification in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE h3k4me3
+  name: Plant DNAMamba BPE h3k4me3
+  task_type: binary
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_h3k27me3_config.yaml
+  description: Predict H3K27me3 histone modification in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE h3k27me3
+  name: Plant DNAMamba BPE h3k27me3
+  task_type: binary
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_h3k27ac_config.yaml
+  description: Predict H3K27ac histone modification in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE h3k27ac
+  name: Plant DNAMamba BPE h3k27ac
+  task_type: binary
+- config_path: ./configs/generated/promoter_configs/plant_dnamamba_bpe_conservation_config.yaml
+  description: Predict DNA sequence conservation in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE conservation
+  name: Plant DNAMamba BPE conservation
+  task_type: binary
+- config_path: ./configs/generated/open_chromatin_configs/plant_dnamamba_bpe_open_chromatin_config.yaml
+  description: Predict open chromatin regions in plants
+  enabled: true
+  model_name: Plant DNAMamba BPE open chromatin
+  name: Plant DNAMamba BPE open chromatin
+  task_type: binary
+- config_path: ./configs/generated/promoter_strength_configs/plant_dnamamba_bpe_promoter_strength_leaf_config.yaml
+  description: Predict promoter strength in leaf tissue
+  enabled: true
+  model_name: Plant DNAMamba BPE promoter strength (leaf)
+  name: Plant DNAMamba BPE promoter strength (leaf)
+  task_type: regression
+- config_path: ./configs/generated/promoter_strength_configs/plant_dnamamba_bpe_promoter_strength_protoplast_config.yaml
+  description: Predict promoter strength in protoplast
+  enabled: true
+  model_name: Plant DNAMamba BPE promoter strength (protoplast)
+  name: Plant DNAMamba BPE promoter strength (protoplast)
+  task_type: regression
+multi_model:
+  enabled: true
+  max_parallel_models: 5
+server:
+  cors_origins:
+  - '*'
+  host: 0.0.0.0
+  log_level: info
+  port: 8000
+  workers: 1
+sse:
+  buffer_size: 1000
+  heartbeat_interval: 30
+  max_connections: 100

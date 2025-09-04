@@ -1,0 +1,33 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  log_level: "info"
+  cors_origins: ["*"]
+
+mcp:
+  name: "DNALLM MCP Server - DNAMamba BPE (ModelScope)"
+  version: "1.0.0"
+  description: "DNA sequence prediction server with DNAMamba BPE models from ModelScope"
+
+models:
+  - name: "Plant DNAMamba BPE promoter"
+    model_name: "Plant DNAMamba BPE promoter"
+    config_path: "./configs/generated/promoter_configs/plant_dnamamba_bpe_promoter_config_modelscope.yaml"
+    enabled: true
+    task_type: "binary"
+    description: "Predict whether a DNA sequence is a core promoter in plants"
+
+multi_model:
+  enabled: true
+  max_parallel_models: 5
+
+sse:
+  heartbeat_interval: 30
+  max_connections: 100
+  buffer_size: 1000
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/mcp_server.log"

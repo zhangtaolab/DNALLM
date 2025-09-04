@@ -148,6 +148,10 @@ def load_config(config_path: str):
     if 'inference' in config_dict:
         configs['inference'] = InferenceConfig(**config_dict['inference'])
     
+    # 模型配置
+    if 'model' in config_dict:
+        configs['model'] = config_dict['model']  # 保持为字典格式
+    
     # 训练配置（可选）
     if 'finetune' in config_dict:
         configs['finetune'] = TrainingConfig(**config_dict['finetune'])
