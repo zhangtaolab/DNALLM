@@ -89,18 +89,20 @@ flake8>=7.1.2                 # 代码检查
 - 现有的 `pydantic>=2.10.6` 版本符合 MCP SDK 要求
 - 无需额外安装 FastAPI 和 uvicorn（FastMCP 内置服务器功能）
 
-#### 2. MCP 服务器框架搭建 (4-5 小时)
+#### 2. 配置文件设计 (1-2 小时)
+- [ ] 设计 `mcp_server_config.yaml` 结构
+- [ ] 熟悉 `inference_model_config.yaml` 结构
+- [ ] 创建配置验证器
+- [ ] 编写配置示例文件
+  
+#### 3. MCP 服务器框架搭建 (4-5 小时)
 - [ ] 实现基于 FastMCP 的服务器类 (`mcp_server.py`)
 - [ ] 创建 MCP 工具注册器 (`tool_registry.py`)
 - [ ] 实现配置管理器 (`config_manager.py`)
 - [ ] 创建模型管理器 (`model_manager.py`)
 - [ ] 实现 FastMCP 工具装饰器
 
-#### 3. 配置文件设计 (1-2 小时)
-- [ ] 设计 `mcp_server_config.yaml` 结构
-- [ ] 熟悉 `inference_model_config.yaml` 结构
-- [ ] 创建配置验证器
-- [ ] 编写配置示例文件
+
 
 ### 第二天：核心功能实现
 
