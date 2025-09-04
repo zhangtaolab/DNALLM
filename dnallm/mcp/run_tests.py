@@ -3,14 +3,17 @@
 import sys
 import subprocess
 from pathlib import Path
+from ..utils import get_logger
+
+logger = get_logger("dnallm.mcp.tests")
 
 
 def run_tests():
     """Run all MCP server tests."""
     test_dir = Path(__file__).parent / "tests"
     
-    print("Running MCP Server Tests...")
-    print("=" * 50)
+    logger.info("Running MCP Server Tests...")
+    logger.info("=" * 50)
     
     # Run tests with pytest
     cmd = [
@@ -23,12 +26,12 @@ def run_tests():
     
     try:
         result = subprocess.run(cmd, check=True)
-        print("\n" + "=" * 50)
-        print("✅ All tests passed!")
+        logger.info("\n" + "=" * 50)
+        logger.success("All tests passed!")
         return True
     except subprocess.CalledProcessError as e:
-        print("\n" + "=" * 50)
-        print("❌ Some tests failed!")
+        logger.info("\n" + "=" * 50)
+        logger.failure("Some tests failed!")
         return False
 
 

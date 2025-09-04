@@ -47,7 +47,10 @@ from datasets import Dataset
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics as Metrics
+from ..utils import get_logger
 from .plot import *
+
+logger = get_logger("dnallm.inference.predictor")
 
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
@@ -91,7 +94,7 @@ class DNAPredictor:
         self.device = self._get_device()
         if model:
             self.model.to(self.device)
-            print(f"Use device: {self.device}")
+            logger.info(f"Using device: {self.device}")
         self.sequences = []
         self.labels = []
 
@@ -204,10 +207,10 @@ class DNAPredictor:
         try:
             if hasattr(self.model, 'config') and hasattr(self.model.config, 'attn_implementation'):
                 self.model.config.attn_implementation = "eager"
-                print("✅ Switched to eager attention implementation")
+                logger.success("Switched to eager attention implementation")
                 return True
         except Exception as e:
-            print(f"❌ Failed to switch to eager attention: {e}")
+            logger.failure(f"Failed to switch to eager attention: {e}")
         return False
 
     def _check_hidden_states_support(self) -> bool:
@@ -681,7 +684,7 @@ class DNAPredictor:
                                           save_path=heatmap)
             return attn_map
         else:
-            print("No attention weights available to plot.")
+            logger.warning("No attention weights available to plot.")
 
     def plot_hidden_states(self, reducer: str = "t-SNE",
                            ncols: int = 4, width: int = 300, height: int = 300,
@@ -725,7 +728,7 @@ class DNAPredictor:
                                              save_path=embedding)
             return embeddings_vis
         else:
-            print("No hidden states available to plot.")
+            logger.warning("No hidden states available to plot.")
 
     def get_model_info(self) -> Dict[str, Any]:
         """Get information about the loaded model.

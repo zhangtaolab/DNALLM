@@ -7,15 +7,18 @@ including model loading, caching, and prediction orchestration.
 import asyncio
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
-from loguru import logger
+from loguru import logger as loguru_logger
 import torch
+import time
 
 from dnallm.models import load_model_and_tokenizer
 from dnallm.inference.predictor import DNAPredictor
 from dnallm.configuration.configs import TaskConfig
+from dnallm.utils import get_logger
 from config_manager import MCPConfigManager
 from config_validators import InferenceModelConfig
-import time
+
+logger = get_logger("dnallm.mcp.model_manager")
 
 class ModelManager:
     """Manages DNA prediction models and their lifecycle."""
@@ -63,12 +66,12 @@ class ModelManager:
                     raise ValueError(f"Configuration not found for model: {model_name}")
                 
                 # Display loading progress
-                print(f"\n🔄 Loading model: {model_name}")
-                print(f"   Model path: {model_config.model.path}")
-                print(f"   Source: {model_config.model.source}")
-                print(f"   Task type: {model_config.task.task_type}")
-                print(f"   Architecture: {model_config.model.task_info.architecture}")
-                print(f"   📥 Downloading/loading model and tokenizer...")
+                logger.progress(f"Loading model: {model_name}")
+                logger.info(f"   Model path: {model_config.model.path}")
+                logger.info(f"   Source: {model_config.model.source}")
+                logger.info(f"   Task type: {model_config.task.task_type}")
+                logger.info(f"   Architecture: {model_config.model.task_info.architecture}")
+                logger.info(f"   📥 Downloading/loading model and tokenizer...")
                 
                 # Create task config for model loading
                 task_config = TaskConfig(
@@ -90,10 +93,10 @@ class ModelManager:
                 )
                 
                 load_time = time.time() - start_time
-                print(f"   ✅ Model and tokenizer loaded in {load_time:.2f} seconds")
+                logger.success(f"Model and tokenizer loaded in {load_time:.2f} seconds")
                 
                 # Create predictor
-                print(f"   🔧 Creating DNA predictor...")
+                logger.info(f"   🔧 Creating DNA predictor...")
                 predictor_config = {
                     'task': model_config.task,
                     'inference': model_config.inference
@@ -104,14 +107,14 @@ class ModelManager:
                 self.model_loading_status[model_name] = "loaded"
                 
                 total_time = time.time() - start_time
-                print(f"   🎉 Successfully loaded model: {model_name} (total: {total_time:.2f}s)")
-                logger.info(f"Successfully loaded model: {model_name}")
+                logger.success(f"Successfully loaded model: {model_name} (total: {total_time:.2f}s)")
+                loguru_logger.info(f"Successfully loaded model: {model_name}")
                 return True
                 
             except Exception as e:
                 self.model_loading_status[model_name] = "error"
-                print(f"   ❌ Failed to load model {model_name}: {e}")
-                logger.error(f"Failed to load model {model_name}: {e}")
+                logger.failure(f"Failed to load model {model_name}: {e}")
+                loguru_logger.error(f"Failed to load model {model_name}: {e}")
                 return False
     
     def _load_model_sync(self, model_path: str, task_config: TaskConfig, source: str) -> Tuple[Any, Any]:
@@ -134,10 +137,10 @@ class ModelManager:
             Dictionary mapping model names to loading success status
         """
         enabled_models = self.config_manager.get_enabled_models()
-        print(f"\n🚀 Starting to load {len(enabled_models)} enabled models:")
+        logger.info(f"\n🚀 Starting to load {len(enabled_models)} enabled models:")
         for i, model_name in enumerate(enabled_models, 1):
-            print(f"   {i}. {model_name}")
-        print()
+            logger.info(f"   {i}. {model_name}")
+        logger.info("")
         
         logger.info(f"Loading {len(enabled_models)} enabled models: {enabled_models}")
         
@@ -156,21 +159,21 @@ class ModelManager:
                 loading_results[model_name] = result
         
         successful_loads = sum(loading_results.values())
-        print(f"\n📊 Loading Summary:")
-        print(f"   ✅ Successfully loaded: {successful_loads}/{len(enabled_models)} models")
-        print(f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/{len(enabled_models)} models")
+        logger.info(f"\n📊 Loading Summary:")
+        logger.info(f"   ✅ Successfully loaded: {successful_loads}/{len(enabled_models)} models")
+        logger.info(f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/{len(enabled_models)} models")
         
         if successful_loads > 0:
-            print(f"\n🎉 Successfully loaded models:")
+            logger.info(f"\n🎉 Successfully loaded models:")
             for model_name, success in loading_results.items():
                 if success:
-                    print(f"   ✅ {model_name}")
+                    logger.success(f"   {model_name}")
         
         if successful_loads < len(enabled_models):
-            print(f"\n⚠️  Failed to load models:")
+            logger.warning_icon(f"Failed to load models:")
             for model_name, success in loading_results.items():
                 if not success:
-                    print(f"   ❌ {model_name}")
+                    logger.failure(f"   {model_name}")
         
         logger.info(f"Successfully loaded {successful_loads}/{len(enabled_models)} models")
         

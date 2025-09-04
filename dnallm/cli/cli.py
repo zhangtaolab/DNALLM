@@ -6,6 +6,9 @@ Main CLI entry point for DNALLM package.
 import click
 from pathlib import Path
 import sys
+from ..utils import get_logger
+
+logger = get_logger("dnallm.cli")
 
 @click.group()
 @click.version_option()
@@ -87,7 +90,7 @@ def predict(config, model, input, output):
         if output:
             predictor.save_results(results, output)
         else:
-            print(results)
+            logger.info(f"Prediction results: {results}")
     else:
         # Use command line arguments
         if not all([model, input]):
@@ -106,7 +109,7 @@ def predict(config, model, input, output):
         if output:
             predictor.save_results(results, output)
         else:
-            print(results)
+            logger.info(f"Prediction results: {results}")
 
 @cli.command()
 @click.option('--config', '-c', type=click.Path(exists=True), 
