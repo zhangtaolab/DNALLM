@@ -11,6 +11,11 @@ DNALLM provides a comprehensive set of command-line interface tools for various 
 - **`dnallm benchmark`** - Compare multiple models
 - **`dnallm mutagenesis`** - Perform in silico mutagenesis
 
+### Server Commands
+
+- **`dnallm start-mcp-server`** - Start MCP (Model Context Protocol) server
+- **`dnallm-mcp-server`** - Standalone MCP server script
+
 ### Configuration Tools
 
 - **`dnallm config-generator`** - Interactive configuration file generator
@@ -29,6 +34,9 @@ dnallm predict --config inference_config.yaml --model-path ./models/trained_mode
 
 # Benchmark models
 dnallm benchmark --config benchmark_config.yaml
+
+# Start MCP server
+dnallm-mcp-server --config mcp_server_config.yaml
 ```
 
 ## Configuration

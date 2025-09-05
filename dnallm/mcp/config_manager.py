@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from loguru import logger
 
-from config_validators import (
+from .config_validators import (
     MCPServerConfig,
     InferenceModelConfig,
     validate_mcp_server_config,

@@ -15,8 +15,8 @@ from dnallm.models import load_model_and_tokenizer
 from dnallm.inference.predictor import DNAPredictor
 from dnallm.configuration.configs import TaskConfig
 from dnallm.utils import get_logger
-from config_manager import MCPConfigManager
-from config_validators import InferenceModelConfig
+from .config_manager import MCPConfigManager
+from .config_validators import InferenceModelConfig
 
 logger = get_logger("dnallm.mcp.model_manager")
 

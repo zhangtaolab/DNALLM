@@ -206,7 +206,7 @@ include = ["dnallm*"]
 "dnallm" = ["*.yaml", "*.yml", "*.json"]
 
 [project.scripts]
-dnallm = "cli.cli:main"
+dnallm = "dnallm.cli.cli:cli"
 dnallm-train = "cli.train:main"
 dnallm-predict = "cli.predict:main"
 dnallm-model-config-generator = "cli.model_config_generator:main"

@@ -22,6 +22,7 @@ def cli():
     - Benchmarking model performance
     - In-silico mutagenesis analysis
     - Generating configuration files
+    - Starting MCP (Model Context Protocol) servers
     """
     pass
 

@@ -12,8 +12,8 @@ from loguru import logger
 from mcp.server.fastmcp import FastMCP
 # tool decorator is available as app.tool() method
 
-from config_manager import MCPConfigManager
-from model_manager import ModelManager
+from .config_manager import MCPConfigManager
+from .model_manager import ModelManager
 
 
 class DNALLMMCPServer:
@@ -612,3 +612,142 @@ class DNALLMMCPServer:
         
         self._initialized = False
         logger.info("DNALLM MCP Server shutdown complete")
+
+
+def main():
+    """Main entry point for the MCP server CLI."""
+    import asyncio
+    import argparse
+    import sys
+    import signal
+    from pathlib import Path
+    
+    parser = argparse.ArgumentParser(
+        description="Start the DNALLM MCP (Model Context Protocol) server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml
+  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config_2.yaml --transport sse --port 8000
+  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml --host 127.0.0.1 --port 9000
+        """
+    )
+    
+    parser.add_argument(
+        '--config', '-c',
+        type=str,
+        default='dnallm/mcp/configs/mcp_server_config.yaml',
+        help='Path to MCP server configuration file (default: %(default)s)'
+    )
+    
+    parser.add_argument(
+        '--host',
+        type=str,
+        default='0.0.0.0',
+        help='Host to bind the server to (default: %(default)s)'
+    )
+    
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=8000,
+        help='Port to bind the server to (default: %(default)s)'
+    )
+    
+    parser.add_argument(
+        '--log-level',
+        type=str,
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+        default='INFO',
+        help='Logging level (default: %(default)s)'
+    )
+    
+    parser.add_argument(
+        '--transport',
+        type=str,
+        choices=['stdio', 'sse', 'streamable-http'],
+        default='stdio',
+        help='Transport protocol to use (default: %(default)s)'
+    )
+    
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='DNALLM MCP Server 1.0.0'
+    )
+    
+    args = parser.parse_args()
+    
+    # Check if config file exists
+    config_path = Path(args.config)
+    if not config_path.exists():
+        print(f"Error: Configuration file not found: {config_path}")
+        print("Please create a configuration file or specify the correct path with --config")
+        sys.exit(1)
+    
+    # Global server variable for signal handling
+    server = None
+    
+    def signal_handler(signum, frame):
+        """Handle interrupt signals gracefully."""
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
+        if server:
+            try:
+                # Try to shutdown the server
+                asyncio.run(server.shutdown())
+            except Exception as e:
+                print(f"Error during shutdown: {e}")
+        sys.exit(0)
+    
+    # Register signal handlers
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        print("Starting DNALLM MCP Server...")
+        print(f"Configuration: {config_path}")
+        print(f"Host: {args.host}")
+        print(f"Port: {args.port}")
+        print(f"Transport: {args.transport}")
+        print(f"Log Level: {args.log_level}")
+        print("-" * 50)
+        
+        # Initialize server in asyncio context
+        server = asyncio.run(initialize_mcp_server(str(config_path)))
+        
+        # Get server info
+        info = server.get_server_info()
+        print(f"Server initialized: {info['name']} v{info['version']}")
+        print(f"Loaded models: {info['loaded_models']}")
+        print(f"Enabled models: {info['enabled_models']}")
+        print("-" * 50)
+        
+        # Start server (this is blocking and runs outside asyncio)
+        print(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        print("Press Ctrl+C to stop the server")
+        server.start_server(host=args.host, port=args.port, transport=args.transport)
+        
+    except KeyboardInterrupt:
+        print("\nReceived interrupt signal, shutting down...")
+    except Exception as e:
+        print(f"Server error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        if 'server' in locals():
+            # Shutdown server in asyncio context
+            asyncio.run(server.shutdown())
+        print("Server shutdown complete")
+
+
+async def initialize_mcp_server(config_path: str):
+    """Initialize the MCP server asynchronously."""
+    server = DNALLMMCPServer(str(config_path))
+    await server.initialize()
+    return server
+
+
+if __name__ == "__main__":
+    # This allows the server to be run directly
+    main()
