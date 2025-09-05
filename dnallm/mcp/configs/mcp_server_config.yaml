@@ -56,6 +56,9 @@ sse:
   max_connections: 100
   connection_timeout: 300  # seconds
   enable_compression: true
+  mount_path: "/mcp"  # Mount path for SSE endpoint
+  cors_origins: ["*"]  # CORS origins for web clients
+  enable_heartbeat: true  # Enable heartbeat for connection monitoring
 
 # Logging configuration
 logging:

@@ -4,14 +4,12 @@ This module implements the main MCP server using FastMCP framework
 with SSE support for real-time DNA sequence prediction.
 """
 
-import asyncio
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 from loguru import logger
 
 # MCP SDK imports
 from mcp.server.fastmcp import FastMCP
-from mcp.server.sse import SseServerTransport
 # tool decorator is available as app.tool() method
 
 from config_manager import MCPConfigManager
@@ -308,14 +306,219 @@ class DNALLMMCPServer:
                     "isError": True
                 }
         
+        @self.app.tool()
+        async def dna_stream_predict(sequence: str, model_name: str, stream_progress: bool = True, context: Optional[Any] = None) -> Dict[str, Any]:
+            """Stream DNA sequence prediction with real-time progress updates via SSE.
+            
+            This tool is optimized for SSE transport and provides real-time updates
+            during the prediction process using MCP progress reporting.
+            
+            Args:
+                sequence: DNA sequence to predict (A, T, G, C)
+                model_name: Name of the model to use for prediction
+                stream_progress: Whether to stream progress updates (default: True)
+                context: MCP Context object for progress reporting
+                
+            Returns:
+                Dictionary containing streaming prediction results with progress updates
+            """
+            try:
+                if stream_progress and context:
+                    # Send initial progress update
+                    await context.report_progress(0, 100, f"Starting prediction with model {model_name}")
+                
+                # Send progress update for model loading
+                if stream_progress and context:
+                    await context.report_progress(25, 100, "Loading model and tokenizer...")
+                
+                # Perform prediction
+                result = await self.model_manager.predict_sequence(model_name, sequence)
+                
+                if result is None:
+                    error_msg = f"Model {model_name} not available or prediction failed"
+                    if stream_progress and context:
+                        await context.report_progress(100, 100, f"Error: {error_msg}")
+                    return {
+                        "error": error_msg,
+                        "isError": True
+                    }
+                
+                # Send progress update for prediction completion
+                if stream_progress and context:
+                    await context.report_progress(75, 100, "Processing prediction results...")
+                
+                # Send final result
+                if stream_progress and context:
+                    await context.report_progress(100, 100, "Prediction completed successfully")
+                
+                return {
+                    "content": [{"type": "text", "text": str(result)}],
+                    "model_name": model_name,
+                    "sequence": sequence,
+                    "streamed": stream_progress
+                }
+                
+            except Exception as e:
+                logger.error(f"Error in dna_stream_predict: {e}")
+                if stream_progress and context:
+                    await context.report_progress(100, 100, f"Error: {str(e)}")
+                return {
+                    "content": [{"type": "text", "text": f"Streaming prediction error: {str(e)}"}],
+                    "isError": True
+                }
+        
+        @self.app.tool()
+        async def dna_stream_batch_predict(sequences: List[str], model_name: str, stream_progress: bool = True, context: Optional[Any] = None) -> Dict[str, Any]:
+            """Stream batch DNA sequence prediction with real-time progress updates via SSE.
+            
+            This tool provides real-time progress updates for batch predictions,
+            showing progress for each sequence in the batch using MCP progress reporting.
+            
+            Args:
+                sequences: List of DNA sequences to predict
+                model_name: Name of the model to use for prediction
+                stream_progress: Whether to stream progress updates (default: True)
+                context: MCP Context object for progress reporting
+                
+            Returns:
+                Dictionary containing streaming batch prediction results
+            """
+            try:
+                if stream_progress and context:
+                    await context.report_progress(0, 100, f"Starting batch prediction with {len(sequences)} sequences using model {model_name}")
+                
+                results = []
+                total_sequences = len(sequences)
+                
+                for i, sequence in enumerate(sequences):
+                    if stream_progress and context:
+                        progress = int((i / total_sequences) * 100)
+                        await context.report_progress(progress, 100, f"Processing sequence {i + 1}/{total_sequences}")
+                    
+                    # Predict current sequence
+                    result = await self.model_manager.predict_sequence(model_name, sequence)
+                    if result is not None:
+                        results.append({
+                            "sequence": sequence,
+                            "result": result,
+                            "index": i
+                        })
+                    else:
+                        results.append({
+                            "sequence": sequence,
+                            "result": None,
+                            "error": f"Prediction failed for sequence {i + 1}",
+                            "index": i
+                        })
+                
+                # Send completion update
+                successful_predictions = len([r for r in results if r.get("result") is not None])
+                failed_predictions = len([r for r in results if r.get("result") is None])
+                
+                if stream_progress and context:
+                    await context.report_progress(100, 100, f"Batch prediction completed: {successful_predictions} successful, {failed_predictions} failed")
+                
+                return {
+                    "content": [{"type": "text", "text": str(results)}],
+                    "model_name": model_name,
+                    "sequence_count": len(sequences),
+                    "successful_predictions": successful_predictions,
+                    "failed_predictions": failed_predictions,
+                    "results": results,
+                    "streamed": stream_progress
+                }
+                
+            except Exception as e:
+                logger.error(f"Error in dna_stream_batch_predict: {e}")
+                if stream_progress and context:
+                    await context.report_progress(100, 100, f"Error: {str(e)}")
+                return {
+                    "content": [{"type": "text", "text": f"Streaming batch prediction error: {str(e)}"}],
+                    "isError": True
+                }
+        
+        @self.app.tool()
+        async def dna_stream_multi_model_predict(sequence: str, model_names: Optional[List[str]] = None, stream_progress: bool = True, context: Optional[Any] = None) -> Dict[str, Any]:
+            """Stream multi-model DNA sequence prediction with real-time progress updates via SSE.
+            
+            This tool provides real-time progress updates for multi-model predictions,
+            showing progress for each model in the prediction pipeline using MCP progress reporting.
+            
+            Args:
+                sequence: DNA sequence to predict
+                model_names: List of model names to use (if None, uses all loaded models)
+                stream_progress: Whether to stream progress updates (default: True)
+                context: MCP Context object for progress reporting
+                
+            Returns:
+                Dictionary containing streaming multi-model prediction results
+            """
+            try:
+                if model_names is None:
+                    model_names = self.model_manager.get_loaded_models()
+                
+                if not model_names:
+                    return {
+                        "error": "No models available for prediction",
+                        "isError": True
+                    }
+                
+                if stream_progress and context:
+                    await context.report_progress(0, 100, f"Starting multi-model prediction with {len(model_names)} models")
+                
+                results = {}
+                total_models = len(model_names)
+                
+                for i, model_name in enumerate(model_names):
+                    if stream_progress and context:
+                        progress = int((i / total_models) * 100)
+                        await context.report_progress(progress, 100, f"Processing with model {i + 1}/{total_models}: {model_name}")
+                    
+                    # Predict with current model
+                    result = await self.model_manager.predict_sequence(model_name, sequence)
+                    if result is not None:
+                        results[model_name] = result
+                    else:
+                        results[model_name] = {
+                            "error": f"Prediction failed with model {model_name}",
+                            "result": None
+                        }
+                
+                # Send completion update
+                successful_predictions = len([r for r in results.values() if not isinstance(r, dict) or r.get("result") is not None])
+                failed_predictions = len([r for r in results.values() if isinstance(r, dict) and r.get("result") is None])
+                
+                if stream_progress and context:
+                    await context.report_progress(100, 100, f"Multi-model prediction completed: {successful_predictions} successful, {failed_predictions} failed")
+                
+                return {
+                    "content": [{"type": "text", "text": str(results)}],
+                    "model_count": len(model_names),
+                    "sequence": sequence,
+                    "successful_predictions": successful_predictions,
+                    "failed_predictions": failed_predictions,
+                    "results": results,
+                    "streamed": stream_progress
+                }
+                
+            except Exception as e:
+                logger.error(f"Error in dna_stream_multi_model_predict: {e}")
+                if stream_progress and context:
+                    await context.report_progress(100, 100, f"Error: {str(e)}")
+                return {
+                    "content": [{"type": "text", "text": f"Streaming multi-model prediction error: {str(e)}"}],
+                    "isError": True
+                }
+        
         logger.info("Registered MCP tools successfully")
     
-    def start_server(self, host: str = "0.0.0.0", port: int = 8000) -> None:
+    def start_server(self, host: str = "0.0.0.0", port: int = 8000, transport: str = "stdio") -> None:
         """Start the MCP server.
         
         Args:
             host: Host to bind the server to
             port: Port to bind the server to
+            transport: Transport protocol to use ("stdio", "sse", or "streamable-http")
         """
         if not self._initialized:
             raise RuntimeError("Server not initialized. Call initialize() first.")
@@ -325,12 +528,56 @@ class DNALLMMCPServer:
             host = server_config.server.host
             port = server_config.server.port
         
-        logger.info(f"Starting DNALLM MCP Server on {host}:{port}")
+        logger.info(f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport")
         
-        # Start the FastMCP server
-        # FastMCP.run() is a blocking call, not async
-        # Note: FastMCP uses stdio transport by default for MCP protocol
-        self.app.run()
+        # Start the FastMCP server with specified transport
+        if transport == "sse":
+            # For SSE transport, we need to run the Starlette app with uvicorn
+            import uvicorn
+            from starlette.applications import Starlette
+            from starlette.routing import Mount
+            
+            sse_config = server_config.sse if server_config and hasattr(server_config, 'sse') else None
+            mount_path = sse_config.mount_path if sse_config and hasattr(sse_config, 'mount_path') else "/mcp"
+            logger.info(f"Using SSE transport with mount path: {mount_path}")
+            
+            # Get the Starlette app from FastMCP
+            sse_app = self.app.sse_app()
+            logger.info(f"SSE app created with routes:")
+            logger.info(f"  - /sse: SSE connection endpoint")
+            logger.info(f"  - /messages/: MCP protocol messages")
+            
+            # Create a new Starlette app that mounts the SSE app at the correct path
+            # This ensures /mcp/messages/ is available for MCP clients
+            main_app = Starlette(routes=[
+                Mount(mount_path, sse_app),
+                Mount("", sse_app)  # Also mount at root for /sse
+            ])
+            
+            logger.info(f"Main app created with mounted routes:")
+            logger.info(f"  - /sse: SSE connection endpoint")
+            logger.info(f"  - {mount_path}/messages/: MCP protocol messages")
+            logger.info(f"Starting uvicorn server on {host}:{port}")
+            
+            # Run the main app with uvicorn
+            uvicorn.run(main_app, host=host, port=port, log_level="info")
+            
+        elif transport == "streamable-http":
+            # For Streamable HTTP transport, we need to run the Starlette app with uvicorn
+            import uvicorn
+            logger.info("Using Streamable HTTP transport")
+            
+            # Get the Streamable HTTP app from FastMCP
+            http_app = self.app.streamable_http_app()
+            logger.info(f"Streamable HTTP app created, starting uvicorn server on {host}:{port}")
+            
+            # Run the Starlette app with uvicorn
+            uvicorn.run(http_app, host=host, port=port, log_level="info")
+            
+        else:
+            # Default to stdio transport
+            logger.info("Using STDIO transport")
+            self.app.run(transport="stdio")
     
     def get_server_info(self) -> Dict[str, Any]:
         """Get server information.

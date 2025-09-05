@@ -75,6 +75,13 @@ def main():
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging level"
     )
+    parser.add_argument(
+        "--transport",
+        type=str,
+        default="stdio",
+        choices=["stdio", "sse", "streamable-http"],
+        help="Transport protocol to use (stdio, sse, or streamable-http)"
+    )
     
     args = parser.parse_args()
     
@@ -102,8 +109,8 @@ def main():
         logger.info(f"Enabled models: {info['enabled_models']}")
         
         # Start server (this is blocking and runs outside asyncio)
-        logger.info(f"Starting server on {args.host}:{args.port}")
-        server.start_server(host=args.host, port=args.port)
+        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        server.start_server(host=args.host, port=args.port, transport=args.transport)
         
     except KeyboardInterrupt:
         logger.info("Received interrupt signal, shutting down...")
