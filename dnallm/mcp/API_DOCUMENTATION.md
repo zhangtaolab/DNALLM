@@ -161,7 +161,32 @@ DNALLM MCP Server 提供了一套完整的 DNA 序列预测工具，通过 MCP (
 }
 ```
 
-## 使用示例
+## SSE 使用指南
+
+### 建立 SSE 连接
+
+```bash
+# 使用 curl 建立连接
+curl -N -H "Accept: text/event-stream" http://localhost:8000/sse
+```
+
+输出示例：
+```
+event: endpoint
+data: /messages/?session_id=abc123def456
+
+event: ping
+data: 2025-09-05T15:30:00Z
+```
+
+### 发送 MCP 工具调用
+
+```bash
+# 列出可用工具
+curl -X POST "http://localhost:8000/mcp/messages/?session_id=abc123def456" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
+```
 
 ### Python 客户端示例
 
@@ -190,16 +215,18 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-### curl 示例
+### Web 应用集成
 
-```bash
-# 建立 SSE 连接
-curl -N -H "Accept: text/event-stream" http://localhost:8000/sse
+```javascript
+// 建立 SSE 连接
+const eventSource = new EventSource('http://localhost:8000/sse');
 
-# 调用工具（需要有效的 session_id）
-curl -X POST "http://localhost:8000/mcp/messages/?session_id=YOUR_SESSION_ID" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_stream_predict", "arguments": {"sequence": "ATCGATCGATCGATCG"}}}'
+eventSource.onmessage = function(event) {
+    if (event.type === 'endpoint') {
+        const sessionId = event.data.split('session_id=')[1];
+        // 使用 sessionId 发送 MCP 消息
+    }
+};
 ```
 
 ## 错误处理
