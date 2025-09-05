@@ -101,3 +101,5 @@ example/marimo/*/__marimo__/
 # Mkdocs cache
 site
 
+# MyPy cache
+.mypy_cache/
