@@ -20,11 +20,11 @@ inference:
   save_attentions: false
 
 model:
-  name: "Plant DNABERT BPE open chromatin"
-  path: "zhangtaolab/plant-dnabert-BPE-open_chromatin"
+  name: "Plant DNAMamba BPE open chromatin"
+  path: "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
   source: "modelscope"  # or "huggingface"
   task_info:
-    architecture: "DNABERT"
+    architecture: "DNAMamba"
     tokenizer: "BPE"
     species: "plant"
     task_category: "chromatin_state_prediction"

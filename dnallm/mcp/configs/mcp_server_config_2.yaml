@@ -35,6 +35,20 @@ models:
     config_path: "./open_chromatin_inference_config.yaml"
     enabled: true
     priority: 3
+    
+  h3k27me3_model:
+    name: "h3k27me3_model"
+    model_name: "Plant DNAMamba BPE H3K27me3"
+    config_path: "./h3k27me3_inference_config.yaml"
+    enabled: true
+    priority: 4
+    
+  h3k27ac_model:
+    name: "h3k27ac_model"
+    model_name: "Plant DNAMamba BPE H3K27ac"
+    config_path: "./h3k27ac_inference_config.yaml"
+    enabled: true
+    priority: 5
 
 # Multi-model parallel prediction configurations
 multi_model:
@@ -48,6 +62,18 @@ multi_model:
     name: "chromatin_analysis"
     description: "Chromatin state analysis using multiple models"
     models: ["open_chromatin_model", "conservation_model"]
+    enabled: true
+    
+  histone_analysis:
+    name: "histone_analysis"
+    description: "Histone modification analysis using H3K27me3 and H3K27ac models"
+    models: ["h3k27me3_model", "h3k27ac_model"]
+    enabled: true
+    
+  comprehensive_analysis:
+    name: "comprehensive_analysis"
+    description: "Comprehensive chromatin and histone analysis using all models"
+    models: ["promoter_model", "conservation_model", "open_chromatin_model", "h3k27me3_model", "h3k27ac_model"]
     enabled: true
 
 # SSE (Server-Sent Events) configuration

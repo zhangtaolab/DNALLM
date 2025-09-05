@@ -21,14 +21,15 @@ from config_validators import (
 class MCPConfigManager:
     """Manages MCP server configurations and model configurations."""
     
-    def __init__(self, config_dir: str):
+    def __init__(self, config_dir: str, server_config_file: str = "mcp_server_config.yaml"):
         """Initialize the configuration manager.
         
         Args:
             config_dir: Path to the configuration directory
+            server_config_file: Name of the server configuration file
         """
         self.config_dir = Path(config_dir)
-        self.server_config_path = self.config_dir / "mcp_server_config.yaml"
+        self.server_config_path = self.config_dir / server_config_file
         self.server_config: Optional[MCPServerConfig] = None
         self.model_configs: Dict[str, InferenceModelConfig] = {}
         self._load_configurations()

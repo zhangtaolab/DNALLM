@@ -1,0 +1,36 @@
+# Inference Model Configuration for H3K27me3 Prediction
+# Individual model configuration file
+
+task:
+  task_type: "binary"
+  num_labels: 2
+  label_names: ["Not H3K27me3", "H3K27me3"]
+  threshold: 0.5
+  description: "Predict whether a DNA sequence is enriched with H3K27me3 in plants"
+
+inference:
+  batch_size: 16
+  max_length: 512
+  device: "auto"
+  num_workers: 4
+  precision: "float16"
+  output_dir: "./outputs/h3k27me3_predictions"
+  save_predictions: true
+  save_hidden_states: false
+  save_attentions: false
+
+model:
+  name: "Plant DNAMamba BPE H3K27me3"
+  path: "zhangtaolab/plant-dnamamba-BPE-H3K27me3"
+  source: "modelscope"  # or "huggingface"
+  task_info:
+    architecture: "DNAMamba"
+    tokenizer: "BPE"
+    species: "plant"
+    task_category: "histone_modification"
+    modification_type: "H3K27me3"
+    performance_metrics:
+      accuracy: 0.88
+      f1_score: 0.85
+      precision: 0.83
+      recall: 0.87

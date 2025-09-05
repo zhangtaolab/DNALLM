@@ -26,9 +26,11 @@ class DNALLMMCPServer:
             config_path: Path to the main MCP server configuration file
         """
         self.config_path = config_path
-        # Extract directory from config file path
-        config_dir = Path(config_path).parent
-        self.config_manager = MCPConfigManager(str(config_dir))
+        # Extract directory and filename from config file path
+        config_path_obj = Path(config_path)
+        config_dir = config_path_obj.parent
+        config_filename = config_path_obj.name
+        self.config_manager = MCPConfigManager(str(config_dir), config_filename)
         self.model_manager = ModelManager(self.config_manager)
         self.app = None
         self.sse_app = None
