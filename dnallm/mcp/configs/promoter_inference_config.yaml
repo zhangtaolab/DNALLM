@@ -11,7 +11,7 @@ task:
 inference:
   batch_size: 16
   max_length: 512
-  device: "auto"
+  device: "cpu"
   num_workers: 4
   precision: "float16"
   output_dir: "./outputs/promoter_predictions"

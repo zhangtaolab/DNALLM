@@ -11,9 +11,9 @@ task:
 inference:
   batch_size: 16
   max_length: 512
-  device: "auto"
+  device: "cpu"
   num_workers: 4
-  precision: "float16"
+  precision: "float32"
   output_dir: "./outputs/open_chromatin_predictions"
   save_predictions: true
   save_hidden_states: false
