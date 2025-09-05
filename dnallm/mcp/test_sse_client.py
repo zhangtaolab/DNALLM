@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
+    from mcp.client.sse import sse_client
     from mcp.client.session import ClientSession
 except ImportError as e:
     print(f"导入 MCP 客户端模块时出错: {e}")
@@ -25,32 +26,34 @@ async def test_sse_connection(server_url: str = "http://localhost:8000/sse"):
     print(f"连接到 MCP 服务器: {server_url}")
     
     try:
-        async with ClientSession(server_url) as session:
-            print("✅ 连接成功！")
-            
-            # 初始化会话
-            await session.initialize()
-            print("✅ 会话初始化成功！")
-            
-            # 列出可用工具
-            tools = await session.list_tools()
-            tool_names = [tool.name for tool in tools.tools]
-            print(f"可用工具: {tool_names}")
-            
-            # 测试健康检查
-            print("\n🏥 测试健康检查...")
-            health = await session.call_tool("health_check", {})
-            print(f"健康检查结果: {health}")
-            
-            # 测试流式预测
-            print("\n🧬 测试流式预测...")
-            result = await session.call_tool("dna_stream_predict", {
-                "sequence": "ATCGATCGATCGATCG"
-            })
-            print(f"流式预测结果: {result}")
-            
-            print("\n✅ SSE 连接测试完成！")
-            return True
+        async with sse_client(server_url) as (read, write):
+            async with ClientSession(read, write) as session:
+                print("✅ 连接成功！")
+                
+                # 初始化会话
+                await session.initialize()
+                print("✅ 会话初始化成功！")
+                
+                # 列出可用工具
+                tools = await session.list_tools()
+                tool_names = [tool.name for tool in tools.tools]
+                print(f"可用工具: {tool_names}")
+                
+                # 测试健康检查
+                print("\n🏥 测试健康检查...")
+                health = await session.call_tool("health_check", {})
+                print(f"健康检查结果: {health}")
+                
+                # 测试流式预测
+                print("\n🧬 测试流式预测...")
+                result = await session.call_tool("dna_stream_predict", {
+                    "sequence": "ATCGATCGATCGATCG",
+                    "model_name": "promoter_model"
+                })
+                print(f"流式预测结果: {result}")
+                
+                print("\n✅ SSE 连接测试完成！")
+                return True
             
     except Exception as e:
         print(f"❌ 连接失败: {e}")
