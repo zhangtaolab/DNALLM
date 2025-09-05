@@ -13,18 +13,18 @@ DNALLM provides a comprehensive set of command-line interface tools for various 
 
 ### Server Commands
 
-- **`dnallm start-mcp-server`** - Start MCP (Model Context Protocol) server
+- **`dnallm mcp-server`** - Start MCP (Model Context Protocol) server
 - **`dnallm-mcp-server`** - Standalone MCP server script
 
 ### Configuration Tools
 
-- **`dnallm config-generator`** - Interactive configuration file generator
+- **`dnallm model-config-generator`** - Interactive configuration file generator
 
 ## Quick Start
 
 ```bash
 # Generate a configuration file
-dnallm config-generator --type finetune
+dnallm model-config-generator --output finetune_config.yaml
 
 # Train a model
 dnallm train --config finetune_config.yaml
@@ -36,7 +36,7 @@ dnallm predict --config inference_config.yaml --model-path ./models/trained_mode
 dnallm benchmark --config benchmark_config.yaml
 
 # Start MCP server
-dnallm-mcp-server --config mcp_server_config.yaml
+dnallm mcp-server --config mcp_server_config.yaml
 ```
 
 ## Configuration
@@ -62,5 +62,6 @@ dnallm --help
 
 - [Usage Guide](usage.md) - Complete CLI usage instructions and examples
 - [Configuration Generator](config_generator.md) - Learn how to create configuration files
+- [MCP Server](mcp_server.md) - Learn about the Model Context Protocol server
 - [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Learn to train models
 - [Benchmark Tutorials](../tutorials/benchmark/index.md) - Compare model performance

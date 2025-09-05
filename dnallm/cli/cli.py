@@ -233,5 +233,56 @@ def model_config_generator(output, preview, non_interactive):
         click.echo(f"Configuration generation failed: {e}")
         sys.exit(1)
 
+@cli.command()
+@click.option('--config', '-c', type=click.Path(exists=True), 
+              default='dnallm/mcp/configs/mcp_server_config.yaml',
+              help='Path to MCP server configuration file')
+@click.option('--host', type=str, default='0.0.0.0', 
+              help='Host to bind the server to')
+@click.option('--port', '-p', type=int, default=8000, 
+              help='Port to bind the server to')
+@click.option('--log-level', type=click.Choice(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']), 
+              default='INFO', help='Logging level')
+@click.option('--transport', type=click.Choice(['stdio', 'sse', 'streamable-http']), 
+              default='stdio', help='Transport protocol to use')
+def mcp_server(config, host, port, log_level, transport):
+    """Start MCP (Model Context Protocol) server"""
+    try:
+        # Import and run the MCP server
+        from ..mcp.server import main as mcp_server_main
+        
+        # Create sys.argv-like arguments for the MCP server
+        import sys
+        original_argv = sys.argv.copy()
+        
+        # Build arguments for the MCP server
+        args = ['mcp_server']
+        if config:
+            args.extend(['--config', config])
+        if host:
+            args.extend(['--host', host])
+        if port:
+            args.extend(['--port', str(port)])
+        if log_level:
+            args.extend(['--log-level', log_level])
+        if transport:
+            args.extend(['--transport', transport])
+        
+        # Temporarily replace sys.argv
+        sys.argv = args
+        
+        try:
+            mcp_server_main()
+        finally:
+            # Restore original sys.argv
+            sys.argv = original_argv
+            
+    except ImportError as e:
+        click.echo(f"Error importing MCP server: {e}")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"MCP server startup failed: {e}")
+        sys.exit(1)
+
 if __name__ == '__main__':
     cli()
