@@ -555,11 +555,11 @@ class DNADataset:
     def _add_special_tokens_truncated(self, example_tokens: list, example_ner_tags: list, config: dict) -> tuple:
         """Add special tokens for truncation."""
         if config["sep_token"]:
-            example_tokens = [config["cls_token"]] + example_tokens[:config["max_length"] - 2] + [config["sep_token"]]
-            example_ner_tags = [-100] + example_ner_tags[:config["max_length"] - 2] + [-100]
+            example_tokens = [config["cls_token"], *example_tokens[:config["max_length"] - 2], config["sep_token"]]
+            example_ner_tags = [-100, *example_ner_tags[:config["max_length"] - 2], -100]
         else:
-            example_tokens = [config["cls_token"]] + example_tokens[:config["max_length"] - 1]
-            example_ner_tags = [-100] + example_ner_tags[:config["max_length"] - 1]
+            example_tokens = [config["cls_token"], *example_tokens[:config["max_length"] - 1]]
+            example_ner_tags = [-100, *example_ner_tags[:config["max_length"] - 1]]
         return example_tokens, example_ner_tags
 
     def _post_process_encoded_dataset(self, remove_unused_columns: bool, return_tensors: str) -> None:
