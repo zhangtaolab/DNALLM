@@ -88,6 +88,12 @@ class DNAPredictor:
         self.device = self._get_device()
         if model:
             self.model.to(self.device)
+            # mamba only support cuda and cpu, and only allow fp32
+            if "mamba" in str(type(self.model)).lower():
+                if self.device.type != "cuda":
+                    self.device = torch.device("cpu")
+                if self.pred_config.use_fp16:
+                    self.pred_config.use_fp16 = False
             logger.info(f"Using device: {self.device}")
         self.sequences = []
         self.labels = []
@@ -104,66 +110,60 @@ class DNAPredictor:
         Raises:
             ValueError: If the specified device type is not supported
         """
-        # Get the device type
-        device = self.pred_config.device.lower()
-        if device == "cpu":
-            return torch.device("cpu")
-        elif device in ["cuda", "nvidia"]:
-            if not torch.cuda.is_available():
-                warnings.warn(
-                    "CUDA is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2,
-                )
-                return torch.device("cpu")
-            else:
-                return torch.device("cuda")
-        elif device in ["mps", "apple", "mac"]:
-            if not torch.backends.mps.is_available():
-                warnings.warn(
-                    "MPS is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2,
-                )
-                return torch.device("cpu")
-            else:
-                return torch.device("mps")
-        elif device in ["rocm", "amd"]:
-            if not torch.cuda.is_available():
-                warnings.warn(
-                    "ROCm is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2,
-                )
-                return torch.device("cpu")
-            else:
-                return torch.device("cuda")
-        elif device == ["tpu", "xla", "google"]:
+        device_str = self.pred_config.device.lower()
+
+        if device_str == "auto":
+            return self._get_auto_device()
+
+        device_map = {
+            "cpu": ("cpu", lambda: True, "CPU"),
+            "cuda": ("cuda", torch.cuda.is_available, "CUDA"),
+            "nvidia": ("cuda", torch.cuda.is_available, "CUDA"),
+            "mps": ("mps", torch.backends.mps.is_available, "MPS"),
+            "apple": ("mps", torch.backends.mps.is_available, "MPS"),
+            "mac": ("mps", torch.backends.mps.is_available, "MPS"),
+            "rocm": ("cuda", torch.cuda.is_available, "ROCm"),
+            "amd": ("cuda", torch.cuda.is_available, "ROCm"),
+            "tpu": ("xla", lambda: True, "TPU"),
+            "xla": ("xla", lambda: True, "TPU"),
+            "google": ("xla", lambda: True, "TPU"),
+            "xpu": ("xpu", lambda: hasattr(torch, "xpu") and torch.xpu.is_available(), "XPU"),
+            "intel": ("xpu", lambda: hasattr(torch, "xpu") and torch.xpu.is_available(), "XPU"),
+        }
+
+        if device_str not in device_map:
+            raise ValueError(f"Unsupported device type: {device_str}")
+
+        torch_device, is_available, device_name = device_map[device_str]
+
+        if torch_device == "xla":
             try:
                 return torch.device("xla")
             except Exception:
                 warnings.warn(
-                    "TPU is not available. Please check your installation. Use CPU instead.",
+                    f"{device_name} is not available. Please check your installation. Use CPU instead.",
                     stacklevel=2,
                 )
                 return torch.device("cpu")
-        elif device == ["xpu", "intel"]:
-            if not torch.xpu.is_available():
-                warnings.warn(
-                    "XPU is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2,
-                )
-                return torch.device("cpu")
-            else:
-                return torch.device("xpu")
-        elif device == "auto":
-            if torch.cuda.is_available():
-                return torch.device("cuda")
-            elif torch.backends.mps.is_available():
-                return torch.device("mps")
-            elif torch.xpu.is_available():
-                return torch.device("xpu")
-            else:
-                return torch.device("cpu")
-        else:
-            raise ValueError(f"Unsupported device type: {device}")
+
+        if not is_available():
+            warnings.warn(
+                f"{device_name} is not available. Please check your installation. Use CPU instead.",
+                stacklevel=2,
+            )
+            return torch.device("cpu")
+
+        return torch.device(torch_device)
+
+    def _get_auto_device(self) -> torch.device:
+        """Automatically select the best available device."""
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        if torch.backends.mps.is_available():
+            return torch.device("mps")
+        if hasattr(torch, "xpu") and torch.xpu.is_available():
+            return torch.device("xpu")
+        return torch.device("cpu")
 
     def _check_attention_support(self) -> bool:
         """Check if the current model supports attention output.

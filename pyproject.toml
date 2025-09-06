@@ -54,7 +54,7 @@ dependencies = [
     "tokenizers>=0.21.0",
     "torch>=2.4.0,<2.7",
     "tqdm>=4.67.1",
-    "transformers>=4.49.0",
+    "transformers>=4.49.0,<4.56.0",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -128,6 +128,7 @@ rocm = [
     "torch>=2.5.0,<2.7",
 ]
 mamba = [
+    "torch>=2.4.0,<2.7",
     "mamba-ssm==2.2.4",
     "causal_conv1d==1.5.0.post8",
 ]
