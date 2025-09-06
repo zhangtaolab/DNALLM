@@ -13,7 +13,6 @@
 # limitations under the License.
 """Google BLEU (aka GLEU) metric."""
 
-
 import datasets
 from nltk.translate import gleu_score
 

@@ -78,9 +78,7 @@ class ModelManager:
                 logger.info(
                     f"   Architecture: {model_config.model.task_info.architecture}"
                 )
-                logger.info(
-                    "   📥 Downloading/loading model and tokenizer..."
-                )
+                logger.info("   📥 Downloading/loading model and tokenizer...")
 
                 # Create task config for model loading
                 task_config = TaskConfig(

@@ -572,7 +572,9 @@ def plot_embeddings(
 
             dim_reducer = UMAP(n_components=2)
     except ImportError as e:
-        raise ImportError(f"Required package for {reducer} not installed: {e}") from e
+        raise ImportError(
+            f"Required package for {reducer} not installed: {e}"
+        ) from e
 
     # Pre-allocate plot dictionaries for better memory management
     # Original: pdot = {}; p_separate = {}
@@ -581,7 +583,9 @@ def plot_embeddings(
 
     # More efficient embedding processing with numpy operations
     # Original: Multiple numpy conversions and calculations
-    for i, (hidden, mask) in enumerate(zip(hidden_states, attention_mask, strict=False)):
+    for i, (hidden, mask) in enumerate(
+        zip(hidden_states, attention_mask, strict=False)
+    ):
         # Convert to numpy once and use vectorized operations
         embeddings = np.array(hidden)
         attention_mask_array = np.array(mask)

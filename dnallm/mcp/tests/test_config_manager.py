@@ -42,7 +42,7 @@ class TestMCPConfigManager:
                     "config_path": "./test_model2_config.yaml",
                     "enabled": True,
                     "priority": 2,
-                }
+                },
             },
             "multi_model": {
                 "test_multi": {
@@ -190,7 +190,10 @@ class TestMCPConfigManager:
             multi_configs = manager.get_multi_model_configs()
 
             assert "test_multi" in multi_configs
-            assert multi_configs["test_multi"]["models"] == ["test_model", "test_model2"]
+            assert multi_configs["test_multi"]["models"] == [
+                "test_model",
+                "test_model2",
+            ]
 
     def test_get_sse_config(self):
         """Test getting SSE configuration."""

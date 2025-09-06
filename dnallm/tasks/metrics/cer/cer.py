@@ -13,7 +13,6 @@
 # limitations under the License.
 """Character Error Ratio (CER) metric."""
 
-
 import datasets
 import jiwer
 import jiwer.transforms as tr
@@ -155,7 +154,9 @@ class CER(evaluate.Metric):
 
         incorrect = 0
         total = 0
-        for prediction, reference in zip(predictions, references, strict=False):
+        for prediction, reference in zip(
+            predictions, references, strict=False
+        ):
             measures = jiwer.compute_measures(
                 reference,
                 prediction,

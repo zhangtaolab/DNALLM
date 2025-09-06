@@ -59,7 +59,9 @@ class TestRealModelInference(unittest.TestCase):
             print(
                 "Please install required packages: pip install transformers torch"
             )
-            raise unittest.SkipTest(f"Required packages not available: {e}") from e
+            raise unittest.SkipTest(
+                f"Required packages not available: {e}"
+            ) from e
 
         except Exception as e:
             print(f"❌ Error during setup: {e}")

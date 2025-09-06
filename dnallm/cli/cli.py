@@ -292,7 +292,10 @@ def model_config_generator(output, preview, non_interactive):
     help="Path to MCP server configuration file",
 )
 @click.option(
-    "--host", type=str, default="0.0.0.0", help="Host to bind the server to"  # noqa: S104
+    "--host",
+    type=str,
+    default="127.0.0.1",
+    help="Host to bind the server to",
 )
 @click.option(
     "--port", "-p", type=int, default=8000, help="Port to bind the server to"

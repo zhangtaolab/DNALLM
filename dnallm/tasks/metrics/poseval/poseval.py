@@ -13,7 +13,6 @@
 # limitations under the License.
 """seqeval metric."""
 
-
 import datasets
 from sklearn.metrics import classification_report
 

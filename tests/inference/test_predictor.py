@@ -406,7 +406,7 @@ task:
         save_predictions(predictions, output_dir)
 
         # Check if file was created
-        assert (output_dir / "predictions.json".exists())
+        assert output_dir / "predictions.json".exists()
 
     def test_save_metrics(self):
         """Test metrics saving."""
@@ -420,7 +420,7 @@ task:
         save_metrics(metrics, output_dir)
 
         # Check if file was created
-        assert (output_dir / "metrics.json".exists())
+        assert output_dir / "metrics.json".exists()
 
 
 class TestDNAPredictorIntegration(unittest.TestCase):

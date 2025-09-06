@@ -99,9 +99,7 @@ class MCPConfigManager:
         """
         return self.server_config
 
-    def get_model_config(
-        self, model_name: str
-    ) -> InferenceModelConfig | None:
+    def get_model_config(self, model_name: str) -> InferenceModelConfig | None:
         """Get configuration for a specific model.
 
         Args:

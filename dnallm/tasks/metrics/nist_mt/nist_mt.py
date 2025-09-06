@@ -13,7 +13,6 @@
 # limitations under the License.
 """NLTK's NIST implementation on both the sentence and corpus level"""
 
-
 import datasets
 import nltk
 from datasets import Sequence, Value

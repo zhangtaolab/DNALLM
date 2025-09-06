@@ -112,7 +112,7 @@ class DNAPredictor:
             if not torch.cuda.is_available():
                 warnings.warn(
                     "CUDA is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 return torch.device("cpu")
             else:
@@ -121,7 +121,7 @@ class DNAPredictor:
             if not torch.backends.mps.is_available():
                 warnings.warn(
                     "MPS is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 return torch.device("cpu")
             else:
@@ -130,26 +130,25 @@ class DNAPredictor:
             if not torch.cuda.is_available():
                 warnings.warn(
                     "ROCm is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 return torch.device("cpu")
             else:
                 return torch.device("cuda")
         elif device == ["tpu", "xla", "google"]:
             try:
-
                 return torch.device("xla")
             except Exception:
                 warnings.warn(
                     "TPU is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 return torch.device("cpu")
         elif device == ["xpu", "intel"]:
             if not torch.xpu.is_available():
                 warnings.warn(
                     "XPU is not available. Please check your installation. Use CPU instead.",
-                    stacklevel=2
+                    stacklevel=2,
                 )
                 return torch.device("cpu")
             else:
@@ -252,7 +251,9 @@ class DNAPredictor:
                 self.model.config.output_hidden_states = original_value
                 return True
         except (ValueError, AttributeError) as e:
-            warnings.warn(f"Cannot enable output_hidden_states: {e}", stacklevel=2)
+            warnings.warn(
+                f"Cannot enable output_hidden_states: {e}", stacklevel=2
+            )
         return False
 
     def generate_dataset(
@@ -476,7 +477,10 @@ class DNAPredictor:
                 try:
                     self.model.config.output_hidden_states = True
                 except ValueError as e:
-                    warnings.warn(f"Cannot enable output_hidden_states: {e}", stacklevel=2)
+                    warnings.warn(
+                        f"Cannot enable output_hidden_states: {e}",
+                        stacklevel=2,
+                    )
                     output_hidden_states = False
             embeddings["hidden_states"] = None
             embeddings["attention_mask"] = []
@@ -498,16 +502,19 @@ class DNAPredictor:
                             self.model.config.output_attentions = True
                             warnings.warn(
                                 "Switched to 'eager' attention implementation to support output_attentions",
-                                stacklevel=2
+                                stacklevel=2,
                             )
                         except Exception:
                             warnings.warn(
                                 "Cannot enable output_attentions with current attention implementation. Attention weights will not be available.",
-                                stacklevel=2
+                                stacklevel=2,
                             )
                             output_attentions = False
                     else:
-                        warnings.warn(f"Cannot enable output_attentions: {e}", stacklevel=2)
+                        warnings.warn(
+                            f"Cannot enable output_attentions: {e}",
+                            stacklevel=2,
+                        )
                         output_attentions = False
             embeddings["attentions"] = None
         # Iterate over batches
@@ -701,7 +708,7 @@ class DNAPredictor:
         if output_attentions:
             warnings.warn(
                 "Cautions: output_attentions may consume a lot of memory.\n",
-                stacklevel=2
+                stacklevel=2,
             )
         logits, predictions, embeddings = self.batch_predict(
             dataloader,

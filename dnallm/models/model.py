@@ -293,7 +293,9 @@ def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple:
     use_mirror = False
 
     # Load model and tokenizer
-    preset_models = [preset for model in MODEL_INFO for preset in model["preset"]]
+    preset_models = [
+        preset for model in MODEL_INFO for preset in model["preset"]
+    ]
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
         model_name = model_info["model_name"]["default"]

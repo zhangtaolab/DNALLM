@@ -102,7 +102,9 @@ output:
         assert benchmark.prepared is not None
 
         # Check that the dataset from the config was loaded
-        assert len(benchmark.datasets) == 1, "Should have loaded one dataset during initialization."
+        assert len(benchmark.datasets) == 1, (
+            "Should have loaded one dataset during initialization."
+        )
 
         assert isinstance(benchmark.datasets[0], Dataset)
 
@@ -124,8 +126,9 @@ output:
         )
 
         assert isinstance(new_dataset_obj, DNADataset)
-        assert len(benchmark.datasets) == initial_dataset_count + 1, "A new dataset should have been added."
-
+        assert len(benchmark.datasets) == initial_dataset_count + 1, (
+            "A new dataset should have been added."
+        )
 
     def test_get_predictor(self):
         """Test if get_predictor returns a valid DNAPredictor instance."""

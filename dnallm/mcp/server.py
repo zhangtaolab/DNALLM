@@ -663,7 +663,10 @@ class DNALLMMCPServer:
         logger.info("Registered MCP tools successfully")
 
     def start_server(
-        self, host: str = "0.0.0.0", port: int = 8000, transport: str = "stdio"  # noqa: S104
+        self,
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        transport: str = "stdio",
     ) -> None:
         """Start the MCP server.
 

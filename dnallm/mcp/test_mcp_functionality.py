@@ -8,7 +8,7 @@ from loguru import logger
 # Add the parent directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from dnallm.mcp.server import DNALLMMCPServer
+from dnallm.mcp.server import DNALLMMCPServer  # noqa: E402
 
 
 async def test_mcp_functionality():

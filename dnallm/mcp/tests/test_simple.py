@@ -9,15 +9,14 @@ import pytest
 import yaml
 from pydantic_core import ValidationError
 
-# Add the parent directory to the path to import our modules
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-# Import after path modification
-from config_validators import (  # noqa: E402
+from dnallm.mcp.config_validators import (
     TaskConfig,
     InferenceConfig,
     validate_inference_model_config,
 )
+
+# Add the parent directory to the path to import our modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 class TestTaskConfig:

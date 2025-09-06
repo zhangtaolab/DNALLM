@@ -171,7 +171,10 @@ class COMET(evaluate.Metric):
         if gpus is None:
             gpus = 1 if torch.cuda.is_available() else 0
         data = {"src": sources, "mt": predictions, "ref": references}
-        data = [dict(zip(data, t, strict=False)) for t in zip(*data.values(), strict=False)]
+        data = [
+            dict(zip(data, t, strict=False))
+            for t in zip(*data.values(), strict=False)
+        ]
         if version.parse(comet.__version__) >= version.parse("2.0.0"):
             output = self.scorer.predict(
                 data, gpus=gpus, progress_bar=progress_bar

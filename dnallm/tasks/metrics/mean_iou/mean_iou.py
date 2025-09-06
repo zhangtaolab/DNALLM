@@ -13,7 +13,6 @@
 # limitations under the License.
 """Mean IoU (Intersection-over-Union) metric."""
 
-
 import datasets
 import numpy as np
 

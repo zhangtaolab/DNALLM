@@ -43,7 +43,7 @@ class TestDNALLMMCPServer:
                     "config_path": "./test_model2_config.yaml",
                     "enabled": True,
                     "priority": 2,
-                }
+                },
             },
             "multi_model": {
                 "test_multi": {

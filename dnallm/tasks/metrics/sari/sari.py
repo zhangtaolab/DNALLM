@@ -349,7 +349,9 @@ class Sari(evaluate.Metric):
                 "Sources length must match predictions and references lengths."
             )
         sari_score = 0
-        for src, pred, refs in zip(sources, predictions, references, strict=False):
+        for src, pred, refs in zip(
+            sources, predictions, references, strict=False
+        ):
             sari_score += SARIsent(
                 normalize(src),
                 normalize(pred),

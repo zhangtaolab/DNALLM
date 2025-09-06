@@ -432,12 +432,20 @@ def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
 
         # 将id转换为原始的字符串类型的标签
         true_predictions = [
-            [label_list[p] for p, label_id in zip(prediction, label, strict=False) if label_id != -100]
+            [
+                label_list[p]
+                for p, label_id in zip(prediction, label, strict=False)
+                if label_id != -100
+            ]
             for prediction, label in zip(predictions, labels, strict=False)
         ]
 
         true_labels = [
-            [label_list[label_id] for p, label_id in zip(prediction, label, strict=False) if label_id != -100]
+            [
+                label_list[label_id]
+                for p, label_id in zip(prediction, label, strict=False)
+                if label_id != -100
+            ]
             for prediction, label in zip(predictions, labels, strict=False)
         ]
 

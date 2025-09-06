@@ -147,7 +147,9 @@ class Meteor(evaluate.Metric):
                         beta=beta,
                         gamma=gamma,
                     )
-                    for refs, pred in zip(references, predictions, strict=False)
+                    for refs, pred in zip(
+                        references, predictions, strict=False
+                    )
                 ]
             else:
                 scores = [

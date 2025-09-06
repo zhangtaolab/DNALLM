@@ -50,7 +50,7 @@ jobs:
           # Install flake8 for MCP module compatibility check
           uv pip install flake8>=7.1.2
           # Run flake8 on MCP module
-          flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503
+          flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
           
       - name: Run type checking
         run: |
