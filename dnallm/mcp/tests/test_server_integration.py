@@ -1,10 +1,11 @@
 """Integration tests for MCP server."""
 
-import pytest
 import tempfile
-import yaml
 from pathlib import Path
 from unittest.mock import Mock, patch
+
+import pytest
+import yaml
 
 from ..server import DNALLMMCPServer
 
@@ -35,13 +36,20 @@ class TestDNALLMMCPServer:
                     "config_path": "./test_model_config.yaml",
                     "enabled": True,
                     "priority": 1,
+                },
+                "test_model2": {
+                    "name": "test_model2",
+                    "model_name": "Test Model 2",
+                    "config_path": "./test_model2_config.yaml",
+                    "enabled": True,
+                    "priority": 2,
                 }
             },
             "multi_model": {
                 "test_multi": {
                     "name": "test_multi",
                     "description": "Test multi-model",
-                    "models": ["test_model"],
+                    "models": ["test_model", "test_model2"],
                     "enabled": True,
                 }
             },
@@ -92,13 +100,20 @@ class TestDNALLMMCPServer:
         }
 
         # Write config files
-        server_config_path = temp_dir / "server_config.yaml"
+        server_config_path = temp_dir / "mcp_server_config.yaml"
         with open(server_config_path, "w") as f:
             yaml.dump(server_config, f)
 
         model_config_path = temp_dir / "test_model_config.yaml"
         with open(model_config_path, "w") as f:
             yaml.dump(model_config, f)
+
+        # Create second model config
+        model_config2 = model_config.copy()
+        model_config2["model"]["name"] = "test_model2"
+        model_config2_path = temp_dir / "test_model2_config.yaml"
+        with open(model_config2_path, "w") as f:
+            yaml.dump(model_config2, f)
 
         return str(server_config_path)
 
@@ -122,7 +137,7 @@ class TestDNALLMMCPServer:
 
                 assert server._initialized is True
                 assert server.app is not None
-                assert server.sse_app is not None
+                assert server.sse_app is None  # SSE is built into FastMCP
                 assert server.config_manager is not None
                 assert server.model_manager is not None
 

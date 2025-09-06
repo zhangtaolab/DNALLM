@@ -1,16 +1,19 @@
 """Simple tests for MCP server components."""
 
-import pytest
-import tempfile
-import yaml
-from pathlib import Path
-import sys
 import os
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+import yaml
+from pydantic_core import ValidationError
 
 # Add the parent directory to the path to import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from config_validators import (
+# Import after path modification
+from config_validators import (  # noqa: E402
     TaskConfig,
     InferenceConfig,
     validate_inference_model_config,
@@ -35,7 +38,7 @@ class TestTaskConfig:
 
     def test_invalid_task_type(self):
         """Test invalid task type."""
-        with pytest.raises(ValueError, match="Invalid task type"):
+        with pytest.raises(ValidationError):
             TaskConfig(
                 task_type="invalid",
                 num_labels=2,

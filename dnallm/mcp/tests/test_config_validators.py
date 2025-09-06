@@ -1,9 +1,11 @@
 """Tests for configuration validators."""
 
-import pytest
 import tempfile
-import yaml
 from pathlib import Path
+
+import pytest
+import yaml
+from pydantic_core import ValidationError
 
 from ..config_validators import (
     TaskConfig,
@@ -32,7 +34,7 @@ class TestTaskConfig:
 
     def test_invalid_task_type(self):
         """Test invalid task type."""
-        with pytest.raises(ValueError, match="Invalid task type"):
+        with pytest.raises(ValidationError):
             TaskConfig(
                 task_type="invalid",
                 num_labels=2,
@@ -42,7 +44,7 @@ class TestTaskConfig:
 
     def test_invalid_threshold(self):
         """Test invalid threshold value."""
-        with pytest.raises(ValueError, match="Invalid threshold"):
+        with pytest.raises(ValidationError):
             TaskConfig(
                 task_type="binary",
                 num_labels=2,
@@ -72,7 +74,7 @@ class TestInferenceConfig:
 
     def test_invalid_batch_size(self):
         """Test invalid batch size."""
-        with pytest.raises(ValueError, match="Invalid batch size"):
+        with pytest.raises(ValidationError):
             InferenceConfig(
                 batch_size=200,  # Too large
                 max_length=512,
@@ -82,7 +84,7 @@ class TestInferenceConfig:
 
     def test_invalid_device(self):
         """Test invalid device."""
-        with pytest.raises(ValueError, match="Invalid device"):
+        with pytest.raises(ValidationError):
             InferenceConfig(
                 batch_size=16,
                 max_length=512,
@@ -196,13 +198,20 @@ class TestConfigFileValidation:
                     "config_path": "./test_config.yaml",
                     "enabled": True,
                     "priority": 1,
+                },
+                "test_model2": {
+                    "name": "test_model2",
+                    "model_name": "Test Model 2",
+                    "config_path": "./test_config2.yaml",
+                    "enabled": True,
+                    "priority": 2,
                 }
             },
             "multi_model": {
                 "test_multi": {
                     "name": "test_multi",
                     "description": "Test multi-model",
-                    "models": ["test_model"],
+                    "models": ["test_model", "test_model2"],
                     "enabled": True,
                 }
             },
@@ -228,18 +237,22 @@ class TestConfigFileValidation:
             config_path = f.name
 
         try:
-            # Create a dummy config file for the model
+            # Create dummy config files for the models
             dummy_config_path = Path(config_path).parent / "test_config.yaml"
             dummy_config_path.write_text("dummy: config")
+            dummy_config2_path = Path(config_path).parent / "test_config2.yaml"
+            dummy_config2_path.write_text("dummy: config2")
 
             config = validate_mcp_server_config(config_path)
             assert config.server.host == "0.0.0.0"  # noqa: S104
             assert config.mcp.name == "Test MCP Server"
-            assert len(config.models) == 1
+            assert len(config.models) == 2
         finally:
             Path(config_path).unlink()
             if dummy_config_path.exists():
                 dummy_config_path.unlink()
+            if dummy_config2_path.exists():
+                dummy_config2_path.unlink()
 
 
 if __name__ == "__main__":

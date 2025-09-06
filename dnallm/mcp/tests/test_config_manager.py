@@ -1,9 +1,10 @@
 """Tests for configuration manager."""
 
-import pytest
 import tempfile
-import yaml
 from pathlib import Path
+
+import pytest
+import yaml
 
 from ..config_manager import MCPConfigManager
 
@@ -34,13 +35,20 @@ class TestMCPConfigManager:
                     "config_path": "./test_model_config.yaml",
                     "enabled": True,
                     "priority": 1,
+                },
+                "test_model2": {
+                    "name": "test_model2",
+                    "model_name": "Test Model 2",
+                    "config_path": "./test_model2_config.yaml",
+                    "enabled": True,
+                    "priority": 2,
                 }
             },
             "multi_model": {
                 "test_multi": {
                     "name": "test_multi",
                     "description": "Test multi-model",
-                    "models": ["test_model"],
+                    "models": ["test_model", "test_model2"],
                     "enabled": True,
                 }
             },
@@ -91,7 +99,7 @@ class TestMCPConfigManager:
         }
 
         # Write config files
-        server_config_path = temp_dir / "server_config.yaml"
+        server_config_path = temp_dir / "mcp_server_config.yaml"
         with open(server_config_path, "w") as f:
             yaml.dump(server_config, f)
 
@@ -99,7 +107,14 @@ class TestMCPConfigManager:
         with open(model_config_path, "w") as f:
             yaml.dump(model_config, f)
 
-        return str(server_config_path)
+        # Create second model config
+        model_config2 = model_config.copy()
+        model_config2["model"]["name"] = "test_model2"
+        model_config2_path = temp_dir / "test_model2_config.yaml"
+        with open(model_config2_path, "w") as f:
+            yaml.dump(model_config2, f)
+
+        return str(temp_dir)
 
     def test_config_manager_initialization(self):
         """Test MCPConfigManager initialization."""
@@ -111,8 +126,9 @@ class TestMCPConfigManager:
 
             # Check that configurations were loaded
             assert manager.server_config is not None
-            assert len(manager.model_configs) == 1
+            assert len(manager.model_configs) == 2
             assert "test_model" in manager.model_configs
+            assert "test_model2" in manager.model_configs
 
     def test_get_server_config(self):
         """Test getting server configuration."""
@@ -150,7 +166,8 @@ class TestMCPConfigManager:
             enabled_models = manager.get_enabled_models()
 
             assert "test_model" in enabled_models
-            assert len(enabled_models) == 1
+            assert "test_model2" in enabled_models
+            assert len(enabled_models) == 2
 
     def test_get_model_priority(self):
         """Test getting model priority."""
@@ -173,7 +190,7 @@ class TestMCPConfigManager:
             multi_configs = manager.get_multi_model_configs()
 
             assert "test_multi" in multi_configs
-            assert multi_configs["test_multi"]["models"] == ["test_model"]
+            assert multi_configs["test_multi"]["models"] == ["test_model", "test_model2"]
 
     def test_get_sse_config(self):
         """Test getting SSE configuration."""
@@ -220,9 +237,10 @@ class TestMCPConfigManager:
             manager = MCPConfigManager(config_path)
             summary = manager.get_model_info_summary()
 
-            assert summary["total_models"] == 1
-            assert summary["enabled_models"] == 1
+            assert summary["total_models"] == 2
+            assert summary["enabled_models"] == 2
             assert "test_model" in summary["models"]
+            assert "test_model2" in summary["models"]
             assert summary["models"]["test_model"]["task_type"] == "binary"
 
     def test_config_manager_without_config_file(self):
