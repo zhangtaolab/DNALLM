@@ -104,7 +104,7 @@ def run_command(
             print(f"Command: {' '.join(cmd)}")
             print("-" * 40)
 
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd, capture_output=True, text=True, check=False
         )
 
@@ -173,7 +173,9 @@ Examples:
         "--verbose", action="store_true", help="Show detailed output"
     )
     parser.add_argument(
-        "--with-tests", action="store_true", help="Include test suite execution"
+        "--with-tests",
+        action="store_true",
+        help="Include test suite execution",
     )
 
     args = parser.parse_args()
