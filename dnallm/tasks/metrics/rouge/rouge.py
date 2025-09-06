@@ -11,14 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" ROUGE metric from Google Research github repo. """
+"""ROUGE metric from Google Research github repo."""
 
 # The dependencies in https://github.com/google-research/google-research/blob/master/rouge/requirements.txt
-import absl  # Here to have a nice missing dependency error message early on
 import datasets
-import nltk  # Here to have a nice missing dependency error message early on
-import numpy  # Here to have a nice missing dependency error message early on
-import six  # Here to have a nice missing dependency error message early on
 from rouge_score import rouge_scorer, scoring
 
 import evaluate
@@ -90,7 +86,9 @@ class Tokenizer:
         return self.tokenizer_func(text)
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Rouge(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -101,7 +99,9 @@ class Rouge(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence")),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence")
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -111,7 +111,9 @@ class Rouge(evaluate.Metric):
                     }
                 ),
             ],
-            codebase_urls=["https://github.com/google-research/google-research/tree/master/rouge"],
+            codebase_urls=[
+                "https://github.com/google-research/google-research/tree/master/rouge"
+            ],
             reference_urls=[
                 "https://en.wikipedia.org/wiki/ROUGE_(metric)",
                 "https://github.com/google-research/google-research/tree/master/rouge",
@@ -119,7 +121,13 @@ class Rouge(evaluate.Metric):
         )
 
     def _compute(
-        self, predictions, references, rouge_types=None, use_aggregator=True, use_stemmer=False, tokenizer=None
+        self,
+        predictions,
+        references,
+        rouge_types=None,
+        use_aggregator=True,
+        use_stemmer=False,
+        tokenizer=None,
     ):
         if rouge_types is None:
             rouge_types = ["rouge1", "rouge2", "rougeL", "rougeLsum"]
@@ -129,13 +137,17 @@ class Rouge(evaluate.Metric):
         if tokenizer is not None:
             tokenizer = Tokenizer(tokenizer)
 
-        scorer = rouge_scorer.RougeScorer(rouge_types=rouge_types, use_stemmer=use_stemmer, tokenizer=tokenizer)
+        scorer = rouge_scorer.RougeScorer(
+            rouge_types=rouge_types,
+            use_stemmer=use_stemmer,
+            tokenizer=tokenizer,
+        )
         if use_aggregator:
             aggregator = scoring.BootstrapAggregator()
         else:
             scores = []
 
-        for ref, pred in zip(references, predictions):
+        for ref, pred in zip(references, predictions, strict=False):
             if multi_ref:
                 score = scorer.score_multi(ref, pred)
             else:
@@ -153,6 +165,6 @@ class Rouge(evaluate.Metric):
         else:
             result = {}
             for key in scores[0]:
-                result[key] = list(score[key].fmeasure for score in scores)
+                result[key] = [score[key].fmeasure for score in scores]
 
         return result

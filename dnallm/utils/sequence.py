@@ -34,7 +34,9 @@ def calc_gc_content(seq: str) -> float:
     return gc
 
 
-def reverse_complement(seq: str, reverse: bool = True, complement: bool = True) -> str:
+def reverse_complement(
+    seq: str, reverse: bool = True, complement: bool = True
+) -> str:
     """
     Compute the reverse complement of a DNA sequence.
 
@@ -47,9 +49,16 @@ def reverse_complement(seq: str, reverse: bool = True, complement: bool = True) 
         str: The reverse complement (or as specified) of the input sequence.
     """
     mapping = {
-        "A": "T", "T": "A", "C": "G", "G": "C",
-        "a": "t", "t": "a", "c": "g", "g": "c",
-        "N": "N", "n": "n"
+        "A": "T",
+        "T": "A",
+        "C": "G",
+        "G": "C",
+        "a": "t",
+        "t": "a",
+        "c": "g",
+        "g": "c",
+        "N": "N",
+        "n": "n",
     }
     if reverse:
         seq = seq[::-1]
@@ -71,7 +80,7 @@ def seq2kmer(seqs: list[str], k: int) -> list[str]:
     """
     all_kmers = []
     for seq in seqs:
-        kmer = [seq[x:x+k].upper() for x in range(len(seq)+1-k)]
+        kmer = [seq[x : x + k].upper() for x in range(len(seq) + 1 - k)]
         kmers = " ".join(kmer)
         all_kmers.append(kmers)
     return all_kmers
@@ -82,7 +91,7 @@ def check_sequence(
     minl: int = 1,
     maxl: int = 500000000,
     gc: tuple = (0, 1),
-    valid_chars: str = "ACGTN"
+    valid_chars: str = "ACGTN",
 ) -> bool:
     """
     Check if a DNA sequence is valid based on length, GC content, and allowed characters.
@@ -112,9 +121,9 @@ def random_generate_sequences(
     maxl: int = 0,
     samples: int = 1,
     gc: tuple = (0, 1),
-    N_ratio: float = 0.0,
+    n_ratio: float = 0.0,
     padding_size: int = 0,
-    seed: int = None
+    seed: int | None = None,
 ) -> list[str]:
     """
     Randomly generate DNA sequences with specified length, GC content, and N ratio.
@@ -133,15 +142,17 @@ def random_generate_sequences(
     """
     sequences = []
     basemap = ["A", "C", "G", "T"]
-    if 0.0 < N_ratio <= 1.0:
+    if 0.0 < n_ratio <= 1.0:
         basemap.append("N")
-        weights = [(1 - N_ratio) / 4] * 4 + [N_ratio]
-    elif N_ratio > 1.0:
+        weights = [(1 - n_ratio) / 4] * 4 + [n_ratio]
+    elif n_ratio > 1.0:
         basemap.append("N")
-        weights = [(100 - N_ratio) / 4] * 4 + [N_ratio]
+        weights = [(100 - n_ratio) / 4] * 4 + [n_ratio]
     else:
         weights = None
-    calc_gc = False if gc == (0, 1) else True # Guanqing Please check this line!
+    calc_gc = (
+        False if gc == (0, 1) else True
+    )  # Guanqing Please check this line!
     if seed:
         random.seed(seed)
     # progress bar
@@ -152,12 +163,16 @@ def random_generate_sequences(
         while True:
             if len(sequences) >= samples:
                 break
-            length = random.randint(minl, maxl)
+            length = random.randint(minl, maxl)  # noqa: S311
             if padding_size:
-                length = (length // padding_size + 1) * padding_size if length % padding_size else length
+                length = (
+                    (length // padding_size + 1) * padding_size
+                    if length % padding_size
+                    else length
+                )
                 if length > maxl:
                     length -= padding_size
-            seq = "".join(random.choices(basemap, weights=weights, k=length))
+            seq = "".join(random.choices(basemap, weights=weights, k=length))  # noqa: S311
             if calc_gc:
                 gc_content = calc_gc_content(seq)
                 if gc[0] <= gc_content <= gc[1]:
@@ -173,7 +188,7 @@ def random_generate_sequences(
         while True:
             if len(sequences) >= samples:
                 break
-            seq = "".join(random.choices(basemap, weights=weights, k=length))
+            seq = "".join(random.choices(basemap, weights=weights, k=length))  # noqa: S311
             # calculate GC content
             if calc_gc:
                 gc_content = calc_gc_content(seq)
@@ -184,4 +199,3 @@ def random_generate_sequences(
                 sequences.append(seq)
                 progress_bar.update(1)
     return sequences
-

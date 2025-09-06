@@ -5,7 +5,6 @@
 """
 
 import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -21,43 +20,47 @@ except ImportError as e:
     sys.exit(1)
 
 
-async def test_sse_connection(server_url: str = "http://localhost:8000/sse"):
+async def test_sse_connection(server_url: str):
     """测试 SSE 连接到 MCP 服务器"""
     print(f"连接到 MCP 服务器: {server_url}")
-    
+
     try:
         async with sse_client(server_url) as (read, write):
             async with ClientSession(read, write) as session:
-                print("✅ 连接成功！")
-                
+                print("✅ 连接成功!")
+
                 # 初始化会话
                 await session.initialize()
-                print("✅ 会话初始化成功！")
-                
+                print("✅ 会话初始化成功!")
+
                 # 列出可用工具
                 tools = await session.list_tools()
                 tool_names = [tool.name for tool in tools.tools]
                 print(f"可用工具: {tool_names}")
-                
+
                 # 测试健康检查
                 print("\n🏥 测试健康检查...")
                 health = await session.call_tool("health_check", {})
                 print(f"健康检查结果: {health}")
-                
+
                 # 测试流式预测
                 print("\n🧬 测试流式预测...")
-                result = await session.call_tool("dna_stream_predict", {
-                    "sequence": "ATCGATCGATCGATCG",
-                    "model_name": "promoter_model"
-                })
+                result = await session.call_tool(
+                    "dna_stream_predict",
+                    {
+                        "sequence": "ATCGATCGATCGATCG",
+                        "model_name": "promoter_model",
+                    },
+                )
                 print(f"流式预测结果: {result}")
-                
-                print("\n✅ SSE 连接测试完成！")
+
+                print("\n✅ SSE 连接测试完成!")
                 return True
-            
+
     except Exception as e:
         print(f"❌ 连接失败: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -68,13 +71,13 @@ async def main():
     print("=" * 40)
     print("确保服务器正在运行: python start_server.py --transport sse")
     print()
-    
-    success = await test_sse_connection()
-    
+
+    success = await test_sse_connection("http://localhost:8000/sse")
+
     if success:
-        print("\n🎉 测试完成！")
+        print("\n🎉 测试完成!")
     else:
-        print("\n❌ 测试失败！")
+        print("\n❌ 测试失败!")
         sys.exit(1)
 
 

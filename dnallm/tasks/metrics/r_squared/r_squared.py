@@ -14,7 +14,6 @@
 
 """R squared metric."""
 
-
 import datasets
 import numpy as np
 
@@ -64,8 +63,10 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
-class r_squared(evaluate.Metric):
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
+class r_squared(evaluate.Metric):  # noqa: N801
     def _info(self):
         return evaluate.MetricInfo(
             description=_DESCRIPTION,

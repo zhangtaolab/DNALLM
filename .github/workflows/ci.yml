@@ -35,13 +35,13 @@ jobs:
           uv venv
           uv pip install -e ".[test,dev]"
           
-      - name: Run linting and code quality checks
+      - name: Run linting and code quality checks with Ruff
         run: |
           source .venv/bin/activate
-          black --check --diff .
-          isort --check-only --diff .
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics
+          # Check formatting
+          ruff format --check .
+          # Check linting
+          ruff check . --statistics
           
       - name: Run type checking
         run: |

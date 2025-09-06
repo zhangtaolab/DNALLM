@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" COMET metric.
+"""COMET metric.
 
 Requirements:
 pip install unbabel-comet
@@ -124,10 +124,11 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class COMET(evaluate.Metric):
     def _info(self):
-
         return evaluate.MetricInfo(
             description=_DESCRIPTION,
             citation=_CITATION,
@@ -152,20 +153,32 @@ class COMET(evaluate.Metric):
     def _download_and_prepare(self, dl_manager):
         if self.config_name == "default":
             if version.parse(comet.__version__) >= version.parse("2.0.0"):
-                self.scorer = comet.load_from_checkpoint(comet.download_model("Unbabel/wmt22-comet-da"))
+                self.scorer = comet.load_from_checkpoint(
+                    comet.download_model("Unbabel/wmt22-comet-da")
+                )
             else:
-                self.scorer = comet.load_from_checkpoint(comet.download_model("wmt20-comet-da"))
+                self.scorer = comet.load_from_checkpoint(
+                    comet.download_model("wmt20-comet-da")
+                )
         else:
-            self.scorer = comet.load_from_checkpoint(comet.download_model(self.config_name))
+            self.scorer = comet.load_from_checkpoint(
+                comet.download_model(self.config_name)
+            )
 
-    def _compute(self, sources, predictions, references, gpus=None, progress_bar=False):
+    def _compute(
+        self, sources, predictions, references, gpus=None, progress_bar=False
+    ):
         if gpus is None:
             gpus = 1 if torch.cuda.is_available() else 0
         data = {"src": sources, "mt": predictions, "ref": references}
-        data = [dict(zip(data, t)) for t in zip(*data.values())]
+        data = [dict(zip(data, t, strict=False)) for t in zip(*data.values(), strict=False)]
         if version.parse(comet.__version__) >= version.parse("2.0.0"):
-            output = self.scorer.predict(data, gpus=gpus, progress_bar=progress_bar)
+            output = self.scorer.predict(
+                data, gpus=gpus, progress_bar=progress_bar
+            )
             scores, mean_score = output.scores, output.system_score
         else:
-            scores, mean_score = self.scorer.predict(data, gpus=gpus, progress_bar=progress_bar)
+            scores, mean_score = self.scorer.predict(
+                data, gpus=gpus, progress_bar=progress_bar
+            )
         return {"mean_score": mean_score, "scores": scores}

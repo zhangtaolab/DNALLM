@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2020 The HuggingFace Evaluate Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,14 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" MAUVE metric from https://github.com/krishnap25/mauve. """
+"""MAUVE metric from https://github.com/krishnap25/mauve."""
 
 import datasets
-import faiss  # Here to have a nice missing dependency error message early on
-import numpy  # Here to have a nice missing dependency error message early on
-import requests  # Here to have a nice missing dependency error message early on
-import sklearn  # Here to have a nice missing dependency error message early on
-import tqdm  # Here to have a nice missing dependency error message early on
 from mauve import compute_mauve  # From: mauve-text
 
 import evaluate
@@ -44,7 +38,7 @@ _CITATION = """\
 _DESCRIPTION = """\
 MAUVE is a measure of the statistical gap between two text distributions, e.g., how far the text written by a model is the distribution of human text, using samples from both distributions.
 
-MAUVE is obtained by computing Kullback–Leibler (KL) divergences between the two distributions in a quantized embedding space of a large language model.
+MAUVE is obtained by computing Kullback-Leibler (KL) divergences between the two distributions in a quantized embedding space of a large language model.
 It can quantify differences in the quality of generated text based on the size of the model, the decoding algorithm, and the length of the generated text.
 MAUVE was found to correlate the strongest with human evaluations over baseline metrics for open-ended text generation.
 
@@ -91,7 +85,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Mauve(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(

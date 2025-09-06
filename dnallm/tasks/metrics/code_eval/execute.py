@@ -36,7 +36,9 @@ def check_correctness(check_program, timeout, task_id, completion_id):
     manager = multiprocessing.Manager()
     result = manager.list()
 
-    p = multiprocessing.Process(target=unsafe_execute, args=(check_program, result, timeout))
+    p = multiprocessing.Process(
+        target=unsafe_execute, args=(check_program, result, timeout)
+    )
     p.start()
     p.join(timeout=timeout + 1)
     if p.is_alive():
@@ -45,18 +47,16 @@ def check_correctness(check_program, timeout, task_id, completion_id):
     if not result:
         result.append("timed out")
 
-    return dict(
-        task_id=task_id,
-        passed=result[0] == "passed",
-        result=result[0],
-        completion_id=completion_id,
-    )
+    return {
+        "task_id": task_id,
+        "passed": result[0] == "passed",
+        "result": result[0],
+        "completion_id": completion_id,
+    }
 
 
 def unsafe_execute(check_program, result, timeout):
-
     with create_tempdir():
-
         # These system calls are needed when cleaning up tempdir.
         import os
         import shutil
@@ -73,7 +73,7 @@ def unsafe_execute(check_program, result, timeout):
             exec_globals = {}
             with swallow_io():
                 with time_limit(timeout):
-                    exec(check_program, exec_globals)
+                    exec(check_program, exec_globals)  # noqa: S102
             result.append("passed")
         except TimeoutException:
             result.append("timed out")
@@ -115,7 +115,7 @@ def create_tempdir():
             yield dirname
 
 
-class TimeoutException(Exception):
+class TimeoutException(Exception):  # noqa: N818
     pass
 
 
@@ -136,7 +136,7 @@ class WriteOnlyStringIO(io.StringIO):
         return False
 
 
-class redirect_stdin(contextlib._RedirectStream):  # type: ignore
+class redirect_stdin(contextlib._RedirectStream):  # type: ignore  # noqa: N801
     _stream = "stdin"
 
 
@@ -171,10 +171,17 @@ def reliability_guard(maximum_memory_bytes=None):
     if maximum_memory_bytes is not None:
         import resource
 
-        resource.setrlimit(resource.RLIMIT_AS, (maximum_memory_bytes, maximum_memory_bytes))
-        resource.setrlimit(resource.RLIMIT_DATA, (maximum_memory_bytes, maximum_memory_bytes))
+        resource.setrlimit(
+            resource.RLIMIT_AS, (maximum_memory_bytes, maximum_memory_bytes)
+        )
+        resource.setrlimit(
+            resource.RLIMIT_DATA, (maximum_memory_bytes, maximum_memory_bytes)
+        )
         if not platform.uname().system == "Darwin":
-            resource.setrlimit(resource.RLIMIT_STACK, (maximum_memory_bytes, maximum_memory_bytes))
+            resource.setrlimit(
+                resource.RLIMIT_STACK,
+                (maximum_memory_bytes, maximum_memory_bytes),
+            )
 
     faulthandler.disable()
 

@@ -91,7 +91,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Mase(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -99,7 +101,9 @@ class Mase(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(self._get_feature_types()),
-            reference_urls=["https://otexts.com/fpp3/accuracy.html#scaled-errors"],
+            reference_urls=[
+                "https://otexts.com/fpp3/accuracy.html#scaled-errors"
+            ],
         )
 
     def _get_feature_types(self):
@@ -123,9 +127,10 @@ class Mase(evaluate.Metric):
         sample_weight=None,
         multioutput="uniform_average",
     ):
-
         y_pred_naive = training[:-periodicity]
-        mae_naive = mean_absolute_error(training[periodicity:], y_pred_naive, multioutput=multioutput)
+        mae_naive = mean_absolute_error(
+            training[periodicity:], y_pred_naive, multioutput=multioutput
+        )
 
         mae_score = mean_absolute_error(
             references,

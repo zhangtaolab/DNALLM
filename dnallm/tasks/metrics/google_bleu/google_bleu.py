@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Google BLEU (aka GLEU) metric. """
+"""Google BLEU (aka GLEU) metric."""
 
-from typing import Dict, List
 
 import datasets
 from nltk.translate import gleu_score
@@ -124,7 +123,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class GoogleBleu(evaluate.Metric):
     def _info(self) -> MetricInfo:
         return evaluate.MetricInfo(
@@ -135,7 +136,10 @@ class GoogleBleu(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -149,12 +153,12 @@ class GoogleBleu(evaluate.Metric):
 
     def _compute(
         self,
-        predictions: List[str],
-        references: List[List[str]],
+        predictions: list[str],
+        references: list[list[str]],
         tokenizer=Tokenizer13a(),
         min_len: int = 1,
         max_len: int = 4,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         # if only one reference is provided make sure we still use list of lists
         if isinstance(references[0], str):
             references = [[ref] for ref in references]
@@ -163,6 +167,9 @@ class GoogleBleu(evaluate.Metric):
         predictions = [tokenizer(p) for p in predictions]
         return {
             "google_bleu": gleu_score.corpus_gleu(
-                list_of_references=references, hypotheses=predictions, min_len=min_len, max_len=max_len
+                list_of_references=references,
+                hypotheses=predictions,
+                min_len=min_len,
+                max_len=max_len,
             )
         }

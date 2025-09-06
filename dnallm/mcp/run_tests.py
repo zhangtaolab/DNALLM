@@ -11,25 +11,27 @@ logger = get_logger("dnallm.mcp.tests")
 def run_tests():
     """Run all MCP server tests."""
     test_dir = Path(__file__).parent / "tests"
-    
+
     logger.info("Running MCP Server Tests...")
     logger.info("=" * 50)
-    
+
     # Run tests with pytest
     cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         str(test_dir),
         "-v",
         "--tb=short",
-        "--color=yes"
+        "--color=yes",
     ]
-    
+
     try:
-        result = subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True)  # noqa: S603
         logger.info("\n" + "=" * 50)
         logger.success("All tests passed!")
         return True
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError:
         logger.info("\n" + "=" * 50)
         logger.failure("Some tests failed!")
         return False

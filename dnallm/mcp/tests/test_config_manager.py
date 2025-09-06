@@ -10,22 +10,22 @@ from ..config_manager import MCPConfigManager
 
 class TestMCPConfigManager:
     """Test MCPConfigManager functionality."""
-    
+
     def create_test_configs(self, temp_dir):
         """Create test configuration files."""
         # Create main server config
         server_config = {
             "server": {
-                "host": "0.0.0.0",
+                "host": "0.0.0.0",  # noqa: S104
                 "port": 8000,
                 "workers": 1,
                 "log_level": "INFO",
-                "debug": False
+                "debug": False,
             },
             "mcp": {
                 "name": "Test MCP Server",
                 "version": "0.1.0",
-                "description": "Test server for DNA prediction"
+                "description": "Test server for DNA prediction",
             },
             "models": {
                 "test_model": {
@@ -33,7 +33,7 @@ class TestMCPConfigManager:
                     "model_name": "Test Model",
                     "config_path": "./test_model_config.yaml",
                     "enabled": True,
-                    "priority": 1
+                    "priority": 1,
                 }
             },
             "multi_model": {
@@ -41,24 +41,24 @@ class TestMCPConfigManager:
                     "name": "test_multi",
                     "description": "Test multi-model",
                     "models": ["test_model"],
-                    "enabled": True
+                    "enabled": True,
                 }
             },
             "sse": {
                 "heartbeat_interval": 30,
                 "max_connections": 100,
                 "connection_timeout": 300,
-                "enable_compression": True
+                "enable_compression": True,
             },
             "logging": {
                 "level": "INFO",
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 "file": "./logs/test.log",
                 "max_size": "10MB",
-                "backup_count": 5
-            }
+                "backup_count": 5,
+            },
         }
-        
+
         # Create model config
         model_config = {
             "task": {
@@ -66,7 +66,7 @@ class TestMCPConfigManager:
                 "num_labels": 2,
                 "label_names": ["Not promoter", "Core promoter"],
                 "threshold": 0.5,
-                "description": "Test promoter prediction"
+                "description": "Test promoter prediction",
             },
             "inference": {
                 "batch_size": 16,
@@ -74,8 +74,8 @@ class TestMCPConfigManager:
                 "device": "auto",
                 "num_workers": 4,
                 "precision": "float16",
-                "output_dir": "/tmp/output",
-                "save_predictions": True
+                "output_dir": tempfile.mkdtemp(),
+                "save_predictions": True,
             },
             "model": {
                 "name": "test_model",
@@ -85,150 +85,150 @@ class TestMCPConfigManager:
                     "architecture": "DNABERT",
                     "tokenizer": "BPE",
                     "species": "plant",
-                    "task_category": "promoter_prediction"
-                }
-            }
+                    "task_category": "promoter_prediction",
+                },
+            },
         }
-        
+
         # Write config files
         server_config_path = temp_dir / "server_config.yaml"
-        with open(server_config_path, 'w') as f:
+        with open(server_config_path, "w") as f:
             yaml.dump(server_config, f)
-        
+
         model_config_path = temp_dir / "test_model_config.yaml"
-        with open(model_config_path, 'w') as f:
+        with open(model_config_path, "w") as f:
             yaml.dump(model_config, f)
-        
+
         return str(server_config_path)
-    
+
     def test_config_manager_initialization(self):
         """Test MCPConfigManager initialization."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
-            
+
             # Check that configurations were loaded
             assert manager.server_config is not None
             assert len(manager.model_configs) == 1
             assert "test_model" in manager.model_configs
-    
+
     def test_get_server_config(self):
         """Test getting server configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             server_config = manager.get_server_config()
-            
+
             assert server_config is not None
             assert server_config.mcp.name == "Test MCP Server"
             assert server_config.server.port == 8000
-    
+
     def test_get_model_config(self):
         """Test getting model configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             model_config = manager.get_model_config("test_model")
-            
+
             assert model_config is not None
             assert model_config.task.task_type == "binary"
             assert model_config.model.name == "test_model"
-    
+
     def test_get_enabled_models(self):
         """Test getting enabled models."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             enabled_models = manager.get_enabled_models()
-            
+
             assert "test_model" in enabled_models
             assert len(enabled_models) == 1
-    
+
     def test_get_model_priority(self):
         """Test getting model priority."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             priority = manager.get_model_priority("test_model")
-            
+
             assert priority == 1
-    
+
     def test_get_multi_model_configs(self):
         """Test getting multi-model configurations."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             multi_configs = manager.get_multi_model_configs()
-            
+
             assert "test_multi" in multi_configs
             assert multi_configs["test_multi"]["models"] == ["test_model"]
-    
+
     def test_get_sse_config(self):
         """Test getting SSE configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             sse_config = manager.get_sse_config()
-            
+
             assert sse_config["heartbeat_interval"] == 30
             assert sse_config["max_connections"] == 100
-    
+
     def test_get_logging_config(self):
         """Test getting logging configuration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             logging_config = manager.get_logging_config()
-            
+
             assert logging_config["level"] == "INFO"
             assert logging_config["file"] == "./logs/test.log"
-    
+
     def test_validate_model_references(self):
         """Test validating model references."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             errors = manager.validate_model_references()
-            
+
             # Should have no errors for valid configuration
             assert len(errors) == 0
-    
+
     def test_get_model_info_summary(self):
         """Test getting model information summary."""
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             config_path = self.create_test_configs(temp_path)
-            
+
             manager = MCPConfigManager(config_path)
             summary = manager.get_model_info_summary()
-            
+
             assert summary["total_models"] == 1
             assert summary["enabled_models"] == 1
             assert "test_model" in summary["models"]
             assert summary["models"]["test_model"]["task_type"] == "binary"
-    
+
     def test_config_manager_without_config_file(self):
         """Test MCPConfigManager without config file."""
         manager = MCPConfigManager("nonexistent_config.yaml")
-        
+
         # Should handle missing config gracefully
         assert manager.server_config is None
         assert len(manager.model_configs) == 0

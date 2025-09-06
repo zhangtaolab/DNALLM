@@ -67,7 +67,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class TRECEval(evaluate.Metric):
     """Compute TREC evaluation scores."""
 
@@ -123,17 +125,33 @@ class TRECEval(evaluate.Metric):
         result["runid"] = trec_eval.run.get_runid()
         result["num_ret"] = trec_eval.get_retrieved_documents(per_query=False)
         result["num_rel"] = trec_eval.get_relevant_documents(per_query=False)
-        result["num_rel_ret"] = trec_eval.get_relevant_retrieved_documents(per_query=False)
+        result["num_rel_ret"] = trec_eval.get_relevant_retrieved_documents(
+            per_query=False
+        )
         result["num_q"] = len(trec_eval.run.topics())
-        result["map"] = trec_eval.get_map(depth=10000, per_query=False, trec_eval=True)
-        result["gm_map"] = trec_eval.get_geometric_map(depth=10000, trec_eval=True)
-        result["bpref"] = trec_eval.get_bpref(depth=1000, per_query=False, trec_eval=True)
-        result["Rprec"] = trec_eval.get_rprec(depth=1000, per_query=False, trec_eval=True)
-        result["recip_rank"] = trec_eval.get_reciprocal_rank(depth=1000, per_query=False, trec_eval=True)
+        result["map"] = trec_eval.get_map(
+            depth=10000, per_query=False, trec_eval=True
+        )
+        result["gm_map"] = trec_eval.get_geometric_map(
+            depth=10000, trec_eval=True
+        )
+        result["bpref"] = trec_eval.get_bpref(
+            depth=1000, per_query=False, trec_eval=True
+        )
+        result["Rprec"] = trec_eval.get_rprec(
+            depth=1000, per_query=False, trec_eval=True
+        )
+        result["recip_rank"] = trec_eval.get_reciprocal_rank(
+            depth=1000, per_query=False, trec_eval=True
+        )
 
         for v in [5, 10, 15, 20, 30, 100, 200, 500, 1000]:
-            result[f"P@{v}"] = trec_eval.get_precision(depth=v, per_query=False, trec_eval=True)
+            result[f"P@{v}"] = trec_eval.get_precision(
+                depth=v, per_query=False, trec_eval=True
+            )
         for v in [5, 10, 15, 20, 30, 100, 200, 500, 1000]:
-            result[f"NDCG@{v}"] = trec_eval.get_ndcg(depth=v, per_query=False, trec_eval=True)
+            result[f"NDCG@{v}"] = trec_eval.get_ndcg(
+                depth=v, per_query=False, trec_eval=True
+            )
 
         return result

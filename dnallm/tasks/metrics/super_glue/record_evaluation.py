@@ -3,7 +3,6 @@ Official evaluation script for ReCoRD v1.0.
 (Some functions are adopted from the SQuAD evaluation script.)
 """
 
-
 import argparse
 import json
 import re
@@ -63,19 +62,25 @@ def evaluate(dataset, predictions):
         for qa in passage["qas"]:
             total += 1
             if qa["id"] not in predictions:
-                message = f'Unanswered question {qa["id"]} will receive score 0.'
+                message = (
+                    f"Unanswered question {qa['id']} will receive score 0."
+                )
                 print(message, file=sys.stderr)
                 continue
 
-            ground_truths = list(map(lambda x: x["text"], qa["answers"]))
+            ground_truths = [x["text"] for x in qa["answers"]]
             prediction = predictions[qa["id"]]
 
-            _exact_match = metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
+            _exact_match = metric_max_over_ground_truths(
+                exact_match_score, prediction, ground_truths
+            )
             if int(_exact_match) == 1:
                 correct_ids.append(qa["id"])
             exact_match += _exact_match
 
-            f1 += metric_max_over_ground_truths(f1_score, prediction, ground_truths)
+            f1 += metric_max_over_ground_truths(
+                f1_score, prediction, ground_truths
+            )
 
     exact_match = exact_match / total
     f1 = f1 / total
@@ -85,17 +90,25 @@ def evaluate(dataset, predictions):
 
 if __name__ == "__main__":
     expected_version = "1.0"
-    parser = argparse.ArgumentParser("Official evaluation script for ReCoRD v1.0.")
+    parser = argparse.ArgumentParser(
+        "Official evaluation script for ReCoRD v1.0."
+    )
     parser.add_argument("data_file", help="The dataset file in JSON format.")
-    parser.add_argument("pred_file", help="The model prediction file in JSON format.")
-    parser.add_argument("--output_correct_ids", action="store_true", help="Output the correctly answered query IDs.")
+    parser.add_argument(
+        "pred_file", help="The model prediction file in JSON format."
+    )
+    parser.add_argument(
+        "--output_correct_ids",
+        action="store_true",
+        help="Output the correctly answered query IDs.",
+    )
     args = parser.parse_args()
 
     with open(args.data_file) as data_file:
         dataset_json = json.load(data_file)
         if dataset_json["version"] != expected_version:
             print(
-                f'Evaluation expects v-{expected_version}, but got dataset with v-{dataset_json["version"]}',
+                f"Evaluation expects v-{expected_version}, but got dataset with v-{dataset_json['version']}",
                 file=sys.stderr,
             )
         dataset = dataset_json["data"]

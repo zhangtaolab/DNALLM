@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Character Error Ratio (CER) metric. """
+"""Character Error Ratio (CER) metric."""
 
-from typing import List
 
 import datasets
 import jiwer
@@ -42,16 +41,24 @@ if version.parse(importlib_metadata.version("jiwer")) < version.parse("2.3.0"):
         def process_string(self, s: str):
             return list(s)
 
-        def process_list(self, inp: List[str]):
+        def process_list(self, inp: list[str]):
             chars = []
             for sent_idx, sentence in enumerate(inp):
                 chars.extend(self.process_string(sentence))
-                if self.sentence_delimiter is not None and self.sentence_delimiter != "" and sent_idx < len(inp) - 1:
+                if (
+                    self.sentence_delimiter is not None
+                    and self.sentence_delimiter != ""
+                    and sent_idx < len(inp) - 1
+                ):
                     chars.append(self.sentence_delimiter)
             return chars
 
     cer_transform = tr.Compose(
-        [tr.RemoveMultipleSpaces(), tr.Strip(), SentencesToListOfCharacters(SENTENCE_DELIMITER)]
+        [
+            tr.RemoveMultipleSpaces(),
+            tr.Strip(),
+            SentencesToListOfCharacters(SENTENCE_DELIMITER),
+        ]
     )
 else:
     cer_transform = tr.Compose(
@@ -115,7 +122,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class CER(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -146,14 +155,22 @@ class CER(evaluate.Metric):
 
         incorrect = 0
         total = 0
-        for prediction, reference in zip(predictions, references):
+        for prediction, reference in zip(predictions, references, strict=False):
             measures = jiwer.compute_measures(
                 reference,
                 prediction,
                 truth_transform=cer_transform,
                 hypothesis_transform=cer_transform,
             )
-            incorrect += measures["substitutions"] + measures["deletions"] + measures["insertions"]
-            total += measures["substitutions"] + measures["deletions"] + measures["hits"]
+            incorrect += (
+                measures["substitutions"]
+                + measures["deletions"]
+                + measures["insertions"]
+            )
+            total += (
+                measures["substitutions"]
+                + measures["deletions"]
+                + measures["hits"]
+            )
 
         return incorrect / total

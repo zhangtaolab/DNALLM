@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" seqeval metric. """
+"""seqeval metric."""
 
-from typing import Union
 
 import datasets
 from sklearn.metrics import classification_report
@@ -80,7 +79,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Poseval(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -90,8 +91,12 @@ class Poseval(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "predictions": datasets.Sequence(datasets.Value("string", id="label"), id="sequence"),
-                    "references": datasets.Sequence(datasets.Value("string", id="label"), id="sequence"),
+                    "predictions": datasets.Sequence(
+                        datasets.Value("string", id="label"), id="sequence"
+                    ),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="label"), id="sequence"
+                    ),
                 }
             ),
             codebase_urls=["https://github.com/scikit-learn/scikit-learn"],
@@ -101,7 +106,7 @@ class Poseval(evaluate.Metric):
         self,
         predictions,
         references,
-        zero_division: Union[str, int] = "warn",
+        zero_division: str | int = "warn",
     ):
         report = classification_report(
             y_true=[label for ref in references for label in ref],

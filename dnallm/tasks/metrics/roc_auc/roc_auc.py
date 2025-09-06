@@ -125,7 +125,7 @@ url = {https://doi.org/10.1023/A:1010920819831},
 doi = {10.1023/A:1010920819831},
 journal = {Mach. Learn.},
 month = {oct},
-pages = {171–186},
+    pages = {171-186},
 numpages = {16},
 keywords = {Gini index, AUC, error rate, ROC curve, receiver operating characteristic}
 }
@@ -142,7 +142,9 @@ year={2011}
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class ROCAUC(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -151,13 +153,17 @@ class ROCAUC(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "prediction_scores": datasets.Sequence(datasets.Value("float")),
+                    "prediction_scores": datasets.Sequence(
+                        datasets.Value("float")
+                    ),
                     "references": datasets.Value("int32"),
                 }
                 if self.config_name == "multiclass"
                 else {
                     "references": datasets.Sequence(datasets.Value("int32")),
-                    "prediction_scores": datasets.Sequence(datasets.Value("float")),
+                    "prediction_scores": datasets.Sequence(
+                        datasets.Value("float")
+                    ),
                 }
                 if self.config_name == "multilabel"
                 else {
@@ -165,7 +171,9 @@ class ROCAUC(evaluate.Metric):
                     "prediction_scores": datasets.Value("float"),
                 }
             ),
-            reference_urls=["https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html"],
+            reference_urls=[
+                "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html"
+            ],
         )
 
     def _compute(

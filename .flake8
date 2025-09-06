@@ -1,0 +1,71 @@
+[flake8]
+# Exclude directories and files
+exclude = 
+    .venv,
+    __pycache__,
+    *.egg-info,
+    htmlcov,
+    site,
+    example,
+    .git,
+    .tox,
+    .pytest_cache,
+    .mypy_cache,
+    .coverage,
+    .coverage.*,
+    coverage.xml,
+    *.pyc,
+    *.pyo,
+    *.pyd,
+    .Python,
+    build,
+    dist,
+    docs/_build,
+    .eggs,
+    .DS_Store
+
+# Maximum line length
+max-line-length = 79
+
+# Maximum complexity
+max-complexity = 10
+
+# Ignore specific error codes
+ignore = 
+    # E501: line too long (handled by black)
+    E501,
+    # W503: line break before binary operator (conflicts with black)
+    W503,
+    # E203: whitespace before ':' (conflicts with black)
+    E203
+
+# Per-file ignores
+per-file-ignores =
+    # Ignore import errors in __init__.py files
+    __init__.py:F401,F403
+    # Ignore long lines in test files
+    tests/*:E501
+    # Ignore unused imports in test files
+    tests/*:F401
+    # Ignore star imports in test files
+    tests/*:F403
+    # Ignore unused variables in test files
+    tests/*:F841
+
+# Select specific checks
+select = 
+    C,  # complexity
+    E,  # pycodestyle errors
+    W,  # pycodestyle warnings
+    F,  # pyflakes
+    B,  # flake8-bugbear
+    N,  # pep8-naming
+
+# Show source
+show-source = True
+
+# Show statistics
+statistics = True
+
+# Count errors
+count = True
