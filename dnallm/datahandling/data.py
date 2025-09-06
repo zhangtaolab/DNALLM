@@ -60,11 +60,11 @@ class DNADataset:
         self.dataset = ds
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.sep = None
-        self.multi_label_sep = None
-        self.data_type = None
-        self.stats = None
-        self.stats_for_plot = None
+        self.sep: str | None = None
+        self.multi_label_sep: str | None = None
+        self.data_type: str | None = None
+        self.stats: dict | None = None
+        self.stats_for_plot: pd.DataFrame | None = None
         self.__data_type__()  # Determine the data type of the dataset
 
     @classmethod
@@ -151,136 +151,153 @@ class DNADataset:
         Raises:
             ValueError: If file type is not supported
         """
+        file_path, file_type = cls._normalize_file_path(file_path)
+        sep = cls._determine_separator(file_type, sep)
+        file_type = cls._check_header_and_type(file_path, file_type, seq_col, label_col, sep)
+
+        # Load dataset based on file type
+        if file_type in ["csv", "tsv", "json", "parquet", "arrow"]:
+            ds = cls._load_structured_data(file_path, file_type, sep)
+        elif file_type in ["pkl", "pickle", "dict"]:
+            if isinstance(file_path, list):
+                raise ValueError("Dictionary/pickle files must be single files, not lists")
+            ds = cls._load_dict_data(file_path)
+        elif file_type in ["fa", "fna", "fas", "fasta"]:
+            if isinstance(file_path, list):
+                raise ValueError("FASTA files must be single files, not lists")
+            ds = cls._load_fasta_data(file_path, fasta_sep)
+        elif file_type == "txt":
+            if isinstance(file_path, list):
+                raise ValueError("TXT files must be single files, not lists")
+            ds = cls._load_txt_data(file_path, seq_col, label_col, sep)
+        else:
+            raise ValueError(f"Unsupported file type: {file_type}")
+
+        # Rename columns if needed
+        ds = cls._rename_columns(ds, seq_col, label_col)
+
+        # Format labels
+        ds = cls._format_labels(ds, multi_label_sep)
+
+        return ds
+
+    @classmethod
+    def _normalize_file_path(cls, file_path: str | list) -> tuple[str | list, str]:
+        """Normalize file path and determine file type."""
         if isinstance(file_path, list):
             file_path = [os.path.expanduser(fpath) for fpath in file_path]
             file_type = os.path.basename(file_path[0]).split(".")[-1].lower()
         else:
             file_path = os.path.expanduser(file_path)
             file_type = os.path.basename(file_path).split(".")[-1].lower()
-        # Define data type
-        default_types = ["csv", "tsv", "json", "parquet", "arrow"]
-        dict_types = ["pkl", "pickle", "dict"]
-        fasta_types = ["fa", "fna", "fas", "fasta"]
-        # Check if the file contains a header
-        if file_type in ["csv", "tsv", "txt"]:
-            if file_type == "csv":
-                sep = sep if sep else ","
+        return file_path, file_type
+
+    @classmethod
+    def _determine_separator(cls, file_type: str, sep: str | None) -> str | None:
+        """Determine the appropriate separator for the file type."""
+        if file_type == "csv":
+            return sep if sep else ","
+        elif file_type == "tsv":
+            return sep if sep else "\t"
+        return sep
+
+    @classmethod
+    def _check_header_and_type(cls, file_path: str | list, file_type: str,
+                               seq_col: str, label_col: str, sep: str | None) -> str:
+        """Check if file has header and determine final file type."""
+        if file_type in ["csv", "tsv", "txt"] and isinstance(file_path, str):
             with open(file_path) as f:
                 header = f.readline().strip()
-                if not header or (
-                    seq_col not in header and label_col not in header
-                ):
-                    file_type = "txt"  # Treat as TXT if no header found
-        # For structured formats that load via datasets.load_dataset
-        if file_type in default_types:
-            if file_type in ["csv", "tsv"]:
-                sep = sep or ("," if file_type == "csv" else "\t")
-                ds = load_dataset(
-                    "csv", data_files=file_path, split="train", delimiter=sep
-                )
-            elif file_type == "json":
-                ds = load_dataset("json", data_files=file_path, split="train")
-            elif file_type in ["parquet", "arrow"]:
-                ds = load_dataset(
-                    file_type, data_files=file_path, split="train"
-                )
-            # Rename columns if needed
-            if seq_col != "sequence":
+                if not header or (seq_col not in header and label_col not in header):
+                    return "txt"
+        return file_type
+
+    @classmethod
+    def _load_structured_data(cls, file_path: str | list, file_type: str, sep: str | None) -> Dataset:
+        """Load structured data files (CSV, TSV, JSON, Parquet, Arrow)."""
+        if file_type in ["csv", "tsv"]:
+            ds = load_dataset("csv", data_files=file_path, split="train", delimiter=sep)
+        elif file_type == "json":
+            ds = load_dataset("json", data_files=file_path, split="train")
+        elif file_type in ["parquet", "arrow"]:
+            ds = load_dataset(file_type, data_files=file_path, split="train")
+        return ds
+
+    @classmethod
+    def _load_dict_data(cls, file_path: str) -> Dataset:
+        """Load dictionary/pickle data files."""
+        import pickle
+        data = pickle.load(open(file_path, "rb"))  # noqa: S301
+        return Dataset.from_dict(data)
+
+    @classmethod
+    def _load_fasta_data(cls, file_path: str, fasta_sep: str) -> Dataset:
+        """Load FASTA data files."""
+        sequences, labels = [], []
+        with open(file_path) as f:
+            seq = ""
+            lab = None
+            for line in f:
+                line = line.strip()
+                if line.startswith(">"):
+                    if seq and lab is not None:
+                        sequences.append(seq)
+                        labels.append(lab)
+                    header = line[1:].strip()
+                    lab = header.split(fasta_sep)[-1] if fasta_sep in header else header
+                    seq = ""
+                else:
+                    seq += line.strip()
+            if seq and lab is not None:
+                sequences.append(seq)
+                labels.append(lab)
+        return Dataset.from_dict({"sequence": sequences, "labels": labels})
+
+    @classmethod
+    def _load_txt_data(cls, file_path: str, seq_col: str, label_col: str, sep: str | None) -> Dataset:
+        """Load TXT data files."""
+        sequences, labels = [], []
+        with open(file_path) as f:
+            for i, line in enumerate(f):
+                if i == 0 and seq_col in line and label_col in line:
+                    return load_dataset("csv", data_files=file_path, split="train", delimiter=sep)
+                record = line.strip().split(sep) if sep else line.strip().split()
+                if len(record) >= 2:
+                    sequences.append(record[0])
+                    labels.append(record[1])
+        return Dataset.from_dict({"sequence": sequences, "labels": labels})
+
+    @classmethod
+    def _rename_columns(cls, ds: Dataset, seq_col: str, label_col: str) -> Dataset:
+        """Rename columns to standard names if needed."""
+        if seq_col != "sequence" and seq_col in ds.column_names:
+            if "sequence" not in ds.features:
                 ds = ds.rename_column(seq_col, "sequence")
-            if label_col != "labels":
+        if label_col != "labels" and label_col in ds.column_names:
+            if "labels" not in ds.features:
                 ds = ds.rename_column(label_col, "labels")
-        elif file_type in dict_types:
-            # Here, file_path is assumed to be a dictionary.
-            import pickle
+        return ds
 
-            data = pickle.load(open(file_path, "rb"))  # noqa: S301
-            ds = Dataset.from_dict(data)
-            if seq_col != "sequence" or label_col != "labels":
-                if seq_col in ds.column_names:
-                    if "sequence" not in ds.features:
-                        ds = ds.rename_column(seq_col, "sequence")
-                if label_col in ds.column_names:
-                    if "labels" not in ds.features:
-                        ds = ds.rename_column(label_col, "labels")
-        elif file_type in fasta_types:
-            sequences, labels = [], []
-            with open(file_path) as f:
-                seq = ""
-                lab = None
-                for line in f:
-                    line = line.strip()
-                    if line.startswith(">"):
-                        if seq and lab is not None:
-                            sequences.append(seq)
-                            labels.append(lab)
-                        # Extract label from header, handle different formats
-                        header = line[1:].strip()
-                        if fasta_sep in header:
-                            lab = header.split(fasta_sep)[-1]
-                        else:
-                            # If no separator, try to extract label from end of header
-                            lab = header
-                        seq = ""
-                    else:
-                        seq += line.strip()
-                if seq and lab is not None:
-                    sequences.append(seq)
-                    labels.append(lab)
-            ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
-        elif file_type == "txt":
-            # Assume each line contains a sequence and a label separated by whitespace or a custom sep.
-            sequences, labels = [], []
-            with open(file_path) as f:
-                for i, line in enumerate(f):
-                    if i == 0:
-                        # Contain header, use load_dataset with csv method
-                        if seq_col in line and label_col in line:
-                            ds = load_dataset(
-                                "csv",
-                                data_files=file_path,
-                                split="train",
-                                delimiter=sep,
-                            )
-                            break
-                    record = (
-                        line.strip().split(sep)
-                        if sep
-                        else line.strip().split()
-                    )
-                    if len(record) >= 2:
-                        sequences.append(record[0])
-                        labels.append(record[1])
-                    else:
-                        continue
-            ds = Dataset.from_dict({"sequence": sequences, "labels": labels})
-        else:
-            raise ValueError(f"Unsupported file type: {file_type}")
-
-        # Convert string labels to appropriate types, with error handling
+    @classmethod
+    def _format_labels(cls, ds: Dataset, multi_label_sep: str | None) -> Dataset:
+        """Format labels to appropriate types."""
         def format_labels(example):
             labels = example["labels"]
             if isinstance(labels, str):
                 try:
                     if multi_label_sep and multi_label_sep in labels:
-                        example["labels"] = [
-                            float(x) for x in labels.split(multi_label_sep)
-                        ]
+                        example["labels"] = [float(x) for x in labels.split(multi_label_sep)]
                     else:
-                        # Try to convert to float first, then int if that fails
                         try:
                             example["labels"] = float(labels)
                         except ValueError:
-                            # If it's not a number, keep as string
                             example["labels"] = labels
                 except (ValueError, TypeError):
-                    # If conversion fails, keep original value
                     example["labels"] = labels
             return example
 
         if "labels" in ds.column_names:
             ds = ds.map(format_labels, desc="Format labels")
-
-        # Return processed dataset
         return ds
 
     @classmethod
@@ -379,203 +396,197 @@ class DNADataset:
         Raises:
             ValueError: If tokenizer is not provided
         """
-        if self.tokenizer:
-            sp_token_map = self.tokenizer.special_tokens_map
-            pad_token = (
-                sp_token_map["pad_token"]
-                if "pad_token" in sp_token_map
-                else None
-            )
-            pad_id = (
-                self.tokenizer.encode(pad_token)[-1] if pad_token else None
-            )
-            cls_token = (
-                sp_token_map["cls_token"]
-                if "cls_token" in sp_token_map
-                else None
-            )
-            sep_token = (
-                sp_token_map["sep_token"]
-                if "sep_token" in sp_token_map
-                else None
-            )
-            eos_token = (
-                sp_token_map["eos_token"]
-                if "eos_token" in sp_token_map
-                else None
-            )
-            max_length = self.max_length
-        else:
+        if not self.tokenizer:
             raise ValueError("Tokenizer is required")
 
+        # Get tokenizer configuration
+        tokenizer_config = self._get_tokenizer_config()
+
+        # Judge the task type and apply appropriate tokenization
+        if task is None:
+            task = "sequenceclassification"
+        task = task.lower()
+
+        if task in ["tokenclassification", "token", "ner"]:
+            self._apply_token_classification_tokenization(tokenizer_config, padding, uppercase, lowercase)
+        else:
+            self._apply_sequence_classification_tokenization(tokenizer_config, padding, uppercase, lowercase)
+
+        # Post-process dataset
+        self._post_process_encoded_dataset(remove_unused_columns, return_tensors)
+
+    def _get_tokenizer_config(self) -> dict:
+        """Get tokenizer configuration."""
+        if not self.tokenizer:
+            raise ValueError("Tokenizer is required")
+        sp_token_map = self.tokenizer.special_tokens_map
+        return {
+            "pad_token": sp_token_map.get("pad_token"),
+            "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[-1] if sp_token_map.get("pad_token") else None,
+            "cls_token": sp_token_map.get("cls_token"),
+            "sep_token": sp_token_map.get("sep_token"),
+            "eos_token": sp_token_map.get("eos_token"),
+            "max_length": self.max_length
+        }
+
+    def _apply_sequence_classification_tokenization(self, config: dict, padding: str, uppercase: bool, lowercase: bool) -> None:
+        """Apply sequence classification tokenization."""
         def tokenize_for_sequence_classification(example):
             sequences = example["sequence"]
             if uppercase:
                 sequences = [x.upper() for x in sequences]
             if lowercase:
                 sequences = [x.lower() for x in sequences]
-            tokenized = self.tokenizer(
+            return self.tokenizer(
                 sequences,
                 truncation=True,
                 padding=padding,
-                max_length=max_length,
+                max_length=config["max_length"],
             )
-            return tokenized
 
+        self.dataset = self.dataset.map(
+            tokenize_for_sequence_classification,
+            batched=True,
+            desc="Encoding inputs",
+        )
+
+    def _apply_token_classification_tokenization(self, config: dict, padding: str, uppercase: bool, lowercase: bool) -> None:
+        """Apply token classification tokenization."""
         def tokenize_for_token_classification(examples):
-            tokenized_examples = {
-                "sequence": [],
-                "input_ids": [],
-                # 'token_type_ids': [],
-                "attention_mask": [],
-            }
-            if "labels" in examples:
-                tokenized_examples["labels"] = []
-            input_seqs = examples["sequence"]
-            if isinstance(input_seqs, str):
-                input_seqs = input_seqs.split(self.multi_label_sep)
-            for i, example_tokens in enumerate(input_seqs):
-                all_ids = list(self.tokenizer.encode(
-                    example_tokens, is_split_into_words=True
-                ))
-                if "labels" in examples:
-                    example_ner_tags = examples["labels"][i]
-                else:
-                    example_ner_tags = [0] * len(example_tokens)
-                pad_len = max_length - len(all_ids)
-                if pad_len >= 0:
-                    all_masks = [1] * len(all_ids) + [0] * pad_len
-                    all_ids = all_ids + [pad_id] * pad_len
-                    if cls_token:
-                        if sep_token:
-                            example_tokens = (
-                                [cls_token]
-                                + example_tokens
-                                + [sep_token]
-                                + [pad_token] * pad_len
-                            )
-                            example_ner_tags = (
-                                [-100]
-                                + example_ner_tags
-                                + [-100] * (pad_len + 1)
-                            )
-                        elif eos_token:
-                            example_tokens = (
-                                [cls_token]
-                                + example_tokens
-                                + [eos_token]
-                                + [pad_token] * pad_len
-                            )
-                            example_ner_tags = (
-                                [-100]
-                                + example_ner_tags
-                                + [-100] * (pad_len + 1)
-                            )
-                        else:
-                            example_tokens = (
-                                [cls_token]
-                                + example_tokens
-                                + [pad_token] * pad_len
-                            )
-                            example_ner_tags = (
-                                [-100] + example_ner_tags + [-100] * pad_len
-                            )
-                    else:
-                        example_tokens = example_tokens + [pad_token] * pad_len
-                        example_ner_tags = example_ner_tags + [-100] * pad_len
-                elif pad_len < 0:
-                    all_ids = all_ids[:max_length]
-                    all_masks = [1] * (max_length)
-                    if cls_token:
-                        if sep_token:
-                            example_tokens = [
-                                cls_token,
-                                *example_tokens[: max_length - 2],
-                                sep_token,
-                            ]
-                            example_ner_tags = [
-                                -100,
-                                *example_ner_tags[: max_length - 2],
-                                -100,
-                            ]
-                        else:
-                            example_tokens = [cls_token, *example_tokens[: max_length - 1]]
-                            example_ner_tags = [-100, *example_ner_tags[: max_length - 1]]
-                    else:
-                        example_tokens = example_tokens[:max_length]
-                        example_ner_tags = example_ner_tags[:max_length]
-                tokenized_examples["sequence"].append(example_tokens)
-                tokenized_examples["input_ids"].append(all_ids)
-                # tokenized_examples['token_type_ids'].append([0] * max_length)
-                tokenized_examples["attention_mask"].append(all_masks)
-                if "labels" in examples:
-                    tokenized_examples["labels"].append(example_ner_tags)
-            return BatchEncoding(tokenized_examples)
+            return self._process_token_classification_batch(examples, config)
 
-        # Judge the task type
-        task = task.lower()
-        if task in [
-            "sequenceclassification",
-            "binary",
-            "multiclass",
-            "multilabel",
-            "regression",
-        ]:
-            self.dataset = self.dataset.map(
-                tokenize_for_sequence_classification,
-                batched=True,
-                desc="Encoding inputs",
-            )
-        elif task in ["tokenclassification", "token", "ner"]:
-            from transformers.tokenization_utils_base import BatchEncoding
+        self.dataset = self.dataset.map(
+            tokenize_for_token_classification,
+            batched=True,
+            desc="Encoding inputs",
+        )
 
-            self.dataset = self.dataset.map(
-                tokenize_for_token_classification,
-                batched=True,
-                desc="Encoding inputs",
+    def _process_token_classification_batch(self, examples: dict, config: dict) -> dict:
+        """Process a batch for token classification."""
+        tokenized_examples: dict = {
+            "sequence": [],
+            "input_ids": [],
+            "attention_mask": [],
+        }
+        if "labels" in examples:
+            tokenized_examples["labels"] = []
+
+        input_seqs = examples["sequence"]
+        if isinstance(input_seqs, str):
+            input_seqs = input_seqs.split(self.multi_label_sep)
+
+        for i, example_tokens in enumerate(input_seqs):
+            processed = self._process_single_token_sequence(
+                example_tokens, examples, i, config
             )
-        elif task in ["maskedlm", "mlm", "mask", "embedding"]:
-            self.dataset = self.dataset.map(
-                tokenize_for_sequence_classification,
-                batched=True,
-                desc="Encoding inputs",
-            )
-        elif task in ["causallm", "clm", "causal", "generation", "embedding"]:
-            self.dataset = self.dataset.map(
-                tokenize_for_sequence_classification, batched=True
+            for key, value in processed.items():
+                tokenized_examples[key].append(value)
+
+        from transformers.tokenization_utils_base import BatchEncoding
+        return BatchEncoding(tokenized_examples)  # type: ignore
+
+    def _process_single_token_sequence(self, example_tokens: list, examples: dict, i: int, config: dict) -> dict:
+        """Process a single token sequence for token classification."""
+        if not self.tokenizer:
+            raise ValueError("Tokenizer is required")
+        all_ids = list(self.tokenizer.encode(example_tokens, is_split_into_words=True))
+        example_ner_tags = examples["labels"][i] if "labels" in examples else [0] * len(example_tokens)
+
+        pad_len = config["max_length"] - len(all_ids)
+
+        if pad_len >= 0:
+            return self._pad_sequence(all_ids, example_tokens, example_ner_tags, pad_len, config)
+        else:
+            return self._truncate_sequence(all_ids, example_tokens, example_ner_tags, config)
+
+    def _pad_sequence(self, all_ids: list, example_tokens: list, example_ner_tags: list, pad_len: int, config: dict) -> dict:
+        """Pad a sequence to max_length."""
+        all_masks = [1] * len(all_ids) + [0] * pad_len
+        all_ids = all_ids + [config["pad_id"]] * pad_len
+
+        if config["cls_token"]:
+            example_tokens, example_ner_tags = self._add_special_tokens(
+                example_tokens, example_ner_tags, pad_len, config
             )
         else:
-            self.dataset = self.dataset.map(
-                tokenize_for_sequence_classification,
-                batched=True,
-                desc="Encoding inputs",
+            example_tokens = example_tokens + [config["pad_token"]] * pad_len
+            example_ner_tags = example_ner_tags + [-100] * pad_len
+
+        return {
+            "sequence": example_tokens,
+            "input_ids": all_ids,
+            "attention_mask": all_masks,
+            "labels": example_ner_tags
+        }
+
+    def _truncate_sequence(self, all_ids: list, example_tokens: list, example_ner_tags: list, config: dict) -> dict:
+        """Truncate a sequence to max_length."""
+        all_ids = all_ids[:config["max_length"]]
+        all_masks = [1] * config["max_length"]
+
+        if config["cls_token"]:
+            example_tokens, example_ner_tags = self._add_special_tokens_truncated(
+                example_tokens, example_ner_tags, config
             )
+        else:
+            example_tokens = example_tokens[:config["max_length"]]
+            example_ner_tags = example_ner_tags[:config["max_length"]]
+
+        return {
+            "sequence": example_tokens,
+            "input_ids": all_ids,
+            "attention_mask": all_masks,
+            "labels": example_ner_tags
+        }
+
+    def _add_special_tokens(self, example_tokens: list, example_ner_tags: list, pad_len: int, config: dict) -> tuple:
+        """Add special tokens for padding."""
+        if config["sep_token"]:
+            example_tokens = [config["cls_token"]] + example_tokens + [config["sep_token"]] + [config["pad_token"]] * pad_len
+            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
+        elif config["eos_token"]:
+            example_tokens = [config["cls_token"]] + example_tokens + [config["eos_token"]] + [config["pad_token"]] * pad_len
+            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
+        else:
+            example_tokens = [config["cls_token"]] + example_tokens + [config["pad_token"]] * pad_len
+            example_ner_tags = [-100] + example_ner_tags + [-100] * pad_len
+        return example_tokens, example_ner_tags
+
+    def _add_special_tokens_truncated(self, example_tokens: list, example_ner_tags: list, config: dict) -> tuple:
+        """Add special tokens for truncation."""
+        if config["sep_token"]:
+            example_tokens = [config["cls_token"]] + example_tokens[:config["max_length"] - 2] + [config["sep_token"]]
+            example_ner_tags = [-100] + example_ner_tags[:config["max_length"] - 2] + [-100]
+        else:
+            example_tokens = [config["cls_token"]] + example_tokens[:config["max_length"] - 1]
+            example_ner_tags = [-100] + example_ner_tags[:config["max_length"] - 1]
+        return example_tokens, example_ner_tags
+
+    def _post_process_encoded_dataset(self, remove_unused_columns: bool, return_tensors: str) -> None:
+        """Post-process the encoded dataset."""
         if remove_unused_columns:
-            used_cols = ["labels", "input_ids", "attention_mask"]
-            if isinstance(self.dataset, DatasetDict):
-                for dt in self.dataset:
-                    unused_cols = [
-                        f
-                        for f in self.dataset[dt].features
-                        if f not in used_cols
-                    ]
-                    self.dataset[dt] = self.dataset[dt].remove_columns(
-                        unused_cols
-                    )
-            else:
-                unused_cols = [
-                    f for f in self.dataset.features if f not in used_cols
-                ]
-                self.dataset = self.dataset.remove_columns(unused_cols)
-        if return_tensors == "tf":
-            self.dataset.set_format(type="tensorflow")
-        elif return_tensors == "jax":
-            self.dataset.set_format(type="jax")
-        elif return_tensors == "np":
-            self.dataset.set_format(type="numpy")
+            self._remove_unused_columns()
+
+        # Set tensor format
+        format_map = {
+            "tf": "tensorflow",
+            "jax": "jax",
+            "np": "numpy",
+            "pt": "torch"
+        }
+        self.dataset.set_format(type=format_map.get(return_tensors, "torch"))
+        self.dataset._is_encoded = True
+
+    def _remove_unused_columns(self) -> None:
+        """Remove unused columns from the dataset."""
+        used_cols = ["labels", "input_ids", "attention_mask"]
+        if isinstance(self.dataset, DatasetDict):
+            for dt in self.dataset:
+                unused_cols = [f for f in self.dataset[dt].features if f not in used_cols]
+                self.dataset[dt] = self.dataset[dt].remove_columns(unused_cols)
         else:
-            self.dataset.set_format(type="torch")
-        self.dataset._is_encoded = True  # Mark the dataset as encoded
+            unused_cols = [f for f in self.dataset.features if f not in used_cols]
+            self.dataset = self.dataset.remove_columns(unused_cols)
 
     def split_data(
         self,
@@ -688,10 +699,11 @@ class DNADataset:
         if append:
             if isinstance(self.dataset, DatasetDict):
                 for dt in self.dataset:
+                    total_length = sum(len(self.dataset[split]) for split in self.dataset.keys())
                     number = round(
                         samples
                         * len(self.dataset[dt])
-                        / sum(self.__len__().values())
+                        / total_length
                     )
                     random_ds = process(
                         minl,
@@ -915,11 +927,12 @@ class DNADataset:
                     pprint.pp(format_convert(data))
                 else:
                     df[dt] = data
-                    return df
+            return df if not show else None
         else:
-            data = dataset[dt][:head]
+            data = dataset[:head]
             if show:
                 pprint.pp(format_convert(data))
+                return None
             else:
                 return data
 
@@ -1002,68 +1015,69 @@ class DNADataset:
         - multi-label (multiple labels per sample)
         - multi-regression (multiple float values per sample)
         """
+        labels = self._extract_labels()
+        if labels is None:
+            self.data_type = "unknown"
+            return
+
+        if not self._is_valid_labels(labels):
+            self.data_type = "unknown"
+            return
+
+        first_label = self._get_first_label(labels)
+        if first_label is None:
+            self.data_type = "unknown"
+            return
+
+        self.data_type = self._determine_data_type(first_label)
+
+    def _extract_labels(self) -> list | None:
+        """Extract labels from dataset."""
         if isinstance(self.dataset, DatasetDict):
             keys = list(self.dataset.keys())
             if not keys:
                 raise ValueError("DatasetDict is empty.")
             if "labels" in self.dataset[keys[0]].column_names:
-                labels = self.dataset[keys[0]]["labels"]
-            else:
-                labels = None
+                return self.dataset[keys[0]]["labels"]
         else:
             if "labels" in self.dataset.column_names:
-                labels = self.dataset["labels"]
-            else:
-                labels = None
+                return self.dataset["labels"]
+        return None
 
-        # Handle empty datasets
-        if labels is None:
-            self.data_type = "unknown"
-            return
-
-        # Check if labels is empty
+    def _is_valid_labels(self, labels: list) -> bool:
+        """Check if labels are valid and non-empty."""
         try:
             if hasattr(labels, "__len__"):
-                if len(labels) == 0:
-                    self.data_type = "unknown"
-                    return
-            else:
-                self.data_type = "unknown"
-                return
+                return len(labels) > 0
+            return False
         except (TypeError, AttributeError):
-            self.data_type = "unknown"
-            return
+            return False
 
-        # Check if labels is a list-like object
-        if hasattr(labels, "__getitem__"):
-            try:
-                first_label = labels[0]
-            except IndexError:
-                self.data_type = "unknown"
-                return
-        else:
-            self.data_type = "unknown"
-            return
+    def _get_first_label(self, labels: list) -> any:
+        """Get the first label from the labels list."""
+        if not hasattr(labels, "__getitem__"):
+            return None
+        try:
+            return labels[0]
+        except IndexError:
+            return None
 
+    def _determine_data_type(self, first_label: any) -> str:
+        """Determine data type based on first label."""
         if isinstance(first_label, str):
-            if self.multi_label_sep and self.multi_label_sep in str(
-                first_label
-            ):
-                multi_labels = str(first_label).split(self.multi_label_sep)
-                if "." in multi_labels[0]:
-                    self.data_type = "multi_regression"
-                else:
-                    self.data_type = "multi_label"
-            else:
-                if "." in str(first_label):
-                    self.data_type = "regression"
-                else:
-                    self.data_type = "classification"
+            return self._determine_string_label_type(first_label)
+        elif isinstance(first_label, int):
+            return "classification"
         else:
-            if isinstance(first_label, int):
-                self.data_type = "classification"
-            else:
-                self.data_type = "regression"
+            return "regression"
+
+    def _determine_string_label_type(self, first_label: str) -> str:
+        """Determine data type for string labels."""
+        if self.multi_label_sep and self.multi_label_sep in str(first_label):
+            multi_labels = str(first_label).split(self.multi_label_sep)
+            return "multi_regression" if "." in multi_labels[0] else "multi_label"
+        else:
+            return "regression" if "." in str(first_label) else "classification"
 
     def statistics(self) -> dict:
         """Get statistics of the dataset.
@@ -1154,268 +1168,219 @@ class DNADataset:
         Raises:
             ValueError: If statistics have not been computed yet
         """
-
         import altair as alt
-
         alt.data_transformers.enable("vegafusion")
-
-        def parse_multi_labels(series: pd.Series) -> pd.DataFrame:
-            """Split semicolon-separated labels in a Series into a dataframe of columns.
-
-            Example: '0;1;1' -> columns ['label_0','label_1','label_2']
-            """
-            rows = []
-            maxlen = 0
-            for v in series.fillna(""):
-                if v == "":
-                    parts = []
-                else:
-                    parts = [p.strip() for p in str(v).split(";")]
-                rows.append(parts)
-                if len(parts) > maxlen:
-                    maxlen = len(parts)
-            cols = [f"label_{i}" for i in range(maxlen)]
-            parsed = [r + [""] * (maxlen - len(r)) for r in rows]
-            df = pd.DataFrame(parsed, columns=cols)
-
-            # try convert numeric types
-            for c in df.columns:
-                df[c] = pd.to_numeric(df[c].replace("", np.nan))
-            return df
-
-        def classification_plots(
-            df: pd.DataFrame,
-            label_col: str = "labels",
-            seq_col: str = "sequence",
-        ) -> alt.Chart:
-            """Build histogram of seq lengths colorized by label and GC boxplot grouped by label.
-
-            For multi-label (where label column contains semicolon), this function expects the
-            caller to have split and called per-sublabel as necessary.
-            """
-            # ensure label is a categorical column
-            df = df.copy()
-            df["label_str"] = df[label_col].astype(str)
-            df["seq_len"] = df[seq_col].fillna("").astype(str).str.len()
-            df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
-
-            # histogram: seq length, colored by label
-            hist = (
-                alt.Chart(df)
-                .mark_bar(opacity=0.7)
-                .encode(
-                    x=alt.X(
-                        "seq_len:Q",
-                        bin=alt.Bin(maxbins=60),
-                        title="Sequence length",
-                    ),
-                    y=alt.Y("count():Q", title="Count"),
-                    color=alt.Color("label_str:N", title="Label"),
-                )
-                .properties(width=300, height=240)
-            )
-
-            # GC boxplot grouped by label
-            box = (
-                alt.Chart(df)
-                .mark_boxplot(size=20)
-                .encode(
-                    x=alt.X("label_str:N", title="Label"),
-                    y=alt.Y("gc:Q", title="GC content"),
-                    color=alt.Color("label_str:N", legend=None),
-                )
-                .properties(width=300, height=240)
-            )
-
-            return hist, box
-
-        def regression_plots(
-            df: pd.DataFrame,
-            label_col: str = "labels",
-            seq_col: str = "sequence",
-        ) -> tuple[alt.Chart, alt.Chart]:
-            """Build histogram of seq lengths (ungrouped) and GC scatter (GC vs label value).
-
-            For multi-regression, caller should split and call per target.
-            """
-            df = df.copy()
-            df["seq_len"] = df[seq_col].fillna("").astype(str).str.len()
-            df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
-
-            hist = (
-                alt.Chart(df)
-                .mark_bar(opacity=0.7)
-                .encode(
-                    x=alt.X(
-                        "seq_len:Q",
-                        bin=alt.Bin(maxbins=60),
-                        title="Sequence length",
-                    ),
-                    y=alt.Y("count():Q", title="Count"),
-                )
-                .properties(width=300, height=240)
-            )
-
-            # ensure numeric label
-            df["label_val"] = pd.to_numeric(df[label_col], errors="coerce")
-            scatter = (
-                alt.Chart(df)
-                .mark_point()
-                .encode(
-                    x=alt.X("gc:Q", title="GC content"),
-                    y=alt.Y("label_val:Q", title="Label value"),
-                    tooltip=[
-                        alt.Tooltip("seq_len:Q"),
-                        alt.Tooltip("gc:Q"),
-                        alt.Tooltip("label_val:Q"),
-                    ],
-                )
-                .properties(width=300, height=240)
-            )
-
-            return hist, scatter
-
-        def per_split_charts(
-            df: pd.DataFrame, data_type: str, seq_col: str, label_col: str
-        ) -> alt.Chart:
-            """Return a combined Altair chart for a single split (DataFrame) based on data_type.
-
-            Behavior aligned with user requirement:
-            - For 'classification' or 'regression' (single-label): seq_len and GC plots are concatenated horizontally.
-            - For 'multi-classification' and 'multi-regression': sublabels' results are concatenated horizontally
-            and the pair (seq_len, GC) for each sublabel are concatenated vertically.
-            """
-            if data_type == "classification":
-                hist, box = classification_plots(df, label_col, seq_col)
-                combined = alt.hconcat(hist, box)
-                return combined.properties(title="Classification stats")
-
-            if data_type == "regression":
-                hist, scatter = regression_plots(df, label_col, seq_col)
-                combined = alt.hconcat(hist, scatter)
-                return combined.properties(title="Regression stats")
-
-            if data_type in ("multi-classification", "multi-regression"):
-                # split labels into subcolumns
-                lbls_df = parse_multi_labels(df[label_col])
-                per_subcharts = []
-                for c in lbls_df.columns:
-                    subdf = df.copy()
-                    subdf[c] = lbls_df[c]
-                    # drop nan labels (optional) but keep sequences
-                    if data_type == "multi-classification":
-                        # treat each sublabel like single classification
-                        subdf_for_plot = subdf.copy()
-                        subdf_for_plot["labels_for_plot"] = (
-                            subdf[c].astype("Int64").astype(str)
-                        )
-                        hist = (
-                            alt.Chart(subdf_for_plot)
-                            .mark_bar(opacity=0.7)
-                            .encode(
-                                x=alt.X(
-                                    "seq_len:Q",
-                                    bin=alt.Bin(maxbins=50),
-                                    title="Sequence length",
-                                ),
-                                y="count():Q",
-                                color=alt.Color(
-                                    "labels_for_plot:N", title=f"{c}"
-                                ),
-                            )
-                            .properties(width=260, height=200)
-                        )
-
-                        box = (
-                            alt.Chart(subdf_for_plot)
-                            .mark_boxplot(size=20)
-                            .encode(
-                                x=alt.X("labels_for_plot:N", title=f"{c}"),
-                                y=alt.Y("gc:Q", title="GC content"),
-                                color=alt.Color(
-                                    "labels_for_plot:N", legend=None
-                                ),
-                            )
-                            .properties(width=260, height=200)
-                        )
-                        pair = alt.vconcat(hist, box).properties(
-                            title=f"Sub-label {c}"
-                        )
-                        per_subcharts.append(pair)
-
-                    else:  # multi-regression
-                        subdf_for_plot = subdf.copy()
-                        subdf_for_plot["label_val"] = pd.to_numeric(
-                            subdf[c], errors="coerce"
-                        )
-                        hist = (
-                            alt.Chart(subdf_for_plot)
-                            .mark_bar(opacity=0.7)
-                            .encode(
-                                x=alt.X(
-                                    "seq_len:Q",
-                                    bin=alt.Bin(maxbins=50),
-                                    title="Sequence length",
-                                ),
-                                y="count():Q",
-                            )
-                            .properties(width=260, height=200)
-                        )
-
-                        scatter = (
-                            alt.Chart(subdf_for_plot)
-                            .mark_point()
-                            .encode(
-                                x=alt.X("gc:Q", title="GC content"),
-                                y=alt.Y("label_val:Q", title="Label value"),
-                                tooltip=[
-                                    alt.Tooltip("seq_len:Q"),
-                                    alt.Tooltip("gc:Q"),
-                                    alt.Tooltip("label_val:Q"),
-                                ],
-                            )
-                            .properties(width=260, height=200)
-                        )
-                        pair = alt.vconcat(hist, scatter).properties(
-                            title=f"Sub-target {c}"
-                        )
-                        per_subcharts.append(pair)
-
-                # concat all subcharts horizontally
-                combined = alt.hconcat(*per_subcharts)
-                return combined.properties(title="Multi-target stats")
-
-            raise ValueError(f"Unknown data_type: {data_type}")
 
         if self.stats is None or self.stats_for_plot is None:
             raise ValueError(
                 "Statistics have not been computed yet. Please call `statistics()` method first."
             )
-        task_type = self.data_type
+
+        task_type = self.data_type or "unknown"
         df = self.stats_for_plot.copy()
+        final = self._create_final_chart(df, task_type)
+        self._display_or_save_chart(final, save_path)
+
+    def _create_final_chart(self, df: pd.DataFrame, task_type: str) -> any:
+        """Create the final chart based on dataset type."""
+        import altair as alt
         seq_col = "sequence"
         label_col = "labels"
         split_charts = []
+
         if isinstance(self.stats, dict):
             for split_name, _split_stats in self.stats.items():
-                chart = per_split_charts(
-                    df, task_type, seq_col, label_col
-                ).properties(title=split_name)
+                chart = self._per_split_charts(df, task_type, seq_col, label_col).properties(title=split_name)
                 split_charts.append(chart)
-            # concatenate splits horizontally
-            final = alt.hconcat(*split_charts).properties(
-                title="Dataset splits"
-            )
+            return alt.hconcat(*split_charts).properties(title="Dataset splits")
         else:
-            final = per_split_charts(
-                df, task_type, seq_col, label_col
-            ).properties(title="Full dataset")
+            return self._per_split_charts(df, task_type, seq_col, label_col).properties(title="Full dataset")
 
+    def _display_or_save_chart(self, final: any, save_path: str | None) -> None:
+        """Display or save the final chart."""
         if save_path:
             final.save(save_path)
         else:
             final.show()
             print("Successfully plotted dataset statistics.")
+
+    def _parse_multi_labels(self, series: pd.Series) -> pd.DataFrame:
+        """Split semicolon-separated labels in a Series into a dataframe of columns."""
+        rows = []
+        maxlen = 0
+        for v in series.fillna(""):
+            if v == "":
+                parts = []
+            else:
+                parts = [p.strip() for p in str(v).split(";")]
+            rows.append(parts)
+            if len(parts) > maxlen:
+                maxlen = len(parts)
+        cols = [f"label_{i}" for i in range(maxlen)]
+        parsed = [r + [""] * (maxlen - len(r)) for r in rows]
+        df = pd.DataFrame(parsed, columns=cols)
+
+        # try convert numeric types
+        for c in df.columns:
+            df[c] = pd.to_numeric(df[c].replace("", np.nan))
+        return df
+
+    def _classification_plots(self, df: pd.DataFrame, label_col: str, seq_col: str) -> tuple:
+        """Build histogram of seq lengths colorized by label and GC boxplot grouped by label."""
+        import altair as alt
+        df = df.copy()
+        df["label_str"] = df[label_col].astype(str)
+        df["seq_len"] = df[seq_col].fillna("").astype(str).str.len()
+        df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
+
+        hist = (
+            alt.Chart(df)
+            .mark_bar(opacity=0.7)
+            .encode(
+                x=alt.X("seq_len:Q", bin=alt.Bin(maxbins=60), title="Sequence length"),
+                y=alt.Y("count():Q", title="Count"),
+                color=alt.Color("label_str:N", title="Label"),
+            )
+            .properties(width=300, height=240)
+        )
+
+        box = (
+            alt.Chart(df)
+            .mark_boxplot(size=20)
+            .encode(
+                x=alt.X("label_str:N", title="Label"),
+                y=alt.Y("gc:Q", title="GC content"),
+                color=alt.Color("label_str:N", legend=None),
+            )
+            .properties(width=300, height=240)
+        )
+        return hist, box
+
+    def _regression_plots(self, df: pd.DataFrame, label_col: str, seq_col: str) -> tuple:
+        """Build histogram of seq lengths (ungrouped) and GC scatter (GC vs label value)."""
+        import altair as alt
+        df = df.copy()
+        df["seq_len"] = df[seq_col].fillna("").astype(str).str.len()
+        df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
+
+        hist = (
+            alt.Chart(df)
+            .mark_bar(opacity=0.7)
+            .encode(
+                x=alt.X("seq_len:Q", bin=alt.Bin(maxbins=60), title="Sequence length"),
+                y=alt.Y("count():Q", title="Count"),
+            )
+            .properties(width=300, height=240)
+        )
+
+        df["label_val"] = pd.to_numeric(df[label_col], errors="coerce")
+        scatter = (
+            alt.Chart(df)
+            .mark_point()
+            .encode(
+                x=alt.X("gc:Q", title="GC content"),
+                y=alt.Y("label_val:Q", title="Label value"),
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("gc:Q"), alt.Tooltip("label_val:Q")],
+            )
+            .properties(width=300, height=240)
+        )
+        return hist, scatter
+
+    def _per_split_charts(self, df: pd.DataFrame, data_type: str, seq_col: str, label_col: str) -> any:
+        """Return a combined Altair chart for a single split based on data_type."""
+        import altair as alt
+
+        if data_type == "classification":
+            hist, box = self._classification_plots(df, label_col, seq_col)
+            return alt.hconcat(hist, box).properties(title="Classification stats")
+
+        if data_type == "regression":
+            hist, scatter = self._regression_plots(df, label_col, seq_col)
+            return alt.hconcat(hist, scatter).properties(title="Regression stats")
+
+        if data_type in ("multi-classification", "multi-regression"):
+            return self._create_multi_target_charts(df, data_type, seq_col, label_col)
+
+        raise ValueError(f"Unknown data_type: {data_type}")
+
+    def _create_multi_target_charts(self, df: pd.DataFrame, data_type: str, seq_col: str, label_col: str) -> any:
+        """Create charts for multi-target datasets."""
+        import altair as alt
+        lbls_df = self._parse_multi_labels(df[label_col])
+        per_subcharts = []
+
+        for c in lbls_df.columns:
+            subdf = df.copy()
+            subdf[c] = lbls_df[c]
+
+            if data_type == "multi-classification":
+                pair = self._create_multi_classification_chart(subdf, c, seq_col)
+            else:  # multi-regression
+                pair = self._create_multi_regression_chart(subdf, c, seq_col)
+            per_subcharts.append(pair)
+
+        return alt.hconcat(*per_subcharts).properties(title="Multi-target stats")
+
+    def _create_multi_classification_chart(self, subdf: pd.DataFrame, c: str, seq_col: str) -> any:
+        """Create chart for multi-classification sublabel."""
+        import altair as alt
+        subdf_for_plot = subdf.copy()
+        subdf_for_plot["labels_for_plot"] = subdf[c].astype("Int64").astype(str)
+        subdf_for_plot["seq_len"] = subdf_for_plot[seq_col].fillna("").astype(str).str.len()
+        subdf_for_plot["gc"] = subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
+
+        hist = (
+            alt.Chart(subdf_for_plot)
+            .mark_bar(opacity=0.7)
+            .encode(
+                x=alt.X("seq_len:Q", bin=alt.Bin(maxbins=50), title="Sequence length"),
+                y="count():Q",
+                color=alt.Color("labels_for_plot:N", title=f"{c}"),
+            )
+            .properties(width=260, height=200)
+        )
+
+        box = (
+            alt.Chart(subdf_for_plot)
+            .mark_boxplot(size=20)
+            .encode(
+                x=alt.X("labels_for_plot:N", title=f"{c}"),
+                y=alt.Y("gc:Q", title="GC content"),
+                color=alt.Color("labels_for_plot:N", legend=None),
+            )
+            .properties(width=260, height=200)
+        )
+        return alt.vconcat(hist, box).properties(title=f"Sub-label {c}")
+
+    def _create_multi_regression_chart(self, subdf: pd.DataFrame, c: str, seq_col: str) -> any:
+        """Create chart for multi-regression subtarget."""
+        import altair as alt
+        subdf_for_plot = subdf.copy()
+        subdf_for_plot["label_val"] = pd.to_numeric(subdf[c], errors="coerce")
+        subdf_for_plot["seq_len"] = subdf_for_plot[seq_col].fillna("").astype(str).str.len()
+        subdf_for_plot["gc"] = subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
+
+        hist = (
+            alt.Chart(subdf_for_plot)
+            .mark_bar(opacity=0.7)
+            .encode(
+                x=alt.X("seq_len:Q", bin=alt.Bin(maxbins=50), title="Sequence length"),
+                y="count():Q",
+            )
+            .properties(width=260, height=200)
+        )
+
+        scatter = (
+            alt.Chart(subdf_for_plot)
+            .mark_point()
+            .encode(
+                x=alt.X("gc:Q", title="GC content"),
+                y=alt.Y("label_val:Q", title="Label value"),
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("gc:Q"), alt.Tooltip("label_val:Q")],
+            )
+            .properties(width=260, height=200)
+        )
+        return alt.vconcat(hist, scatter).properties(title=f"Sub-target {c}")
 
 
 def show_preset_dataset() -> dict:
@@ -1444,52 +1409,86 @@ def load_preset_dataset(
     Raises:
         ValueError: If dataset is not found in preset datasets
     """
-    from modelscope import MsDataset
     from .dataset_auto import PRESET_DATASETS
 
-    if dataset_name in PRESET_DATASETS:
-        ds_info = PRESET_DATASETS[dataset_name]
-        dataset_name = ds_info["name"]
-        if task in ds_info["tasks"]:
-            ds = MsDataset.load(dataset_name, data_dir=task)
-        else:
-            ds = MsDataset.load(dataset_name)
-    else:
-        raise ValueError(
-            f"Dataset {dataset_name} not found in preset datasets."
-        )
+    ds_info = _get_dataset_info(dataset_name, PRESET_DATASETS)
+    ds = _load_dataset_from_modelscope(ds_info, task)
+    ds = _standardize_column_names(ds)
+    return _create_dna_dataset(ds, ds_info)
 
+
+def _get_dataset_info(dataset_name: str, preset_datasets: dict) -> dict:
+    """Get dataset information from preset datasets."""
+    if dataset_name not in preset_datasets:
+        raise ValueError(f"Dataset {dataset_name} not found in preset datasets.")
+    return preset_datasets[dataset_name]
+
+
+def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> any:
+    """Load dataset from ModelScope."""
+    from modelscope import MsDataset
+    actual_dataset_name = ds_info["name"]
+    if task and task in ds_info["tasks"]:
+        return MsDataset.load(actual_dataset_name, data_dir=task)
+    else:
+        return MsDataset.load(actual_dataset_name)
+
+
+def _standardize_column_names(ds: any) -> any:
+    """Standardize column names in the dataset."""
     seq_cols = ["s", "seq", "sequence", "sequences"]
     label_cols = ["l", "label", "labels", "target", "targets"]
     seq_col = "sequence"
     label_col = "labels"
+
     if isinstance(ds, DatasetDict):
-        # Check if the dataset is a DatasetDict
-        for dt in ds:
-            # Rename columns if necessary
-            for s in seq_cols:
-                if s in ds[dt].column_names:
-                    seq_col = s
-                    break
-            for label_name in label_cols:
-                if label_name in ds[dt].column_names:
-                    label_col = label_name
-                    break
-            if seq_col != "sequence":
-                ds[dt] = ds[dt].rename_column(seq_col, "sequence")
-            if label_col != "labels":
-                ds[dt] = ds[dt].rename_column(label_col, "labels")
+        return _standardize_datasetdict_columns(ds, seq_cols, label_cols, seq_col, label_col)
     else:
-        # If it's a single dataset, rename columns directly
+        return _standardize_single_dataset_columns(ds, seq_cols, label_cols, seq_col, label_col)
+
+
+def _standardize_datasetdict_columns(ds: any, seq_cols: list, label_cols: list, seq_col: str, label_col: str) -> any:
+    """Standardize columns for DatasetDict."""
+    for dt in ds:
+        seq_col, label_col = _find_column_names(ds[dt], seq_cols, label_cols)
         if seq_col != "sequence":
-            ds = ds.rename_column(seq_col, "sequence")
+            ds[dt] = ds[dt].rename_column(seq_col, "sequence")
         if label_col != "labels":
-            ds = ds.rename_column(label_col, "labels")
+            ds[dt] = ds[dt].rename_column(label_col, "labels")
+    return ds
 
+
+def _standardize_single_dataset_columns(ds: any, seq_cols: list, label_cols: list, seq_col: str, label_col: str) -> any:
+    """Standardize columns for single dataset."""
+    seq_col, label_col = _find_column_names(ds, seq_cols, label_cols)
+    if seq_col != "sequence":
+        ds = ds.rename_column(seq_col, "sequence")
+    if label_col != "labels":
+        ds = ds.rename_column(label_col, "labels")
+    return ds
+
+
+def _find_column_names(dataset: any, seq_cols: list, label_cols: list) -> tuple[str, str]:
+    """Find appropriate column names for sequence and labels."""
+    seq_col = "sequence"
+    label_col = "labels"
+
+    for s in seq_cols:
+        if s in dataset.column_names:
+            seq_col = s
+            break
+    for label_name in label_cols:
+        if label_name in dataset.column_names:
+            label_col = label_name
+            break
+    return seq_col, label_col
+
+
+def _create_dna_dataset(ds: any, ds_info: dict) -> "DNADataset":
+    """Create DNADataset instance with proper configuration."""
     dna_ds = DNADataset(ds, tokenizer=None, max_length=1024)
-    dna_ds.sep = ds_info.get("separator", ",")
-    dna_ds.multi_label_sep = ds_info.get("multi_separator", ";")
-
+    dna_ds.sep = str(ds_info.get("separator", ","))
+    dna_ds.multi_label_sep = str(ds_info.get("multi_separator", ";"))
     return dna_ds
 
 

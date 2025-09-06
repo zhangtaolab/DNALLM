@@ -104,6 +104,7 @@ base = [
     "mypy>=1.15.0",
     "pandas-stubs>=2.3.0",
     "pydantic>=2.10.6",
+    "types-transformers>=0.1.0",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
 ]
