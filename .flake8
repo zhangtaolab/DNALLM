@@ -5,6 +5,7 @@ exclude =
     __pycache__,
     *.egg-info,
     htmlcov,
+    htmlcov/*,
     site,
     example,
     .git,
