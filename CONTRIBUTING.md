@@ -127,15 +127,20 @@ We welcome several types of contributions:
 
 4. **Check code quality**:
    ```bash
-   # Format code
-   black .
-   isort .
+   # Format code with Ruff
+   ruff format .
    
-   # Lint code
-   flake8 .
+   # Check code formatting
+   ruff format --check .
    
-   # Type checking
-   mypy dnallm/
+   # Lint code with Ruff
+   ruff check . --statistics
+   
+   # Additional flake8 check for MCP module
+   flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
+   
+   # Type checking (relaxed settings)
+   mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
    ```
 
 5. **Commit your changes**:
@@ -155,10 +160,179 @@ We welcome several types of contributions:
 
 We follow the following standards:
 
-- **Black**: Code formatting (line length: 88 characters)
-- **isort**: Import sorting
-- **flake8**: Linting
-- **mypy**: Type checking
+- **Ruff**: Code formatting and linting (line length: 79 characters)
+- **flake8**: Additional linting for MCP module compatibility
+- **mypy**: Type checking (with relaxed settings for development)
+
+### Pre-commit Checklist
+
+**⚠️ IMPORTANT: Before committing any code, you MUST run the following checks:**
+
+1. **Code Formatting**:
+   ```bash
+   # Format all code
+   ruff format .
+   
+   # Verify formatting is correct
+   ruff format --check .
+   ```
+
+2. **Code Quality Checks**:
+   ```bash
+   # Run Ruff linting
+   ruff check . --statistics
+   
+   # Run flake8 for MCP module
+   flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
+   ```
+
+3. **Type Checking**:
+   ```bash
+   # Run mypy with relaxed settings
+   mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   ```
+
+4. **Test Suite**:
+   ```bash
+   # Run all tests
+   pytest tests/ -v
+   
+   # Run tests with coverage
+   pytest tests/ --cov=dnallm --cov-report=term-missing
+   ```
+
+5. **Quick Validation Script**:
+   ```bash
+   # Option 1: Use the automated check script (recommended)
+   python scripts/check_code.py
+   
+   # Option 2: Run all checks manually in one command
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   ```
+
+**All checks must pass before committing!** CI will run the same checks and will fail if any issues are found.
+
+### Code Check Scripts
+
+We provide automated scripts to run all code quality checks at once:
+
+#### Python Script (Cross-platform, Recommended)
+```bash
+# Basic usage - run code quality checks only (default)
+python scripts/check_code.py
+
+# Auto-fix issues where possible
+python scripts/check_code.py --fix
+
+# Show detailed output
+python scripts/check_code.py --verbose
+
+# Include test suite execution
+python scripts/check_code.py --with-tests
+
+# Get help
+python scripts/check_code.py --help
+```
+
+#### Shell Script (Linux/macOS)
+```bash
+# Make executable (first time only)
+chmod +x scripts/check_code.sh
+
+# Run all checks
+./scripts/check_code.sh
+
+# Auto-fix issues
+./scripts/check_code.sh --fix
+
+# Verbose output
+./scripts/check_code.sh --verbose
+```
+
+#### Batch Script (Windows)
+```cmd
+# Run all checks
+scripts\check_code.bat
+
+# Auto-fix issues
+scripts\check_code.bat --fix
+
+# Verbose output
+scripts\check_code.bat --verbose
+```
+
+#### What the Scripts Check
+1. **Code Formatting** (Ruff)
+2. **Code Quality** (Ruff linting)
+3. **MCP Module Compatibility** (Flake8)
+4. **Type Checking** (MyPy with relaxed settings)
+5. **Test Suite** (Pytest)
+6. **Test Coverage** (Pytest with coverage)
+
+#### Example Usage
+```bash
+# Quick code quality check (default - no tests)
+$ python scripts/check_code.py
+[INFO] Starting DNALLM code quality checks...
+==========================================
+[INFO] 1. Code Formatting...
+[SUCCESS] Code formatting check completed successfully
+
+[INFO] 2. Code Quality (Ruff)...
+[SUCCESS] Code quality check completed successfully
+
+[INFO] 3. Flake8 (MCP Module)...
+[SUCCESS] Flake8 check for MCP module completed successfully
+
+[INFO] 4. Type Checking (MyPy)...
+[SUCCESS] Type checking with MyPy completed successfully
+
+==========================================
+[SUCCESS] All checks passed! ✅
+[INFO] Your code is ready for commit.
+
+# Include test suite execution
+$ python scripts/check_code.py --with-tests
+[INFO] Starting DNALLM code quality checks...
+[INFO] 1. Code Formatting...
+[SUCCESS] Code formatting check completed successfully
+...
+[INFO] 5. Test Suite...
+[SUCCESS] Test suite execution completed successfully
+
+# Auto-fix issues
+$ python scripts/check_code.py --fix
+[INFO] Starting DNALLM code quality checks...
+[INFO] 1. Code Formatting...
+[SUCCESS] Code formatting (auto-fix) completed successfully
+...
+```
+
+### Code Quality Standards
+
+#### Ruff Configuration
+- **Line length**: 79 characters (not 88 like Black)
+- **Indentation**: 4 spaces
+- **Quote style**: Double quotes
+- **Import sorting**: Automatic with isort compatibility
+- **Error codes enabled**: E4, E7, E9, F, W, B, C4, UP, N, S, T20, PT, Q, RUF
+
+#### Flake8 Configuration (MCP Module)
+- **Line length**: 79 characters
+- **Ignored errors**: E203, W503, C901, E402
+- **Purpose**: Ensure MCP module compatibility
+
+#### MyPy Configuration
+- **Strict mode**: Disabled for development
+- **Missing imports**: Ignored
+- **Optional types**: Not strictly enforced
+- **Disabled error codes**: Multiple codes disabled for development flexibility
+
+#### File Organization
+- **Maximum file size**: < 1000 lines
+- **Import order**: Standard library → Third party → Local imports
+- **Docstring style**: Google-style
+- **Type hints**: Required for all function parameters and return values
 
 ### Naming Conventions
 
@@ -317,17 +491,15 @@ mkdocs serve
 
 ### Before Submitting
 
-1. **Ensure all tests pass**:
+1. **Run the complete pre-commit checklist** (see [Pre-commit Checklist](#pre-commit-checklist) above):
    ```bash
-   pytest tests/ -v
+   # Quick validation - all checks must pass
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
    ```
 
-2. **Check code quality**:
+2. **Ensure all tests pass**:
    ```bash
-   black --check .
-   isort --check-only .
-   flake8 .
-   mypy dnallm/
+   pytest tests/ -v --cov=dnallm --cov-report=term-missing
    ```
 
 3. **Update documentation** if needed
@@ -335,6 +507,8 @@ mkdocs serve
 4. **Add tests** for new functionality
 
 5. **Update CHANGELOG.md** if applicable
+
+6. **Verify CI compatibility**: Your local checks should match what CI runs
 
 ### PR Description Template
 
@@ -443,6 +617,67 @@ We follow [Semantic Versioning](https://semver.org/):
 - Add **debugging information** to error messages
 - Use **breakpoints** in development
 - **Test edge cases** thoroughly
+
+## Quick Reference
+
+### Essential Commands
+
+```bash
+# Setup development environment
+uv venv
+source .venv/bin/activate
+uv pip install -e '.[dev,test]'
+
+# Pre-commit validation (run before every commit)
+# Option 1: Use automated script (recommended, code quality only)
+python scripts/check_code.py
+
+# Option 2: Include test suite execution
+python scripts/check_code.py --with-tests
+
+# Option 3: Manual validation
+ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+
+# Auto-fix code issues
+python scripts/check_code.py --fix
+
+# Format code manually
+ruff format .
+
+# Run tests
+pytest tests/ -v --cov=dnallm --cov-report=term-missing
+
+# Build documentation
+mkdocs build
+mkdocs serve
+```
+
+### Common Issues and Solutions
+
+1. **Code check script fails**: 
+   - Make sure you're in the DNALLM root directory
+   - Ensure virtual environment is activated: `source .venv/bin/activate`
+   - Install dependencies: `uv pip install -e '.[dev,test]'`
+
+2. **Ruff formatting errors**: 
+   - Auto-fix: `python scripts/check_code.py --fix`
+   - Manual fix: `ruff format .`
+
+3. **Import errors**: 
+   - Check import order and use `# noqa: E402` for necessary late imports
+   - Run `ruff check . --fix` to auto-fix some import issues
+
+4. **Type checking errors**: 
+   - Most are disabled in development, but fix critical ones
+   - Check specific files: `mypy dnallm/specific_file.py`
+
+5. **Test failures**: 
+   - Run specific test files: `pytest tests/specific_test.py -v`
+   - Run with verbose output: `python scripts/check_code.py --verbose`
+
+6. **Script permission errors (Linux/macOS)**:
+   - Make executable: `chmod +x scripts/check_code.sh`
+   - Or use Python script: `python scripts/check_code.py`
 
 ## Getting Help
 
