@@ -6,8 +6,9 @@ on:
       - main
       - master
       - develop
+      - flake8
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, master, develop, flake8 ]
 
 permissions:
   contents: write
@@ -17,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,6 +44,14 @@ jobs:
           # Check linting
           ruff check . --statistics
           
+      - name: Run flake8 checks for MCP module
+        run: |
+          source .venv/bin/activate
+          # Install flake8 for MCP module compatibility check
+          uv pip install flake8>=7.1.2
+          # Run flake8 on MCP module
+          flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503
+          
       - name: Run type checking
         run: |
           source .venv/bin/activate
@@ -51,7 +60,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           source .venv/bin/activate
-          pytest tests/ -v --cov=dnallm --cov-report=xml --cov-report=term-missing
+          pytest tests/ -v --cov=dnallm --cov-report=xml --cov-report=term-missing --tb=short
           
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
