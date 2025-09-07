@@ -126,14 +126,15 @@ jobs:
         run: |
           uv venv
           uv pip install -e ".[test,dev,mamba]"
+          uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
           
-      # - name: Run mamba-specific tests
-      #   run: |
-      #     source .venv/bin/activate
-      #     pytest tests/ -v -m "not slow" --tb=short
+      - name: Run mamba-specific tests
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v -m "not slow" --tb=short
           
   deploy:
-    needs: [test, test-cuda, test-mamba]
+    needs: [test, test-cuda]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:

@@ -1,4 +1,34 @@
 pretrained:
+  - name: "Plant DNABERT"
+    model: "zhangtaolab/plant-dnabert-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Plant DNAGemma"
+    model: "zhangtaolab/plant-dnagemma-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant DNAGPT"
+    model: "zhangtaolab/plant-dnagpt-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant DNAMamba"
+    model: "zhangtaolab/plant-dnamamba-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "generation"
+  - name: "Plant NT"
+    model: "zhangtaolab/plant-nucleotide-transformer-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "Plant DNAModernBert"
+    model: "zhangtaolab/plant-dnamodernbert-BPE"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
   - name: "AgroNT"
     model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:
@@ -69,6 +99,11 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
+  - name: "LucaOne"
+    model: "LucaGroup/LucaOne-default-step36M"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
   - name: "Jamba-DNA"
     model: "RaphaelMourad/Jamba-DNA-v1-114M-hg38"
     task:
@@ -109,36 +144,7 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
-  - name: "Plant DNABERT"
-    model: "zhangtaolab/plant-dnabert-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "mask"
-  - name: "Plant DNAGemma"
-    model: "zhangtaolab/plant-dnagemma-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "generation"
-  - name: "Plant DNAGPT"
-    model: "zhangtaolab/plant-dnagpt-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "generation"
-  - name: "Plant DNAMamba"
-    model: "zhangtaolab/plant-dnamamba-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "generation"
-  - name: "Plant NT"
-    model: "zhangtaolab/plant-nucleotide-transformer-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "mask"
-  - name: "Plant DNAModernBert"
-    model: "zhangtaolab/plant-dnamodernbert-BPE"
-    task:
-      describe: "Pretrained model for DNA sequence understanding."
-      task_type: "mask"
+
 
 finetuned:
   - name: "Plant DNABERT BPE promoter"
@@ -1409,3 +1415,17 @@ finetuned:
       task_type: "regression"
       num_labels: 1
       label_names: "promoter strength in maize protoplasts"
+  - name: "Plant DNAMamba singlebase tRNADetector"
+    model: "zhangtaolab/tRNADetector"
+    task:
+      describe: "Predict whether a DNA sequence is a tRNA in plants by using Plant DNAMamba model with singlebase tokenizer."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not tRNA", "tRNA"]
+  - name: "Plant Nucleotide Transformer singlebase tRNAPointer"
+    model: "zhangtaolab/tRNAPointer"
+    task:
+      describe: "Predict of tRNA start and end sites in DNA sequence by using Plant NT model with singlebase tokenizer."
+      task_type: "token"
+      num_labels: 7
+      label_names: ['O','B-Intron', 'I-Intron', 'B-tRNA', 'I-tRNA', 'B-anti', 'I-anti']

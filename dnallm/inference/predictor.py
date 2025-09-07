@@ -127,8 +127,16 @@ class DNAPredictor:
             "tpu": ("xla", lambda: True, "TPU"),
             "xla": ("xla", lambda: True, "TPU"),
             "google": ("xla", lambda: True, "TPU"),
-            "xpu": ("xpu", lambda: hasattr(torch, "xpu") and torch.xpu.is_available(), "XPU"),
-            "intel": ("xpu", lambda: hasattr(torch, "xpu") and torch.xpu.is_available(), "XPU"),
+            "xpu": (
+                "xpu",
+                lambda: hasattr(torch, "xpu") and torch.xpu.is_available(),
+                "XPU",
+            ),
+            "intel": (
+                "xpu",
+                lambda: hasattr(torch, "xpu") and torch.xpu.is_available(),
+                "XPU",
+            ),
         }
 
         if device_str not in device_map:
