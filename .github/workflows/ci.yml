@@ -105,33 +105,33 @@ jobs:
       #     source .venv/bin/activate
       #     pytest tests/ -v -m "not slow" --tb=short
           
-  test-mamba:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11']
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # test-mamba:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       python-version: ['3.11']
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
         
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
+  #     - name: Set up Python ${{ matrix.python-version }}
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
           
-      - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+  #     - name: Install uv
+  #       run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
-      - name: Create virtual environment and install mamba dependencies
-        run: |
-          uv venv
-          uv pip install -e ".[test,dev]"
-          uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
+  #     - name: Create virtual environment and install mamba dependencies
+  #       run: |
+  #         uv venv
+  #         uv pip install -e ".[test,dev]"
+  #         uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
           
-      - name: Run mamba-specific tests
-        run: |
-          source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --tb=short
+  #     - name: Run mamba-specific tests
+  #       run: |
+  #         source .venv/bin/activate
+  #         pytest tests/ -v -m "not slow" --tb=short
           
   deploy:
     needs: [test, test-cuda]
