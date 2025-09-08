@@ -43,7 +43,7 @@ DNALLM MCP Server 是一个基于 Model Context Protocol (MCP) 的 DNA 序列预
 ```yaml
 server:
   name: "DNALLM MCP Server"
-  version: "0.1.0"
+  version: "0.3.0"
   host: "0.0.0.0"
   port: 8000
 
@@ -305,21 +305,19 @@ python -m pytest tests/test_config_validators.py -v
 
 ## 版本历史
 
-### v0.1.0 (当前版本)
+### v0.1.0
 - 基础 MCP 服务器实现
 - FastMCP + SSE 集成
 - 配置文件分离架构
 - 基础预测工具
 - 模型管理功能
 
-### 计划版本
-
-#### v0.2.0
+### v0.2.0
 - 性能优化
 - 高级流式功能
 - 更好的错误处理
 
-#### v0.3.0
+### v0.3.0 (当前版本)
 - Docker 支持
 - 监控和日志
 - 生产部署功能
