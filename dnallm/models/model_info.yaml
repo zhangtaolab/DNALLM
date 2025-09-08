@@ -1420,12 +1420,14 @@ finetuned:
     task:
       describe: "Predict whether a DNA sequence is a tRNA in plants by using Plant DNAMamba model with singlebase tokenizer."
       task_type: "binary"
-      num_labels: 2
-      label_names: ["Not tRNA", "tRNA"]
-  - name: "Plant Nucleotide Transformer singlebase tRNAPointer"
+      num_labels: 3
+      label_names: ["Not tRNA", "Partial tRNA", "tRNA"]
+      threshold: 0.5
+  - name: "Plant NT singlebase tRNAPointer"
     model: "zhangtaolab/tRNAPointer"
     task:
       describe: "Predict of tRNA start and end sites in DNA sequence by using Plant NT model with singlebase tokenizer."
       task_type: "token"
       num_labels: 7
       label_names: ['O','B-Intron', 'I-Intron', 'B-tRNA', 'I-tRNA', 'B-anti', 'I-anti']
+      threshold: 0.5 
