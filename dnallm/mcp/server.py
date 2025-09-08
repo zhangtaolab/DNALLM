@@ -485,7 +485,9 @@ class DNALLMMCPServer:
                 "isError": True,
             }
 
-    async def _list_models_by_task_type(self, task_type: str) -> dict[str, Any]:
+    async def _list_models_by_task_type(
+        self, task_type: str
+    ) -> dict[str, Any]:
         """List all available models filtered by task type."""
         try:
             all_models = self.model_manager.get_all_models_info()
@@ -496,9 +498,7 @@ class DNALLMMCPServer:
             }
 
             return {
-                "content": [
-                    {"type": "text", "text": str(filtered_models)}
-                ],
+                "content": [{"type": "text", "text": str(filtered_models)}],
                 "task_type": task_type,
                 "model_count": len(filtered_models),
                 "models": filtered_models,
@@ -642,7 +642,9 @@ class DNALLMMCPServer:
             )
 
             if result is None:
-                error_msg = f"Model {model_name} not available or prediction failed"
+                error_msg = (
+                    f"Model {model_name} not available or prediction failed"
+                )
                 if stream_progress and context:
                     await context.report_progress(
                         100, 100, f"Error: {error_msg}"
@@ -901,8 +903,7 @@ class DNALLMMCPServer:
             [
                 r
                 for r in results.values()
-                if not isinstance(r, dict)
-                or r.get("result") is not None
+                if not isinstance(r, dict) or r.get("result") is not None
             ]
         )
         failed_predictions = len(
