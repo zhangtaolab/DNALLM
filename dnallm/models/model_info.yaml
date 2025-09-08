@@ -1419,7 +1419,7 @@ finetuned:
     model: "zhangtaolab/tRNADetector"
     task:
       describe: "Predict whether a DNA sequence is a tRNA in plants by using Plant DNAMamba model with singlebase tokenizer."
-      task_type: "binary"
+      task_type: "multiclass"
       num_labels: 3
       label_names: ["Not tRNA", "Partial tRNA", "tRNA"]
       threshold: 0.5
