@@ -5,9 +5,6 @@ description = "A comprehensive toolkit for fine-tuning and inference with DNA La
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["dna", "language-model", "bioinformatics", "machine-learning", "genomics"]
-homepage = "https://github.com/zhangtaolab/DNALLM"
-repository = "https://github.com/zhangtaolab/DNALLM"
-documentation = "https://zhangtaolab.github.io/DNALLM/"
 authors = [
     {name = "Zhangtaolab", email = "forrest_zhang@163.com"}
 ]
@@ -15,7 +12,6 @@ license = "MIT"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -68,6 +64,12 @@ dependencies = [
     "websockets>=12.0",
     "wheel>=0.45.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/zhangtaolab/DNALLM"
+Repository = "https://github.com/zhangtaolab/DNALLM"
+Documentation = "https://zhangtaolab.github.io/DNALLM/"
+"Bug Tracker" = "https://github.com/zhangtaolab/DNALLM/issues"
 
 [project.optional-dependencies]
 dev = [
