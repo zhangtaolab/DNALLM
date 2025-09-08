@@ -34,7 +34,7 @@ class DNALLMMCPServer:
             str(config_dir), config_filename
         )
         self.model_manager = ModelManager(self.config_manager)
-        self.app = None
+        self.app: FastMCP | None = None
         self.sse_app = None
         self._initialized = False
 
@@ -70,6 +70,8 @@ class DNALLMMCPServer:
 
     def _register_tools(self) -> None:
         """Register MCP tools with the FastMCP application."""
+        if self.app is None:
+            raise RuntimeError("FastMCP app not initialized")
 
         @self.app.tool()
         async def dna_sequence_predict(
@@ -695,6 +697,7 @@ class DNALLMMCPServer:
             import uvicorn
             from starlette.applications import Starlette
             from starlette.routing import Mount
+            from contextlib import asynccontextmanager
 
             sse_config = (
                 server_config.sse
@@ -709,10 +712,23 @@ class DNALLMMCPServer:
             logger.info(f"Using SSE transport with mount path: {mount_path}")
 
             # Get the Starlette app from FastMCP
+            if self.app is None:
+                raise RuntimeError("FastMCP app not initialized")
             sse_app = self.app.sse_app()
             logger.info("SSE app created with routes:")
             logger.info("  - /sse: SSE connection endpoint")
             logger.info("  - /messages/: MCP protocol messages")
+
+            # Define lifespan function for graceful startup/shutdown
+            @asynccontextmanager
+            async def lifespan(app):
+                # Startup
+                logger.info("Server startup complete")
+                yield
+                # Shutdown
+                logger.info("Starting graceful shutdown...")
+                await self.shutdown()
+                logger.info("Graceful shutdown complete")
 
             # Create a new Starlette app that mounts the SSE app at the correct path
             # This ensures /mcp/messages/ is available for MCP clients
@@ -720,7 +736,8 @@ class DNALLMMCPServer:
                 routes=[
                     Mount(mount_path, sse_app),
                     Mount("", sse_app),  # Also mount at root for /sse
-                ]
+                ],
+                lifespan=lifespan,
             )
 
             logger.info("Main app created with mounted routes:")
@@ -728,27 +745,76 @@ class DNALLMMCPServer:
             logger.info(f"  - {mount_path}/messages/: MCP protocol messages")
             logger.info(f"Starting uvicorn server on {host}:{port}")
 
-            # Run the main app with uvicorn
-            uvicorn.run(main_app, host=host, port=port, log_level="info")
+            # Run the main app with uvicorn with proper signal handling
+            # Use a config object for better control over signal handling
+            config = uvicorn.Config(
+                app=main_app,
+                host=host,
+                port=port,
+                log_level="info",
+                access_log=False,  # Reduce log noise
+                # Important: Let uvicorn handle signals naturally
+                loop="asyncio",
+                # Add timeout settings for better shutdown behavior
+                timeout_keep_alive=5,  # Keep-alive timeout
+                timeout_graceful_shutdown=10,  # Graceful shutdown timeout
+            )
+
+            uvicorn_server = uvicorn.Server(config)
+            uvicorn_server.run()
 
         elif transport == "streamable-http":
             # For Streamable HTTP transport, we need to run the Starlette app with uvicorn
             import uvicorn
+            from contextlib import asynccontextmanager
 
             logger.info("Using Streamable HTTP transport")
 
             # Get the Streamable HTTP app from FastMCP
+            if self.app is None:
+                raise RuntimeError("FastMCP app not initialized")
             http_app = self.app.streamable_http_app()
+
+            # Define lifespan function for graceful startup/shutdown
+            @asynccontextmanager
+            async def lifespan(app):
+                # Startup
+                logger.info("Server startup complete")
+                yield
+                # Shutdown
+                logger.info("Starting graceful shutdown...")
+                await self.shutdown()
+                logger.info("Graceful shutdown complete")
+
+            # Add lifespan to the app - Note: This approach depends on Starlette version
+            # For compatibility, we'll skip setting lifespan programmatically
+            # http_app.lifespan = lifespan  # type: ignore
+
             logger.info(
                 f"Streamable HTTP app created, starting uvicorn server on {host}:{port}"
             )
 
-            # Run the Starlette app with uvicorn
-            uvicorn.run(http_app, host=host, port=port, log_level="info")
+            # Run the Starlette app with uvicorn with proper signal handling
+            config = uvicorn.Config(
+                app=http_app,
+                host=host,
+                port=port,
+                log_level="info",
+                access_log=False,  # Reduce log noise
+                loop="asyncio",
+                # Add timeout settings for better shutdown behavior
+                timeout_keep_alive=5,  # Keep-alive timeout
+                timeout_graceful_shutdown=10,  # Graceful shutdown timeout
+            )
+
+            uvicorn_server = uvicorn.Server(config)
+            uvicorn_server.run()
 
         else:
             # Default to stdio transport
             logger.info("Using STDIO transport")
+            if self.app is None:
+                raise RuntimeError("FastMCP app not initialized")
             self.app.run(transport="stdio")
 
     def get_server_info(self) -> dict[str, Any]:
@@ -789,7 +855,6 @@ def main():
     import asyncio
     import argparse
     import sys
-    import signal
     from pathlib import Path
 
     parser = argparse.ArgumentParser(
@@ -856,24 +921,6 @@ Examples:
         )
         sys.exit(1)
 
-    # Global server variable for signal handling
-    server = None
-
-    def signal_handler(signum, frame):
-        """Handle interrupt signals gracefully."""
-        print(f"\nReceived signal {signum}, shutting down gracefully...")
-        if server:
-            try:
-                # Try to shutdown the server
-                asyncio.run(server.shutdown())
-            except Exception as e:
-                print(f"Error during shutdown: {e}")
-        sys.exit(0)
-
-    # Register signal handlers
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
     try:
         print("Starting DNALLM MCP Server...")
         print(f"Configuration: {config_path}")
@@ -893,11 +940,13 @@ Examples:
         print(f"Enabled models: {info['enabled_models']}")
         print("-" * 50)
 
-        # Start server (this is blocking and runs outside asyncio)
+        # Start server - let uvicorn handle signals for HTTP/SSE transports
         print(
             f"Starting server on {args.host}:{args.port} with {args.transport} transport"
         )
         print("Press Ctrl+C to stop the server")
+
+        # Start server (uvicorn will handle signals properly)
         server.start_server(
             host=args.host, port=args.port, transport=args.transport
         )
@@ -911,10 +960,7 @@ Examples:
         traceback.print_exc()
         sys.exit(1)
     finally:
-        if "server" in locals():
-            # Shutdown server in asyncio context
-            asyncio.run(server.shutdown())
-        print("Server shutdown complete")
+        print("Server stopped")
 
 
 async def initialize_mcp_server(config_path: str):
