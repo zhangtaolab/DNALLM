@@ -470,8 +470,10 @@ MODEL_INFO = {
         "reference": "https://www.nature.com/articles/s42256-025-01044-4",
         "model_architecture": "LucaGPLMModel",
         "model_tags": [
-            "default-step36M", "default-step17.6M", "default-step5.6M",
-            "gene-step36.8M"
+            "default-step36M",
+            "default-step17.6M",
+            "default-step5.6M",
+            "gene-step36.8M",
         ],
         "huggingface": [
             "LucaGroup/LucaOne-default-step36M",
@@ -479,12 +481,7 @@ MODEL_INFO = {
             "LucaGroup/LucaOne-default-step5.6M",
             "LucaGroup/LucaOne-gene-step36.8M",
         ],
-        "modelscope": [
-            None,
-            None,
-            None,
-            None
-        ],
+        "modelscope": [None, None, None, None],
         "default": "lgq12697/LucaOne-default-step36M",
         "dependencies": "pip install lucagplm",
     },
