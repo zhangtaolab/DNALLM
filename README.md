@@ -25,7 +25,7 @@ DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and infe
 DNALLM supports a wide range of DNA language models including:
 
 ### Masked Language Models (MLM)
-- **DNABERT Series**: DNABERT, DNABERT-2, DNABERT-S, Plant DNABERT
+- **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
 - **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT
 
@@ -42,9 +42,12 @@ DNALLM supports a wide range of DNA language models including:
 ## 🛠️ Installation
 
 ### Prerequisites
-- Python 3.10 or higher
+- Python 3.10 or higher (Python 3.12 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
+- **Environment Manager**: Choose one of the following:
+  - Python venv (built-in)
+  - Conda/Miniconda (recommended for scientific computing)
 
 ### Quick Installation with uv (Recommended)
 
@@ -52,14 +55,7 @@ DNALLM uses uv for dependency management and packaging.
 
 [What is uv](https://docs.astral.sh/uv/) is a fast Python package manager that is 10-100x faster than traditional tools like pip.
 
-#### Install uv
-
-```bash
-# Install uv package manager
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-#### Install DNALLM
+#### Method 1: Using venv + uv
 
 ```bash
 # Clone repository
@@ -67,15 +63,47 @@ git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
 
 # Create virtual environment
-uv venv
+python -m venv .venv
 
 # Activate virtual environment
 source .venv/bin/activate  # Linux/MacOS
 # or
 .venv\Scripts\activate     # Windows
 
+# Upgrade pip (recommended)
+pip install --upgrade pip
+
+# Install uv in virtual environment
+pip install uv
+
 # Install DNALLM with base dependencies
 uv pip install -e '.[base]'
+
+# Verify installation
+python -c "import dnallm; print('DNALLM installed successfully!')"
+```
+
+#### Method 2: Using conda + uv
+
+```bash
+# Clone repository
+git clone https://github.com/zhangtaolab/DNALLM.git
+cd DNALLM
+
+# Create conda environment
+conda create -n dnallm python=3.12 -y
+
+# Activate conda environment
+conda activate dnallm
+
+# Install uv in conda environment
+conda install uv -c conda-forge
+
+# Install DNALLM with base dependencies
+uv pip install -e '.[base]'
+
+# Verify installation
+python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
 
 ### GPU Support
@@ -83,6 +111,14 @@ uv pip install -e '.[base]'
 For GPU acceleration, install the appropriate CUDA version:
 
 ```bash
+# For venv users: activate virtual environment
+source .venv/bin/activate  # Linux/MacOS
+# or
+.venv\Scripts\activate     # Windows
+
+# For conda users: activate conda environment
+# conda activate dnallm
+
 # CUDA 12.4 (recommended for recent GPUs)
 uv pip install -e '.[cuda124]'
 
@@ -97,6 +133,15 @@ Native Mamba architecture runs significantly faster than transformer-compatible 
 If you need native Mamba architecture support, after installing DNALLM dependencies, use the following command:
 
 ```bash
+# For venv users: activate virtual environment
+source .venv/bin/activate  # Linux/MacOS
+# or
+.venv\Scripts\activate     # Windows
+
+# For conda users: activate conda environment
+# conda activate dnallm
+
+# Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 ```
 
