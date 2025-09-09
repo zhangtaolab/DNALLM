@@ -1,152 +1,357 @@
+#!/usr/bin/env python3
+"""
+Main CLI entry point for DNALLM package.
+"""
+
 import click
-import yaml
-import os
-from ..finetune.trainer import DNATrainer
-from ..inference.predictor import DNAPredictor, save_predictions, save_metrics
-from ..inference.benchmark import Benchmark
-from ..inference.mutagenesis import Mutagenesis
-from ..configuration.configs import TaskConfig, TrainingConfig, InferenceConfig
+import sys
+from ..utils import get_logger
+
+logger = get_logger("dnallm.cli")
+
 
 @click.group()
+@click.version_option()
 def cli():
     """
-    DNALLM CLI: train, predict, benchmark, mutagenesis.
+    DNALLM - A toolkit for fine-tuning and inference with DNA Language Models
+
+    This toolkit provides tools for:
+    - Training DNA language models
+    - Running inference and predictions
+    - Benchmarking model performance
+    - In-silico mutagenesis analysis
+    - Generating configuration files
+    - Starting MCP (Model Context Protocol) servers
     """
     pass
 
-# ------------------------
-# Train subcommand
-# ------------------------
+
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='YAML config file with sections: task and finetune.')
-@click.option('--model-name', type=str, help='Pretrained model name or path.')
-@click.option('--train-file', type=click.Path(exists=True), help='Path to training data.')
-@click.option('--eval-file', type=click.Path(exists=True), help='Path to evaluation data.')
-@click.option('--output-dir', type=click.Path(), default=None, help='Directory for outputs.')
-@click.option('--batch-size', type=int, help='Training batch size.')
-@click.option('--learning-rate', type=float, help='Learning rate.')
-@click.option('--epochs', type=int, help='Number of epochs.')
-@click.option('--seed', type=int, help='Random seed.')
-def train(config, model_name, train_file, eval_file, output_dir,
-          batch_size, learning_rate, epochs, seed):
-    """
-    Fine-tune a DNA LLM model.
-    """
-    # Load default configs
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to training configuration file",
+)
+@click.option("--model", "-m", type=str, help="Model name or path")
+@click.option(
+    "--data", "-d", type=click.Path(exists=True), help="Path to training data"
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output directory for training results",
+)
+def train(config, model, data, output):
+    """Train a DNA language model"""
+    from ..finetune import DNATrainer
+    from ..configuration import load_config
+
     if config:
-        data = yaml.safe_load(open(config))
-        task_cfg = TaskConfig(**data.get('task', {}))
-        train_cfg = TrainingConfig(**data.get('finetune', {}))
+        # Load configuration from file
+        config_dict = load_config(config)
+        trainer = DNATrainer(config_dict)
+        trainer.train()
     else:
-        task_cfg = TaskConfig(task_type='mask')
-        train_cfg = TrainingConfig()
+        # Use command line arguments
+        if not all([model, data, output]):
+            click.echo(
+                "Error: --model, --data, and --output are required when not using --config"
+            )
+            sys.exit(1)
 
-    # Override CLI args
-    overrides = {
-        'model_name': model_name,
-        'output_dir': output_dir,
-        'seed': seed,
-    }
-    for field, val in overrides.items():
-        if val is not None:
-            setattr(train_cfg, field, val)
-    extra = {}
-    if batch_size: extra['per_device_train_batch_size'] = batch_size
-    if learning_rate: extra['learning_rate'] = learning_rate
-    if epochs: extra['num_train_epochs'] = epochs
-    # Instantiate and run trainer
-    trainer = DNATrainer(task_cfg, train_cfg, train_file, eval_file, model_name, extra_args=extra)
-    metrics = trainer.train()
-    click.echo(f"Training completed. Metrics: {metrics}")
+        # Create minimal config
+        config_dict = {
+            "model_name_or_path": model,
+            "data_path": data,
+            "output_dir": output,
+            "training_args": {
+                "num_train_epochs": 3,
+                "per_device_train_batch_size": 4,
+                "learning_rate": 5e-5,
+                "save_steps": 1000,
+                "eval_steps": 1000,
+            },
+        }
 
-# ------------------------
-# Predict subcommand
-# ------------------------
+        trainer = DNATrainer(config_dict)
+        trainer.train()
+
+
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='YAML config file with inference section.')
-@click.option('--model-path', type=click.Path(exists=True), required=True,
-              help='Path to fine-tuned model.')
-@click.option('--input-file', type=click.Path(exists=True), required=True,
-              help='Sequence file (fasta or txt).')
-@click.option('--output-dir', type=click.Path(), default=None,
-              help='Directory for predictions.')
-@click.option('--batch-size', type=int, help='Inference batch size.')
-def predict(config, model_path, input_file, output_dir, batch_size):
-    """
-    Run inference using a fine-tuned DNA LLM.
-    """
-    # Load inference config
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to prediction configuration file",
+)
+@click.option("--model", "-m", type=str, help="Model name or path")
+@click.option(
+    "--input",
+    "-i",
+    type=click.Path(exists=True),
+    help="Path to input data file",
+)
+@click.option("--output", "-o", type=click.Path(), help="Output file path")
+def predict(config, model, input, output):
+    """Run inference with a trained DNA language model"""
+    from ..inference import DNAPredictor
+    from ..configuration import load_config
+
     if config:
-        data = yaml.safe_load(open(config))
-        infer_cfg = InferenceConfig(**data.get('inference', {}))
+        # Load configuration from file
+        config_dict = load_config(config)
+        predictor = DNAPredictor(config_dict)
+        results = predictor.predict()
+
+        if output:
+            predictor.save_results(results, output)
+        else:
+            logger.info(f"Prediction results: {results}")
     else:
-        infer_cfg = InferenceConfig()
-    # Override
-    if output_dir: infer_cfg.output_dir = output_dir
-    if batch_size: infer_cfg.batch_size = batch_size
-    # Instantiate predictor
-    predictor = DNAPredictor(model_path, infer_cfg)
-    pred = predictor.predict_file(input_file)
-    # Save outputs
-    outdir = infer_cfg.output_dir or 'predictions'
-    os.makedirs(outdir, exist_ok=True)
-    save_predictions(pred, outdir)
-    click.echo(f"Predictions saved to {outdir}")
+        # Use command line arguments
+        if not all([model, input]):
+            click.echo(
+                "Error: --model and --input are required when not using --config"
+            )
+            sys.exit(1)
 
-# ------------------------
-# Benchmark subcommand
-# ------------------------
+        # Create minimal config
+        config_dict = {
+            "model_name_or_path": model,
+            "data_path": input,
+        }
+
+        predictor = DNAPredictor(config_dict)
+        results = predictor.predict()
+
+        if output:
+            predictor.save_results(results, output)
+        else:
+            logger.info(f"Prediction results: {results}")
+
+
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True), required=True,
-              help='YAML config with task, finetune, inference sections.')
-@click.option('--models', '-m', type=str,
-              help='Comma-separated list of model identifiers to benchmark.')
-@click.option('--output-dir', '-o', type=click.Path(), default='bench_results',
-              help='Directory to save metrics and plots.')
-def benchmark(config, models, output_dir):
-    """
-    Benchmark multiple fine-tuned models.
-    """
-    data = yaml.safe_load(open(config))
-    bench = Benchmark(data)
-    model_list = models.split(',') if models else None
-    metrics = bench.run(model_names=model_list)
-    os.makedirs(output_dir, exist_ok=True)
-    bench.plot(metrics, output_dir)
-    click.echo(f"Benchmark complete. Results in {output_dir}")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to benchmark configuration file",
+)
+@click.option("--model", "-m", type=str, help="Model name or path")
+@click.option(
+    "--data", "-d", type=click.Path(exists=True), help="Path to benchmark data"
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output directory for benchmark results",
+)
+def benchmark(config, model, data, output):
+    """Run benchmark evaluation on a DNA language model"""
+    from ..inference import Benchmark
+    from ..configuration import load_config
 
-# ------------------------
-# Mutagenesis subcommand
-# ------------------------
+    if config:
+        config_dict = load_config(config)
+        benchmark = Benchmark(config_dict)
+        results = benchmark.run()
+
+        if output:
+            benchmark.save_results(results, output)
+        else:
+            print(results)
+    else:
+        if not all([model, data]):
+            click.echo(
+                "Error: --model and --data are required when not using --config"
+            )
+            sys.exit(1)
+
+        config_dict = {
+            "model_name_or_path": model,
+            "data_path": data,
+        }
+
+        benchmark = Benchmark(config_dict)
+        results = benchmark.run()
+
+        if output:
+            benchmark.save_results(results, output)
+        else:
+            print(results)
+
+
 @cli.command()
-@click.option('--config', '-c', type=click.Path(exists=True),
-              help='YAML config with inference parameters.')
-@click.option('--model-path', type=click.Path(exists=True), required=True,
-              help='Path to fine-tuned model.')
-@click.option('--sequence', type=str, required=True,
-              help='Input DNA sequence or path to sequence file.')
-@click.option('--output-dir', type=click.Path(), default='mutagenesis',
-              help='Directory for mutagenesis results.')
-@click.option('--batch-size', type=int, default=None,
-              help='Batch size for mutation predictions.')
-@click.option('--strategy', type=str, default='last',
-              help='Aggregation strategy for evaluation (e.g., last, max).')
-def mutagenesis(config, model_path, sequence, output_dir, batch_size, strategy):
-    """
-    Perform in silico mutagenesis on a DNA sequence.
-    """
-    # Load inference settings
-    cfg = yaml.safe_load(open(config)) if config else {}
-    # Instantiate mutagenesis engine
-    engine = Mutagenesis(model_path, None, cfg)
-    # Run evaluation
-    results = engine.evaluate(strategy=strategy)
-    # Save and plot
-    os.makedirs(output_dir, exist_ok=True)
-    engine.plot(results, output_dir)
-    click.echo(f"Mutagenesis complete. Outputs in {output_dir}")
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    help="Path to mutagenesis configuration file",
+)
+@click.option("--model", "-m", type=str, help="Model name or path")
+@click.option("--sequence", "-s", type=str, help="DNA sequence for analysis")
+@click.option("--output", "-o", type=click.Path(), help="Output file path")
+def mutagenesis(config, model, sequence, output):
+    """Run in-silico mutagenesis analysis"""
+    from ..inference import Mutagenesis
+    from ..configuration import load_config
 
-if __name__ == '__main__':
+    if config:
+        config_dict = load_config(config)
+        mutagenesis = Mutagenesis(config_dict)
+        results = mutagenesis.run()
+
+        if output:
+            mutagenesis.save_results(results, output)
+        else:
+            print(results)
+    else:
+        if not all([model, sequence]):
+            click.echo(
+                "Error: --model and --sequence are required when not using --config"
+            )
+            sys.exit(1)
+
+        config_dict = {
+            "model_name_or_path": model,
+            "sequence": sequence,
+        }
+
+        mutagenesis = Mutagenesis(config_dict)
+        results = mutagenesis.run()
+
+        if output:
+            mutagenesis.save_results(results, output)
+        else:
+            print(results)
+
+
+@cli.command()
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file path for the configuration",
+)
+@click.option(
+    "--preview", "-p", is_flag=True, help="Preview configuration before saving"
+)
+@click.option(
+    "--non-interactive",
+    "-n",
+    is_flag=True,
+    help="Use non-interactive mode with defaults",
+)
+def model_config_generator(output, preview, non_interactive):
+    """Generate DNALLM configuration files interactively"""
+    try:
+        # Import and run the configuration generator
+        from .model_config_generator import main as config_generator_main
+
+        # Create sys.argv-like arguments for the config generator
+        import sys
+
+        original_argv = sys.argv.copy()
+
+        # Build arguments for the config generator
+        args = ["model_config_generator"]
+        if output:
+            args.extend(["--output", output])
+        if preview:
+            args.append("--preview")
+        if non_interactive:
+            args.append("--non-interactive")
+
+        # Temporarily replace sys.argv
+        sys.argv = args
+
+        try:
+            config_generator_main()
+        finally:
+            # Restore original sys.argv
+            sys.argv = original_argv
+
+    except ImportError as e:
+        click.echo(f"Error importing configuration generator: {e}")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Configuration generation failed: {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.option(
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    default="dnallm/mcp/configs/mcp_server_config.yaml",
+    help="Path to MCP server configuration file",
+)
+@click.option(
+    "--host",
+    type=str,
+    default="127.0.0.1",
+    help="Host to bind the server to",
+)
+@click.option(
+    "--port", "-p", type=int, default=8000, help="Port to bind the server to"
+)
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]),
+    default="INFO",
+    help="Logging level",
+)
+@click.option(
+    "--transport",
+    type=click.Choice(["stdio", "sse", "streamable-http"]),
+    default="stdio",
+    help="Transport protocol to use",
+)
+def mcp_server(config, host, port, log_level, transport):
+    """Start MCP (Model Context Protocol) server"""
+    try:
+        # Import and run the MCP server
+        from ..mcp.server import main as mcp_server_main
+
+        # Create sys.argv-like arguments for the MCP server
+        import sys
+
+        original_argv = sys.argv.copy()
+
+        # Build arguments for the MCP server
+        args = ["mcp_server"]
+        if config:
+            args.extend(["--config", config])
+        if host:
+            args.extend(["--host", host])
+        if port:
+            args.extend(["--port", str(port)])
+        if log_level:
+            args.extend(["--log-level", log_level])
+        if transport:
+            args.extend(["--transport", transport])
+
+        # Temporarily replace sys.argv
+        sys.argv = args
+
+        try:
+            mcp_server_main()
+        finally:
+            # Restore original sys.argv
+            sys.argv = original_argv
+
+    except ImportError as e:
+        click.echo(f"Error importing MCP server: {e}")
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"MCP server startup failed: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
     cli()

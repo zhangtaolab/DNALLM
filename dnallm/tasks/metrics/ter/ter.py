@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" TER metric as available in sacrebleu. """
+"""TER metric as available in sacrebleu."""
+
 import datasets
 import sacrebleu as scb
 from packaging import version
@@ -150,7 +151,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Ter(evaluate.Metric):
     def _info(self):
         if version.parse(scb.__version__) < version.parse("1.4.12"):
@@ -167,7 +170,10 @@ class Ter(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -198,8 +204,13 @@ class Ter(evaluate.Metric):
 
         references_per_prediction = len(references[0])
         if any(len(refs) != references_per_prediction for refs in references):
-            raise ValueError("Sacrebleu requires the same number of references for each prediction")
-        transformed_references = [[refs[i] for refs in references] for i in range(references_per_prediction)]
+            raise ValueError(
+                "Sacrebleu requires the same number of references for each prediction"
+            )
+        transformed_references = [
+            [refs[i] for refs in references]
+            for i in range(references_per_prediction)
+        ]
 
         sb_ter = TER(
             normalized=normalized,
@@ -209,4 +220,8 @@ class Ter(evaluate.Metric):
         )
         output = sb_ter.corpus_score(predictions, transformed_references)
 
-        return {"score": output.score, "num_edits": output.num_edits, "ref_length": output.ref_length}
+        return {
+            "score": output.score,
+            "num_edits": output.num_edits,
+            "ref_length": output.ref_length,
+        }

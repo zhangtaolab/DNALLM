@@ -11,8 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" CoVal metric. """
-import coval  # From: git+https://github.com/ns-moosavi/coval.git noqa: F401
+"""CoVal metric."""
+
 import datasets
 from coval.conll import reader, util
 from coval.eval import evaluator
@@ -44,10 +44,10 @@ address = {USA},
 url = {https://doi.org/10.3115/1072399.1072405},
 doi = {10.3115/1072399.1072405},
 booktitle = {Proceedings of the 6th Conference on Message Understanding},
-pages = {45–52},
+pages = {45-52},
 numpages = {8},
 location = {Columbia, Maryland},
-series = {MUC6 ’95}
+series = {MUC6 `95}
 }
 
 @INPROCEEDINGS{Bagga98algorithmsfor,
@@ -166,9 +166,14 @@ Examples:
 
 
 def get_coref_infos(
-    key_lines, sys_lines, NP_only=False, remove_nested=False, keep_singletons=True, min_span=False, doc="dummy_doc"
+    key_lines,
+    sys_lines,
+    NP_only=False,  # noqa: N803
+    remove_nested=False,
+    keep_singletons=True,
+    min_span=False,
+    doc="dummy_doc",
 ):
-
     key_doc_lines = {doc: key_lines}
     sys_doc_lines = {doc: sys_lines}
 
@@ -181,31 +186,52 @@ def get_coref_infos(
     key_singletons_num = 0
     sys_singletons_num = 0
 
-    key_clusters, singletons_num = reader.get_doc_mentions(doc, key_doc_lines[doc], keep_singletons)
+    key_clusters, singletons_num = reader.get_doc_mentions(
+        doc, key_doc_lines[doc], keep_singletons
+    )
     key_singletons_num += singletons_num
 
     if NP_only or min_span:
-        key_clusters = reader.set_annotated_parse_trees(key_clusters, key_doc_lines[doc], NP_only, min_span)
+        key_clusters = reader.set_annotated_parse_trees(
+            key_clusters, key_doc_lines[doc], NP_only, min_span
+        )
 
-    sys_clusters, singletons_num = reader.get_doc_mentions(doc, sys_doc_lines[doc], keep_singletons)
+    sys_clusters, singletons_num = reader.get_doc_mentions(
+        doc, sys_doc_lines[doc], keep_singletons
+    )
     sys_singletons_num += singletons_num
 
     if NP_only or min_span:
-        sys_clusters = reader.set_annotated_parse_trees(sys_clusters, key_doc_lines[doc], NP_only, min_span)
+        sys_clusters = reader.set_annotated_parse_trees(
+            sys_clusters, key_doc_lines[doc], NP_only, min_span
+        )
 
     if remove_nested:
-        nested_mentions, removed_clusters = reader.remove_nested_coref_mentions(key_clusters, keep_singletons)
+        nested_mentions, removed_clusters = (
+            reader.remove_nested_coref_mentions(key_clusters, keep_singletons)
+        )
         key_nested_coref_num += nested_mentions
         key_removed_nested_clusters += removed_clusters
 
-        nested_mentions, removed_clusters = reader.remove_nested_coref_mentions(sys_clusters, keep_singletons)
+        nested_mentions, removed_clusters = (
+            reader.remove_nested_coref_mentions(sys_clusters, keep_singletons)
+        )
         sys_nested_coref_num += nested_mentions
         sys_removed_nested_clusters += removed_clusters
 
-    sys_mention_key_cluster = reader.get_mention_assignments(sys_clusters, key_clusters)
-    key_mention_sys_cluster = reader.get_mention_assignments(key_clusters, sys_clusters)
+    sys_mention_key_cluster = reader.get_mention_assignments(
+        sys_clusters, key_clusters
+    )
+    key_mention_sys_cluster = reader.get_mention_assignments(
+        key_clusters, sys_clusters
+    )
 
-    doc_coref_infos[doc] = (key_clusters, sys_clusters, key_mention_sys_cluster, sys_mention_key_cluster)
+    doc_coref_infos[doc] = (
+        key_clusters,
+        sys_clusters,
+        key_mention_sys_cluster,
+        sys_mention_key_cluster,
+    )
 
     if remove_nested:
         logger.info(
@@ -226,19 +252,37 @@ def get_coref_infos(
     return doc_coref_infos
 
 
-def compute_score(key_lines, sys_lines, metrics, NP_only, remove_nested, keep_singletons, min_span):
-    doc_coref_infos = get_coref_infos(key_lines, sys_lines, NP_only, remove_nested, keep_singletons, min_span)
+def compute_score(
+    key_lines,
+    sys_lines,
+    metrics,
+    NP_only,  # noqa: N803
+    remove_nested,
+    keep_singletons,
+    min_span,
+):
+    doc_coref_infos = get_coref_infos(
+        key_lines, sys_lines, NP_only, remove_nested, keep_singletons, min_span
+    )
 
     output_scores = {}
     conll = 0
     conll_subparts_num = 0
 
     for name, metric in metrics:
-        recall, precision, f1 = evaluator.evaluate_documents(doc_coref_infos, metric, beta=1)
+        recall, precision, f1 = evaluator.evaluate_documents(
+            doc_coref_infos, metric, beta=1
+        )
         if name in ["muc", "bcub", "ceafe"]:
             conll += f1
             conll_subparts_num += 1
-        output_scores.update({f"{name}/recall": recall, f"{name}/precision": precision, f"{name}/f1": f1})
+        output_scores.update(
+            {
+                f"{name}/recall": recall,
+                f"{name}/precision": precision,
+                f"{name}/f1": f1,
+            }
+        )
 
         logger.info(
             name.ljust(10),
@@ -269,7 +313,9 @@ def check_gold_parse_annotation(key_lines):
     return has_gold_parse
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Coval(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -291,7 +337,13 @@ class Coval(evaluate.Metric):
         )
 
     def _compute(
-        self, predictions, references, keep_singletons=True, NP_only=False, min_span=False, remove_nested=False
+        self,
+        predictions,
+        references,
+        keep_singletons=True,
+        NP_only=False,  # noqa: N803
+        min_span=False,
+        remove_nested=False,
     ):
         allmetrics = [
             ("mentions", evaluator.mentions),
@@ -304,7 +356,9 @@ class Coval(evaluate.Metric):
         if min_span:
             has_gold_parse = util.check_gold_parse_annotation(references)
             if not has_gold_parse:
-                raise NotImplementedError("References should have gold parse annotation to use 'min_span'.")
+                raise NotImplementedError(
+                    "References should have gold parse annotation to use 'min_span'."
+                )
                 # util.parse_key_file(key_file)
                 # key_file = key_file + ".parsed"
 

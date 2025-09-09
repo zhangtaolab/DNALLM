@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """CharacTER metric, a character-based TER variant, for machine translation."""
+
 import math
 from statistics import mean, median
-from typing import Iterable, List, Union
+from collections.abc import Iterable
 
 import cer
 import datasets
@@ -89,7 +90,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Character(evaluate.Metric):
     """CharacTer is a character-level metric inspired by the commonly applied translation edit rate (TER)."""
 
@@ -101,28 +104,38 @@ class Character(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
                 datasets.Features(
-                    {"predictions": Value("string", id="prediction"), "references": Value("string", id="reference")}
+                    {
+                        "predictions": Value("string", id="prediction"),
+                        "references": Value("string", id="reference"),
+                    }
                 ),
                 datasets.Features(
                     {
                         "predictions": Value("string", id="prediction"),
-                        "references": Sequence(Value("string", id="reference"), id="references"),
+                        "references": Sequence(
+                            Value("string", id="reference"), id="references"
+                        ),
                     }
                 ),
             ],
             homepage="https://github.com/bramvanroy/CharacTER",
-            codebase_urls=["https://github.com/bramvanroy/CharacTER", "https://github.com/rwth-i6/CharacTER"],
+            codebase_urls=[
+                "https://github.com/bramvanroy/CharacTER",
+                "https://github.com/rwth-i6/CharacTER",
+            ],
         )
 
     def _compute(
         self,
         predictions: Iterable[str],
-        references: Union[Iterable[str], Iterable[Iterable[str]]],
+        references: Iterable[str] | Iterable[Iterable[str]],
         aggregate: str = "mean",
         return_all_scores: bool = False,
     ):
         if aggregate not in ("mean", "sum", "median"):
-            raise ValueError("'aggregate' must be one of 'sum', 'mean', 'median'")
+            raise ValueError(
+                "'aggregate' must be one of 'sum', 'mean', 'median'"
+            )
 
         predictions = [p.split() for p in predictions]
         # Predictions and references have the same internal types (both lists of strings),
@@ -131,7 +144,7 @@ class Character(evaluate.Metric):
             references = [r.split() for r in references]
 
             scores_d = cer.calculate_cer_corpus(predictions, references)
-            cer_scores: List[float] = scores_d["cer_scores"]
+            cer_scores: list[float] = scores_d["cer_scores"]
 
             if aggregate == "sum":
                 score = sum(cer_scores)
@@ -145,7 +158,7 @@ class Character(evaluate.Metric):
             references = [[r.split() for r in refs] for refs in references]
 
             cer_scores = []
-            for pred, refs in zip(predictions, references):
+            for pred, refs in zip(predictions, references, strict=False):
                 min_score = math.inf
                 for ref in refs:
                     score = calculate_cer(pred, ref)

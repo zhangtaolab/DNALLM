@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" IndicGLUE benchmark metric. """
+"""IndicGLUE benchmark metric."""
 
 import datasets
 import numpy as np
 from scipy.spatial.distance import cdist
-from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import f1_score
 
 import evaluate
@@ -102,7 +101,9 @@ def precision_at_10(en_sentvecs, in_sentvecs):
     return float(matches.mean())
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class IndicGlue(evaluate.Metric):
     def _info(self):
         if self.config_name not in [

@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" BLEURT metric. """
+"""BLEURT metric."""
 
 import os
 
 import datasets
-from bleurt import score  # From: git+https://github.com/google-research/bleurt.git
+from bleurt import (
+    score,
+)  # From: git+https://github.com/google-research/bleurt.git
 
 import evaluate
 
@@ -76,10 +78,11 @@ CHECKPOINT_URLS = {
 }
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class BLEURT(evaluate.Metric):
     def _info(self):
-
         return evaluate.MetricInfo(
             description=_DESCRIPTION,
             citation=_CITATION,
@@ -92,11 +95,13 @@ class BLEURT(evaluate.Metric):
                 }
             ),
             codebase_urls=["https://github.com/google-research/bleurt"],
-            reference_urls=["https://github.com/google-research/bleurt", "https://arxiv.org/abs/2004.04696"],
+            reference_urls=[
+                "https://github.com/google-research/bleurt",
+                "https://arxiv.org/abs/2004.04696",
+            ],
         )
 
     def _download_and_prepare(self, dl_manager):
-
         # check that config name specifies a valid BLEURT model
         if self.config_name == "default":
             logger.warning(
@@ -117,9 +122,15 @@ class BLEURT(evaluate.Metric):
             )
 
         # download the model checkpoint specified by self.config_name and set up the scorer
-        model_path = dl_manager.download_and_extract(CHECKPOINT_URLS[checkpoint_name])
-        self.scorer = score.BleurtScorer(os.path.join(model_path, checkpoint_name))
+        model_path = dl_manager.download_and_extract(
+            CHECKPOINT_URLS[checkpoint_name]
+        )
+        self.scorer = score.BleurtScorer(
+            os.path.join(model_path, checkpoint_name)
+        )
 
     def _compute(self, predictions, references):
-        scores = self.scorer.score(references=references, candidates=predictions)
+        scores = self.scorer.score(
+            references=references, candidates=predictions
+        )
         return {"scores": scores}

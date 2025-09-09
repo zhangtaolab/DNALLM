@@ -6,6 +6,6 @@ from evaluate.utils import launch_gradio_widget
 
 sys.path = [p for p in sys.path if p != "/home/user/app"]
 module = evaluate.load("seqeval")
-sys.path = ["/home/user/app"] + sys.path
+sys.path = ["/home/user/app", *sys.path]
 
 launch_gradio_widget(module)

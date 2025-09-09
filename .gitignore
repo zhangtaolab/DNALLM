@@ -48,6 +48,7 @@ uv.lock
 
 # Testing
 .coverage
+.coverage.*
 coverage.xml
 .pytest_cache/
 htmlcov/
@@ -78,10 +79,12 @@ Thumbs.db
 *.db
 *.sqlite
 *.log
+*.bak
 
 # Project specific
 dnallm/models/downloads/
-dnallm/data/cache/ 
+dnallm/data/cache/
+dnallm/ui/tmp/
 
 # Jupyter Notebook tmp files
 .ipynb_checkpoints/
@@ -93,6 +96,10 @@ example/notebooks/*/results*/
 # Marimo cache
 .marimo-cache/
 .marimo-env/
+example/marimo/*/__marimo__/
 
 # Mkdocs cache
 site
+
+# MyPy cache
+.mypy_cache/

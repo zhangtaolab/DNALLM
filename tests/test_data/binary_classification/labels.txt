@@ -1,0 +1,3 @@
+label,label_name
+0,not_promoter
+1,promoter

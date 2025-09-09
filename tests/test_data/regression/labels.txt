@@ -1,0 +1,2 @@
+label,label_name
+number,promoter_strength_in_tobacco_leaves

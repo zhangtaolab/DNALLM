@@ -15,7 +15,12 @@
 
 import datasets
 import torch
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, Trainer, TrainingArguments
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    Trainer,
+    TrainingArguments,
+)
 
 import evaluate
 
@@ -54,7 +59,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class FRUGALSCORE(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -75,7 +82,9 @@ class FRUGALSCORE(evaluate.Metric):
             checkpoint = "moussaKam/frugalscore_tiny_bert-base_bert-score"
         else:
             checkpoint = self.config_name
-        self.model = AutoModelForSequenceClassification.from_pretrained(checkpoint)
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            checkpoint
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
     def _compute(
@@ -87,11 +96,13 @@ class FRUGALSCORE(evaluate.Metric):
         device=None,
     ):
         """Returns the scores"""
-        assert len(predictions) == len(
-            references
-        ), "predictions and references should have the same number of sentences."
+        assert len(predictions) == len(references), (
+            "predictions and references should have the same number of sentences."
+        )
         if device is not None:
-            assert device in ["gpu", "cpu"], "device should be either gpu or cpu."
+            assert device in ["gpu", "cpu"], (
+                "device should be either gpu or cpu."
+            )
         else:
             device = "gpu" if torch.cuda.is_available() else "cpu"
         training_args = TrainingArguments(
@@ -107,7 +118,11 @@ class FRUGALSCORE(evaluate.Metric):
 
         def tokenize_function(data):
             return self.tokenizer(
-                data["sentence1"], data["sentence2"], max_length=max_length, truncation=True, padding=True
+                data["sentence1"],
+                data["sentence2"],
+                max_length=max_length,
+                truncation=True,
+                padding=True,
             )
 
         tokenized_datasets = raw_datasets.map(tokenize_function, batched=True)

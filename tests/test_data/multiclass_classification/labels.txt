@@ -1,0 +1,4 @@
+label,label_name
+0,not_open_chromatin
+1,full_open_chromatin
+2,partial_open_chromatin

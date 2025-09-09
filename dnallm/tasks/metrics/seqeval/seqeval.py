@@ -11,10 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" seqeval metric. """
+"""seqeval metric."""
 
 import importlib
-from typing import List, Optional, Union
 
 import datasets
 from seqeval.metrics import accuracy_score, classification_report
@@ -99,7 +98,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Seqeval(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -109,8 +110,12 @@ class Seqeval(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "predictions": datasets.Sequence(datasets.Value("string", id="label"), id="sequence"),
-                    "references": datasets.Sequence(datasets.Value("string", id="label"), id="sequence"),
+                    "predictions": datasets.Sequence(
+                        datasets.Value("string", id="label"), id="sequence"
+                    ),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="label"), id="sequence"
+                    ),
                 }
             ),
             codebase_urls=["https://github.com/chakki-works/seqeval"],
@@ -122,17 +127,19 @@ class Seqeval(evaluate.Metric):
         predictions,
         references,
         suffix: bool = False,
-        scheme: Optional[str] = None,
-        mode: Optional[str] = None,
-        sample_weight: Optional[List[int]] = None,
-        zero_division: Union[str, int] = "warn",
+        scheme: str | None = None,
+        mode: str | None = None,
+        sample_weight: list[int] | None = None,
+        zero_division: str | int = "warn",
     ):
         if scheme is not None:
             try:
                 scheme_module = importlib.import_module("seqeval.scheme")
                 scheme = getattr(scheme_module, scheme)
-            except AttributeError:
-                raise ValueError(f"Scheme should be one of [IOB1, IOB2, IOE1, IOE2, IOBES, BILOU], got {scheme}")
+            except AttributeError as e:
+                raise ValueError(
+                    f"Scheme should be one of [IOB1, IOB2, IOE1, IOE2, IOBES, BILOU], got {scheme}"
+                ) from e
         report = classification_report(
             y_true=references,
             y_pred=predictions,
@@ -159,6 +166,8 @@ class Seqeval(evaluate.Metric):
         scores["overall_precision"] = overall_score["precision"]
         scores["overall_recall"] = overall_score["recall"]
         scores["overall_f1"] = overall_score["f1-score"]
-        scores["overall_accuracy"] = accuracy_score(y_true=references, y_pred=predictions)
+        scores["overall_accuracy"] = accuracy_score(
+            y_true=references, y_pred=predictions
+        )
 
         return scores

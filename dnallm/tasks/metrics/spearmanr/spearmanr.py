@@ -96,7 +96,9 @@ _CITATION = r"""\
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Spearmanr(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -109,7 +111,9 @@ class Spearmanr(evaluate.Metric):
                     "references": datasets.Value("float"),
                 }
             ),
-            reference_urls=["https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html"],
+            reference_urls=[
+                "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html"
+            ],
         )
 
     def _compute(self, predictions, references, return_pvalue=False):

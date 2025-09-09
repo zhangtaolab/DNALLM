@@ -85,7 +85,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Mse(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -110,10 +112,20 @@ class Mse(evaluate.Metric):
                 "references": datasets.Value("float"),
             }
 
-    def _compute(self, predictions, references, sample_weight=None, multioutput="uniform_average", squared=True):
-
+    def _compute(
+        self,
+        predictions,
+        references,
+        sample_weight=None,
+        multioutput="uniform_average",
+        squared=True,
+    ):
         mse = mean_squared_error(
-            references, predictions, sample_weight=sample_weight, multioutput=multioutput, squared=squared
+            references,
+            predictions,
+            sample_weight=sample_weight,
+            multioutput=multioutput,
+            squared=squared,
         )
 
         return {"mse": mse}

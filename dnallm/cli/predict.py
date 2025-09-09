@@ -1,42 +1,41 @@
-import click
-from ..inference.predictor import DNAPredictor
-from ..inference.config import InferenceConfig
+#!/usr/bin/env python3
+"""
+Prediction CLI module for DNALLM package.
+"""
 
-@click.command()
-@click.option("--model-type", type=str, required=True,
-              help="Model type: dnabert/plant_dna/nucleotide")
-@click.option("--model-path", type=str, required=True,
-              help="Path to fine-tuned model")
-@click.option("--input-file", type=str, required=True,
-              help="Input FASTA file path")
-@click.option("--output-dir", type=str, required=True,
-              help="Output directory for predictions")
-@click.option("--batch-size", type=int, default=32,
-              help="Batch size for inference")
-@click.option("--device", type=str, default="cuda",
-              help="Device to run inference on (cuda/cpu)")
-@click.option("--use-fp16", is_flag=True,
-              help="Use half precision for inference")
-def main(model_type: str, model_path: str, input_file: str, output_dir: str,
-         batch_size: int, device: str, use_fp16: bool):
-    """Run inference with fine-tuned DNA Language Model"""
-    
-    # Create config
-    config = InferenceConfig(
-        model_path=model_path,
-        batch_size=batch_size,
-        device=device,
-        use_fp16=use_fp16,
-        output_dir=output_dir
-    )
-    
-    # Initialize predictor
-    predictor = DNAPredictor(model_type, model_path, config)
-    
-    # Load sequences
-    with open(input_file) as f:
-        sequences = [line.strip() for line in f if not line.startswith(">")]
-    
-    # Run prediction
-    predictions = predictor.predict(sequences, save_to_file=True)
-    click.echo(f"Predictions saved to {output_dir}") 
+import sys
+
+
+def main():
+    """Main prediction function"""
+    from ..inference import DNAPredictor
+    from ..configuration import load_config
+
+    # This function will be called from the main CLI
+    # For standalone usage, we can add command line parsing here
+    if len(sys.argv) > 1:
+        # Simple command line interface for standalone usage
+        if len(sys.argv) < 3:
+            print(
+                "Usage: python -m dnallm.cli.predict <config_file> <model_path>"
+            )
+            sys.exit(1)
+
+        config_file = sys.argv[1]
+        # model_path = sys.argv[2]  # Not used in current implementation
+
+        try:
+            config_dict = load_config(config_file)
+            predictor = DNAPredictor(config_dict)
+            results = predictor.predict()
+            print(results)
+        except Exception as e:
+            print(f"Prediction failed: {e}")
+            sys.exit(1)
+    else:
+        print("DNALLM Prediction Module")
+        print("Use the main CLI: dnallm predict --help")
+
+
+if __name__ == "__main__":
+    main()

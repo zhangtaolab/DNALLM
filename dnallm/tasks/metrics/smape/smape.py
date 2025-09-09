@@ -80,7 +80,9 @@ Examples:
 """
 
 
-def symmetric_mean_absolute_percentage_error(y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"):
+def symmetric_mean_absolute_percentage_error(
+    y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
+):
     """Symmetric Mean absolute percentage error (sMAPE) metric using sklearn's api and helpers.
 
     Parameters
@@ -108,10 +110,19 @@ def symmetric_mean_absolute_percentage_error(y_true, y_pred, *, sample_weight=No
         weighted average of all output errors is returned.
         sMAPE output is non-negative floating point. The best value is 0.0.
     """
-    y_type, y_true, y_pred, multioutput = _check_reg_targets(y_true, y_pred, multioutput)
+    y_type, y_true, y_pred, multioutput = _check_reg_targets(
+        y_true, y_pred, multioutput
+    )
     check_consistent_length(y_true, y_pred, sample_weight)
     epsilon = np.finfo(np.float64).eps
-    smape = 2 * np.abs(y_pred - y_true) / (np.maximum(np.abs(y_true), epsilon) + np.maximum(np.abs(y_pred), epsilon))
+    smape = (
+        2
+        * np.abs(y_pred - y_true)
+        / (
+            np.maximum(np.abs(y_true), epsilon)
+            + np.maximum(np.abs(y_pred), epsilon)
+        )
+    )
     output_errors = np.average(smape, weights=sample_weight, axis=0)
     if isinstance(multioutput, str):
         if multioutput == "raw_values":
@@ -123,7 +134,9 @@ def symmetric_mean_absolute_percentage_error(y_true, y_pred, *, sample_weight=No
     return np.average(output_errors, weights=multioutput)
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Smape(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -146,8 +159,13 @@ class Smape(evaluate.Metric):
                 "references": datasets.Value("float"),
             }
 
-    def _compute(self, predictions, references, sample_weight=None, multioutput="uniform_average"):
-
+    def _compute(
+        self,
+        predictions,
+        references,
+        sample_weight=None,
+        multioutput="uniform_average",
+    ):
         smape_score = symmetric_mean_absolute_percentage_error(
             references,
             predictions,

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" CUAD metric. """
+"""CUAD metric."""
 
 import datasets
 
@@ -68,7 +68,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class CUAD(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -79,7 +81,9 @@ class CUAD(evaluate.Metric):
                 {
                     "predictions": {
                         "id": datasets.Value("string"),
-                        "prediction_text": datasets.features.Sequence(datasets.Value("string")),
+                        "prediction_text": datasets.features.Sequence(
+                            datasets.Value("string")
+                        ),
                     },
                     "references": {
                         "id": datasets.Value("string"),
@@ -97,14 +101,20 @@ class CUAD(evaluate.Metric):
         )
 
     def _compute(self, predictions, references):
-        pred_dict = {prediction["id"]: prediction["prediction_text"] for prediction in predictions}
+        pred_dict = {
+            prediction["id"]: prediction["prediction_text"]
+            for prediction in predictions
+        }
         dataset = [
             {
                 "paragraphs": [
                     {
                         "qas": [
                             {
-                                "answers": [{"text": answer_text} for answer_text in ref["answers"]["text"]],
+                                "answers": [
+                                    {"text": answer_text}
+                                    for answer_text in ref["answers"]["text"]
+                                ],
                                 "id": ref["id"],
                             }
                             for ref in references

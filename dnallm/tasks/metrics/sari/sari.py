@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" SARI metric."""
+"""SARI metric."""
 
 from collections import Counter
 
@@ -79,7 +79,7 @@ Examples:
 """
 
 
-def SARIngram(sgrams, cgrams, rgramslist, numref):
+def SARIngram(sgrams, cgrams, rgramslist, numref):  # noqa: N802
     rgramsall = [rgram for rgrams in rgramslist for rgram in rgrams]
     rgramcounter = Counter(rgramsall)
 
@@ -101,7 +101,9 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
     keeptmpscore1 = 0
     keeptmpscore2 = 0
     for keepgram in keepgramcountergood_rep:
-        keeptmpscore1 += keepgramcountergood_rep[keepgram] / keepgramcounter_rep[keepgram]
+        keeptmpscore1 += (
+            keepgramcountergood_rep[keepgram] / keepgramcounter_rep[keepgram]
+        )
         # Fix an alleged bug [2] in the keep score computation.
         # keeptmpscore2 += keepgramcountergood_rep[keepgram] / keepgramcounterall_rep[keepgram]
         keeptmpscore2 += keepgramcountergood_rep[keepgram]
@@ -117,7 +119,12 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
         keepscore_recall = keeptmpscore2 / sum(keepgramcounterall_rep.values())
     keepscore = 0
     if keepscore_precision > 0 or keepscore_recall > 0:
-        keepscore = 2 * keepscore_precision * keepscore_recall / (keepscore_precision + keepscore_recall)
+        keepscore = (
+            2
+            * keepscore_precision
+            * keepscore_recall
+            / (keepscore_precision + keepscore_recall)
+        )
 
     # DELETION
     delgramcounter_rep = sgramcounter_rep - cgramcounter_rep
@@ -126,8 +133,12 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
     deltmpscore1 = 0
     deltmpscore2 = 0
     for delgram in delgramcountergood_rep:
-        deltmpscore1 += delgramcountergood_rep[delgram] / delgramcounter_rep[delgram]
-        deltmpscore2 += delgramcountergood_rep[delgram] / delgramcounterall_rep[delgram]
+        deltmpscore1 += (
+            delgramcountergood_rep[delgram] / delgramcounter_rep[delgram]
+        )
+        deltmpscore2 += (
+            delgramcountergood_rep[delgram] / delgramcounterall_rep[delgram]
+        )
     # Define 0/0=1 instead of 0 to give higher scores for predictions that match
     # a target exactly.
     delscore_precision = 1
@@ -140,7 +151,7 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
     addgramcounterall = set(rgramcounter) - set(sgramcounter)
 
     addtmpscore = 0
-    for addgram in addgramcountergood:
+    for _addgram in addgramcountergood:
         addtmpscore += 1
 
     # Define 0/0=1 instead of 0 to give higher scores for predictions that match
@@ -153,12 +164,17 @@ def SARIngram(sgrams, cgrams, rgramslist, numref):
         addscore_recall = addtmpscore / len(addgramcounterall)
     addscore = 0
     if addscore_precision > 0 or addscore_recall > 0:
-        addscore = 2 * addscore_precision * addscore_recall / (addscore_precision + addscore_recall)
+        addscore = (
+            2
+            * addscore_precision
+            * addscore_recall
+            / (addscore_precision + addscore_recall)
+        )
 
     return (keepscore, delscore_precision, addscore)
 
 
-def SARIsent(ssent, csent, rsents):
+def SARIsent(ssent, csent, rsents):  # noqa: N802
     numref = len(rsents)
 
     s1grams = ssent.split(" ")
@@ -185,10 +201,20 @@ def SARIsent(ssent, csent, rsents):
                 r2gram = r1grams[i] + " " + r1grams[i + 1]
                 r2grams.append(r2gram)
             if i < len(r1grams) - 2:
-                r3gram = r1grams[i] + " " + r1grams[i + 1] + " " + r1grams[i + 2]
+                r3gram = (
+                    r1grams[i] + " " + r1grams[i + 1] + " " + r1grams[i + 2]
+                )
                 r3grams.append(r3gram)
             if i < len(r1grams) - 3:
-                r4gram = r1grams[i] + " " + r1grams[i + 1] + " " + r1grams[i + 2] + " " + r1grams[i + 3]
+                r4gram = (
+                    r1grams[i]
+                    + " "
+                    + r1grams[i + 1]
+                    + " "
+                    + r1grams[i + 2]
+                    + " "
+                    + r1grams[i + 3]
+                )
                 r4grams.append(r4gram)
         r2gramslist.append(r2grams)
         r3gramslist.append(r3grams)
@@ -202,7 +228,15 @@ def SARIsent(ssent, csent, rsents):
             s3gram = s1grams[i] + " " + s1grams[i + 1] + " " + s1grams[i + 2]
             s3grams.append(s3gram)
         if i < len(s1grams) - 3:
-            s4gram = s1grams[i] + " " + s1grams[i + 1] + " " + s1grams[i + 2] + " " + s1grams[i + 3]
+            s4gram = (
+                s1grams[i]
+                + " "
+                + s1grams[i + 1]
+                + " "
+                + s1grams[i + 2]
+                + " "
+                + s1grams[i + 3]
+            )
             s4grams.append(s4gram)
 
     for i in range(0, len(c1grams) - 1):
@@ -213,13 +247,29 @@ def SARIsent(ssent, csent, rsents):
             c3gram = c1grams[i] + " " + c1grams[i + 1] + " " + c1grams[i + 2]
             c3grams.append(c3gram)
         if i < len(c1grams) - 3:
-            c4gram = c1grams[i] + " " + c1grams[i + 1] + " " + c1grams[i + 2] + " " + c1grams[i + 3]
+            c4gram = (
+                c1grams[i]
+                + " "
+                + c1grams[i + 1]
+                + " "
+                + c1grams[i + 2]
+                + " "
+                + c1grams[i + 3]
+            )
             c4grams.append(c4gram)
 
-    (keep1score, del1score, add1score) = SARIngram(s1grams, c1grams, r1gramslist, numref)
-    (keep2score, del2score, add2score) = SARIngram(s2grams, c2grams, r2gramslist, numref)
-    (keep3score, del3score, add3score) = SARIngram(s3grams, c3grams, r3gramslist, numref)
-    (keep4score, del4score, add4score) = SARIngram(s4grams, c4grams, r4gramslist, numref)
+    (keep1score, del1score, add1score) = SARIngram(
+        s1grams, c1grams, r1gramslist, numref
+    )
+    (keep2score, del2score, add2score) = SARIngram(
+        s2grams, c2grams, r2gramslist, numref
+    )
+    (keep3score, del3score, add3score) = SARIngram(
+        s3grams, c3grams, r3gramslist, numref
+    )
+    (keep4score, del4score, add4score) = SARIngram(
+        s4grams, c4grams, r4gramslist, numref
+    )
     avgkeepscore = sum([keep1score, keep2score, keep3score, keep4score]) / 4
     avgdelscore = sum([del1score, del2score, del3score, del4score]) / 4
     avgaddscore = sum([add1score, add2score, add3score, add4score]) / 4
@@ -227,8 +277,12 @@ def SARIsent(ssent, csent, rsents):
     return finalscore
 
 
-def normalize(sentence, lowercase: bool = True, tokenizer: str = "13a", return_str: bool = True):
-
+def normalize(
+    sentence,
+    lowercase: bool = True,
+    tokenizer: str = "13a",
+    return_str: bool = True,
+):
     # Normalization is requried for the ASSET dataset (one of the primary
     # datasets in sentence simplification) to allow using space
     # to split the sentence. Even though Wiki-Auto and TURK datasets,
@@ -241,13 +295,19 @@ def normalize(sentence, lowercase: bool = True, tokenizer: str = "13a", return_s
 
     if tokenizer in ["13a", "intl"]:
         if version.parse(sacrebleu.__version__).major >= 2:
-            normalized_sent = sacrebleu.metrics.bleu._get_tokenizer(tokenizer)()(sentence)
+            normalized_sent = sacrebleu.metrics.bleu._get_tokenizer(
+                tokenizer
+            )()(sentence)
         else:
             normalized_sent = sacrebleu.TOKENIZERS[tokenizer]()(sentence)
     elif tokenizer == "moses":
-        normalized_sent = sacremoses.MosesTokenizer().tokenize(sentence, return_str=True, escape=False)
+        normalized_sent = sacremoses.MosesTokenizer().tokenize(
+            sentence, return_str=True, escape=False
+        )
     elif tokenizer == "penn":
-        normalized_sent = sacremoses.MosesTokenizer().penn_tokenize(sentence, return_str=True)
+        normalized_sent = sacremoses.MosesTokenizer().penn_tokenize(
+            sentence, return_str=True
+        )
     else:
         normalized_sent = sentence
 
@@ -257,7 +317,9 @@ def normalize(sentence, lowercase: bool = True, tokenizer: str = "13a", return_s
     return normalized_sent
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Sari(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -268,7 +330,10 @@ class Sari(evaluate.Metric):
                 {
                     "sources": datasets.Value("string", id="sequence"),
                     "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references",
+                    ),
                 }
             ),
             codebase_urls=[
@@ -279,11 +344,18 @@ class Sari(evaluate.Metric):
         )
 
     def _compute(self, sources, predictions, references):
-
         if not (len(sources) == len(predictions) == len(references)):
-            raise ValueError("Sources length must match predictions and references lengths.")
+            raise ValueError(
+                "Sources length must match predictions and references lengths."
+            )
         sari_score = 0
-        for src, pred, refs in zip(sources, predictions, references):
-            sari_score += SARIsent(normalize(src), normalize(pred), [normalize(sent) for sent in refs])
+        for src, pred, refs in zip(
+            sources, predictions, references, strict=False
+        ):
+            sari_score += SARIsent(
+                normalize(src),
+                normalize(pred),
+                [normalize(sent) for sent in refs],
+            )
         sari_score = sari_score / len(predictions)
         return {"sari": 100 * sari_score}

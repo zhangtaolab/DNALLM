@@ -1,56 +1,41 @@
-import click
-from ..finetune.config import TrainingConfig
-from ..finetune.trainer import DNALLMTrainer
-from ..finetune.models import get_model
-from ..finetune.data import DNADataset
+#!/usr/bin/env python3
+"""
+Training CLI module for DNALLM package.
+"""
 
-@click.command()
-@click.option("--model-type", type=str, required=True, 
-              help="Model type: dnabert/plant_dna/nucleotide")
-@click.option("--model-name", type=str, required=True,
-              help="Specific model name or path")
-@click.option("--train-file", type=str, required=True,
-              help="Training data file path")
-@click.option("--eval-file", type=str, required=True,
-              help="Evaluation data file path")
-@click.option("--output-dir", type=str, required=True,
-              help="Output directory for model and logs")
-@click.option("--num-epochs", type=int, default=3,
-              help="Number of training epochs")
-@click.option("--batch-size", type=int, default=32,
-              help="Training batch size")
-@click.option("--learning-rate", type=float, default=5e-5,
-              help="Learning rate")
-def main(model_type: str, model_name: str, train_file: str, eval_file: str,
-         output_dir: str, num_epochs: int, batch_size: int, learning_rate: float):
-    """Fine-tune a DNA Language Model"""
-    
-    # Create config
-    config = TrainingConfig(
-        output_dir=output_dir,
-        num_epochs=num_epochs,
-        batch_size=batch_size,
-        learning_rate=learning_rate
-    )
-    
-    # Initialize model
-    model = get_model(model_type, model_name)
-    
-    # Load datasets
-    train_dataset = DNADataset(train_file)
-    eval_dataset = DNADataset(eval_file)
-    
-    # Initialize trainer
-    trainer = DNALLMTrainer(
-        model=model,
-        config=config,
-        train_dataset=train_dataset,
-        eval_dataset=eval_dataset
-    )
-    
-    # Train model
-    metrics = trainer.train()
-    click.echo(f"Training completed. Metrics: {metrics}")
+import sys
+
+
+def main():
+    """Main training function"""
+    from ..finetune import DNATrainer
+    from ..configuration import load_config
+
+    # This function will be called from the main CLI
+    # For standalone usage, we can add command line parsing here
+    if len(sys.argv) > 1:
+        # Simple command line interface for standalone usage
+        if len(sys.argv) < 4:
+            print(
+                "Usage: python -m dnallm.cli.train <config_file> <model_path> <data_path>"
+            )
+            sys.exit(1)
+
+        config_file = sys.argv[1]
+        # model_path = sys.argv[2]  # Not used in current implementation
+        # data_path = sys.argv[3]   # Not used in current implementation
+
+        try:
+            config_dict = load_config(config_file)
+            trainer = DNATrainer(config_dict)
+            trainer.train()
+        except Exception as e:
+            print(f"Training failed: {e}")
+            sys.exit(1)
+    else:
+        print("DNALLM Training Module")
+        print("Use the main CLI: dnallm train --help")
+
 
 if __name__ == "__main__":
-    main() 
+    main()

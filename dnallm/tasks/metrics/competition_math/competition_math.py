@@ -63,7 +63,9 @@ Examples:
 """
 
 
-@datasets.utils.file_utils.add_end_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@datasets.utils.file_utils.add_end_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class CompetitionMathMetric(evaluate.Metric):
     """Accuracy metric for the MATH dataset."""
 
@@ -87,7 +89,7 @@ class CompetitionMathMetric(evaluate.Metric):
     def _compute(self, predictions, references):
         """Returns the scores"""
         n_correct = 0.0
-        for i, j in zip(predictions, references):
+        for i, j in zip(predictions, references, strict=False):
             n_correct += 1.0 if math_equivalence.is_equiv(i, j) else 0.0
         accuracy = n_correct / len(predictions)
         return {
