@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" METEOR metric. """
+"""METEOR metric."""
 
 import datasets
 import numpy as np
@@ -88,7 +88,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Meteor(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -99,7 +101,10 @@ class Meteor(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -109,7 +114,9 @@ class Meteor(evaluate.Metric):
                     }
                 ),
             ],
-            codebase_urls=["https://github.com/nltk/nltk/blob/develop/nltk/translate/meteor_score.py"],
+            codebase_urls=[
+                "https://github.com/nltk/nltk/blob/develop/nltk/translate/meteor_score.py"
+            ],
             reference_urls=[
                 "https://www.nltk.org/api/nltk.translate.html#module-nltk.translate.meteor_score",
                 "https://en.wikipedia.org/wiki/METEOR",
@@ -140,31 +147,42 @@ class Meteor(evaluate.Metric):
                         beta=beta,
                         gamma=gamma,
                     )
-                    for refs, pred in zip(references, predictions)
+                    for refs, pred in zip(
+                        references, predictions, strict=False
+                    )
                 ]
             else:
                 scores = [
                     meteor_score.single_meteor_score(
-                        word_tokenize(ref), word_tokenize(pred), alpha=alpha, beta=beta, gamma=gamma
-                    )
-                    for ref, pred in zip(references, predictions)
-                ]
-        else:
-            if multiple_refs:
-                scores = [
-                    meteor_score.meteor_score(
-                        [[word_tokenize(ref) for ref in group] for group in references][0],
+                        word_tokenize(ref),
                         word_tokenize(pred),
                         alpha=alpha,
                         beta=beta,
                         gamma=gamma,
                     )
-                    for ref, pred in zip(references, predictions)
+                    for ref, pred in zip(references, predictions, strict=False)
+                ]
+        else:
+            if multiple_refs:
+                scores = [
+                    meteor_score.meteor_score(
+                        next(
+                            [word_tokenize(ref) for ref in group]
+                            for group in references
+                        ),
+                        word_tokenize(pred),
+                        alpha=alpha,
+                        beta=beta,
+                        gamma=gamma,
+                    )
+                    for ref, pred in zip(references, predictions, strict=False)
                 ]
             else:
                 scores = [
-                    meteor_score.single_meteor_score(ref, pred, alpha=alpha, beta=beta, gamma=gamma)
-                    for ref, pred in zip(references, predictions)
+                    meteor_score.single_meteor_score(
+                        ref, pred, alpha=alpha, beta=beta, gamma=gamma
+                    )
+                    for ref, pred in zip(references, predictions, strict=False)
                 ]
 
         return {"meteor": np.mean(scores)}

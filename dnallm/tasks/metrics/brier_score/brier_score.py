@@ -84,7 +84,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class BrierScore(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -92,7 +94,9 @@ class BrierScore(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=self._get_feature_types(),
-            reference_urls=["https://scikit-learn.org/stable/modules/generated/sklearn.metrics.brier_score_loss.html"],
+            reference_urls=[
+                "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.brier_score_loss.html"
+            ],
         )
 
     def _get_feature_types(self):
@@ -100,14 +104,22 @@ class BrierScore(evaluate.Metric):
             return [
                 datasets.Features(
                     {
-                        "references": datasets.Sequence(datasets.Value("float")),
-                        "predictions": datasets.Sequence(datasets.Value("float")),
+                        "references": datasets.Sequence(
+                            datasets.Value("float")
+                        ),
+                        "predictions": datasets.Sequence(
+                            datasets.Value("float")
+                        ),
                     }
                 ),
                 datasets.Features(
                     {
-                        "references": datasets.Sequence(datasets.Value("string")),
-                        "predictions": datasets.Sequence(datasets.Value("float")),
+                        "references": datasets.Sequence(
+                            datasets.Value("string")
+                        ),
+                        "predictions": datasets.Sequence(
+                            datasets.Value("float")
+                        ),
                     }
                 ),
             ]
@@ -127,8 +139,14 @@ class BrierScore(evaluate.Metric):
                 ),
             ]
 
-    def _compute(self, references, predictions, sample_weight=None, pos_label=1):
-
-        brier_score = brier_score_loss(references, predictions, sample_weight=sample_weight, pos_label=pos_label)
+    def _compute(
+        self, references, predictions, sample_weight=None, pos_label=1
+    ):
+        brier_score = brier_score_loss(
+            references,
+            predictions,
+            sample_weight=sample_weight,
+            pos_label=pos_label,
+        )
 
         return {"brier_score": brier_score}

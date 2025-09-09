@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" BLEU metric. """
+"""BLEU metric."""
 
 import datasets
 
 import evaluate
 
-from .nmt_bleu import compute_bleu  # From: https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py
+from .nmt_bleu import (
+    compute_bleu,
+)  # From: https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py
 from .tokenizer_13a import Tokenizer13a
 
 
@@ -46,7 +48,7 @@ _CITATION = """\
 _DESCRIPTION = """\
 BLEU (Bilingual Evaluation Understudy) is an algorithm for evaluating the quality of text which has been machine-translated from one natural language to another.
 Quality is considered to be the correspondence between a machine's output and that of a human: "the closer a machine translation is to a professional human translation, the better it is"
-– this is the central idea behind BLEU. BLEU was one of the first metrics to claim a high correlation with human judgements of quality, and remains one of the most popular automated and inexpensive metrics.
+- this is the central idea behind BLEU. BLEU was one of the first metrics to claim a high correlation with human judgements of quality, and remains one of the most popular automated and inexpensive metrics.
 
 Scores are calculated for individual translated segments—generally sentences—by comparing them with a set of good quality reference translations.
 Those scores are then averaged over the whole corpus to reach an estimate of the translation's overall quality.
@@ -84,7 +86,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Bleu(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -95,7 +99,10 @@ class Bleu(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -105,14 +112,23 @@ class Bleu(evaluate.Metric):
                     }
                 ),
             ],
-            codebase_urls=["https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py"],
+            codebase_urls=[
+                "https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py"
+            ],
             reference_urls=[
                 "https://en.wikipedia.org/wiki/BLEU",
                 "https://towardsdatascience.com/evaluating-text-output-in-nlp-bleu-at-your-own-risk-e8609665a213",
             ],
         )
 
-    def _compute(self, predictions, references, tokenizer=Tokenizer13a(), max_order=4, smooth=False):
+    def _compute(
+        self,
+        predictions,
+        references,
+        tokenizer=Tokenizer13a(),
+        max_order=4,
+        smooth=False,
+    ):
         # if only one reference is provided make sure we still use list of lists
         if isinstance(references[0], str):
             references = [[ref] for ref in references]
@@ -120,9 +136,14 @@ class Bleu(evaluate.Metric):
         references = [[tokenizer(r) for r in ref] for ref in references]
         predictions = [tokenizer(p) for p in predictions]
         score = compute_bleu(
-            reference_corpus=references, translation_corpus=predictions, max_order=max_order, smooth=smooth
+            reference_corpus=references,
+            translation_corpus=predictions,
+            max_order=max_order,
+            smooth=smooth,
         )
-        (bleu, precisions, bp, ratio, translation_length, reference_length) = score
+        (bleu, precisions, bp, ratio, translation_length, reference_length) = (
+            score
+        )
         return {
             "bleu": bleu,
             "precisions": precisions,

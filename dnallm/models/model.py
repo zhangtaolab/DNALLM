@@ -7,8 +7,6 @@ from various sources including Hugging Face Hub, ModelScope, and local storage.
 import os
 import time
 from glob import glob
-from abc import ABC, abstractmethod
-from typing import Optional
 from ..configuration.configs import TaskConfig
 import torch
 
@@ -27,18 +25,18 @@ import torch
 
 def download_model(model_name: str, downloader, max_try: int = 10) -> str:
     """Download a model with retry mechanism for network issues.
-    
+
     In case of network issues, this function will attempt to download the model
     multiple times before giving up.
-    
+
     Args:
         model_name: Name of the model to download
         downloader: Download function to use (e.g., snapshot_download)
         max_try: Maximum number of download attempts, default 10
-        
+
     Returns:
         Path where the model files are stored
-        
+
     Raises:
         ValueError: If model download fails after all attempts
     """
@@ -83,7 +81,7 @@ def download_model(model_name: str, downloader, max_try: int = 10) -> str:
 
 def is_fp8_capable():
     """Check if the current CUDA device supports FP8 precision.
-    
+
     Returns:
         True if the device supports FP8 (compute capability >= 9.0), False otherwise
     """
@@ -92,7 +90,12 @@ def is_fp8_capable():
     return (major, minor) >= (9, 0)
 
 
-def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: str = "local", use_mirror: bool = False) -> tuple:
+def load_model_and_tokenizer(
+    model_name: str,
+    task_config: TaskConfig,
+    source: str = "local",
+    use_mirror: bool = False,
+) -> tuple:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
     This function handles loading of various model types based on the task configuration,
@@ -107,64 +110,104 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
 
     Returns:
         Tuple containing (model, tokenizer)
-        
+
     Raises:
         ValueError: If model is not found locally or loading fails
     """
     # Special case for models
     # EVO2 models
-    evo_models = ["evo2_1b_base", "evo2_7b_base", "evo2_40b_base", "evo2_7b", "evo2_40b"]
+    evo_models = [
+        "evo2_1b_base",
+        "evo2_7b_base",
+        "evo2_40b_base",
+        "evo2_7b",
+        "evo2_40b",
+    ]
     for m in evo_models:
         if m in model_name.lower():
             from evo2 import Evo2
-            model_path = glob(model_name + "/*.pt")[0] if os.path.isdir(model_name) else model_name
+
+            model_path = (
+                glob(model_name + "/*.pt")[0]
+                if os.path.isdir(model_name)
+                else model_name
+            )
             if source.lower() == "local":
-                model = Evo2(m, local_path=model_path, use_fp8=is_fp8_capable())
+                model = Evo2(
+                    m, local_path=model_path, use_fp8=is_fp8_capable()
+                )
             else:
                 model = Evo2(m, use_fp8=is_fp8_capable())
             tokenizer = model.tokenizer
             return model, tokenizer
-    
+
     # Define huggingface mirror
     if use_mirror:
-        os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+        os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
     else:
-        os.unsetenv('HF_ENDPOINT')
+        os.unsetenv("HF_ENDPOINT")
 
     # Load model from local disk
     if source.lower() == "local":
         if not os.path.exists(model_name):
             raise ValueError(f"Model {model_name} not found locally.")
-        from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
-                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
+        from transformers import (
+            AutoModel,
+            AutoModelForMaskedLM,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
+            AutoTokenizer,
+        )
+
         model_path = model_name
     elif source.lower() == "huggingface":
         # Load HuggingFace SDK
         from huggingface_hub import snapshot_download
-        from transformers import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
-                                  AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
+        from transformers import (
+            AutoModel,
+            AutoModelForMaskedLM,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
+            AutoTokenizer,
+        )
+
         model_path = download_model(model_name, downloader=snapshot_download)
     elif source.lower() == "modelscope":
         # Load ModelScope SDK
         from modelscope.hub.snapshot_download import snapshot_download
-        from modelscope import (AutoModel, AutoModelForMaskedLM, AutoModelForCausalLM,
-                                AutoModelForSequenceClassification, AutoModelForTokenClassification, AutoTokenizer)
+        from modelscope import (
+            AutoModel,
+            AutoModelForMaskedLM,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
+            AutoTokenizer,
+        )
+
         model_path = download_model(model_name, downloader=snapshot_download)
     else:
-        pass # do nothing
+        pass  # do nothing
     # Get task type
     task_type = task_config.task_type
     label_names = task_config.label_names
     num_labels = task_config.num_labels
-    id2label = {i: label for i, label in enumerate(label_names)}
+    id2label = dict(enumerate(label_names))
     label2id = {label: i for i, label in enumerate(label_names)}
     # Load model and tokenizer
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name, trust_remote_code=True
+        )
         if task_type == "mask":
-            model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True, attn_implementation="eager")
+            model = AutoModelForMaskedLM.from_pretrained(
+                model_name, trust_remote_code=True, attn_implementation="eager"
+            )
         elif task_type == "generation":
-            model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True, attn_implementation="eager")
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name, trust_remote_code=True, attn_implementation="eager"
+            )
         elif task_type == "binary":
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_name,
@@ -173,7 +216,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 label2id=label2id,
                 problem_type="single_label_classification",
                 trust_remote_code=True,
-                attn_implementation="eager"
+                attn_implementation="eager",
             )
         elif task_type == "multiclass":
             model = AutoModelForSequenceClassification.from_pretrained(
@@ -183,7 +226,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 label2id=label2id,
                 problem_type="single_label_classification",
                 trust_remote_code=True,
-                attn_implementation="eager"
+                attn_implementation="eager",
             )
         elif task_type == "multilabel":
             model = AutoModelForSequenceClassification.from_pretrained(
@@ -191,7 +234,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 num_labels=num_labels,
                 problem_type="multi_label_classification",
                 trust_remote_code=True,
-                attn_implementation="eager"
+                attn_implementation="eager",
             )
         elif task_type == "regression":
             model = AutoModelForSequenceClassification.from_pretrained(
@@ -199,22 +242,26 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
                 num_labels=num_labels,
                 problem_type="regression",
                 trust_remote_code=True,
-                attn_implementation="eager"
+                attn_implementation="eager",
             )
         elif task_type == "token":
-            tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, add_prefix_space=True)
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_name, trust_remote_code=True, add_prefix_space=True
+            )
             model = AutoModelForTokenClassification.from_pretrained(
                 model_name,
                 num_labels=num_labels,
                 id2label=id2label,
                 label2id=label2id,
                 trust_remote_code=True,
-                attn_implementation="eager"
+                attn_implementation="eager",
             )
         else:
-            model = AutoModel.from_pretrained(model_name, trust_remote_code=True, attn_implementation="eager")
+            model = AutoModel.from_pretrained(
+                model_name, trust_remote_code=True, attn_implementation="eager"
+            )
     except Exception as e:
-        raise ValueError(f"Failed to load model: {e}")
+        raise ValueError(f"Failed to load model: {e}") from e
 
     # check if pad_token_id is None
     if model.config.pad_token_id is None:
@@ -223,10 +270,7 @@ def load_model_and_tokenizer(model_name: str, task_config: TaskConfig, source: s
     return model, tokenizer
 
 
-def load_preset_model(
-    model_name: str,
-    task_config: TaskConfig
-) -> tuple:
+def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple:
     """Load a preset model and tokenizer based on the task configuration.
 
     This function loads models from the preset model registry, which contains
@@ -238,7 +282,7 @@ def load_preset_model(
 
     Returns:
         Tuple containing (model, tokenizer) if successful, 0 if model not found
-        
+
     Note:
         If the model is not found in preset models, the function will print a warning
         and return 0. Use `load_model_and_tokenizer` function for custom model loading.
@@ -249,13 +293,19 @@ def load_preset_model(
     use_mirror = False
 
     # Load model and tokenizer
-    preset_models = sum([model['preset'] for model in MODEL_INFO], [])
+    preset_models = [
+        preset for model in MODEL_INFO for preset in model["preset"]
+    ]
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info['model_name']['default']
+        model_name = model_info["model_name"]["default"]
     elif model_name in preset_models:
         pass
     else:
-        print(f"Model {model_name} not found in preset models. Please check the model name or use `load_model_and_tokenizer` function.")
+        print(
+            f"Model {model_name} not found in preset models. Please check the model name or use `load_model_and_tokenizer` function."
+        )
         return 0
-    return load_model_and_tokenizer(model_name, task_config, source, use_mirror)
+    return load_model_and_tokenizer(
+        model_name, task_config, source, use_mirror
+    )

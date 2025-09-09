@@ -57,7 +57,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Mahalanobis(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -66,35 +68,38 @@ class Mahalanobis(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "X": datasets.Sequence(datasets.Value("float", id="sequence"), id="X"),
+                    "X": datasets.Sequence(
+                        datasets.Value("float", id="sequence"), id="X"
+                    ),
                 }
             ),
         )
 
-    def _compute(self, X, reference_distribution):
-
+    def _compute(self, x, reference_distribution):
         # convert to numpy arrays
-        X = np.array(X)
+        x = np.array(x)
         reference_distribution = np.array(reference_distribution)
 
         # Assert that arrays are 2D
-        if len(X.shape) != 2:
-            raise ValueError("Expected `X` to be a 2D vector")
+        if len(x.shape) != 2:
+            raise ValueError("Expected `x` to be a 2D vector")
         if len(reference_distribution.shape) != 2:
-            raise ValueError("Expected `reference_distribution` to be a 2D vector")
+            raise ValueError(
+                "Expected `reference_distribution` to be a 2D vector"
+            )
         if reference_distribution.shape[0] < 2:
             raise ValueError(
                 "Expected `reference_distribution` to be a 2D vector with more than one element in the first dimension"
             )
 
         # Get mahalanobis distance for each prediction
-        X_minus_mu = X - np.mean(reference_distribution)
+        x_minus_mu = x - np.mean(reference_distribution)
         cov = np.cov(reference_distribution.T)
         try:
             inv_covmat = np.linalg.inv(cov)
         except np.linalg.LinAlgError:
             inv_covmat = np.linalg.pinv(cov)
-        left_term = np.dot(X_minus_mu, inv_covmat)
-        mahal_dist = np.dot(left_term, X_minus_mu.T).diagonal()
+        left_term = np.dot(x_minus_mu, inv_covmat)
+        mahal_dist = np.dot(left_term, x_minus_mu.T).diagonal()
 
         return {"mahalanobis": mahal_dist}

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" SACREBLEU metric. """
+"""SACREBLEU metric."""
 
 import datasets
 import sacrebleu as scb
@@ -102,7 +102,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Sacrebleu(evaluate.Metric):
     def _info(self):
         if version.parse(scb.__version__) < version.parse("1.4.12"):
@@ -119,7 +121,10 @@ class Sacrebleu(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -154,8 +159,13 @@ class Sacrebleu(evaluate.Metric):
 
         references_per_prediction = len(references[0])
         if any(len(refs) != references_per_prediction for refs in references):
-            raise ValueError("Sacrebleu requires the same number of references for each prediction")
-        transformed_references = [[refs[i] for refs in references] for i in range(references_per_prediction)]
+            raise ValueError(
+                "Sacrebleu requires the same number of references for each prediction"
+            )
+        transformed_references = [
+            [refs[i] for refs in references]
+            for i in range(references_per_prediction)
+        ]
         output = scb.corpus_bleu(
             predictions,
             transformed_references,
@@ -164,7 +174,7 @@ class Sacrebleu(evaluate.Metric):
             force=force,
             lowercase=lowercase,
             use_effective_order=use_effective_order,
-            **(dict(tokenize=tokenize) if tokenize else {}),
+            **({"tokenize": tokenize} if tokenize else {}),
         )
         output_dict = {
             "score": output.score,

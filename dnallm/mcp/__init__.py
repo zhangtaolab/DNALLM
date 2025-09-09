@@ -19,6 +19,6 @@ from .model_manager import ModelManager
 
 __all__ = [
     "DNALLMMCPServer",
-    "MCPConfigManager", 
+    "MCPConfigManager",
     "ModelManager",
 ]

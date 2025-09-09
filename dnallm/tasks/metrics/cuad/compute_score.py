@@ -1,4 +1,4 @@
-""" Official evaluation script for CUAD dataset. """
+"""Official evaluation script for CUAD dataset."""
 
 import argparse
 import json
@@ -20,8 +20,14 @@ def get_jaccard(prediction, ground_truth):
         prediction = prediction.replace(token, "")
 
     ground_truth, prediction = ground_truth.lower(), prediction.lower()
-    ground_truth, prediction = ground_truth.replace("/", " "), prediction.replace("/", " ")
-    ground_truth, prediction = set(ground_truth.split(" ")), set(prediction.split(" "))
+    ground_truth, prediction = (
+        ground_truth.replace("/", " "),
+        prediction.replace("/", " "),
+    )
+    ground_truth, prediction = (
+        set(ground_truth.split(" ")),
+        set(prediction.split(" ")),
+    )
 
     intersection = ground_truth.intersection(prediction)
     union = ground_truth.union(prediction)
@@ -64,7 +70,10 @@ def compute_precision_recall(predictions, ground_truths, qa_id):
             match_found = False
             for pred in predictions:
                 if substr_ok:
-                    is_match = get_jaccard(pred, ground_truth) >= IOU_THRESH or ground_truth in pred
+                    is_match = (
+                        get_jaccard(pred, ground_truth) >= IOU_THRESH
+                        or ground_truth in pred
+                    )
                 else:
                     is_match = get_jaccard(pred, ground_truth) >= IOU_THRESH
                 if is_match:
@@ -85,7 +94,10 @@ def compute_precision_recall(predictions, ground_truths, qa_id):
             for ground_truth in ground_truths:
                 assert len(ground_truth) > 0
                 if substr_ok:
-                    is_match = get_jaccard(pred, ground_truth) >= IOU_THRESH or ground_truth in pred
+                    is_match = (
+                        get_jaccard(pred, ground_truth) >= IOU_THRESH
+                        or ground_truth in pred
+                    )
                 else:
                     is_match = get_jaccard(pred, ground_truth) >= IOU_THRESH
                 if is_match:
@@ -124,7 +136,7 @@ def get_prec_at_recall(precisions, recalls, recall_thresh):
     """Assumes recalls are sorted in increasing order"""
     processed_precisions = process_precisions(precisions)
     prec_at_recall = 0
-    for prec, recall in zip(processed_precisions, recalls):
+    for prec, recall in zip(processed_precisions, recalls, strict=False):
         if recall >= recall_thresh:
             prec_at_recall = prec
             break
@@ -140,7 +152,9 @@ def metric_max_over_ground_truths(metric_fn, predictions, ground_truths):
     for pred in predictions:
         for ground_truth in ground_truths:
             score = metric_fn(pred, ground_truth)
-            if score == 1:  # break the loop when one prediction matches the ground truth
+            if (
+                score == 1
+            ):  # break the loop when one prediction matches the ground truth
                 break
         if score == 1:
             break
@@ -156,12 +170,18 @@ def compute_score(dataset, predictions):
             for qa in paragraph["qas"]:
                 total += 1
                 if qa["id"] not in predictions:
-                    message = "Unanswered question " + qa["id"] + " will receive score 0."
+                    message = (
+                        "Unanswered question "
+                        + qa["id"]
+                        + " will receive score 0."
+                    )
                     print(message, file=sys.stderr)
                     continue
-                ground_truths = list(map(lambda x: x["text"], qa["answers"]))
+                ground_truths = [x["text"] for x in qa["answers"]]
                 prediction = predictions[qa["id"]]
-                precision, recall = compute_precision_recall(prediction, ground_truths, qa["id"])
+                precision, recall = compute_precision_recall(
+                    prediction, ground_truths, qa["id"]
+                )
 
                 precisions.append(precision)
                 recalls.append(recall)
@@ -171,17 +191,23 @@ def compute_score(dataset, predictions):
                 else:
                     f1 += 2 * (precision * recall) / (precision + recall)
 
-                exact_match += metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
+                exact_match += metric_max_over_ground_truths(
+                    exact_match_score, prediction, ground_truths
+                )
 
-    precisions = [x for _, x in sorted(zip(recalls, precisions))]
+    precisions = [x for _, x in sorted(zip(recalls, precisions, strict=False))]
     recalls.sort()
 
     f1 = 100.0 * f1 / total
     exact_match = 100.0 * exact_match / total
     aupr = get_aupr(precisions, recalls)
 
-    prec_at_90_recall = get_prec_at_recall(precisions, recalls, recall_thresh=0.9)
-    prec_at_80_recall = get_prec_at_recall(precisions, recalls, recall_thresh=0.8)
+    prec_at_90_recall = get_prec_at_recall(
+        precisions, recalls, recall_thresh=0.9
+    )
+    prec_at_80_recall = get_prec_at_recall(
+        precisions, recalls, recall_thresh=0.8
+    )
 
     return {
         "exact_match": exact_match,

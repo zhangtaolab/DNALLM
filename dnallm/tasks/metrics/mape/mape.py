@@ -81,7 +81,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Mape(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -106,8 +108,13 @@ class Mape(evaluate.Metric):
                 "references": datasets.Value("float"),
             }
 
-    def _compute(self, predictions, references, sample_weight=None, multioutput="uniform_average"):
-
+    def _compute(
+        self,
+        predictions,
+        references,
+        sample_weight=None,
+        multioutput="uniform_average",
+    ):
         mape_score = mean_absolute_percentage_error(
             references,
             predictions,

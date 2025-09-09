@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" XNLI benchmark metric. """
+"""XNLI benchmark metric."""
 
 import datasets
 
@@ -66,7 +66,9 @@ def simple_accuracy(preds, labels):
     return (preds == labels).mean()
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Xnli(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -75,8 +77,12 @@ class Xnli(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "predictions": datasets.Value("int64" if self.config_name != "sts-b" else "float32"),
-                    "references": datasets.Value("int64" if self.config_name != "sts-b" else "float32"),
+                    "predictions": datasets.Value(
+                        "int64" if self.config_name != "sts-b" else "float32"
+                    ),
+                    "references": datasets.Value(
+                        "int64" if self.config_name != "sts-b" else "float32"
+                    ),
                 }
             ),
             codebase_urls=[],

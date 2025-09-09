@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" BERTScore metric. """
+"""BERTScore metric."""
 
 import functools
 from contextlib import contextmanager
@@ -26,7 +26,11 @@ import evaluate
 @contextmanager
 def filter_logging_context():
     def filter_log(record):
-        return False if "This IS expected if you are initializing" in record.msg else True
+        return (
+            False
+            if "This IS expected if you are initializing" in record.msg
+            else True
+        )
 
     logger = datasets.utils.logging.get_logger("transformers.modeling_utils")
     logger.addFilter(filter_log)
@@ -97,7 +101,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class BERTScore(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -109,7 +115,10 @@ class BERTScore(evaluate.Metric):
                 datasets.Features(
                     {
                         "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(datasets.Value("string", id="sequence"), id="references"),
+                        "references": datasets.Sequence(
+                            datasets.Value("string", id="sequence"),
+                            id="references",
+                        ),
                     }
                 ),
                 datasets.Features(
@@ -143,7 +152,6 @@ class BERTScore(evaluate.Metric):
         baseline_path=None,
         use_fast_tokenizer=False,
     ):
-
         if isinstance(references[0], str):
             references = [[ref] for ref in references]
 
@@ -156,8 +164,12 @@ class BERTScore(evaluate.Metric):
         scorer = bert_score.BERTScorer
 
         if version.parse(bert_score.__version__) >= version.parse("0.3.10"):
-            get_hash = functools.partial(get_hash, use_fast_tokenizer=use_fast_tokenizer)
-            scorer = functools.partial(scorer, use_fast_tokenizer=use_fast_tokenizer)
+            get_hash = functools.partial(
+                get_hash, use_fast_tokenizer=use_fast_tokenizer
+            )
+            scorer = functools.partial(
+                scorer, use_fast_tokenizer=use_fast_tokenizer
+            )
         elif use_fast_tokenizer:
             raise ImportWarning(
                 "To use a fast tokenizer, the module `bert-score>=0.3.10` is required, and the current version of "
@@ -185,7 +197,10 @@ class BERTScore(evaluate.Metric):
         )
 
         with filter_logging_context():
-            if not hasattr(self, "cached_bertscorer") or self.cached_bertscorer.hash != hashcode:
+            if (
+                not hasattr(self, "cached_bertscorer")
+                or self.cached_bertscorer.hash != hashcode
+            ):
                 self.cached_bertscorer = scorer(
                     model_type=model_type,
                     num_layers=num_layers,
@@ -200,16 +215,16 @@ class BERTScore(evaluate.Metric):
                     baseline_path=baseline_path,
                 )
 
-        (P, R, F) = self.cached_bertscorer.score(
+        (p, r, f) = self.cached_bertscorer.score(
             cands=predictions,
             refs=references,
             verbose=verbose,
             batch_size=batch_size,
         )
         output_dict = {
-            "precision": P.tolist(),
-            "recall": R.tolist(),
-            "f1": F.tolist(),
+            "precision": p.tolist(),
+            "recall": r.tolist(),
+            "f1": f.tolist(),
             "hashcode": hashcode,
         }
         return output_dict

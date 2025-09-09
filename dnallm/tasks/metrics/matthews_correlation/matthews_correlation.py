@@ -98,7 +98,9 @@ _CITATION = """\
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class MatthewsCorrelation(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -121,20 +123,34 @@ class MatthewsCorrelation(evaluate.Metric):
             ],
         )
 
-    def _compute(self, predictions, references, sample_weight=None, average=None):
+    def _compute(
+        self, predictions, references, sample_weight=None, average=None
+    ):
         if self.config_name == "multilabel":
             references = np.array(references)
             predictions = np.array(predictions)
             if not (references.ndim == 2 and predictions.ndim == 2):
-                raise ValueError("For multi-label inputs, both references and predictions should be 2-dimensional")
+                raise ValueError(
+                    "For multi-label inputs, both references and predictions should be 2-dimensional"
+                )
             matthews_corr = [
-                matthews_corrcoef(predictions[:, i], references[:, i], sample_weight=sample_weight)
+                matthews_corrcoef(
+                    predictions[:, i],
+                    references[:, i],
+                    sample_weight=sample_weight,
+                )
                 for i in range(references.shape[1])
             ]
             if average == "macro":
                 matthews_corr = np.mean(matthews_corr)
             elif average is not None:
-                raise ValueError("Invalid `average`: expected `macro`, or None ")
+                raise ValueError(
+                    "Invalid `average`: expected `macro`, or None "
+                )
         else:
-            matthews_corr = float(matthews_corrcoef(references, predictions, sample_weight=sample_weight))
+            matthews_corr = float(
+                matthews_corrcoef(
+                    references, predictions, sample_weight=sample_weight
+                )
+            )
         return {"matthews_correlation": matthews_corr}

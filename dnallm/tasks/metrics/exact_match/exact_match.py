@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Exact Match metric."""
+
 import re
 import string
 
@@ -83,7 +84,9 @@ _CITATION = """
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class ExactMatch(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -108,7 +111,6 @@ class ExactMatch(evaluate.Metric):
         ignore_punctuation=False,
         ignore_numbers=False,
     ):
-
         if regexes_to_ignore is not None:
             for s in regexes_to_ignore:
                 predictions = np.array([re.sub(s, "", x) for x in predictions])
@@ -122,7 +124,9 @@ class ExactMatch(evaluate.Metric):
             references = np.char.lower(references)
 
         if ignore_punctuation:
-            repl_table = string.punctuation.maketrans("", "", string.punctuation)
+            repl_table = string.punctuation.maketrans(
+                "", "", string.punctuation
+            )
             predictions = np.char.translate(predictions, table=repl_table)
             references = np.char.translate(references, table=repl_table)
 

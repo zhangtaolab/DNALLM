@@ -13,8 +13,6 @@
 # limitations under the License.
 """Mean IoU (Intersection-over-Union) metric."""
 
-from typing import Dict, Optional
-
 import datasets
 import numpy as np
 
@@ -98,7 +96,7 @@ def intersect_and_union(
     label,
     num_labels,
     ignore_index: bool,
-    label_map: Optional[Dict[int, int]] = None,
+    label_map: dict[int, int] | None = None,
     reduce_labels: bool = False,
 ):
     """Calculate intersection and Union.
@@ -148,9 +146,15 @@ def intersect_and_union(
 
     intersect = pred_label[pred_label == label]
 
-    area_intersect = np.histogram(intersect, bins=num_labels, range=(0, num_labels - 1))[0]
-    area_pred_label = np.histogram(pred_label, bins=num_labels, range=(0, num_labels - 1))[0]
-    area_label = np.histogram(label, bins=num_labels, range=(0, num_labels - 1))[0]
+    area_intersect = np.histogram(
+        intersect, bins=num_labels, range=(0, num_labels - 1)
+    )[0]
+    area_pred_label = np.histogram(
+        pred_label, bins=num_labels, range=(0, num_labels - 1)
+    )[0]
+    area_label = np.histogram(
+        label, bins=num_labels, range=(0, num_labels - 1)
+    )[0]
 
     area_union = area_pred_label + area_label - area_intersect
 
@@ -162,7 +166,7 @@ def total_intersect_and_union(
     gt_seg_maps,
     num_labels,
     ignore_index: bool,
-    label_map: Optional[Dict[int, int]] = None,
+    label_map: dict[int, int] | None = None,
     reduce_labels: bool = False,
 ):
     """Calculate Total Intersection and Union, by calculating `intersect_and_union` for each (predicted, ground truth) pair.
@@ -196,15 +200,27 @@ def total_intersect_and_union(
     total_area_union = np.zeros((num_labels,), dtype=np.float64)
     total_area_pred_label = np.zeros((num_labels,), dtype=np.float64)
     total_area_label = np.zeros((num_labels,), dtype=np.float64)
-    for result, gt_seg_map in zip(results, gt_seg_maps):
-        area_intersect, area_union, area_pred_label, area_label = intersect_and_union(
-            result, gt_seg_map, num_labels, ignore_index, label_map, reduce_labels
+    for result, gt_seg_map in zip(results, gt_seg_maps, strict=False):
+        area_intersect, area_union, area_pred_label, area_label = (
+            intersect_and_union(
+                result,
+                gt_seg_map,
+                num_labels,
+                ignore_index,
+                label_map,
+                reduce_labels,
+            )
         )
         total_area_intersect += area_intersect
         total_area_union += area_union
         total_area_pred_label += area_pred_label
         total_area_label += area_label
-    return total_area_intersect, total_area_union, total_area_pred_label, total_area_label
+    return (
+        total_area_intersect,
+        total_area_union,
+        total_area_pred_label,
+        total_area_label,
+    )
 
 
 def mean_iou(
@@ -212,8 +228,8 @@ def mean_iou(
     gt_seg_maps,
     num_labels,
     ignore_index: bool,
-    nan_to_num: Optional[int] = None,
-    label_map: Optional[Dict[int, int]] = None,
+    nan_to_num: int | None = None,
+    label_map: dict[int, int] | None = None,
     reduce_labels: bool = False,
 ):
     """Calculate Mean Intersection and Union (mIoU).
@@ -248,12 +264,22 @@ def mean_iou(
         - *per_category_iou* (`ndarray` of shape `(num_labels,)`):
             Per category IoU.
     """
-    total_area_intersect, total_area_union, total_area_pred_label, total_area_label = total_intersect_and_union(
-        results, gt_seg_maps, num_labels, ignore_index, label_map, reduce_labels
+    (
+        total_area_intersect,
+        total_area_union,
+        total_area_pred_label,
+        total_area_label,
+    ) = total_intersect_and_union(
+        results,
+        gt_seg_maps,
+        num_labels,
+        ignore_index,
+        label_map,
+        reduce_labels,
     )
 
     # compute metrics
-    metrics = dict()
+    metrics = {}
 
     all_acc = total_area_intersect.sum() / total_area_label.sum()
     iou = total_area_intersect / total_area_union
@@ -266,14 +292,17 @@ def mean_iou(
     metrics["per_category_accuracy"] = acc
 
     if nan_to_num is not None:
-        metrics = dict(
-            {metric: np.nan_to_num(metric_value, nan=nan_to_num) for metric, metric_value in metrics.items()}
-        )
+        metrics = {
+            metric: np.nan_to_num(metric_value, nan=nan_to_num)
+            for metric, metric_value in metrics.items()
+        }
 
     return metrics
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class MeanIoU(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -297,8 +326,8 @@ class MeanIoU(evaluate.Metric):
         references,
         num_labels: int,
         ignore_index: bool,
-        nan_to_num: Optional[int] = None,
-        label_map: Optional[Dict[int, int]] = None,
+        nan_to_num: int | None = None,
+        label_map: dict[int, int] | None = None,
         reduce_labels: bool = False,
     ):
         iou_result = mean_iou(

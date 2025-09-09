@@ -55,13 +55,13 @@ class TokenizerRegexp(BaseTokenizer):
             # (re.compile(r'\s+'), r' '),
         ]
 
-    @lru_cache(maxsize=2**16)
+    @lru_cache(maxsize=2**16)  # noqa: B019
     def __call__(self, line):
         """Common post-processing tokenizer for `13a` and `zh` tokenizers.
         :param line: a segment to tokenize
         :return: the tokenized line
         """
-        for (_re, repl) in self._re:
+        for _re, repl in self._re:
             line = _re.sub(repl, line)
 
         # no leading or trailing spaces, single space within words
@@ -77,7 +77,7 @@ class Tokenizer13a(BaseTokenizer):
     def __init__(self):
         self._post_tokenizer = TokenizerRegexp()
 
-    @lru_cache(maxsize=2**16)
+    @lru_cache(maxsize=2**16)  # noqa: B019
     def __call__(self, line):
         """Tokenizes an input line using a relatively minimal tokenization
         that is however equivalent to mteval-v13a, used by WMT.

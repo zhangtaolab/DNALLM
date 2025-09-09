@@ -83,7 +83,9 @@ doi = {10.1038/s41592-019-0686-2},
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Pearsonr(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -96,7 +98,9 @@ class Pearsonr(evaluate.Metric):
                     "references": datasets.Value("float"),
                 }
             ),
-            reference_urls=["https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html"],
+            reference_urls=[
+                "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html"
+            ],
         )
 
     def _compute(self, predictions, references, return_pvalue=False):

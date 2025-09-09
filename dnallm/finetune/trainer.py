@@ -36,13 +36,12 @@ Usage Example:
     ```
 """
 
-import os
-from typing import Optional, Dict, Any
+from typing import Any
 from collections.abc import Callable
 import torch
 from datasets import DatasetDict
 from transformers import Trainer, TrainingArguments
-from peft import get_peft_model, LoraConfig, TaskType
+from peft import get_peft_model, LoraConfig
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
@@ -75,13 +74,13 @@ class DNATrainer:
         metrics = trainer.train()
         ```
     """
-    
+
     def __init__(
         self,
         model: Any,
         config: dict,
-        datasets: Optional[DNADataset] = None,
-        extra_args: Optional[Dict] = None,
+        datasets: DNADataset | None = None,
+        extra_args: dict | None = None,
         use_lora: bool = False,
     ):
         """Initialize the DNA trainer.
@@ -94,37 +93,35 @@ class DNATrainer:
             use_lora: Whether to use LoRA for efficient fine-tuning
         """
         self.model = model
-        self.task_config = config['task']
-        self.train_config = config['finetune']
+        self.task_config = config["task"]
+        self.train_config = config["finetune"]
         self.datasets = datasets
         self.extra_args = extra_args
 
         # LoRA
         if use_lora:
             print("[Info] Applying LoRA to the model...")
-            lora_config = LoraConfig(
-                **config["lora"]
-            )
+            lora_config = LoraConfig(**config["lora"])
             self.model = get_peft_model(self.model, lora_config)
             self.model.print_trainable_parameters()
-        
+
         # Multi-GPU support
         if torch.cuda.device_count() > 1:
             print(f"[Info] Using {torch.cuda.device_count()} GPUs.")
             self.model = torch.nn.DataParallel(self.model)
-        
+
         self.set_up_trainer()
-    
+
     def set_up_trainer(self):
         """Set up the HuggingFace Trainer with appropriate configurations.
-        
+
         This method configures the training environment by:
         1. Setting up training arguments from configuration
         2. Configuring dataset splits (train/eval/test)
         3. Setting up task-specific metrics computation
         4. Configuring appropriate data collator for different task types
         5. Initializing the HuggingFace Trainer instance
-        
+
         The method automatically handles:
         - Dataset split detection and validation
         - Task-specific data collator selection
@@ -139,7 +136,7 @@ class DNATrainer:
             **training_args,
         )
         # Check if the dataset has been split
-        if isinstance(self.datasets.dataset, DatasetDict):        
+        if isinstance(self.datasets.dataset, DatasetDict):
             self.data_split = self.datasets.dataset.keys()
         else:
             self.data_split = []
@@ -151,31 +148,33 @@ class DNATrainer:
                 train_dataset = self.datasets.dataset
             else:
                 raise KeyError("Cannot find train data.")
-        eval_key = [x for x in self.data_split if x not in ['train', 'test']]
+        eval_key = [x for x in self.data_split if x not in ["train", "test"]]
         if eval_key:
             eval_dataset = self.datasets.dataset[eval_key[0]]
         elif "test" in self.data_split:
-            eval_dataset = self.datasets.dataset['test']
+            eval_dataset = self.datasets.dataset["test"]
         else:
             eval_dataset = None
             self.training_args.eval_strategy = "no"
-        
+
         # Get compute metrics
         compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
             from transformers import DataCollatorForLanguageModeling
+
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=self.datasets.tokenizer,
-                mlm=True, mlm_probability=mlm_probability
+                mlm=True,
+                mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
             from transformers import DataCollatorForLanguageModeling
+
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
-                mlm=False
+                tokenizer=self.datasets.tokenizer, mlm=False
             )
         else:
             data_collator = None
@@ -200,7 +199,7 @@ class DNATrainer:
         """
         return compute_metrics(self.task_config)
 
-    def train(self, save_tokenizer: bool = True) -> Dict[str, float]:
+    def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
         This method executes the training process using the configured HuggingFace Trainer,
@@ -218,10 +217,12 @@ class DNATrainer:
         # Save the model
         self.trainer.save_model()
         if save_tokenizer:
-            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)
+            self.datasets.tokenizer.save_pretrained(
+                self.train_config.output_dir
+            )
         return metrics
-    
-    def evaluate(self) -> Dict[str, float]:
+
+    def evaluate(self) -> dict[str, float]:
         """Evaluate the model on the evaluation dataset.
 
         This method runs evaluation on the configured evaluation dataset and returns
@@ -233,8 +234,8 @@ class DNATrainer:
         self.model.eval()
         result = self.trainer.evaluate()
         return result
-    
-    def predict(self) -> Dict[str, float]:
+
+    def predict(self) -> dict[str, float]:
         """Generate predictions on the test dataset.
 
         This method generates predictions on the test dataset if available and returns
@@ -247,6 +248,6 @@ class DNATrainer:
         self.model.eval()
         result = {}
         if "test" in self.data_split:
-            test_dataset = self.datasets.dataset['test']
+            test_dataset = self.datasets.dataset["test"]
             result = self.trainer.predict(test_dataset)
         return result

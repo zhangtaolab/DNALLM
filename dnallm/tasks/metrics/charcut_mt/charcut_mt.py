@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """An implementation for calculating CharCut, a character-based machine translation evaluation metric."""
-from typing import Iterable, Union
+
+from collections.abc import Iterable
 
 import datasets
 from charcut import calculate_charcut
-from datasets import Sequence, Value
+from datasets import Value
 
 import evaluate
 
@@ -62,7 +63,9 @@ Examples:
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Charcut(evaluate.Metric):
     """Character-based MT evaluation."""
 
@@ -76,13 +79,19 @@ class Charcut(evaluate.Metric):
             # This defines the format of each prediction and reference
             features=[
                 datasets.Features(
-                    {"predictions": Value("string", id="prediction"), "references": Value("string", id="reference")}
+                    {
+                        "predictions": Value("string", id="prediction"),
+                        "references": Value("string", id="reference"),
+                    }
                 ),
             ],
             # Homepage of the module for documentation
             homepage="https://github.com/BramVanroy/CharCut",
             # Additional links to the codebase or references
-            codebase_urls=["https://github.com/BramVanroy/CharCut", "https://github.com/alardill/CharCut"],
+            codebase_urls=[
+                "https://github.com/BramVanroy/CharCut",
+                "https://github.com/alardill/CharCut",
+            ],
         )
 
     def _compute(self, predictions: Iterable[str], references: Iterable[str]):

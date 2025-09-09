@@ -102,7 +102,9 @@ _CITATION = """
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Precision(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -120,7 +122,9 @@ class Precision(evaluate.Metric):
                     "references": datasets.Value("int32"),
                 }
             ),
-            reference_urls=["https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html"],
+            reference_urls=[
+                "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html"
+            ],
         )
 
     def _compute(
@@ -142,4 +146,8 @@ class Precision(evaluate.Metric):
             sample_weight=sample_weight,
             zero_division=zero_division,
         )
-        return {"precision": score if getattr(score, "size", 1) > 1 else float(score)}
+        return {
+            "precision": score
+            if getattr(score, "size", 1) > 1
+            else float(score)
+        }

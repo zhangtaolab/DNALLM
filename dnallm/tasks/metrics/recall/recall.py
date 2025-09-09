@@ -92,7 +92,9 @@ _CITATION = """
 """
 
 
-@evaluate.utils.file_utils.add_start_docstrings(_DESCRIPTION, _KWARGS_DESCRIPTION)
+@evaluate.utils.file_utils.add_start_docstrings(
+    _DESCRIPTION, _KWARGS_DESCRIPTION
+)
 class Recall(evaluate.Metric):
     def _info(self):
         return evaluate.MetricInfo(
@@ -110,7 +112,9 @@ class Recall(evaluate.Metric):
                     "references": datasets.Value("int32"),
                 }
             ),
-            reference_urls=["https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html"],
+            reference_urls=[
+                "https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html"
+            ],
         )
 
     def _compute(
@@ -132,4 +136,6 @@ class Recall(evaluate.Metric):
             sample_weight=sample_weight,
             zero_division=zero_division,
         )
-        return {"recall": score if getattr(score, "size", 1) > 1 else float(score)}
+        return {
+            "recall": score if getattr(score, "size", 1) > 1 else float(score)
+        }

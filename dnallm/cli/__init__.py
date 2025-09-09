@@ -2,7 +2,15 @@
 CLI module for DNALLM package.
 """
 
-__all__ = ["cli", "train", "predict", "model_config_generator"]
+__all__ = [
+    "cli",
+    "config_generator_main",
+    "model_config_generator",
+    "predict",
+    "predict_main",
+    "train",
+    "train_main",
+]
 
 from .cli import cli
 from .train import main as train_main
