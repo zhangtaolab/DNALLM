@@ -8,7 +8,7 @@ on:
       - develop
       - flake8
   pull_request:
-    branches: [ main, master, develop, flake8 ]
+    branches: [ main, master, dev, flake8 ]
 
 permissions:
   contents: write
