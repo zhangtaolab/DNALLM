@@ -135,14 +135,15 @@ If you need native Mamba architecture support, after installing DNALLM dependenc
 ```bash
 # For venv users: activate virtual environment
 source .venv/bin/activate  # Linux/MacOS
-# or
-.venv\Scripts\activate     # Windows
 
 # For conda users: activate conda environment
 # conda activate dnallm
 
 # Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+
+# If encounter network issue, using the special install script for mamba (optional)
+sh scripts/install_mamba.sh  # select github proxy
 ```
 
 Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
