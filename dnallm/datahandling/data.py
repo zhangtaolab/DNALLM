@@ -539,7 +539,8 @@ class DNADataset:
                 example_tokens, examples, i, config
             )
             for key, value in processed.items():
-                tokenized_examples[key].append(value)
+                if key in tokenized_examples:
+                    tokenized_examples[key].append(value)
 
         from transformers.tokenization_utils_base import BatchEncoding
 
