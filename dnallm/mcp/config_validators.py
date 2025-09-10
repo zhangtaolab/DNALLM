@@ -4,7 +4,7 @@ This module provides Pydantic models for validating MCP server configurations
 and inference model configurations.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class TaskConfig(BaseModel):
@@ -14,7 +14,7 @@ class TaskConfig(BaseModel):
         ..., pattern="^(binary|multiclass|multilabel|regression)$"
     )
     num_labels: int = Field(..., ge=1)
-    label_names: list[str] = Field(..., min_items=1)
+    label_names: list[str] = Field(..., min_length=1)
     threshold: float = Field(0.5, ge=0.0, le=1.0)
     description: str = Field(..., min_length=1)
 
@@ -33,11 +33,12 @@ class InferenceConfig(BaseModel):
     save_hidden_states: bool = Field(False)
     save_attentions: bool = Field(False)
 
-    @validator("use_fp16", always=True)
-    def set_use_fp16(cls, v, values):  # noqa: N805
+    @field_validator("use_fp16", mode="before")
+    @classmethod
+    def set_use_fp16(cls, v, info):  # noqa: N805
         """Set use_fp16 based on precision setting."""
-        if "precision" in values:
-            return values["precision"] == "float16"
+        if info.data and "precision" in info.data:
+            return info.data["precision"] == "float16"
         return v
 
 
@@ -67,10 +68,11 @@ class InferenceModelConfig(BaseModel):
     inference: InferenceConfig
     model: ModelConfig
 
-    @validator("task")
-    def validate_task_labels(cls, v, values):  # noqa: N805
+    @field_validator("task")
+    @classmethod
+    def validate_task_labels(cls, v):  # noqa: N805
         """Validate that num_labels matches label_names length."""
-        if "task" in values and v.num_labels != len(v.label_names):
+        if v.num_labels != len(v.label_names):
             raise ValueError("num_labels must match the length of label_names")
         return v
 
@@ -104,7 +106,8 @@ class ModelEntryConfig(BaseModel):
     enabled: bool = Field(True)
     priority: int = Field(1, ge=1, le=10)
 
-    @validator("config_path")
+    @field_validator("config_path")
+    @classmethod
     def validate_config_path(cls, v):  # noqa: N805
         """Validate config path format."""
         if not v or not v.strip():
@@ -117,7 +120,7 @@ class MultiModelConfig(BaseModel):
 
     name: str = Field(..., min_length=1)
     description: str = Field(..., min_length=1)
-    models: list[str] = Field(..., min_items=2)
+    models: list[str] = Field(..., min_length=2)
     enabled: bool = Field(True)
 
 
@@ -150,7 +153,8 @@ class MCPServerConfig(BaseModel):
     sse: SSEConfig
     logging: LoggingConfig
 
-    @validator("models")
+    @field_validator("models")
+    @classmethod
     def validate_model_names(cls, v):  # noqa: N805
         """Validate that model names are unique."""
         names = [entry.name for entry in v.values()]
@@ -158,11 +162,12 @@ class MCPServerConfig(BaseModel):
             raise ValueError("Model names must be unique")
         return v
 
-    @validator("multi_model")
-    def validate_multi_model_references(cls, v, values):  # noqa: N805
+    @field_validator("multi_model")
+    @classmethod
+    def validate_multi_model_references(cls, v, info):  # noqa: N805
         """Validate that multi-model configurations reference existing models."""
-        if "models" in values:
-            available_models = set(values["models"].keys())
+        if info.data and "models" in info.data:
+            available_models = set(info.data["models"].keys())
             for config in v.values():
                 for model_name in config.models:
                     if model_name not in available_models:

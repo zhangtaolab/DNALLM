@@ -244,9 +244,7 @@ task:
     def test_batch_infer(self):
         """Test batch inference."""
         # Mock the batch_predict method directly to avoid complex data loading issues
-        with patch.object(
-            self.predictor, "batch_infer"
-        ) as mock_batch_infer:
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
             mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
@@ -272,9 +270,7 @@ task:
         sequences = ["ATCG", "GCTA"]
 
         # Mock batch_predict method
-        with patch.object(
-            self.predictor, "batch_infer"
-        ) as mock_batch_infer:
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
             mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
@@ -297,9 +293,7 @@ task:
     def test_infer_file(self):
         """Test file-based inference."""
         # Mock batch_predict method
-        with patch.object(
-            self.predictor, "batch_infer"
-        ) as mock_batch_infer:
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
             mock_batch_infer.return_value = (
                 torch.randn(4, 2),  # logits
                 {
