@@ -35,7 +35,7 @@ class InferenceConfig(BaseModel):
 
     @field_validator("use_fp16", mode="before")
     @classmethod
-    def set_use_fp16(cls, v, info):  # noqa: N805
+    def set_use_fp16(cls, v, info):
         """Set use_fp16 based on precision setting."""
         if info.data and "precision" in info.data:
             return info.data["precision"] == "float16"
@@ -70,7 +70,7 @@ class InferenceModelConfig(BaseModel):
 
     @field_validator("task")
     @classmethod
-    def validate_task_labels(cls, v):  # noqa: N805
+    def validate_task_labels(cls, v):
         """Validate that num_labels matches label_names length."""
         if v.num_labels != len(v.label_names):
             raise ValueError("num_labels must match the length of label_names")
@@ -108,7 +108,7 @@ class ModelEntryConfig(BaseModel):
 
     @field_validator("config_path")
     @classmethod
-    def validate_config_path(cls, v):  # noqa: N805
+    def validate_config_path(cls, v):
         """Validate config path format."""
         if not v or not v.strip():
             raise ValueError("Config path cannot be empty")
@@ -155,7 +155,7 @@ class MCPServerConfig(BaseModel):
 
     @field_validator("models")
     @classmethod
-    def validate_model_names(cls, v):  # noqa: N805
+    def validate_model_names(cls, v):
         """Validate that model names are unique."""
         names = [entry.name for entry in v.values()]
         if len(names) != len(set(names)):
@@ -164,7 +164,7 @@ class MCPServerConfig(BaseModel):
 
     @field_validator("multi_model")
     @classmethod
-    def validate_multi_model_references(cls, v, info):  # noqa: N805
+    def validate_multi_model_references(cls, v, info):
         """Validate that multi-model configurations reference existing models."""
         if info.data and "models" in info.data:
             available_models = set(info.data["models"].keys())

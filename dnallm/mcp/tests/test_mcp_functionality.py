@@ -1,6 +1,5 @@
 """Test MCP server functionality without starting HTTP server."""
 
-import asyncio
 import sys
 from pathlib import Path
 from loguru import logger
@@ -35,7 +34,9 @@ class TestMCPFunctionality:
             # Create server instance
             logger.info("Creating DNALLM MCP Server...")
             # Use absolute path to config file in tests directory
-            config_path = Path(__file__).parent / "configs" / "mcp_server_config.yaml"
+            config_path = (
+                Path(__file__).parent / "configs" / "mcp_server_config.yaml"
+            )
             server = DNALLMMCPServer(str(config_path))
 
             # Initialize server
@@ -44,7 +45,9 @@ class TestMCPFunctionality:
 
             # Get server info
             info = server.get_server_info()
-            logger.info(f"Server initialized: {info['name']} v{info['version']}")
+            logger.info(
+                f"Server initialized: {info['name']} v{info['version']}"
+            )
             logger.info(f"Loaded models: {info['loaded_models']}")
             logger.info(f"Enabled models: {info['enabled_models']}")
 
@@ -157,6 +160,7 @@ class TestMCPFunctionality:
         except Exception as e:
             logger.error(f"Test failed: {e}")
             import traceback
+
             traceback.print_exc()
             raise
 

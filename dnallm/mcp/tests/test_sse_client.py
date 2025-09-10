@@ -1,6 +1,5 @@
 """Test SSE client functionality for MCP server."""
 
-import asyncio
 import sys
 from pathlib import Path
 import pytest
@@ -12,7 +11,9 @@ try:
     from mcp.client.sse import sse_client
     from mcp.client.session import ClientSession
 except ImportError as e:
-    pytest.skip(f"MCP client modules not available: {e}", allow_module_level=True)
+    pytest.skip(
+        f"MCP client modules not available: {e}", allow_module_level=True
+    )
 
 
 class TestSSEClient:
@@ -61,6 +62,7 @@ class TestSSEClient:
         except Exception as e:
             print(f"❌ 连接失败: {e}")
             import traceback
+
             traceback.print_exc()
             # Skip test if server is not running
             pytest.skip(f"SSE connection failed: {e}")
@@ -70,17 +72,17 @@ class TestSSEClient:
     async def test_health_check_tool(self):
         """Test health check tool specifically."""
         server_url = "http://localhost:8000/sse"
-        
+
         try:
             async with sse_client(server_url) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    
+
                     # Test health check
                     health = await session.call_tool("health_check", {})
                     assert health is not None
                     print(f"Health check result: {health}")
-                    
+
         except Exception as e:
             pytest.skip(f"Health check test failed: {e}")
 
@@ -89,12 +91,12 @@ class TestSSEClient:
     async def test_dna_prediction_tool(self):
         """Test DNA prediction tool specifically."""
         server_url = "http://localhost:8000/sse"
-        
+
         try:
             async with sse_client(server_url) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    
+
                     # Test DNA prediction
                     result = await session.call_tool(
                         "dna_stream_predict",
@@ -105,7 +107,7 @@ class TestSSEClient:
                     )
                     assert result is not None
                     print(f"DNA prediction result: {result}")
-                    
+
         except Exception as e:
             pytest.skip(f"DNA prediction test failed: {e}")
 
