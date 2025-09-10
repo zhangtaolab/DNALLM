@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - master
-      - develop
+      - dev
       - flake8
   pull_request:
     branches: [ main, master, dev, flake8 ]
