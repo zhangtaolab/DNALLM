@@ -107,7 +107,7 @@ class TestTrainerRealModel(unittest.TestCase):
 
             # Step 7: Run prediction
             print("7️⃣ Running prediction...")
-            trainer.predict()
+            trainer.infer()
             print("✅ Prediction completed")
 
             print("🎉 Complete training workflow test passed!")
@@ -387,7 +387,7 @@ class TestTrainerRealModel(unittest.TestCase):
             )
 
             # Do prediction on the test set
-            trainer.predict()
+            trainer.infer()
 
             print("✅ Prediction completed")
 
@@ -485,7 +485,7 @@ def test_with_config_file():
         print(f"📊 Training metrics: {metrics}")
 
         # Do prediction on the test set
-        trainer.predict()
+        trainer.infer()
 
         print("✅ All operations completed successfully!")
         return True

@@ -306,5 +306,5 @@ curl -X POST http://localhost:8000/models
 
 - [Configuration Generator](config_generator.md) - Learn how to create configuration files
 - [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Train your own models
-- [API Reference](../api/inference/predictor.md) - Detailed API documentation
+- [API Reference](../api/inference/inference.md) - Detailed API documentation
 - [FAQ](../faq/faq.md) - Common questions and solutions

@@ -227,9 +227,9 @@ class Mutagenesis:
             - mutation names: Individual mutation results with scores and log fold changes
         """
         # Load predictor
-        predictor = self.get_predictor(self.model, self.tokenizer)
+        inference_engine = self.get_inference_engine(self.model, self.tokenizer)
         # Do prediction
-        logits, _, _ = predictor.batch_predict(self.dataloader, do_pred=False)
+        logits, _, _ = inference_engine.batch_infer(self.dataloader, do_pred=False)
         logits = logits[0] if isinstance(logits, tuple) else logits
         all_predictions = {}
         # Get the raw predictions

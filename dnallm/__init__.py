@@ -7,6 +7,7 @@ __all__ = [
     "DNADataset",
     "DNAInference",
     "DNATrainer",
+    "Mutagenesis",
     "__version__",
     "cli",
     "configuration",
@@ -30,5 +31,5 @@ from .configuration import load_config
 from .models import load_model_and_tokenizer
 from .datahandling import DNADataset
 from .finetune import DNATrainer
-from .inference import DNAInference, Benchmark
+from .inference import DNAInference, Benchmark, Mutagenesis
 from .utils import get_logger, setup_logging

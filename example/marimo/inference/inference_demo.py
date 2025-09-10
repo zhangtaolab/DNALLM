@@ -161,7 +161,7 @@ def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenize
     if model_name:
         # Load the model and tokenizer
         model, tokenizer = load_model_and_tokenizer(model_name, task_config=configs['task'], source=source_dropdown.value)
-        # Instantiate the predictor
+        # Instantiate the inference engine
         inference_engine = DNAInference(
             model=model,
             tokenizer=tokenizer,
@@ -169,14 +169,14 @@ def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenize
         )
         # Predict the sequence
         predict_button = mo.ui.button(label="Predict",
-                                      on_click=lambda value: predictor.predict_seqs(
+                                      on_click=lambda value: inference_engine.infer_seqs(
                                         dnaseq, output_attentions=True)
                                      )
     else:
         predict_button = mo.ui.button(label="Predict")
-        predictor = None
+        inference_engine = None
     mo.hstack([predict_button], align='center', justify='center')
-    return (predict_button, predictor,)
+    return (predict_button, inference_engine,)
 
 
 @app.cell
@@ -190,11 +190,11 @@ def __(predict_button):
 
 
 @app.cell
-def __(mo, results, predictor):
+def __(mo, results, inference_engine):
     if results:
-        seqs = len(predictor.sequences)
-        layers = len(predictor.embeddings['attentions'])
-        heads = predictor.embeddings['attentions'][0].shape[1]
+        seqs = len(inference_engine.sequences)
+        layers = len(inference_engine.embeddings['attentions'])
+        heads = inference_engine.embeddings['attentions'][0].shape[1]
     else:
         seqs = 1
         layers = 12
@@ -209,9 +209,9 @@ def __(mo, results, predictor):
     return (seq_number, layer_slider, head_slider, figure_size, )
 
 @app.cell
-def __(mo, seq_number, layer_slider, head_slider, figure_size, predictor):
+def __(mo, seq_number, layer_slider, head_slider, figure_size, inference_engine):
     plot_button = mo.ui.button(label="Plot attention map",
-                            on_click=lambda value: predictor.plot_attentions(
+                            on_click=lambda value: inference_engine.plot_attentions(
                                 seq_number.value-1, layer_slider.value-1, head_slider.value-1
                                 )
                             )

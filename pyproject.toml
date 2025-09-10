@@ -219,7 +219,7 @@ include = ["dnallm*"]
 [project.scripts]
 dnallm = "dnallm.cli.cli:cli"
 dnallm-train = "cli.train:main"
-dnallm-predict = "cli.predict:main"
+dnallm-inference = "cli.inference:main"
 dnallm-model-config-generator = "cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
 

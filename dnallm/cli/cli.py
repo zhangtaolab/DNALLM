@@ -18,7 +18,7 @@ def cli():
 
     This toolkit provides tools for:
     - Training DNA language models
-    - Running inference and predictions
+    - Running inference and analysis
     - Benchmarking model performance
     - In-silico mutagenesis analysis
     - Generating configuration files
@@ -85,7 +85,7 @@ def train(config, model, data, output):
     "--config",
     "-c",
     type=click.Path(exists=True),
-    help="Path to prediction configuration file",
+    help="Path to inference configuration file",
 )
 @click.option("--model", "-m", type=str, help="Model name or path")
 @click.option(
@@ -95,7 +95,7 @@ def train(config, model, data, output):
     help="Path to input data file",
 )
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
-def predict(config, model, input, output):
+def inference(config, model, input, output):
     """Run inference with a trained DNA language model"""
     from ..inference import DNAInference
     from ..configuration import load_config

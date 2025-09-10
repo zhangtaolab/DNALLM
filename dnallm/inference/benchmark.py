@@ -254,13 +254,13 @@ class Benchmark:
                     batch_size=pred_config.batch_size,
                     num_workers=pred_config.num_workers,
                 )
-                predictor = self.get_predictor(model, tokenizer)
+                inference_engine = self.get_inference_engine(model, tokenizer)
                 # Perform the prediction
-                logits, _, _ = predictor.batch_predict(
+                logits, _, _ = inference_engine.batch_infer(
                     dataloader, do_pred=False
                 )
                 if len(labels) == len(logits):
-                    metrics = predictor.calculate_metrics(
+                    metrics = inference_engine.calculate_metrics(
                         logits, labels, plot=True
                     )
                     all_results[dname][model_name] = metrics

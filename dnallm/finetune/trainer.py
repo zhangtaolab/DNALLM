@@ -235,14 +235,14 @@ class DNATrainer:
         result = self.trainer.evaluate()
         return result
 
-    def predict(self) -> dict[str, float]:
-        """Generate predictions on the test dataset.
+    def infer(self) -> dict[str, float]:
+        """Generate inference results on the test dataset.
 
-        This method generates predictions on the test dataset if available and returns
+        This method generates inference results on the test dataset if available and returns
         both predictions and evaluation metrics.
 
         Returns:
-            Dictionary containing prediction results and metrics if test dataset exists,
+            Dictionary containing inference results and metrics if test dataset exists,
             otherwise empty dictionary
         """
         self.model.eval()

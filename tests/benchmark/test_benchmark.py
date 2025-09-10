@@ -130,7 +130,7 @@ output:
             "A new dataset should have been added."
         )
 
-    def test_get_predictor(self):
+    def test_get_inference_engine(self):
         """Test if get_inference_engine returns a valid DNAInference instance."""
         benchmark = Benchmark(self.config)
         mock_model = Mock()

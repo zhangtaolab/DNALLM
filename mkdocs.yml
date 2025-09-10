@@ -84,7 +84,7 @@ nav:
     - Datahandling:
       - Data: api/datahandling/data.md
     - Inference:
-      - Predictor: api/inference/predictor.md
+      - Inference: api/inference/inference.md
     - Finetune:
       - Trainer: api/finetune/trainer.md
 

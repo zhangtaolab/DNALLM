@@ -1632,7 +1632,7 @@ def main(output, preview, non_interactive):
             click.echo("1. Review the generated configuration file")
             click.echo("2. Adjust parameters if needed")
             click.echo(
-                "3. Run inference with: dnallm-predict --config " + filepath
+                "3. Run inference with: dnallm-inference --config " + filepath
             )
         elif generator.config_type == "benchmark":
             click.echo("1. Review the generated configuration file")

@@ -11,7 +11,7 @@ A web-based interface for generating configuration files for DNALLM fine-tuning,
 
 ### **Configuration Types**
 1. **🔧 Fine-tuning**: Generate configs for model training
-2. **🔮 Inference**: Generate configs for model prediction  
+2. **🔮 Inference**: Generate configs for model inference  
 3. **📊 Benchmark**: Generate configs for model evaluation
 
 ### **User Interface**
@@ -62,7 +62,7 @@ Task Type: binary_classification
 Number of Labels: 2
 Label Names: Not promoter, Core promoter
 Threshold: 0.5
-Description: Predict whether a DNA sequence is a core promoter in plants.
+Description: Infer whether a DNA sequence is a core promoter in plants.
 ```
 
 ## 📋 Configuration Parameters

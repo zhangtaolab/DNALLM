@@ -632,7 +632,7 @@ for item in dataset.train_data:
 # Binary classification
 from sklearn.metrics import classification_report, roc_auc_score
 
-predictions = trainer.predict(dataset.test_data)
+predictions = trainer.infer(dataset.test_data)
 y_true = [item['label'] for item in dataset.test_data]
 y_pred = predictions.predictions.argmax(-1)
 

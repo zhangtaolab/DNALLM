@@ -129,13 +129,13 @@ model, tokenizer = load_model_and_tokenizer(
     source="huggingface"
 )
 
-# Initialize predictor
+# Initialize inference engine
 inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
-# Make prediction
+# Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
-prediction = inference_engine.infer(sequence)
-print(f"Prediction: {prediction}")
+inference_result = inference_engine.infer(sequence)
+print(f"Inference result: {inference_result}")
 ```
 
 ### 2. In-silico Mutagenesis Analysis
@@ -224,8 +224,8 @@ DNALLM provides convenient CLI tools:
 # Training
 dnallm-train --config path/to/config.yaml
 
-# Prediction
-dnallm-predict --config path/to/config.yaml --input path/to/sequences.txt
+# Inference
+dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
 
 # Model configuration generator
 dnallm-model-config-generator

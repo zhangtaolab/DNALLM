@@ -17,7 +17,7 @@ def main():
         # Simple command line interface for standalone usage
         if len(sys.argv) < 3:
             print(
-                "Usage: python -m dnallm.cli.predict <config_file> <model_path>"
+                "Usage: python -m dnallm.cli.inference <config_file> <model_path>"
             )
             sys.exit(1)
 
@@ -34,7 +34,7 @@ def main():
             sys.exit(1)
     else:
         print("DNALLM Inference Module")
-        print("Use the main CLI: dnallm predict --help")
+        print("Use the main CLI: dnallm inference --help")
 
 
 if __name__ == "__main__":
