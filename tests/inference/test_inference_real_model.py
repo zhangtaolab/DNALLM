@@ -49,12 +49,14 @@ class TestRealModelInference(unittest.TestCase):
 
             print("✅ Configuration loaded")
 
-            # Create predictor
+            # Create inference engine
             cls.inference_engine = DNAInference(
                 cls.model, cls.tokenizer, cls.config
             )
+            # Keep backward compatibility for tests
+            cls.predictor = cls.inference_engine
 
-            print("✅ Predictor created")
+            print("✅ Inference engine created")
 
         except ImportError as e:
             print(f"❌ Import error: {e}")
@@ -106,7 +108,7 @@ class TestRealModelInference(unittest.TestCase):
 
         # Perform prediction - just ensure it runs without error
         try:
-            results = self.predictor.predict_seqs(test_sequences)
+            results = self.predictor.infer_seqs(test_sequences)
             print("✅ Basic inference completed successfully")
             assert results is not None
         except Exception as e:
@@ -139,7 +141,7 @@ class TestRealModelInference(unittest.TestCase):
 
         try:
             # Predict from file - just ensure it runs without error
-            file_results = self.predictor.predict_file(
+            file_results = self.predictor.infer_file(
                 test_file_path,
                 seq_col="sequence",
                 label_col="label",
@@ -186,7 +188,7 @@ class TestRealModelInference(unittest.TestCase):
         print("📊 Testing with test.csv data...")
 
         try:
-            results = self.predictor.predict_file(
+            results = self.predictor.infer_file(
                 "test.csv",
                 seq_col="sequence",
                 label_col="label",

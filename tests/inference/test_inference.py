@@ -49,6 +49,8 @@ class TestDNAInference(unittest.TestCase):
             tokenizer=self.mock_tokenizer,
             config=self.load_test_config(),
         )
+        # Keep backward compatibility for tests
+        self.predictor = self.inference_engine
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -239,13 +241,13 @@ task:
         assert "label" in formatted[0]
         assert "scores" in formatted[0]
 
-    def test_batch_predict(self):
-        """Test batch prediction."""
+    def test_batch_infer(self):
+        """Test batch inference."""
         # Mock the batch_predict method directly to avoid complex data loading issues
         with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+            self.predictor, "batch_infer"
+        ) as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -257,7 +259,7 @@ task:
             # Create a mock dataloader
             mock_dataloader = Mock()
 
-            logits, predictions, embeddings = self.predictor.batch_predict(
+            logits, predictions, embeddings = self.predictor.batch_infer(
                 mock_dataloader
             )
 
@@ -265,15 +267,15 @@ task:
             assert isinstance(predictions, dict)
             assert isinstance(embeddings, dict)
 
-    def test_predict_seqs(self):
-        """Test sequence prediction."""
+    def test_infer_seqs(self):
+        """Test sequence inference."""
         sequences = ["ATCG", "GCTA"]
 
         # Mock batch_predict method
         with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+            self.predictor, "batch_infer"
+        ) as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -287,18 +289,18 @@ task:
                 self.predictor, "generate_dataset"
             ) as mock_generate:
                 mock_generate.return_value = (None, None)
-                result = self.predictor.predict_seqs(sequences)
+                result = self.predictor.infer_seqs(sequences)
 
                 assert isinstance(result, dict)
                 assert len(result) == 2
 
-    def test_predict_file(self):
-        """Test file-based prediction."""
+    def test_infer_file(self):
+        """Test file-based inference."""
         # Mock batch_predict method
         with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+            self.predictor, "batch_infer"
+        ) as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(4, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -314,7 +316,7 @@ task:
                 self.predictor, "generate_dataset"
             ) as mock_generate:
                 mock_generate.return_value = (None, None)
-                result = self.predictor.predict_file(
+                result = self.predictor.infer_file(
                     self.test_csv_path, seq_col="sequence", label_col="label"
                 )
 
@@ -401,12 +403,12 @@ task:
         output_dir = Path(self.test_dir) / "predictions"
 
         # Import and test save function
-        from dnallm.inference.predictor import save_predictions
+        from dnallm.inference.inference import save_predictions
 
         save_predictions(predictions, output_dir)
 
         # Check if file was created
-        assert output_dir / "predictions.json".exists()
+        assert (output_dir / "predictions.json").exists()
 
     def test_save_metrics(self):
         """Test metrics saving."""
@@ -415,12 +417,12 @@ task:
         output_dir = Path(self.test_dir) / "metrics"
 
         # Import and test save function
-        from dnallm.inference.predictor import save_metrics
+        from dnallm.inference.inference import save_metrics
 
         save_metrics(metrics, output_dir)
 
         # Check if file was created
-        assert output_dir / "metrics.json".exists()
+        assert (output_dir / "metrics.json").exists()
 
 
 class TestDNAInferenceIntegration(unittest.TestCase):
