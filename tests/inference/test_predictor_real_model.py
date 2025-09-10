@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test real model inference with zhangtaolab/plant-dnagpt-BPE-promoter.
 
-This script demonstrates how to use the DNAPredictor with a real model
+This script demonstrates how to use the DNAInference with a real model
 for DNA sequence classification.
 """
 
@@ -27,7 +27,7 @@ class TestRealModelInference(unittest.TestCase):
                 AutoModelForSequenceClassification,
                 AutoTokenizer,
             )
-            from dnallm.inference.predictor import DNAPredictor
+            from dnallm.inference.inference import DNAInference
             from dnallm.configuration.configs import load_config
 
             print("🚀 Setting up test class...")
@@ -50,7 +50,9 @@ class TestRealModelInference(unittest.TestCase):
             print("✅ Configuration loaded")
 
             # Create predictor
-            cls.predictor = DNAPredictor(cls.model, cls.tokenizer, cls.config)
+            cls.inference_engine = DNAInference(
+                cls.model, cls.tokenizer, cls.config
+            )
 
             print("✅ Predictor created")
 
@@ -212,7 +214,7 @@ class TestRealModelInference(unittest.TestCase):
 def run_tests():
     """Run the tests with proper setup and teardown."""
     try:
-        print("🧪 DNAPredictor Real Model Testing")
+        print("🧪 DNAInference Real Model Testing")
         print("=" * 50)
 
         # Create test suite

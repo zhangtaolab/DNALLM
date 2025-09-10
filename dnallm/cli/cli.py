@@ -97,19 +97,19 @@ def train(config, model, data, output):
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
 def predict(config, model, input, output):
     """Run inference with a trained DNA language model"""
-    from ..inference import DNAPredictor
+    from ..inference import DNAInference
     from ..configuration import load_config
 
     if config:
         # Load configuration from file
         config_dict = load_config(config)
-        predictor = DNAPredictor(config_dict)
-        results = predictor.predict()
+        inference_engine = DNAInference(config_dict)
+        results = inference_engine.infer()
 
         if output:
-            predictor.save_results(results, output)
+            inference_engine.save_results(results, output)
         else:
-            logger.info(f"Prediction results: {results}")
+            logger.info(f"Inference results: {results}")
     else:
         # Use command line arguments
         if not all([model, input]):
@@ -124,13 +124,13 @@ def predict(config, model, input, output):
             "data_path": input,
         }
 
-        predictor = DNAPredictor(config_dict)
-        results = predictor.predict()
+        inference_engine = DNAInference(config_dict)
+        results = inference_engine.infer()
 
         if output:
-            predictor.save_results(results, output)
+            inference_engine.save_results(results, output)
         else:
-            logger.info(f"Prediction results: {results}")
+            logger.info(f"Inference results: {results}")
 
 
 @cli.command()

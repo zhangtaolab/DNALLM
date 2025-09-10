@@ -11,8 +11,8 @@ def __(__file__):
     # sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
     import marimo as mo
     import pandas as pd
-    from dnallm import load_config, load_model_and_tokenizer, DNAPredictor
-    return sys, pd, mo, load_config, load_model_and_tokenizer, DNAPredictor
+    from dnallm import load_config, load_model_and_tokenizer, DNAInference
+    return sys, pd, mo, load_config, load_model_and_tokenizer, DNAInference
 
 
 @app.cell
@@ -157,12 +157,12 @@ def __(task_dropdown, configs):
 
 
 @app.cell
-def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenizer, DNAPredictor):
+def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenizer, DNAInference):
     if model_name:
         # Load the model and tokenizer
         model, tokenizer = load_model_and_tokenizer(model_name, task_config=configs['task'], source=source_dropdown.value)
         # Instantiate the predictor
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=model,
             tokenizer=tokenizer,
             config=configs

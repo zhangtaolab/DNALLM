@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from dnallm.inference.benchmark import Benchmark
 from dnallm.datahandling.data import DNADataset
-from dnallm.inference.predictor import DNAPredictor
+from dnallm.inference.inference import DNAInference
 
 
 class TestBenchmark(unittest.TestCase):
@@ -131,14 +131,16 @@ output:
         )
 
     def test_get_predictor(self):
-        """Test if get_predictor returns a valid DNAPredictor instance."""
+        """Test if get_inference_engine returns a valid DNAInference instance."""
         benchmark = Benchmark(self.config)
         mock_model = Mock()
         mock_tokenizer = Mock()
-        predictor = benchmark.get_predictor(mock_model, mock_tokenizer)
-        assert isinstance(predictor, DNAPredictor)
-        assert predictor.model == mock_model
-        assert predictor.tokenizer == mock_tokenizer
+        inference_engine = benchmark.get_inference_engine(
+            mock_model, mock_tokenizer
+        )
+        assert isinstance(inference_engine, DNAInference)
+        assert inference_engine.model == mock_model
+        assert inference_engine.tokenizer == mock_tokenizer
 
     def test_available_models(self):
         """Test listing available models."""
@@ -152,12 +154,12 @@ output:
         assert "Plant NT" in model_tags
 
     @patch("dnallm.inference.benchmark.load_model_and_tokenizer")
-    @patch.object(DNAPredictor, "batch_predict")
-    @patch.object(DNAPredictor, "calculate_metrics")
+    @patch.object(DNAInference, "batch_infer")
+    @patch.object(DNAInference, "calculate_metrics")
     def test_run_benchmark_flow(
         self,
         mock_calculate_metrics,
-        mock_batch_predict,
+        mock_batch_infer,
         mock_load_model_tokenizer,
     ):
         """Test the main benchmark execution flow using mocks."""
@@ -191,7 +193,7 @@ output:
 
         mock_load_model_tokenizer.return_value = (mock_model, mock_tokenizer)
         mock_logits = torch.randn(4, 2)
-        mock_batch_predict.return_value = (mock_logits, None, None)
+        mock_batch_infer.return_value = (mock_logits, None, None)
         mock_calculate_metrics.return_value = {
             "accuracy": 0.95,
             "f1": 0.92,
@@ -217,7 +219,7 @@ output:
 
         # Verify that dependencies were called correctly
         assert mock_load_model_tokenizer.call_count == 2
-        assert mock_batch_predict.call_count == 2
+        assert mock_batch_infer.call_count == 2
         assert mock_calculate_metrics.call_count == 2
 
     @patch("dnallm.inference.plot.plot_bars")

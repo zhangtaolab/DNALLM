@@ -19,7 +19,7 @@ DNALLM MCP Server 是一个基于 Model Context Protocol (MCP) 的 DNA 序列预
 │   MCP Client    │    │   MCP Server     │    │  DNA Models     │
 │                 │    │                  │    │                 │
 │ - SSE Client    │◄──►│ - FastMCP Server │◄──►│ - Model Pool    │
-│ - HTTP Client   │    │ - SSE Transport  │    │ - DNAPredictor  │
+│ - HTTP Client   │    │ - SSE Transport  │    │ - DNAInference  │
 │                 │    │ - Task Router    │    │ - Config Mgmt   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │

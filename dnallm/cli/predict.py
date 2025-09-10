@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Prediction CLI module for DNALLM package.
+Inference CLI module for DNALLM package.
 """
 
 import sys
 
 
 def main():
-    """Main prediction function"""
-    from ..inference import DNAPredictor
+    """Main inference function"""
+    from ..inference import DNAInference
     from ..configuration import load_config
 
     # This function will be called from the main CLI
@@ -26,14 +26,14 @@ def main():
 
         try:
             config_dict = load_config(config_file)
-            predictor = DNAPredictor(config_dict)
-            results = predictor.predict()
+            inference_engine = DNAInference(config_dict)
+            results = inference_engine.infer()
             print(results)
         except Exception as e:
-            print(f"Prediction failed: {e}")
+            print(f"Inference failed: {e}")
             sys.exit(1)
     else:
-        print("DNALLM Prediction Module")
+        print("DNALLM Inference Module")
         print("Use the main CLI: dnallm predict --help")
 
 

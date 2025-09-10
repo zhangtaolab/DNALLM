@@ -1,6 +1,6 @@
-"""Test DNAPredictor class functionality.
+"""Test DNAInference class functionality.
 
-This test file tests the core functionality of the DNAPredictor class,
+This test file tests the core functionality of the DNAInference class,
 including model loading, inference, and result processing.
 """
 
@@ -20,12 +20,12 @@ from datasets import Dataset
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from dnallm.inference.predictor import DNAPredictor
+from dnallm.inference.inference import DNAInference
 from dnallm.datahandling.data import DNADataset
 
 
-class TestDNAPredictor(unittest.TestCase):
-    """Test cases for DNAPredictor class."""
+class TestDNAInference(unittest.TestCase):
+    """Test cases for DNAInference class."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -43,8 +43,8 @@ class TestDNAPredictor(unittest.TestCase):
         self.mock_model = self.create_mock_model()
         self.mock_tokenizer = self.create_mock_tokenizer()
 
-        # Create predictor instance
-        self.predictor = DNAPredictor(
+        # Create inference engine instance
+        self.inference_engine = DNAInference(
             model=self.mock_model,
             tokenizer=self.mock_tokenizer,
             config=self.load_test_config(),
@@ -423,8 +423,8 @@ task:
         assert output_dir / "metrics.json".exists()
 
 
-class TestDNAPredictorIntegration(unittest.TestCase):
-    """Integration tests for DNAPredictor with real model loading."""
+class TestDNAInferenceIntegration(unittest.TestCase):
+    """Integration tests for DNAInference with real model loading."""
 
     @classmethod
     def setUpClass(cls):
@@ -480,11 +480,11 @@ task:
             config = load_config(self.config_path)
 
             # Create predictor
-            predictor = DNAPredictor(model, tokenizer, config)
+            inference_engine = DNAInference(model, tokenizer, config)
 
             # Test with real sequences
             sequences = ["ATCGATCGATCG", "GCTAGCTAGCTA"]
-            result = predictor.predict_seqs(sequences)
+            result = inference_engine.infer_seqs(sequences)
 
             assert isinstance(result, dict)
             assert len(result) == 2

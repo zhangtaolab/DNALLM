@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset
 
 from ..datahandling.data import DNADataset
-from .predictor import DNAPredictor
+from .inference import DNAInference
 from .plot import plot_muts
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -48,22 +48,22 @@ class Mutagenesis:
         self.config = config
         self.sequences = None
 
-    def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """Create a predictor object for the model.
+    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+        """Create an inference engine object for the model.
 
         Args:
-            model: The model to be used for prediction
+            model: The model to be used for inference
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAPredictor: The predictor object configured with the given model and tokenizer
+            DNAInference: The inference engine object configured with the given model and tokenizer
         """
 
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=model, tokenizer=tokenizer, config=self.config
         )
 
-        return predictor
+        return inference_engine
 
     def mutate_sequence(
         self,

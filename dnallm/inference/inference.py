@@ -2,18 +2,18 @@
 
 This module implements core model inference functionality, including:
 
-1. DNAPredictor class
+1. DNAInference class
    - Model loading and initialization
-   - Batch sequence prediction
+   - Batch sequence inference
    - Result post-processing
    - Device management
    - Half-precision inference support
 
 2. Core features:
    - Model state management
-   - Batch prediction
+   - Batch inference
    - Result merging
-   - Prediction result saving
+   - Inference result saving
    - Memory optimization
 
 3. Inference optimization:
@@ -24,12 +24,12 @@ This module implements core model inference functionality, including:
 
 Example:
     ```python
-    predictor = DNAPredictor(
+    inference_engine = DNAInference(
         model=model,
         tokenizer=tokenizer,
         config=config
     )
-    results = predictor.predict(sequences)
+    results = inference_engine.infer(sequences)
     ```
 """
 
@@ -49,15 +49,15 @@ from ..tasks.metrics import compute_metrics
 from ..utils import get_logger
 from .plot import plot_attention_map, plot_embeddings
 
-logger = get_logger("dnallm.inference.predictor")
+logger = get_logger("dnallm.inference.inference")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
-class DNAPredictor:
-    """DNA sequence predictor using fine-tuned models.
+class DNAInference:
+    """DNA sequence inference engine using fine-tuned models.
 
-    This class provides comprehensive functionality for making predictions using DNA language models.
+    This class provides comprehensive functionality for performing inference using DNA language models.
     It handles model loading, inference, result processing, and various output formats including
     hidden states and attention weights for model interpretability.
 
@@ -73,7 +73,7 @@ class DNAPredictor:
     """
 
     def __init__(self, model: Any, tokenizer: Any, config: dict):
-        """Initialize the predictor.
+        """Initialize the inference engine.
 
         Args:
             model: Fine-tuned model instance for inference
@@ -442,14 +442,14 @@ class DNAPredictor:
         return formatted_predictions
 
     @torch.no_grad()
-    def batch_predict(
+    def batch_infer(
         self,
         dataloader: DataLoader,
         do_pred: bool = True,
         output_hidden_states: bool = False,
         output_attentions: bool = False,
     ) -> tuple[torch.Tensor, dict | None, dict]:
-        """Perform batch prediction on sequences.
+        """Perform batch inference on sequences.
 
         This method runs inference on batches of sequences and optionally extracts
         hidden states and attention weights for model interpretability.
@@ -526,7 +526,7 @@ class DNAPredictor:
                         output_attentions = False
             embeddings["attentions"] = None
         # Iterate over batches
-        for batch in tqdm(dataloader, desc="Predicting"):
+        for batch in tqdm(dataloader, desc="Inferring"):
             inputs = {k: v.to(self.device) for k, v in batch.items()}
             if self.pred_config.use_fp16:
                 self.model = self.model.half()
@@ -600,7 +600,7 @@ class DNAPredictor:
             predictions = self.format_output(predictions)
         return all_logits, predictions, embeddings
 
-    def predict_seqs(
+    def infer_seqs(
         self,
         sequences: str | list[str],
         evaluate: bool = False,
@@ -608,13 +608,13 @@ class DNAPredictor:
         output_attentions: bool = False,
         save_to_file: bool = False,
     ) -> dict | tuple[dict, dict]:
-        """Predict for a list of sequences.
+        """Infer for a list of sequences.
 
-        This method provides a convenient interface for predicting on sequences,
+        This method provides a convenient interface for performing inference on sequences,
         with optional evaluation and saving capabilities.
 
         Args:
-            sequences: Single sequence or list of sequences for prediction
+            sequences: Single sequence or list of sequences for inference
             evaluate: Whether to evaluate predictions against true labels
             output_hidden_states: Whether to output hidden states for visualization
             output_attentions: Whether to output attention weights for visualization
@@ -632,8 +632,8 @@ class DNAPredictor:
         _, dataloader = self.generate_dataset(
             sequences, batch_size=self.pred_config.batch_size
         )
-        # Do batch prediction
-        logits, predictions, embeddings = self.batch_predict(
+        # Do batch inference
+        logits, predictions, embeddings = self.batch_infer(
             dataloader,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
@@ -656,7 +656,7 @@ class DNAPredictor:
 
         return predictions
 
-    def predict_file(
+    def infer_file(
         self,
         file_path: str,
         evaluate: bool = False,
@@ -672,9 +672,9 @@ class DNAPredictor:
         save_to_file: bool = False,
         plot_metrics: bool = False,
     ) -> dict | tuple[dict, dict]:
-        """Predict from a file containing sequences.
+        """Infer from a file containing sequences.
 
-        This method loads sequences from a file and performs prediction,
+        This method loads sequences from a file and performs inference,
         with optional evaluation, visualization, and saving capabilities.
 
         Args:
@@ -712,13 +712,13 @@ class DNAPredictor:
             lowercase=lowercase,
             batch_size=self.pred_config.batch_size,
         )
-        # Do batch prediction
+        # Do batch inference
         if output_attentions:
             warnings.warn(
                 "Cautions: output_attentions may consume a lot of memory.\n",
                 stacklevel=2,
             )
-        logits, predictions, embeddings = self.batch_predict(
+        logits, predictions, embeddings = self.batch_infer(
             dataloader,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
@@ -746,6 +746,58 @@ class DNAPredictor:
                 return predictions, metrics_save
 
         return predictions
+
+    def infer(
+        self,
+        sequences: str | list[str] | None = None,
+        file_path: str | None = None,
+        evaluate: bool = False,
+        output_hidden_states: bool = False,
+        output_attentions: bool = False,
+        save_to_file: bool = False,
+        **kwargs,
+    ) -> dict | tuple[dict, dict]:
+        """Main inference method for sequences or files.
+
+        This is the primary entry point for performing inference. It automatically
+        determines whether to process sequences directly or load from a file.
+
+        Args:
+            sequences: Single sequence or list of sequences for inference
+            file_path: Path to file containing sequences for inference
+            evaluate: Whether to evaluate predictions against true labels
+            output_hidden_states: Whether to output hidden states for visualization
+            output_attentions: Whether to output attention weights for visualization
+            save_to_file: Whether to save predictions to output directory
+            **kwargs: Additional arguments passed to specific inference methods
+
+        Returns:
+            Either:
+                - Dict: Dictionary containing predictions
+                - Tuple[Dict, Dict]: (predictions, metrics) if evaluate=True
+
+        Raises:
+            ValueError: If neither sequences nor file_path is provided
+        """
+        if sequences is not None:
+            return self.infer_seqs(
+                sequences=sequences,
+                evaluate=evaluate,
+                output_hidden_states=output_hidden_states,
+                output_attentions=output_attentions,
+                save_to_file=save_to_file,
+            )
+        elif file_path is not None:
+            return self.infer_file(
+                file_path=file_path,
+                evaluate=evaluate,
+                output_hidden_states=output_hidden_states,
+                output_attentions=output_attentions,
+                save_to_file=save_to_file,
+                **kwargs,
+            )
+        else:
+            raise ValueError("Either sequences or file_path must be provided")
 
     def calculate_metrics(
         self,

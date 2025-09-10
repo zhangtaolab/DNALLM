@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from ..models import MODEL_INFO, load_model_and_tokenizer
 from ..datahandling.data import DNADataset
 from ..configuration.configs import TaskConfig, InferenceConfig
-from .predictor import DNAPredictor, save_metrics
+from .inference import DNAInference, save_metrics
 from .plot import prepare_data, plot_bars, plot_curve, plot_scatter
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -91,21 +91,21 @@ class Benchmark:
             "plot_format": plot_format,
         }
 
-    def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """Create a predictor object for the model.
+    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+        """Create an inference engine object for the model.
 
         Args:
-            model: The model to be used for prediction
+            model: The model to be used for inference
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAPredictor: The predictor object configured with the given model and tokenizer
+            DNAInference: The inference engine object configured with the given model and tokenizer
         """
 
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=model, tokenizer=tokenizer, config=self.config
         )
-        return predictor
+        return inference_engine
 
     def get_dataset(
         self,
@@ -123,10 +123,10 @@ class Benchmark:
         Returns:
             DNADataset: Dataset object containing the sequences and labels
         """
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=None, tokenizer=None, config=self.config
         )
-        ds, _ = predictor.generate_dataset(
+        ds, _ = inference_engine.generate_dataset(
             seq_or_path=seq_or_path,
             seq_col=seq_col,
             label_col=label_col,

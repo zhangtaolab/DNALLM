@@ -5,7 +5,7 @@ This is the main module for DNALLM.
 __all__ = [
     "Benchmark",
     "DNADataset",
-    "DNAPredictor",
+    "DNAInference",
     "DNATrainer",
     "__version__",
     "cli",
@@ -30,5 +30,5 @@ from .configuration import load_config
 from .models import load_model_and_tokenizer
 from .datahandling import DNADataset
 from .finetune import DNATrainer
-from .inference import DNAPredictor, Benchmark
+from .inference import DNAInference, Benchmark
 from .utils import get_logger, setup_logging

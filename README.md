@@ -153,7 +153,7 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 ### 1. Basic Model Loading and Inference
 
 ```python
-from dnallm import load_config, load_model_and_tokenizer, DNAPredictor
+from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
 # Load configuration
 configs = load_config("./example/notebooks/inference/inference_config.yaml")
@@ -167,11 +167,11 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize predictor
-predictor = DNAPredictor(config=configs, model=model, tokenizer=tokenizer)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make prediction
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
-prediction = predictor.predict(sequence)
+prediction = inference_engine.infer(sequence)
 print(f"Prediction: {prediction}")
 ```
 
