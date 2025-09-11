@@ -110,7 +110,7 @@ def symmetric_mean_absolute_percentage_error(
         weighted average of all output errors is returned.
         sMAPE output is non-negative floating point. The best value is 0.0.
     """
-    y_type, y_true, y_pred, multioutput = _check_reg_targets(
+    _y_type, y_true, y_pred, multioutput = _check_reg_targets(
         y_true, y_pred, multioutput
     )
     check_consistent_length(y_true, y_pred, sample_weight)

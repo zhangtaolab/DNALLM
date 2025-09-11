@@ -274,7 +274,7 @@ Examples:
     # Run all checks
     for i, check in enumerate(checks, 1):
         print_status("INFO", f"{i}. {check['name']}...")
-        success, output = run_command(
+        success, _output = run_command(
             check["cmd"], check["description"], args.verbose
         )
 

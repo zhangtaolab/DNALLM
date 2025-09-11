@@ -556,7 +556,7 @@ def plot_embeddings(
             f"Unsupported dim reducer '{reducer}', please try PCA, t-SNE or UMAP."
         )
 
-    module_name, class_name = reducer_map[reducer_lower]
+    module_name, _class_name = reducer_map[reducer_lower]
 
     try:
         if module_name == "sklearn.decomposition":

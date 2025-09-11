@@ -267,7 +267,7 @@ def mean_iou(
     (
         total_area_intersect,
         total_area_union,
-        total_area_pred_label,
+        _total_area_pred_label,
         total_area_label,
     ) = total_intersect_and_union(
         results,
