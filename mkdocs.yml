@@ -85,8 +85,13 @@ nav:
       - Data: api/datahandling/data.md
     - Inference:
       - Inference: api/inference/inference.md
+      - Benchmark: api/inference/benchmark.md
+      - Plot: api/inference/plot.md
+      - Mutagenesis: api/inference/mutagenesis.md
     - Finetune:
       - Trainer: api/finetune/trainer.md
+    - MCP:
+      - Server: api/mcp/server.md
 
 plugins:
   - search
