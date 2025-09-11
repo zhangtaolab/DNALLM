@@ -78,7 +78,11 @@ class Benchmark:
                 self.config["task"].num_labels = d.num_labels
                 self.config["task"].label_names = d.label_names
                 self.config["task"].threshold = d.threshold
-                data_path = d.path if os.path.isfile(d.path) else os.path.abspath(config_path + "/" + d.path)
+                data_path = (
+                    d.path
+                    if os.path.isfile(d.path)
+                    else os.path.abspath(config_path + "/" + d.path)
+                )
                 self.get_dataset(data_path, d.text_column, d.label_column)
                 task_configs.append(self.config["task"])
         else:
