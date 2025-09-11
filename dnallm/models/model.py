@@ -193,6 +193,7 @@ def load_model_and_tokenizer(
     task_type = task_config.task_type
     label_names = task_config.label_names
     num_labels = task_config.num_labels
+    # Create label mappings
     id2label = dict(enumerate(label_names))
     label2id = {label: i for i, label in enumerate(label_names)}
     # Load model and tokenizer

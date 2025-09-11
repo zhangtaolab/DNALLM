@@ -290,8 +290,9 @@ class Mutagenesis:
     ) -> None:
         """Plot the mutagenesis analysis results.
 
-        This method generates visualizations of mutation effects, typically as heatmaps
-        showing how different mutations affect model predictions at various positions.
+        This method generates visualizations of mutation effects, typically as heatmaps,
+        bar charts and line plots showing how different mutations affect model predictions
+        at various positions.
 
         Args:
             preds: Dictionary containing model predicted scores and metadata
@@ -299,16 +300,16 @@ class Mutagenesis:
             save_path: Path to save the plot. If None, plot will be shown interactively
 
         Returns:
-            Plot object (typically a heatmap visualization)
+            Plot object
         """
         if save_path:
             suffix = os.path.splitext(save_path)[-1]
             if suffix:
-                heatmap = save_path.replace(suffix, "_heatmap" + suffix)
+                outfile = save_path
             else:
-                heatmap = os.path.join(save_path, "heatmap.pdf")
+                outfile = os.path.join(save_path, ".pdf")
         else:
-            heatmap = None
+            outfile = None
         # Plot heatmap
-        pheat = plot_muts(preds, show_score=show_score, save_path=heatmap)
-        return pheat
+        pmut = plot_muts(preds, show_score=show_score, save_path=outfile)
+        return pmut

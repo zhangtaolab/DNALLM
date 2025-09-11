@@ -61,22 +61,26 @@ class Benchmark:
     def __load_from_config(self):
         """Load the benchmark-specific parameters from the configuration."""
         benchmark_config = self.config["benchmark"]
+        config_path = os.path.dirname(benchmark_config.config_path)
         models = benchmark_config.models
         model_names = {m.name: m.path for m in models}
-        sources = [m.source for m in models]
+        sources = [m.source if hasattr(m, "source") else None for m in models]
         self.config["inference"] = InferenceConfig
         for k, v in dict(benchmark_config.evaluation).items():
             setattr(self.config["inference"], k, v)
         self.config["inference"].output_dir = benchmark_config.output.path
         if hasattr(benchmark_config, "datasets"):
             datasets = benchmark_config.datasets
+            task_configs = []
             for d in datasets:
                 self.config["task"] = TaskConfig
                 self.config["task"].task_type = d.task
-                self.config["task"].threshold = d.threshold
+                self.config["task"].num_labels = d.num_labels
                 self.config["task"].label_names = d.label_names
-                self.get_dataset(d.path, d.text_column, d.label_column)
-            task_configs = [d.task for d in datasets]
+                self.config["task"].threshold = d.threshold
+                data_path = d.path if os.path.isfile(d.path) else os.path.abspath(config_path + "/" + d.path)
+                self.get_dataset(data_path, d.text_column, d.label_column)
+                task_configs.append(self.config["task"])
         else:
             datasets = []
             task_configs = [self.config["task"]]
@@ -155,7 +159,7 @@ class Benchmark:
     def run(
         self,
         model_names: list[str] | dict | None = None,
-        source: str = "local",
+        source: str = "huggingface",
         use_mirror: bool = False,
         save_preds: bool = False,
         save_scores: bool = True,
@@ -187,7 +191,7 @@ class Benchmark:
             # Get datasets and model names from preset config
             dataset_names = [d.name for d in self.prepared["dataset"]]
             model_names = self.prepared["models"]
-            sources = self.prepared["sources"]
+            sources = [s if s else source for s in self.prepared["sources"]]
             selected_metrics = self.prepared["metrics"]
         else:
             # Get configurations from the provided config
@@ -227,22 +231,22 @@ class Benchmark:
                     # if model_path not in self.all_models[source]:
                     #     print(f"Model \'{model_path}\' not found in our available models list.")
                     #     continue
-                    try:
-                        model, tokenizer = load_model_and_tokenizer(
-                            model_path,
-                            task_config=task_config,
-                            source=source,
-                            use_mirror=use_mirror,
-                        )
-                    except Exception:
-                        if os.path.exists(model_path):
-                            model, tokenizer = load_model_and_tokenizer(
-                                model_path, task_config=task_config
-                            )
-                        else:
-                            raise NameError(
-                                "Cannot find model in either the given source or local."
-                            ) from None
+                    # try:
+                    model, tokenizer = load_model_and_tokenizer(
+                        model_path,
+                        task_config=task_config,
+                        source=source,
+                        use_mirror=use_mirror,
+                    )
+                    # except Exception:
+                    #     if os.path.exists(model_path):
+                    #         model, tokenizer = load_model_and_tokenizer(
+                    #             model_path, task_config=task_config
+                    #         )
+                    #     else:
+                    #         raise NameError(
+                    #             "Cannot find model in either the given source or local."
+                    #         ) from None
                 dataset = DNADataset(
                     self.datasets[di],
                     tokenizer=tokenizer,
@@ -264,7 +268,6 @@ class Benchmark:
                         logits, labels, plot=True
                     )
                     all_results[dname][model_name] = metrics
-                    selected_results[dname][model_name] = {}
                     # keep selected metrics
                     if selected_metrics:
                         selected_results[dname][model_name] = {}
@@ -275,6 +278,8 @@ class Benchmark:
                                 selected_results[dname][model_name][metric] = (
                                     all_results[dname][model_name][metric]
                                 )
+                    else:
+                        selected_results[dname][model_name] = metrics
                     # keep all metrics if save_scores is True
                     if save_scores:
                         metrics2 = dict(metrics)
