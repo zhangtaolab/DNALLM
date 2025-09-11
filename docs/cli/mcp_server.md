@@ -136,6 +136,96 @@ Each model in the configuration includes:
 - **Use Case**: HTTP-based integrations
 - **Protocol**: Standard HTTP with streaming support
 - **Best For**: REST API integrations
+- **Client Access Point**: `http://localhost:8000/mcp`
+
+## Client Access Points
+
+### Default Configuration
+- **Host**: `0.0.0.0` (listens on all interfaces)
+- **Port**: `8000`
+- **Base URL**: `http://localhost:8000`
+
+### Transport-Specific Endpoints
+
+#### STDIO Transport
+- **Access**: Direct process communication
+- **Usage**: MCP clients like Claude Desktop
+- **Configuration**: No URL needed, uses process communication
+
+#### SSE Transport
+- **SSE Connection**: `http://localhost:8000/sse`
+- **MCP Messages**: `http://localhost:8000/mcp/messages/`
+- **Usage**: Real-time web applications
+
+#### Streamable HTTP Transport
+- **Main Endpoint**: `http://localhost:8000/mcp`
+- **Available Endpoints**:
+  - `http://localhost:8000/mcp` - Main MCP protocol endpoint
+  - `http://localhost:8000/mcp/tools` - Tool listing endpoint
+  - `http://localhost:8000/mcp/messages` - MCP message handling endpoint
+
+### Testing Client Access
+
+#### Test Streamable HTTP Connection
+```bash
+# Test basic connectivity
+curl http://localhost:8000/mcp
+
+# List available tools
+curl -X POST "http://localhost:8000/mcp/tools" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
+```
+
+#### Test SSE Connection
+```bash
+# Test SSE connection
+curl -N -H "Accept: text/event-stream" http://localhost:8000/sse
+
+# Test MCP messages (requires valid session_id)
+curl -X POST "http://localhost:8000/mcp/messages/?session_id=YOUR_SESSION_ID" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
+```
+
+#### Example DNA Prediction Request
+```bash
+# Single sequence prediction
+curl -X POST "http://localhost:8000/mcp/messages" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "dna_sequence_predict",
+      "arguments": {
+        "sequence": "ATCGATCGATCGATCG",
+        "model_name": "promoter_model"
+      }
+    }
+  }'
+```
+
+### Custom Configuration
+
+You can customize the access points by modifying the server configuration:
+
+```yaml
+# Custom server configuration
+server:
+  host: "127.0.0.1"  # Bind to localhost only
+  port: 9000         # Use custom port
+
+# Custom mount path for SSE
+sse:
+  mount_path: "/api/mcp"  # Custom mount path
+```
+
+With custom configuration, the endpoints would be:
+- **Streamable HTTP**: `http://127.0.0.1:9000/mcp`
+- **SSE**: `http://127.0.0.1:9000/sse`
+- **MCP Messages**: `http://127.0.0.1:9000/api/mcp/messages/`
 
 ## API Reference
 

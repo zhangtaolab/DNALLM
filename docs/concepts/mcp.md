@@ -73,8 +73,8 @@ MCP enables AI assistants to:
 
 **Multi-transport Protocols**:
 - STDIO: Suitable for command-line tools and script integration
-- SSE: Suitable for real-time web applications
-- HTTP: Suitable for REST API integration
+- SSE: Suitable for real-time web applications (`http://localhost:8000/sse`)
+- Streamable HTTP: Suitable for REST API integration (`http://localhost:8000/mcp`)
 
 ### 3. Security and Permission Control
 
@@ -161,6 +161,35 @@ MCP enables AI assistants to:
 - `get_model_info`: Get detailed model information
 - `health_check`: Server health check
 
+### Client Access Points
+
+The DNALLM MCP Server provides different access points depending on the transport protocol:
+
+#### Default Configuration
+- **Host**: `0.0.0.0` (listens on all interfaces)
+- **Port**: `8000`
+- **Base URL**: `http://localhost:8000`
+
+#### Transport-Specific Endpoints
+
+**STDIO Transport**:
+- **Access**: Direct process communication
+- **Usage**: MCP clients like Claude Desktop
+- **Configuration**: No URL needed, uses process communication
+
+**SSE Transport**:
+- **SSE Connection**: `http://localhost:8000/sse`
+- **MCP Messages**: `http://localhost:8000/mcp/messages/`
+- **Usage**: Real-time web applications with streaming updates
+
+**Streamable HTTP Transport**:
+- **Main Endpoint**: `http://localhost:8000/mcp`
+- **Available Endpoints**:
+  - `http://localhost:8000/mcp` - Main MCP protocol endpoint
+  - `http://localhost:8000/mcp/tools` - Tool listing endpoint
+  - `http://localhost:8000/mcp/messages` - MCP message handling endpoint
+- **Usage**: REST API integrations and HTTP-based clients
+
 ## Use Cases
 
 ### 1. AI Assistant Integration
@@ -178,6 +207,7 @@ AI: Based on the prediction results, this sequence has an 87.6% probability of b
 
 Integrating DNA prediction functionality in web applications:
 
+#### Using SSE Transport
 ```javascript
 // Establish SSE connection
 const eventSource = new EventSource('http://localhost:8000/sse');
@@ -192,6 +222,26 @@ const response = await fetch('/mcp/messages/', {
     params: {
       name: "dna_sequence_predict",
       arguments: { sequence: "ATCGATCGATCG" }
+    }
+  })
+});
+```
+
+#### Using Streamable HTTP Transport
+```javascript
+// Direct HTTP API calls
+const response = await fetch('http://localhost:8000/mcp/messages', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    method: "tools/call",
+    params: {
+      name: "dna_sequence_predict",
+      arguments: { 
+        sequence: "ATCGATCGATCG",
+        model_name: "promoter_model"
+      }
     }
   })
 });
