@@ -98,12 +98,10 @@ class RLReliability(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "timesteps": datasets.Sequence(datasets.Value("int64")),
-                    "rewards": datasets.Sequence(datasets.Value("float")),
-                }
-            ),
+            features=datasets.Features({
+                "timesteps": datasets.Sequence(datasets.Value("int64")),
+                "rewards": datasets.Sequence(datasets.Value("float")),
+            }),
             homepage="https://github.com/google-research/rl-reliability-metrics",
         )
 

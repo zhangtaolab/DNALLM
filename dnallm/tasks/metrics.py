@@ -485,9 +485,13 @@ def metrics_for_dnabert2(task):
 
     r2_metric = evaluate.load("r_squared")
     spm_metric = evaluate.load("spearmanr")
-    clf_metrics = evaluate.combine(
-        ["accuracy", "f1", "precision", "recall", "matthews_correlation"]
-    )
+    clf_metrics = evaluate.combine([
+        "accuracy",
+        "f1",
+        "precision",
+        "recall",
+        "matthews_correlation",
+    ])
     metric1 = evaluate.load("precision")
     metric2 = evaluate.load("recall")
     metric3 = evaluate.load("f1")

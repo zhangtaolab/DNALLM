@@ -729,30 +729,26 @@ class DNALLMMCPServer:
                     model_name, sequence
                 )
                 if result is not None:
-                    results.append(
-                        {
-                            "sequence": sequence,
-                            "result": result,
-                            "index": i,
-                        }
-                    )
+                    results.append({
+                        "sequence": sequence,
+                        "result": result,
+                        "index": i,
+                    })
                 else:
-                    results.append(
-                        {
-                            "sequence": sequence,
-                            "result": None,
-                            "error": f"Prediction failed for sequence {i + 1}",
-                            "index": i,
-                        }
-                    )
+                    results.append({
+                        "sequence": sequence,
+                        "result": None,
+                        "error": f"Prediction failed for sequence {i + 1}",
+                        "index": i,
+                    })
 
             # Send completion update
-            successful_predictions = len(
-                [r for r in results if r.get("result") is not None]
-            )
-            failed_predictions = len(
-                [r for r in results if r.get("result") is None]
-            )
+            successful_predictions = len([
+                r for r in results if r.get("result") is not None
+            ])
+            failed_predictions = len([
+                r for r in results if r.get("result") is None
+            ])
 
             if stream_progress and context:
                 await context.report_progress(
@@ -899,20 +895,16 @@ class DNALLMMCPServer:
     ) -> dict[str, Any]:
         """Format multi-model prediction results."""
         # Count successful and failed predictions
-        successful_predictions = len(
-            [
-                r
-                for r in results.values()
-                if not isinstance(r, dict) or r.get("result") is not None
-            ]
-        )
-        failed_predictions = len(
-            [
-                r
-                for r in results.values()
-                if isinstance(r, dict) and r.get("result") is None
-            ]
-        )
+        successful_predictions = len([
+            r
+            for r in results.values()
+            if not isinstance(r, dict) or r.get("result") is not None
+        ])
+        failed_predictions = len([
+            r
+            for r in results.values()
+            if isinstance(r, dict) and r.get("result") is None
+        ])
 
         return {
             "content": [{"type": "text", "text": str(results)}],

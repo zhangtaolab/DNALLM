@@ -619,13 +619,11 @@ def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
         for i in labels
     ]
 
-    return pd.DataFrame(
-        {
-            "Dimension 1": dim_reduced_vectors[:, 0],
-            "Dimension 2": dim_reduced_vectors[:, 1],
-            "labels": processed_labels,
-        }
-    )
+    return pd.DataFrame({
+        "Dimension 1": dim_reduced_vectors[:, 0],
+        "Dimension 2": dim_reduced_vectors[:, 1],
+        "labels": processed_labels,
+    })
 
 
 def _create_embedding_plot(source_df, layer_idx, width, height):

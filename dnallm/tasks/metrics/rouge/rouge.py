@@ -96,20 +96,16 @@ class Rouge(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(
-                            datasets.Value("string", id="sequence")
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Value("string", id="sequence"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence")
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Value("string", id="sequence"),
+                }),
             ],
             codebase_urls=[
                 "https://github.com/google-research/google-research/tree/master/rouge"

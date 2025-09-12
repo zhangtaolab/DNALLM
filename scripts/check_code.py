@@ -247,29 +247,25 @@ Examples:
 
     # Add test checks only if explicitly requested
     if args.with_tests:
-        checks.append(
-            {
-                "name": "Test Suite",
-                "cmd": ["pytest", "tests/", "-v", "--tb=short"],
-                "description": "Test suite execution",
-            }
-        )
+        checks.append({
+            "name": "Test Suite",
+            "cmd": ["pytest", "tests/", "-v", "--tb=short"],
+            "description": "Test suite execution",
+        })
 
         # Add coverage check if not in fix mode
         if not args.fix:
-            checks.append(
-                {
-                    "name": "Test Coverage",
-                    "cmd": [
-                        "pytest",
-                        "tests/",
-                        "--cov=dnallm",
-                        "--cov-report=term-missing",
-                        "--cov-report=xml",
-                    ],
-                    "description": "Test coverage analysis",
-                }
-            )
+            checks.append({
+                "name": "Test Coverage",
+                "cmd": [
+                    "pytest",
+                    "tests/",
+                    "--cov=dnallm",
+                    "--cov-report=term-missing",
+                    "--cov-report=xml",
+                ],
+                "description": "Test coverage analysis",
+            })
 
     # Run all checks
     for i, check in enumerate(checks, 1):

@@ -103,20 +103,16 @@ class Character(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": Value("string", id="prediction"),
-                        "references": Value("string", id="reference"),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": Value("string", id="prediction"),
-                        "references": Sequence(
-                            Value("string", id="reference"), id="references"
-                        ),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": Value("string", id="prediction"),
+                    "references": Value("string", id="reference"),
+                }),
+                datasets.Features({
+                    "predictions": Value("string", id="prediction"),
+                    "references": Sequence(
+                        Value("string", id="reference"), id="references"
+                    ),
+                }),
             ],
             homepage="https://github.com/bramvanroy/CharacTER",
             codebase_urls=[

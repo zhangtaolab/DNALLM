@@ -95,12 +95,10 @@ class Mauve(evaluate.Metric):
             citation=_CITATION,
             homepage="https://github.com/krishnap25/mauve",
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             codebase_urls=["https://github.com/krishnap25/mauve"],
             reference_urls=[
                 "https://arxiv.org/abs/2102.01454",

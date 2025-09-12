@@ -52,22 +52,18 @@ if version.parse(importlib_metadata.version("jiwer")) < version.parse("2.3.0"):
                     chars.append(self.sentence_delimiter)
             return chars
 
-    cer_transform = tr.Compose(
-        [
-            tr.RemoveMultipleSpaces(),
-            tr.Strip(),
-            SentencesToListOfCharacters(SENTENCE_DELIMITER),
-        ]
-    )
+    cer_transform = tr.Compose([
+        tr.RemoveMultipleSpaces(),
+        tr.Strip(),
+        SentencesToListOfCharacters(SENTENCE_DELIMITER),
+    ])
 else:
-    cer_transform = tr.Compose(
-        [
-            tr.RemoveMultipleSpaces(),
-            tr.Strip(),
-            tr.ReduceToSingleSentence(SENTENCE_DELIMITER),
-            tr.ReduceToListOfListOfChars(),
-        ]
-    )
+    cer_transform = tr.Compose([
+        tr.RemoveMultipleSpaces(),
+        tr.Strip(),
+        tr.ReduceToSingleSentence(SENTENCE_DELIMITER),
+        tr.ReduceToListOfListOfChars(),
+    ])
 
 
 _CITATION = """\
@@ -130,12 +126,10 @@ class CER(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             codebase_urls=["https://github.com/jitsi/jiwer/"],
             reference_urls=[
                 "https://en.wikipedia.org/wiki/Word_error_rate",

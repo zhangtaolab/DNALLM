@@ -142,12 +142,10 @@ class CodeEval(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             # This defines the format of each prediction and reference
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Sequence(datasets.Value("string")),
-                    "references": datasets.Value("string"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Sequence(datasets.Value("string")),
+                "references": datasets.Value("string"),
+            }),
             homepage="https://github.com/openai/human-eval",
             codebase_urls=["https://github.com/openai/human-eval"],
             reference_urls=["https://github.com/openai/human-eval"],
@@ -199,9 +197,10 @@ class CodeEval(evaluate.Metric):
 
             for future in as_completed(futures):
                 result = future.result()
-                results[result["task_id"]].append(
-                    (result["completion_id"], result)
-                )
+                results[result["task_id"]].append((
+                    result["completion_id"],
+                    result,
+                ))
 
         total, correct = [], []
         for result in results.values():
@@ -237,9 +236,7 @@ def estimate_pass_at_k(num_samples, num_correct, k):
         assert len(num_samples) == len(num_correct)
         num_samples_it = iter(num_samples)
 
-    return np.array(
-        [
-            estimator(int(n), int(c), k)
-            for n, c in zip(num_samples_it, num_correct, strict=False)
-        ]
-    )
+    return np.array([
+        estimator(int(n), int(c), k)
+        for n, c in zip(num_samples_it, num_correct, strict=False)
+    ])

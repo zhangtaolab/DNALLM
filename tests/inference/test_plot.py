@@ -2025,14 +2025,12 @@ if __name__ == "__main__":
     print(f"PDF output directory: {PDF_OUTPUT_DIR}")
 
     # Run tests with verbose output and coverage reporting
-    pytest.main(
-        [
-            __file__,
-            "-v",  # Verbose output
-            "--tb=short",  # Short traceback format
-            "--strict-markers",  # Strict marker validation
-            "--disable-warnings",  # Disable warnings for cleaner output
-            "--pdf-output-dir",
-            str(PDF_OUTPUT_DIR),  # Custom PDF output directory
-        ]
-    )
+    pytest.main([
+        __file__,
+        "-v",  # Verbose output
+        "--tb=short",  # Short traceback format
+        "--strict-markers",  # Strict marker validation
+        "--disable-warnings",  # Disable warnings for cleaner output
+        "--pdf-output-dir",
+        str(PDF_OUTPUT_DIR),  # Custom PDF output directory
+    ])

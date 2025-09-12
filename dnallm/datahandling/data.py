@@ -742,7 +742,9 @@ class DNADataset:
         """
         # First, split off test+validation from training data
         if isinstance(self.dataset, DatasetDict):
-            raise ValueError("Dataset is already a DatasetDict, cannot split again.")
+            raise ValueError(
+                "Dataset is already a DatasetDict, cannot split again."
+            )
         split_result = self.dataset.train_test_split(
             test_size=test_size + val_size, seed=seed
         )
@@ -756,9 +758,11 @@ class DNADataset:
             )
             test_ds = temp_split["train"]
             val_ds = temp_split["test"]
-            self.dataset = DatasetDict(
-                {"train": train_ds, "test": test_ds, "val": val_ds}
-            )
+            self.dataset = DatasetDict({
+                "train": train_ds,
+                "test": test_ds,
+                "val": val_ds,
+            })
         else:
             self.dataset = DatasetDict({"train": train_ds, "test": temp_ds})
 
@@ -832,9 +836,10 @@ class DNADataset:
             labels = []
             for seq in sequences:
                 labels.append(label_func(seq) if label_func else 0)
-            random_ds = Dataset.from_dict(
-                {"sequence": sequences, "labels": labels}
-            )
+            random_ds = Dataset.from_dict({
+                "sequence": sequences,
+                "labels": labels,
+            })
             return random_ds
 
         if append:
@@ -857,9 +862,10 @@ class DNADataset:
                         seed,
                         label_func,
                     )
-                    self.dataset[dt] = concatenate_datasets(
-                        [self.dataset[dt], random_ds]
-                    )
+                    self.dataset[dt] = concatenate_datasets([
+                        self.dataset[dt],
+                        random_ds,
+                    ])
             else:
                 random_ds = process(
                     minl,

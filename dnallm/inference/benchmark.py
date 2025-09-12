@@ -40,14 +40,14 @@ class Benchmark:
         self.config = config
         self.all_models = {
             "huggingface": set(
-                np.concatenate(
-                    [MODEL_INFO[m]["huggingface"] for m in MODEL_INFO]
-                ).tolist()
+                np.concatenate([
+                    MODEL_INFO[m]["huggingface"] for m in MODEL_INFO
+                ]).tolist()
             ),
             "modelscope": set(
-                np.concatenate(
-                    [MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]
-                ).tolist()
+                np.concatenate([
+                    MODEL_INFO[m]["modelscope"] for m in MODEL_INFO
+                ]).tolist()
             ),
         }
         self.datasets = []

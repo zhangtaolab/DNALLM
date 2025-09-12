@@ -401,21 +401,17 @@ class WikiSplit(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(
-                            datasets.Value("string", id="sequence"),
-                            id="references",
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Value("string", id="sequence"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references",
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Value("string", id="sequence"),
+                }),
             ],
             codebase_urls=[
                 "https://github.com/huggingface/transformers/blob/master/src/transformers/data/metrics/squad_metrics.py",
@@ -436,27 +432,19 @@ class WikiSplit(evaluate.Metric):
         if isinstance(references[0], str):
             references = [[ref] for ref in references]
         result = {}
-        result.update(
-            {
-                "sari": compute_sari(
-                    sources=sources,
-                    predictions=predictions,
-                    references=references,
-                )
-            }
-        )
-        result.update(
-            {
-                "sacrebleu": compute_sacrebleu(
-                    predictions=predictions, references=references
-                )
-            }
-        )
-        result.update(
-            {
-                "exact": compute_em(
-                    predictions=predictions, references=references
-                )
-            }
-        )
+        result.update({
+            "sari": compute_sari(
+                sources=sources,
+                predictions=predictions,
+                references=references,
+            )
+        })
+        result.update({
+            "sacrebleu": compute_sacrebleu(
+                predictions=predictions, references=references
+            )
+        })
+        result.update({
+            "exact": compute_em(predictions=predictions, references=references)
+        })
         return result

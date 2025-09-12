@@ -276,13 +276,11 @@ def compute_score(
         if name in ["muc", "bcub", "ceafe"]:
             conll += f1
             conll_subparts_num += 1
-        output_scores.update(
-            {
-                f"{name}/recall": recall,
-                f"{name}/precision": precision,
-                f"{name}/f1": f1,
-            }
-        )
+        output_scores.update({
+            f"{name}/recall": recall,
+            f"{name}/precision": precision,
+            f"{name}/f1": f1,
+        })
 
         logger.info(
             name.ljust(10),
@@ -322,12 +320,10 @@ class Coval(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Sequence(datasets.Value("string")),
-                    "references": datasets.Sequence(datasets.Value("string")),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Sequence(datasets.Value("string")),
+                "references": datasets.Sequence(datasets.Value("string")),
+            }),
             codebase_urls=["https://github.com/ns-moosavi/coval"],
             reference_urls=[
                 "https://github.com/ns-moosavi/coval",

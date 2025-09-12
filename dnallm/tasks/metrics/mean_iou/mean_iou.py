@@ -309,12 +309,10 @@ class MeanIoU(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Image(),
-                    "references": datasets.Image(),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Image(),
+                "references": datasets.Image(),
+            }),
             reference_urls=[
                 "https://github.com/open-mmlab/mmsegmentation/blob/71c201b1813267d78764f306a297ca717827c4bf/mmseg/core/evaluation/metrics.py"
             ],

@@ -75,16 +75,14 @@ class Xnli(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value(
-                        "int64" if self.config_name != "sts-b" else "float32"
-                    ),
-                    "references": datasets.Value(
-                        "int64" if self.config_name != "sts-b" else "float32"
-                    ),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value(
+                    "int64" if self.config_name != "sts-b" else "float32"
+                ),
+                "references": datasets.Value(
+                    "int64" if self.config_name != "sts-b" else "float32"
+                ),
+            }),
             codebase_urls=[],
             reference_urls=[],
             format="numpy",

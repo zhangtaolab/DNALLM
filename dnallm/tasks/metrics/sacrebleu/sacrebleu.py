@@ -118,21 +118,17 @@ class Sacrebleu(evaluate.Metric):
             homepage="https://github.com/mjpost/sacreBLEU",
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(
-                            datasets.Value("string", id="sequence"),
-                            id="references",
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Value("string", id="sequence"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references",
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Value("string", id="sequence"),
+                }),
             ],
             codebase_urls=["https://github.com/mjpost/sacreBLEU"],
             reference_urls=[

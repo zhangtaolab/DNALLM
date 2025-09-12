@@ -1048,24 +1048,20 @@ class GradioConfigGenerator:
 
             # Add logging and saving strategies
             if use_epoch_based:
-                config["finetune"].update(
-                    {
-                        "logging_strategy": "epoch",
-                        "eval_strategy": "epoch",
-                        "save_strategy": "epoch",
-                    }
-                )
+                config["finetune"].update({
+                    "logging_strategy": "epoch",
+                    "eval_strategy": "epoch",
+                    "save_strategy": "epoch",
+                })
             else:
-                config["finetune"].update(
-                    {
-                        "logging_strategy": "steps",
-                        "logging_steps": logging_steps,
-                        "eval_strategy": "steps",
-                        "eval_steps": eval_steps,
-                        "save_strategy": "steps",
-                        "save_steps": save_steps,
-                    }
-                )
+                config["finetune"].update({
+                    "logging_strategy": "steps",
+                    "logging_steps": logging_steps,
+                    "eval_strategy": "steps",
+                    "eval_steps": eval_steps,
+                    "save_strategy": "steps",
+                    "save_steps": save_steps,
+                })
 
             config["finetune"]["save_total_limit"] = save_total_limit
 

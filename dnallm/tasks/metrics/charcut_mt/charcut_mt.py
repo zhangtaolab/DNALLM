@@ -78,12 +78,10 @@ class Charcut(evaluate.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             # This defines the format of each prediction and reference
             features=[
-                datasets.Features(
-                    {
-                        "predictions": Value("string", id="prediction"),
-                        "references": Value("string", id="reference"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": Value("string", id="prediction"),
+                    "references": Value("string", id="reference"),
+                }),
             ],
             # Homepage of the module for documentation
             homepage="https://github.com/BramVanroy/CharCut",

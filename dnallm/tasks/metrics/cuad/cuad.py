@@ -77,25 +77,21 @@ class CUAD(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": {
-                        "id": datasets.Value("string"),
-                        "prediction_text": datasets.features.Sequence(
-                            datasets.Value("string")
-                        ),
-                    },
-                    "references": {
-                        "id": datasets.Value("string"),
-                        "answers": datasets.features.Sequence(
-                            {
-                                "text": datasets.Value("string"),
-                                "answer_start": datasets.Value("int32"),
-                            }
-                        ),
-                    },
-                }
-            ),
+            features=datasets.Features({
+                "predictions": {
+                    "id": datasets.Value("string"),
+                    "prediction_text": datasets.features.Sequence(
+                        datasets.Value("string")
+                    ),
+                },
+                "references": {
+                    "id": datasets.Value("string"),
+                    "answers": datasets.features.Sequence({
+                        "text": datasets.Value("string"),
+                        "answer_start": datasets.Value("int32"),
+                    }),
+                },
+            }),
             codebase_urls=["https://www.atticusprojectai.org/cuad"],
             reference_urls=["https://www.atticusprojectai.org/cuad"],
         )

@@ -93,12 +93,10 @@ class ExactMatch(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             reference_urls=[],
         )
 
