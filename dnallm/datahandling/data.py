@@ -1147,7 +1147,7 @@ class DNADataset:
             )
         else:
             for i in range(0, len(self.dataset), batch_size):
-                yield self.dataset[i:i + batch_size]
+                yield self.dataset[i : i + batch_size]
 
     def __len__(self) -> int:
         """Return the length of the dataset.
