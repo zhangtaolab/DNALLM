@@ -59,7 +59,7 @@ class TaskConfig(BaseModel):
             self.num_labels = 1
             self.label_names = ["value"]
 
-        elif self.task_type in {"embedding", "mask", "generation", "token"}:
+        elif self.task_type in {"mask", "generation"}:
             self.num_labels = None
             self.label_names = None
 
