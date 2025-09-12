@@ -31,12 +31,12 @@ def __(mo):
                                placeholder="zhangtaolab/plant-multi-species-core-promoters",
                                label="Datasets name or path", full_width=True)
     source2_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope", label="Dataset source", full_width=True)
-    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence","
-        "label="Sequence column name", full_width=True)
-    label_col_text = mo.ui.text(value="labels", placeholder="labels","
-        "label="Label column name", full_width=True)
-    maxlen_text = mo.ui.text(value="512", placeholder="512","
-        "label="Max token length", full_width=True)
+    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence",
+        label="Sequence column name", full_width=True)
+    label_col_text = mo.ui.text(value="label", placeholder="label",
+        label="Label column name", full_width=True)
+    maxlen_text = mo.ui.text(value="512", placeholder="512",
+        label="Max token length", full_width=True)
     mo.vstack([title, config_title, config_text.style(width="30ch")],
               align='center', justify='center')
     return (

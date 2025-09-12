@@ -434,6 +434,7 @@ class DNADataset:
         uppercase: bool = False,
         lowercase: bool = False,
         task: str | None = "SequenceClassification",
+        tokenizer: PreTrainedTokenizerBase | None = None,
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
@@ -452,12 +453,17 @@ class DNADataset:
             lowercase: Whether to convert sequences to lowercase
             task: Task type for the tokenizer. If not provided, defaults to
                 'SequenceClassification'
+            tokenizer: Tokenizer to use for encoding. If not provided, uses
+                the instance's tokenizer
 
         Raises:
             ValueError: If tokenizer is not provided
         """
         if not self.tokenizer:
-            raise ValueError("Tokenizer is required")
+            if tokenizer:
+                self.tokenizer = tokenizer
+            else:
+                raise ValueError("Tokenizer is required")
 
         # Get tokenizer configuration
         tokenizer_config = self._get_tokenizer_config()
@@ -560,7 +566,8 @@ class DNADataset:
                 example_tokens, examples, i, config
             )
             for key, value in processed.items():
-                tokenized_examples[key].append(value)
+                if key in tokenized_examples:
+                    tokenized_examples[key].append(value)
 
         from transformers.tokenization_utils_base import BatchEncoding
 
@@ -757,6 +764,11 @@ class DNADataset:
                 split
             seed: Random seed for reproducibility
         """
+        # check if the dataset is already a DatasetDict
+        if isinstance(self.dataset, DatasetDict):
+            raise ValueError(
+                "Dataset is already a DatasetDict, no need to split"
+            )
         # First, split off test+validation from training data
         split_result = self.dataset.train_test_split(
             test_size=test_size + val_size, seed=seed
