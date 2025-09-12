@@ -1,9 +1,11 @@
 """DNALLM MCP Server Implementation.
 
-This module implements the main MCP (Model Context Protocol) server using the FastMCP
-framework with Server-Sent Events (SSE) support for real-time DNA sequence prediction.
+This module implements the main MCP (Model Context Protocol) server using
+the FastMCP framework with Server-Sent Events (SSE) support for real-time
+DNA sequence prediction.
 
-The server provides a comprehensive set of tools for DNA sequence analysis, including:
+The server provides a comprehensive set of tools for DNA sequence analysis,
+including:
 - Single sequence prediction with specific models
 - Batch processing of multiple sequences
 - Multi-model prediction and comparison
@@ -11,10 +13,10 @@ The server provides a comprehensive set of tools for DNA sequence analysis, incl
 - Model management and health monitoring
 
 Architecture:
-    The server is built on top of the FastMCP framework, which provides MCP protocol
-    implementation with multiple transport options (stdio, SSE, HTTP). The server
-    manages DNA language models through a ModelManager and handles configuration
-    through a ConfigManager.
+    The server is built on top of the FastMCP framework, which provides MCP
+    protocol implementation with multiple transport options (stdio, SSE,
+    HTTP). The server manages DNA language models through a ModelManager and
+    handles configuration through a ConfigManager.
 
 Transport Protocols:
     - stdio: Standard input/output for CLI tools
@@ -41,6 +43,7 @@ from loguru import logger
 
 # MCP SDK imports
 from mcp.server.fastmcp import FastMCP
+
 # tool decorator is available as app.tool() method
 
 from .config_manager import MCPConfigManager
@@ -48,23 +51,26 @@ from .model_manager import ModelManager
 
 
 class DNALLMMCPServer:
-    """DNALLM MCP Server implementation using FastMCP framework with SSE support.
+    """DNALLM MCP Server implementation using FastMCP framework with SSE
+    support.
 
-    This class provides a comprehensive MCP server for DNA language model inference
-    and analysis. It supports multiple transport protocols and provides real-time
-    streaming capabilities for DNA sequence prediction tasks.
+    This class provides a comprehensive MCP server for DNA language model
+    inference and analysis. It supports multiple transport protocols and
+    provides real-time streaming capabilities for DNA sequence prediction
+    tasks.
 
-    The server manages multiple DNA language models and provides various prediction
-    modes including single sequence prediction, batch processing, and multi-model
-    comparison. All operations support progress reporting through SSE for real-time
-    user feedback.
+    The server manages multiple DNA language models and provides various
+    prediction modes including single sequence prediction, batch processing,
+    and multi-model comparison. All operations support progress reporting
+    through SSE for real-time user feedback.
 
     Attributes:
         config_path (str): Path to the main server configuration file
         config_manager (MCPConfigManager): Handles configuration management
         model_manager (ModelManager): Manages model loading and prediction
         app (FastMCP | None): Main FastMCP application instance
-        sse_app: SSE application instance (unused, FastMCP handles SSE internally)
+        sse_app: SSE application instance (unused, FastMCP handles SSE
+            internally)
         _initialized (bool): Server initialization status flag
 
     Example:
@@ -78,7 +84,8 @@ class DNALLMMCPServer:
         await server.initialize()
 
         # Start with SSE transport
-        server.start_server(host="0.0.0.0", port=8000, transport="sse")
+        server.start_server(host="0.0.0.0", port=8000,
+                           transport="sse")
         ```
 
     Note:
@@ -94,9 +101,9 @@ class DNALLMMCPServer:
         separately for complete setup.
 
         Args:
-            config_path (str): Absolute or relative path to the main MCP server
-                configuration file. This file should contain server settings,
-                model configurations, and transport options.
+            config_path (str): Absolute or relative path to the main MCP
+                server configuration file. This file should contain server
+                settings, model configurations, and transport options.
 
         Raises:
             FileNotFoundError: If the configuration file doesn't exist
@@ -108,13 +115,14 @@ class DNALLMMCPServer:
             ```
 
         Note:
-            The configuration directory and filename are extracted separately
-            to support the MCPConfigManager's directory-based configuration
-            loading strategy.
+            The configuration directory and filename are extracted
+            separately to support the MCPConfigManager's directory-based
+            configuration loading strategy.
         """
         self.config_path = config_path
-        # Extract directory and filename from config file path for ConfigManager
-        # MCPConfigManager requires separate directory and filename parameters
+        # Extract directory and filename from config file path for
+        # ConfigManager. MCPConfigManager requires separate directory and
+        # filename parameters
         config_path_obj = Path(config_path)
         config_dir = config_path_obj.parent
         config_filename = config_path_obj.name
@@ -275,7 +283,10 @@ class DNALLMMCPServer:
             # Check if prediction was successful
             if result is None:
                 return {
-                    "error": f"Model {model_name} not available or prediction failed",
+                    "error": (
+                        f"Model {model_name} not available or prediction "
+                        "failed"
+                    ),
                     "isError": True,
                 }
 
@@ -313,20 +324,24 @@ class DNALLMMCPServer:
 
         Returns:
             dict[str, Any]: Batch prediction results in MCP format:
-                - On success: Contains 'content', 'model_name', 'sequence_count'
+                - On success: Contains 'content', 'model_name',
+                  'sequence_count'
                 - On error: Contains 'error', 'isError' fields
 
         Example:
             ```python
             result = await server._dna_batch_predict(
                 sequences=["ATCGATCG", "GCTAGCTA", "TTAACCGG"],
-                model_name="zhangtaolab/plant-dnabert-BPE-open_chromatin"
+                model_name=(
+                    "zhangtaolab/plant-dnabert-BPE-open_chromatin"
+                )
             )
             ```
 
         Note:
             Batch processing is generally more efficient than individual
-            predictions for multiple sequences, especially with GPU acceleration.
+            predictions for multiple sequences, especially with GPU
+            acceleration.
         """
         try:
             result = await self.model_manager.predict_batch(
@@ -334,7 +349,10 @@ class DNALLMMCPServer:
             )
             if result is None:
                 return {
-                    "error": f"Model {model_name} not available or prediction failed",
+                    "error": (
+                        f"Model {model_name} not available or prediction "
+                        "failed"
+                    ),
                     "isError": True,
                 }
 
@@ -368,8 +386,9 @@ class DNALLMMCPServer:
         Args:
             sequence (str): DNA sequence to predict, containing only valid
                 nucleotide characters (A, T, G, C). Case insensitive.
-            model_names (list[str] | None, optional): List of model names to use.
-                If None, uses all currently loaded models. Defaults to None.
+            model_names (list[str] | None, optional): List of model names
+                to use. If None, uses all currently loaded models.
+                Defaults to None.
 
         Returns:
             dict[str, Any]: Multi-model prediction results in MCP format:
@@ -381,7 +400,9 @@ class DNALLMMCPServer:
             # Use specific models
             result = await server._dna_multi_model_predict(
                 sequence="ATCGATCG",
-                model_names=["dnabert-2", "nucleotide-transformer"]
+                model_names=[
+                    "dnabert-2", "nucleotide-transformer"
+                ]
             )
 
             # Use all loaded models
@@ -551,12 +572,12 @@ class DNALLMMCPServer:
                 "total_configured_models": len(
                     self.config_manager.get_enabled_models()
                 ),
-                "server_name": server_config.mcp.name
-                if server_config
-                else "Unknown",
-                "server_version": server_config.mcp.version
-                if server_config
-                else "Unknown",
+                "server_name": (
+                    server_config.mcp.name if server_config else "Unknown"
+                ),
+                "server_version": (
+                    server_config.mcp.version if server_config else "Unknown"
+                ),
             }
 
             return {
@@ -585,7 +606,8 @@ class DNALLMMCPServer:
         """Stream DNA sequence prediction with real-time progress updates.
 
         This tool provides real-time streaming prediction with progress updates
-        via Server-Sent Events (SSE). It's designed for interactive applications
+        via Server-Sent Events (SSE). It's designed for interactive
+        applications
         where users need immediate feedback on prediction progress.
 
         The streaming capability is particularly useful for:
@@ -605,7 +627,8 @@ class DNALLMMCPServer:
 
         Returns:
             dict[str, Any]: Streaming prediction results in MCP format:
-                - On success: Contains 'content', 'model_name', 'sequence', 'streamed'
+                - On success: Contains 'content', 'model_name',
+                  'sequence', 'streamed'
                 - On error: Contains 'error', 'isError' fields
 
         Example:
@@ -691,7 +714,8 @@ class DNALLMMCPServer:
         stream_progress: bool = True,
         context: Any | None = None,
     ) -> dict[str, Any]:
-        """Stream batch DNA sequence prediction with real-time progress updates."""
+        """Stream batch DNA sequence prediction with real-time progress
+        updates."""
         return await self._process_batch_prediction(
             sequences, model_name, stream_progress, context
         )
@@ -709,7 +733,11 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     0,
                     100,
-                    f"Starting batch prediction with {len(sequences)} sequences using model {model_name}",
+                    (
+                        f"Starting batch prediction with "
+                        f"{len(sequences)} sequences using model "
+                        f"{model_name}"
+                    ),
                 )
 
             results = []
@@ -738,7 +766,7 @@ class DNALLMMCPServer:
                     results.append({
                         "sequence": sequence,
                         "result": None,
-                        "error": f"Prediction failed for sequence {i + 1}",
+                        "error": (f"Prediction failed for sequence {i + 1}"),
                         "index": i,
                     })
 
@@ -754,7 +782,11 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     100,
                     100,
-                    f"Batch prediction completed: {successful_predictions} successful, {failed_predictions} failed",
+                    (
+                        f"Batch prediction completed: "
+                        f"{successful_predictions} successful, "
+                        f"{failed_predictions} failed"
+                    ),
                 )
 
             return {
@@ -788,7 +820,8 @@ class DNALLMMCPServer:
         stream_progress: bool = True,
         context: Any | None = None,
     ) -> dict[str, Any]:
-        """Stream multi-model DNA sequence prediction with real-time progress updates."""
+        """Stream multi-model DNA sequence prediction with real-time
+        progress updates."""
         return await self._process_multi_model_prediction(
             sequence, model_names, stream_progress, context
         )
@@ -815,7 +848,10 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     0,
                     100,
-                    f"Starting multi-model prediction with {len(model_names)} models",
+                    (
+                        f"Starting multi-model prediction with "
+                        f"{len(model_names)} models"
+                    ),
                 )
 
             results = await self._predict_with_multiple_models(
@@ -833,7 +869,10 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     100,
                     100,
-                    f"Multi-model prediction completed: {successful} successful, {failed} failed",
+                    (
+                        f"Multi-model prediction completed: "
+                        f"{successful} successful, {failed} failed"
+                    ),
                 )
 
             return result_dict
@@ -846,7 +885,9 @@ class DNALLMMCPServer:
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Streaming multi-model prediction error: {e!s}",
+                        "text": (
+                            f"Streaming multi-model prediction error: {e!s}"
+                        ),
                     }
                 ],
                 "isError": True,
@@ -869,7 +910,10 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     progress,
                     100,
-                    f"Processing with model {i + 1}/{total_models}: {model_name}",
+                    (
+                        f"Processing with model {i + 1}/{total_models}: "
+                        f"{model_name}"
+                    ),
                 )
 
             # Predict with current model
@@ -880,7 +924,7 @@ class DNALLMMCPServer:
                 results[model_name] = result
             else:
                 results[model_name] = {
-                    "error": f"Prediction failed with model {model_name}",
+                    "error": (f"Prediction failed with model {model_name}"),
                     "result": None,
                 }
 
@@ -917,7 +961,8 @@ class DNALLMMCPServer:
         }
 
     def _create_server_lifespan(self):
-        """Create lifespan context manager for server graceful startup/shutdown.
+        """Create lifespan context manager for server graceful
+        startup/shutdown.
 
         This method creates an async context manager that handles server
         lifecycle events. It ensures proper startup logging and graceful
@@ -956,8 +1001,10 @@ class DNALLMMCPServer:
     ) -> None:
         """Start the MCP server with the specified transport protocol.
 
-        This method starts the server using one of the supported transport protocols.
-        The server must be initialized before calling this method. The transport
+        This method starts the server using one of the supported transport
+        protocols.
+        The server must be initialized before calling this method. The
+        transport
         protocol determines how the server communicates with clients:
 
         - stdio: Standard input/output for CLI tools and automation
@@ -1009,7 +1056,8 @@ class DNALLMMCPServer:
             port = server_config.server.port
 
         logger.info(
-            f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport"
+            f"Starting DNALLM MCP Server on {host}:{port} with "
+            f"{transport} transport"
         )
 
         # Dispatch to appropriate transport handler
@@ -1048,7 +1096,8 @@ class DNALLMMCPServer:
         logger.info("  - /sse: SSE connection endpoint")
         logger.info("  - /messages/: MCP protocol messages")
 
-        # Create a new Starlette app that mounts the SSE app at the correct path
+        # Create a new Starlette app that mounts the SSE app at the
+        # correct path
         main_app = Starlette(
             routes=[
                 Mount(mount_path, sse_app),
@@ -1089,7 +1138,8 @@ class DNALLMMCPServer:
         http_app = self.app.streamable_http_app()
 
         logger.info(
-            f"Streamable HTTP app created, starting uvicorn server on {host}:{port}"
+            f"Streamable HTTP app created, starting uvicorn server "
+            f"on {host}:{port}"
         )
 
         # Run the Starlette app with uvicorn with proper signal handling
@@ -1148,9 +1198,11 @@ def main():
 
     This function provides a command-line interface for starting the DNALLM
     MCP server with various configuration options. It handles argument parsing,
-    configuration validation, server initialization, and graceful error handling.
+    configuration validation, server initialization, and graceful error
+    handling.
 
-    The CLI supports multiple transport protocols and comprehensive configuration
+    The CLI supports multiple transport protocols and comprehensive
+    configuration
     options for production deployment. It includes proper error handling and
     logging for troubleshooting.
 
@@ -1180,7 +1232,8 @@ def main():
 
     Note:
         The server runs in blocking mode. Use Ctrl+C to stop gracefully.
-        For SSE/HTTP transports, uvicorn handles signal processing automatically.
+        For SSE/HTTP transports, uvicorn handles signal processing
+        automatically.
     """
     import asyncio
     import argparse
@@ -1193,8 +1246,10 @@ def main():
         epilog="""
 Examples:
   dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml
-  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config_2.yaml --transport sse --port 8000
-  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml --host 127.0.0.1 --port 9000
+  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config_2.yaml \
+      --transport sse --port 8000
+  dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+      --host 127.0.0.1 --port 9000
         """,
     )
 
@@ -1247,7 +1302,8 @@ Examples:
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
         logger.error(
-            "Please create a configuration file or specify the correct path with --config"
+            "Please create a configuration file or specify the "
+            "correct path with --config"
         )
         sys.exit(1)
 
@@ -1272,7 +1328,8 @@ Examples:
 
         # Start server - let uvicorn handle signals for HTTP/SSE transports
         logger.info(
-            f"Starting server on {args.host}:{args.port} with {args.transport} transport"
+            f"Starting server on {args.host}:{args.port} with "
+            f"{args.transport} transport"
         )
         logger.info("Press Ctrl+C to stop the server")
 

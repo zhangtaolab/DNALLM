@@ -13,7 +13,7 @@ import pytest
 import pandas as pd
 import os
 import tempfile
-import pickle
+import pickle  # noqa: S403
 import json
 from unittest.mock import Mock, patch
 from datasets import Dataset, DatasetDict

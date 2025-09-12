@@ -165,14 +165,16 @@ class MCPServerConfig(BaseModel):
     @field_validator("multi_model")
     @classmethod
     def validate_multi_model_references(cls, v, info):
-        """Validate that multi-model configurations reference existing models."""
+        """Validate that multi-model configurations reference existing
+        models."""
         if info.data and "models" in info.data:
             available_models = set(info.data["models"].keys())
             for config in v.values():
                 for model_name in config.models:
                     if model_name not in available_models:
                         raise ValueError(
-                            f"Model '{model_name}' referenced in multi-model config but not defined in models"
+                            f"Model '{model_name}' referenced in multi-model "
+                            f"config but not defined in models"
                         )
         return v
 

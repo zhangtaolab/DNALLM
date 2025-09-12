@@ -18,13 +18,24 @@ class TestMCPFunctionality:
         logger.add(
             sys.stderr,
             level="INFO",
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+                "<level>{level: <8}</level> | "
+                "<cyan>{name}</cyan>:<cyan>{function}</cyan>:"
+                "<cyan>{line}</cyan> - <level>{message}</level>"
+            ),
         )
 
     @pytest.fixture
     def dna_sequence(self):
         """Test DNA sequence."""
-        return "AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"
+        return (
+            "AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGT"
+            "GTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTC"
+            "ATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCG"
+            "CATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCA"
+            "CGTCCCTGA"
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -136,21 +147,24 @@ class TestMCPFunctionality:
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
-                    f"Promoter Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})"
+                    f"Promoter Prediction: {result.get('label', 'N/A')} "
+                    f"(confidence: {max_score:.4f})"
                 )
             if conservation_result and 0 in conservation_result:
                 result = conservation_result[0]  # type: ignore
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
-                    f"Conservation Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})"
+                    f"Conservation Prediction: {result.get('label', 'N/A')} "
+                    f"(confidence: {max_score:.4f})"
                 )
             if chromatin_result and 0 in chromatin_result:
                 result = chromatin_result[0]  # type: ignore
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
-                    f"Open Chromatin Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})"
+                    f"Open Chromatin Prediction: {result.get('label', 'N/A')} "
+                    f"(confidence: {max_score:.4f})"
                 )
 
             # Shutdown server

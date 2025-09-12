@@ -1,7 +1,7 @@
 """Test runner for MCP server tests."""
 
 import sys
-import subprocess
+import subprocess  # noqa: S404
 from pathlib import Path
 from ..utils import get_logger
 

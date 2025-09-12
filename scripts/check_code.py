@@ -7,7 +7,7 @@ Usage: python scripts/check_code.py [--fix] [--verbose]
 
 import argparse
 import os
-import subprocess
+import subprocess  # noqa: S404
 import sys
 from pathlib import Path
 
@@ -149,6 +149,33 @@ def check_environment() -> bool:
         response = input("Continue anyway? (y/N): ").strip().lower()
         if response not in ["y", "yes"]:
             return False
+
+    # Check if required tools are available
+    required_tools = ["ruff", "flake8", "mypy"]
+    missing_tools = []
+
+    for tool in required_tools:
+        try:
+            subprocess.run(  # noqa: S603
+                [tool, "--version"],
+                capture_output=True,
+                check=True,
+                timeout=10,
+                shell=False,
+            )
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+        ):
+            missing_tools.append(tool)
+
+    if missing_tools:
+        print_status(
+            "ERROR", f"Missing required tools: {', '.join(missing_tools)}"
+        )
+        print("Please install them with: uv pip install ruff flake8 mypy")
+        return False
 
     return True
 

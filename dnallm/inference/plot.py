@@ -716,7 +716,10 @@ def plot_embeddings(
     # Initialize dimensionality reducer
     dim_reducer = _get_dimensionality_reducer(reducer)
     # Type assertion: dim_reducer is guaranteed to be non-None from helper function
-    assert dim_reducer is not None
+    if dim_reducer is None:
+        raise ValueError(
+            "Dimensionality reducer is None - this should not happen"
+        )
 
     # Process each layer and create plots
     plots = []

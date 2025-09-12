@@ -76,7 +76,8 @@ class ModelManager:
                 logger.info(f"   Source: {model_config.model.source}")
                 logger.info(f"   Task type: {model_config.task.task_type}")
                 logger.info(
-                    f"   Architecture: {model_config.model.task_info.architecture}"
+                    f"   Architecture: "
+                    f"{model_config.model.task_info.architecture}"
                 )
                 logger.info("   📥 Downloading/loading model and tokenizer...")
 
@@ -119,7 +120,8 @@ class ModelManager:
 
                 total_time = time.time() - start_time
                 logger.success(
-                    f"Successfully loaded model: {model_name} (total: {total_time:.2f}s)"
+                    f"Successfully loaded model: {model_name} "
+                    f"(total: {total_time:.2f}s)"
                 )
                 loguru_logger.info(f"Successfully loaded model: {model_name}")
                 return True
@@ -182,10 +184,12 @@ class ModelManager:
         successful_loads = sum(loading_results.values())
         logger.info("\n📊 Loading Summary:")
         logger.info(
-            f"   ✅ Successfully loaded: {successful_loads}/{len(enabled_models)} models"
+            f"   ✅ Successfully loaded: {successful_loads}/"
+            f"{len(enabled_models)} models"
         )
         logger.info(
-            f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/{len(enabled_models)} models"
+            f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/"
+            f"{len(enabled_models)} models"
         )
 
         if successful_loads > 0:
@@ -201,7 +205,8 @@ class ModelManager:
                     logger.failure(f"   {model_name}")
 
         logger.info(
-            f"Successfully loaded {successful_loads}/{len(enabled_models)} models"
+            f"Successfully loaded {successful_loads}/{len(enabled_models)} "
+            f"models"
         )
 
         return loading_results
@@ -328,7 +333,8 @@ class ModelManager:
             result = results[i]
             if isinstance(result, Exception):
                 logger.error(
-                    f"Exception in multi-model prediction for {model_name}: {result}"
+                    f"Exception in multi-model prediction for {model_name}: "
+                    f"{result}"
                 )
                 multi_results[model_name] = {"error": str(result)}
             else:
@@ -362,7 +368,9 @@ class ModelManager:
             "tokenizer": model_config.model.task_info.tokenizer,
             "species": model_config.model.task_info.species,
             "task_category": model_config.model.task_info.task_category,
-            "performance_metrics": model_config.model.task_info.performance_metrics,
+            "performance_metrics": (
+                model_config.model.task_info.performance_metrics
+            ),
             "status": self.get_model_status(model_name),
             "loaded": model_name in self.loaded_models,
         }

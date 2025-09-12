@@ -294,7 +294,7 @@ class ConfigGenerator:
 
     def _handle_model_choice(
         self, choice: int, models_to_show: list[str]
-    ) -> dict[str, Any] | None | str:
+    ) -> dict[str, Any] | str | None:
         """Handle user's model selection choice
 
         Returns:
@@ -1611,9 +1611,10 @@ class ConfigGenerator:
                 filepath = "model_config.yaml"
 
         # Ensure filepath is not None at this point
-        assert filepath is not None, (
-            "filepath should not be None after initialization"
-        )
+        if filepath is None:
+            raise ValueError(
+                "filepath should not be None after initialization"
+            )
 
         # Ensure .yaml extension
         if not filepath.endswith((".yaml", ".yml")):

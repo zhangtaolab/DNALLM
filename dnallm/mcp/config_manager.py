@@ -54,7 +54,8 @@ class MCPConfigManager:
                 str(self.server_config_path)
             )
             logger.info(
-                f"Successfully loaded server configuration from {self.server_config_path}"
+                f"Successfully loaded server configuration from "
+                f"{self.server_config_path}"
             )
         except Exception as e:
             logger.error(f"Failed to load server configuration: {e}")
@@ -230,7 +231,8 @@ class MCPConfigManager:
             for model_name in multi_config.models:
                 if model_name not in available_models:
                     errors.append(
-                        f"Multi-model config '{multi_name}' references non-existent model '{model_name}'"
+                        f"Multi-model config '{multi_name}' references "
+                        f"non-existent model '{model_name}'"
                     )
 
         # Check that all model config files exist and are valid

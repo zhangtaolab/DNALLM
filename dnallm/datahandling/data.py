@@ -246,7 +246,7 @@ class DNADataset:
     @classmethod
     def _load_dict_data(cls, file_path: str) -> Dataset:
         """Load dictionary/pickle data files."""
-        import pickle
+        import pickle  # noqa: S403
 
         data = pickle.load(open(file_path, "rb"))  # noqa: S301
         return Dataset.from_dict(data)

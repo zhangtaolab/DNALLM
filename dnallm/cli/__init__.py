@@ -5,10 +5,7 @@ CLI module for DNALLM package.
 __all__ = [
     "cli",
     "config_generator_main",
-    "inference",
     "inference_main",
-    "model_config_generator",
-    "train",
     "train_main",
 ]
 

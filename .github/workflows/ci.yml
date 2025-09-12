@@ -51,6 +51,8 @@ jobs:
           uv pip install flake8>=7.1.2
           # Run flake8 on MCP module
           flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
+          # Run flake8 on other modules excluding metrics
+          flake8 dnallm/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 --exclude=dnallm/tasks/metrics/
           
       - name: Run type checking
         run: |
