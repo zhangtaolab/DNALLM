@@ -42,7 +42,7 @@ from tqdm import tqdm
 
 import torch
 from torch.utils.data import DataLoader
-from datasets import Dataset
+from datasets import Dataset, DatasetDict
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
@@ -173,6 +173,66 @@ class DNAInference:
             return torch.device("xpu")
         return torch.device("cpu")
 
+    def _has_model_config_attr(self, attr_name: str) -> bool:
+        """Check if model has config attribute.
+
+        Args:
+            attr_name: Name of the attribute to check
+
+        Returns:
+            bool: True if model has the config attribute
+        """
+        return hasattr(self.model, "config") and hasattr(
+            self.model.config, attr_name
+        )
+
+    def _try_set_attention_output(self) -> bool:
+        """Try to temporarily set output_attentions to test support.
+
+        Returns:
+            bool: True if setting succeeded
+        """
+        try:
+            if self._has_model_config_attr("output_attentions"):
+                original_value = self.model.config.output_attentions
+                self.model.config.output_attentions = True
+                self.model.config.output_attentions = original_value
+                return True
+        except (ValueError, AttributeError):
+            pass
+        return False
+
+    def _try_enable_eager_attention(self) -> bool:
+        """Try to enable eager attention implementation.
+
+        Returns:
+            bool: True if eager attention was enabled successfully
+        """
+        try:
+            if self._has_model_config_attr("attn_implementation"):
+                self.model.config.attn_implementation = "eager"
+                self.model.config.output_attentions = True
+                return True
+        except Exception as e:
+            logger.debug(f"Failed to enable output_attentions: {e}")
+        return False
+
+    def _handle_attention_error(self, error: Exception) -> bool:
+        """Handle attention configuration errors.
+
+        Args:
+            error: The exception that occurred
+
+        Returns:
+            bool: True if error was handled and attention enabled
+        """
+        error_str = str(error)
+        if "attn_implementation" in error_str and "sdpa" in error_str:
+            return self._try_enable_eager_attention()
+        else:
+            # For other errors, try to switch to eager implementation as a fallback
+            return self._try_enable_eager_attention()
+
     def _check_attention_support(self) -> bool:
         """Check if the current model supports attention output.
 
@@ -182,41 +242,18 @@ class DNAInference:
         Returns:
             bool: True if attention output is supported, False otherwise
         """
+        # First try to set output_attentions normally
+        if self._try_set_attention_output():
+            return True
+
+        # If that fails, try to handle the error by switching to eager attention
         try:
-            # Check if the model supports output_attentions
-            if hasattr(self.model, "config") and hasattr(
-                self.model.config, "output_attentions"
-            ):
-                # Try to set it temporarily to see if it works
-                original_value = self.model.config.output_attentions
+            # This will raise an exception if there are issues
+            if self._has_model_config_attr("output_attentions"):
                 self.model.config.output_attentions = True
-                self.model.config.output_attentions = original_value
-                return True
         except (ValueError, AttributeError) as e:
-            if "attn_implementation" in str(e) and "sdpa" in str(e):
-                # Try to switch to eager implementation
-                try:
-                    if hasattr(self.model, "config") and hasattr(
-                        self.model.config, "attn_implementation"
-                    ):
-                        self.model.config.attn_implementation = "eager"
-                        self.model.config.output_attentions = True
-                        return True
-                except Exception as e:
-                    logger.debug(f"Failed to enable output_attentions: {e}")
-                    pass
-            else:
-                # For other errors, try to switch to eager implementation as a fallback
-                try:
-                    if hasattr(self.model, "config") and hasattr(
-                        self.model.config, "attn_implementation"
-                    ):
-                        self.model.config.attn_implementation = "eager"
-                        self.model.config.output_attentions = True
-                        return True
-                except Exception as e:
-                    logger.debug(f"Failed to enable output_attentions: {e}")
-                    pass
+            return self._handle_attention_error(e)
+
         return False
 
     def force_eager_attention(self) -> bool:
@@ -304,6 +341,9 @@ class DNAInference:
         Raises:
             ValueError: If input is neither a file path nor a list of sequences
         """
+        # Initialize dataset to None to avoid unbound variable issues
+        dataset = None
+        
         if isinstance(seq_or_path, str):
             suffix = seq_or_path.split(".")[-1]
             if suffix and os.path.isfile(seq_or_path):
@@ -326,11 +366,17 @@ class DNAInference:
             raise ValueError(
                 "Input should be a file path or a list of sequences."
             )
-        if len(sequences) > 0:
+        
+        # Create dataset from sequences if we have any and no dataset was loaded from file
+        if len(sequences) > 0 and dataset is None:
             ds = Dataset.from_dict({"sequence": sequences})
             dataset = DNADataset(
                 ds, self.tokenizer, max_length=self.pred_config.max_length
             )
+        
+        # Ensure dataset is not None before proceeding
+        if dataset is None:
+            raise ValueError("No valid dataset could be created from the input.")
         # If labels are provided, keep labels
         if keep_seqs:
             self.sequences = dataset.dataset["sequence"]
@@ -343,8 +389,16 @@ class DNAInference:
                 uppercase=uppercase,
                 lowercase=lowercase,
             )
-        if "labels" in dataset.dataset.features:
-            self.labels = dataset.dataset["labels"]
+        # Check for labels in dataset - handle both Dataset and DatasetDict cases
+        if isinstance(dataset.dataset, DatasetDict):
+            # For DatasetDict, check the first available split
+            keys = list(dataset.dataset.keys())
+            if keys and "labels" in dataset.dataset[keys[0]].features:
+                self.labels = dataset.dataset[keys[0]]["labels"]
+        else:
+            # For single Dataset
+            if "labels" in dataset.dataset.features:
+                self.labels = dataset.dataset["labels"]
         # Create DataLoader
         dataloader = DataLoader(
             dataset,
@@ -441,6 +495,225 @@ class DNAInference:
             }
         return formatted_predictions
 
+    def _setup_hidden_states_config(
+        self, output_hidden_states: bool
+    ) -> tuple[bool, dict, dict | None]:
+        """Setup configuration for hidden states output.
+
+        Args:
+            output_hidden_states: Whether to output hidden states
+
+        Returns:
+            Tuple of (enabled, embeddings_dict, params)
+        """
+        if not output_hidden_states:
+            return False, {}, None
+
+        import inspect
+
+        sig = inspect.signature(self.model.forward)
+        params = sig.parameters
+
+        embeddings = {
+            "hidden_states": None,
+            "attention_mask": [],
+            "labels": [],
+        }
+
+        if "output_hidden_states" in params:
+            try:
+                self.model.config.output_hidden_states = True
+            except ValueError as e:
+                warnings.warn(
+                    f"Cannot enable output_hidden_states: {e}",
+                    stacklevel=2,
+                )
+                return False, {}, params
+
+        return True, embeddings, params
+
+    def _setup_attentions_config(
+        self, output_attentions: bool, params: dict | None
+    ) -> tuple[bool, dict]:
+        """Setup configuration for attention output.
+
+        Args:
+            output_attentions: Whether to output attentions
+            params: Model forward parameters (if already computed)
+
+        Returns:
+            Tuple of (enabled, embeddings_dict)
+        """
+        if not output_attentions:
+            return False, {}
+
+        if not params:
+            import inspect
+
+            sig = inspect.signature(self.model.forward)
+            params = sig.parameters
+
+        embeddings = {"attentions": None}
+
+        if "output_attentions" in params:
+            try:
+                self.model.config.output_attentions = True
+            except ValueError as e:
+                enabled = self._handle_attention_config_error(e)
+                if not enabled:
+                    return False, {}
+
+        return True, embeddings
+
+    def _handle_attention_config_error(self, error: Exception) -> bool:
+        """Handle attention configuration errors in batch inference.
+
+        Args:
+            error: The configuration error
+
+        Returns:
+            bool: True if error was resolved
+        """
+        error_str = str(error)
+        if "attn_implementation" in error_str and "sdpa" in error_str:
+            try:
+                self.model.config.attn_implementation = "eager"
+                self.model.config.output_attentions = True
+                warnings.warn(
+                    "Switched to 'eager' attention implementation to support output_attentions",
+                    stacklevel=2,
+                )
+                return True
+            except Exception:
+                warnings.warn(
+                    "Cannot enable output_attentions with current attention implementation. Attention weights will not be available.",
+                    stacklevel=2,
+                )
+                return False
+        else:
+            warnings.warn(
+                f"Cannot enable output_attentions: {error}",
+                stacklevel=2,
+            )
+            return False
+
+    def _process_batch_outputs(
+        self,
+        outputs: Any,
+        inputs: dict,
+        output_hidden_states: bool,
+        output_attentions: bool,
+        embeddings: dict,
+    ) -> torch.Tensor:
+        """Process outputs from a single batch.
+
+        Args:
+            outputs: Model outputs
+            inputs: Model inputs
+            output_hidden_states: Whether hidden states are enabled
+            output_attentions: Whether attentions are enabled
+            embeddings: Embeddings dictionary to update
+
+        Returns:
+            torch.Tensor: Batch logits
+        """
+        logits = outputs.logits.cpu().detach()
+
+        if output_hidden_states:
+            self._process_hidden_states(outputs, inputs, embeddings)
+
+        if output_attentions:
+            self._process_attentions(outputs, embeddings)
+
+        return logits
+
+    def _process_hidden_states(
+        self, outputs: Any, inputs: dict, embeddings: dict
+    ) -> None:
+        """Process hidden states from model outputs.
+
+        Args:
+            outputs: Model outputs
+            inputs: Model inputs
+            embeddings: Embeddings dictionary to update
+        """
+        hidden_states = (
+            [h.cpu().detach() for h in outputs.hidden_states]
+            if hasattr(outputs, "hidden_states")
+            else None
+        )
+
+        if hidden_states:
+            if embeddings["hidden_states"] is None:
+                embeddings["hidden_states"] = [[h] for h in hidden_states]
+            else:
+                for i, h in enumerate(hidden_states):
+                    embeddings["hidden_states"][i].append(h)
+
+        attention_mask = (
+            inputs["attention_mask"].cpu().detach()
+            if "attention_mask" in inputs
+            else None
+        )
+        embeddings["attention_mask"].append(attention_mask)
+
+        labels = (
+            inputs["labels"].cpu().detach() if "labels" in inputs else None
+        )
+        embeddings["labels"].append(labels)
+
+    def _process_attentions(self, outputs: Any, embeddings: dict) -> None:
+        """Process attention weights from model outputs.
+
+        Args:
+            outputs: Model outputs
+            embeddings: Embeddings dictionary to update
+        """
+        attentions = (
+            [a.cpu().detach() for a in outputs.attentions]
+            if hasattr(outputs, "attentions")
+            else None
+        )
+
+        if attentions:
+            if embeddings["attentions"] is None:
+                embeddings["attentions"] = [[a] for a in attentions]
+            else:
+                for i, a in enumerate(attentions):
+                    embeddings["attentions"][i].append(a)
+
+    def _finalize_embeddings(
+        self,
+        embeddings: dict,
+        output_hidden_states: bool,
+        output_attentions: bool,
+    ) -> None:
+        """Finalize embeddings by concatenating tensors.
+
+        Args:
+            embeddings: Embeddings dictionary to finalize
+            output_hidden_states: Whether hidden states were collected
+            output_attentions: Whether attentions were collected
+        """
+        if output_hidden_states:
+            if embeddings.get("hidden_states"):
+                embeddings["hidden_states"] = tuple(
+                    torch.cat(lst, dim=0)
+                    for lst in embeddings["hidden_states"]
+                )
+            if embeddings.get("attention_mask"):
+                embeddings["attention_mask"] = torch.cat(
+                    embeddings["attention_mask"], dim=0
+                )
+            if embeddings.get("labels"):
+                embeddings["labels"] = torch.cat(embeddings["labels"], dim=0)
+
+        if output_attentions:
+            if embeddings.get("attentions"):
+                embeddings["attentions"] = tuple(
+                    torch.cat(lst, dim=0) for lst in embeddings["attentions"]
+                )
+
     @torch.no_grad()
     def batch_infer(
         self,
@@ -473,131 +746,54 @@ class DNAInference:
         # Set model to evaluation mode
         self.model.eval()
         all_logits = []
-        # Whether or not to output hidden states
-        params = None
-        embeddings = {}
-        if output_hidden_states:
-            import inspect
 
-            sig = inspect.signature(self.model.forward)
-            params = sig.parameters
-            if "output_hidden_states" in params:
-                try:
-                    self.model.config.output_hidden_states = True
-                except ValueError as e:
-                    warnings.warn(
-                        f"Cannot enable output_hidden_states: {e}",
-                        stacklevel=2,
-                    )
-                    output_hidden_states = False
-            embeddings["hidden_states"] = None
-            embeddings["attention_mask"] = []
-            embeddings["labels"] = []
-        if output_attentions:
-            if not params:
-                import inspect
+        # Setup configurations for outputs
+        output_hidden_states, hidden_embeddings, params = (
+            self._setup_hidden_states_config(output_hidden_states)
+        )
+        output_attentions, attention_embeddings = (
+            self._setup_attentions_config(output_attentions, params)
+        )
 
-                sig = inspect.signature(self.model.forward)
-                params = sig.parameters
-            if "output_attentions" in params:
-                try:
-                    self.model.config.output_attentions = True
-                except ValueError as e:
-                    if "attn_implementation" in str(e) and "sdpa" in str(e):
-                        # Try to switch to eager attention implementation
-                        try:
-                            self.model.config.attn_implementation = "eager"
-                            self.model.config.output_attentions = True
-                            warnings.warn(
-                                "Switched to 'eager' attention implementation to support output_attentions",
-                                stacklevel=2,
-                            )
-                        except Exception:
-                            warnings.warn(
-                                "Cannot enable output_attentions with current attention implementation. Attention weights will not be available.",
-                                stacklevel=2,
-                            )
-                            output_attentions = False
-                    else:
-                        warnings.warn(
-                            f"Cannot enable output_attentions: {e}",
-                            stacklevel=2,
-                        )
-                        output_attentions = False
-            embeddings["attentions"] = None
+        # Combine embeddings dictionaries
+        embeddings = {**hidden_embeddings, **attention_embeddings}
+
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
             inputs = {k: v.to(self.device) for k, v in batch.items()}
+
+            # Run model inference
             if self.pred_config.use_fp16:
                 self.model = self.model.half()
                 with torch.amp.autocast("cuda"):
                     outputs = self.model(**inputs)
             else:
                 outputs = self.model(**inputs)
-            # Get logits
-            logits = outputs.logits.cpu().detach()
+
+            # Process batch outputs
+            logits = self._process_batch_outputs(
+                outputs,
+                inputs,
+                output_hidden_states,
+                output_attentions,
+                embeddings,
+            )
             all_logits.append(logits)
-            # Get hidden states
-            if output_hidden_states:
-                hidden_states = (
-                    [h.cpu().detach() for h in outputs.hidden_states]
-                    if hasattr(outputs, "hidden_states")
-                    else None
-                )
-                if embeddings["hidden_states"] is None:
-                    embeddings["hidden_states"] = [[h] for h in hidden_states]
-                else:
-                    for i, h in enumerate(hidden_states):
-                        embeddings["hidden_states"][i].append(h)
-                attention_mask = (
-                    inputs["attention_mask"].cpu().detach()
-                    if "attention_mask" in inputs
-                    else None
-                )
-                embeddings["attention_mask"].append(attention_mask)
-                labels = (
-                    inputs["labels"].cpu().detach()
-                    if "labels" in inputs
-                    else None
-                )
-                embeddings["labels"].append(labels)
-            # Get attentions
-            if output_attentions:
-                attentions = (
-                    [a.cpu().detach() for a in outputs.attentions]
-                    if hasattr(outputs, "attentions")
-                    else None
-                )
-                if attentions:
-                    if embeddings["attentions"] is None:
-                        embeddings["attentions"] = [[a] for a in attentions]
-                    else:
-                        for i, a in enumerate(attentions):
-                            embeddings["attentions"][i].append(a)
-        # Concatenate logits
+
+        # Concatenate all logits
         all_logits = torch.cat(all_logits, dim=0)
-        if output_hidden_states:
-            if embeddings["hidden_states"]:
-                embeddings["hidden_states"] = tuple(
-                    torch.cat(lst, dim=0)
-                    for lst in embeddings["hidden_states"]
-                )
-            if embeddings["attention_mask"]:
-                embeddings["attention_mask"] = torch.cat(
-                    embeddings["attention_mask"], dim=0
-                )
-            if embeddings["labels"]:
-                embeddings["labels"] = torch.cat(embeddings["labels"], dim=0)
-        if output_attentions:
-            if embeddings["attentions"]:
-                embeddings["attentions"] = tuple(
-                    torch.cat(lst, dim=0) for lst in embeddings["attentions"]
-                )
-        # Get predictions
+
+        # Finalize embeddings
+        self._finalize_embeddings(
+            embeddings, output_hidden_states, output_attentions
+        )
+
+        # Get predictions if requested
         predictions = None
         if do_pred:
             predictions = self.logits_to_preds(all_logits)
             predictions = self.format_output(predictions)
+
         return all_logits, predictions, embeddings
 
     def infer_seqs(
@@ -939,13 +1135,13 @@ class DNAInference:
         else:
             logger.warning("No hidden states available to plot.")
 
-    def get_model_info(self) -> dict[str, Any]:
-        """Get information about the loaded model.
+    def _get_basic_model_info(self) -> dict[str, Any]:
+        """Get basic model information.
 
         Returns:
-            Dict containing model information including type, device, and attention support
+            Dict containing basic model information
         """
-        info = {
+        return {
             "model_type": type(self.model).__name__,
             "device": str(self.device),
             "attention_supported": self._check_attention_support(),
@@ -960,40 +1156,79 @@ class DNAInference:
             else "Unknown",
         }
 
-        # Add model-specific information
-        if hasattr(self.model, "config"):
-            config = self.model.config
-            if hasattr(config, "model_type"):
-                info["model_type"] = config.model_type
-            if hasattr(config, "attn_implementation"):
-                info["attn_implementation"] = config.attn_implementation
-            if hasattr(config, "num_attention_heads"):
-                info["num_attention_heads"] = config.num_attention_heads
-            if hasattr(config, "num_hidden_layers"):
-                info["num_hidden_layers"] = config.num_hidden_layers
-            if hasattr(config, "hidden_size"):
-                info["hidden_size"] = config.hidden_size
-            if hasattr(config, "vocab_size"):
-                info["vocab_size"] = config.vocab_size
+    def _get_model_config_info(self) -> dict[str, Any]:
+        """Get model configuration information.
+
+        Returns:
+            Dict containing model configuration details
+        """
+        config_info = {}
+
+        if not hasattr(self.model, "config"):
+            return config_info
+
+        config = self.model.config
+        config_attrs = [
+            "model_type",
+            "attn_implementation",
+            "num_attention_heads",
+            "num_hidden_layers",
+            "hidden_size",
+            "vocab_size",
+        ]
+
+        for attr in config_attrs:
+            if hasattr(config, attr):
+                config_info[attr] = getattr(config, attr)
+
+        return config_info
+
+    def _get_model_parameters_info(self) -> dict[str, Any]:
+        """Get model parameters information.
+
+        Returns:
+            Dict containing parameter information or error
+        """
+        try:
+            return self.get_model_parameters()
+        except Exception:
+            return {"error": "Could not retrieve parameter information"}
+
+    def _get_model_config_dict(self) -> dict[str, Any]:
+        """Get model configuration as dictionary.
+
+        Returns:
+            Dict containing configuration or error
+        """
+        if not hasattr(self.model, "config"):
+            return {"error": "Model has no config"}
+
+        try:
+            config_dict = {}
+            for key, value in self.model.config.__dict__.items():
+                if not key.startswith("_") and not callable(value):
+                    config_dict[key] = value
+            return config_dict
+        except Exception:
+            return {"error": "Could not retrieve configuration"}
+
+    def get_model_info(self) -> dict[str, Any]:
+        """Get information about the loaded model.
+
+        Returns:
+            Dict containing model information including type, device, and attention support
+        """
+        # Get basic model information
+        info = self._get_basic_model_info()
+
+        # Add model-specific configuration information
+        info.update(self._get_model_config_info())
 
         # Add parameter information
-        try:
-            info["num_parameters"] = self.get_model_parameters()
-        except Exception:
-            info["num_parameters"] = {
-                "error": "Could not retrieve parameter information"
-            }
+        info["num_parameters"] = self._get_model_parameters_info()
 
         # Add configuration as a dictionary
-        if hasattr(self.model, "config"):
-            try:
-                config_dict = {}
-                for key, value in self.model.config.__dict__.items():
-                    if not key.startswith("_") and not callable(value):
-                        config_dict[key] = value
-                info["config"] = config_dict
-            except Exception:
-                info["config"] = {"error": "Could not retrieve configuration"}
+        info["config"] = self._get_model_config_dict()
 
         return info
 
@@ -1060,9 +1295,8 @@ class DNAInference:
                 config = self.model.config
                 hidden_size = getattr(config, "hidden_size", 768)
                 num_layers = getattr(config, "num_hidden_layers", 12)
-                _num_heads = getattr(config, "num_attention_heads", 12)
             else:
-                hidden_size, num_layers, _num_heads = 768, 12, 12
+                hidden_size, num_layers = 768, 12
 
             # Rough estimate for activations
             activation_memory_mb = (
