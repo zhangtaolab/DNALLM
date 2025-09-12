@@ -343,7 +343,7 @@ class DNAInference:
         """
         # Initialize dataset to None to avoid unbound variable issues
         dataset = None
-        
+
         if isinstance(seq_or_path, str):
             suffix = seq_or_path.split(".")[-1]
             if suffix and os.path.isfile(seq_or_path):
@@ -366,17 +366,19 @@ class DNAInference:
             raise ValueError(
                 "Input should be a file path or a list of sequences."
             )
-        
+
         # Create dataset from sequences if we have any and no dataset was loaded from file
         if len(sequences) > 0 and dataset is None:
             ds = Dataset.from_dict({"sequence": sequences})
             dataset = DNADataset(
                 ds, self.tokenizer, max_length=self.pred_config.max_length
             )
-        
+
         # Ensure dataset is not None before proceeding
         if dataset is None:
-            raise ValueError("No valid dataset could be created from the input.")
+            raise ValueError(
+                "No valid dataset could be created from the input."
+            )
         # If labels are provided, keep labels
         if keep_seqs:
             self.sequences = dataset.dataset["sequence"]
