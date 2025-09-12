@@ -11,6 +11,91 @@ import numpy as np
 from collections import defaultdict
 
 
+def _prepare_classification_data(
+    metrics: dict[str, dict],
+) -> tuple[dict, dict]:
+    """Prepare data for classification tasks (binary, multiclass, multilabel, token).
+
+    Args:
+        metrics: Dictionary containing model metrics for different models
+
+    Returns:
+        Tuple containing bars_data and curves_data
+    """
+    bars_data = defaultdict(list)
+    bars_data["models"] = []
+    curves_data = {"ROC": defaultdict(list), "PR": defaultdict(list)}
+
+    for model, model_metrics in metrics.items():
+        bars_data["models"].append(model)
+
+        for metric, metric_data in model_metrics.items():
+            if metric == "curve":
+                _process_curve_data(metric_data, curves_data, model)
+            else:
+                _add_bar_metric(bars_data, metric, metric_data)
+
+    return dict(bars_data), dict(curves_data)
+
+
+def _prepare_regression_data(metrics: dict[str, dict]) -> tuple[dict, dict]:
+    """Prepare data for regression tasks.
+
+    Args:
+        metrics: Dictionary containing model metrics for different models
+
+    Returns:
+        Tuple containing bars_data and scatter_data
+    """
+    bars_data = defaultdict(list)
+    bars_data["models"] = []
+    scatter_data = {}
+
+    for model, model_metrics in metrics.items():
+        bars_data["models"].append(model)
+        scatter_data[model] = {"predicted": [], "experiment": []}
+
+        for metric, metric_data in model_metrics.items():
+            if metric == "scatter":
+                _process_scatter_data(metric_data, scatter_data, model)
+            else:
+                _add_bar_metric(bars_data, metric, metric_data)
+                if metric == "r2":
+                    scatter_data[model][metric] = metric_data
+
+    return dict(bars_data), scatter_data
+
+
+def _process_curve_data(
+    metric_data: dict, curves_data: dict, model: str
+) -> None:
+    """Process curve data for ROC and PR curves."""
+    for score, values in metric_data.items():
+        if score.endswith("pr"):
+            if score == "fpr":
+                curves_data["ROC"]["models"].extend([model] * len(values))
+            curves_data["ROC"][score].extend(values)
+        else:
+            if score == "precision":
+                curves_data["PR"]["models"].extend([model] * len(values))
+            curves_data["PR"][score].extend(values)
+
+
+def _process_scatter_data(
+    metric_data: dict, scatter_data: dict, model: str
+) -> None:
+    """Process scatter plot data for regression tasks."""
+    for score, values in metric_data.items():
+        scatter_data[model][score].extend(values)
+
+
+def _add_bar_metric(bars_data: dict, metric: str, metric_data) -> None:
+    """Add metric data to bars_data dictionary."""
+    if metric not in bars_data:
+        bars_data[metric] = []
+    bars_data[metric].append(metric_data)
+
+
 def prepare_data(
     metrics: dict[str, dict], task_type: str = "binary"
 ) -> tuple[dict, dict | dict]:
@@ -33,68 +118,10 @@ def prepare_data(
     Raises:
         ValueError: If task type is not supported for plotting
     """
-    # Use defaultdict to avoid repeated key existence checks
-    # Original: bars_data = {'models': []}
-    bars_data = defaultdict(list)
-    bars_data["models"] = []
-
     if task_type in ["binary", "multiclass", "multilabel", "token"]:
-        # Pre-allocate curve data structure for better performance
-        # Original: curves_data = {'ROC': {'models': [], 'fpr': [], 'tpr': []}, 'PR': {'models': [], 'recall': [], 'precision': []}}
-        curves_data = {"ROC": defaultdict(list), "PR": defaultdict(list)}
-
-        # Single loop through models and metrics for better efficiency
-        # Original: Multiple nested loops with repeated condition checks
-        for model, model_metrics in metrics.items():
-            bars_data["models"].append(model)
-
-            for metric, metric_data in model_metrics.items():
-                if metric == "curve":
-                    # More efficient curve data extraction
-                    for score, values in metric_data.items():
-                        if score.endswith("pr"):
-                            if score == "fpr":
-                                curves_data["ROC"]["models"].extend(
-                                    [model] * len(values)
-                                )
-                            curves_data["ROC"][score].extend(values)
-                        else:
-                            if score == "precision":
-                                curves_data["PR"]["models"].extend(
-                                    [model] * len(values)
-                                )
-                            curves_data["PR"][score].extend(values)
-                else:
-                    # Use defaultdict to avoid key existence checks
-                    if metric not in bars_data:
-                        bars_data[metric] = []
-                    bars_data[metric].append(metric_data)
-
-        return dict(bars_data), dict(curves_data)
-
+        return _prepare_classification_data(metrics)
     elif task_type == "regression":
-        # Pre-allocate scatter data structure
-        scatter_data = {}
-
-        for model, model_metrics in metrics.items():
-            bars_data["models"].append(model)
-            # Initialize scatter data structure once
-            scatter_data[model] = {"predicted": [], "experiment": []}
-
-            for metric, metric_data in model_metrics.items():
-                if metric == "scatter":
-                    # More efficient scatter data extraction
-                    for score, values in metric_data.items():
-                        scatter_data[model][score].extend(values)
-                else:
-                    if metric not in bars_data:
-                        bars_data[metric] = []
-                    bars_data[metric].append(metric_data)
-                    if metric == "r2":
-                        scatter_data[model][metric] = metric_data
-
-        return dict(bars_data), scatter_data
-
+        return _prepare_regression_data(metrics)
     else:
         raise ValueError(f"Unsupported task type {task_type} for plotting")
 
@@ -109,7 +136,7 @@ def plot_bars(
     domain: tuple[float, float] | list[float] = (0.0, 1.0),
     save_path: str | None = None,
     separate: bool = False,
-) -> alt.Chart:
+) -> alt.Chart | dict[str, alt.Chart]:
     """Plot bar charts for model metrics comparison.
 
     This function creates bar charts to compare different metrics across multiple models.
@@ -216,7 +243,7 @@ def plot_curve(
     height: int = 400,
     save_path: str | None = None,
     separate: bool = False,
-) -> alt.Chart:
+) -> alt.Chart | dict[str, alt.Chart]:
     """Plot ROC and PR curves for classification tasks.
 
     This function creates ROC (Receiver Operating Characteristic) and PR (Precision-Recall)
@@ -300,7 +327,7 @@ def plot_scatter(
     height: int = 400,
     save_path: str | None = None,
     separate: bool = False,
-) -> alt.Chart:
+) -> alt.Chart | dict[str, alt.Chart]:
     """Plot scatter plots for regression task evaluation.
 
     This function creates scatter plots to compare predicted vs. experimental values
@@ -506,6 +533,153 @@ def plot_attention_map(
     return attn_map
 
 
+def _get_dimensionality_reducer(reducer: str):
+    """Initialize and return a dimensionality reducer based on the specified method.
+
+    Args:
+        reducer: Dimensionality reduction method ('PCA', 't-SNE', 'UMAP')
+
+    Returns:
+        Initialized dimensionality reducer object
+
+    Raises:
+        ValueError: If unsupported dimensionality reduction method is specified
+        ImportError: If required package for the reducer is not installed
+    """
+    reducer_map = {
+        "pca": ("sklearn.decomposition", "PCA"),
+        "t-sne": ("sklearn.manifold", "TSNE"),
+        "umap": ("umap", "UMAP"),
+    }
+
+    reducer_lower = reducer.lower()
+    if reducer_lower not in reducer_map:
+        raise ValueError(
+            f"Unsupported dim reducer '{reducer}', please try PCA, t-SNE or UMAP."
+        )
+
+    try:
+        if reducer_lower == "pca":
+            from sklearn.decomposition import PCA
+
+            return PCA(n_components=2)
+        elif reducer_lower == "t-sne":
+            from sklearn.manifold import TSNE
+
+            return TSNE(n_components=2)
+        elif reducer_lower == "umap":
+            from umap import UMAP
+
+            return UMAP(n_components=2)
+    except ImportError as e:
+        raise ImportError(
+            f"Required package for {reducer} not installed: {e}"
+        ) from e
+
+
+def _compute_mean_embeddings(hidden_states, attention_mask):
+    """Compute mean embeddings using attention mask for pooling.
+
+    Args:
+        hidden_states: Hidden states from model layers
+        attention_mask: Attention mask for sequence padding
+
+    Returns:
+        Mean pooled embeddings as numpy array
+    """
+    embeddings = np.array(hidden_states)
+    attention_mask_array = np.array(attention_mask)
+
+    mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
+    mean_embeddings = (
+        np.sum(attention_mask_array[..., None] * embeddings, axis=-2)
+        / mask_sum
+    )
+    return mean_embeddings
+
+
+def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
+    """Prepare DataFrame for embedding visualization.
+
+    Args:
+        dim_reduced_vectors: 2D reduced embedding vectors
+        labels: Data point labels
+        label_names: Label names for legend display
+
+    Returns:
+        pandas DataFrame ready for plotting
+    """
+    if labels is None:
+        labels = ["Uncategorized"] * dim_reduced_vectors.shape[0]
+
+    processed_labels = [
+        label_names[int(i)]
+        if (label_names is not None and i < len(label_names))
+        else str(i)
+        for i in labels
+    ]
+
+    return pd.DataFrame(
+        {
+            "Dimension 1": dim_reduced_vectors[:, 0],
+            "Dimension 2": dim_reduced_vectors[:, 1],
+            "labels": processed_labels,
+        }
+    )
+
+
+def _create_embedding_plot(source_df, layer_idx, width, height):
+    """Create individual embedding plot for a layer.
+
+    Args:
+        source_df: DataFrame containing embedding data
+        layer_idx: Layer index for plot title
+        width: Plot width
+        height: Plot height
+
+    Returns:
+        Altair chart object
+    """
+    return (
+        alt.Chart(source_df, title=f"Layer {layer_idx + 1}")
+        .mark_point(filled=True)
+        .encode(
+            x=alt.X("Dimension 1:Q"),
+            y=alt.Y("Dimension 2:Q"),
+            color=alt.Color("labels:N", legend=alt.Legend(title="Labels")),
+        )
+        .properties(width=width, height=height)
+    )
+
+
+def _arrange_plots(plots, ncols):
+    """Arrange multiple plots in a grid layout.
+
+    Args:
+        plots: List of individual plots
+        ncols: Number of columns in grid
+
+    Returns:
+        Combined Altair chart
+    """
+    if not plots:
+        return alt.Chart()
+
+    pdot = {}
+    for i, plot in enumerate(plots):
+        idx = i // ncols
+        if i % ncols == 0:
+            pdot[idx] = plot
+        else:
+            pdot[idx] |= plot
+
+    combined = pdot[0] if pdot else alt.Chart()
+    for i in range(1, len(pdot)):
+        combined &= pdot[i]
+
+    return combined.configure_axis(grid=False)
+
+
 def plot_embeddings(
     hidden_states: tuple | list,
     attention_mask: tuple | list,
@@ -517,7 +691,7 @@ def plot_embeddings(
     height: int = 300,
     save_path: str | None = None,
     separate: bool = False,
-) -> alt.Chart:
+) -> alt.Chart | dict[str, alt.Chart]:
     """Visualize embeddings using dimensionality reduction techniques.
 
     This function creates 2D visualizations of high-dimensional embeddings from different
@@ -541,122 +715,291 @@ def plot_embeddings(
     Raises:
         ValueError: If unsupported dimensionality reduction method is specified
     """
+    # Initialize dimensionality reducer
+    dim_reducer = _get_dimensionality_reducer(reducer)
+    # Type assertion: dim_reducer is guaranteed to be non-None from helper function
+    assert dim_reducer is not None
 
-    # More efficient dimensionality reducer selection with error handling
-    # Original: Multiple if-elif statements
-    reducer_map = {
-        "pca": ("sklearn.decomposition", "PCA"),
-        "t-sne": ("sklearn.manifold", "TSNE"),
-        "umap": ("umap", "UMAP"),
-    }
-
-    reducer_lower = reducer.lower()
-    if reducer_lower not in reducer_map:
-        raise ValueError(
-            f"Unsupported dim reducer '{reducer}', please try PCA, t-SNE or UMAP."
-        )
-
-    module_name, _class_name = reducer_map[reducer_lower]
-
-    try:
-        if module_name == "sklearn.decomposition":
-            from sklearn.decomposition import PCA
-
-            dim_reducer = PCA(n_components=2)
-        elif module_name == "sklearn.manifold":
-            from sklearn.manifold import TSNE
-
-            dim_reducer = TSNE(n_components=2)
-        elif module_name == "umap":
-            from umap import UMAP
-
-            dim_reducer = UMAP(n_components=2)
-    except ImportError as e:
-        raise ImportError(
-            f"Required package for {reducer} not installed: {e}"
-        ) from e
-
-    # Pre-allocate plot dictionaries for better memory management
-    # Original: pdot = {}; p_separate = {}
-    pdot = {}
+    # Process each layer and create plots
+    plots = []
     p_separate = {}
 
-    # More efficient embedding processing with numpy operations
-    # Original: Multiple numpy conversions and calculations
     for i, (hidden, mask) in enumerate(
         zip(hidden_states, attention_mask, strict=False)
     ):
-        # Convert to numpy once and use vectorized operations
-        embeddings = np.array(hidden)
-        attention_mask_array = np.array(mask)
+        # Compute mean embeddings
+        mean_embeddings = _compute_mean_embeddings(hidden, mask)
 
-        # More efficient mean calculation with numpy operations
-        # Original: torch.sum(attention_mask*embeddings, axis=-2) / torch.sum(attention_mask, axis=1)
-        mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
-        mean_embeddings = (
-            np.sum(attention_mask_array[..., None] * embeddings, axis=-2)
-            / mask_sum
+        # Apply dimensionality reduction
+        layer_dim_reduced_vectors = np.array(
+            dim_reducer.fit_transform(mean_embeddings)
         )
 
-        # More efficient dimensionality reduction
-        layer_dim_reduced_vectors = dim_reducer.fit_transform(mean_embeddings)
-
-        # Better label handling with default values
-        if not labels:
-            labels = ["Uncategorized"] * layer_dim_reduced_vectors.shape[0]
-
-        # More efficient DataFrame creation with list comprehension
-        # Original: Multiple dictionary assignments
-        df_data = {
-            "Dimension 1": layer_dim_reduced_vectors[:, 0],
-            "Dimension 2": layer_dim_reduced_vectors[:, 1],
-            "labels": [
-                label_names[int(i)] if label_names else str(i) for i in labels
-            ],
-        }
-
-        source = pd.DataFrame(df_data)
-
-        # Create plot with optimized encoding
-        dot = (
-            alt.Chart(source, title=f"Layer {i + 1}")
-            .mark_point(filled=True)
-            .encode(
-                x=alt.X("Dimension 1:Q"),
-                y=alt.Y("Dimension 2:Q"),
-                color=alt.Color("labels:N", legend=alt.Legend(title="Labels")),
-            )
-            .properties(width=width, height=height)
+        # Prepare data for plotting
+        source_df = _prepare_embedding_dataframe(
+            layer_dim_reduced_vectors, labels, label_names
         )
+
+        # Create individual plot
+        plot = _create_embedding_plot(source_df, i, width, height)
+        plots.append(plot)
 
         if separate:
-            p_separate[f"Layer{i + 1}"] = dot.configure_axis(grid=False)
+            p_separate[f"Layer{i + 1}"] = plot.configure_axis(grid=False)
 
-        # More efficient plot arrangement
-        idx = i // ncols
-        if i % ncols == 0:
-            pdot[idx] = dot
-        else:
-            pdot[idx] |= dot
-
-    # More efficient plot combination
-    # Original: Multiple conditional checks and assignments
-    pdots = pdot[0] if pdot else alt.Chart()
-    for i in range(1, len(pdot)):
-        pdots &= pdot[i]
-
-    # Configure chart once at the end
-    pdots = pdots.configure_axis(grid=False)
+    # Arrange plots in grid
+    combined_plot = _arrange_plots(plots, ncols)
 
     # Save the plot
     if save_path:
-        pdots.save(save_path)
+        combined_plot.save(save_path)
         print(f"Embeddings visualization saved to {save_path}")
 
-    if separate:
-        return p_separate
-    else:
-        return pdots
+    return p_separate if separate else combined_plot
+
+
+def _extract_mutation_data(
+    data: dict,
+) -> tuple[str, list[str], int, int, list[str]]:
+    """Extract basic mutation data from input dictionary.
+
+    Args:
+        data: Dictionary containing mutation data with 'raw' and mutation keys
+
+    Returns:
+        Tuple containing sequence, raw_bases, sequence length, format length, and mutation list
+    """
+    raw_data = data["raw"]
+    sequence = raw_data["sequence"]
+    seqlen = len(sequence)
+    flen = len(str(seqlen))
+    mut_list = [x for x in data.keys() if x != "raw"]
+    raw_bases = list(sequence)
+
+    return sequence, raw_bases, seqlen, flen, mut_list
+
+
+def _process_substitution_mutations(
+    data: dict, mut_list: list[str], i: int, base1: str, flen: int
+) -> tuple[dict, float, str]:
+    """Process substitution mutations for a single position.
+
+    Args:
+        data: Mutation data dictionary
+        mut_list: List of all mutations
+        i: Position index
+        base1: Original base at position
+        flen: Format length for position strings
+
+    Returns:
+        Tuple containing heatmap data, max score, and max effect base
+    """
+    dheat_pos = defaultdict(list)
+    ref = f"mut_{i}_{base1}_{base1}"
+    mut_prefix = f"mut_{i}_{base1}_"
+
+    maxabs = 0.0
+    maxscore = 0.0
+    maxabs_index = base1
+
+    relevant_muts = [x for x in mut_list if x.startswith(mut_prefix)] + [ref]
+
+    for mut in sorted(relevant_muts):
+        if mut in data:
+            base2 = mut.split("_")[-1]
+            score = data[mut]["score"]
+        else:
+            base2 = base1
+            score = 0.0
+
+        dheat_pos["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_pos["mut"].append(base2)
+        dheat_pos["score"].append(score)
+
+        if abs(score) > maxabs:
+            maxabs = abs(score)
+            maxscore = score
+            maxabs_index = base2
+
+    return dict(dheat_pos), maxscore, maxabs_index
+
+
+def _process_indel_mutations(
+    data: dict, mut_list: list[str], i: int, base1: str, flen: int
+) -> dict:
+    """Process insertion and deletion mutations for a single position.
+
+    Args:
+        data: Mutation data dictionary
+        mut_list: List of all mutations
+        i: Position index
+        base1: Original base at position
+        flen: Format length for position strings
+
+    Returns:
+        Dictionary containing indel heatmap data
+    """
+    dheat_indel = defaultdict(list)
+
+    # Process deletions
+    del_prefix = f"del_{i}_"
+    for mut in [x for x in mut_list if x.startswith(del_prefix)]:
+        base2 = f"del_{mut.split('_')[-1]}"
+        score = data[mut]["score"]
+        dheat_indel["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_indel["mut"].append(base2)
+        dheat_indel["score"].append(score)
+
+    # Process insertions
+    ins_prefix = f"ins_{i}_"
+    for mut in [x for x in mut_list if x.startswith(ins_prefix)]:
+        base2 = f"ins_{mut.split('_')[-1]}"
+        score = data[mut]["score"]
+        dheat_indel["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_indel["mut"].append(base2)
+        dheat_indel["score"].append(score)
+
+    return dict(dheat_indel)
+
+
+def _build_mutation_datasets(
+    data: dict,
+    raw_bases: list[str],
+    mut_list: list[str],
+    seqlen: int,
+    flen: int,
+) -> tuple[dict, dict, dict]:
+    """Build datasets for heatmap, line plot, and bar chart visualizations.
+
+    Args:
+        data: Mutation data dictionary
+        raw_bases: List of original bases in sequence
+        mut_list: List of all mutations
+        seqlen: Sequence length
+        flen: Format length for position strings
+
+    Returns:
+        Tuple containing heatmap, line plot, and bar chart data
+    """
+    dheat = defaultdict(list)
+    dline = {
+        "x": [f"{str(i).zfill(flen)}{x}" for i, x in enumerate(raw_bases)] * 2,
+        "score": [0.0] * seqlen * 2,
+        "type": ["gain"] * seqlen + ["loss"] * seqlen,
+    }
+    dbar = defaultdict(list)
+
+    for i, base1 in enumerate(raw_bases):
+        # Process substitution mutations
+        dheat_pos, maxscore, maxabs_index = _process_substitution_mutations(
+            data, mut_list, i, base1, flen
+        )
+
+        # Accumulate heatmap data
+        for key, values in dheat_pos.items():
+            dheat[key].extend(values)
+
+        # Update line plot data
+        for score in dheat_pos["score"]:
+            if score >= 0:
+                dline["score"][i] += score
+            else:
+                dline["score"][i + seqlen] -= score
+
+        # Update bar chart data
+        dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
+        dbar["score"].append(maxscore)
+        dbar["base"].append(maxabs_index)
+
+        # Process indel mutations
+        dheat_indel = _process_indel_mutations(data, mut_list, i, base1, flen)
+        for key, values in dheat_indel.items():
+            dheat[key].extend(values)
+
+    return dict(dheat), dline, dict(dbar)
+
+
+def _create_mutation_charts(
+    dheat: dict, dline: dict, dbar: dict, width: int, height: int, flen: int
+) -> alt.Chart | alt.VConcatChart:
+    """Create individual charts for mutation visualization.
+
+    Args:
+        dheat: Heatmap data
+        dline: Line plot data
+        dbar: Bar chart data
+        width: Chart width
+        height: Chart height
+        flen: Format length for position strings
+
+    Returns:
+        Combined Altair chart
+    """
+    if not dheat["score"]:
+        return alt.Chart()
+
+    # Calculate color domains and ranges
+    all_scores = dheat["score"]
+    max_abs_score = max(abs(min(all_scores)), abs(max(all_scores)))
+    domain1 = [-max_abs_score, 0.0, max_abs_score]
+    range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
+
+    unique_bases = sorted(set(dbar["base"]))
+    range2_ = ["#33a02c", "#e31a1c", "#1f78b4", "#ff7f00", "#cab2d6"][
+        : len(unique_bases)
+    ]
+
+    # Enable VegaFusion for performance
+    alt.data_transformers.enable("vegafusion")
+
+    # Create heatmap
+    pheat = (
+        alt.Chart(pd.DataFrame(dheat))
+        .mark_rect()
+        .encode(
+            x=alt.X(
+                "base:O",
+                axis=alt.Axis(
+                    labelExpr=f"substring(datum.value, {flen}, {flen}+1)",
+                    labelAngle=0,
+                ),
+            ).title(None),
+            y=alt.Y("mut:O").title("mutation"),
+            color=alt.Color("score:Q").scale(domain=domain1, range=range1_),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create line plot
+    pline = (
+        alt.Chart(pd.DataFrame(dline))
+        .mark_line()
+        .encode(
+            x=alt.X("x:O").title(None).axis(labels=False),
+            y=alt.Y("score:Q"),
+            color=alt.Color("type:N").scale(
+                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
+            ),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create bar chart
+    pbar = (
+        alt.Chart(pd.DataFrame(dbar))
+        .mark_bar()
+        .encode(
+            x=alt.X("x:O").title(None).axis(labels=False),
+            y=alt.Y("score:Q"),
+            color=alt.Color("base:N").scale(
+                domain=unique_bases, range=range2_
+            ),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Combine charts
+    return (pheat & pbar & pline).configure_axis(grid=False)
 
 
 def plot_muts(
@@ -665,7 +1008,7 @@ def plot_muts(
     width: int | None = None,
     height: int = 100,
     save_path: str | None = None,
-) -> alt.Chart:
+) -> alt.Chart | alt.VConcatChart:
     """Visualize mutation effects on model predictions.
 
     This function creates comprehensive visualizations of how different mutations
@@ -684,175 +1027,26 @@ def plot_muts(
     Returns:
         Altair chart object showing the combined mutation effects visualization
     """
-    # More efficient data extraction and preprocessing
-    # Original: seqlen = len(data['raw']['sequence']); flen = len(str(seqlen))
-    raw_data = data["raw"]
-    sequence = raw_data["sequence"]
-    seqlen = len(sequence)
-    flen = len(str(seqlen))
+    # Extract basic data
+    sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)
 
-    # Use list comprehension for more efficient data creation
-    # Original: mut_list = [x for x in data.keys() if x != 'raw']; raw_bases = [base for base in data['raw']['sequence']]
-    mut_list = [x for x in data.keys() if x != "raw"]
-    raw_bases = list(sequence)
+    # Build visualization datasets
+    dheat, dline, dbar = _build_mutation_datasets(
+        data, raw_bases, mut_list, seqlen, flen
+    )
 
-    # Pre-allocate data structures for better performance
-    # Original: Multiple dictionary initializations with empty lists
-    dheat = defaultdict(list)
-    dline = {
-        "x": [f"{str(i).zfill(flen)}{x}" for i, x in enumerate(raw_bases)] * 2,
-        "score": [0.0] * seqlen * 2,
-        "type": ["gain"] * seqlen + ["loss"] * seqlen,
-    }
-    dbar = defaultdict(list)
+    # Calculate width if not provided
+    if width is None and dheat["score"]:
+        width = int(height * len(raw_bases) / len(set(dheat["mut"])))
+    elif width is None:
+        width = 400  # Default width
 
-    # More efficient mutation processing with optimized loops
-    # Original: Multiple nested loops with repeated condition checks
-    for i, base1 in enumerate(raw_bases):
-        # Pre-calculate mutation prefixes for better performance
-        ref = f"mut_{i}_{base1}_{base1}"
-        mut_prefix = f"mut_{i}_{base1}_"
+    # Create charts
+    pmerge = _create_mutation_charts(dheat, dline, dbar, width, height, flen)
 
-        # More efficient score tracking with numpy operations
-        maxabs = 0.0
-        maxscore = 0.0
-        maxabs_index = base1
+    # Save the plot if requested
+    if save_path and dheat["score"]:
+        pmerge.save(save_path)
+        print(f"Mutation effects visualization saved to {save_path}")
 
-        # Filter mutations once and process efficiently
-        relevant_muts = [x for x in mut_list if x.startswith(mut_prefix)] + [
-            ref
-        ]
-
-        for mut in sorted(relevant_muts):
-            if mut in data:
-                base2 = mut.split("_")[-1]
-                score = data[mut]["score"]
-
-                # Batch data collection for better performance
-                dheat["base"].append(f"{str(i).zfill(flen)}{base1}")
-                dheat["mut"].append(base2)
-                dheat["score"].append(score)
-
-                # More efficient score accumulation
-                if score >= 0:
-                    dline["score"][i] += score
-                else:
-                    dline["score"][i + seqlen] -= score
-
-                # Track maximum absolute score more efficiently
-                if abs(score) > maxabs:
-                    maxabs = abs(score)
-                    maxscore = score
-                    maxabs_index = base2
-            else:
-                # Handle missing mutations more efficiently
-                dheat["base"].append(f"{str(i).zfill(flen)}{base1}")
-                dheat["mut"].append(base1)
-                dheat["score"].append(0.0)
-
-        # Collect bar chart data efficiently
-        dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
-        dbar["score"].append(maxscore)
-        dbar["base"].append(maxabs_index)
-
-        # Process deletion and insertion mutations more efficiently
-        del_prefix = f"del_{i}_"
-        ins_prefix = f"ins_{i}_"
-
-        for mut in [x for x in mut_list if x.startswith(del_prefix)]:
-            base2 = f"del_{mut.split('_')[-1]}"
-            score = data[mut]["score"]
-            dheat["base"].append(f"{str(i).zfill(flen)}{base1}")
-            dheat["mut"].append(base2)
-            dheat["score"].append(score)
-
-        for mut in [x for x in mut_list if x.startswith(ins_prefix)]:
-            base2 = f"ins_{mut.split('_')[-1]}"
-            score = data[mut]["score"]
-            dheat["base"].append(f"{str(i).zfill(flen)}{base1}")
-            dheat["mut"].append(base2)
-            dheat["score"].append(score)
-
-    # More efficient color domain calculation with numpy
-    # Original: Multiple min/max calculations and list comprehensions
-    if dheat["score"]:
-        all_scores = dheat["score"]
-        max_abs_score = max(abs(min(all_scores)), abs(max(all_scores)))
-        domain1 = [-max_abs_score, 0.0, max_abs_score]
-        range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
-
-        # More efficient unique value extraction
-        unique_bases = sorted(set(dbar["base"]))
-        range2_ = ["#33a02c", "#e31a1c", "#1f78b4", "#ff7f00", "#cab2d6"][
-            : len(unique_bases)
-        ]
-
-        # Enable VegaFusion for Altair performance
-        alt.data_transformers.enable("vegafusion")
-
-        # Calculate width automatically if not provided
-        if width is None:
-            width = int(height * len(raw_bases) / len(set(dheat["mut"])))
-
-        # Create heatmap with optimized encoding
-        if dheat["base"]:
-            pheat = (
-                alt.Chart(pd.DataFrame(dict(dheat)))
-                .mark_rect()
-                .encode(
-                    x=alt.X(
-                        "base:O",
-                        axis=alt.Axis(
-                            labelExpr=f"substring(datum.value, {flen}, {flen}+1)",
-                            labelAngle=0,
-                        ),
-                    ).title(None),
-                    y=alt.Y("mut:O").title("mutation"),
-                    color=alt.Color("score:Q").scale(
-                        domain=domain1, range=range1_
-                    ),
-                )
-                .properties(width=width, height=height)
-            )
-
-            # Create line plot with optimized encoding
-            pline = (
-                alt.Chart(pd.DataFrame(dline))
-                .mark_line()
-                .encode(
-                    x=alt.X("x:O").title(None).axis(labels=False),
-                    y=alt.Y("score:Q"),
-                    color=alt.Color("type:N").scale(
-                        domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
-                    ),
-                )
-                .properties(width=width, height=height)
-            )
-
-            # Create bar chart with optimized encoding
-            pbar = (
-                alt.Chart(pd.DataFrame(dict(dbar)))
-                .mark_bar()
-                .encode(
-                    x=alt.X("x:O").title(None).axis(labels=False),
-                    y=alt.Y("score:Q"),
-                    color=alt.Color("base:N").scale(
-                        domain=unique_bases, range=range2_
-                    ),
-                )
-                .properties(width=width, height=height)
-            )
-
-            # Combine plots efficiently
-            pmerge = pheat & pbar & pline
-            pmerge = pmerge.configure_axis(grid=False)
-
-            # Save the plot
-            if save_path:
-                pmerge.save(save_path)
-                print(f"Mutation effects visualization saved to {save_path}")
-
-            return pmerge
-
-    # Return empty chart if no data
-    return alt.Chart()
+    return pmerge

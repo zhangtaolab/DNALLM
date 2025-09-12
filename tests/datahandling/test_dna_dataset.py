@@ -11,19 +11,15 @@ This module contains all tests for the DNADataset class, including:
 
 import pytest
 import pandas as pd
-import numpy as np
 import os
 import tempfile
 import pickle
 import json
 from unittest.mock import Mock, patch
 from datasets import Dataset, DatasetDict
-from transformers import AutoTokenizer
 
 from dnallm.datahandling.data import (
     DNADataset,
-    show_preset_dataset,
-    load_preset_dataset,
 )
 
 
@@ -506,7 +502,6 @@ class TestDNADatasetDataManipulation:
         ds = Dataset.from_dict(test_data)
         dna_ds = DNADataset(ds)
 
-        original_order = list(dna_ds.dataset["sequence"])
         dna_ds.shuffle(seed=42)
 
         # Should still have the same number of samples

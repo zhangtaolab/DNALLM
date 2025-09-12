@@ -62,7 +62,7 @@ class TestMCPFunctionality:
             )
 
             if promoter_result and 0 in promoter_result:
-                result = promoter_result[0]
+                result = promoter_result[0]  # type: ignore
                 logger.info("Promoter prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -85,7 +85,7 @@ class TestMCPFunctionality:
             )
 
             if conservation_result and 0 in conservation_result:
-                result = conservation_result[0]
+                result = conservation_result[0]  # type: ignore
                 logger.info("Conservation prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -108,7 +108,7 @@ class TestMCPFunctionality:
             )
 
             if chromatin_result and 0 in chromatin_result:
-                result = chromatin_result[0]
+                result = chromatin_result[0]  # type: ignore
                 logger.info("Open chromatin prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -132,21 +132,21 @@ class TestMCPFunctionality:
             logger.info(f"Sequence Length: {len(dna_sequence)} bp")
 
             if promoter_result and 0 in promoter_result:
-                result = promoter_result[0]
+                result = promoter_result[0]  # type: ignore
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
                     f"Promoter Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})"
                 )
             if conservation_result and 0 in conservation_result:
-                result = conservation_result[0]
+                result = conservation_result[0]  # type: ignore
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
                     f"Conservation Prediction: {result.get('label', 'N/A')} (confidence: {max_score:.4f})"
                 )
             if chromatin_result and 0 in chromatin_result:
-                result = chromatin_result[0]
+                result = chromatin_result[0]  # type: ignore
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
