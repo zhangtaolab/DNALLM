@@ -181,7 +181,11 @@ def random_generate_sequences(
                 if length > maxl:
                     length -= padding_size
             seq = "".join(
-                random.choices(basemap, weights=weights, k=length)  # noqa: S311
+                random.choices(  # noqa: S311
+                    basemap,
+                    weights=weights,
+                    k=length,
+                )
             )
             if calc_gc:
                 gc_content = calc_gc_content(seq)
@@ -199,7 +203,11 @@ def random_generate_sequences(
             if len(sequences) >= samples:
                 break
             seq = "".join(
-                random.choices(basemap, weights=weights, k=length)  # noqa: S311
+                random.choices(  # noqa: S311
+                    basemap,
+                    weights=weights,
+                    k=length,
+                )
             )
             # calculate GC content
             if calc_gc:

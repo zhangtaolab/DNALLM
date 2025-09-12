@@ -1,7 +1,8 @@
 """Test Benchmark class functionality.
 
 This test file tests the core functionality of the Benchmark class,
-including configuration loading, dataset handling, benchmark execution, and plotting.
+including configuration loading, dataset handling, benchmark execution,
+and plotting.
 """
 
 import os
@@ -178,7 +179,8 @@ output:
         }
         mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5]
 
-        # Mock tokenizer to return proper tokenization results for batch processing
+        # Mock tokenizer to return proper tokenization results for batch
+        # processing
         def mock_tokenizer_call(sequences, **kwargs):
             # Return tokenized data for each sequence in the batch
             batch_size = len(sequences) if isinstance(sequences, list) else 1

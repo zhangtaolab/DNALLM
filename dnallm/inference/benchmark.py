@@ -30,9 +30,10 @@ class Benchmark:
             token classification.
 
         Attributes:
-                    config: Configuration dictionary containing task settings and
+            config: Configuration dictionary containing task settings and
                 inference parameters
-    all_models: Dictionary mapping source names to sets of available model names
+            all_models: Dictionary mapping source names to sets of available
+                model names
             dataset: The dataset used for benchmarking
     """
 
@@ -40,7 +41,7 @@ class Benchmark:
         """Initialize the Benchmark class.
 
         Args:
-                        config: Configuration object containing task settings and
+            config: Configuration object containing task settings and
                 inference parameters
         """
         self.config = config
@@ -113,8 +114,8 @@ class Benchmark:
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-                        DNAInference: The inference engine object configured with the given model and
-                tokenizer
+            DNAInference: The inference engine object configured with the given
+                model and tokenizer
         """
 
         inference_engine = DNAInference(
@@ -195,7 +196,7 @@ class Benchmark:
             None
 
         Raises:
-                        NameError: If model cannot be found in either the given source or
+            NameError: If model cannot be found in either the given source or
                 local storage
         """
         all_results = {}

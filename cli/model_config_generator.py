@@ -19,7 +19,8 @@ from typing import Any, ClassVar
 
 
 class ConfigGenerator:
-    """Interactive configuration generator for DNALLM with model template support
+    """Interactive configuration generator for DNALLM with model template
+    support
 
     For detailed TrainingArguments documentation, please refer to:
     https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
@@ -203,7 +204,8 @@ class ConfigGenerator:
             if result == "continue":
                 continue  # Try again
             elif isinstance(result, str):
-                # This should not happen based on our logic, but handle it for safety
+                # This should not happen based on our logic, but handle it for
+                # safety
                 continue
             else:
                 # result is either dict[str, Any] or None (custom model path)
@@ -432,7 +434,8 @@ class ConfigGenerator:
         }
 
         # Fine-tuning defaults (based on finetune_config.yaml)
-        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        # For detailed arguments, please refer to:
+        # https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         defaults["finetune"] = {
             "output_dir": "./outputs",
             "num_train_epochs": 3,
@@ -456,7 +459,8 @@ class ConfigGenerator:
             "max_grad_norm": 1.0,
             "warmup_ratio": 0.1,
             "lr_scheduler_type": "linear",
-            "lr_scheduler_kwargs": {},  # Always include empty dict for lr_scheduler_kwargs
+            "lr_scheduler_kwargs": {},  # Always include empty dict for
+            # lr_scheduler_kwargs
             "seed": 42,
             "bf16": False,
             "fp16": False,
@@ -596,7 +600,8 @@ class ConfigGenerator:
 
         auto_config = None
         if model_choice == 1:
-            # Use model template - for finetune, show pretrained models (base for fine-tuning)
+            # Use model template - for finetune, show pretrained models
+            # (base for fine-tuning)
             model_template = self._select_model_from_templates("finetune")
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
@@ -638,7 +643,8 @@ class ConfigGenerator:
 
         auto_config = None
         if model_choice == 1:
-            # Use model template - for inference, show finetuned models (ready for prediction)
+            # Use model template - for inference, show finetuned models
+            # (ready for prediction)
             model_template = self._select_model_from_templates("inference")
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
@@ -849,7 +855,8 @@ class ConfigGenerator:
     ) -> dict[str, Any]:
         """Configure fine-tuning settings with smart defaults
 
-        For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        For detailed arguments, please refer to:
+        https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         """
         click.echo("\n🎯 Fine-tuning Configuration:")
 
@@ -927,7 +934,8 @@ class ConfigGenerator:
         )
 
         # Learning rate scheduler configuration (always included)
-        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        # For detailed arguments, please refer to:
+        # https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         click.echo("\n📚 Learning Rate Scheduler Configuration:")
         click.echo("Available scheduler types:")
         scheduler_types = [

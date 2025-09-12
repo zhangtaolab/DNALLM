@@ -49,7 +49,7 @@ class Mutagenesis:
         Args:
             model: Fine-tuned model for making predictions
             tokenizer: Tokenizer for encoding DNA sequences
-                        config: Configuration object containing task settings and
+            config: Configuration object containing task settings and
                 inference parameters
         """
 
@@ -66,8 +66,8 @@ class Mutagenesis:
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-                        DNAInference: The inference engine object configured with the given model and
-                tokenizer
+            DNAInference: The inference engine object configured with the given
+                model and tokenizer
         """
 
         inference_engine = DNAInference(
@@ -176,9 +176,9 @@ class Mutagenesis:
     def pred_comparison(self, raw_pred, mut_pred):
         """Compare raw and mutated predictions.
 
-        This method calculates the difference between predictions on the original
-                sequence
-                and mutated sequences, providing insights into mutation effects.
+        This method calculates the difference between predictions on the
+        original sequence and mutated sequences, providing insights into
+        mutation effects.
 
                 Args:
                     raw_pred: Raw predictions from the original sequence
@@ -186,9 +186,9 @@ class Mutagenesis:
 
                 Returns:
                     Tuple containing (raw_score, mut_score, logfc):
-                    - raw_score: Processed scores from original sequence
-                    - mut_score: Processed scores from mutated sequence
-                    - logfc: Log fold change between mutated and original scores
+            - raw_score: Processed scores from original sequence
+            - mut_score: Processed scores from mutated sequence
+            - logfc: Log fold change between mutated and original scores
 
                 Raises:
                     ValueError: If task type is not supported
@@ -230,14 +230,15 @@ class Mutagenesis:
                 - "last": Use the last log fold change
                 - "sum": Use the sum of log fold changes
                 - "mean": Use the mean of log fold changes
-                                - "max": Use the index of the maximum raw score to select the log fold change
+            - "max": Use the index of the maximum raw score to select the log
+                fold change
                 - int: Use the log fold change at the specified index
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:
             - 'raw': Original sequence predictions and metadata
-                        - mutation names: Individual mutation results with scores and
-                log fold changes
+            - mutation names: Individual mutation results with scores and log
+                fold changes
         """
         # Load predictor
         inference_engine = self.get_inference_engine(

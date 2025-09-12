@@ -194,7 +194,7 @@ def _get_model_path_and_imports(
 
         # Import ModelScope modules
         try:
-            from modelscope import (  # pyright: ignore[reportAttributeAccessIssue]
+            from modelscope import (
                 AutoModel,
                 AutoModelForMaskedLM,
                 AutoModelForCausalLM,
@@ -212,7 +212,9 @@ def _get_model_path_and_imports(
             "AutoModel": AutoModel,
             "AutoModelForMaskedLM": AutoModelForMaskedLM,
             "AutoModelForCausalLM": AutoModelForCausalLM,
-            "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+            "AutoModelForSequenceClassification": (
+                AutoModelForSequenceClassification
+            ),
             "AutoModelForTokenClassification": AutoModelForTokenClassification,
             "AutoTokenizer": AutoTokenizer,
         }
@@ -224,7 +226,7 @@ def _get_model_path_and_imports(
 
     # Import transformers modules for local and huggingface sources
     try:
-        from transformers import (  # pyright: ignore[reportAttributeAccessIssue]
+        from transformers import (
             AutoModel,
             AutoModelForMaskedLM,
             AutoModelForCausalLM,
@@ -242,7 +244,9 @@ def _get_model_path_and_imports(
         "AutoModel": AutoModel,
         "AutoModelForMaskedLM": AutoModelForMaskedLM,
         "AutoModelForCausalLM": AutoModelForCausalLM,
-        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+        "AutoModelForSequenceClassification": (
+            AutoModelForSequenceClassification
+        ),
         "AutoModelForTokenClassification": AutoModelForTokenClassification,
         "AutoTokenizer": AutoTokenizer,
     }
@@ -382,7 +386,7 @@ def load_model_and_tokenizer(
 
         Args:
             model_name: Model name or path
-                    task_config: Task configuration object containing task type and
+            task_config: Task configuration object containing task type and
                 label information
                     source: Source to load model and tokenizer from (
                 'local',
@@ -467,7 +471,8 @@ def load_preset_model(
                 If the model is not found in preset models,
             the function will print a warning
                 and
-            return 0. Use `load_model_and_tokenizer` function for custom model loading.
+            return 0. Use `load_model_and_tokenizer` function for custom model
+            loading.
     """
     from .modeling_auto import MODEL_INFO
 

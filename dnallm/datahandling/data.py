@@ -445,25 +445,27 @@ class DNADataset:
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
-                The dataset is mapped to include tokenized fields along with the label,
-                making it directly usable with Hugging Face Trainer.
+        The dataset is mapped to include tokenized fields along with the
+        label,
+        making it directly usable with Hugging Face Trainer.
 
-                Args:
-                                padding: Padding strategy for sequences. Can be 'max_length' or
-                        'longest'.
-        Use 'longest' to pad to the length of the longest sequence in case of memory
-                            outage
-                                return_tensors: Returned tensor types, can be 'pt', 'tf', 'np', or 'jax'
-                                remove_unused_columns: Whether to remove the original 'sequence' and
-                        'label' columns
-                    uppercase: Whether to convert sequences to uppercase
-                    lowercase: Whether to convert sequences to lowercase
-                                task: Task type for the tokenizer. If not provided,
-                        defaults to 'SequenceClassification'
-                    tokenizer: Optional tokenizer to override the instance's tokenizer
+        Args:
+        padding: Padding strategy for sequences. Can be 'max_length' or
+            'longest'.
+            Use 'longest' to pad to the length of the longest sequence in
+            case of memory outage
+        return_tensors: Returned tensor types, can be 'pt', 'tf', 'np', or
+            'jax'
+        remove_unused_columns: Whether to remove the original 'sequence'
+            and 'label' columns
+            uppercase: Whether to convert sequences to uppercase
+            lowercase: Whether to convert sequences to lowercase
+        task: Task type for the tokenizer. If not provided,
+            defaults to 'SequenceClassification'
+        tokenizer: Optional tokenizer to override the instance's tokenizer
 
-                Raises:
-                    ValueError: If tokenizer is not provided
+        Raises:
+            ValueError: If tokenizer is not provided
         """
         if not self.tokenizer:
             if tokenizer:
@@ -761,10 +763,10 @@ class DNADataset:
     ) -> None:
         """Split the dataset into train, test, and validation sets.
 
-                Args:
-                    test_size: Proportion of the dataset to include in the test split
+        Args:
+        test_size: Proportion of the dataset to include in the test split
         val_size: Proportion of the dataset to include in the validation split
-                    seed: Random seed for reproducibility
+            seed: Random seed for reproducibility
         """
         # First, split off test+validation from training data
         if isinstance(self.dataset, DatasetDict):
@@ -845,8 +847,8 @@ class DNADataset:
             padding_size: Padding size for sequence length, default 0
             seed: Random seed, default None
             label_func: A function that generates a label from a sequence
-                        append: Append the random generated data to the existing dataset or
-                use the data as a dataset
+            append: Append the random generated data to the existing dataset
+                    or use the data as a dataset
         """
 
         def process(
@@ -1046,7 +1048,8 @@ class DNADataset:
                 Args:
         ratio: Fraction of the dataset to sample. Default is 1.0 (no sampling)
                     seed: Random seed for reproducibility
-        overwrite: Whether to overwrite the original dataset with the sampled one
+        overwrite: Whether to overwrite the original dataset with the sampled
+            one
 
                 Returns:
                     A DNADataset object with sampled data
@@ -1083,8 +1086,8 @@ class DNADataset:
             show: Whether to print the data or return it
 
         Returns:
-                        A dictionary containing the first n samples if show=False,
-                otherwise None
+            A dictionary containing the first n samples if show=False,
+            otherwise None
         """
         import pprint
 
@@ -1144,7 +1147,7 @@ class DNADataset:
             )
         else:
             for i in range(0, len(self.dataset), batch_size):
-                yield self.dataset[i : i + batch_size]
+                yield self.dataset[i:i + batch_size]
 
     def __len__(self) -> int:
         """Return the length of the dataset.
@@ -1358,7 +1361,7 @@ class DNADataset:
                 If dataset is a DatasetDict, length plots and
             GC content plots from different datasets will be
         concatenated into a single chart, respectively.
-                Sequence length distribution is shown as a histogram, with min and
+            Sequence length distribution is shown as a histogram, with min and
             max lengths for its' limit.
 
         Args:
@@ -1791,7 +1794,9 @@ from dnallm.datahandling import show_preset_dataset, load_preset_dataset
 show_preset_dataset()
 
 # Load a specific dataset
-ds = load_preset_dataset("nucleotide_transformer_downstream_tasks", task="enhancers_types")
+ds = load_preset_dataset(
+    "nucleotide_transformer_downstream_tasks", task="enhancers_types"
+)
 
 # Get dataset statistics
 ds.statistics()

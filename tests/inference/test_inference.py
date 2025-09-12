@@ -80,10 +80,10 @@ task:
         """Create test DNA sequence data."""
         test_data = {
             "sequence": [
-                "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG",
-                "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",
-                "TATATATATATATATATATATATATATATATATATATATATATATATATATATATATATATATA",
-                "CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC",
+                "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATC",
+                "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT",
+                "TATATATATATATATATATATATATATATATATATATATATATATATATATATATATATA",
+                "CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCG",
             ],
             "label": [0, 1, 0, 1],
         }
@@ -218,7 +218,8 @@ task:
         assert len(labels) == 3
         assert probs.shape == (3, 2)
         # Check that labels are binary (0 or 1)
-        # Note: labels are converted to label names, so check for label names instead
+        # Note: labels are converted to label names, so check for label names
+        # instead
         # The third sequence has logits [2.0, 1.0], so class 0 (index 0) wins
         expected_labels = ["Core promoter", "Core promoter", "Not promoter"]
         assert labels == expected_labels
@@ -243,7 +244,8 @@ task:
 
     def test_batch_infer(self):
         """Test batch inference."""
-        # Mock the batch_predict method directly to avoid complex data loading issues
+        # Mock the batch_predict method directly to avoid complex data loading
+        # issues
         with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
             mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits

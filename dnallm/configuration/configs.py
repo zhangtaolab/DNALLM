@@ -226,7 +226,8 @@ class BenchmarkConfig(BaseModel):
 
 
 def load_config(config_path: str) -> dict[str, BaseModel]:
-    """Load configuration from a YAML file and return a dictionary of configuration objects.
+    """Load configuration from a YAML file and return a dictionary of
+    configuration objects.
     Args:
         config_path (str): Path to the YAML configuration file.
     """

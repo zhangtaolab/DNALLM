@@ -8,7 +8,8 @@ app = marimo.App(width="medium")
 def __(__file__):
     import sys
     # from os import path
-    # sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
+    # sys.path.append(path.abspath(path.join(path.dirname(__file__),
+    # '../../..')))
     import marimo as mo
     import pandas as pd
     from dnallm import load_config, load_model_and_tokenizer, DNAInference
@@ -130,7 +131,11 @@ def __(
 @app.cell
 def __(mo, model_df, model_dropdown, task_dropdown, tokenizer_dropdown):
     try:
-        model_name = model_df[ (model_df.Task == task_dropdown.value) & (model_df.Model == model_dropdown.value) & (model_df.Tokenzier==tokenizer_dropdown.value)].Name.tolist()[0]
+        model_name = model_df[
+            (model_df.Task == task_dropdown.value)
+            & (model_df.Model == model_dropdown.value)
+            & (model_df.Tokenzier == tokenizer_dropdown.value)
+        ].Name.tolist()[0]
         print("Current model:", model_name, sep="\n")
         callout = ""
     except:

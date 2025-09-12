@@ -2,7 +2,8 @@
 """
 DNALLM Configuration Generator Gradio UI
 
-This Gradio application provides a web-based interface for generating configuration files for:
+This Gradio application provides a web-based interface for generating
+configuration files for:
 - Fine-tuning tasks
 - Inference tasks
 - Benchmarking tasks
@@ -55,7 +56,8 @@ except ImportError as e:
             ],
         },
         "DNABERT": {
-            "title": "DNABERT: pre-trained Bidirectional Encoder Representations"
+            "title": "DNABERT: pre-trained Bidirectional Encoder\
+                      Representations"
             "from Transformers model for DNA-language in genome",
             "model_architecture": "BertForMaskedLM",
             "model_tags": ["3mer", "4mer", "5mer", "6mer"],

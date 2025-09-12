@@ -2,7 +2,8 @@
 """
 DNALLM CLI Launcher
 
-This script provides a convenient way to run DNALLM commands from the project root.
+This script provides a convenient way to run DNALLM commands from the
+project root.
 """
 
 import sys

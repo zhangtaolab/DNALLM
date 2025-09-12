@@ -1,5 +1,6 @@
 [flake8]
 max-line-length = 79
+extend-ignore = E203
 ; extend-ignore = E203,W503,C901,E402
 exclude = 
     .git,
@@ -11,7 +12,9 @@ exclude =
     build,
     dist,
     .tox,
-    dnallm/tasks/metrics/
+    dnallm/tasks/metrics/,
+    example/
 per-file-ignores =
     # Tests can use magic values, assertions, and relative imports
-    tests/**/*.py: S101,S106,S108,PLR2004,TID252,F401,F403,F841
+    tests/**/*.py: S101,S106,S108,PLR2004,TID252,F401,F403,F841,E402
+    dnallm/models/modeling_auto.py: E501

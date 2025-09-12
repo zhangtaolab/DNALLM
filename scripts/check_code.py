@@ -10,6 +10,7 @@ import os
 import subprocess  # noqa: S404
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 
 class Colors:
@@ -20,6 +21,15 @@ class Colors:
     YELLOW = "\033[1;33m"
     BLUE = "\033[0;34m"
     NC = "\033[0m"  # No Color
+
+
+class CheckConfig(NamedTuple):
+    """Configuration for a code quality check."""
+
+    name: str
+    cmd: list[str]
+    description: str
+    auto_fixable: bool = False
 
 
 def print_status(status: str, message: str) -> None:
@@ -34,9 +44,13 @@ def print_status(status: str, message: str) -> None:
     print(f"{color}[{status}]{Colors.NC} {message}")
 
 
-def _show_success_output(result, verbose: bool) -> None:
-    """Show output for successful commands."""
-    if result.stdout and not verbose:
+def _show_output(result, verbose: bool, is_success: bool) -> None:
+    """Show command output based on success status and verbosity."""
+    if not result.stdout:
+        return
+
+    if is_success and not verbose:
+        # Show only summary lines for successful commands
         lines = result.stdout.strip().split("\n")
         for line in lines:
             if any(
@@ -51,47 +65,26 @@ def _show_success_output(result, verbose: bool) -> None:
                 ]
             ):
                 print(f"  {line}")
-    elif verbose and result.stdout:
+    elif verbose or not is_success:
+        print("Output:" if not is_success else "")
         print(result.stdout)
 
 
 def _extract_error_files(output: str) -> list[str]:
     """Extract file paths from error output."""
-    lines = output.strip().split("\n")
     error_files = []
-    for line in lines:
-        if ":" in line and (
-            "error" in line.lower()
-            or "warning" in line.lower()
-            or "would reformat" in line.lower()
+    for line in output.strip().split("\n"):
+        if ":" in line and any(
+            keyword in line.lower()
+            for keyword in ["error", "warning", "would reformat"]
         ):
             if "Would reformat:" in line:
-                file_path = line.replace("Would reformat:", "").strip()
-                error_files.append(file_path)
-            elif ":" in line and not line.startswith("  "):
+                error_files.append(line.replace("Would reformat:", "").strip())
+            elif not line.startswith("  "):
                 file_part = line.split(":")[0]
-                if (
-                    file_part
-                    and not file_part.startswith("Found")
-                    and not file_part.startswith("[")
-                ):
+                if file_part and not file_part.startswith(("Found", "[")):
                     error_files.append(file_part)
     return error_files
-
-
-def _show_error_output(result) -> None:
-    """Show output for failed commands."""
-    if result.stderr:
-        print("Error details:")
-        print(result.stderr)
-    if result.stdout:
-        print("Output:")
-        print(result.stdout)
-        error_files = _extract_error_files(result.stdout)
-        if error_files:
-            print("\nFiles with issues:")
-            for file_path in set(error_files):
-                print(f"  - {file_path}")
 
 
 def run_command(
@@ -107,16 +100,27 @@ def run_command(
         result = subprocess.run(  # noqa: S603
             cmd, capture_output=True, text=True, check=False
         )
+        is_success = result.returncode == 0
 
-        if result.returncode == 0:
+        if is_success:
             print_status("SUCCESS", f"{description} completed successfully")
-            _show_success_output(result, verbose)
         else:
             print_status("ERROR", f"{description} failed")
-            _show_error_output(result)
+            if result.stderr:
+                print("Error details:")
+                print(result.stderr)
+
+        _show_output(result, verbose, is_success)
+
+        if not is_success and result.stdout:
+            error_files = _extract_error_files(result.stdout)
+            if error_files:
+                print("\nFiles with issues:")
+                for file_path in set(error_files):
+                    print(f"  - {file_path}")
 
         print()
-        return result.returncode == 0, result.stdout + result.stderr
+        return is_success, result.stdout + result.stderr
 
     except FileNotFoundError as e:
         print_status("ERROR", f"Command not found: {e}")
@@ -180,6 +184,106 @@ def check_environment() -> bool:
     return True
 
 
+def create_check_configs(args) -> list[CheckConfig]:
+    """Create check configurations based on command line arguments."""
+    base_checks = [
+        CheckConfig(
+            "Code Formatting",
+            ["ruff", "format", "."]
+            if args.fix
+            else ["ruff", "format", "--check", "."],
+            "Code formatting check" + (" (auto-fix)" if args.fix else ""),
+            auto_fixable=True,
+        ),
+        CheckConfig(
+            "Code Quality (Ruff)",
+            ["ruff", "check", ".", "--fix", "--statistics"]
+            if args.fix
+            else ["ruff", "check", ".", "--statistics"],
+            "Code quality check" + (" (auto-fix)" if args.fix else ""),
+            auto_fixable=True,
+        ),
+        CheckConfig(
+            "Flake8 (MCP Module)",
+            [
+                "flake8",
+                "dnallm/mcp/",
+                "--max-line-length=79",
+                "--extend-ignore=E203,W503,C901,E402",
+            ],
+            "Flake8 check for MCP module",
+        ),
+        CheckConfig(
+            "Line Length Check (E501)",
+            ["flake8", ".", "--select=E501", "--max-line-length=79"],
+            "Line length check (E501) for entire codebase",
+        ),
+        CheckConfig(
+            "Whitespace Check (E203)",
+            ["flake8", ".", "--select=E203", "--max-line-length=79"],
+            "Whitespace before ':' check (E203) for entire codebase",
+        ),
+        CheckConfig(
+            "Import Check (E402)",
+            ["flake8", ".", "--select=E402", "--max-line-length=79"],
+            "Module level import not at top of file check (E402) for \
+             entire codebase",
+        ),
+        CheckConfig(
+            "Type Checking (MyPy)",
+            [
+                "mypy",
+                "dnallm/",
+                "--ignore-missing-imports",
+                "--no-strict-optional",
+                "--disable-error-code=var-annotated",
+                "--disable-error-code=assignment",
+                "--disable-error-code=return-value",
+                "--disable-error-code=arg-type",
+                "--disable-error-code=index",
+                "--disable-error-code=attr-defined",
+                "--disable-error-code=operator",
+                "--disable-error-code=call-overload",
+                "--disable-error-code=valid-type",
+                "--disable-error-code=no-redef",
+                "--disable-error-code=dict-item",
+                "--disable-error-code=return",
+                "--disable-error-code=unreachable",
+                "--disable-error-code=misc",
+                "--disable-error-code=import-untyped",
+            ],
+            "Type checking with MyPy",
+        ),
+    ]
+
+    # Add test checks if requested
+    if args.with_tests:
+        base_checks.append(
+            CheckConfig(
+                "Test Suite",
+                ["pytest", "tests/", "-v", "--tb=short"],
+                "Test suite execution",
+            )
+        )
+
+        if not args.fix:
+            base_checks.append(
+                CheckConfig(
+                    "Test Coverage",
+                    [
+                        "pytest",
+                        "tests/",
+                        "--cov=dnallm",
+                        "--cov-report=term-missing",
+                        "--cov-report=xml",
+                    ],
+                    "Test coverage analysis",
+                )
+            )
+
+    return base_checks
+
+
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(
@@ -214,104 +318,29 @@ Examples:
     if not check_environment():
         sys.exit(1)
 
-    # Track overall success
+    # Get check configurations
+    checks = create_check_configs(args)
     overall_success = True
-
-    # Define all checks
-    checks = [
-        {
-            "name": "Code Formatting",
-            "cmd": ["ruff", "format", "."]
-            if args.fix
-            else ["ruff", "format", "--check", "."],
-            "description": "Code formatting check"
-            + (" (auto-fix)" if args.fix else ""),
-        },
-        {
-            "name": "Code Quality (Ruff)",
-            "cmd": ["ruff", "check", ".", "--fix", "--statistics"]
-            if args.fix
-            else ["ruff", "check", ".", "--statistics"],
-            "description": "Code quality check"
-            + (" (auto-fix)" if args.fix else ""),
-        },
-        {
-            "name": "Flake8 (MCP Module)",
-            "cmd": [
-                "flake8",
-                "dnallm/mcp/",
-                "--max-line-length=79",
-                "--extend-ignore=E203,W503,C901,E402",
-            ],
-            "description": "Flake8 check for MCP module",
-        },
-        {
-            "name": "Type Checking (MyPy)",
-            "cmd": [
-                "mypy",
-                "dnallm/",
-                "--ignore-missing-imports",
-                "--no-strict-optional",
-                "--disable-error-code=var-annotated",
-                "--disable-error-code=assignment",
-                "--disable-error-code=return-value",
-                "--disable-error-code=arg-type",
-                "--disable-error-code=index",
-                "--disable-error-code=attr-defined",
-                "--disable-error-code=operator",
-                "--disable-error-code=call-overload",
-                "--disable-error-code=valid-type",
-                "--disable-error-code=no-redef",
-                "--disable-error-code=dict-item",
-                "--disable-error-code=return",
-                "--disable-error-code=unreachable",
-                "--disable-error-code=misc",
-                "--disable-error-code=import-untyped",
-            ],
-            "description": "Type checking with MyPy",
-        },
-    ]
-
-    # Add test checks only if explicitly requested
-    if args.with_tests:
-        checks.append({
-            "name": "Test Suite",
-            "cmd": ["pytest", "tests/", "-v", "--tb=short"],
-            "description": "Test suite execution",
-        })
-
-        # Add coverage check if not in fix mode
-        if not args.fix:
-            checks.append({
-                "name": "Test Coverage",
-                "cmd": [
-                    "pytest",
-                    "tests/",
-                    "--cov=dnallm",
-                    "--cov-report=term-missing",
-                    "--cov-report=xml",
-                ],
-                "description": "Test coverage analysis",
-            })
 
     # Run all checks
     for i, check in enumerate(checks, 1):
-        print_status("INFO", f"{i}. {check['name']}...")
+        print_status("INFO", f"{i}. {check.name}...")
         success, _output = run_command(
-            check["cmd"], check["description"], args.verbose
+            check.cmd, check.description, args.verbose
         )
 
         if not success:
             overall_success = False
-            if not args.fix and "formatting" in check["name"].lower():
-                print_status(
-                    "WARNING",
-                    "Code formatting issues found.Run with --fix to auto-fix.",
+            if not args.fix and check.auto_fixable:
+                check_type = (
+                    "formatting"
+                    if "formatting" in check.name.lower()
+                    else "quality"
                 )
-            elif not args.fix and "quality" in check["name"].lower():
                 print_status(
                     "WARNING",
-                    "Code quality issues found. Run with --fix to auto-fix.",
+                    f"Code {check_type} issues found. "
+                    "Run with --fix to auto-fix.",
                 )
 
     # Final results
@@ -326,8 +355,8 @@ Examples:
         if not args.fix:
             print_status(
                 "INFO",
-                "Run with --fix to auto-fix"
-                "some issues: python scripts/check_code.py --fix",
+                "Run with --fix to auto-fix some issues: "
+                "python scripts/check_code.py --fix",
             )
         sys.exit(1)
 

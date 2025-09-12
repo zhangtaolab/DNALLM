@@ -104,8 +104,8 @@ def prepare_data(
 ) -> tuple[dict, dict | dict]:
     """Prepare data for plotting various types of visualizations.
 
-    This function organizes model metrics data into formats suitable for different
-        plot types:
+    This function organizes model metrics data into formats suitable for
+        different plot types:
         - Bar charts for classification and regression metrics
         - ROC and PR curves for classification tasks
         - Scatter plots for regression tasks
@@ -149,13 +149,13 @@ def plot_bars(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Plot bar charts for model metrics comparison.
 
-    This function creates bar charts to compare different metrics across multiple
-        models.
-            It supports automatic layout with multiple columns and
+    This function creates bar charts to compare different metrics across
+        multiple models. It supports automatic layout with multiple columns and
             optional score labels on bars.
 
         Args:
-            data: Dictionary containing metrics data with 'models' as the first key
+            data: Dictionary containing metrics data with 'models' as the first
+                key
             show_score: Whether to show the score values on the bars
             ncols: Number of columns to arrange the plots
             width: Width of each individual plot
@@ -266,7 +266,7 @@ def plot_curve(
         curves to evaluate model performance on classification tasks.
 
         Args:
-                    data: Dictionary containing ROC and PR curve data with 'ROC' and
+            data: Dictionary containing ROC and PR curve data with 'ROC' and
                 'PR' keys
     show_score: Whether to show the score values on the plot (currently not
             implemented)
@@ -723,12 +723,13 @@ def plot_embeddings(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Visualize embeddings using dimensionality reduction techniques.
 
-    This function creates 2D visualizations of high-dimensional embeddings from
-        different
-        model layers using PCA, t-SNE, or UMAP dimensionality reduction methods.
+    This function creates 2D visualizations of high-dimensional embeddings
+        from different model layers using PCA, t-SNE, or UMAP dimensionality
+        reduction methods.
 
         Args:
-            hidden_states: Tuple or list containing hidden states from model layers
+            hidden_states: Tuple or list containing hidden states from model
+                layers
                     attention_mask: Tuple or
                 list containing attention masks for sequence padding
                     reducer: Dimensionality reduction method. Options: 'PCA',
@@ -747,7 +748,8 @@ def plot_embeddings(
                 separate plots based on separate parameter)
 
         Raises:
-            ValueError: If unsupported dimensionality reduction method is specified
+            ValueError: If unsupported dimensionality reduction method is
+                specified
     """
     # Initialize dimensionality reducer
     dim_reducer = _get_dimensionality_reducer(reducer)
@@ -805,8 +807,8 @@ def _extract_mutation_data(
         data: Dictionary containing mutation data with 'raw' and mutation keys
 
     Returns:
-                Tuple containing sequence, raw_bases, sequence length, format length, and
-            mutation list
+            Tuple containing sequence, raw_bases, sequence length, format
+            length, and mutation list
     """
     raw_data = data["raw"]
     sequence = raw_data["sequence"]
@@ -1050,14 +1052,15 @@ def plot_muts(
 ) -> alt.Chart | alt.VConcatChart:
     """Visualize mutation effects on model predictions.
 
-    This function creates comprehensive visualizations of how different mutations
-        affect model predictions, including:
+    This function creates comprehensive visualizations of how different
+        mutations affect model predictions, including:
         - Heatmap showing mutation effects at each position
         - Line plot showing gain/loss of function
         - Bar chart showing maximum effect mutations
 
         Args:
-            data: Dictionary containing mutation data with 'raw' and mutation keys
+            data: Dictionary containing mutation data with 'raw' and mutation
+                keys
     show_score: Whether to show the score values on the plot (currently not
             implemented)
                     width: Width of the plot. If None,
@@ -1067,7 +1070,8 @@ def plot_muts(
                 plot will be shown interactively
 
         Returns:
-            Altair chart object showing the combined mutation effects visualization
+            Altair chart object showing the combined mutation effects
+                visualization
     """
     # Extract basic data
     _sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)

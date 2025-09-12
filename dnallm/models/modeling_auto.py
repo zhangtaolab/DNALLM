@@ -212,8 +212,12 @@ MODEL_INFO = {
             "seqlen-131k_d_model-256_n_layer-16",
         ],
         "huggingface": [
-            "kuleshov-group/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
-            "kuleshov-group/caduceus-ph_seqlen-1k_d_model-256_n_layer-4_lr-8e-3",
+            (
+                "kuleshov-group/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+            ),
+            (
+                "kuleshov-group/caduceus-ph_seqlen-1k_d_model-256_n_layer-4_lr-8e-3"
+            ),
             "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [
@@ -221,7 +225,9 @@ MODEL_INFO = {
             None,
             None,
         ],
-        "default": "lgq12697/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
+        "default": (
+            "lgq12697/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+        ),
     },
     "Caduceus-PS": {
         "title": "Caduceus: Bi-Directional Equivariant"
@@ -234,8 +240,12 @@ MODEL_INFO = {
             "seqlen-131k_d_model-256_n_layer-16",
         ],
         "huggingface": [
-            "kuleshov-group/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
-            "kuleshov-group/caduceus-ps_seqlen-1k_d_model-256_n_layer-4_lr-8e-3",
+            (
+                "kuleshov-group/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+            ),
+            (
+                "kuleshov-group/caduceus-ps_seqlen-1k_d_model-256_n_layer-4_lr-8e-3"
+            ),
             "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [
@@ -243,7 +253,9 @@ MODEL_INFO = {
             None,
             None,
         ],
-        "default": "lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
+        "default": (
+            "lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+        ),
     },
     "PlantCaduceus": {
         "title": "Cross-species modeling of plant genomes at"
@@ -396,7 +408,9 @@ MODEL_INFO = {
     "GENERanno": {
         "title": "Generanno: A Genomic"
         "Foundation Model for Metagenomic Annotation",
-        "reference": "https://www.biorxiv.org/content/10.1101/2025.06.04.656517v3",
+        "reference": (
+            "https://www.biorxiv.org/content/10.1101/2025.06.04.656517v3"
+        ),
         "model_architecture": "GenerannoForMaskedLM",
         "model_tags": ["prokaryote-0.5b", "eukaryote-0.5b"],
         "huggingface": [

@@ -2,8 +2,8 @@
 """
 Simple launcher for DNALLM Configuration Generator Gradio App
 
-This script provides a simple way to launch the configuration generator web interface
-without complex import path issues.
+This script provides a simple way to launch the configuration generator web
+interface without complex import path issues.
 """
 
 import sys
