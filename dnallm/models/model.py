@@ -121,8 +121,8 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
                 from evo2 import Evo2  # pyright: ignore[reportMissingImports]
             except ImportError as e:
                 raise ImportError(
-                                        f"EVO2 package is required for"
-                                        ""{model_name} but not installed."
+                    f"EVO2 package is required for "
+                    f"{model_name} but not installed. "
                     "Please install it following the instructions at: "
                     "https://github.com/ArcInstitute/evo2"
                 ) from e
@@ -194,7 +194,7 @@ def _get_model_path_and_imports(
 
         # Import ModelScope modules
         try:
-from modelscope import ( # pyright: ignore[reportAttributeAccessIssue]
+            from modelscope import (  # pyright: ignore[reportAttributeAccessIssue]
                 AutoModel,
                 AutoModelForMaskedLM,
                 AutoModelForCausalLM,
@@ -212,7 +212,7 @@ from modelscope import ( # pyright: ignore[reportAttributeAccessIssue]
             "AutoModel": AutoModel,
             "AutoModelForMaskedLM": AutoModelForMaskedLM,
             "AutoModelForCausalLM": AutoModelForCausalLM,
-                        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+            "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
             "AutoModelForTokenClassification": AutoModelForTokenClassification,
             "AutoTokenizer": AutoTokenizer,
         }
@@ -224,7 +224,7 @@ from modelscope import ( # pyright: ignore[reportAttributeAccessIssue]
 
     # Import transformers modules for local and huggingface sources
     try:
-from transformers import ( # pyright: ignore[reportAttributeAccessIssue]
+        from transformers import (  # pyright: ignore[reportAttributeAccessIssue]
             AutoModel,
             AutoModelForMaskedLM,
             AutoModelForCausalLM,
@@ -242,7 +242,7 @@ from transformers import ( # pyright: ignore[reportAttributeAccessIssue]
         "AutoModel": AutoModel,
         "AutoModelForMaskedLM": AutoModelForMaskedLM,
         "AutoModelForCausalLM": AutoModelForCausalLM,
-                "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
         "AutoModelForTokenClassification": AutoModelForTokenClassification,
         "AutoTokenizer": AutoTokenizer,
     }
@@ -374,30 +374,30 @@ def load_model_and_tokenizer(
 ) -> tuple[Any, Any]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
-This function handles loading of various model types based on the task
-    configuration,
-        including sequence classification, token classification,
-        masked language modeling,
-    and causal language modeling.
+    This function handles loading of various model types based on the task
+        configuration,
+            including sequence classification, token classification,
+            masked language modeling,
+        and causal language modeling.
 
-    Args:
-        model_name: Model name or path
-                task_config: Task configuration object containing task type and
-            label information
-                source: Source to load model and tokenizer from (
-            'local',
-            'huggingface',
-            'modelscope'),
-            default 'local'
-                use_mirror: Whether to use HuggingFace mirror (
-            hf-mirror.com),
-            default False
+        Args:
+            model_name: Model name or path
+                    task_config: Task configuration object containing task type and
+                label information
+                    source: Source to load model and tokenizer from (
+                'local',
+                'huggingface',
+                'modelscope'),
+                default 'local'
+                    use_mirror: Whether to use HuggingFace mirror (
+                hf-mirror.com),
+                default False
 
-    Returns:
-        Tuple containing (model, tokenizer)
+        Returns:
+            Tuple containing (model, tokenizer)
 
-    Raises:
-        ValueError: If model is not found locally or loading fails
+        Raises:
+            ValueError: If model is not found locally or loading fails
     """
     # Handle special case for EVO2 models
     evo_result = _handle_evo2_models(model_name, source)
@@ -428,8 +428,8 @@ This function handles loading of various model types based on the task
             "token",
         ]:
             raise ValueError(
-                                f"num_labels is required for task type"
-                                ""'{task_type}' but is None"
+                f"num_labels is required for task type "
+                f"'{task_type}' but is None"
             )
 
         # Use default value if num_labels is None for other tasks
@@ -490,9 +490,9 @@ def load_preset_model(
         pass
     else:
         print(
-                        f"Model {model_name} not found in preset models."
-                        ""Please check the model name or use"
-                        ""`load_model_and_tokenizer` function."
+            f"Model {model_name} not found in preset models. "
+            "Please check the model name or use "
+            "`load_model_and_tokenizer` function."
         )
         return 0
     return load_model_and_tokenizer(

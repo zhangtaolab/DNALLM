@@ -111,8 +111,7 @@ def check_sequence(
     """
     if len(seq) < minl or len(seq) > maxl:
         return False  # 序列长度不在有效范围内
-    elif (gc[0] > calc_gc_content(seq) or
-          gc[1] < calc_gc_content(seq)):
+    elif gc[0] > calc_gc_content(seq) or gc[1] < calc_gc_content(seq):
         return False  # GC含量不在有效范围内
     elif set(seq.upper()) - set(valid_chars) != set():
         return False  # 序列包含不支持的字符
@@ -182,7 +181,7 @@ def random_generate_sequences(
                 if length > maxl:
                     length -= padding_size
             seq = "".join(
-                random.choices(basemap, weights=weights, k=length)
+                random.choices(basemap, weights=weights, k=length)  # noqa: S311
             )
             if calc_gc:
                 gc_content = calc_gc_content(seq)
@@ -200,7 +199,7 @@ def random_generate_sequences(
             if len(sequences) >= samples:
                 break
             seq = "".join(
-                random.choices(basemap, weights=weights, k=length)
+                random.choices(basemap, weights=weights, k=length)  # noqa: S311
             )
             # calculate GC content
             if calc_gc:

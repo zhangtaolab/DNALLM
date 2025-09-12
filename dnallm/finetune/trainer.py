@@ -54,31 +54,31 @@ from ..tasks.metrics import compute_metrics
 class DNATrainer:
     """DNA Language Model Trainer that supports multiple model types.
 
-        This trainer class provides a unified interface for training, evaluating, and
-        predicting
-with DNA language models. It supports various task types including
-    classification,
-    regression, and masked language modeling.
+            This trainer class provides a unified interface for training, evaluating, and
+            predicting
+    with DNA language models. It supports various task types including
+        classification,
+        regression, and masked language modeling.
 
-    Attributes:
-        model: The DNA language model to be trained
-        task_config: Configuration for the specific task
-        train_config: Configuration for training parameters
-        datasets: Dataset for training and evaluation
-        extra_args: Additional training arguments
-        trainer: HuggingFace Trainer instance
-        training_args: Training arguments configuration
-        data_split: Available dataset splits
+        Attributes:
+            model: The DNA language model to be trained
+            task_config: Configuration for the specific task
+            train_config: Configuration for training parameters
+            datasets: Dataset for training and evaluation
+            extra_args: Additional training arguments
+            trainer: HuggingFace Trainer instance
+            training_args: Training arguments configuration
+            data_split: Available dataset splits
 
-    Examples:
-        ```python
-        trainer = DNATrainer(
-            model=model,
-            config=config,
-            datasets=datasets
-        )
-        metrics = trainer.train()
-        ```
+        Examples:
+            ```python
+            trainer = DNATrainer(
+                model=model,
+                config=config,
+                datasets=datasets
+            )
+            metrics = trainer.train()
+            ```
     """
 
     def __init__(
@@ -198,28 +198,28 @@ with DNA language models. It supports various task types including
     def compute_task_metrics(self) -> Callable:
         """Compute task-specific evaluation metrics.
 
-This method returns a callable function that computes appropriate metrics
-        for the specific task type (classification, regression, etc.).
+        This method returns a callable function that computes appropriate metrics
+                for the specific task type (classification, regression, etc.).
 
-        Returns:
-Callable: A function that computes metrics for the specific task type
+                Returns:
+        Callable: A function that computes metrics for the specific task type
         """
         return compute_metrics(self.task_config)
 
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
-This method executes the training process using the configured HuggingFace
-        Trainer,
-        automatically saving the best model and optionally the tokenizer.
+        This method executes the training process using the configured HuggingFace
+                Trainer,
+                automatically saving the best model and optionally the tokenizer.
 
-        Args:
-                        save_tokenizer: Whether to save the tokenizer along with the model,
-                default True
+                Args:
+                                save_tokenizer: Whether to save the tokenizer along with the model,
+                        default True
 
-        Returns:
-                        Dictionary containing training metrics including loss,
-                learning rate, etc.
+                Returns:
+                                Dictionary containing training metrics including loss,
+                        learning rate, etc.
         """
         self.model.train()
         train_result = self.trainer.train()
@@ -235,12 +235,12 @@ This method executes the training process using the configured HuggingFace
     def evaluate(self) -> dict[str, float]:
         """Evaluate the model on the evaluation dataset.
 
-                This method runs evaluation on the configured evaluation dataset and
-            returns
-        task-specific metrics.
+                        This method runs evaluation on the configured evaluation dataset and
+                    returns
+                task-specific metrics.
 
-        Returns:
-Dictionary containing evaluation metrics for the current model state
+                Returns:
+        Dictionary containing evaluation metrics for the current model state
         """
         self.model.eval()
         result = self.trainer.evaluate()

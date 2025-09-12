@@ -58,8 +58,8 @@ def train(config, model, data, output):
         # Use command line arguments
         if not all([model, data, output]):
             click.echo(
-                                "Error: --model, --data, and --output are"
-                                ""required when not using --config"
+                "Error: --model, --data, and --output are "
+                "required when not using --config"
             )
             sys.exit(1)
 
@@ -115,8 +115,8 @@ def inference(config, model, input, output):
         # Use command line arguments
         if not all([model, input]):
             click.echo(
-                                "Error: --model and --input are required when"
-                                ""not using --config"
+                "Error: --model and --input are required when "
+                "not using --config"
             )
             sys.exit(1)
 
@@ -169,8 +169,8 @@ def benchmark(config, model, data, output):
     else:
         if not all([model, data]):
             click.echo(
-                                "Error: --model and --data are required when"
-                                ""not using --config"
+                "Error: --model and --data are required when "
+                "not using --config"
             )
             sys.exit(1)
 
@@ -215,8 +215,8 @@ def mutagenesis(config, model, sequence, output):
     else:
         if not all([model, sequence]):
             click.echo(
-                                "Error: --model and --sequence are required"
-                                ""when not using --config"
+                "Error: --model and --sequence are required "
+                "when not using --config"
             )
             sys.exit(1)
 

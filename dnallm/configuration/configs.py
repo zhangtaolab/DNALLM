@@ -28,11 +28,11 @@ class TaskConfig(BaseModel):
             self.label_names = self.label_names or ["negative", "positive"]
 
         elif self.task_type == "multiclass":
-        if not self.num_labels or self.num_labels < 2:
-            raise ValueError(
-                "num_labels must be at least 2 for multiclass "
-                "classification"
-            )
+            if not self.num_labels or self.num_labels < 2:
+                raise ValueError(
+                    "num_labels must be at least 2 for multiclass "
+                    "classification"
+                )
             if (
                 not self.label_names
                 or len(self.label_names) != self.num_labels
@@ -42,11 +42,11 @@ class TaskConfig(BaseModel):
                 ]
 
         elif self.task_type == "multilabel":
-        if not self.num_labels or self.num_labels < 2:
-            raise ValueError(
-                "num_labels must be at least 2 for multilabel "
-                "classification"
-            )
+            if not self.num_labels or self.num_labels < 2:
+                raise ValueError(
+                    "num_labels must be at least 2 for multilabel "
+                    "classification"
+                )
             if (
                 not self.label_names
                 or len(self.label_names) != self.num_labels
@@ -198,7 +198,8 @@ class BenchmarkConfig(BaseModel):
     """
     Top-level configuration for the DNA Language Model benchmark.
     This class validates and structures the entire YAML configuration file,
-    where each top-level key in the YAML corresponds to an attribute of this class.
+    where each top-level key in the YAML corresponds to an attribute of this
+    class.
     """
 
     benchmark: BenchmarkInfoConfig = Field(

@@ -17,8 +17,8 @@ def main():
         # Simple command line interface for standalone usage
         if len(sys.argv) < 4:
             print(
-                                "Usage: python -m dnallm.cli.train"
-                                ""<config_file> <model_path> <data_path>"
+                "Usage: python -m dnallm.cli.train "
+                "<config_file> <model_path> <data_path>"
             )
             sys.exit(1)
 

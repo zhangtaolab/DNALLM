@@ -24,16 +24,16 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Benchmark:
     """Class for benchmarking DNA Language Models.
 
-This class provides methods to evaluate the performance of different DNA
-    language
-        models on various tasks, including classification, regression, and
-        token classification.
+    This class provides methods to evaluate the performance of different DNA
+        language
+            models on various tasks, including classification, regression, and
+            token classification.
 
-    Attributes:
-                config: Configuration dictionary containing task settings and
-            inference parameters
-all_models: Dictionary mapping source names to sets of available model names
-        dataset: The dataset used for benchmarking
+        Attributes:
+                    config: Configuration dictionary containing task settings and
+                inference parameters
+    all_models: Dictionary mapping source names to sets of available model names
+            dataset: The dataset used for benchmarking
     """
 
     def __init__(self, config: dict):

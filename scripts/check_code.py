@@ -306,8 +306,7 @@ Examples:
             if not args.fix and "formatting" in check["name"].lower():
                 print_status(
                     "WARNING",
-                    "Code formatting issues found."
-                        "Run with --fix to auto-fix.",
+                    "Code formatting issues found.Run with --fix to auto-fix.",
                 )
             elif not args.fix and "quality" in check["name"].lower():
                 print_status(
@@ -328,7 +327,7 @@ Examples:
             print_status(
                 "INFO",
                 "Run with --fix to auto-fix"
-                    "some issues: python scripts/check_code.py --fix",
+                "some issues: python scripts/check_code.py --fix",
             )
         sys.exit(1)
 

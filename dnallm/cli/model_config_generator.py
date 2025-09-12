@@ -23,8 +23,8 @@ def main():
         print("DNALLM Model Configuration Generator")
         print("This module requires the root CLI module to be available.")
         print(
-                        "Please run from the project root: python"
-                        ""cli/model_config_generator.py"
+            "Please run from the project root: python "
+            "cli/model_config_generator.py"
         )
         sys.exit(1)
     except Exception as e:

@@ -46,16 +46,16 @@ metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
 def calculate_metric_with_sklearn(eval_pred):
     """Calculate basic classification metrics using scikit-learn.
 
-This function computes standard classification metrics for token classification
-    tasks,
-    handling padding tokens and reshaping logits as needed.
+    This function computes standard classification metrics for token classification
+        tasks,
+        handling padding tokens and reshaping logits as needed.
 
-    Args:
-        eval_pred: Tuple containing (logits, labels)
+        Args:
+            eval_pred: Tuple containing (logits, labels)
 
-    Returns:
-                Dictionary containing accuracy, F1, Matthews correlation, precision, and
-            recall
+        Returns:
+                    Dictionary containing accuracy, F1, Matthews correlation, precision, and
+                recall
     """
     logits, labels = eval_pred
     if isinstance(logits, tuple):  # Unpack logits if it's a tuple
@@ -93,16 +93,16 @@ This function computes standard classification metrics for token classification
 def classification_metrics(plot=False):
     """Create metrics computation function for binary classification tasks.
 
-This function returns a callable that computes comprehensive binary
-    classification
-    metrics including accuracy, precision, recall, F1, MCC, AUROC, AUPRC, and
-    confusion matrix derived metrics.
+    This function returns a callable that computes comprehensive binary
+        classification
+        metrics including accuracy, precision, recall, F1, MCC, AUROC, AUPRC, and
+        confusion matrix derived metrics.
 
-    Args:
-        plot: Whether to include curve data for plotting (ROC and PR curves)
+        Args:
+            plot: Whether to include curve data for plotting (ROC and PR curves)
 
-    Returns:
-        Callable function that computes binary classification metrics
+        Returns:
+            Callable function that computes binary classification metrics
     """
     # clf_metrics = evaluate.combine(
     #     [

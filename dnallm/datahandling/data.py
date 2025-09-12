@@ -445,25 +445,25 @@ class DNADataset:
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
-        The dataset is mapped to include tokenized fields along with the label,
-        making it directly usable with Hugging Face Trainer.
+                The dataset is mapped to include tokenized fields along with the label,
+                making it directly usable with Hugging Face Trainer.
 
-        Args:
-                        padding: Padding strategy for sequences. Can be 'max_length' or
-                'longest'.
-Use 'longest' to pad to the length of the longest sequence in case of memory
-                    outage
-                        return_tensors: Returned tensor types, can be 'pt', 'tf', 'np', or 'jax'
-                        remove_unused_columns: Whether to remove the original 'sequence' and
-                'label' columns
-            uppercase: Whether to convert sequences to uppercase
-            lowercase: Whether to convert sequences to lowercase
-                        task: Task type for the tokenizer. If not provided,
-                defaults to 'SequenceClassification'
-            tokenizer: Optional tokenizer to override the instance's tokenizer
+                Args:
+                                padding: Padding strategy for sequences. Can be 'max_length' or
+                        'longest'.
+        Use 'longest' to pad to the length of the longest sequence in case of memory
+                            outage
+                                return_tensors: Returned tensor types, can be 'pt', 'tf', 'np', or 'jax'
+                                remove_unused_columns: Whether to remove the original 'sequence' and
+                        'label' columns
+                    uppercase: Whether to convert sequences to uppercase
+                    lowercase: Whether to convert sequences to lowercase
+                                task: Task type for the tokenizer. If not provided,
+                        defaults to 'SequenceClassification'
+                    tokenizer: Optional tokenizer to override the instance's tokenizer
 
-        Raises:
-            ValueError: If tokenizer is not provided
+                Raises:
+                    ValueError: If tokenizer is not provided
         """
         if not self.tokenizer:
             if tokenizer:
@@ -761,10 +761,10 @@ Use 'longest' to pad to the length of the longest sequence in case of memory
     ) -> None:
         """Split the dataset into train, test, and validation sets.
 
-        Args:
-            test_size: Proportion of the dataset to include in the test split
-val_size: Proportion of the dataset to include in the validation split
-            seed: Random seed for reproducibility
+                Args:
+                    test_size: Proportion of the dataset to include in the test split
+        val_size: Proportion of the dataset to include in the validation split
+                    seed: Random seed for reproducibility
         """
         # First, split off test+validation from training data
         if isinstance(self.dataset, DatasetDict):
@@ -1043,13 +1043,13 @@ val_size: Proportion of the dataset to include in the validation split
     ) -> "DNADataset":
         """Randomly sample a fraction of the dataset.
 
-        Args:
-ratio: Fraction of the dataset to sample. Default is 1.0 (no sampling)
-            seed: Random seed for reproducibility
-overwrite: Whether to overwrite the original dataset with the sampled one
+                Args:
+        ratio: Fraction of the dataset to sample. Default is 1.0 (no sampling)
+                    seed: Random seed for reproducibility
+        overwrite: Whether to overwrite the original dataset with the sampled one
 
-        Returns:
-            A DNADataset object with sampled data
+                Returns:
+                    A DNADataset object with sampled data
         """
         if ratio <= 0 or ratio > 1:
             raise ValueError("ratio must be between 0 and 1")
@@ -1138,9 +1138,9 @@ overwrite: Whether to overwrite the original dataset with the sampled one
         """
         if isinstance(self.dataset, DatasetDict):
             raise ValueError(
-                                "Dataset is a DatasetDict Object, please use"
-                                ""`DNADataset.dataset[datatype].iter_batches(batch_size)`"
-                                ""instead."
+                "Dataset is a DatasetDict Object, please use "
+                "`DNADataset.dataset[datatype].iter_batches(batch_size)` "
+                "instead."
             )
         else:
             for i in range(0, len(self.dataset), batch_size):
@@ -1184,9 +1184,9 @@ overwrite: Whether to overwrite the original dataset with the sampled one
         """
         if isinstance(self.dataset, DatasetDict):
             raise ValueError(
-                                "Dataset is a DatasetDict Object, please use"
-                                ""`DNADataset.dataset[datatype].__getitem__(idx)`"
-                                ""instead."
+                "Dataset is a DatasetDict Object, please use "
+                "`DNADataset.dataset[datatype].__getitem__(idx)` "
+                "instead."
             )
         else:
             return self.dataset[idx]
@@ -1276,7 +1276,7 @@ overwrite: Whether to overwrite the original dataset with the sampled one
             max,
             average,
             median),
-            
+
                 label distribution, GC content (
             by labels),
             nucleotide composition (by labels).
@@ -1307,8 +1307,8 @@ overwrite: Whether to overwrite the original dataset with the sampled one
                 df = dataset.copy()
             else:
                 raise ValueError(
-                                        "prepare_dataframe expects a"
-                                        ""datasets.Dataset or pandas.DataFrame"
+                    "prepare_dataframe expects a "
+                    "datasets.Dataset or pandas.DataFrame"
                 )
             return df
 
@@ -1374,8 +1374,8 @@ overwrite: Whether to overwrite the original dataset with the sampled one
 
         if self.stats is None or self.stats_for_plot is None:
             raise ValueError(
-                                "Statistics have not been computed yet. Please"
-                                ""call `statistics()` method first."
+                "Statistics have not been computed yet. Please "
+                "call `statistics()` method first."
             )
 
         task_type = self.data_type or "unknown"

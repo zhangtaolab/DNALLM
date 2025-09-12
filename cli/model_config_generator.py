@@ -91,8 +91,8 @@ class ConfigGenerator:
                 # Extract available models and templates
                 self._extract_model_templates()
                 click.echo(
-                    f"✅ Loaded {len(self.available_models)}"
-                        "model templates from {yaml_path}"
+                    f"✅ Loaded {len(self.available_models)} "
+                    f"model templates from {yaml_path}"
                 )
             else:
                 click.echo(f"⚠️  Model info file not found at {yaml_path}")
@@ -184,7 +184,7 @@ class ConfigGenerator:
         self, config_type: str | None = None
     ) -> dict[str, Any] | None:
         """Let user select a model from"
-            "available templates based on configuration type"""
+        "available templates based on configuration type"""
         if not self.available_models:
             return None
 
@@ -365,7 +365,7 @@ class ConfigGenerator:
         """Handle showing all models and selection"""
         click.echo(
             f"\n📋 All {len(models_to_show)}"
-                "models (zhangtaolab models prioritized):"
+            "models (zhangtaolab models prioritized):"
         )
         self._display_model_list(models_to_show)
 
@@ -383,7 +383,7 @@ class ConfigGenerator:
         self, model_template: dict[str, Any]
     ) -> dict[str, Any]:
         """Auto-fill configuration from model"
-            "template with comprehensive defaults"""
+        "template with comprehensive defaults"""
         auto_config = {}
         task = model_template.get("task", {})
 
@@ -420,7 +420,7 @@ class ConfigGenerator:
 
     def _get_default_parameters(self) -> dict[str, Any]:
         """Get comprehensive default parameters"
-            "for different configuration types"""
+        "for different configuration types"""
         defaults = {}
 
         # Common task defaults
@@ -531,11 +531,11 @@ class ConfigGenerator:
             click.echo("-" * 30)
             click.echo(
                 "🔧 Task defaults:"
-                    "task_type, num_labels, label_names, threshold"
+                "task_type, num_labels, label_names, threshold"
             )
             click.echo(
                 "🎯 Fine-tuning defaults:"
-                    "learning_rate, batch_size, epochs, etc."
+                "learning_rate, batch_size, epochs, etc."
             )
             click.echo(
                 "🔮 Inference defaults: batch_size, max_length, device, etc."
@@ -772,7 +772,7 @@ class ConfigGenerator:
         self, auto_config: dict[str, Any]
     ) -> dict[str, Any]:
         """Configure task settings using"
-            "template information with smart defaults"""
+        "template information with smart defaults"""
         click.echo("\n📝 Task Configuration (from template):")
 
         # Get defaults
@@ -811,13 +811,13 @@ class ConfigGenerator:
         click.echo("\n📋 Smart defaults available:")
         click.echo(
             f"• Task: {defaults.get('task_type', 'binary')}"
-                "with {defaults.get('num_labels', 2)} labels"
+            "with {defaults.get('num_labels', 2)} labels"
         )
         click.echo(f"   • Threshold: {defaults.get('threshold', 0.5)}")
-        click.echo(
-            f"• Labels: {',"
-                "'.join(defaults.get('label_names', ['negative', 'positive']))}"
+        label_names_str = ",".join(
+            defaults.get("label_names", ["negative", "positive"])
         )
+        click.echo(f"• Labels: {label_names_str}")
 
         # Ask if user wants to modify any values
         if click.confirm("\n🔧 Modify any of these values?"):

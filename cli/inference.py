@@ -24,7 +24,7 @@ def main():
         print(f"Error importing DNALLM package: {e}")
         print(
             "Please ensure the package is properly"
-                "installed or run from the project root."
+            "installed or run from the project root."
         )
         sys.exit(1)
     except Exception as e:

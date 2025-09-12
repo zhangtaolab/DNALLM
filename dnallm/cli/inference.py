@@ -17,8 +17,8 @@ def main():
         # Simple command line interface for standalone usage
         if len(sys.argv) < 3:
             print(
-                                "Usage: python -m dnallm.cli.inference"
-                                ""<config_file> <model_path>"
+                "Usage: python -m dnallm.cli.inference "
+                "<config_file> <model_path>"
             )
             sys.exit(1)
 

@@ -34,7 +34,7 @@ try:
     PRETRAIN_MODEL_MAPS = modeling_auto.PRETRAIN_MODEL_MAPS
     print(
         "✅ Successfully loaded MODEL_INFO"
-            "and PRETRAIN_MODEL_MAPS from modeling_auto.py"
+        "and PRETRAIN_MODEL_MAPS from modeling_auto.py"
     )
 
 except ImportError as e:
@@ -45,7 +45,7 @@ except ImportError as e:
     MODEL_INFO = {
         "Nucleotide Transformer": {
             "title": "Nucleotide Transformer: building and evaluating"
-                "robust foundation models for human genomics",
+            "robust foundation models for human genomics",
             "model_architecture": "EsmForMaskedLM",
             "model_tags": [
                 "500m-human-ref",
@@ -56,13 +56,13 @@ except ImportError as e:
         },
         "DNABERT": {
             "title": "DNABERT: pre-trained Bidirectional Encoder Representations"
-                "from Transformers model for DNA-language in genome",
+            "from Transformers model for DNA-language in genome",
             "model_architecture": "BertForMaskedLM",
             "model_tags": ["3mer", "4mer", "5mer", "6mer"],
         },
         "HyenaDNA": {
             "title": "HyenaDNA: Long-Range Genomic Sequence"
-                "Modeling at Single Nucleotide Resolution",
+            "Modeling at Single Nucleotide Resolution",
             "model_architecture": "HyenaDNAForCausalLM",
             "model_tags": [
                 "tiny-1k-seqlen",
@@ -338,7 +338,7 @@ class GradioConfigGenerator:
             gr.Markdown("# 🚀 DNALLM Configuration Generator")
             gr.Markdown(
                 "Generate configuration files for"
-                    "fine-tuning, inference, and benchmarking tasks"
+                "fine-tuning, inference, and benchmarking tasks"
             )
 
             # Output section - define this first so it can be passed to tabs

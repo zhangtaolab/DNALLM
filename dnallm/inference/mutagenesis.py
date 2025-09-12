@@ -27,20 +27,20 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Mutagenesis:
     """Class for evaluating in silico mutagenesis.
 
-This class provides methods to analyze how sequence mutations affect model
-    predictions,
-        including single base substitutions, deletions, and
-        insertions. It can be used to
-        identify important positions in DNA sequences and
-        understand model interpretability.
+    This class provides methods to analyze how sequence mutations affect model
+        predictions,
+            including single base substitutions, deletions, and
+            insertions. It can be used to
+            identify important positions in DNA sequences and
+            understand model interpretability.
 
-    Attributes:
-        model: Fine-tuned model for prediction
-        tokenizer: Tokenizer for the model
-                config: Configuration object containing task settings and
-            inference parameters
-        sequences: Dictionary containing original and mutated sequences
-        dataloader: DataLoader for batch processing of sequences
+        Attributes:
+            model: Fine-tuned model for prediction
+            tokenizer: Tokenizer for the model
+                    config: Configuration object containing task settings and
+                inference parameters
+            sequences: Dictionary containing original and mutated sequences
+            dataloader: DataLoader for batch processing of sequences
     """
 
     def __init__(self, model, tokenizer, config: dict):
@@ -176,22 +176,22 @@ This class provides methods to analyze how sequence mutations affect model
     def pred_comparison(self, raw_pred, mut_pred):
         """Compare raw and mutated predictions.
 
-This method calculates the difference between predictions on the original
-        sequence
-        and mutated sequences, providing insights into mutation effects.
+        This method calculates the difference between predictions on the original
+                sequence
+                and mutated sequences, providing insights into mutation effects.
 
-        Args:
-            raw_pred: Raw predictions from the original sequence
-            mut_pred: Predictions from the mutated sequence
+                Args:
+                    raw_pred: Raw predictions from the original sequence
+                    mut_pred: Predictions from the mutated sequence
 
-        Returns:
-            Tuple containing (raw_score, mut_score, logfc):
-            - raw_score: Processed scores from original sequence
-            - mut_score: Processed scores from mutated sequence
-            - logfc: Log fold change between mutated and original scores
+                Returns:
+                    Tuple containing (raw_score, mut_score, logfc):
+                    - raw_score: Processed scores from original sequence
+                    - mut_score: Processed scores from mutated sequence
+                    - logfc: Log fold change between mutated and original scores
 
-        Raises:
-            ValueError: If task type is not supported
+                Raises:
+                    ValueError: If task type is not supported
         """
         # Get the task config
         task_config = self.config["task"]
