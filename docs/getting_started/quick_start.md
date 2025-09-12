@@ -116,16 +116,17 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 ### 1. Basic Model Loading and Inference
 
 ```python
-from dnallm import load_config, load_model_and_tokenizer, DNAInference
+from dnallm import load_config, load_model_and_tokenizer
+from dnallm.inference import DNAInference
 
 # Load configuration
 configs = load_config("./example/notebooks/inference/inference_config.yaml")
 
 # Load model and tokenizer
-model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
+model_name = "zhangtaolab/plant-dnagpt-BPE-promoter"
 model, tokenizer = load_model_and_tokenizer(
     model_name, 
-    task_config=configs['task'], 
+    task_config=configs["task"], 
     source="huggingface"
 )
 
@@ -133,20 +134,33 @@ model, tokenizer = load_model_and_tokenizer(
 inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
-sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
+sequence = "TCACATCCGGGTGAAACCTCGAGTTCCTATAACCTGCCGACAGGTGGCGGGTCTTATAAAACTGATCACTACAATTCCCAATGGAAAAAAAAAAAAAAAAACCCTTATTTGACTCTCATTATAGATCAACGATGGATCTAGCTCTTCTTTTGTAATTACCTGACTTTTGACCTGACGAACCAAGTTATCGGTTGGGGCCCTGTCAAACGACAGGTCGCTTAGAGGGCATATGTGAGAAAAAGGGTCCTGTTTTTTATCCACGGAGAAAGAAAGCAAGAAGAGGAGAGGTTTTAAAAAAAA"
 inference_result = inference_engine.infer(sequence)
 print(f"Inference result: {inference_result}")
 ```
 
-### 2. In-silico Mutagenesis Analysis
+### 2. *In-silico* Mutagenesis Analysis
 
 ```python
-from dnallm import Mutagenesis
+from dnallm import load_config
+from dnallm.inference import Mutagenesis
+
+# Load configuration
+configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_config.yaml")
+
+# Load model and tokenizer
+model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
+model, tokenizer = load_model_and_tokenizer(
+    model_name,
+    task_config=configs["task"],
+    source="huggingface"
+)
 
 # Initialize mutagenesis analyzer
 mutagenesis = Mutagenesis(config=configs, model=model, tokenizer=tokenizer)
 
 # Generate saturation mutations
+sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
 mutagenesis.mutate_sequence(sequence, replace_mut=True)
 
 # Evaluate mutation effects
@@ -159,27 +173,70 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ### 3. Model Fine-tuning
 
 ```python
+from dnallm import load_config
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
-# Prepare dataset
-dataset = DNADataset(
-    data_path="path/to/your/data.csv",
-    task_type="binary_classification",
-    text_column="sequence",
-    label_column="label"
+# Load configuration
+configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml")
+
+# Load model and tokenizer
+model_name = "zhangtaolab/plant-dnabert-BPE"
+model, tokenizer = load_model_and_tokenizer(
+    model_name,
+    task_config=configs["task"],
+    source="huggingface"
 )
+
+# Prepare dataset
+dataset = DNADataset.load_local_data(
+    file_paths="./tests/test_data/binary_classification/train.csv",
+    seq_col="sequence",
+    label_col="label",
+    tokenizer=tokenizer,
+)
+
+# Encode the sequences in the dataset
+dataset.encode_sequences()
 
 # Initialize trainer
 trainer = DNATrainer(
     config=configs,
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset
+    datasets=dataset
 )
 
 # Start training
 trainer.train()
+```
+
+### 4. Models Benchmark
+
+```python
+from dnallm import load_config
+from dnallm.inference import Benchmark
+
+# Load configuration
+configs = load_config("./example/notebooks/benchmark/benchmark_config.yaml")
+
+# Initialize benchmark
+benchmark = Benchmark(config=configs)
+
+# Run benchmark
+results = benchmark.run()
+
+# Display results
+for dataset_name, dataset_results in results.items():
+    print(f"\n{dataset_name}:")
+    for model_name, metrics in dataset_results.items():
+        print(f"  {model_name}:")
+        for metric, value in metrics.items():
+            if metric not in ["curve", "scatter"]:
+                print(f"    {metric}: {value:.4f}")
+
+# Plot metrics
+# pbar: bar chart for all the scores, pline: ROC curve
+pbar, pline = benchmark.plot(results, save_path="plot.pdf")
 ```
 
 ## Examples and Tutorials

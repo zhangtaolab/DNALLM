@@ -17,6 +17,9 @@ class TaskConfig(BaseModel):
     threshold: float = Field(
         default=0.5, description="Threshold for binary/multilabel tasks"
     )
+    mlm_probability: float | None = Field(
+        default=0.15, description="Masking probability for MLM tasks"
+    )
 
     def model_post_init(self, __context):
         if self.task_type == "binary":

@@ -419,6 +419,7 @@ class DNADataset:
         uppercase: bool = False,
         lowercase: bool = False,
         task: str | None = "SequenceClassification",
+        tokenizer: PreTrainedTokenizerBase | None = None,
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
@@ -433,12 +434,16 @@ class DNADataset:
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
             task: Task type for the tokenizer. If not provided, defaults to 'SequenceClassification'
+            tokenizer: Optional tokenizer to override the instance's tokenizer
 
         Raises:
             ValueError: If tokenizer is not provided
         """
         if not self.tokenizer:
-            raise ValueError("Tokenizer is required")
+            if tokenizer:
+                self.tokenizer = tokenizer
+            else:
+                raise ValueError("Tokenizer is required")
 
         # Get tokenizer configuration
         tokenizer_config = self._get_tokenizer_config()
@@ -736,6 +741,8 @@ class DNADataset:
             seed: Random seed for reproducibility
         """
         # First, split off test+validation from training data
+        if isinstance(self.dataset, DatasetDict):
+            raise ValueError("Dataset is already a DatasetDict, cannot split again.")
         split_result = self.dataset.train_test_split(
             test_size=test_size + val_size, seed=seed
         )
@@ -1624,6 +1631,7 @@ def load_preset_dataset(
     ds_info = _get_dataset_info(dataset_name, PRESET_DATASETS)
     ds = _load_dataset_from_modelscope(ds_info, task)
     ds = _standardize_column_names(ds)
+    print(f"Preset dataset '{dataset_name}' with '{task}' tasks loaded.")
     return _create_dna_dataset(ds, ds_info)
 
 
