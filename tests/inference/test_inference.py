@@ -465,11 +465,11 @@ task:
             # Load real model and tokenizer from ModelScope
             model_name = "zhangtaolab/plant-dnagpt-BPE-promoter"
             print(f"🔄 Downloading model {model_name} from ModelScope...")
-            
+
             # Use ModelScope to download model
             from modelscope import snapshot_download
             model_dir = snapshot_download(model_name)
-            
+
             model = AutoModelForSequenceClassification.from_pretrained(
                 model_dir
             )

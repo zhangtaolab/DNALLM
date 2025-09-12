@@ -27,11 +27,10 @@ def calc_gc_content(seq: str) -> float:
         float: GC content (0.0 ~ 1.0). Returns 0.0 if sequence is empty.
     """
     seq = seq.upper().replace("U", "T").replace("N", "")
-    try:
-        gc = (seq.count("G") + seq.count("C")) / len(seq)
-    except ZeroDivisionError as e:
-        print(e)
+    if len(seq) == 0:
         gc = 0.0
+    else:
+        gc = (seq.count("G") + seq.count("C")) / len(seq)
     return gc
 
 
