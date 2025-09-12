@@ -1,7 +1,9 @@
 """DNA Language Model Benchmarking Module.
 
-This module provides comprehensive benchmarking capabilities for DNA language models,
-including performance evaluation, metrics calculation, and result visualization.
+This module provides comprehensive benchmarking capabilities for DNA language
+models,
+including performance evaluation, metrics calculation, and
+    result visualization.
 """
 
 import os
@@ -22,12 +24,15 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Benchmark:
     """Class for benchmarking DNA Language Models.
 
-    This class provides methods to evaluate the performance of different DNA language
-    models on various tasks, including classification, regression, and token classification.
+This class provides methods to evaluate the performance of different DNA
+    language
+        models on various tasks, including classification, regression, and
+        token classification.
 
     Attributes:
-        config: Configuration dictionary containing task settings and inference parameters
-        all_models: Dictionary mapping source names to sets of available model names
+                config: Configuration dictionary containing task settings and
+            inference parameters
+all_models: Dictionary mapping source names to sets of available model names
         dataset: The dataset used for benchmarking
     """
 
@@ -35,7 +40,8 @@ class Benchmark:
         """Initialize the Benchmark class.
 
         Args:
-            config: Configuration object containing task settings and inference parameters
+                        config: Configuration object containing task settings and
+                inference parameters
         """
         self.config = config
         self.all_models = {
@@ -107,7 +113,8 @@ class Benchmark:
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAInference: The inference engine object configured with the given model and tokenizer
+                        DNAInference: The inference engine object configured with the given model and
+                tokenizer
         """
 
         inference_engine = DNAInference(
@@ -148,10 +155,12 @@ class Benchmark:
         """List all available models.
 
         Args:
-            show_all: If True, show all models. If False, show only the models that are available
+                        show_all: If True, show all models. If False,
+                show only the models that are available
 
         Returns:
-            List of model names if show_all=True, otherwise dictionary mapping model names to tags
+                        List of model names if show_all=True,
+                otherwise dictionary mapping model names to tags
         """
         # Load the model information
         if show_all:
@@ -170,11 +179,13 @@ class Benchmark:
     ) -> None:
         """Perform the benchmark evaluation on multiple models.
 
-        This method loads each model, runs predictions on the dataset, calculates metrics,
+                This method loads each model, runs predictions on the dataset,
+            calculates metrics,
         and optionally saves the results.
 
         Args:
-            model_names: List of model names or a dictionary mapping model names to paths
+                        model_names: List of model names or
+                a dictionary mapping model names to paths
             source: Source of the models ('local', 'huggingface', 'modelscope')
             use_mirror: Whether to use a mirror for downloading models
             save_preds: Whether to save the predictions
@@ -184,7 +195,8 @@ class Benchmark:
             None
 
         Raises:
-            NameError: If model cannot be found in either the given source or local storage
+                        NameError: If model cannot be found in either the given source or
+                local storage
         """
         all_results = {}
         selected_results = {}
@@ -217,7 +229,8 @@ class Benchmark:
             )
             for mi, model_name in enumerate(model_names):
                 print("Model name:", model_name)
-                # Check if the model name is provided as a string or a dictionary
+                # Check if the model name is provided as a string or a
+                # dictionary
                 if isinstance(model_names, dict):
                     model_path = model_names[model_name]
                 else:
@@ -233,7 +246,8 @@ class Benchmark:
                 else:
                     # Check if the model is available in the model library
                     # if model_path not in self.all_models[source]:
-                    #     print(f"Model \'{model_path}\' not found in our available models list.")
+                    # print(f"Model \'{model_path}\' not found in our available
+                    # models list.")
                     #     continue
                     # try:
                     model, tokenizer = load_model_and_tokenizer(
@@ -249,7 +263,7 @@ class Benchmark:
                     #         )
                     #     else:
                     #         raise NameError(
-                    #             "Cannot find model in either the given source or local."
+                    # "Cannot find model in either the given source or local."
                     #         ) from None
                 dataset = DNADataset(
                     self.datasets[di],
@@ -316,7 +330,8 @@ class Benchmark:
         Args:
             metrics: Dictionary containing model metrics
             show_score: Whether to show the score on the plot
-            save_path: Path to save the plot. If None, plots will be shown interactively
+                        save_path: Path to save the plot. If None,
+                plots will be shown interactively
             separate: Whether to save the plots separately
 
         Returns:

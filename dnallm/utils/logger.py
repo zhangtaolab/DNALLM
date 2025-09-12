@@ -1,8 +1,10 @@
 """
 DNALLM Logging Configuration
 
-This module provides a centralized logging configuration for the DNALLM project.
-It replaces print statements with proper logging for better production readiness.
+This module provides a centralized logging configuration for the DNALLM
+project.
+It replaces print statements with proper logging for better production
+readiness.
 """
 
 import logging
@@ -17,7 +19,8 @@ colorama.init(autoreset=True)
 
 
 class DNALLMLogger:
-    """Centralized logger for DNALLM with colored output and structured logging."""
+    """Centralized logger for DNALLM with colored output and structured
+    logging."""
 
     def __init__(self, name: str = "dnallm", level: str = "INFO"):
         """
@@ -53,7 +56,8 @@ class DNALLMLogger:
         file_handler = logging.FileHandler(log_dir / "dnallm.log")
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+                        "%(asctime)s - %(name)s - %(levelname)s -"
+                        ""%(filename)s:%(lineno)d - %(message)s"",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
@@ -158,7 +162,8 @@ def setup_logging(level: str = "INFO", log_file: str | None = None):
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+                        "%(asctime)s - %(name)s - %(levelname)s -"
+                        ""%(filename)s:%(lineno)d - %(message)s"",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)

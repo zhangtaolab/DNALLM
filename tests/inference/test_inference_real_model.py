@@ -61,7 +61,8 @@ class TestRealModelInference(unittest.TestCase):
         except ImportError as e:
             print(f"❌ Import error: {e}")
             print(
-                "Please install required packages: pip install transformers torch"
+                "Please install required packages:"
+                    "pip install transformers torch"
             )
             raise unittest.SkipTest(
                 f"Required packages not available: {e}"

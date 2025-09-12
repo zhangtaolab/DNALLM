@@ -30,7 +30,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, tasks):
-    task_dropdown = mo.ui.dropdown(tasks, value='open chromatin', label='Predict Task')
+    task_dropdown = mo.ui.dropdown(
+        tasks,
+        value='open chromatin',
+        label='Predict Task'
+    )
     return (task_dropdown,)
 
 
@@ -43,7 +47,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, models):
-    model_dropdown = mo.ui.dropdown(models, value='Plant DNABERT', label='Model')
+    model_dropdown = mo.ui.dropdown(
+        models,
+        value='Plant DNABERT',
+        label='Model'
+    )
     return (model_dropdown,)
 
 
@@ -56,7 +64,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, tokenizers):
-    tokenizer_dropdown = mo.ui.dropdown(tokenizers, value='BPE', label='Tokenizer')
+    tokenizer_dropdown = mo.ui.dropdown(
+        tokenizers,
+        value='BPE',
+        label='Tokenizer'
+    )
     return (tokenizer_dropdown,)
 
 
@@ -80,7 +92,12 @@ def __(mo):
     GACCACGACCCCAGGTCAGTCGGGACTACCCGCTGAGTTTAAGCATATAAATAAGCGGAGGAG\
     AAGAAACTTACGAGGATTCCCCTAGTAACGGCGAGCGAACCGGGAGCAGCCCAGCTTGA\
     GAATCGGGCGGCCTCGCCGCCCGAATTGTAGTCTGGAGAGGCGT'
-    dnaseq_entry_box = mo.ui.text_area(placeholder=placeholder, full_width=True, label='DNA Sequence:', rows=5)
+    dnaseq_entry_box = mo.ui.text_area(
+        placeholder=placeholder,
+        full_width=True,
+        label='DNA Sequence:',
+        rows=5
+    )
     return (dnaseq_entry_box, placeholder, )
 
 
@@ -96,7 +113,14 @@ def __(
     title = mo.md(
         "<center><h2>Model inference</h2></center>"
     )
-    hstack=mo.hstack([task_dropdown, model_dropdown, tokenizer_dropdown, source_dropdown], align='center', justify='center')
+    hstack=mo.hstack(
+        [task_dropdown,
+        model_dropdown,
+        tokenizer_dropdown,
+        source_dropdown],
+        align='center',
+        justify='center'
+    )
     mo.vstack([title, dnaseq_entry_box, hstack])
     return (hstack,)
 
@@ -157,10 +181,22 @@ def __(task_dropdown, configs):
 
 
 @app.cell
-def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenizer, DNAInference):
+def __(
+    mo,
+    dnaseq,
+    model_name,
+    source_dropdown,
+    configs,
+    load_model_and_tokenizer,
+    DNAInference
+):
     if model_name:
         # Load the model and tokenizer
-        model, tokenizer = load_model_and_tokenizer(model_name, task_config=configs['task'], source=source_dropdown.value)
+        model, tokenizer = load_model_and_tokenizer(
+            model_name,
+            task_config=configs['task'],
+            source=source_dropdown.value
+        )
         # Instantiate the inference engine
         inference_engine = DNAInference(
             model=model,
@@ -209,13 +245,27 @@ def __(mo, results, inference_engine):
     return (seq_number, layer_slider, head_slider, figure_size, )
 
 @app.cell
-def __(mo, seq_number, layer_slider, head_slider, figure_size, inference_engine):
+def __(
+    mo,
+    seq_number,
+    layer_slider,
+    head_slider,
+    figure_size,
+    inference_engine
+):
     plot_button = mo.ui.button(label="Plot attention map",
                             on_click=lambda value: inference_engine.plot_attentions(
                                 seq_number.value-1, layer_slider.value-1, head_slider.value-1
                                 )
                             )
-    plot_options = mo.hstack([seq_number, layer_slider, head_slider, figure_size], align='center', justify='center')
+    plot_options = mo.hstack(
+        [seq_number,
+        layer_slider,
+        head_slider,
+        figure_size],
+        align='center',
+        justify='center'
+    )
     mo.vstack([plot_options, plot_button], align='center', justify='center')
     return (plot_button,)
 

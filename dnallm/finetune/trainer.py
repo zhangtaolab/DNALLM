@@ -1,10 +1,14 @@
 """DNA Language Model Trainer Module.
 
-This module implements the training process management for DNA language models, with the following main features:
+This module implements the training process management for DNA language models,
+    with the following main features:
 
 1. DNATrainer Class
    - Unified management of model training, evaluation, and prediction processes
-   - Support for multiple task types (classification, regression, masked language modeling)
+      - Support for multiple task types (
+       classification,
+       regression,
+       masked language modeling)
    - Integration of task-specific prediction heads
    - Training parameter configuration
    - Training process monitoring and model saving
@@ -50,8 +54,10 @@ from ..tasks.metrics import compute_metrics
 class DNATrainer:
     """DNA Language Model Trainer that supports multiple model types.
 
-    This trainer class provides a unified interface for training, evaluating, and predicting
-    with DNA language models. It supports various task types including classification,
+        This trainer class provides a unified interface for training, evaluating, and
+        predicting
+with DNA language models. It supports various task types including
+    classification,
     regression, and masked language modeling.
 
     Attributes:
@@ -87,7 +93,8 @@ class DNATrainer:
 
         Args:
             model: The DNA language model to be trained
-            config: Configuration dictionary containing task and training settings
+                        config: Configuration dictionary containing task and
+                training settings
             datasets: Dataset for training and evaluation
             extra_args: Additional training arguments to override defaults
             use_lora: Whether to use LoRA for efficient fine-tuning
@@ -191,25 +198,28 @@ class DNATrainer:
     def compute_task_metrics(self) -> Callable:
         """Compute task-specific evaluation metrics.
 
-        This method returns a callable function that computes appropriate metrics
+This method returns a callable function that computes appropriate metrics
         for the specific task type (classification, regression, etc.).
 
         Returns:
-            Callable: A function that computes metrics for the specific task type
+Callable: A function that computes metrics for the specific task type
         """
         return compute_metrics(self.task_config)
 
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
-        This method executes the training process using the configured HuggingFace Trainer,
+This method executes the training process using the configured HuggingFace
+        Trainer,
         automatically saving the best model and optionally the tokenizer.
 
         Args:
-            save_tokenizer: Whether to save the tokenizer along with the model, default True
+                        save_tokenizer: Whether to save the tokenizer along with the model,
+                default True
 
         Returns:
-            Dictionary containing training metrics including loss, learning rate, etc.
+                        Dictionary containing training metrics including loss,
+                learning rate, etc.
         """
         self.model.train()
         train_result = self.trainer.train()
@@ -225,11 +235,12 @@ class DNATrainer:
     def evaluate(self) -> dict[str, float]:
         """Evaluate the model on the evaluation dataset.
 
-        This method runs evaluation on the configured evaluation dataset and returns
+                This method runs evaluation on the configured evaluation dataset and
+            returns
         task-specific metrics.
 
         Returns:
-            Dictionary containing evaluation metrics for the current model state
+Dictionary containing evaluation metrics for the current model state
         """
         self.model.eval()
         result = self.trainer.evaluate()
@@ -238,11 +249,13 @@ class DNATrainer:
     def infer(self) -> dict[str, float]:
         """Generate inference results on the test dataset.
 
-        This method generates inference results on the test dataset if available and returns
+                This method generates inference results on the test dataset if available and
+            returns
         both predictions and evaluation metrics.
 
         Returns:
-            Dictionary containing inference results and metrics if test dataset exists,
+                        Dictionary containing inference results and
+                metrics if test dataset exists,
             otherwise empty dictionary
         """
         self.model.eval()

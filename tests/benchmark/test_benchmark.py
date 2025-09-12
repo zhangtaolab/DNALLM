@@ -95,7 +95,8 @@ output:
         df.to_csv(self.data_path, index=False)
 
     def test_initialization_with_config(self):
-        """Test if Benchmark initializes and loads data from config correctly."""
+        """Test if Benchmark initializes and"
+            "loads data from config correctly."""
         benchmark = Benchmark(self.config)
         print(benchmark.config)
         assert isinstance(benchmark, Benchmark)
@@ -131,7 +132,8 @@ output:
         )
 
     def test_get_inference_engine(self):
-        """Test if get_inference_engine returns a valid DNAInference instance."""
+        """Test if get_inference_engine returns"
+            "a valid DNAInference instance."""
         benchmark = Benchmark(self.config)
         mock_model = Mock()
         mock_tokenizer = Mock()

@@ -8,7 +8,8 @@ This module provides functions for:
 - Validating DNA sequences
 - Randomly generating DNA sequences with constraints
 
-All functions are designed for use in DNA language modeling and bioinformatics pipelines.
+All functions are designed for use in DNA language modeling and
+bioinformatics pipelines.
 """
 
 import random
@@ -37,13 +38,14 @@ def calc_gc_content(seq: str) -> float:
 def reverse_complement(
     seq: str, reverse: bool = True, complement: bool = True
 ) -> str:
-    """
-    Compute the reverse complement of a DNA sequence.
+    """Compute the reverse complement of a DNA sequence.
 
     Args:
         seq (str): DNA sequence.
-        reverse (bool, optional): Whether to reverse the sequence. Defaults to True.
-        complement (bool, optional): Whether to complement the sequence. Defaults to True.
+        reverse (bool, optional): Whether to reverse the sequence.
+            Defaults to True.
+        complement (bool, optional): Whether to complement the sequence.
+            Defaults to True.
 
     Returns:
         str: The reverse complement (or as specified) of the input sequence.
@@ -68,15 +70,16 @@ def reverse_complement(
 
 
 def seq2kmer(seqs: list[str], k: int) -> list[str]:
-    """
-    Convert a list of DNA sequences to k-mers (overlapping k-mer tokenization).
+    """Convert a list of DNA sequences to k-mers (overlapping k-mer
+    tokenization).
 
     Args:
         seqs (list[str]): List of DNA sequences.
         k (int): k-mer length.
 
     Returns:
-        list[str]: List of k-mer tokenized sequences (space-separated k-mers).
+        list[str]: List of k-mer tokenized sequences (space-separated
+            k-mers).
     """
     all_kmers = []
     for seq in seqs:
@@ -93,8 +96,8 @@ def check_sequence(
     gc: tuple = (0, 1),
     valid_chars: str = "ACGTN",
 ) -> bool:
-    """
-    Check if a DNA sequence is valid based on length, GC content, and allowed characters.
+    """Check if a DNA sequence is valid based on length, GC content, and
+    allowed characters.
 
     Args:
         seq (str): DNA sequence.
@@ -108,7 +111,8 @@ def check_sequence(
     """
     if len(seq) < minl or len(seq) > maxl:
         return False  # 序列长度不在有效范围内
-    elif gc[0] > calc_gc_content(seq) or gc[1] < calc_gc_content(seq):
+    elif (gc[0] > calc_gc_content(seq) or
+          gc[1] < calc_gc_content(seq)):
         return False  # GC含量不在有效范围内
     elif set(seq.upper()) - set(valid_chars) != set():
         return False  # 序列包含不支持的字符
@@ -125,16 +129,21 @@ def random_generate_sequences(
     padding_size: int = 0,
     seed: int | None = None,
 ) -> list[str]:
-    """
-    Randomly generate DNA sequences with specified length, GC content, and N ratio.
+    """Randomly generate DNA sequences with specified length, GC content,
+    and N ratio.
 
     Args:
         minl (int): Minimum sequence length.
-        maxl (int, optional): Maximum sequence length. If 0, use minl as fixed length. Defaults to 0.
-        samples (int, optional): Number of sequences to generate. Defaults to 1.
-        gc (tuple, optional): GC content range (min, max). Defaults to (0, 1).
-        N_ratio (float, optional): Proportion of 'N' bases (0.0 ~ 1.0). Defaults to 0.0.
-        padding_size (int, optional): Pad length to nearest multiple. Defaults to 0.
+        maxl (int, optional): Maximum sequence length. If 0, use minl as
+            fixed length. Defaults to 0.
+        samples (int, optional): Number of sequences to generate.
+            Defaults to 1.
+        gc (tuple, optional): GC content range (min, max).
+            Defaults to (0, 1).
+        N_ratio (float, optional): Proportion of 'N' bases (0.0 ~ 1.0).
+            Defaults to 0.0.
+        padding_size (int, optional): Pad length to nearest multiple.
+            Defaults to 0.
         seed (int, optional): Random seed. Defaults to None.
 
     Returns:
@@ -172,7 +181,9 @@ def random_generate_sequences(
                 )
                 if length > maxl:
                     length -= padding_size
-            seq = "".join(random.choices(basemap, weights=weights, k=length))  # noqa: S311
+            seq = "".join(
+                random.choices(basemap, weights=weights, k=length)
+            )
             if calc_gc:
                 gc_content = calc_gc_content(seq)
                 if gc[0] <= gc_content <= gc[1]:
@@ -188,7 +199,9 @@ def random_generate_sequences(
         while True:
             if len(sequences) >= samples:
                 break
-            seq = "".join(random.choices(basemap, weights=weights, k=length))  # noqa: S311
+            seq = "".join(
+                random.choices(basemap, weights=weights, k=length)
+            )
             # calculate GC content
             if calc_gc:
                 gc_content = calc_gc_content(seq)

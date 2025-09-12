@@ -23,20 +23,36 @@ def __(mo):
     )
     config_text = mo.ui.text(value="config.yaml", placeholder="config.yaml",
                              label="Config file (*.yaml)", full_width=True)
-    datasets_text = mo.ui.text(value="test.csv", placeholder="local dataset path",
+    datasets_text = mo.ui.text(value="test.csv", placeholder="local"
+        "dataset path",
                                label="Datasets file", full_width=True)
     source_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope",
                                  label="Model source", full_width=True)
     number_text = mo.ui.dropdown(list(map(str, range(2, 13))), value="4", label="Number of models", full_width=True)
-    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence", label="Sequence column name", full_width=True)
-    label_col_text = mo.ui.text(value="labels", placeholder="labels", label="Label column name", full_width=True)
+    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence","
+        "label="Sequence column name", full_width=True)
+    label_col_text = mo.ui.text(value="labels", placeholder="labels","
+        "label="Label column name", full_width=True)
     input_stack = mo.hstack([config_text.style(width="35ch"), datasets_text.style(width="55ch")],
                             align='center', justify='center')
     option_stack = mo.hstack([seq_col_text.style(width="22.5ch"), label_col_text.style(width="22.5ch"),
                               source_text.style(width="22ch"), number_text.style(width="22ch")],
                              align='center', justify='center')
-    mo.vstack([title, input_stack, option_stack], align='center', justify='center')
-    return (config_text, datasets_text, source_text, seq_col_text, label_col_text,)
+    mo.vstack(
+        [title,
+        input_stack,
+        option_stack],
+        align='center',
+        justify='center'
+    )
+    return (
+        config_text,
+        datasets_text,
+        source_text,
+        seq_col_text,
+        label_col_text,
+        
+    )
 
 
 @app.cell
@@ -46,7 +62,8 @@ def __(mo, number_text):
     # model_stacks = {}
     number_of_models = int(number_text.value)
     default_models = [["Plant DNABERT", "zhangtaolab/plant-dnabert-BPE-promoter"],
-                      ["Plant DNAGPT", "zhangtaolab/plant-dnagpt-BPE-promoter"]] + [["", ""]] * 10
+                      ["Plant DNAGPT", "zhangtaolab/plant-dnagpt-BPE-promoter"]]"
+                          "+ [["", ""]] * 10
     model_texts = mo.ui.dictionary({
         i: mo.ui.text(value=default_models[i][1], placeholder=default_models[i][1],
                       label=f"Model{i+1}", full_width=True)

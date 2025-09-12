@@ -59,7 +59,7 @@ class DNAInference:
 
     This class provides comprehensive functionality for performing inference
     using DNA language models. It handles model loading, inference, result
-    processing, and various output formats including hidden states and 
+    processing, and various output formats including hidden states and
     attention weights for model interpretability.
 
     Attributes:
@@ -103,8 +103,9 @@ class DNAInference:
     def _get_device(self) -> torch.device:
         """Get the appropriate device for model inference.
 
-        This method automatically detects and selects the best available device for inference,
-        supporting CPU, CUDA (NVIDIA), MPS (Apple Silicon), ROCm (AMD), TPU, and XPU (Intel).
+        This method automatically detects and selects the best available
+        device for inference, supporting CPU, CUDA (NVIDIA), MPS (Apple
+        Silicon), ROCm (AMD), TPU, and XPU (Intel).
 
         Returns:
             torch.device: The device to use for model inference
@@ -151,14 +152,16 @@ class DNAInference:
                 return torch.device("xla")
             except Exception:
                 warnings.warn(
-                    f"{device_name} is not available. Please check your installation. Use CPU instead.",
+                    f"{device_name} is not available. Please check your "
+                    "installation. Use CPU instead.",
                     stacklevel=2,
                 )
                 return torch.device("cpu")
 
         if not is_available():
             warnings.warn(
-                f"{device_name} is not available. Please check your installation. Use CPU instead.",
+                f"{device_name} is not available. Please check your "
+                "installation. Use CPU instead.",
                 stacklevel=2,
             )
             return torch.device("cpu")
@@ -232,7 +235,8 @@ class DNAInference:
         if "attn_implementation" in error_str and "sdpa" in error_str:
             return self._try_enable_eager_attention()
         else:
-            # For other errors, try to switch to eager implementation as a fallback
+            # For other errors, try to switch to eager implementation
+            # as a fallback
             return self._try_enable_eager_attention()
 
     def _check_attention_support(self) -> bool:
@@ -248,7 +252,8 @@ class DNAInference:
         if self._try_set_attention_output():
             return True
 
-        # If that fails, try to handle the error by switching to eager attention
+        # If that fails, try to handle the error by switching to eager
+        # attention
         try:
             # This will raise an exception if there are issues
             if self._has_model_config_attr("output_attentions"):
@@ -319,11 +324,13 @@ class DNAInference:
     ) -> tuple[DNADataset, DataLoader]:
         """Generate dataset from sequences or file path.
 
-        This method creates a DNADataset and DataLoader from either a list of sequences
-        or a file path, supporting various file formats and preprocessing options.
+        This method creates a DNADataset and DataLoader from either a list
+        of sequences or a file path, supporting various file formats and
+        preprocessing options.
 
         Args:
-            seq_or_path: Single sequence, list of sequences, or path to a file containing sequences
+            seq_or_path: Single sequence, list of sequences, or path to a
+                file containing sequences
             batch_size: Batch size for DataLoader
             seq_col: Column name for sequences in the file
             label_col: Column name for labels in the file
@@ -369,7 +376,8 @@ class DNAInference:
                 "Input should be a file path or a list of sequences."
             )
 
-        # Create dataset from sequences if we have any and no dataset was loaded from file
+        # Create dataset from sequences if we have any and no dataset was
+        # loaded from file
         if len(sequences) > 0 and dataset is None:
             ds = Dataset.from_dict({"sequence": sequences})
             dataset = DNADataset(
@@ -393,7 +401,8 @@ class DNAInference:
                 uppercase=uppercase,
                 lowercase=lowercase,
             )
-        # Check for labels in dataset - handle both Dataset and DatasetDict cases
+        # Check for labels in dataset - handle both Dataset and
+        # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
             # For DatasetDict, check the first available split
             keys = list(dataset.dataset.keys())
@@ -417,8 +426,9 @@ class DNAInference:
     ) -> tuple[torch.Tensor, list]:
         """Convert model logits to predictions and human-readable labels.
 
-        This method processes raw model outputs based on the task type to generate
-        appropriate predictions and convert them to human-readable labels.
+        This method processes raw model outputs based on the task type to
+        generate appropriate predictions and convert them to human-readable
+        labels.
 
         Args:
             logits: Model output logits tensor
@@ -584,13 +594,16 @@ class DNAInference:
                 self.model.config.attn_implementation = "eager"
                 self.model.config.output_attentions = True
                 warnings.warn(
-                    "Switched to 'eager' attention implementation to support output_attentions",
+                    "Switched to 'eager' attention implementation to "
+                    "support output_attentions",
                     stacklevel=2,
                 )
                 return True
             except Exception:
                 warnings.warn(
-                    "Cannot enable output_attentions with current attention implementation. Attention weights will not be available.",
+                    "Cannot enable output_attentions with current "
+                    "attention implementation. Attention weights will "
+                    "not be available.",
                     stacklevel=2,
                 )
                 return False
@@ -728,24 +741,30 @@ class DNAInference:
     ) -> tuple[torch.Tensor, dict | None, dict]:
         """Perform batch inference on sequences.
 
-        This method runs inference on batches of sequences and optionally extracts
-        hidden states and attention weights for model interpretability.
+        This method runs inference on batches of sequences and optionally
+        extracts hidden states and attention weights for model
+        interpretability.
 
         Args:
             dataloader: DataLoader object containing sequences for inference
             do_pred: Whether to convert logits to predictions
-            output_hidden_states: Whether to output hidden states from all layers
-            output_attentions: Whether to output attention weights from all layers
+            output_hidden_states: Whether to output hidden states from
+                all layers
+            output_attentions: Whether to output attention weights from
+                all layers
 
         Returns:
             Tuple containing:
                 - torch.Tensor: All logits from the model
-                - Optional[Dict]: Predictions dictionary if do_pred=True, otherwise None
-                - Dict: Embeddings dictionary containing hidden states and/or attention weights
+                - Optional[Dict]: Predictions dictionary if do_pred=True,
+                  otherwise None
+                - Dict: Embeddings dictionary containing hidden states
+                  and/or attention weights
 
         Note:
-            Setting output_hidden_states or output_attentions to True will consume
-            significant memory, especially for long sequences or large models.
+            Setting output_hidden_states or output_attentions to True will
+            consume significant memory, especially for long sequences or
+            large models.
         """
         # Set model to evaluation mode
         self.model.eval()
@@ -810,14 +829,17 @@ class DNAInference:
     ) -> dict | tuple[dict, dict]:
         """Infer for a list of sequences.
 
-        This method provides a convenient interface for performing inference on sequences,
-        with optional evaluation and saving capabilities.
+        This method provides a convenient interface for performing
+        inference on sequences, with optional evaluation and saving
+        capabilities.
 
         Args:
             sequences: Single sequence or list of sequences for inference
             evaluate: Whether to evaluate predictions against true labels
-            output_hidden_states: Whether to output hidden states for visualization
-            output_attentions: Whether to output attention weights for visualization
+            output_hidden_states: Whether to output hidden states for
+                visualization
+            output_attentions: Whether to output attention weights for
+                visualization
             save_to_file: Whether to save predictions to output directory
 
         Returns:
@@ -880,8 +902,10 @@ class DNAInference:
         Args:
             file_path: Path to the file containing sequences
             evaluate: Whether to evaluate predictions against true labels
-            output_hidden_states: Whether to output hidden states for visualization
-            output_attentions: Whether to output attention weights for visualization
+            output_hidden_states: Whether to output hidden states for
+                visualization
+            output_attentions: Whether to output attention weights for
+                visualization
             seq_col: Column name for sequences in the file
             label_col: Column name for labels in the file
             sep: Delimiter for CSV, TSV, or TXT files
@@ -889,7 +913,8 @@ class DNAInference:
             multi_label_sep: Delimiter for multi-label sequences
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
-            save_to_file: Whether to save predictions and metrics to output directory
+            save_to_file: Whether to save predictions and metrics to
+                output directory
             plot_metrics: Whether to generate metric plots
 
         Returns:
@@ -959,15 +984,18 @@ class DNAInference:
     ) -> dict | tuple[dict, dict]:
         """Main inference method for sequences or files.
 
-        This is the primary entry point for performing inference. It automatically
-        determines whether to process sequences directly or load from a file.
+        This is the primary entry point for performing inference. It
+        automatically determines whether to process sequences directly or
+        load from a file.
 
         Args:
             sequences: Single sequence or list of sequences for inference
             file_path: Path to file containing sequences for inference
             evaluate: Whether to evaluate predictions against true labels
-            output_hidden_states: Whether to output hidden states for visualization
-            output_attentions: Whether to output attention weights for visualization
+            output_hidden_states: Whether to output hidden states for
+                visualization
+            output_attentions: Whether to output attention weights for
+                visualization
             save_to_file: Whether to save predictions to output directory
             **kwargs: Additional arguments passed to specific inference methods
 
@@ -1007,8 +1035,8 @@ class DNAInference:
     ) -> dict:
         """Calculate evaluation metrics for model predictions.
 
-        This method computes task-specific evaluation metrics using the configured
-        metrics computation module.
+        This method computes task-specific evaluation metrics using the
+        configured metrics computation module.
 
         Args:
             logits: Model predictions (logits or probabilities)
@@ -1035,8 +1063,9 @@ class DNAInference:
     ) -> Any | None:
         """Plot attention map visualization.
 
-        This method creates a heatmap visualization of attention weights between tokens
-        in a sequence, showing how the model attends to different parts of the input.
+        This method creates a heatmap visualization of attention weights
+        between tokens in a sequence, showing how the model attends to
+        different parts of the input.
 
         Args:
             seq_idx: Index of the sequence to plot, default 0
@@ -1044,14 +1073,16 @@ class DNAInference:
             head: Attention head index to visualize, default -1 (last head)
             width: Width of the plot
             height: Height of the plot
-            save_path: Path to save the plot. If None, plot will be shown interactively
+            save_path: Path to save the plot. If None, plot will be shown
+                interactively
 
         Returns:
             Attention map visualization if available, otherwise None
 
         Note:
-            This method requires that attention weights were collected during inference
-            by setting output_attentions=True in prediction methods
+            This method requires that attention weights were collected
+            during inference by setting output_attentions=True in prediction
+            methods
         """
         if hasattr(self, "embeddings"):
             attentions = self.embeddings["attentions"]
@@ -1089,22 +1120,26 @@ class DNAInference:
     ) -> Any | None:
         """Visualize embeddings using dimensionality reduction.
 
-        This method creates 2D visualizations of high-dimensional embeddings from
-        different model layers using PCA, t-SNE, or UMAP dimensionality reduction.
+        This method creates 2D visualizations of high-dimensional
+        embeddings from different model layers using PCA, t-SNE, or UMAP
+        dimensionality reduction.
 
         Args:
-            reducer: Dimensionality reduction method to use ('PCA', 't-SNE', 'UMAP')
+            reducer: Dimensionality reduction method to use
+                ('PCA', 't-SNE', 'UMAP')
             ncols: Number of columns in the plot grid
             width: Width of each plot
             height: Height of each plot
-            save_path: Path to save the plot. If None, plot will be shown interactively
+            save_path: Path to save the plot. If None, plot will be shown
+                interactively
 
         Returns:
             Embedding visualization if available, otherwise None
 
         Note:
-            This method requires that hidden states were collected during inference
-            by setting output_hidden_states=True in prediction methods
+            This method requires that hidden states were collected during
+            inference by setting output_hidden_states=True in prediction
+            methods
         """
         if hasattr(self, "embeddings"):
             hidden_states = self.embeddings["hidden_states"]
@@ -1220,7 +1255,8 @@ class DNAInference:
         """Get information about the loaded model.
 
         Returns:
-            Dict containing model information including type, device, and attention support
+            Dict containing model information including type, device, and
+            attention support
         """
         # Get basic model information
         info = self._get_basic_model_info()
@@ -1261,7 +1297,8 @@ class DNAInference:
         """Get information about available model outputs.
 
         Returns:
-            Dict containing information about what outputs are available and collected
+            Dict containing information about what outputs are available and
+            collected
         """
         capabilities = {
             "hidden_states_available": self._check_hidden_states_support(),
@@ -1313,7 +1350,8 @@ class DNAInference:
                 "total_estimated_mb": f"{total_memory_mb:.1f}",
                 "parameter_memory_mb": f"{param_memory_mb:.1f}",
                 "activation_memory_mb": f"{activation_memory_mb:.1f}",
-                "note": "Estimates are approximate and may vary based on actual usage",
+                "note": "Estimates are approximate and may vary based on "
+                "actual usage",
             }
         except Exception as e:
             return {"error": str(e)}
@@ -1322,7 +1360,8 @@ class DNAInference:
 def save_predictions(predictions: dict, output_dir: Path) -> None:
     """Save predictions to JSON file.
 
-    This function saves model predictions in JSON format to the specified output directory.
+    This function saves model predictions in JSON format to the specified
+    output directory.
 
     Args:
         predictions: Dictionary containing predictions to save
@@ -1338,7 +1377,8 @@ def save_predictions(predictions: dict, output_dir: Path) -> None:
 def save_metrics(metrics: dict, output_dir: Path) -> None:
     """Save evaluation metrics to JSON file.
 
-    This function saves computed evaluation metrics in JSON format to the specified output directory.
+    This function saves computed evaluation metrics in JSON format to the
+    specified output directory.
 
     Args:
         metrics: Dictionary containing metrics to save

@@ -1,6 +1,7 @@
 """DNA Model loading and management utilities.
 
-This module provides functions for downloading, loading, and managing DNA language models
+This module provides functions for downloading, loading, and
+    managing DNA language models
 from various sources including Hugging Face Hub, ModelScope, and local storage.
 """
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
@@ -87,7 +88,9 @@ def is_fp8_capable():
     """Check if the current CUDA device supports FP8 precision.
 
     Returns:
-        True if the device supports FP8 (compute capability >= 9.0), False otherwise
+                True if the device supports FP8 (
+            compute capability >= 9.0),
+            False otherwise
     """
     major, minor = torch.cuda.get_device_capability()
     # Hopper (H100) has compute capability 9.0
@@ -118,7 +121,8 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
                 from evo2 import Evo2  # pyright: ignore[reportMissingImports]
             except ImportError as e:
                 raise ImportError(
-                    f"EVO2 package is required for {model_name} but not installed. "
+                                        f"EVO2 package is required for"
+                                        ""{model_name} but not installed."
                     "Please install it following the instructions at: "
                     "https://github.com/ArcInstitute/evo2"
                 ) from e
@@ -160,7 +164,10 @@ def _get_model_path_and_imports(
 
     Args:
         model_name: Model name or path
-        source: Source to load model from ('local', 'huggingface', 'modelscope')
+                source: Source to load model from (
+            'local',
+            'huggingface',
+            'modelscope')
 
     Returns:
         Tuple of (model_path, imported_modules_dict)
@@ -187,7 +194,7 @@ def _get_model_path_and_imports(
 
         # Import ModelScope modules
         try:
-            from modelscope import (  # pyright: ignore[reportAttributeAccessIssue]
+from modelscope import ( # pyright: ignore[reportAttributeAccessIssue]
                 AutoModel,
                 AutoModelForMaskedLM,
                 AutoModelForCausalLM,
@@ -205,7 +212,7 @@ def _get_model_path_and_imports(
             "AutoModel": AutoModel,
             "AutoModelForMaskedLM": AutoModelForMaskedLM,
             "AutoModelForCausalLM": AutoModelForCausalLM,
-            "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+                        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
             "AutoModelForTokenClassification": AutoModelForTokenClassification,
             "AutoTokenizer": AutoTokenizer,
         }
@@ -217,7 +224,7 @@ def _get_model_path_and_imports(
 
     # Import transformers modules for local and huggingface sources
     try:
-        from transformers import (  # pyright: ignore[reportAttributeAccessIssue]
+from transformers import ( # pyright: ignore[reportAttributeAccessIssue]
             AutoModel,
             AutoModelForMaskedLM,
             AutoModelForCausalLM,
@@ -235,7 +242,7 @@ def _get_model_path_and_imports(
         "AutoModel": AutoModel,
         "AutoModelForMaskedLM": AutoModelForMaskedLM,
         "AutoModelForCausalLM": AutoModelForCausalLM,
-        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+                "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
         "AutoModelForTokenClassification": AutoModelForTokenClassification,
         "AutoTokenizer": AutoTokenizer,
     }
@@ -367,15 +374,24 @@ def load_model_and_tokenizer(
 ) -> tuple[Any, Any]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
-    This function handles loading of various model types based on the task configuration,
-    including sequence classification, token classification, masked language modeling,
+This function handles loading of various model types based on the task
+    configuration,
+        including sequence classification, token classification,
+        masked language modeling,
     and causal language modeling.
 
     Args:
         model_name: Model name or path
-        task_config: Task configuration object containing task type and label information
-        source: Source to load model and tokenizer from ('local', 'huggingface', 'modelscope'), default 'local'
-        use_mirror: Whether to use HuggingFace mirror (hf-mirror.com), default False
+                task_config: Task configuration object containing task type and
+            label information
+                source: Source to load model and tokenizer from (
+            'local',
+            'huggingface',
+            'modelscope'),
+            default 'local'
+                use_mirror: Whether to use HuggingFace mirror (
+            hf-mirror.com),
+            default False
 
     Returns:
         Tuple containing (model, tokenizer)
@@ -412,7 +428,8 @@ def load_model_and_tokenizer(
             "token",
         ]:
             raise ValueError(
-                f"num_labels is required for task type '{task_type}' but is None"
+                                f"num_labels is required for task type"
+                                ""'{task_type}' but is None"
             )
 
         # Use default value if num_labels is None for other tasks
@@ -440,14 +457,17 @@ def load_preset_model(
 
     Args:
         model_name: Name or path of the model
-        task_config: Task configuration object containing task type and label information
+                task_config: Task configuration object containing task type and
+            label information
 
     Returns:
         Tuple containing (model, tokenizer) if successful, 0 if model not found
 
     Note:
-        If the model is not found in preset models, the function will print a warning
-        and return 0. Use `load_model_and_tokenizer` function for custom model loading.
+                If the model is not found in preset models,
+            the function will print a warning
+                and
+            return 0. Use `load_model_and_tokenizer` function for custom model loading.
     """
     from .modeling_auto import MODEL_INFO
 
@@ -470,7 +490,9 @@ def load_preset_model(
         pass
     else:
         print(
-            f"Model {model_name} not found in preset models. Please check the model name or use `load_model_and_tokenizer` function."
+                        f"Model {model_name} not found in preset models."
+                        ""Please check the model name or use"
+                        ""`load_model_and_tokenizer` function."
         )
         return 0
     return load_model_and_tokenizer(

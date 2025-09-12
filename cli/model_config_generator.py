@@ -91,7 +91,8 @@ class ConfigGenerator:
                 # Extract available models and templates
                 self._extract_model_templates()
                 click.echo(
-                    f"✅ Loaded {len(self.available_models)} model templates from {yaml_path}"
+                    f"✅ Loaded {len(self.available_models)}"
+                        "model templates from {yaml_path}"
                 )
             else:
                 click.echo(f"⚠️  Model info file not found at {yaml_path}")
@@ -182,7 +183,8 @@ class ConfigGenerator:
     def _select_model_from_templates(
         self, config_type: str | None = None
     ) -> dict[str, Any] | None:
-        """Let user select a model from available templates based on configuration type"""
+        """Let user select a model from"
+            "available templates based on configuration type"""
         if not self.available_models:
             return None
 
@@ -362,7 +364,8 @@ class ConfigGenerator:
     ) -> dict[str, Any] | str:
         """Handle showing all models and selection"""
         click.echo(
-            f"\n📋 All {len(models_to_show)} models (zhangtaolab models prioritized):"
+            f"\n📋 All {len(models_to_show)}"
+                "models (zhangtaolab models prioritized):"
         )
         self._display_model_list(models_to_show)
 
@@ -379,7 +382,8 @@ class ConfigGenerator:
     def _auto_fill_from_template(
         self, model_template: dict[str, Any]
     ) -> dict[str, Any]:
-        """Auto-fill configuration from model template with comprehensive defaults"""
+        """Auto-fill configuration from model"
+            "template with comprehensive defaults"""
         auto_config = {}
         task = model_template.get("task", {})
 
@@ -415,7 +419,8 @@ class ConfigGenerator:
         return auto_config
 
     def _get_default_parameters(self) -> dict[str, Any]:
-        """Get comprehensive default parameters for different configuration types"""
+        """Get comprehensive default parameters"
+            "for different configuration types"""
         defaults = {}
 
         # Common task defaults
@@ -525,10 +530,12 @@ class ConfigGenerator:
             click.echo("\n📋 Available default parameters:")
             click.echo("-" * 30)
             click.echo(
-                "🔧 Task defaults: task_type, num_labels, label_names, threshold"
+                "🔧 Task defaults:"
+                    "task_type, num_labels, label_names, threshold"
             )
             click.echo(
-                "🎯 Fine-tuning defaults: learning_rate, batch_size, epochs, etc."
+                "🎯 Fine-tuning defaults:"
+                    "learning_rate, batch_size, epochs, etc."
             )
             click.echo(
                 "🔮 Inference defaults: batch_size, max_length, device, etc."
@@ -764,7 +771,8 @@ class ConfigGenerator:
     def _configure_task_with_template(
         self, auto_config: dict[str, Any]
     ) -> dict[str, Any]:
-        """Configure task settings using template information with smart defaults"""
+        """Configure task settings using"
+            "template information with smart defaults"""
         click.echo("\n📝 Task Configuration (from template):")
 
         # Get defaults
@@ -802,11 +810,13 @@ class ConfigGenerator:
         # Show available defaults
         click.echo("\n📋 Smart defaults available:")
         click.echo(
-            f"   • Task: {defaults.get('task_type', 'binary')} with {defaults.get('num_labels', 2)} labels"
+            f"• Task: {defaults.get('task_type', 'binary')}"
+                "with {defaults.get('num_labels', 2)} labels"
         )
         click.echo(f"   • Threshold: {defaults.get('threshold', 0.5)}")
         click.echo(
-            f"   • Labels: {', '.join(defaults.get('label_names', ['negative', 'positive']))}"
+            f"• Labels: {',"
+                "'.join(defaults.get('label_names', ['negative', 'positive']))}"
         )
 
         # Ask if user wants to modify any values

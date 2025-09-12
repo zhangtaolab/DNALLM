@@ -1,7 +1,12 @@
 """In Silico Mutagenesis Analysis Module.
 
-This module provides tools for evaluating the impact of sequence mutations on model predictions,
-including single nucleotide polymorphisms (SNPs), deletions, insertions, and other sequence variations.
+This module provides tools for evaluating the impact of sequence mutations on
+model predictions,
+including single nucleotide polymorphisms (
+    SNPs),
+    deletions,
+    insertions,
+    and other sequence variations.
 """
 
 import os
@@ -22,14 +27,18 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Mutagenesis:
     """Class for evaluating in silico mutagenesis.
 
-    This class provides methods to analyze how sequence mutations affect model predictions,
-    including single base substitutions, deletions, and insertions. It can be used to
-    identify important positions in DNA sequences and understand model interpretability.
+This class provides methods to analyze how sequence mutations affect model
+    predictions,
+        including single base substitutions, deletions, and
+        insertions. It can be used to
+        identify important positions in DNA sequences and
+        understand model interpretability.
 
     Attributes:
         model: Fine-tuned model for prediction
         tokenizer: Tokenizer for the model
-        config: Configuration object containing task settings and inference parameters
+                config: Configuration object containing task settings and
+            inference parameters
         sequences: Dictionary containing original and mutated sequences
         dataloader: DataLoader for batch processing of sequences
     """
@@ -40,7 +49,8 @@ class Mutagenesis:
         Args:
             model: Fine-tuned model for making predictions
             tokenizer: Tokenizer for encoding DNA sequences
-            config: Configuration object containing task settings and inference parameters
+                        config: Configuration object containing task settings and
+                inference parameters
         """
 
         self.model = model
@@ -56,7 +66,8 @@ class Mutagenesis:
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAInference: The inference engine object configured with the given model and tokenizer
+                        DNAInference: The inference engine object configured with the given model and
+                tokenizer
         """
 
         inference_engine = DNAInference(
@@ -165,7 +176,8 @@ class Mutagenesis:
     def pred_comparison(self, raw_pred, mut_pred):
         """Compare raw and mutated predictions.
 
-        This method calculates the difference between predictions on the original sequence
+This method calculates the difference between predictions on the original
+        sequence
         and mutated sequences, providing insights into mutation effects.
 
         Args:
@@ -218,13 +230,14 @@ class Mutagenesis:
                 - "last": Use the last log fold change
                 - "sum": Use the sum of log fold changes
                 - "mean": Use the mean of log fold changes
-                - "max": Use the index of the maximum raw score to select the log fold change
+                                - "max": Use the index of the maximum raw score to select the log fold change
                 - int: Use the log fold change at the specified index
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:
             - 'raw': Original sequence predictions and metadata
-            - mutation names: Individual mutation results with scores and log fold changes
+                        - mutation names: Individual mutation results with scores and
+                log fold changes
         """
         # Load predictor
         inference_engine = self.get_inference_engine(
@@ -290,14 +303,17 @@ class Mutagenesis:
     ) -> None:
         """Plot the mutagenesis analysis results.
 
-        This method generates visualizations of mutation effects, typically as heatmaps,
-        bar charts and line plots showing how different mutations affect model predictions
+                This method generates visualizations of mutation effects,
+            typically as heatmaps,
+                bar charts and
+            line plots showing how different mutations affect model predictions
         at various positions.
 
         Args:
             preds: Dictionary containing model predicted scores and metadata
             show_score: Whether to show the score values on the plot
-            save_path: Path to save the plot. If None, plot will be shown interactively
+                        save_path: Path to save the plot. If None,
+                plot will be shown interactively
 
         Returns:
             Plot object

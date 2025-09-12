@@ -8,7 +8,8 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern="^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$",
+        pattern="^(embedding|mask|generation|binary|multiclass|"
+        "multilabel|regression|token)$",
     )
     num_labels: int | None = Field(
         default=2, description="Number of labels (default 2)"
@@ -27,10 +28,11 @@ class TaskConfig(BaseModel):
             self.label_names = self.label_names or ["negative", "positive"]
 
         elif self.task_type == "multiclass":
-            if not self.num_labels or self.num_labels < 2:
-                raise ValueError(
-                    "num_labels must be at least 2 for multiclass classification"
-                )
+        if not self.num_labels or self.num_labels < 2:
+            raise ValueError(
+                "num_labels must be at least 2 for multiclass "
+                "classification"
+            )
             if (
                 not self.label_names
                 or len(self.label_names) != self.num_labels
@@ -40,10 +42,11 @@ class TaskConfig(BaseModel):
                 ]
 
         elif self.task_type == "multilabel":
-            if not self.num_labels or self.num_labels < 2:
-                raise ValueError(
-                    "num_labels must be at least 2 for multilabel classification"
-                )
+        if not self.num_labels or self.num_labels < 2:
+            raise ValueError(
+                "num_labels must be at least 2 for multilabel "
+                "classification"
+            )
             if (
                 not self.label_names
                 or len(self.label_names) != self.num_labels
@@ -124,7 +127,8 @@ class ModelConfig(BaseModel):
     )
     path: str = Field(
         ...,
-        description="Path to the model, can be a local path or a Hugging Face model identifier.",
+        description="Path to the model, can be a local path or a Hugging "
+        "Face model identifier.",
     )
     source: str | None = "huggingface"
     task_type: str | None = "classification"
@@ -142,7 +146,8 @@ class DatasetConfig(BaseModel):
     )
     task: str = Field(
         ...,
-        description="The primary task associated with this dataset (e.g., binary_classification).",
+        description="The primary task associated with this dataset "
+        "(e.g., binary_classification).",
     )
     format: str | None = "csv"
     text_column: str = "sequence"

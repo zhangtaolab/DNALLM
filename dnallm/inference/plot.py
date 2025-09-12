@@ -1,7 +1,9 @@
 """DNA Language Model Visualization and Plotting Module.
 
-This module provides comprehensive plotting capabilities for DNA language model results,
-including metrics visualization, attention maps, embeddings, and mutation effects analysis.
+This module provides comprehensive plotting capabilities for DNA language model
+results,
+including metrics visualization, attention maps, embeddings, and
+    mutation effects analysis.
 """
 
 # Add more specific type hints and import numpy for better performance
@@ -14,7 +16,8 @@ from collections import defaultdict
 def _prepare_classification_data(
     metrics: dict[str, dict],
 ) -> tuple[dict, dict]:
-    """Prepare data for classification tasks (binary, multiclass, multilabel, token).
+    """Prepare data for classification tasks (binary, multiclass, multilabel,
+    token).
 
     Args:
         metrics: Dictionary containing model metrics for different models
@@ -101,19 +104,26 @@ def prepare_data(
 ) -> tuple[dict, dict | dict]:
     """Prepare data for plotting various types of visualizations.
 
-    This function organizes model metrics data into formats suitable for different plot types:
+This function organizes model metrics data into formats suitable for different
+    plot types:
     - Bar charts for classification and regression metrics
     - ROC and PR curves for classification tasks
     - Scatter plots for regression tasks
 
     Args:
         metrics: Dictionary containing model metrics for different models
-        task_type: Type of task ('binary', 'multiclass', 'multilabel', 'token', 'regression')
+                task_type: Type of task (
+            'binary',
+            'multiclass',
+            'multilabel',
+            'token',
+            'regression')
 
     Returns:
         Tuple containing:
         - bars_data: Data formatted for bar chart visualization
-        - curves_data/scatter_data: Data formatted for curve or scatter plot visualization
+                - curves_data/scatter_data: Data formatted for curve or
+            scatter plot visualization
 
     Raises:
         ValueError: If task type is not supported for plotting
@@ -139,8 +149,10 @@ def plot_bars(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Plot bar charts for model metrics comparison.
 
-    This function creates bar charts to compare different metrics across multiple models.
-    It supports automatic layout with multiple columns and optional score labels on bars.
+This function creates bar charts to compare different metrics across multiple
+    models.
+        It supports automatic layout with multiple columns and
+        optional score labels on bars.
 
     Args:
         data: Dictionary containing metrics data with 'models' as the first key
@@ -150,11 +162,13 @@ def plot_bars(
         height: Height of each individual plot
         bar_width: Width of the bars in the plot
         domain: Y-axis domain range for the plots, default (0.0, 1.0)
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
         separate: Whether to return separate plots for each metric
 
     Returns:
-        Altair chart object (combined or separate plots based on separate parameter)
+                Altair chart object (combined or
+            separate plots based on separate parameter)
     """
     # Convert to DataFrame once and cache for better performance
     # Original: dbar = pd.DataFrame(data)
@@ -171,7 +185,8 @@ def plot_bars(
 
     for n, metric in enumerate(metrics_list):
         # More efficient domain calculation with numpy
-        # Original: if metric in ['mae', 'mse']: domain_use = [0, dbar[metric].max()*1.1]
+        # Original: if metric in ['mae', 'mse']: domain_use = [0,
+        # dbar[metric].max()*1.1]
         if metric in ["mae", "mse"]:
             domain_use = [0, dbar[metric].max() * 1.1]
         else:
@@ -246,19 +261,24 @@ def plot_curve(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Plot ROC and PR curves for classification tasks.
 
-    This function creates ROC (Receiver Operating Characteristic) and PR (Precision-Recall)
+        This function creates ROC (Receiver Operating Characteristic) and
+        PR (Precision-Recall)
     curves to evaluate model performance on classification tasks.
 
     Args:
-        data: Dictionary containing ROC and PR curve data with 'ROC' and 'PR' keys
-        show_score: Whether to show the score values on the plot (currently not implemented)
+                data: Dictionary containing ROC and PR curve data with 'ROC' and
+            'PR' keys
+show_score: Whether to show the score values on the plot (currently not
+        implemented)
         width: Width of each plot
         height: Height of each plot
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
         separate: Whether to return separate plots for ROC and PR curves
 
     Returns:
-        Altair chart object (combined or separate plots based on separate parameter)
+                Altair chart object (combined or
+            separate plots based on separate parameter)
     """
     # Pre-allocate plot dictionaries and use more descriptive names
     # Original: pline = {}; p_separate = {}
@@ -330,7 +350,8 @@ def plot_scatter(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Plot scatter plots for regression task evaluation.
 
-    This function creates scatter plots to compare predicted vs. experimental values
+This function creates scatter plots to compare predicted vs. experimental
+    values
     for regression tasks, with optional R² score display.
 
     Args:
@@ -339,11 +360,13 @@ def plot_scatter(
         ncols: Number of columns to arrange the plots
         width: Width of each plot
         height: Height of each plot
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
         separate: Whether to return separate plots for each model
 
     Returns:
-        Altair chart object (combined or separate plots based on separate parameter)
+                Altair chart object (combined or
+            separate plots based on separate parameter)
     """
     # Pre-allocate plot dictionaries for better memory management
     # Original: pdot = {}; p_separate = {}
@@ -375,7 +398,8 @@ def plot_scatter(
 
         if show_score:
             # More efficient text positioning calculation
-            # Original: min_x = ddot['predicted'].min(); max_y = ddot['experiment'].max()
+            # Original: min_x = ddot['predicted'].min(); max_y =
+            # ddot['experiment'].max()
             min_x = ddot["predicted"].min()
             max_y = ddot["experiment"].max()
 
@@ -435,19 +459,24 @@ def plot_attention_map(
 ) -> alt.Chart:
     """Plot attention map visualization for transformer models.
 
-    This function creates a heatmap visualization of attention weights between tokens
-    in a sequence, showing how the model attends to different parts of the input.
+This function creates a heatmap visualization of attention weights between
+    tokens
+        in a sequence,
+        showing how the model attends to different parts of the input.
 
     Args:
-        attentions: Tuple or list containing attention weights from model layers
+                attentions: Tuple or
+            list containing attention weights from model layers
         sequences: List of input sequences
         tokenizer: Tokenizer object for converting tokens to readable text
         seq_idx: Index of the sequence to plot, default 0
         layer: Layer index to visualize, default -1 (last layer)
-        attention_head: Attention head index to visualize, default -1 (last head)
+                attention_head: Attention head index to visualize,
+            default -1 (last head)
         width: Width of the plot
         height: Height of the plot
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
 
     Returns:
         Altair chart object showing the attention heatmap
@@ -534,7 +563,8 @@ def plot_attention_map(
 
 
 def _get_dimensionality_reducer(reducer: str):
-    """Initialize and return a dimensionality reducer based on the specified method.
+    """Initialize and return a dimensionality reducer based on the specified
+    method.
 
     Args:
         reducer: Dimensionality reduction method ('PCA', 't-SNE', 'UMAP')
@@ -555,7 +585,8 @@ def _get_dimensionality_reducer(reducer: str):
     reducer_lower = reducer.lower()
     if reducer_lower not in reducer_map:
         raise ValueError(
-            f"Unsupported dim reducer '{reducer}', please try PCA, t-SNE or UMAP."
+                        f"Unsupported dim reducer '{reducer}', please try PCA,"
+                        ""t-SNE or UMAP."
         )
 
     try:
@@ -692,30 +723,36 @@ def plot_embeddings(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Visualize embeddings using dimensionality reduction techniques.
 
-    This function creates 2D visualizations of high-dimensional embeddings from different
+This function creates 2D visualizations of high-dimensional embeddings from
+    different
     model layers using PCA, t-SNE, or UMAP dimensionality reduction methods.
 
     Args:
         hidden_states: Tuple or list containing hidden states from model layers
-        attention_mask: Tuple or list containing attention masks for sequence padding
-        reducer: Dimensionality reduction method. Options: 'PCA', 't-SNE', 'UMAP'
+                attention_mask: Tuple or
+            list containing attention masks for sequence padding
+                reducer: Dimensionality reduction method. Options: 'PCA',
+            't-SNE', 'UMAP'
         labels: List of labels for the data points
         labels_names: List of label names for legend display
         ncols: Number of columns to arrange the plots
         width: Width of each plot
         height: Height of each plot
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
         separate: Whether to return separate plots for each layer
 
     Returns:
-        Altair chart object (combined or separate plots based on separate parameter)
+                Altair chart object (combined or
+            separate plots based on separate parameter)
 
     Raises:
         ValueError: If unsupported dimensionality reduction method is specified
     """
     # Initialize dimensionality reducer
     dim_reducer = _get_dimensionality_reducer(reducer)
-    # Type assertion: dim_reducer is guaranteed to be non-None from helper function
+    # Type assertion: dim_reducer is guaranteed to be non-None from helper
+    # function
     if dim_reducer is None:
         raise ValueError(
             "Dimensionality reducer is None - this should not happen"
@@ -768,7 +805,8 @@ def _extract_mutation_data(
         data: Dictionary containing mutation data with 'raw' and mutation keys
 
     Returns:
-        Tuple containing sequence, raw_bases, sequence length, format length, and mutation list
+                Tuple containing sequence, raw_bases, sequence length, format length, and
+            mutation list
     """
     raw_data = data["raw"]
     sequence = raw_data["sequence"]
@@ -1012,7 +1050,7 @@ def plot_muts(
 ) -> alt.Chart | alt.VConcatChart:
     """Visualize mutation effects on model predictions.
 
-    This function creates comprehensive visualizations of how different mutations
+This function creates comprehensive visualizations of how different mutations
     affect model predictions, including:
     - Heatmap showing mutation effects at each position
     - Line plot showing gain/loss of function
@@ -1020,10 +1058,13 @@ def plot_muts(
 
     Args:
         data: Dictionary containing mutation data with 'raw' and mutation keys
-        show_score: Whether to show the score values on the plot (currently not implemented)
-        width: Width of the plot. If None, automatically calculated based on sequence length
+show_score: Whether to show the score values on the plot (currently not
+        implemented)
+                width: Width of the plot. If None,
+            automatically calculated based on sequence length
         height: Height of the plot
-        save_path: Path to save the plot. If None, plot will be shown interactively
+                save_path: Path to save the plot. If None,
+            plot will be shown interactively
 
     Returns:
         Altair chart object showing the combined mutation effects visualization
