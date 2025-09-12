@@ -147,7 +147,7 @@ def random_generate_sequences(
     Returns:
         list[str]: List of generated DNA sequences.
     """
-    sequences = []
+    sequences: list[str] = []
     basemap = ["A", "C", "G", "T"]
     if 0.0 < n_ratio <= 1.0:
         basemap.append("N")

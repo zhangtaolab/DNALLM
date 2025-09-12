@@ -97,8 +97,8 @@ class DNAInference:
                 if self.pred_config.use_fp16:
                     self.pred_config.use_fp16 = False
             logger.info(f"Using device: {self.device}")
-        self.sequences = []
-        self.labels = []
+        self.sequences: list[str] = []
+        self.labels: list[Any] = []
 
     def _get_device(self) -> torch.device:
         """Get the appropriate device for model inference.
@@ -413,7 +413,7 @@ class DNAInference:
             if "labels" in dataset.dataset.features:
                 self.labels = dataset.dataset["labels"]
         # Create DataLoader
-        dataloader = DataLoader(
+        dataloader: DataLoader = DataLoader(
             dataset,
             batch_size=batch_size,
             num_workers=self.pred_config.num_workers,
@@ -528,7 +528,7 @@ class DNAInference:
         sig = inspect.signature(self.model.forward)
         params = sig.parameters
 
-        embeddings = {
+        embeddings: dict[str, Any] = {
             "hidden_states": None,
             "attention_mask": [],
             "labels": [],
@@ -634,7 +634,7 @@ class DNAInference:
         Returns:
             torch.Tensor: Batch logits
         """
-        logits = outputs.logits.cpu().detach()
+        logits: torch.Tensor = outputs.logits.cpu().detach()
 
         if output_hidden_states:
             self._process_hidden_states(outputs, inputs, embeddings)
@@ -1032,7 +1032,7 @@ class DNAInference:
         logits: list | torch.Tensor,
         labels: list | torch.Tensor,
         plot: bool = False,
-    ) -> dict:
+    ) -> dict[Any, Any]:
         """Calculate evaluation metrics for model predictions.
 
         This method computes task-specific evaluation metrics using the
@@ -1048,7 +1048,7 @@ class DNAInference:
         """
         # Calculate metrics based on task type
         compute_metrics_func = compute_metrics(self.task_config, plot=plot)
-        metrics = compute_metrics_func((logits, labels))
+        metrics: dict[Any, Any] = compute_metrics_func((logits, labels))
 
         return metrics
 
@@ -1109,6 +1109,7 @@ class DNAInference:
             return attn_map
         else:
             logger.warning("No attention weights available to plot.")
+            return None
 
     def plot_hidden_states(
         self,
@@ -1201,7 +1202,7 @@ class DNAInference:
         Returns:
             Dict containing model configuration details
         """
-        config_info = {}
+        config_info: dict[str, Any] = {}
 
         if not hasattr(self.model, "config"):
             return config_info
@@ -1397,7 +1398,7 @@ def generate(
     n_tokens: int = 400,
     temperature: float = 1.0,
     top_k: int = 4,
-) -> dict:
+) -> dict[Any, Any]:
     """Generate DNA sequences using the model.
 
     This function performs sequence generation tasks using the loaded model,
@@ -1423,10 +1424,16 @@ def generate(
             if not prompt_seqs:
                 continue
             # Generate sequences
-            output = self.model.generate(
+            output: dict[Any, Any] = self.model.generate(
                 prompt_seqs=prompt_seqs,
                 n_tokens=n_tokens,
                 temperature=temperature,
                 top_k=top_k,
             )
             return output
+    else:
+        raise ValueError(
+            "Only EVO2 models are supported for sequence generation"
+        )
+
+    return {}

@@ -43,6 +43,7 @@ class TestTaskConfig:
                 num_labels=2,
                 label_names=["A", "B"],
                 description="Test",
+                threshold=0.5,
             )
 
 
@@ -59,6 +60,9 @@ class TestInferenceConfig:
             precision="float16",
             output_dir=tempfile.mkdtemp(),
             save_predictions=True,
+            use_fp16=False,
+            save_hidden_states=False,
+            save_attentions=False,
         )
         assert config.batch_size == 16
         assert config.max_length == 512

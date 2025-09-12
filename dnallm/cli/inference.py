@@ -23,11 +23,18 @@ def main():
             sys.exit(1)
 
         config_file = sys.argv[1]
-        # model_path = sys.argv[2]  # Not used in current implementation
+        # model_path would be sys.argv[2] but not used in current
+        # implementation
 
         try:
             config_dict = load_config(config_file)
-            inference_engine = DNAInference(config_dict)
+            # Note: DNAInference requires model, tokenizer,
+            # and config parameters
+            # This is a simplified CLI - in a real implementation,
+            # you would load them here
+            inference_engine = DNAInference(
+                model=None, tokenizer=None, config=config_dict
+            )
             results = inference_engine.infer()
             print(results)
         except Exception as e:

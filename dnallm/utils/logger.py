@@ -214,7 +214,7 @@ class LoggingContext:
 
     def __init__(self, level: str):
         self.level = level
-        self.original_level = None
+        self.original_level: int | None = None
 
     def __enter__(self):
         self.original_level = get_logger().logger.level

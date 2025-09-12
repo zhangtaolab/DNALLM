@@ -9,6 +9,7 @@ including performance evaluation, metrics calculation, and
 import os
 import numpy as np
 from pathlib import Path
+from typing import Any
 
 from torch.utils.data import DataLoader
 
@@ -57,7 +58,7 @@ class Benchmark:
                 ]).tolist()
             ),
         }
-        self.datasets = []
+        self.datasets: list[str] = []
         # Load preset benchmark configuration if available
         if "benchmark" in config:
             self.prepared = self.__load_from_config()
@@ -199,9 +200,9 @@ class Benchmark:
             NameError: If model cannot be found in either the given source or
                 local storage
         """
-        all_results = {}
-        selected_results = {}
-        metrics_save = {}
+        all_results: dict[str, Any] = {}
+        selected_results: dict[str, Any] = {}
+        metrics_save: dict[str, Any] = {}
         if self.prepared:
             task_configs = self.prepared["tasks"]
             pred_config = self.config["inference"]
@@ -272,7 +273,7 @@ class Benchmark:
                     max_length=pred_config.max_length,
                 )
                 dataset.encode_sequences(remove_unused_columns=True)
-                dataloader = DataLoader(
+                dataloader: DataLoader = DataLoader(
                     dataset,
                     batch_size=pred_config.batch_size,
                     num_workers=pred_config.num_workers,

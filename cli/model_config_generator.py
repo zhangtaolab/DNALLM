@@ -329,7 +329,8 @@ class ConfigGenerator:
 
         if 1 <= model_choice <= max_choice:
             selected_model = models_to_show[model_choice - 1]
-            return self.model_templates.get(selected_model, {})
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
         else:
             click.echo("❌ Invalid choice. Please try again.")
             return "continue"
@@ -349,14 +350,16 @@ class ConfigGenerator:
         if len(search_results) == 1:
             selected_model = search_results[0]
             click.echo(f"✅ Auto-selected: {selected_model}")
-            return self.model_templates.get(selected_model, {})
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
 
         model_choice = click.prompt(
             f"Enter model number (1-{len(search_results)})", type=int
         )
         if 1 <= model_choice <= len(search_results):
             selected_model = search_results[model_choice - 1]
-            return self.model_templates.get(selected_model, {})
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
         else:
             click.echo("❌ Invalid choice. Please try again.")
             return "continue"
@@ -376,7 +379,8 @@ class ConfigGenerator:
         )
         if 1 <= model_choice <= len(models_to_show):
             selected_model = models_to_show[model_choice - 1]
-            return self.model_templates.get(selected_model, {})
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
         else:
             click.echo("❌ Invalid choice. Please try again.")
             return "continue"
@@ -1127,7 +1131,7 @@ class ConfigGenerator:
         while True:
             choice = click.prompt("Choose device", type=int)
             if 1 <= choice <= len(devices):
-                return devices[choice - 1]
+                return devices[choice - 1]  # type: ignore
             click.echo("❌ Invalid choice. Please try again.")
 
     def _configure_inference(
@@ -1203,7 +1207,7 @@ class ConfigGenerator:
         """Configure models for benchmarking"""
         click.echo("\n🤖 Model Configuration:")
 
-        models = []
+        models: list[dict[str, Any]] = []
 
         while True:
             click.echo(f"\nConfiguring model {len(models) + 1}:")
@@ -1316,7 +1320,7 @@ class ConfigGenerator:
         """Configure datasets for benchmarking"""
         click.echo("\n📁 Dataset Configuration:")
 
-        datasets = []
+        datasets: list[dict[str, Any]] = []
 
         while True:
             click.echo(f"\nConfiguring dataset {len(datasets) + 1}:")
@@ -1393,7 +1397,7 @@ class ConfigGenerator:
         metric_categories = self._get_metric_categories()
         self._display_metric_categories(metric_categories)
 
-        selected_metrics = []
+        selected_metrics: list[str] = []
 
         while True:
             if self._should_finish_metric_selection(selected_metrics):
@@ -1489,7 +1493,7 @@ class ConfigGenerator:
         while True:
             metric_choice = click.prompt("Choose metric number", type=int)
             if 1 <= metric_choice <= len(all_metrics):
-                return all_metrics[metric_choice - 1]
+                return all_metrics[metric_choice - 1]  # type: ignore
             click.echo("❌ Invalid choice. Please try again.")
 
     def _add_custom_metric(self, selected_metrics: list[str]) -> None:

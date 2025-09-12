@@ -169,7 +169,7 @@ class Mutagenesis:
         if do_encode:
             dataset.encode_sequences(remove_unused_columns=True)
         # Create DataLoader
-        self.dataloader = DataLoader(
+        self.dataloader: DataLoader = DataLoader(
             dataset, batch_size=batch_size, num_workers=pred_config.num_workers
         )
 

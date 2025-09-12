@@ -195,7 +195,7 @@ class DNATrainer:
             data_collator=data_collator,
         )
 
-    def compute_task_metrics(self) -> Callable:
+    def compute_task_metrics(self) -> Callable[..., dict[str, float]]:
         """Compute task-specific evaluation metrics.
 
         This method returns a callable function that computes appropriate
@@ -205,7 +205,7 @@ class DNATrainer:
                 Returns:
         Callable: A function that computes metrics for the specific task type
         """
-        return compute_metrics(self.task_config)
+        return compute_metrics(self.task_config)  # type: ignore[no-any-return]
 
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
@@ -224,7 +224,7 @@ class DNATrainer:
         """
         self.model.train()
         train_result = self.trainer.train()
-        metrics = train_result.metrics
+        metrics: dict[str, float] = train_result.metrics
         # Save the model
         self.trainer.save_model()
         if save_tokenizer:
@@ -243,7 +243,7 @@ class DNATrainer:
         Dictionary containing evaluation metrics for the current model state
         """
         self.model.eval()
-        result = self.trainer.evaluate()
+        result: dict[str, float] = self.trainer.evaluate()
         return result
 
     def infer(self) -> dict[str, float]:

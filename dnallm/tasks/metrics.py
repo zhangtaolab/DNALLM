@@ -541,19 +541,19 @@ def metrics_for_dnabert2(task):
                 )
             else:
                 pred_probs = softmax(logits[0], axis=1)
-                predictions = [x.tolist().index(max(x)) for x in pred_probs]
+                pred_list: list[int] = [
+                    x.tolist().index(max(x)) for x in pred_probs
+                ]
                 precision = metric1.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
                 recall = metric2.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
                 f1 = metric3.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
-                mcc = metric4.compute(
-                    predictions=predictions, references=labels
-                )
+                mcc = metric4.compute(predictions=pred_list, references=labels)
                 roc_auc_ovr = roc_metric.compute(
                     references=labels,
                     prediction_scores=pred_probs,
@@ -593,7 +593,7 @@ def metrics_for_dnabert2(task):
     return compute_metrics, preprocess_logits_for_metrics
 
 
-def compute_metrics(task_config: TaskConfig, plot: bool = False) -> dict:
+def compute_metrics(task_config: TaskConfig, plot: bool = False):
     """Compute metrics based on task type.
 
     This function serves as the main entry point for metrics computation,

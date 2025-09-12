@@ -78,6 +78,11 @@ def _show_output(result, verbose: bool, is_success: bool) -> None:
         print("Output:" if not is_success else "")
         print(result.stdout)
 
+        # For failed commands, also show stderr if it contains useful info
+        if not is_success and result.stderr and result.stderr != result.stdout:
+            print("Error details:")
+            print(result.stderr)
+
 
 def _extract_error_files(output: str) -> list[str]:
     """Extract file paths from error output."""
@@ -94,6 +99,37 @@ def _extract_error_files(output: str) -> list[str]:
                 if file_part and not file_part.startswith(("Found", "[")):
                     error_files.append(file_part)
     return error_files
+
+
+def _extract_detailed_errors(output: str) -> list[str]:
+    """Extract detailed error information including file,
+    line, and error type.
+    """
+    detailed_errors = []
+    lines = output.strip().split("\n")
+
+    for i, line in enumerate(lines):
+        # Look for error patterns like "F841 Local variable `x` is assigned to
+        # but never used"
+        error_codes = ["F401", "F841", "E501", "E203", "E402", "E266"]
+        if any(code in line for code in error_codes):
+            # This is an error line, get the file and line info
+            if i + 1 < len(lines) and "-->" in lines[i + 1]:
+                file_line = lines[i + 1]
+                if "--> " in file_line:
+                    file_path = file_line.split("--> ")[1].split(":")[0]
+                    line_num = (
+                        file_line.split(":")[1].split(":")[0]
+                        if ":" in file_line
+                        else "?"
+                    )
+                    detailed_errors.append(f"{file_path}:{line_num} - {line}")
+                else:
+                    detailed_errors.append(line)
+            else:
+                detailed_errors.append(line)
+
+    return detailed_errors
 
 
 def run_command(
@@ -123,7 +159,13 @@ def run_command(
 
         if not is_success and result.stdout:
             error_files = _extract_error_files(result.stdout)
-            if error_files:
+            detailed_errors = _extract_detailed_errors(result.stdout)
+
+            if detailed_errors:
+                print("\nDetailed errors:")
+                for error in detailed_errors:
+                    print(f"  {error}")
+            elif error_files:
                 print("\nFiles with issues:")
                 for file_path in set(error_files):
                     print(f"  - {file_path}")

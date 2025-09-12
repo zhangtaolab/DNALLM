@@ -25,9 +25,12 @@ def _prepare_classification_data(
     Returns:
         Tuple containing bars_data and curves_data
     """
-    bars_data = defaultdict(list)
+    bars_data: dict[str, list] = defaultdict(list)
     bars_data["models"] = []
-    curves_data = {"ROC": defaultdict(list), "PR": defaultdict(list)}
+    curves_data: dict[str, dict[str, list]] = {
+        "ROC": defaultdict(list),
+        "PR": defaultdict(list),
+    }
 
     for model, model_metrics in metrics.items():
         bars_data["models"].append(model)
@@ -50,9 +53,9 @@ def _prepare_regression_data(metrics: dict[str, dict]) -> tuple[dict, dict]:
     Returns:
         Tuple containing bars_data and scatter_data
     """
-    bars_data = defaultdict(list)
+    bars_data: dict[str, list] = defaultdict(list)
     bars_data["models"] = []
-    scatter_data = {}
+    scatter_data: dict[str, dict[str, list]] = {}
 
     for model, model_metrics in metrics.items():
         bars_data["models"].append(model)
@@ -233,7 +236,7 @@ def plot_bars(
 
     # More efficient plot combination with reduce-like approach
     # Original: Multiple conditional checks and assignments
-    pbars = pbar[0] if pbar else alt.Chart()
+    pbars: alt.Chart = pbar[0] if pbar else alt.Chart()
     for i in range(1, len(pbar)):
         pbars &= pbar[i]
 
@@ -321,7 +324,7 @@ def plot_curve(
 
     # More efficient plot combination
     # Original: Multiple conditional checks and assignments
-    plines = pline[0] if pline else alt.Chart()
+    plines: alt.Chart = pline[0] if pline else alt.Chart()
     for i in range(1, len(pline)):
         plines |= pline[i]
 
@@ -428,7 +431,7 @@ def plot_scatter(
 
     # More efficient plot combination
     # Original: Multiple conditional checks and assignments
-    pdots = pdot[0] if pdot else alt.Chart()
+    pdots: alt.Chart = pdot[0] if pdot else alt.Chart()
     for i in range(1, len(pdot)):
         pdots &= pdot[i]
 
@@ -530,7 +533,7 @@ def plot_attention_map(
 
     # Create attention map with optimized encoding and axis configuration
     # Original: Multiple axis configurations
-    attn_map = (
+    attn_map: alt.Chart = (
         alt.Chart(source)
         .mark_rect()
         .encode(
@@ -994,7 +997,7 @@ def _create_mutation_charts(
     alt.data_transformers.enable("vegafusion")
 
     # Create heatmap
-    pheat = (
+    pheat: alt.Chart = (
         alt.Chart(pd.DataFrame(dheat))
         .mark_rect()
         .encode(
@@ -1012,7 +1015,7 @@ def _create_mutation_charts(
     )
 
     # Create line plot
-    pline = (
+    pline: alt.Chart = (
         alt.Chart(pd.DataFrame(dline))
         .mark_line()
         .encode(
@@ -1026,7 +1029,7 @@ def _create_mutation_charts(
     )
 
     # Create bar chart
-    pbar = (
+    pbar: alt.Chart = (
         alt.Chart(pd.DataFrame(dbar))
         .mark_bar()
         .encode(
@@ -1040,7 +1043,10 @@ def _create_mutation_charts(
     )
 
     # Combine charts
-    return (pheat & pbar & pline).configure_axis(grid=False)
+    combined_chart: alt.Chart | alt.VConcatChart = (
+        pheat & pbar & pline
+    ).configure_axis(grid=False)
+    return combined_chart
 
 
 def plot_muts(

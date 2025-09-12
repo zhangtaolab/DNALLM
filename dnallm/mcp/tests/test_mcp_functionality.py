@@ -72,8 +72,8 @@ class TestMCPFunctionality:
                 "promoter_model", dna_sequence
             )
 
-            if promoter_result and 0 in promoter_result:
-                result = promoter_result[0]  # type: ignore
+            if promoter_result and promoter_result:
+                result = next(iter(promoter_result.values()))
                 logger.info("Promoter prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -95,8 +95,8 @@ class TestMCPFunctionality:
                 "conservation_model", dna_sequence
             )
 
-            if conservation_result and 0 in conservation_result:
-                result = conservation_result[0]  # type: ignore
+            if conservation_result and conservation_result:
+                result = next(iter(conservation_result.values()))
                 logger.info("Conservation prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -118,8 +118,8 @@ class TestMCPFunctionality:
                 "open_chromatin_model", dna_sequence
             )
 
-            if chromatin_result and 0 in chromatin_result:
-                result = chromatin_result[0]  # type: ignore
+            if chromatin_result and chromatin_result:
+                result = next(iter(chromatin_result.values()))
                 logger.info("Open chromatin prediction result:")
                 logger.info(f"  Label: {result.get('label', 'N/A')}")
                 logger.info(f"  Scores: {result.get('scores', 'N/A')}")
@@ -142,24 +142,24 @@ class TestMCPFunctionality:
             logger.info(f"DNA Sequence: {dna_sequence[:50]}...")
             logger.info(f"Sequence Length: {len(dna_sequence)} bp")
 
-            if promoter_result and 0 in promoter_result:
-                result = promoter_result[0]  # type: ignore
+            if promoter_result and promoter_result:
+                result = next(iter(promoter_result.values()))
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
                     f"Promoter Prediction: {result.get('label', 'N/A')} "
                     f"(confidence: {max_score:.4f})"
                 )
-            if conservation_result and 0 in conservation_result:
-                result = conservation_result[0]  # type: ignore
+            if conservation_result and conservation_result:
+                result = next(iter(conservation_result.values()))
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(
                     f"Conservation Prediction: {result.get('label', 'N/A')} "
                     f"(confidence: {max_score:.4f})"
                 )
-            if chromatin_result and 0 in chromatin_result:
-                result = chromatin_result[0]  # type: ignore
+            if chromatin_result and chromatin_result:
+                result = next(iter(chromatin_result.values()))
                 scores = result.get("scores", {})
                 max_score = max(scores.values()) if scores else 0
                 logger.info(

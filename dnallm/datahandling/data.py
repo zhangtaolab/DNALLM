@@ -8,6 +8,7 @@ techniques, and statistical analysis.
 import os
 import random
 from collections.abc import Callable
+from typing import Any
 import pandas as pd
 import numpy as np
 from datasets import (
@@ -15,8 +16,9 @@ from datasets import (
     DatasetDict,
     load_dataset,
     concatenate_datasets,
-)  # type: ignore
+)
 from transformers import PreTrainedTokenizerBase
+from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
     check_sequence,
@@ -508,6 +510,8 @@ class DNADataset:
                 sequences = [x.upper() for x in sequences]
             if lowercase:
                 sequences = [x.lower() for x in sequences]
+            if self.tokenizer is None:
+                raise ValueError("Tokenizer is not initialized")
             return self.tokenizer(
                 sequences,
                 truncation=True,
@@ -537,7 +541,7 @@ class DNADataset:
 
     def _process_token_classification_batch(
         self, examples: dict, config: dict
-    ) -> dict:
+    ) -> BatchEncoding:
         """Process a batch for token classification."""
         tokenized_examples: dict = {
             "sequence": [],
@@ -560,7 +564,7 @@ class DNADataset:
 
         from transformers.tokenization_utils_base import BatchEncoding
 
-        return BatchEncoding(tokenized_examples)  # type: ignore
+        return BatchEncoding(tokenized_examples)
 
     def _process_single_token_sequence(
         self, example_tokens: list, examples: dict, i: int, config: dict
@@ -1060,7 +1064,9 @@ class DNADataset:
             # Create a new DNADataset object with the sampled data
             return DNADataset(dataset, self.tokenizer, self.max_length)
 
-    def head(self, head: int = 10, show: bool = False) -> dict | None:
+    def head(
+        self, head: int = 10, show: bool = False
+    ) -> dict[Any, Any] | None:
         """Fetch the head n data from the dataset.
 
         Args:
@@ -1074,7 +1080,7 @@ class DNADataset:
         import pprint
 
         def format_convert(data):
-            df = {}
+            df: dict[Any, Any] = {}
             length = len(data["sequence"])
             for i in range(length):
                 df[i] = {}
@@ -1099,7 +1105,7 @@ class DNADataset:
                 pprint.pp(format_convert(data))
                 return None
             else:
-                return data
+                return dict(data)
 
     def show(self, head: int = 10) -> None:
         """Display the dataset.
@@ -1201,17 +1207,17 @@ class DNADataset:
 
         self.data_type = self._determine_data_type(first_label)
 
-    def _extract_labels(self) -> list | None:
+    def _extract_labels(self) -> list[Any] | None:
         """Extract labels from dataset."""
         if isinstance(self.dataset, DatasetDict):
             keys = list(self.dataset.keys())
             if not keys:
                 raise ValueError("DatasetDict is empty.")
             if "labels" in self.dataset[keys[0]].column_names:
-                return self.dataset[keys[0]]["labels"]
+                return list(self.dataset[keys[0]]["labels"])
         else:
             if "labels" in self.dataset.column_names:
-                return self.dataset["labels"]
+                return list(self.dataset["labels"])
         return None
 
     def _is_valid_labels(self, labels: list) -> bool:
@@ -1223,7 +1229,7 @@ class DNADataset:
         except (TypeError, AttributeError):
             return False
 
-    def _get_first_label(self, labels: list) -> any:
+    def _get_first_label(self, labels: list) -> Any:
         """Get the first label from the labels list."""
         if not hasattr(labels, "__getitem__"):
             return None
@@ -1232,7 +1238,7 @@ class DNADataset:
         except IndexError:
             return None
 
-    def _determine_data_type(self, first_label: any) -> str:
+    def _determine_data_type(self, first_label: Any) -> str:
         """Determine data type based on first label."""
         if isinstance(first_label, str):
             return self._determine_string_label_type(first_label)
@@ -1280,6 +1286,7 @@ class DNADataset:
             except Exception:
                 is_dataset = False
 
+            df: pd.DataFrame
             if is_dataset:
                 df = dataset.to_pandas()
             elif isinstance(dataset, pd.DataFrame):
@@ -1361,7 +1368,7 @@ class DNADataset:
         final = self._create_final_chart(df, task_type)
         self._display_or_save_chart(final, save_path)
 
-    def _create_final_chart(self, df: pd.DataFrame, task_type: str) -> any:
+    def _create_final_chart(self, df: pd.DataFrame, task_type: str) -> Any:
         """Create the final chart based on dataset type."""
         import altair as alt
 
@@ -1384,7 +1391,7 @@ class DNADataset:
             ).properties(title="Full dataset")
 
     def _display_or_save_chart(
-        self, final: any, save_path: str | None
+        self, final: Any, save_path: str | None
     ) -> None:
         """Display or save the final chart."""
         if save_path:
@@ -1498,7 +1505,7 @@ class DNADataset:
 
     def _per_split_charts(
         self, df: pd.DataFrame, data_type: str, seq_col: str, label_col: str
-    ) -> any:
+    ) -> Any:
         """Return a combined Altair chart for a single split based on
         data_type."""
         import altair as alt
@@ -1524,7 +1531,7 @@ class DNADataset:
 
     def _create_multi_target_charts(
         self, df: pd.DataFrame, data_type: str, seq_col: str, label_col: str
-    ) -> any:
+    ) -> Any:
         """Create charts for multi-target datasets."""
         import altair as alt
 
@@ -1549,7 +1556,7 @@ class DNADataset:
 
     def _create_multi_classification_chart(
         self, subdf: pd.DataFrame, c: str, seq_col: str
-    ) -> any:
+    ) -> Any:
         """Create chart for multi-classification sublabel."""
         import altair as alt
 
@@ -1593,7 +1600,7 @@ class DNADataset:
 
     def _create_multi_regression_chart(
         self, subdf: pd.DataFrame, c: str, seq_col: str
-    ) -> any:
+    ) -> Any:
         """Create chart for multi-regression subtarget."""
         import altair as alt
 
@@ -1671,16 +1678,18 @@ def load_preset_dataset(
     return _create_dna_dataset(ds, ds_info)
 
 
-def _get_dataset_info(dataset_name: str, preset_datasets: dict) -> dict:
+def _get_dataset_info(
+    dataset_name: str, preset_datasets: dict
+) -> dict[Any, Any]:
     """Get dataset information from preset datasets."""
     if dataset_name not in preset_datasets:
         raise ValueError(
             f"Dataset {dataset_name} not found in preset datasets."
         )
-    return preset_datasets[dataset_name]
+    return dict(preset_datasets[dataset_name])
 
 
-def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> any:
+def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> Any:
     """Load dataset from ModelScope."""
     from modelscope import MsDataset
 
@@ -1691,7 +1700,7 @@ def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> any:
         return MsDataset.load(actual_dataset_name)
 
 
-def _standardize_column_names(ds: any) -> any:
+def _standardize_column_names(ds: Any) -> Any:
     """Standardize column names in the dataset."""
     seq_cols = ["s", "seq", "sequence", "sequences"]
     label_cols = ["l", "label", "labels", "target", "targets"]
@@ -1709,8 +1718,8 @@ def _standardize_column_names(ds: any) -> any:
 
 
 def _standardize_datasetdict_columns(
-    ds: any, seq_cols: list, label_cols: list, seq_col: str, label_col: str
-) -> any:
+    ds: Any, seq_cols: list, label_cols: list, seq_col: str, label_col: str
+) -> Any:
     """Standardize columns for DatasetDict."""
     for dt in ds:
         seq_col, label_col = _find_column_names(ds[dt], seq_cols, label_cols)
@@ -1722,8 +1731,8 @@ def _standardize_datasetdict_columns(
 
 
 def _standardize_single_dataset_columns(
-    ds: any, seq_cols: list, label_cols: list, seq_col: str, label_col: str
-) -> any:
+    ds: Any, seq_cols: list, label_cols: list, seq_col: str, label_col: str
+) -> Any:
     """Standardize columns for single dataset."""
     seq_col, label_col = _find_column_names(ds, seq_cols, label_cols)
     if seq_col != "sequence":
@@ -1734,7 +1743,7 @@ def _standardize_single_dataset_columns(
 
 
 def _find_column_names(
-    dataset: any, seq_cols: list, label_cols: list
+    dataset: Any, seq_cols: list, label_cols: list
 ) -> tuple[str, str]:
     """Find appropriate column names for sequence and labels."""
     seq_col = "sequence"
@@ -1751,7 +1760,7 @@ def _find_column_names(
     return seq_col, label_col
 
 
-def _create_dna_dataset(ds: any, ds_info: dict) -> "DNADataset":
+def _create_dna_dataset(ds: Any, ds_info: dict) -> "DNADataset":
     """Create DNADataset instance with proper configuration."""
     dna_ds = DNADataset(ds, tokenizer=None, max_length=1024)
     dna_ds.sep = str(ds_info.get("separator", ","))

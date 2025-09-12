@@ -74,7 +74,7 @@ def download_model(model_name: str, downloader, max_try: int = 10) -> str:
                 print(e)
                 break
             else:
-                reason = e
+                reason = str(e)
             print(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
             time.sleep(1)
 
@@ -183,14 +183,20 @@ def _get_model_path_and_imports(
         model_path = model_name
 
     elif source_lower == "huggingface":
-        from huggingface_hub import snapshot_download
+        from huggingface_hub import snapshot_download as hf_snapshot_download
 
-        model_path = download_model(model_name, downloader=snapshot_download)
+        model_path = download_model(
+            model_name, downloader=hf_snapshot_download
+        )
 
     elif source_lower == "modelscope":
-        from modelscope.hub.snapshot_download import snapshot_download
+        from modelscope.hub.snapshot_download import (
+            snapshot_download as ms_snapshot_download,
+        )
 
-        model_path = download_model(model_name, downloader=snapshot_download)
+        model_path = download_model(
+            model_name, downloader=ms_snapshot_download
+        )
 
         # Import ModelScope modules
         try:
@@ -484,13 +490,13 @@ def load_preset_model(
         preset_models = [
             preset
             for model in MODEL_INFO
-            for preset in model.get("preset", [])
+            for preset in MODEL_INFO[model].get("preset", [])
         ]
     except (KeyError, TypeError):
         preset_models = []
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info["model_name"]["default"]
+        model_name = model_info["default"]
     elif model_name in preset_models:
         pass
     else:
