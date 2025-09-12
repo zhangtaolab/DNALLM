@@ -1028,7 +1028,7 @@ def plot_muts(
         Altair chart object showing the combined mutation effects visualization
     """
     # Extract basic data
-    sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)
+    _sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)
 
     # Build visualization datasets
     dheat, dline, dbar = _build_mutation_datasets(

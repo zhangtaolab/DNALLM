@@ -392,7 +392,7 @@ def load_model_and_tokenizer(
     _setup_huggingface_mirror(use_mirror)
 
     # Get model path and import required modules
-    model_path, modules = _get_model_path_and_imports(model_name, source)
+    _model_path, modules = _get_model_path_and_imports(model_name, source)
 
     # Extract task configuration
     task_type = task_config.task_type
