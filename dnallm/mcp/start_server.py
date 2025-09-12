@@ -22,7 +22,12 @@ def setup_logging(log_level: str = "INFO"):
     logger.add(
         sys.stderr,
         level=log_level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:"
+            "<cyan>{line}</cyan> - <level>{message}</level>"
+        ),
     )
 
     # Add file handler
@@ -32,7 +37,10 @@ def setup_logging(log_level: str = "INFO"):
     logger.add(
         log_dir / "mcp_server.log",
         level=log_level,
-        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+        format=(
+            "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
+            "{name}:{function}:{line} - {message}"
+        ),
         rotation="10 MB",
         retention="7 days",
     )
@@ -88,7 +96,8 @@ def main():
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
         logger.info(
-            "Please create a configuration file or specify the correct path with --config"
+            "Please create a configuration file or specify the correct "
+            "path with --config"
         )
         sys.exit(1)
 
@@ -107,7 +116,8 @@ def main():
 
         # Start server (this is blocking and runs outside asyncio)
         logger.info(
-            f"Starting server on {args.host}:{args.port} with {args.transport} transport"
+            f"Starting server on {args.host}:{args.port} with "
+            f"{args.transport} transport"
         )
         server.start_server(
             host=args.host, port=args.port, transport=args.transport

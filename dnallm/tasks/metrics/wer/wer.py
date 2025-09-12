@@ -83,12 +83,10 @@ class WER(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             codebase_urls=["https://github.com/jitsi/jiwer/"],
             reference_urls=[
                 "https://en.wikipedia.org/wiki/Word_error_rate",

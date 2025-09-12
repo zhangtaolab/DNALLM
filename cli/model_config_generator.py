@@ -19,7 +19,8 @@ from typing import Any, ClassVar
 
 
 class ConfigGenerator:
-    """Interactive configuration generator for DNALLM with model template support
+    """Interactive configuration generator for DNALLM with model template
+    support
 
     For detailed TrainingArguments documentation, please refer to:
     https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
@@ -91,7 +92,8 @@ class ConfigGenerator:
                 # Extract available models and templates
                 self._extract_model_templates()
                 click.echo(
-                    f"✅ Loaded {len(self.available_models)} model templates from {yaml_path}"
+                    f"✅ Loaded {len(self.available_models)} "
+                    f"model templates from {yaml_path}"
                 )
             else:
                 click.echo(f"⚠️  Model info file not found at {yaml_path}")
@@ -182,64 +184,102 @@ class ConfigGenerator:
     def _select_model_from_templates(
         self, config_type: str | None = None
     ) -> dict[str, Any] | None:
-        """Let user select a model from available templates based on configuration type"""
+        """Let user select a model from"
+        "available templates based on configuration type"""
         if not self.available_models:
             return None
 
         # Filter models based on configuration type
+        models_to_show = self._filter_models_by_config_type(config_type)
+        if models_to_show is None:
+            return None
+
+        # Display models and get user choice
+        self._display_model_overview(models_to_show)
+
+        while True:
+            choice = click.prompt("Enter your choice (1-4)", type=int)
+
+            result = self._handle_model_choice(choice, models_to_show)
+            if result == "continue":
+                continue  # Try again
+            elif isinstance(result, str):
+                # This should not happen based on our logic, but handle it for
+                # safety
+                continue
+            else:
+                # result is either dict[str, Any] or None (custom model path)
+                return result
+
+    def _filter_models_by_config_type(
+        self, config_type: str | None
+    ) -> list[str] | None:
+        """Filter available models based on configuration type"""
         if config_type == "finetune":
-            # For fine-tuning, show pretrained models (base models for fine-tuning)
-            filtered_models = []
-            for model_name in self.available_models:
-                model_info = self.model_templates.get(model_name, {})
-                if model_info.get("type") == "pretrained":
-                    filtered_models.append(model_name)
-
-            if not filtered_models:
-                click.echo("❌ No pretrained models found for fine-tuning")
-                return None
-
-            models_to_show = filtered_models
-            click.echo(
-                "   Showing pretrained models only (base models for fine-tuning)"
-            )
-
+            return self._filter_pretrained_models()
         elif config_type == "inference":
-            # For inference, show finetuned models (ready for prediction)
-            filtered_models = []
-            for model_name in self.available_models:
-                model_info = self.model_templates.get(model_name, {})
-                if model_info.get("type") == "finetuned":
-                    filtered_models.append(model_name)
-
-            if not filtered_models:
-                click.echo("❌ No finetuned models found for inference")
-                return None
-
-            models_to_show = filtered_models
-            click.echo(
-                "   Showing finetuned models only (ready for prediction)"
-            )
-
+            return self._filter_finetuned_models()
         elif config_type == "benchmark":
-            # For benchmark, show all model types
-            models_to_show = self.available_models
             click.echo(
                 "   Showing all model types (suitable for benchmarking)"
             )
-
+            return self.available_models
         else:
-            # Default: show all models
-            models_to_show = self.available_models
             click.echo("   Showing all available models")
+            return self.available_models
 
+    def _filter_pretrained_models(self) -> list[str] | None:
+        """Filter and return pretrained models for fine-tuning"""
+        filtered_models = [
+            model_name
+            for model_name in self.available_models
+            if self.model_templates.get(model_name, {}).get("type")
+            == "pretrained"
+        ]
+
+        if not filtered_models:
+            click.echo("❌ No pretrained models found for fine-tuning")
+            return None
+
+        click.echo(
+            "   Showing pretrained models only (base models for fine-tuning)"
+        )
+        return filtered_models
+
+    def _filter_finetuned_models(self) -> list[str] | None:
+        """Filter and return finetuned models for inference"""
+        filtered_models = [
+            model_name
+            for model_name in self.available_models
+            if self.model_templates.get(model_name, {}).get("type")
+            == "finetuned"
+        ]
+
+        if not filtered_models:
+            click.echo("❌ No finetuned models found for inference")
+            return None
+
+        click.echo("   Showing finetuned models only (ready for prediction)")
+        return filtered_models
+
+    def _display_model_overview(self, models_to_show: list[str]) -> None:
+        """Display model overview and options"""
         click.echo(
             f"\n🔍 Available model templates ({len(models_to_show)} models):"
         )
 
-        # Show first 10 models with option to search
+        # Show first 10 models
         click.echo("\n📋 First 10 models (zhangtaolab models prioritized):")
-        for i, model_name in enumerate(models_to_show[:10], 1):
+        self._display_model_list(models_to_show[:10])
+
+        if len(models_to_show) > 10:
+            click.echo(f"  ... and {len(models_to_show) - 10} more")
+
+        self._display_choice_options()
+
+    def _display_model_list(self, models: list[str]) -> None:
+        """Display a list of models with their information"""
+        for i, model_name in enumerate(models, 1):
             model_info = self.model_templates.get(model_name, {})
             task_type = model_info.get("task", {}).get("task_type", "unknown")
             model_path = model_info.get("path", "N/A")
@@ -248,108 +288,108 @@ class ConfigGenerator:
             click.echo(f"     Task: {task_type}")
             click.echo()
 
-        if len(models_to_show) > 10:
-            click.echo(f"  ... and {len(models_to_show) - 10} more")
-
+    def _display_choice_options(self) -> None:
+        """Display available choice options"""
         click.echo("\nOptions:")
         click.echo("1. Select from list above (1-10)")
         click.echo("2. Search models")
         click.echo("3. Enter custom model path")
         click.echo("4. Show all models")
 
-        while True:
-            choice = click.prompt("Enter your choice (1-4)", type=int)
+    def _handle_model_choice(
+        self, choice: int, models_to_show: list[str]
+    ) -> dict[str, Any] | str | None:
+        """Handle user's model selection choice
 
-            if choice == 1:
-                # Select from first 10
-                if len(models_to_show) < 10:
-                    max_choice = len(models_to_show)
-                else:
-                    max_choice = 10
+        Returns:
+            dict: Selected model template
+            None: Custom model path selected
+            str: 'continue' to indicate invalid choice and retry
+        """
+        if choice == 1:
+            return self._handle_list_selection(models_to_show)
+        elif choice == 2:
+            return self._handle_search_selection()
+        elif choice == 3:
+            return None  # Custom model path
+        elif choice == 4:
+            return self._handle_show_all_selection(models_to_show)
+        else:
+            click.echo("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+            return "continue"  # Special value to continue loop
 
-                model_choice = click.prompt(
-                    f"Enter model number (1-{max_choice})", type=int
-                )
-                if 1 <= model_choice <= max_choice:
-                    selected_model = models_to_show[model_choice - 1]
-                    return self.model_templates.get(selected_model, {})
-                else:
-                    click.echo("❌ Invalid choice. Please try again.")
+    def _handle_list_selection(
+        self, models_to_show: list[str]
+    ) -> dict[str, Any] | str:
+        """Handle selection from the displayed list"""
+        max_choice = min(10, len(models_to_show))
+        model_choice = click.prompt(
+            f"Enter model number (1-{max_choice})", type=int
+        )
 
-            elif choice == 2:
-                # Search models
-                search_query = click.prompt("Enter search term")
-                search_results = self._search_models(search_query)
+        if 1 <= model_choice <= max_choice:
+            selected_model = models_to_show[model_choice - 1]
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
+        else:
+            click.echo("❌ Invalid choice. Please try again.")
+            return "continue"
 
-                if not search_results:
-                    click.echo("❌ No models found matching your search")
-                    continue
+    def _handle_search_selection(self) -> dict[str, Any] | str:
+        """Handle model search and selection"""
+        search_query = click.prompt("Enter search term")
+        search_results = self._search_models(search_query)
 
-                click.echo(
-                    f"\n🔍 Search results ({len(search_results)} models):"
-                )
-                for i, model_name in enumerate(search_results, 1):
-                    model_info = self.model_templates.get(model_name, {})
-                    task_type = model_info.get("task", {}).get(
-                        "task_type", "unknown"
-                    )
-                    model_path = model_info.get("path", "N/A")
-                    click.echo(f"  {i}. {model_name}")
-                    click.echo(f"     Path: {model_path}")
-                    click.echo(f"     Task: {task_type}")
-                    click.echo()
+        if not search_results:
+            click.echo("❌ No models found matching your search")
+            return "continue"
 
-                if len(search_results) == 1:
-                    selected_model = search_results[0]
-                    click.echo(f"✅ Auto-selected: {selected_model}")
-                    return self.model_templates.get(selected_model, {})
-                else:
-                    model_choice = click.prompt(
-                        f"Enter model number (1-{len(search_results)})",
-                        type=int,
-                    )
-                    if 1 <= model_choice <= len(search_results):
-                        selected_model = search_results[model_choice - 1]
-                        return self.model_templates.get(selected_model, {})
-                    else:
-                        click.echo("❌ Invalid choice. Please try again.")
+        click.echo(f"\n🔍 Search results ({len(search_results)} models):")
+        self._display_model_list(search_results)
 
-            elif choice == 3:
-                # Custom model path
-                return None
+        if len(search_results) == 1:
+            selected_model = search_results[0]
+            click.echo(f"✅ Auto-selected: {selected_model}")
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
 
-            elif choice == 4:
-                # Show all models
-                click.echo(
-                    f"\n📋 All {len(models_to_show)} models (zhangtaolab models prioritized):"
-                )
-                for i, model_name in enumerate(models_to_show, 1):
-                    model_info = self.model_templates.get(model_name, {})
-                    task_type = model_info.get("task", {}).get(
-                        "task_type", "unknown"
-                    )
-                    model_path = model_info.get("path", "N/A")
-                    click.echo(f"  {i}. {model_name}")
-                    click.echo(f"     Path: {model_path}")
-                    click.echo(f"     Task: {task_type}")
-                    click.echo()
+        model_choice = click.prompt(
+            f"Enter model number (1-{len(search_results)})", type=int
+        )
+        if 1 <= model_choice <= len(search_results):
+            selected_model = search_results[model_choice - 1]
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
+        else:
+            click.echo("❌ Invalid choice. Please try again.")
+            return "continue"
 
-                model_choice = click.prompt(
-                    f"Enter model number (1-{len(models_to_show)})", type=int
-                )
-                if 1 <= model_choice <= len(models_to_show):
-                    selected_model = models_to_show[model_choice - 1]
-                    return self.model_templates.get(selected_model, {})
-                else:
-                    click.echo("❌ Invalid choice. Please try again.")
+    def _handle_show_all_selection(
+        self, models_to_show: list[str]
+    ) -> dict[str, Any] | str:
+        """Handle showing all models and selection"""
+        click.echo(
+            f"\n📋 All {len(models_to_show)}"
+            "models (zhangtaolab models prioritized):"
+        )
+        self._display_model_list(models_to_show)
 
-            else:
-                click.echo("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+        model_choice = click.prompt(
+            f"Enter model number (1-{len(models_to_show)})", type=int
+        )
+        if 1 <= model_choice <= len(models_to_show):
+            selected_model = models_to_show[model_choice - 1]
+            result = self.model_templates.get(selected_model, {})
+            return result if isinstance(result, dict) else {}
+        else:
+            click.echo("❌ Invalid choice. Please try again.")
+            return "continue"
 
     def _auto_fill_from_template(
         self, model_template: dict[str, Any]
     ) -> dict[str, Any]:
-        """Auto-fill configuration from model template with comprehensive defaults"""
+        """Auto-fill configuration from model"
+        "template with comprehensive defaults"""
         auto_config = {}
         task = model_template.get("task", {})
 
@@ -385,7 +425,8 @@ class ConfigGenerator:
         return auto_config
 
     def _get_default_parameters(self) -> dict[str, Any]:
-        """Get comprehensive default parameters for different configuration types"""
+        """Get comprehensive default parameters"
+        "for different configuration types"""
         defaults = {}
 
         # Common task defaults
@@ -397,7 +438,8 @@ class ConfigGenerator:
         }
 
         # Fine-tuning defaults (based on finetune_config.yaml)
-        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        # For detailed arguments, please refer to:
+        # https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         defaults["finetune"] = {
             "output_dir": "./outputs",
             "num_train_epochs": 3,
@@ -421,7 +463,8 @@ class ConfigGenerator:
             "max_grad_norm": 1.0,
             "warmup_ratio": 0.1,
             "lr_scheduler_type": "linear",
-            "lr_scheduler_kwargs": {},  # Always include empty dict for lr_scheduler_kwargs
+            "lr_scheduler_kwargs": {},  # Always include empty dict for
+            # lr_scheduler_kwargs
             "seed": 42,
             "bf16": False,
             "fp16": False,
@@ -495,10 +538,12 @@ class ConfigGenerator:
             click.echo("\n📋 Available default parameters:")
             click.echo("-" * 30)
             click.echo(
-                "🔧 Task defaults: task_type, num_labels, label_names, threshold"
+                "🔧 Task defaults:"
+                "task_type, num_labels, label_names, threshold"
             )
             click.echo(
-                "🎯 Fine-tuning defaults: learning_rate, batch_size, epochs, etc."
+                "🎯 Fine-tuning defaults:"
+                "learning_rate, batch_size, epochs, etc."
             )
             click.echo(
                 "🔮 Inference defaults: batch_size, max_length, device, etc."
@@ -559,7 +604,8 @@ class ConfigGenerator:
 
         auto_config = None
         if model_choice == 1:
-            # Use model template - for finetune, show pretrained models (base for fine-tuning)
+            # Use model template - for finetune, show pretrained models
+            # (base for fine-tuning)
             model_template = self._select_model_from_templates("finetune")
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
@@ -601,7 +647,8 @@ class ConfigGenerator:
 
         auto_config = None
         if model_choice == 1:
-            # Use model template - for inference, show finetuned models (ready for prediction)
+            # Use model template - for inference, show finetuned models
+            # (ready for prediction)
             model_template = self._select_model_from_templates("inference")
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
@@ -703,7 +750,7 @@ class ConfigGenerator:
                 break
             click.echo("❌ Invalid choice. Please try again.")
 
-        task_config = {"task_type": task_alias}
+        task_config: dict[str, Any] = {"task_type": task_alias}
 
         # Number of labels (for classification tasks)
         if "classification" in task_type:
@@ -734,7 +781,8 @@ class ConfigGenerator:
     def _configure_task_with_template(
         self, auto_config: dict[str, Any]
     ) -> dict[str, Any]:
-        """Configure task settings using template information with smart defaults"""
+        """Configure task settings using"
+        "template information with smart defaults"""
         click.echo("\n📝 Task Configuration (from template):")
 
         # Get defaults
@@ -772,19 +820,21 @@ class ConfigGenerator:
         # Show available defaults
         click.echo("\n📋 Smart defaults available:")
         click.echo(
-            f"   • Task: {defaults.get('task_type', 'binary')} with {defaults.get('num_labels', 2)} labels"
+            f"• Task: {defaults.get('task_type', 'binary')}"
+            "with {defaults.get('num_labels', 2)} labels"
         )
         click.echo(f"   • Threshold: {defaults.get('threshold', 0.5)}")
-        click.echo(
-            f"   • Labels: {', '.join(defaults.get('label_names', ['negative', 'positive']))}"
+        label_names_str = ",".join(
+            defaults.get("label_names", ["negative", "positive"])
         )
+        click.echo(f"• Labels: {label_names_str}")
 
         # Ask if user wants to modify any values
         if click.confirm("\n🔧 Modify any of these values?"):
             return self._configure_task()  # Fall back to manual configuration
         else:
             # Create task config from template
-            task_config = {
+            task_config: dict[str, Any] = {
                 "task_type": self.TASK_ALIAS.get(task_type, task_type)
             }
 
@@ -809,7 +859,8 @@ class ConfigGenerator:
     ) -> dict[str, Any]:
         """Configure fine-tuning settings with smart defaults
 
-        For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        For detailed arguments, please refer to:
+        https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         """
         click.echo("\n🎯 Fine-tuning Configuration:")
 
@@ -887,7 +938,8 @@ class ConfigGenerator:
         )
 
         # Learning rate scheduler configuration (always included)
-        # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+        # For detailed arguments, please refer to:
+        # https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
         click.echo("\n📚 Learning Rate Scheduler Configuration:")
         click.echo("Available scheduler types:")
         scheduler_types = [
@@ -1079,7 +1131,7 @@ class ConfigGenerator:
         while True:
             choice = click.prompt("Choose device", type=int)
             if 1 <= choice <= len(devices):
-                return devices[choice - 1]
+                return devices[choice - 1]  # type: ignore
             click.echo("❌ Invalid choice. Please try again.")
 
     def _configure_inference(
@@ -1155,7 +1207,7 @@ class ConfigGenerator:
         """Configure models for benchmarking"""
         click.echo("\n🤖 Model Configuration:")
 
-        models = []
+        models: list[dict[str, Any]] = []
 
         while True:
             click.echo(f"\nConfiguring model {len(models) + 1}:")
@@ -1268,7 +1320,7 @@ class ConfigGenerator:
         """Configure datasets for benchmarking"""
         click.echo("\n📁 Dataset Configuration:")
 
-        datasets = []
+        datasets: list[dict[str, Any]] = []
 
         while True:
             click.echo(f"\nConfiguring dataset {len(datasets) + 1}:")
@@ -1342,8 +1394,20 @@ class ConfigGenerator:
         """Configure evaluation metrics"""
         click.echo("\n📏 Metrics Configuration:")
 
-        # Available metrics by category
-        metric_categories = {
+        metric_categories = self._get_metric_categories()
+        self._display_metric_categories(metric_categories)
+
+        selected_metrics: list[str] = []
+
+        while True:
+            if self._should_finish_metric_selection(selected_metrics):
+                break
+
+        return selected_metrics
+
+    def _get_metric_categories(self) -> dict[str, list[str]]:
+        """Get available metrics organized by category"""
+        return {
             "Classification": [
                 "accuracy",
                 "f1_score",
@@ -1364,65 +1428,91 @@ class ConfigGenerator:
             "General": ["perplexity"],
         }
 
+    def _display_metric_categories(
+        self, metric_categories: dict[str, list[str]]
+    ) -> None:
+        """Display available metrics organized by category"""
         click.echo("Available metrics by category:")
         for category, metrics in metric_categories.items():
             click.echo(f"\n{category}:")
             for i, metric in enumerate(metrics, 1):
                 click.echo(f"  {i}. {metric}")
 
-        selected_metrics = []
+    def _should_finish_metric_selection(
+        self, selected_metrics: list[str]
+    ) -> bool:
+        """Handle metric selection menu and return True if finished"""
+        click.echo(f"\nSelected metrics: {selected_metrics}")
+        click.echo("Options:")
+        click.echo("1. Add metric from list")
+        click.echo("2. Add custom metric")
+        click.echo("3. Finish selection")
 
+        choice = click.prompt("Choose option", type=int)
+
+        if choice == 1:
+            self._add_metric_from_list(selected_metrics)
+            return False
+        elif choice == 2:
+            self._add_custom_metric(selected_metrics)
+            return False
+        elif choice == 3:
+            return True
+        else:
+            click.echo("❌ Invalid choice. Please try again.")
+            return False
+
+    def _add_metric_from_list(self, selected_metrics: list[str]) -> None:
+        """Add a metric from the predefined list"""
+        metric_categories = self._get_metric_categories()
+        all_metrics = self._get_all_metrics(metric_categories)
+
+        self._display_all_metrics(all_metrics)
+        selected_metric = self._get_metric_choice(all_metrics)
+
+        if selected_metric:
+            self._add_metric_if_not_exists(selected_metrics, selected_metric)
+
+    def _get_all_metrics(
+        self, metric_categories: dict[str, list[str]]
+    ) -> list[str]:
+        """Get flattened list of all available metrics"""
+        all_metrics = []
+        for metrics in metric_categories.values():
+            all_metrics.extend(metrics)
+        return all_metrics
+
+    def _display_all_metrics(self, all_metrics: list[str]) -> None:
+        """Display all available metrics with numbers"""
+        click.echo("Available metrics:")
+        for i, metric in enumerate(all_metrics, 1):
+            click.echo(f"  {i}. {metric}")
+
+    def _get_metric_choice(self, all_metrics: list[str]) -> str | None:
+        """Get user's metric choice and validate it"""
         while True:
-            click.echo(f"\nSelected metrics: {selected_metrics}")
-            click.echo("Options:")
-            click.echo("1. Add metric from list")
-            click.echo("2. Add custom metric")
-            click.echo("3. Finish selection")
+            metric_choice = click.prompt("Choose metric number", type=int)
+            if 1 <= metric_choice <= len(all_metrics):
+                return all_metrics[metric_choice - 1]  # type: ignore
+            click.echo("❌ Invalid choice. Please try again.")
 
-            choice = click.prompt("Choose option", type=int)
+    def _add_custom_metric(self, selected_metrics: list[str]) -> None:
+        """Add a custom metric name"""
+        custom_metric = click.prompt("Enter custom metric name", type=str)
+        self._add_metric_if_not_exists(
+            selected_metrics, custom_metric, is_custom=True
+        )
 
-            if choice == 1:
-                # Add from predefined list
-                all_metrics = []
-                for metrics in metric_categories.values():
-                    all_metrics.extend(metrics)
-
-                click.echo("Available metrics:")
-                for i, metric in enumerate(all_metrics, 1):
-                    click.echo(f"  {i}. {metric}")
-
-                while True:
-                    metric_choice = click.prompt(
-                        "Choose metric number", type=int
-                    )
-                    if 1 <= metric_choice <= len(all_metrics):
-                        metric = all_metrics[metric_choice - 1]
-                        if metric not in selected_metrics:
-                            selected_metrics.append(metric)
-                            click.echo(f"✅ Added {metric}")
-                        else:
-                            click.echo("⚠️  Metric already selected")
-                        break
-                    click.echo("❌ Invalid choice. Please try again.")
-
-            elif choice == 2:
-                # Add custom metric
-                custom_metric = click.prompt(
-                    "Enter custom metric name", type=str
-                )
-                if custom_metric not in selected_metrics:
-                    selected_metrics.append(custom_metric)
-                    click.echo(f"✅ Added custom metric: {custom_metric}")
-                else:
-                    click.echo("⚠️  Metric already selected")
-
-            elif choice == 3:
-                break
-
-            else:
-                click.echo("❌ Invalid choice. Please try again.")
-
-        return selected_metrics
+    def _add_metric_if_not_exists(
+        self, selected_metrics: list[str], metric: str, is_custom: bool = False
+    ) -> None:
+        """Add metric to list if it doesn't already exist"""
+        if metric not in selected_metrics:
+            selected_metrics.append(metric)
+            prefix = "custom metric: " if is_custom else ""
+            click.echo(f"✅ Added {prefix}{metric}")
+        else:
+            click.echo("⚠️  Metric already selected")
 
     def _configure_evaluation(self) -> dict[str, Any]:
         """Configure evaluation settings"""
@@ -1539,16 +1629,23 @@ class ConfigGenerator:
                 filepath = "inference_model_config.yaml"
             elif self.config_type == "benchmark":
                 filepath = "benchmark_model_config.yaml"
+            else:
+                filepath = "model_config.yaml"
+
+        # Ensure filepath is not None at this point
+        if filepath is None:
+            raise ValueError(
+                "filepath should not be None after initialization"
+            )
 
         # Ensure .yaml extension
         if not filepath.endswith((".yaml", ".yml")):
             filepath += ".yaml"
 
         # Create directory if it doesn't exist
-        os.makedirs(
-            os.path.dirname(filepath) if os.path.dirname(filepath) else ".",
-            exist_ok=True,
-        )
+        dir_path = os.path.dirname(filepath)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
 
         # Save configuration
         with open(filepath, "w", encoding="utf-8") as f:
@@ -1632,7 +1729,7 @@ def main(output, preview, non_interactive):
             click.echo("1. Review the generated configuration file")
             click.echo("2. Adjust parameters if needed")
             click.echo(
-                "3. Run inference with: dnallm-predict --config " + filepath
+                "3. Run inference with: dnallm-inference --config " + filepath
             )
         elif generator.config_type == "benchmark":
             click.echo("1. Review the generated configuration file")

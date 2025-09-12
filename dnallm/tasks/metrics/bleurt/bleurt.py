@@ -88,12 +88,10 @@ class BLEURT(evaluate.Metric):
             citation=_CITATION,
             homepage="https://github.com/google-research/bleurt",
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             codebase_urls=["https://github.com/google-research/bleurt"],
             reference_urls=[
                 "https://github.com/google-research/bleurt",

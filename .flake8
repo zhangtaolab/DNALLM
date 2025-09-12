@@ -1,72 +1,21 @@
 [flake8]
-# Exclude directories and files
+max-line-length = 79
+extend-ignore = E203
+; extend-ignore = E203,W503,C901,E402
 exclude = 
-    .venv,
-    __pycache__,
-    *.egg-info,
-    htmlcov,
-    htmlcov/*,
-    site,
-    example,
     .git,
-    .tox,
-    .pytest_cache,
-    .mypy_cache,
-    .coverage,
-    .coverage.*,
-    coverage.xml,
-    *.pyc,
-    *.pyo,
-    *.pyd,
-    .Python,
+    __pycache__,
+    .venv,
+    venv,
+    .eggs,
+    *.egg,
     build,
     dist,
-    docs/_build,
-    .eggs,
-    .DS_Store
-
-# Maximum line length
-max-line-length = 79
-
-# Maximum complexity
-max-complexity = 10
-
-# Ignore specific error codes
-ignore = 
-    # E501: line too long (handled by black)
-    E501,
-    # W503: line break before binary operator (conflicts with black)
-    W503,
-    # E203: whitespace before ':' (conflicts with black)
-    E203
-
-# Per-file ignores
+    .tox,
+    dnallm/tasks/metrics/,
+    example/
+    site/
 per-file-ignores =
-    # Ignore import errors in __init__.py files
-    __init__.py:F401,F403
-    # Ignore long lines in test files
-    tests/*:E501
-    # Ignore unused imports in test files
-    tests/*:F401
-    # Ignore star imports in test files
-    tests/*:F403
-    # Ignore unused variables in test files
-    tests/*:F841
-
-# Select specific checks
-select = 
-    C,  # complexity
-    E,  # pycodestyle errors
-    W,  # pycodestyle warnings
-    F,  # pyflakes
-    B,  # flake8-bugbear
-    N,  # pep8-naming
-
-# Show source
-show-source = True
-
-# Show statistics
-statistics = True
-
-# Count errors
-count = True
+    # Tests can use magic values, assertions, and relative imports
+    tests/**/*.py: S101,S106,S108,PLR2004,TID252,F401,F403,F841,E402
+    dnallm/models/modeling_auto.py: E501

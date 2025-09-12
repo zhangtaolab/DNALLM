@@ -31,12 +31,25 @@ def __(mo):
                                placeholder="zhangtaolab/plant-multi-species-core-promoters",
                                label="Datasets name or path", full_width=True)
     source2_text = mo.ui.dropdown(['local', 'huggingface', 'modelscope'], value="modelscope", label="Dataset source", full_width=True)
-    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence", label="Sequence column name", full_width=True)
-    label_col_text = mo.ui.text(value="labels", placeholder="labels", label="Label column name", full_width=True)
-    maxlen_text = mo.ui.text(value="512", placeholder="512", label="Max token length", full_width=True)
+    seq_col_text = mo.ui.text(value="sequence", placeholder="sequence",
+        label="Sequence column name", full_width=True)
+    label_col_text = mo.ui.text(value="label", placeholder="label",
+        label="Label column name", full_width=True)
+    maxlen_text = mo.ui.text(value="512", placeholder="512",
+        label="Max token length", full_width=True)
     mo.vstack([title, config_title, config_text.style(width="30ch")],
               align='center', justify='center')
-    return (config_text, model_text, source1_text, datasets_text, source2_text, seq_col_text, label_col_text, maxlen_text, )
+    return (
+        config_text,
+        model_text,
+        source1_text,
+        datasets_text,
+        source2_text,
+        seq_col_text,
+        label_col_text,
+        maxlen_text,
+        
+    )
 
 
 @app.cell
@@ -188,7 +201,13 @@ def __(mo, model_text, source1_text, datasets_text, source2_text, seq_col_text, 
     model_title = mo.md("<h3>Model and dataset</h3>")
     model_stack = mo.hstack([model_text.style(width="75ch"), source1_text], align='center', justify='center')
     datasets_stack = mo.hstack([datasets_text.style(width="75ch"), source2_text], align='center', justify='center')
-    options_stack = mo.hstack([seq_col_text, label_col_text, maxlen_text], align='center', justify='center')
+    options_stack = mo.hstack(
+        [seq_col_text,
+        label_col_text,
+        maxlen_text],
+        align='center',
+        justify='center'
+    )
     mo.vstack([config_stack, model_title, model_stack, datasets_stack, options_stack],
               align='center', justify='center')
     return (config_dict, )
@@ -202,7 +221,11 @@ def __(configs, config_dict):
                 setattr(configs['task'], arg, config_dict[arg].value)
             if arg == "label_names":
                 sep = config_dict['label_separator'].value
-                setattr(configs['task'], arg, config_dict[arg].value.split(sep))
+                setattr(
+                    configs['task'],
+                    arg,
+                    config_dict[arg].value.split(sep)
+                )
             if arg in dir(configs['finetune']):
                 setattr(configs['finetune'], arg, config_dict[arg].value)
             if arg == "precision":
@@ -225,7 +248,11 @@ def __(mo, configs, model_text, source1_text, load_model_and_tokenizer,
         model_name = model_text.value
         source1 = source1_text.value
         if model_name:
-            model, tokenizer = load_model_and_tokenizer(model_name, task_config=configs['task'], source=source1)
+            model, tokenizer = load_model_and_tokenizer(
+                model_name,
+                task_config=configs['task'],
+                source=source1
+            )
         else:
             model = None
             tokenizer = None

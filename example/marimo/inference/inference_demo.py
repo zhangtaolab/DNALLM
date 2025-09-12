@@ -8,11 +8,12 @@ app = marimo.App(width="medium")
 def __(__file__):
     import sys
     # from os import path
-    # sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
+    # sys.path.append(path.abspath(path.join(path.dirname(__file__),
+    # '../../..')))
     import marimo as mo
     import pandas as pd
-    from dnallm import load_config, load_model_and_tokenizer, DNAPredictor
-    return sys, pd, mo, load_config, load_model_and_tokenizer, DNAPredictor
+    from dnallm import load_config, load_model_and_tokenizer, DNAInference
+    return sys, pd, mo, load_config, load_model_and_tokenizer, DNAInference
 
 
 @app.cell
@@ -30,7 +31,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, tasks):
-    task_dropdown = mo.ui.dropdown(tasks, value='open chromatin', label='Predict Task')
+    task_dropdown = mo.ui.dropdown(
+        tasks,
+        value='open chromatin',
+        label='Predict Task'
+    )
     return (task_dropdown,)
 
 
@@ -43,7 +48,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, models):
-    model_dropdown = mo.ui.dropdown(models, value='Plant DNABERT', label='Model')
+    model_dropdown = mo.ui.dropdown(
+        models,
+        value='Plant DNABERT',
+        label='Model'
+    )
     return (model_dropdown,)
 
 
@@ -56,7 +65,11 @@ def __(model_df):
 
 @app.cell
 def __(mo, tokenizers):
-    tokenizer_dropdown = mo.ui.dropdown(tokenizers, value='BPE', label='Tokenizer')
+    tokenizer_dropdown = mo.ui.dropdown(
+        tokenizers,
+        value='BPE',
+        label='Tokenizer'
+    )
     return (tokenizer_dropdown,)
 
 
@@ -80,7 +93,12 @@ def __(mo):
     GACCACGACCCCAGGTCAGTCGGGACTACCCGCTGAGTTTAAGCATATAAATAAGCGGAGGAG\
     AAGAAACTTACGAGGATTCCCCTAGTAACGGCGAGCGAACCGGGAGCAGCCCAGCTTGA\
     GAATCGGGCGGCCTCGCCGCCCGAATTGTAGTCTGGAGAGGCGT'
-    dnaseq_entry_box = mo.ui.text_area(placeholder=placeholder, full_width=True, label='DNA Sequence:', rows=5)
+    dnaseq_entry_box = mo.ui.text_area(
+        placeholder=placeholder,
+        full_width=True,
+        label='DNA Sequence:',
+        rows=5
+    )
     return (dnaseq_entry_box, placeholder, )
 
 
@@ -96,7 +114,14 @@ def __(
     title = mo.md(
         "<center><h2>Model inference</h2></center>"
     )
-    hstack=mo.hstack([task_dropdown, model_dropdown, tokenizer_dropdown, source_dropdown], align='center', justify='center')
+    hstack=mo.hstack(
+        [task_dropdown,
+        model_dropdown,
+        tokenizer_dropdown,
+        source_dropdown],
+        align='center',
+        justify='center'
+    )
     mo.vstack([title, dnaseq_entry_box, hstack])
     return (hstack,)
 
@@ -106,7 +131,11 @@ def __(
 @app.cell
 def __(mo, model_df, model_dropdown, task_dropdown, tokenizer_dropdown):
     try:
-        model_name = model_df[ (model_df.Task == task_dropdown.value) & (model_df.Model == model_dropdown.value) & (model_df.Tokenzier==tokenizer_dropdown.value)].Name.tolist()[0]
+        model_name = model_df[
+            (model_df.Task == task_dropdown.value)
+            & (model_df.Model == model_dropdown.value)
+            & (model_df.Tokenzier == tokenizer_dropdown.value)
+        ].Name.tolist()[0]
         print("Current model:", model_name, sep="\n")
         callout = ""
     except:
@@ -157,26 +186,38 @@ def __(task_dropdown, configs):
 
 
 @app.cell
-def __(mo, dnaseq, model_name, source_dropdown, configs, load_model_and_tokenizer, DNAPredictor):
+def __(
+    mo,
+    dnaseq,
+    model_name,
+    source_dropdown,
+    configs,
+    load_model_and_tokenizer,
+    DNAInference
+):
     if model_name:
         # Load the model and tokenizer
-        model, tokenizer = load_model_and_tokenizer(model_name, task_config=configs['task'], source=source_dropdown.value)
-        # Instantiate the predictor
-        predictor = DNAPredictor(
+        model, tokenizer = load_model_and_tokenizer(
+            model_name,
+            task_config=configs['task'],
+            source=source_dropdown.value
+        )
+        # Instantiate the inference engine
+        inference_engine = DNAInference(
             model=model,
             tokenizer=tokenizer,
             config=configs
         )
         # Predict the sequence
         predict_button = mo.ui.button(label="Predict",
-                                      on_click=lambda value: predictor.predict_seqs(
+                                      on_click=lambda value: inference_engine.infer_seqs(
                                         dnaseq, output_attentions=True)
                                      )
     else:
         predict_button = mo.ui.button(label="Predict")
-        predictor = None
+        inference_engine = None
     mo.hstack([predict_button], align='center', justify='center')
-    return (predict_button, predictor,)
+    return (predict_button, inference_engine,)
 
 
 @app.cell
@@ -190,11 +231,11 @@ def __(predict_button):
 
 
 @app.cell
-def __(mo, results, predictor):
+def __(mo, results, inference_engine):
     if results:
-        seqs = len(predictor.sequences)
-        layers = len(predictor.embeddings['attentions'])
-        heads = predictor.embeddings['attentions'][0].shape[1]
+        seqs = len(inference_engine.sequences)
+        layers = len(inference_engine.embeddings['attentions'])
+        heads = inference_engine.embeddings['attentions'][0].shape[1]
     else:
         seqs = 1
         layers = 12
@@ -209,13 +250,27 @@ def __(mo, results, predictor):
     return (seq_number, layer_slider, head_slider, figure_size, )
 
 @app.cell
-def __(mo, seq_number, layer_slider, head_slider, figure_size, predictor):
+def __(
+    mo,
+    seq_number,
+    layer_slider,
+    head_slider,
+    figure_size,
+    inference_engine
+):
     plot_button = mo.ui.button(label="Plot attention map",
-                            on_click=lambda value: predictor.plot_attentions(
+                            on_click=lambda value: inference_engine.plot_attentions(
                                 seq_number.value-1, layer_slider.value-1, head_slider.value-1
                                 )
                             )
-    plot_options = mo.hstack([seq_number, layer_slider, head_slider, figure_size], align='center', justify='center')
+    plot_options = mo.hstack(
+        [seq_number,
+        layer_slider,
+        head_slider,
+        figure_size],
+        align='center',
+        justify='center'
+    )
     mo.vstack([plot_options, plot_button], align='center', justify='center')
     return (plot_button,)
 

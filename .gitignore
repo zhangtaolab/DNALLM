@@ -59,6 +59,7 @@ runs/
 wandb/
 checkpoints/
 logs/
+benchmark_results/
 
 # Data
 *.fasta

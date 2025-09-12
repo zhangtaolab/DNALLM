@@ -2,7 +2,8 @@
 """
 DNALLM Configuration Generator Gradio UI
 
-This Gradio application provides a web-based interface for generating configuration files for:
+This Gradio application provides a web-based interface for generating
+configuration files for:
 - Fine-tuning tasks
 - Inference tasks
 - Benchmarking tasks
@@ -33,7 +34,8 @@ try:
     MODEL_INFO = modeling_auto.MODEL_INFO
     PRETRAIN_MODEL_MAPS = modeling_auto.PRETRAIN_MODEL_MAPS
     print(
-        "✅ Successfully loaded MODEL_INFO and PRETRAIN_MODEL_MAPS from modeling_auto.py"
+        "✅ Successfully loaded MODEL_INFO"
+        "and PRETRAIN_MODEL_MAPS from modeling_auto.py"
     )
 
 except ImportError as e:
@@ -43,7 +45,8 @@ except ImportError as e:
     # Mock data for demonstration
     MODEL_INFO = {
         "Nucleotide Transformer": {
-            "title": "Nucleotide Transformer: building and evaluating robust foundation models for human genomics",
+            "title": "Nucleotide Transformer: building and evaluating"
+            "robust foundation models for human genomics",
             "model_architecture": "EsmForMaskedLM",
             "model_tags": [
                 "500m-human-ref",
@@ -53,12 +56,15 @@ except ImportError as e:
             ],
         },
         "DNABERT": {
-            "title": "DNABERT: pre-trained Bidirectional Encoder Representations from Transformers model for DNA-language in genome",
+            "title": "DNABERT: pre-trained Bidirectional Encoder\
+                      Representations"
+            "from Transformers model for DNA-language in genome",
             "model_architecture": "BertForMaskedLM",
             "model_tags": ["3mer", "4mer", "5mer", "6mer"],
         },
         "HyenaDNA": {
-            "title": "HyenaDNA: Long-Range Genomic Sequence Modeling at Single Nucleotide Resolution",
+            "title": "HyenaDNA: Long-Range Genomic Sequence"
+            "Modeling at Single Nucleotide Resolution",
             "model_architecture": "HyenaDNAForCausalLM",
             "model_tags": [
                 "tiny-1k-seqlen",
@@ -333,7 +339,8 @@ class GradioConfigGenerator:
         ) as interface:
             gr.Markdown("# 🚀 DNALLM Configuration Generator")
             gr.Markdown(
-                "Generate configuration files for fine-tuning, inference, and benchmarking tasks"
+                "Generate configuration files for"
+                "fine-tuning, inference, and benchmarking tasks"
             )
 
             # Output section - define this first so it can be passed to tabs
@@ -1048,24 +1055,20 @@ class GradioConfigGenerator:
 
             # Add logging and saving strategies
             if use_epoch_based:
-                config["finetune"].update(
-                    {
-                        "logging_strategy": "epoch",
-                        "eval_strategy": "epoch",
-                        "save_strategy": "epoch",
-                    }
-                )
+                config["finetune"].update({
+                    "logging_strategy": "epoch",
+                    "eval_strategy": "epoch",
+                    "save_strategy": "epoch",
+                })
             else:
-                config["finetune"].update(
-                    {
-                        "logging_strategy": "steps",
-                        "logging_steps": logging_steps,
-                        "eval_strategy": "steps",
-                        "eval_steps": eval_steps,
-                        "save_strategy": "steps",
-                        "save_steps": save_steps,
-                    }
-                )
+                config["finetune"].update({
+                    "logging_strategy": "steps",
+                    "logging_steps": logging_steps,
+                    "eval_strategy": "steps",
+                    "eval_steps": eval_steps,
+                    "save_strategy": "steps",
+                    "save_steps": save_steps,
+                })
 
             config["finetune"]["save_total_limit"] = save_total_limit
 

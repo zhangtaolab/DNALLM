@@ -1,3 +1,4 @@
+import os
 import yaml
 from pydantic import BaseModel, Field
 
@@ -7,19 +8,66 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern="^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$",
+        pattern="^(embedding|mask|generation|binary|multiclass|"
+        "multilabel|regression|token)$",
     )
-    num_labels: int = 2
-    label_names: list | None = None
-    threshold: float = (
-        0.5  # For binary classification and multi label classification
+    num_labels: int | None = Field(
+        default=2, description="Number of labels (default 2)"
     )
+    label_names: list[str] | None = None
+    threshold: float = Field(
+        default=0.5, description="Threshold for binary/multilabel tasks"
+    )
+    mlm_probability: float | None = Field(
+        default=0.15, description="Masking probability for MLM tasks"
+    )
+
+    def model_post_init(self, __context):
+        if self.task_type == "binary":
+            self.num_labels = self.num_labels or 2
+            self.label_names = self.label_names or ["negative", "positive"]
+
+        elif self.task_type == "multiclass":
+            if not self.num_labels or self.num_labels < 2:
+                raise ValueError(
+                    "num_labels must be at least 2 for multiclass "
+                    "classification"
+                )
+            if (
+                not self.label_names
+                or len(self.label_names) != self.num_labels
+            ):
+                self.label_names = [
+                    f"class_{i}" for i in range(self.num_labels)
+                ]
+
+        elif self.task_type == "multilabel":
+            if not self.num_labels or self.num_labels < 2:
+                raise ValueError(
+                    "num_labels must be at least 2 for multilabel "
+                    "classification"
+                )
+            if (
+                not self.label_names
+                or len(self.label_names) != self.num_labels
+            ):
+                self.label_names = [
+                    f"label_{i}" for i in range(self.num_labels)
+                ]
+
+        elif self.task_type == "regression":
+            self.num_labels = 1
+            self.label_names = ["value"]
+
+        elif self.task_type in {"mask", "generation"}:
+            self.num_labels = None
+            self.label_names = None
 
 
 class TrainingConfig(BaseModel):
     """Configuration for training"""
 
-    output_dir: str = None
+    output_dir: str | None = None
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 8
     per_device_eval_batch_size: int = 16
@@ -41,14 +89,14 @@ class TrainingConfig(BaseModel):
     max_grad_norm: float = 1.0
     warmup_ratio: float = 0.1
     lr_scheduler_type: str = "linear"
-    lr_scheduler_kwargs: dict | None
+    lr_scheduler_kwargs: dict | None = None
     seed: int = 42
     bf16: bool = False
     fp16: bool = False
     load_best_model_at_end: bool = False
     metric_for_best_model: str = "eval_loss"
     report_to: str = "all"
-    resume_from_checkpoint: str | None
+    resume_from_checkpoint: str | None = None
 
 
 class InferenceConfig(BaseModel):
@@ -79,7 +127,8 @@ class ModelConfig(BaseModel):
     )
     path: str = Field(
         ...,
-        description="Path to the model, can be a local path or a Hugging Face model identifier.",
+        description="Path to the model, can be a local path or a Hugging "
+        "Face model identifier.",
     )
     source: str | None = "huggingface"
     task_type: str | None = "classification"
@@ -97,7 +146,8 @@ class DatasetConfig(BaseModel):
     )
     task: str = Field(
         ...,
-        description="The primary task associated with this dataset (e.g., binary_classification).",
+        description="The primary task associated with this dataset "
+        "(e.g., binary_classification).",
     )
     format: str | None = "csv"
     text_column: str = "sequence"
@@ -109,7 +159,8 @@ class DatasetConfig(BaseModel):
     val_size: float | None = 0.1
     random_state: int | None = 42
     threshold: float | None = 0.5
-    label_names: list | None = None
+    num_labels: int | None = 2
+    label_names: list[str] | None = None
 
 
 class EvaluationConfig(BaseModel):
@@ -147,7 +198,8 @@ class BenchmarkConfig(BaseModel):
     """
     Top-level configuration for the DNA Language Model benchmark.
     This class validates and structures the entire YAML configuration file,
-    where each top-level key in the YAML corresponds to an attribute of this class.
+    where each top-level key in the YAML corresponds to an attribute of this
+    class.
     """
 
     benchmark: BenchmarkInfoConfig = Field(
@@ -170,11 +222,21 @@ class BenchmarkConfig(BaseModel):
     output: OutputConfig = Field(
         ..., description="Configuration for benchmark outputs and reports."
     )
+    config_path: str | None = None
 
 
-def load_config(config_path: str):
+def load_config(config_path: str) -> dict[str, BaseModel]:
+    """Load configuration from a YAML file and return a dictionary of
+    configuration objects.
+    Args:
+        config_path (str): Path to the YAML configuration file.
+    """
+
     with open(config_path, encoding="utf-8") as f:
         config_dict = yaml.safe_load(f)
+        config_dict["config_path"] = os.path.abspath(config_path)
+
+    configs: dict[str, BaseModel] = {}
 
     # 根据配置文件内容动态创建配置
     configs = {}

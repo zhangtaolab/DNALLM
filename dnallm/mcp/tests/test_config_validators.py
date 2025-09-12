@@ -11,6 +11,8 @@ from ..config_validators import (
     TaskConfig,
     InferenceConfig,
     InferenceModelConfig,
+    ModelInfoConfig,
+    ModelConfig,
     validate_mcp_server_config,
     validate_inference_model_config,
 )
@@ -39,6 +41,7 @@ class TestTaskConfig:
                 task_type="invalid",
                 num_labels=2,
                 label_names=["A", "B"],
+                threshold=0.5,
                 description="Test",
             )
 
@@ -65,8 +68,11 @@ class TestInferenceConfig:
             device="auto",
             num_workers=4,
             precision="float16",
+            use_fp16=False,
             output_dir=tempfile.mkdtemp(),
             save_predictions=True,
+            save_hidden_states=False,
+            save_attentions=False,
         )
         assert config.batch_size == 16
         assert config.max_length == 512
@@ -79,7 +85,13 @@ class TestInferenceConfig:
                 batch_size=200,  # Too large
                 max_length=512,
                 device="auto",
+                num_workers=4,
+                precision="float16",
+                use_fp16=False,
                 output_dir=tempfile.mkdtemp(),
+                save_predictions=True,
+                save_hidden_states=False,
+                save_attentions=False,
             )
 
     def test_invalid_device(self):
@@ -89,7 +101,13 @@ class TestInferenceConfig:
                 batch_size=16,
                 max_length=512,
                 device="invalid_device",
+                num_workers=4,
+                precision="float16",
+                use_fp16=False,
                 output_dir=tempfile.mkdtemp(),
+                save_predictions=True,
+                save_hidden_states=False,
+                save_attentions=False,
             )
 
 
@@ -98,30 +116,45 @@ class TestInferenceModelConfig:
 
     def test_valid_model_config(self):
         """Test valid model configuration."""
+        task_config = TaskConfig(
+            task_type="binary",
+            num_labels=2,
+            label_names=["A", "B"],
+            threshold=0.5,
+            description="Test task",
+        )
+
+        inference_config = InferenceConfig(
+            batch_size=16,
+            max_length=512,
+            device="auto",
+            num_workers=4,
+            precision="float16",
+            use_fp16=False,
+            output_dir=tempfile.mkdtemp(),
+            save_predictions=True,
+            save_hidden_states=False,
+            save_attentions=False,
+        )
+
+        model_info = ModelInfoConfig(
+            architecture="DNABERT",
+            tokenizer="BPE",
+            species="plant",
+            task_category="test",
+        )
+
+        model_config = ModelConfig(
+            name="test_model",
+            path="test/path",
+            source="huggingface",
+            task_info=model_info,
+        )
+
         config = InferenceModelConfig(
-            task={
-                "task_type": "binary",
-                "num_labels": 2,
-                "label_names": ["A", "B"],
-                "description": "Test task",
-            },
-            inference={
-                "batch_size": 16,
-                "max_length": 512,
-                "device": "auto",
-                "output_dir": tempfile.mkdtemp(),
-            },
-            model={
-                "name": "test_model",
-                "path": "test/path",
-                "source": "huggingface",
-                "task_info": {
-                    "architecture": "DNABERT",
-                    "tokenizer": "BPE",
-                    "species": "plant",
-                    "task_category": "test",
-                },
-            },
+            task=task_config,
+            inference=inference_config,
+            model=model_config,
         )
         assert config.task.task_type == "binary"
         assert config.inference.batch_size == 16
@@ -147,8 +180,11 @@ class TestConfigFileValidation:
                 "device": "auto",
                 "num_workers": 4,
                 "precision": "float16",
+                "use_fp16": False,
                 "output_dir": tempfile.mkdtemp(),
                 "save_predictions": True,
+                "save_hidden_states": False,
+                "save_attentions": False,
             },
             "model": {
                 "name": "test_model",
@@ -223,7 +259,9 @@ class TestConfigFileValidation:
             },
             "logging": {
                 "level": "INFO",
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "format": (
+                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                ),
                 "file": "./logs/test.log",
                 "max_size": "10MB",
                 "backup_count": 5,
@@ -236,11 +274,13 @@ class TestConfigFileValidation:
             yaml.dump(config_data, f)
             config_path = f.name
 
+        # Initialize dummy paths before try block
+        dummy_config_path = Path(config_path).parent / "test_config.yaml"
+        dummy_config2_path = Path(config_path).parent / "test_config2.yaml"
+
         try:
             # Create dummy config files for the models
-            dummy_config_path = Path(config_path).parent / "test_config.yaml"
             dummy_config_path.write_text("dummy: config")
-            dummy_config2_path = Path(config_path).parent / "test_config2.yaml"
             dummy_config2_path.write_text("dummy: config2")
 
             config = validate_mcp_server_config(config_path)

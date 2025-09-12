@@ -1,6 +1,6 @@
-"""Test DNAPredictor class functionality.
+"""Test DNAInference class functionality.
 
-This test file tests the core functionality of the DNAPredictor class,
+This test file tests the core functionality of the DNAInference class,
 including model loading, inference, and result processing.
 """
 
@@ -20,12 +20,12 @@ from datasets import Dataset
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from dnallm.inference.predictor import DNAPredictor
+from dnallm.inference.inference import DNAInference
 from dnallm.datahandling.data import DNADataset
 
 
-class TestDNAPredictor(unittest.TestCase):
-    """Test cases for DNAPredictor class."""
+class TestDNAInference(unittest.TestCase):
+    """Test cases for DNAInference class."""
 
     def setUp(self):
         """Set up test fixtures."""
@@ -43,12 +43,14 @@ class TestDNAPredictor(unittest.TestCase):
         self.mock_model = self.create_mock_model()
         self.mock_tokenizer = self.create_mock_tokenizer()
 
-        # Create predictor instance
-        self.predictor = DNAPredictor(
+        # Create inference engine instance
+        self.inference_engine = DNAInference(
             model=self.mock_model,
             tokenizer=self.mock_tokenizer,
             config=self.load_test_config(),
         )
+        # Keep backward compatibility for tests
+        self.predictor = self.inference_engine
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -78,10 +80,10 @@ task:
         """Create test DNA sequence data."""
         test_data = {
             "sequence": [
-                "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG",
-                "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",
-                "TATATATATATATATATATATATATATATATATATATATATATATATATATATATATATATATA",
-                "CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC",
+                "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATCGATC",
+                "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCT",
+                "TATATATATATATATATATATATATATATATATATATATATATATATATATATATATATA",
+                "CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCG",
             ],
             "label": [0, 1, 0, 1],
         }
@@ -216,7 +218,8 @@ task:
         assert len(labels) == 3
         assert probs.shape == (3, 2)
         # Check that labels are binary (0 or 1)
-        # Note: labels are converted to label names, so check for label names instead
+        # Note: labels are converted to label names, so check for label names
+        # instead
         # The third sequence has logits [2.0, 1.0], so class 0 (index 0) wins
         expected_labels = ["Core promoter", "Core promoter", "Not promoter"]
         assert labels == expected_labels
@@ -239,13 +242,12 @@ task:
         assert "label" in formatted[0]
         assert "scores" in formatted[0]
 
-    def test_batch_predict(self):
-        """Test batch prediction."""
-        # Mock the batch_predict method directly to avoid complex data loading issues
-        with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+    def test_batch_infer(self):
+        """Test batch inference."""
+        # Mock the batch_predict method directly to avoid complex data loading
+        # issues
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -257,7 +259,7 @@ task:
             # Create a mock dataloader
             mock_dataloader = Mock()
 
-            logits, predictions, embeddings = self.predictor.batch_predict(
+            logits, predictions, embeddings = self.predictor.batch_infer(
                 mock_dataloader
             )
 
@@ -265,15 +267,13 @@ task:
             assert isinstance(predictions, dict)
             assert isinstance(embeddings, dict)
 
-    def test_predict_seqs(self):
-        """Test sequence prediction."""
+    def test_infer_seqs(self):
+        """Test sequence inference."""
         sequences = ["ATCG", "GCTA"]
 
         # Mock batch_predict method
-        with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(2, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -287,18 +287,16 @@ task:
                 self.predictor, "generate_dataset"
             ) as mock_generate:
                 mock_generate.return_value = (None, None)
-                result = self.predictor.predict_seqs(sequences)
+                result = self.predictor.infer_seqs(sequences)
 
                 assert isinstance(result, dict)
                 assert len(result) == 2
 
-    def test_predict_file(self):
-        """Test file-based prediction."""
+    def test_infer_file(self):
+        """Test file-based inference."""
         # Mock batch_predict method
-        with patch.object(
-            self.predictor, "batch_predict"
-        ) as mock_batch_predict:
-            mock_batch_predict.return_value = (
+        with patch.object(self.predictor, "batch_infer") as mock_batch_infer:
+            mock_batch_infer.return_value = (
                 torch.randn(4, 2),  # logits
                 {
                     0: {"sequence": "ATCG", "label": 1, "scores": {}},
@@ -314,7 +312,7 @@ task:
                 self.predictor, "generate_dataset"
             ) as mock_generate:
                 mock_generate.return_value = (None, None)
-                result = self.predictor.predict_file(
+                result = self.predictor.infer_file(
                     self.test_csv_path, seq_col="sequence", label_col="label"
                 )
 
@@ -401,12 +399,12 @@ task:
         output_dir = Path(self.test_dir) / "predictions"
 
         # Import and test save function
-        from dnallm.inference.predictor import save_predictions
+        from dnallm.inference.inference import save_predictions
 
         save_predictions(predictions, output_dir)
 
         # Check if file was created
-        assert output_dir / "predictions.json".exists()
+        assert (output_dir / "predictions.json").exists()
 
     def test_save_metrics(self):
         """Test metrics saving."""
@@ -415,16 +413,16 @@ task:
         output_dir = Path(self.test_dir) / "metrics"
 
         # Import and test save function
-        from dnallm.inference.predictor import save_metrics
+        from dnallm.inference.inference import save_metrics
 
         save_metrics(metrics, output_dir)
 
         # Check if file was created
-        assert output_dir / "metrics.json".exists()
+        assert (output_dir / "metrics.json").exists()
 
 
-class TestDNAPredictorIntegration(unittest.TestCase):
-    """Integration tests for DNAPredictor with real model loading."""
+class TestDNAInferenceIntegration(unittest.TestCase):
+    """Integration tests for DNAInference with real model loading."""
 
     @classmethod
     def setUpClass(cls):
@@ -456,23 +454,28 @@ task:
         """Clean up integration test fixtures."""
         shutil.rmtree(cls.test_dir)
 
-    @unittest.skip(
-        "Skip integration test by default - requires model download"
-    )
     def test_real_model_integration(self):
-        """Test with real model loading (skipped by default)."""
+        """Test with real model loading from ModelScope."""
         try:
             from transformers import (
                 AutoModelForSequenceClassification,
                 AutoTokenizer,
             )
 
-            # Load real model and tokenizer
+            # Load real model and tokenizer from ModelScope
             model_name = "zhangtaolab/plant-dnagpt-BPE-promoter"
+            print(f"🔄 Downloading model {model_name} from ModelScope...")
+
+            # Use ModelScope to download model
+            from modelscope import snapshot_download
+
+            model_dir = snapshot_download(model_name)
+
             model = AutoModelForSequenceClassification.from_pretrained(
-                model_name
+                model_dir
             )
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_dir)
+            print("✅ Model and tokenizer loaded successfully")
 
             # Load configuration
             from dnallm.configuration.configs import load_config
@@ -480,11 +483,11 @@ task:
             config = load_config(self.config_path)
 
             # Create predictor
-            predictor = DNAPredictor(model, tokenizer, config)
+            inference_engine = DNAInference(model, tokenizer, config)
 
             # Test with real sequences
             sequences = ["ATCGATCGATCG", "GCTAGCTAGCTA"]
-            result = predictor.predict_seqs(sequences)
+            result = inference_engine.infer_seqs(sequences)
 
             assert isinstance(result, dict)
             assert len(result) == 2

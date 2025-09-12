@@ -16,8 +16,8 @@ dnallm-train --config config.yaml
 dnallm-train --model model_name --data data_path --output output_dir
 
 # Run inference
-dnallm-predict --config config.yaml
-dnallm-predict --model model_name --input input_file
+dnallm-inference --config config.yaml
+dnallm-inference --model model_name --input input_file
 
 # Generate configuration files
 dnallm-model-config-generator --output config.yaml
@@ -41,7 +41,7 @@ python run_cli.py --help
 python run_cli.py train --config config.yaml
 
 # Inference
-python run_cli.py predict --config config.yaml
+python run_cli.py inference --config config.yaml
 
 # Generate configuration
 python run_cli.py model-config-generator --output config.yaml
@@ -57,7 +57,7 @@ python cli/cli.py --help
 python cli/train.py config.yaml model_path data_path
 
 # Inference
-python cli/predict.py config.yaml model_path
+python cli/inference.py config.yaml model_path
 
 # Configuration generator
 python cli/model_config_generator.py --output config.yaml
@@ -73,7 +73,7 @@ python -m dnallm.cli.cli --help
 python -m dnallm.cli.train config.yaml model_path data_path
 
 # Package inference
-python -m dnallm.cli.predict config.yaml model_path
+python -m dnallm.cli.inference config.yaml model_path
 
 # Package configuration generator
 python -m dnallm.cli.model_config_generator --output config.yaml
@@ -100,12 +100,12 @@ dnallm-train --config finetune_config.yaml
 dnallm-train --model zhangtaolab/plant-dnagpt-BPE --data ./data --output ./outputs
 ```
 
-### `dnallm-predict`
+### `dnallm-inference`
 
 Run inference with a trained DNA language model.
 
 **Options:**
-- `--config, -c`: Path to prediction configuration file
+- `--config, -c`: Path to inference configuration file
 - `--model, -m`: Model name or path
 - `--input, -i`: Path to input data file
 - `--output, -o`: Output file path
@@ -113,10 +113,10 @@ Run inference with a trained DNA language model.
 **Examples:**
 ```bash
 # Using configuration file
-dnallm-predict --config inference_config.yaml
+dnallm-inference --config inference_config.yaml
 
 # Using command line arguments
-dnallm-predict --model ./models/trained_model --input ./test_data.csv
+dnallm-inference --model ./models/trained_model --input ./test_data.csv
 ```
 
 ### `dnallm-model-config-generator`
@@ -235,7 +235,7 @@ DNALLM/
 ├── cli/                    # Root directory CLI entry points
 │   ├── cli.py            # Main CLI
 │   ├── train.py          # Training CLI
-│   ├── predict.py        # Inference CLI
+│   ├── inference.py      # Inference CLI
 │   └── model_config_generator.py # Configuration generator
 ├── ui/                    # UI applications
 │   ├── run_config_app.py # Configuration generator launcher
@@ -244,7 +244,7 @@ DNALLM/
 │   ├── cli/             # Package CLI modules
 │   │   ├── cli.py       # Package CLI implementation
 │   │   ├── train.py     # Package training module
-│   │   ├── predict.py   # Package inference module
+│   │   ├── inference.py # Package inference module
 │   │   └── model_config_generator.py # Package config generator
 │   └── ...
 ├── run_cli.py           # Root directory CLI launcher
@@ -293,4 +293,4 @@ dnallm-mcp-server --help
 - [MCP Server](mcp_server.md) - Learn about the Model Context Protocol server
 - [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Learn to train models
 - [Benchmark Tutorials](../tutorials/benchmark/index.md) - Compare model performance
-- [Inference Tutorials](../tutorials/inference/changeme.md) - Run model predictions
+- [Inference Tutorials](../tutorials/inference/changeme.md) - Run model inference

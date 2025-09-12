@@ -349,15 +349,15 @@ $ python scripts/check_code.py --fix
 
 Example:
 ```python
-def predict_sequence(self, sequence: str, model_name: str) -> Dict[str, Any]:
-    """Predict the properties of a DNA sequence.
+def infer_sequence(self, sequence: str, model_name: str) -> Dict[str, Any]:
+    """Infer the properties of a DNA sequence.
     
     Args:
         sequence: DNA sequence string (A, T, G, C)
-        model_name: Name of the model to use for prediction
+        model_name: Name of the model to use for inference
         
     Returns:
-        Dictionary containing prediction results and metadata
+        Dictionary containing inference results and metadata
         
     Raises:
         ValueError: If sequence contains invalid characters
@@ -447,7 +447,7 @@ pytest -m "integration"       # Only integration tests
 pytest --cov=dnallm --cov-report=html
 
 # Run specific test files
-pytest tests/inference/test_predictor.py
+pytest tests/inference/test_inference.py
 ```
 
 ## Documentation

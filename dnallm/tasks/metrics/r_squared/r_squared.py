@@ -72,12 +72,10 @@ class r_squared(evaluate.Metric):  # noqa: N801
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("float", id="sequence"),
-                    "references": datasets.Value("float", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("float", id="sequence"),
+                "references": datasets.Value("float", id="sequence"),
+            }),
             codebase_urls=["https://github.com/scikit-learn/scikit-learn/"],
             reference_urls=[
                 "https://en.wikipedia.org/wiki/Coefficient_of_determination",

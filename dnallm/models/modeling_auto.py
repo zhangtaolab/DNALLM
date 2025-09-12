@@ -1,48 +1,47 @@
 from collections import OrderedDict
 
 
-PRETRAIN_MODEL_MAPS = OrderedDict(
-    [
-        ("Plant DNABERT", ["Zhangtaolab", "Masked Language Model"]),
-        ("Plant DNAGemma", ["Zhangtaolab", "Causal Language Model"]),
-        ("Plant DNAGPT", ["Zhangtaolab", "Masked Language Model"]),
-        ("Plant DNAMamba", ["Zhangtaolab", "Causal Language Model"]),
-        ("Plant NT", ["Zhangtaolab", "Masked Language Model"]),
-        ("Plant DNAModernBert", ["Zhangtaolab", "Masked Language Model"]),
-        ("AgroNT", ["InstaDeepAI", "Masked Language Model"]),
-        ("Nucleotide Transformer", ["InstaDeepAI", "Masked Language Model"]),
-        ("Caduceus-Ph", ["Kuleshov-Group", "Masked Language Model"]),
-        ("Caduceus-PS", ["Kuleshov-Group", "Masked Language Model"]),
-        ("PlantCaduceus", ["Kuleshov-Group", "Masked Language Model"]),
-        ("PlantCAD2", ["Kuleshov-Group", "Masked Language Model"]),
-        ("DNABERT", ["Zhihan1996", "Masked Language Model"]),
-        ("DNABERT-2", ["Zhihan1996", "Masked Language Model"]),
-        ("DNABERT-S", ["Zhihan1996", "Masked Language Model"]),
-        ("EVO-1", ["togethercomputer", "Casual Language Model"]),
-        ("EVO-2", ["arcinstitute", "Casual Language Model"]),
-        ("GENA-LM", ["AIRI-Institute", "Masked Language Model"]),
-        ("GENA-LM-BigBird", ["AIRI-Institute", "Masked Language Model"]),
-        ("GENERator", ["GenerTeam", "Causal Language Model"]),
-        ("GenomeOcean", ["pGenomeOcean", "Causal Language Model"]),
-        ("GPN", ["Songlab", "Masked Language Model"]),
-        ("GROVER", ["PoetschLab", "Masked Language Model"]),
-        ("HyenaDNA", ["LongSafari", "Causal Language Model"]),
-        ("Jamba-DNA", ["RaphaelMourad", "Causal Language Model"]),
-        ("JanusDNA", ["Qihao-Duan", "Causal Language Model"]),
-        ("LucaOne", ["LucaGroup", "Masked Language Model"]),
-        ("Mistral-DNA", ["RaphaelMourad", "Causal Language Model"]),
-        ("ModernBert-DNA", ["RaphaelMourad", "Masked Language Model"]),
-        ("MutBERT", ["JadenLong", "Masked Language Model"]),
-        ("OmniNA", ["XLS", "Causal Language Model"]),
-        ("Omni-DNA", ["Zehui127", "Causal Language Model"]),
-        ("ProkBERT", ["neuralbioinfo", "Masked Language Model"]),
-    ]
-)
+PRETRAIN_MODEL_MAPS = OrderedDict([
+    ("Plant DNABERT", ["Zhangtaolab", "Masked Language Model"]),
+    ("Plant DNAGemma", ["Zhangtaolab", "Causal Language Model"]),
+    ("Plant DNAGPT", ["Zhangtaolab", "Masked Language Model"]),
+    ("Plant DNAMamba", ["Zhangtaolab", "Causal Language Model"]),
+    ("Plant NT", ["Zhangtaolab", "Masked Language Model"]),
+    ("Plant DNAModernBert", ["Zhangtaolab", "Masked Language Model"]),
+    ("AgroNT", ["InstaDeepAI", "Masked Language Model"]),
+    ("Nucleotide Transformer", ["InstaDeepAI", "Masked Language Model"]),
+    ("Caduceus-Ph", ["Kuleshov-Group", "Masked Language Model"]),
+    ("Caduceus-PS", ["Kuleshov-Group", "Masked Language Model"]),
+    ("PlantCaduceus", ["Kuleshov-Group", "Masked Language Model"]),
+    ("PlantCAD2", ["Kuleshov-Group", "Masked Language Model"]),
+    ("DNABERT", ["Zhihan1996", "Masked Language Model"]),
+    ("DNABERT-2", ["Zhihan1996", "Masked Language Model"]),
+    ("DNABERT-S", ["Zhihan1996", "Masked Language Model"]),
+    ("EVO-1", ["togethercomputer", "Casual Language Model"]),
+    ("EVO-2", ["arcinstitute", "Casual Language Model"]),
+    ("GENA-LM", ["AIRI-Institute", "Masked Language Model"]),
+    ("GENA-LM-BigBird", ["AIRI-Institute", "Masked Language Model"]),
+    ("GENERator", ["GenerTeam", "Causal Language Model"]),
+    ("GenomeOcean", ["pGenomeOcean", "Causal Language Model"]),
+    ("GPN", ["Songlab", "Masked Language Model"]),
+    ("GROVER", ["PoetschLab", "Masked Language Model"]),
+    ("HyenaDNA", ["LongSafari", "Causal Language Model"]),
+    ("Jamba-DNA", ["RaphaelMourad", "Causal Language Model"]),
+    ("JanusDNA", ["Qihao-Duan", "Causal Language Model"]),
+    ("LucaOne", ["LucaGroup", "Masked Language Model"]),
+    ("Mistral-DNA", ["RaphaelMourad", "Causal Language Model"]),
+    ("ModernBert-DNA", ["RaphaelMourad", "Masked Language Model"]),
+    ("MutBERT", ["JadenLong", "Masked Language Model"]),
+    ("OmniNA", ["XLS", "Causal Language Model"]),
+    ("Omni-DNA", ["Zehui127", "Causal Language Model"]),
+    ("ProkBERT", ["neuralbioinfo", "Masked Language Model"]),
+])
 
 
 MODEL_INFO = {
     "Plant DNABERT": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["BPE", "6mer", "singlebase"],
@@ -59,7 +58,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-dnabert-BPE",
     },
     "Plant DNAGemma": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "GemmaForCausalLM",
         "model_tags": ["BPE", "6mer", "singlebase"],
@@ -76,7 +76,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-dnagemma-BPE",
     },
     "Plant DNAGPT": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "GPT2LMHeadModel",
         "model_tags": ["BPE", "6mer", "singlebase"],
@@ -93,7 +94,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-dnagpt-BPE",
     },
     "Plant DNAMamba": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "MambaForCausalLM",
         "model_tags": [
@@ -127,7 +129,8 @@ MODEL_INFO = {
         "dependencies": "pip install 'mamba-ssm<2' 'causal-conv1d<=1.3'",
     },
     "Plant NT": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "EsmForMaskedLM",
         "model_tags": ["BPE", "6mer", "singlebase"],
@@ -144,7 +147,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-nucleotide-transformer-BPE",
     },
     "Plant DNAModernBert": {
-        "title": "PDLLMs: A group of tailored DNA large language models for analyzing plant genomes",
+        "title": "PDLLMs: A group of tailored DNA"
+        "large language models for analyzing plant genomes",
         "reference": "https://doi.org/10.1016/j.molp.2024.12.006",
         "model_architecture": "ModernBertForMaskedLM",
         "model_tags": ["BPE", "singlebase"],
@@ -159,7 +163,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-dnamodernbert-BPE",
     },
     "tRNADetector": {
-        "title": "Model for predicting whether a DNA sequence is a tRNA in plants",
+        "title": "Model for predicting whether a"
+        "DNA sequence is a tRNA in plants",
         "reference": None,
         "model_architecture": "MambaForCausalLM",
         "model_tags": ["singlebase"],
@@ -172,7 +177,8 @@ MODEL_INFO = {
         "default": "zhangtaolab/tRNADetector",
     },
     "tRNAPointer": {
-        "title": "Model for predicting whether a DNA sequence is a tRNA in plants",
+        "title": "Model for predicting whether a"
+        "DNA sequence is a tRNA in plants",
         "reference": None,
         "model_architecture": "EsmForMaskedLM",
         "model_tags": ["singlebase"],
@@ -185,7 +191,7 @@ MODEL_INFO = {
         "default": "zhangtaolab/tRNAPointer",
     },
     "AgroNT": {
-        "title": "A foundational large language model for edible plant genomes",
+        "title": "A foundational large languagemodel for edible plant genomes",
         "reference": "https://doi.org/10.1038/s42003-024-06465-2",
         "model_architecture": "EsmForMaskedLM",
         "model_tags": ["1b"],
@@ -196,7 +202,8 @@ MODEL_INFO = {
         "default": "lgq12697/agro-nucleotide-transformer-1b",
     },
     "Caduceus-PH": {
-        "title": "Caduceus: Bi-Directional Equivariant Long-Range DNA Sequence Modeling",
+        "title": "Caduceus: Bi-Directional Equivariant"
+        "Long-Range DNA Sequence Modeling",
         "reference": "https://doi.org/10.48550/arXiv.2403.03234",
         "model_architecture": "CaduceusForMaskedLM",
         "model_tags": [
@@ -205,8 +212,12 @@ MODEL_INFO = {
             "seqlen-131k_d_model-256_n_layer-16",
         ],
         "huggingface": [
-            "kuleshov-group/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
-            "kuleshov-group/caduceus-ph_seqlen-1k_d_model-256_n_layer-4_lr-8e-3",
+            (
+                "kuleshov-group/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+            ),
+            (
+                "kuleshov-group/caduceus-ph_seqlen-1k_d_model-256_n_layer-4_lr-8e-3"
+            ),
             "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [
@@ -214,10 +225,13 @@ MODEL_INFO = {
             None,
             None,
         ],
-        "default": "lgq12697/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
+        "default": (
+            "lgq12697/caduceus-ph_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+        ),
     },
     "Caduceus-PS": {
-        "title": "Caduceus: Bi-Directional Equivariant Long-Range DNA Sequence Modeling",
+        "title": "Caduceus: Bi-Directional Equivariant"
+        "Long-Range DNA Sequence Modeling",
         "reference": "https://doi.org/10.48550/arXiv.2403.03234",
         "model_architecture": "CaduceusForMaskedLM",
         "model_tags": [
@@ -226,8 +240,12 @@ MODEL_INFO = {
             "seqlen-131k_d_model-256_n_layer-16",
         ],
         "huggingface": [
-            "kuleshov-group/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
-            "kuleshov-group/caduceus-ps_seqlen-1k_d_model-256_n_layer-4_lr-8e-3",
+            (
+                "kuleshov-group/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+            ),
+            (
+                "kuleshov-group/caduceus-ps_seqlen-1k_d_model-256_n_layer-4_lr-8e-3"
+            ),
             "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16",
         ],
         "modelscope": [
@@ -235,10 +253,13 @@ MODEL_INFO = {
             None,
             None,
         ],
-        "default": "lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3",
+        "default": (
+            "lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"
+        ),
     },
     "PlantCaduceus": {
-        "title": "Cross-species modeling of plant genomes at single-nucleotide resolution using a pretrained DNA language model",
+        "title": "Cross-species modeling of plant genomes at"
+        "single-nucleotide resolution using a pretrained DNA language model",
         "reference": "https://www.pnas.org/doi/10.1073/pnas.2421738122",
         "model_architecture": "CaduceusForMaskedLM",
         "model_tags": ["l20", "l24", "l28", "l32"],
@@ -257,7 +278,8 @@ MODEL_INFO = {
         "default": "lgq12697/PlantCaduceus_l20",
     },
     "PlantCAD2": {
-        "title": "PlantCAD2: A Long-Context DNA Language Model for Cross-Species Functional Annotation in Angiosperms",
+        "title": "PlantCAD2: A Long-Context DNA Language"
+        "Model for Cross-Species Functional Annotation in Angiosperms",
         "reference": "https://doi.org/10.1101/2025.08.27.672609",
         "model_architecture": "CaduceusForMaskedLM",
         "model_tags": ["Small", "Medium", "Large"],
@@ -274,7 +296,8 @@ MODEL_INFO = {
         "default": "lgq12697/PlantCAD2-Small-l24-d0768",
     },
     "DNABERT": {
-        "title": "DNABERT: pre-trained Bidirectional Encoder Representations from Transformers model for DNA-language in genome",
+        "title": "DNABERT: pre-trained Bidirectional Encoder Representations"
+        "from Transformers model for DNA-language in genome",
         "reference": "https://doi.org/10.1093/bioinformatics/btab083",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["3mer", "4mer", "5mer", "6mer"],
@@ -293,7 +316,8 @@ MODEL_INFO = {
         "default": "lgq12697/DNA_bert_6",
     },
     "DNABERT-2": {
-        "title": "DNABERT-2: Efficient Foundation Model and Benchmark For Multi-Species Genome",
+        "title": "DNABERT-2: Efficient Foundation Model"
+        "and Benchmark For Multi-Species Genome",
         "reference": "https://doi.org/10.48550/arXiv.2306.15006",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["117M"],
@@ -302,7 +326,8 @@ MODEL_INFO = {
         "default": "lgq12697/DNABERT-2-117M",
     },
     "DNABERT-S": {
-        "title": "DNABERT-S: Pioneering Species Differentiation with Species-Aware DNA Embeddings",
+        "title": "DNABERT-S: Pioneering Species"
+        "Differentiation with Species-Aware DNA Embeddings",
         "reference": "https://doi.org/10.48550/arXiv.2402.08777",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["base"],
@@ -313,7 +338,8 @@ MODEL_INFO = {
         "default": "lgq12697/DNABERT-S",
     },
     "GENA-LM": {
-        "title": "GENA-LM: a family of open-source foundational DNA language models for long sequences",
+        "title": "GENA-LM: a family of open-source"
+        "foundational DNA language models for long sequences",
         "reference": "https://doi.org/10.1093/nar/gkae1310",
         "model_architecture": "BertForMaskedLM",
         "model_tags": [
@@ -346,7 +372,8 @@ MODEL_INFO = {
         "default": "lgq12697/gena-lm-bert-base",
     },
     "GENA-LM-BigBird": {
-        "title": "GENA-LM: a family of open-source foundational DNA language models for long sequences",
+        "title": "GENA-LM: a family of open-source"
+        "foundational DNA language models for long sequences",
         "reference": "https://doi.org/10.1093/nar/gkae1310",
         "model_architecture": "BigBirdForMaskedLM",
         "model_tags": ["base-sparse", "base-sparse-t2t", "base-t2t"],
@@ -363,7 +390,8 @@ MODEL_INFO = {
         "default": "lgq12697/gena-lm-bigbird-base-sparse",
     },
     "GENERator": {
-        "title": "GENERator: A Long-Context Generative Genomic Foundation Model",
+        "title": "GENERator: A Long-Context"
+        "Generative Genomic Foundation Model",
         "reference": "https://doi.org/10.48550/arXiv.2502.07272",
         "model_architecture": "LlamaForCausalLM",
         "model_tags": ["eukaryote-1.2b", "eukaryote-3b"],
@@ -378,8 +406,11 @@ MODEL_INFO = {
         "default": "lgq12697/GENERator-eukaryote-0.5b-base",
     },
     "GENERanno": {
-        "title": "Generanno: A Genomic Foundation Model for Metagenomic Annotation",
-        "reference": "https://www.biorxiv.org/content/10.1101/2025.06.04.656517v3",
+        "title": "Generanno: A Genomic"
+        "Foundation Model for Metagenomic Annotation",
+        "reference": (
+            "https://www.biorxiv.org/content/10.1101/2025.06.04.656517v3"
+        ),
         "model_architecture": "GenerannoForMaskedLM",
         "model_tags": ["prokaryote-0.5b", "eukaryote-0.5b"],
         "huggingface": [
@@ -393,7 +424,8 @@ MODEL_INFO = {
         "default": "lgq12697/GENERanno-eukaryote-0.5b-base",
     },
     "GenomeOcean": {
-        "title": "GenomeOcean: An Efficient Genome Foundation Model Trained on Large-Scale Metagenomic Assemblies",
+        "title": "GenomeOcean: An Efficient Genome Foundation"
+        "Model Trained on Large-Scale Metagenomic Assemblies",
         "reference": "https://doi.org/10.1101/2025.01.30.635558",
         "model_architecture": "MistralForCausalLM",
         "model_tags": ["100M", "500M", "4B"],
@@ -410,7 +442,8 @@ MODEL_INFO = {
         "default": "lgq12697/GenomeOcean-100M",
     },
     "GPN": {
-        "title": "DNA language models are powerful predictors of genome-wide variant effects",
+        "title": "DNA language models are"
+        "powerful predictors of genome-wide variant effects",
         "reference": "https://doi.org/10.1073/pnas.2311219120",
         "model_architecture": "ConvNetForMaskedLM",
         "model_tags": ["brassicales"],
@@ -419,10 +452,12 @@ MODEL_INFO = {
             None,
         ],
         "default": "lgq12697/gpn-brassicales",
-        "dependencies": "pip install git+https://github.com/songlab-cal/gpn.git",
+        "dependencies": "pip"
+        "install git+https://github.com/songlab-cal/gpn.git",
     },
     "GROVER": {
-        "title": "DNA language model GROVER learns sequence context in the human genome",
+        "title": "DNA language model GROVER learns"
+        "sequence context in the human genome",
         "reference": "https://doi.org/10.1038/s42256-024-00872-0",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["base"],
@@ -433,7 +468,8 @@ MODEL_INFO = {
         "default": "lgq12697/GROVER",
     },
     "HyenaDNA": {
-        "title": "HyenaDNA: Long-Range Genomic Sequence Modeling at Single Nucleotide Resolution",
+        "title": "HyenaDNA: Long-Range Genomic Sequence"
+        "Modeling at Single Nucleotide Resolution",
         "reference": "https://doi.org/10.48550/arXiv.2306.15794",
         "model_architecture": "HyenaDNAForCausalLM",
         "model_tags": [
@@ -466,7 +502,8 @@ MODEL_INFO = {
         "default": "lgq12697/hyenadna-tiny-1k-seqlen-hf",
     },
     "LucaOne": {
-        "title": "Generalized biological foundation model with unified nucleic acid and protein language",
+        "title": "Generalized biological foundation model with"
+        "unified nucleic acid and protein language",
         "reference": "https://www.nature.com/articles/s42256-025-01044-4",
         "model_architecture": "LucaGPLMModel",
         "model_tags": [
@@ -486,7 +523,8 @@ MODEL_INFO = {
         "dependencies": "pip install lucagplm",
     },
     # "JanusDNA": {
-    #     "title": "JanusDNA: A Powerful Bi-directional Hybrid DNA Foundation Model",
+    # "title": "JanusDNA: A Powerful Bi-directional Hybrid DNA Foundation
+    # Model",
     #     "reference": "https://arxiv.org/abs/2505.17257",
     #     "model_architecture": "JanusDNAForCausalLM",
     #     "model_tags": [
@@ -578,7 +616,8 @@ MODEL_INFO = {
         "default": "lgq12697/ModernBERT-DNA-v1-37M-hg38",
     },
     "MutBERT": {
-        "title": "MutBERT: Probabilistic Genome Representation Improves Genomics Foundation Models",
+        "title": "MutBERT: Probabilistic Genome"
+        "Representation Improves Genomics Foundation Models",
         "reference": "https://www.biorxiv.org/content/10.1101/2025.01.23.634452v2",
         "model_architecture": "RoPEBertForMaskedLM",
         "model_tags": ["Human-Ref", "Human-Mut", "Multi"],
@@ -595,7 +634,8 @@ MODEL_INFO = {
         "default": "lgq12697/MutBERT-Human-Ref",
     },
     "Nucleotide Transformer": {
-        "title": "Nucleotide Transformer: building and evaluating robust foundation models for human genomics",
+        "title": "Nucleotide Transformer: building and evaluating"
+        "robust foundation models for human genomics",
         "reference": "https://doi.org/10.1038/s41592-024-02523-z",
         "model_architecture": "EsmForMaskedLM",
         "model_tags": [
@@ -643,7 +683,8 @@ MODEL_INFO = {
         "default": "lgq12697/OmniNA-66m",
     },
     "Omni-DNA": {
-        "title": "Omni-DNA: A Unified Genomic Foundation Model for Cross-Modal and Multi-Task Learning",
+        "title": "Omni-DNA: A Unified Genomic Foundation"
+        "Model for Cross-Modal and Multi-Task Learning",
         "reference": "https://doi.org/10.48550/arXiv.2502.03499",
         "model_architecture": "OLMoModelForCausalLM",
         "model_tags": ["20M", "60M", "116M", "300M", "700M", "1B"],
@@ -667,7 +708,8 @@ MODEL_INFO = {
         "dependencies": "pip install ai2-olmo",
     },
     "ProkBERT": {
-        "title": "ProkBERT family: genomic language models for microbiome applications",
+        "title": "ProkBERT family: genomic"
+        "language models for microbiome applications",
         "reference": "https://doi.org/10.3389/fmicb.2023.1331233",
         "model_architecture": "MegatronBertForMaskedLM",
         "model_tags": ["mini", "mini-c", "mini-long"],

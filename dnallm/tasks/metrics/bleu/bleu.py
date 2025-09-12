@@ -96,21 +96,17 @@ class Bleu(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(
-                            datasets.Value("string", id="sequence"),
-                            id="references",
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Value("string", id="sequence"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references",
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Value("string", id="sequence"),
+                }),
             ],
             codebase_urls=[
                 "https://github.com/tensorflow/nmt/blob/master/nmt/scripts/bleu.py"

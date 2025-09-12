@@ -74,12 +74,10 @@ class CompetitionMathMetric(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string"),
-                    "references": datasets.Value("string"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string"),
+                "references": datasets.Value("string"),
+            }),
             # Homepage of the metric for documentation
             homepage="https://github.com/hendrycks/math",
             # Additional links to the codebase or references

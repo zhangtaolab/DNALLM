@@ -1,7 +1,12 @@
 """In Silico Mutagenesis Analysis Module.
 
-This module provides tools for evaluating the impact of sequence mutations on model predictions,
-including single nucleotide polymorphisms (SNPs), deletions, insertions, and other sequence variations.
+This module provides tools for evaluating the impact of sequence mutations on
+model predictions,
+including single nucleotide polymorphisms (
+    SNPs),
+    deletions,
+    insertions,
+    and other sequence variations.
 """
 
 import os
@@ -13,7 +18,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset
 
 from ..datahandling.data import DNADataset
-from .predictor import DNAPredictor
+from .inference import DNAInference
 from .plot import plot_muts
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -22,16 +27,20 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Mutagenesis:
     """Class for evaluating in silico mutagenesis.
 
-    This class provides methods to analyze how sequence mutations affect model predictions,
-    including single base substitutions, deletions, and insertions. It can be used to
-    identify important positions in DNA sequences and understand model interpretability.
+    This class provides methods to analyze how sequence mutations affect model
+        predictions,
+            including single base substitutions, deletions, and
+            insertions. It can be used to
+            identify important positions in DNA sequences and
+            understand model interpretability.
 
-    Attributes:
-        model: Fine-tuned model for prediction
-        tokenizer: Tokenizer for the model
-        config: Configuration object containing task settings and inference parameters
-        sequences: Dictionary containing original and mutated sequences
-        dataloader: DataLoader for batch processing of sequences
+        Attributes:
+            model: Fine-tuned model for prediction
+            tokenizer: Tokenizer for the model
+                    config: Configuration object containing task settings and
+                inference parameters
+            sequences: Dictionary containing original and mutated sequences
+            dataloader: DataLoader for batch processing of sequences
     """
 
     def __init__(self, model, tokenizer, config: dict):
@@ -40,7 +49,8 @@ class Mutagenesis:
         Args:
             model: Fine-tuned model for making predictions
             tokenizer: Tokenizer for encoding DNA sequences
-            config: Configuration object containing task settings and inference parameters
+            config: Configuration object containing task settings and
+                inference parameters
         """
 
         self.model = model
@@ -48,22 +58,23 @@ class Mutagenesis:
         self.config = config
         self.sequences = None
 
-    def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """Create a predictor object for the model.
+    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+        """Create an inference engine object for the model.
 
         Args:
-            model: The model to be used for prediction
+            model: The model to be used for inference
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAPredictor: The predictor object configured with the given model and tokenizer
+            DNAInference: The inference engine object configured with the given
+                model and tokenizer
         """
 
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=model, tokenizer=tokenizer, config=self.config
         )
 
-        return predictor
+        return inference_engine
 
     def mutate_sequence(
         self,
@@ -158,28 +169,29 @@ class Mutagenesis:
         if do_encode:
             dataset.encode_sequences(remove_unused_columns=True)
         # Create DataLoader
-        self.dataloader = DataLoader(
+        self.dataloader: DataLoader = DataLoader(
             dataset, batch_size=batch_size, num_workers=pred_config.num_workers
         )
 
     def pred_comparison(self, raw_pred, mut_pred):
         """Compare raw and mutated predictions.
 
-        This method calculates the difference between predictions on the original sequence
-        and mutated sequences, providing insights into mutation effects.
+        This method calculates the difference between predictions on the
+        original sequence and mutated sequences, providing insights into
+        mutation effects.
 
-        Args:
-            raw_pred: Raw predictions from the original sequence
-            mut_pred: Predictions from the mutated sequence
+                Args:
+                    raw_pred: Raw predictions from the original sequence
+                    mut_pred: Predictions from the mutated sequence
 
-        Returns:
-            Tuple containing (raw_score, mut_score, logfc):
+                Returns:
+                    Tuple containing (raw_score, mut_score, logfc):
             - raw_score: Processed scores from original sequence
             - mut_score: Processed scores from mutated sequence
             - logfc: Log fold change between mutated and original scores
 
-        Raises:
-            ValueError: If task type is not supported
+                Raises:
+                    ValueError: If task type is not supported
         """
         # Get the task config
         task_config = self.config["task"]
@@ -218,18 +230,24 @@ class Mutagenesis:
                 - "last": Use the last log fold change
                 - "sum": Use the sum of log fold changes
                 - "mean": Use the mean of log fold changes
-                - "max": Use the index of the maximum raw score to select the log fold change
+            - "max": Use the index of the maximum raw score to select the log
+                fold change
                 - int: Use the log fold change at the specified index
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:
             - 'raw': Original sequence predictions and metadata
-            - mutation names: Individual mutation results with scores and log fold changes
+            - mutation names: Individual mutation results with scores and log
+                fold changes
         """
         # Load predictor
-        predictor = self.get_predictor(self.model, self.tokenizer)
+        inference_engine = self.get_inference_engine(
+            self.model, self.tokenizer
+        )
         # Do prediction
-        logits, _, _ = predictor.batch_predict(self.dataloader, do_pred=False)
+        logits, _, _ = inference_engine.batch_infer(
+            self.dataloader, do_pred=False
+        )
         logits = logits[0] if isinstance(logits, tuple) else logits
         all_predictions = {}
         # Get the raw predictions
@@ -286,25 +304,29 @@ class Mutagenesis:
     ) -> None:
         """Plot the mutagenesis analysis results.
 
-        This method generates visualizations of mutation effects, typically as heatmaps
-        showing how different mutations affect model predictions at various positions.
+                This method generates visualizations of mutation effects,
+            typically as heatmaps,
+                bar charts and
+            line plots showing how different mutations affect model predictions
+        at various positions.
 
         Args:
             preds: Dictionary containing model predicted scores and metadata
             show_score: Whether to show the score values on the plot
-            save_path: Path to save the plot. If None, plot will be shown interactively
+                        save_path: Path to save the plot. If None,
+                plot will be shown interactively
 
         Returns:
-            Plot object (typically a heatmap visualization)
+            Plot object
         """
         if save_path:
             suffix = os.path.splitext(save_path)[-1]
             if suffix:
-                heatmap = save_path.replace(suffix, "_heatmap" + suffix)
+                outfile = save_path
             else:
-                heatmap = os.path.join(save_path, "heatmap.pdf")
+                outfile = os.path.join(save_path, ".pdf")
         else:
-            heatmap = None
+            outfile = None
         # Plot heatmap
-        pheat = plot_muts(preds, show_score=show_score, save_path=heatmap)
-        return pheat
+        pmut = plot_muts(preds, show_score=show_score, save_path=outfile)
+        return pmut

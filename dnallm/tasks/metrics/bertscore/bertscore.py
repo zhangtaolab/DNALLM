@@ -112,21 +112,17 @@ class BERTScore(evaluate.Metric):
             homepage="https://github.com/Tiiiger/bert_score",
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Sequence(
-                            datasets.Value("string", id="sequence"),
-                            id="references",
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": datasets.Value("string", id="sequence"),
-                        "references": datasets.Value("string", id="sequence"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Sequence(
+                        datasets.Value("string", id="sequence"),
+                        id="references",
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": datasets.Value("string", id="sequence"),
+                    "references": datasets.Value("string", id="sequence"),
+                }),
             ],
             codebase_urls=["https://github.com/Tiiiger/bert_score"],
             reference_urls=[

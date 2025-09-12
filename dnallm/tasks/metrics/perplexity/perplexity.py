@@ -94,11 +94,9 @@ class Perplexity(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value("string"),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value("string"),
+            }),
             reference_urls=[
                 "https://huggingface.co/docs/transformers/perplexity"
             ],
@@ -139,9 +137,9 @@ class Perplexity(evaluate.Metric):
                 "If batch_size > 1, model must have at least one special token to use for padding. Please use a different model or set batch_size=1."
             )
             # assign one of the special tokens to also be the pad token
-            tokenizer.add_special_tokens(
-                {"pad_token": existing_special_tokens[0]}
-            )
+            tokenizer.add_special_tokens({
+                "pad_token": existing_special_tokens[0]
+            })
 
         if add_start_token and max_length:
             # leave room for <BOS> token to be added:

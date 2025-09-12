@@ -216,8 +216,8 @@ dnallm config-generator --type benchmark --output model_comparison.yaml
 ### Inference Configuration
 
 ```bash
-# Generate inference config for prediction
-dnallm config-generator --type inference --output predict_config.yaml
+# Generate inference config for inference
+dnallm config-generator --type inference --output inference_config.yaml
 
 # Set batch size, device, and output options
 ```
@@ -231,7 +231,7 @@ Generated configurations can be used directly with DNALLM commands:
 dnallm train --config finetune_config.yaml
 
 # Use generated config for inference
-dnallm predict --config inference_config.yaml
+dnallm inference --config inference_config.yaml
 
 # Use generated config for benchmarking
 dnallm benchmark --config benchmark_config.yaml

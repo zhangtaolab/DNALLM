@@ -134,13 +134,11 @@ class COMET(evaluate.Metric):
             citation=_CITATION,
             homepage="https://unbabel.github.io/COMET/html/index.html",
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "sources": datasets.Value("string", id="sequence"),
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Value("string", id="sequence"),
-                }
-            ),
+            features=datasets.Features({
+                "sources": datasets.Value("string", id="sequence"),
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Value("string", id="sequence"),
+            }),
             codebase_urls=["https://github.com/Unbabel/COMET"],
             reference_urls=[
                 "https://github.com/Unbabel/COMET",

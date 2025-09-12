@@ -27,7 +27,7 @@ async def test_streaming_predictions(server_url: str):
     try:
         # 连接到 SSE 服务器
         print(f"连接到 MCP 服务器: {server_url}")
-        async with sse_client(server_url) as (read, write):
+        async with sse_client(server_url) as (read, _write):
             print("✅ 连接成功!")
 
             # 列出可用工具
@@ -61,7 +61,19 @@ async def test_streaming_predictions(server_url: str):
             print("\n📊 测试批量流式预测...")
             sequences = [
                 "ATCGATCGATCGATCG",
-                "GGGCAGCGGTTACACCTTAATCGACACGACTCTCGGCAACGGATATCTCGGCTCTTGCATCGATGAAGAACGTAGCAAAATGCGATACCTGGTGTGAATTGCAGAATCCCGCGAACCATCGAGTTTTTGAACGCAAGTTGCGCCCGAAGCCTTCTGACGGAGGGCACGTCTGCCTGGGCGTCACGCCAAAAGACACTCCCAACACCCCCCCGCGGGGCGAGGGACGTGGCGTCTGGCCCCCCGCGCTGCAGGGCGAGGTGGGCCGAAGCAGGGGCTGCCGGCGAACCGCGTCGGACGCAACACGTGGTGGGCGACATCAAGTTGTTCTCGGTGCAGCGTCCCGGCGCGCGGCCGGCCATTCGGCCCTAAGGACCCATCGAGCGACCGAGCTTGCCCTCGGACCACGACCCCAGGTCAGTCGGGACTACCCGCTGAGTTTAAGCATATAAATAAGCGGAGGAGAAGAAACTTACGAGGATTCCCCTAGTAACGGCGAGCGAACCGGGAGCAGCCCAGCTTGAGAATCGGGCGGCCTCGCCGCCCGAATTGTAGTCTGGAGAGGCGT",
+                (
+                    "GGGCAGCGGTTACACCTTAATCGACACGACTCTCGGCAACGGATATCTCGGCTCTTG"
+                    "CATCGATGAAGAACGTAGCAAAATGCGATACCTGGTGTGAATTGCAGAATCCCGCGA"
+                    "ACCATCGAGTTTTTGAACGCAAGTTGCGCCCGAAGCCTTCTGACGGAGGGCACGTC"
+                    "TGCCTGGGCGTCACGCCAAAAGACACTCCCAACACCCCCCCGCGGGGCGAGGGACG"
+                    "TGGCGTCTGGCCCCCCGCGCTGCAGGGCGAGGTGGGCCGAAGCAGGGGCTGCCGGC"
+                    "GAACCGCGTCGGACGCAACACGTGGTGGGCGACATCAAGTTGTTCTCGGTGCAGCG"
+                    "TCCCGGCGCGCGGCCGGCCATTCGGCCCTAAGGACCCATCGAGCGACCGAGCTTG"
+                    "CCCTCGGACCACGACCCCAGGTCAGTCGGGACTACCCGCTGAGTTTAAGCATATA"
+                    "AATAAGCGGAGGAGAAGAAACTTACGAGGATTCCCCTAGTAACGGCGAGCGAACC"
+                    "GGGAGCAGCCCAGCTTGAGAATCGGGCGGCCTCGCCGCCCGAATTGTAGTCTGGA"
+                    "GAGGCGT"
+                ),
             ]
 
             batch_result = await read.call_tool(
@@ -96,7 +108,7 @@ async def test_model_management(server_url: str):
     print("=" * 30)
 
     try:
-        async with sse_client(server_url) as (read, write):
+        async with sse_client(server_url) as (read, _write):
             # 列出已加载的模型
             print("📋 已加载的模型:")
             models = await read.call_tool("list_loaded_models", {})

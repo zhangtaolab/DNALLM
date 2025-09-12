@@ -61,7 +61,9 @@ class TestDNALLMMCPServer:
             },
             "logging": {
                 "level": "INFO",
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "format": (
+                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                ),
                 "file": "./logs/test.log",
                 "max_size": "10MB",
                 "backup_count": 5,
@@ -212,7 +214,9 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "format": (
+                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                    ),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,
@@ -226,7 +230,8 @@ class TestMCPTools:
             server = DNALLMMCPServer(str(config_path))
             await server.initialize()
 
-            # Test tool registration (tools are registered during initialization)
+            # Test tool registration (tools are registered during
+            # initialization)
             assert server.app is not None
 
     @pytest.mark.asyncio
@@ -259,7 +264,9 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "format": (
+                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                    ),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,

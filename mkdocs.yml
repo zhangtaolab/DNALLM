@@ -70,14 +70,12 @@ nav:
       - Configuration: tutorials/benchmark/configuration.md
       - Advanced Techniques: tutorials/benchmark/advanced_techniques.md
       - Examples: tutorials/benchmark/examples.md
-    - Inference: tutorials/inference/changeme.md
 
   - Resources:
     - Model Zoo: resources/model_zoo.md
     - Datahandling: resources/datahandling.md
     # - Datahandling (中文): resources/datahandling_zh.md
   - Concepts:
-    - Model Architecture: concepts/model_architecture.md
     - Training: concepts/training.md
     - Inference: concepts/inference.md
   - API: 
@@ -86,10 +84,14 @@ nav:
     - Datahandling:
       - Data: api/datahandling/data.md
     - Inference:
-      - Predictor: api/inference/predictor.md
+      - Inference: api/inference/inference.md
+      - Benchmark: api/inference/benchmark.md
+      - Plot: api/inference/plot.md
+      - Mutagenesis: api/inference/mutagenesis.md
     - Finetune:
       - Trainer: api/finetune/trainer.md
-  - FAQ: faq/faq.md
+    - MCP:
+      - Server: api/mcp/server.md
 
 plugins:
   - search

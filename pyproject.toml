@@ -74,10 +74,11 @@ Documentation = "https://zhangtaolab.github.io/DNALLM/"
 [project.optional-dependencies]
 dev = [
     "ruff>=0.1.12",
+    "flake8>=7.0.0",
     "pre-commit>=3.6.0",
     "ipywidgets>=8",
     "jupyter>=1.1.1",
-    "marimo>=0.11.17",
+    "marimo<=0.14.17",
     "mypy>=1.15.0",
     "pandas-stubs>=2.3.0",
     "pydantic>=2.10.6",
@@ -93,7 +94,7 @@ test = [
 notebook = [
     "ipywidgets>=8",
     "jupyter>=1.1.1",
-    "marimo>=0.11.17",
+    "marimo<=0.14.17",
 ]
 docs = [
     "mkdocs-material>=9.6.1",
@@ -106,10 +107,11 @@ mcp = [
 base = [
     "asyncio>=3.4.3",
     "ruff>=0.1.12",
+    "flake8>=7.0.0",
     "ipywidgets>=8",
     "isort>=6.0.1",
     "jupyter>=1.1.1",
-    "marimo>=0.12.1",
+    "marimo<=0.14.17",
     "mcp>=1.3.0",
     "mypy>=1.15.0",
     "pandas-stubs>=2.3.0",
@@ -219,7 +221,7 @@ include = ["dnallm*"]
 [project.scripts]
 dnallm = "dnallm.cli.cli:cli"
 dnallm-train = "cli.train:main"
-dnallm-predict = "cli.predict:main"
+dnallm-inference = "cli.inference:main"
 dnallm-model-config-generator = "cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
 
@@ -252,6 +254,7 @@ exclude = [
     "site",
     "htmlcov",
     "*.egg-info",
+    "dnallm/tasks/metrics/",
 ]
 
 # Same as Black.
@@ -260,6 +263,9 @@ indent-width = 4
 
 # Assume Python 3.10+
 target-version = "py310"
+
+# Enable preview features
+preview = true
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
@@ -283,9 +289,6 @@ select = [
 ]
 
 ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
-    "S101",  # use of assert detected
     "T201",  # print found
     "T203",  # pprint found
 ]
@@ -300,6 +303,16 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*.py" = [
+    "S101",  # assert
+    "S106",  # hardcoded password
+    "S108",  # hardcoded temp file
+    "PLR2004",  # magic value
+    "TID252",  # relative imports
+    "F401",  # unused imports
+    "F403",  # star imports
+    "F841",  # unused variables
+]
+"**/tests/**/*.py" = [
     "S101",  # assert
     "S106",  # hardcoded password
     "S108",  # hardcoded temp file
@@ -328,3 +341,107 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "transformers.*",
+    "datasets.*",
+    "altair.*",
+    "umap.*",
+    "wandb.*",
+    "modelscope.*",
+    "mcp.*",
+    "peft.*",
+    "accelerate.*",
+    "evaluate.*",
+    "seqeval.*",
+    "tensorboardx.*",
+    "tokenizers.*",
+    "sentencepiece.*",
+    "einops.*",
+    "loguru.*",
+    "rich.*",
+    "colorama.*",
+    "tqdm.*",
+    "websockets.*",
+    "uvicorn.*",
+    "aiohttp.*",
+    "jax.*",
+    "mambapy.*",
+    "ninja.*",
+    "openpyxl.*",
+    "scipy.*",
+    "sklearn.*",
+    "sklearn.*.*",
+    "scikit_learn.*",
+    "scikit_learn.*.*",
+    "pandas.*",
+    "numpy.*",
+    "torch.*",
+    "torch.*.*",
+    "torchvision.*",
+    "torchaudio.*",
+    "huggingface_hub.*",
+    "addict.*",
+    "pydantic.*",
+    "pydantic.*.*",
+    "python_dotenv.*",
+    "yaml.*",
+    "PyYAML.*",
+    "ipykernel.*",
+    "ipywidgets.*",
+    "jupyter.*",
+    "marimo.*",
+    "nbstripout.*",
+    "mamba_ssm.*",
+    "causal_conv1d.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests", "dnallm/mcp/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config"
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "pdf: marks tests that generate PDF files",
+    "performance: marks performance-related tests",
+    "integration: marks integration tests",
+    "unit: marks unit tests",
+    "inference: marks inference-related tests",
+    "utils: marks utility function tests",
+    "data: marks data handling tests"
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning",
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:co_lnotab is deprecated, use co_lines instead:DeprecationWarning"
+]

@@ -126,22 +126,18 @@ if _jiwer_available and version.parse(
                     chars.append(self.sentence_delimiter)
             return chars
 
-    cer_transform = tr.Compose(
-        [
-            tr.RemoveMultipleSpaces(),
-            tr.Strip(),
-            SentencesToListOfCharacters(SENTENCE_DELIMITER),
-        ]
-    )
+    cer_transform = tr.Compose([
+        tr.RemoveMultipleSpaces(),
+        tr.Strip(),
+        SentencesToListOfCharacters(SENTENCE_DELIMITER),
+    ])
 elif _jiwer_available:
-    cer_transform = tr.Compose(
-        [
-            tr.RemoveMultipleSpaces(),
-            tr.Strip(),
-            tr.ReduceToSingleSentence(SENTENCE_DELIMITER),
-            tr.ReduceToListOfListOfChars(),
-        ]
-    )
+    cer_transform = tr.Compose([
+        tr.RemoveMultipleSpaces(),
+        tr.Strip(),
+        tr.ReduceToSingleSentence(SENTENCE_DELIMITER),
+        tr.ReduceToListOfListOfChars(),
+    ])
 else:
     cer_transform = None
 
@@ -277,12 +273,10 @@ class XtremeS(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Value(pred_type),
-                    "references": datasets.Value(pred_type),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Value(pred_type),
+                "references": datasets.Value(pred_type),
+            }),
             codebase_urls=[],
             reference_urls=[],
             format="numpy",

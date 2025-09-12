@@ -1,7 +1,9 @@
 """DNA Language Model Evaluation Metrics Module.
 
-This module provides comprehensive evaluation metrics for DNA language models across
-various task types including classification, regression, and token classification.
+This module provides comprehensive evaluation metrics for DNA language models
+across
+various task types including classification, regression, and
+    token classification.
 
 Supported task types:
 - Binary classification: accuracy, precision, recall, F1, MCC, AUROC, AUPRC
@@ -10,7 +12,8 @@ Supported task types:
 - Regression: MSE, MAE, R², Spearman correlation
 - Token classification: sequence-level accuracy, precision, recall, F1
 
-The module integrates both scikit-learn metrics and HuggingFace evaluate library
+The module integrates both scikit-learn metrics and
+    HuggingFace evaluate library
 for comprehensive model evaluation.
 """
 
@@ -43,14 +46,16 @@ metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
 def calculate_metric_with_sklearn(eval_pred):
     """Calculate basic classification metrics using scikit-learn.
 
-    This function computes standard classification metrics for token classification tasks,
-    handling padding tokens and reshaping logits as needed.
+    This function computes standard classification metrics for token
+        classification tasks,
+        handling padding tokens and reshaping logits as needed.
 
-    Args:
-        eval_pred: Tuple containing (logits, labels)
+        Args:
+            eval_pred: Tuple containing (logits, labels)
 
-    Returns:
-        Dictionary containing accuracy, F1, Matthews correlation, precision, and recall
+        Returns:
+            Dictionary containing accuracy, F1, Matthews correlation,
+            precision, and recall
     """
     logits, labels = eval_pred
     if isinstance(logits, tuple):  # Unpack logits if it's a tuple
@@ -82,21 +87,23 @@ def calculate_metric_with_sklearn(eval_pred):
     }
 
 
-## Load evaluate metrics locally to avoid downloading from Hugging Face
+# Load evaluate metrics locally to avoid downloading from Hugging Face
 
 
 def classification_metrics(plot=False):
     """Create metrics computation function for binary classification tasks.
 
-    This function returns a callable that computes comprehensive binary classification
-    metrics including accuracy, precision, recall, F1, MCC, AUROC, AUPRC, and
-    confusion matrix derived metrics.
+    This function returns a callable that computes comprehensive binary
+        classification metrics including accuracy, precision, recall, F1, MCC,
+        AUROC, AUPRC, and
+        confusion matrix derived metrics.
 
-    Args:
-        plot: Whether to include curve data for plotting (ROC and PR curves)
+        Args:
+            plot: Whether to include curve data for plotting (ROC and PR
+                curves)
 
-    Returns:
-        Callable function that computes binary classification metrics
+        Returns:
+            Callable function that computes binary classification metrics
     """
     # clf_metrics = evaluate.combine(
     #     [
@@ -114,9 +121,12 @@ def classification_metrics(plot=False):
         logits = logits[0] if isinstance(logits, tuple) else logits
         predictions = np.argmax(logits, axis=-1)
         pred_probs = softmax(logits, axis=1)
-        # metrics = clf_metrics.compute(predictions=predictions, references=labels)
-        # roc_auc = auc_metric.compute(references=labels, prediction_scores=pred_probs[:, 1])
-        # pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:, 1])
+        # metrics = clf_metrics.compute(predictions=predictions,
+        # references=labels)
+        # roc_auc = auc_metric.compute(references=labels,
+        # prediction_scores=pred_probs[:, 1])
+        # pr_auc = average_precision_score(y_true=labels, y_score=pred_probs[:,
+        # 1])
         # metrics["AUROC"] = roc_auc["roc_auc"]
         # metrics["AUPRC"] = pr_auc
         metrics = {}
@@ -195,11 +205,13 @@ def regression_metrics(plot=False):
 
 
 def multi_classification_metrics(plot=False):
-    """Create metrics computation function for multi-class classification tasks.
+    """Create metrics computation function for multi-class classification
+    tasks.
 
     This function returns a callable that computes comprehensive multi-class
     classification metrics including accuracy, precision, recall, F1, MCC,
-    AUROC, AUPRC, and confusion matrix derived metrics with multiple averaging strategies.
+        AUROC, AUPRC, and
+        confusion matrix derived metrics with multiple averaging strategies.
 
     Args:
         plot: Whether to include curve data for plotting (ROC and PR curves)
@@ -211,8 +223,10 @@ def multi_classification_metrics(plot=False):
     # metric1 = evaluate.load(metrics_path + "precision/precision.py")
     # metric2 = evaluate.load(metrics_path + "recall/recall.py")
     # metric3 = evaluate.load(metrics_path + "f1/f1.py")
-    # metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
-    # roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multiclass")
+    # metric4 = evaluate.load(metrics_path +
+    # "matthews_correlation/matthews_correlation.py")
+    # roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py",
+    # "multiclass")
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
@@ -264,10 +278,14 @@ def multi_classification_metrics(plot=False):
         metrics["TNR"] = float(np.mean(tnr_list))
         metrics["FPR"] = float(np.mean(fpr_list))
         metrics["FNR"] = float(np.mean(fnr_list))
-        # accuracy = metric0.compute(predictions=predictions, references=labels)
-        # precision = metric1.compute(predictions=predictions, references=labels, average="micro")
-        # recall = metric2.compute(predictions=predictions, references=labels, average="micro")
-        # f1 = metric3.compute(predictions=predictions, references=labels, average="micro")
+        # accuracy = metric0.compute(predictions=predictions,
+        # references=labels)
+        # precision = metric1.compute(predictions=predictions,
+        # references=labels, average="micro")
+        # recall = metric2.compute(predictions=predictions, references=labels,
+        # average="micro")
+        # f1 = metric3.compute(predictions=predictions, references=labels,
+        # average="micro")
         # mcc = metric4.compute(predictions=predictions, references=labels)
         # roc_auc_ovr = roc_metric.compute(references=labels,
         #                                  prediction_scores=pred_probs,
@@ -276,7 +294,8 @@ def multi_classification_metrics(plot=False):
         #                                  prediction_scores=pred_probs,
         #                                  multi_class='ovo')
         # metrics = {**accuracy, **precision, **recall, **f1, **mcc,
-        #            "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo": roc_auc_ovo['roc_auc']}
+        # "AUROC_ovr": roc_auc_ovr['roc_auc'], "AUROC_ovo":
+        # roc_auc_ovo['roc_auc']}
         # metrics["AUROC_ovr"] = roc_auc_ovr['roc_auc']
         # metrics["AUROC_ovo"] = roc_auc_ovo['roc_auc']
         if plot:
@@ -294,10 +313,12 @@ def multi_classification_metrics(plot=False):
 
 
 def multi_labels_metrics(label_list, plot=False):
-    """Create metrics computation function for multi-label classification tasks.
+    """Create metrics computation function for multi-label classification
+    tasks.
 
     This function returns a callable that computes comprehensive multi-label
-    classification metrics including per-label and overall metrics, with support
+        classification metrics including per-label and
+        overall metrics, with support
     for ROC curves and precision-recall curves for each label.
 
     Args:
@@ -323,13 +344,19 @@ def multi_labels_metrics(label_list, plot=False):
             labels = labels.numpy()
         pred_probs = sigmoid(logits)
         raw_pred = (pred_probs > 0.5).astype(int)
-        # predictions = raw_pred.reshape(-1)  # Not used in current implementation
-        # y_true = labels.astype(int).reshape(-1)  # Not used in current implementation
+        # predictions = raw_pred.reshape(-1) # Not used in current
+        # implementation
+        # y_true = labels.astype(int).reshape(-1) # Not used in current
+        # implementation
 
-        # accuracy = metric0.compute(predictions=predictions, references=y_true)
-        # precision = metric1.compute(predictions=predictions, references=y_true, average="macro")
-        # recall = metric2.compute(predictions=predictions, references=y_true, average="macro")
-        # f1 = metric3.compute(predictions=predictions, references=y_true, average="macro")
+        # accuracy = metric0.compute(predictions=predictions,
+        # references=y_true)
+        # precision = metric1.compute(predictions=predictions,
+        # references=y_true, average="macro")
+        # recall = metric2.compute(predictions=predictions, references=y_true,
+        # average="macro")
+        # f1 = metric3.compute(predictions=predictions, references=y_true,
+        # average="macro")
         # metrics = {**accuracy, **precision, **recall, **f1}
         metrics = {}
         metrics["accuracy"] = accuracy_score(labels, raw_pred)
@@ -485,9 +512,13 @@ def metrics_for_dnabert2(task):
 
     r2_metric = evaluate.load("r_squared")
     spm_metric = evaluate.load("spearmanr")
-    clf_metrics = evaluate.combine(
-        ["accuracy", "f1", "precision", "recall", "matthews_correlation"]
-    )
+    clf_metrics = evaluate.combine([
+        "accuracy",
+        "f1",
+        "precision",
+        "recall",
+        "matthews_correlation",
+    ])
     metric1 = evaluate.load("precision")
     metric2 = evaluate.load("recall")
     metric3 = evaluate.load("f1")
@@ -510,19 +541,19 @@ def metrics_for_dnabert2(task):
                 )
             else:
                 pred_probs = softmax(logits[0], axis=1)
-                predictions = [x.tolist().index(max(x)) for x in pred_probs]
+                pred_list: list[int] = [
+                    x.tolist().index(max(x)) for x in pred_probs
+                ]
                 precision = metric1.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
                 recall = metric2.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
                 f1 = metric3.compute(
-                    predictions=predictions, references=labels, average="micro"
+                    predictions=pred_list, references=labels, average="micro"
                 )
-                mcc = metric4.compute(
-                    predictions=predictions, references=labels
-                )
+                mcc = metric4.compute(predictions=pred_list, references=labels)
                 roc_auc_ovr = roc_metric.compute(
                     references=labels,
                     prediction_scores=pred_probs,
@@ -562,7 +593,7 @@ def metrics_for_dnabert2(task):
     return compute_metrics, preprocess_logits_for_metrics
 
 
-def compute_metrics(task_config: TaskConfig, plot: bool = False) -> dict:
+def compute_metrics(task_config: TaskConfig, plot: bool = False):
     """Compute metrics based on task type.
 
     This function serves as the main entry point for metrics computation,
@@ -570,7 +601,8 @@ def compute_metrics(task_config: TaskConfig, plot: bool = False) -> dict:
     task configuration.
 
     Args:
-        task_config: Task configuration object containing task type and parameters
+                task_config: Task configuration object containing task type and
+            parameters
         plot: Whether to include plotting data for visualization
 
     Returns:

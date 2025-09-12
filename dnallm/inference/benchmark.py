@@ -1,19 +1,22 @@
 """DNA Language Model Benchmarking Module.
 
-This module provides comprehensive benchmarking capabilities for DNA language models,
-including performance evaluation, metrics calculation, and result visualization.
+This module provides comprehensive benchmarking capabilities for DNA language
+models,
+including performance evaluation, metrics calculation, and
+    result visualization.
 """
 
 import os
 import numpy as np
 from pathlib import Path
+from typing import Any
 
 from torch.utils.data import DataLoader
 
 from ..models import MODEL_INFO, load_model_and_tokenizer
 from ..datahandling.data import DNADataset
 from ..configuration.configs import TaskConfig, InferenceConfig
-from .predictor import DNAPredictor, save_metrics
+from .inference import DNAInference, save_metrics
 from .plot import prepare_data, plot_bars, plot_curve, plot_scatter
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
@@ -22,35 +25,40 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class Benchmark:
     """Class for benchmarking DNA Language Models.
 
-    This class provides methods to evaluate the performance of different DNA language
-    models on various tasks, including classification, regression, and token classification.
+    This class provides methods to evaluate the performance of different DNA
+        language
+            models on various tasks, including classification, regression, and
+            token classification.
 
-    Attributes:
-        config: Configuration dictionary containing task settings and inference parameters
-        all_models: Dictionary mapping source names to sets of available model names
-        dataset: The dataset used for benchmarking
+        Attributes:
+            config: Configuration dictionary containing task settings and
+                inference parameters
+            all_models: Dictionary mapping source names to sets of available
+                model names
+            dataset: The dataset used for benchmarking
     """
 
     def __init__(self, config: dict):
         """Initialize the Benchmark class.
 
         Args:
-            config: Configuration object containing task settings and inference parameters
+            config: Configuration object containing task settings and
+                inference parameters
         """
         self.config = config
         self.all_models = {
             "huggingface": set(
-                np.concatenate(
-                    [MODEL_INFO[m]["huggingface"] for m in MODEL_INFO]
-                ).tolist()
+                np.concatenate([
+                    MODEL_INFO[m]["huggingface"] for m in MODEL_INFO
+                ]).tolist()
             ),
             "modelscope": set(
-                np.concatenate(
-                    [MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]
-                ).tolist()
+                np.concatenate([
+                    MODEL_INFO[m]["modelscope"] for m in MODEL_INFO
+                ]).tolist()
             ),
         }
-        self.datasets = []
+        self.datasets: list[str] = []
         # Load preset benchmark configuration if available
         if "benchmark" in config:
             self.prepared = self.__load_from_config()
@@ -61,22 +69,30 @@ class Benchmark:
     def __load_from_config(self):
         """Load the benchmark-specific parameters from the configuration."""
         benchmark_config = self.config["benchmark"]
+        config_path = os.path.dirname(benchmark_config.config_path)
         models = benchmark_config.models
         model_names = {m.name: m.path for m in models}
-        sources = [m.source for m in models]
+        sources = [m.source if hasattr(m, "source") else None for m in models]
         self.config["inference"] = InferenceConfig
         for k, v in dict(benchmark_config.evaluation).items():
             setattr(self.config["inference"], k, v)
         self.config["inference"].output_dir = benchmark_config.output.path
         if hasattr(benchmark_config, "datasets"):
             datasets = benchmark_config.datasets
+            task_configs = []
             for d in datasets:
                 self.config["task"] = TaskConfig
                 self.config["task"].task_type = d.task
-                self.config["task"].threshold = d.threshold
+                self.config["task"].num_labels = d.num_labels
                 self.config["task"].label_names = d.label_names
-                self.get_dataset(d.path, d.text_column, d.label_column)
-            task_configs = [d.task for d in datasets]
+                self.config["task"].threshold = d.threshold
+                data_path = (
+                    d.path
+                    if os.path.isfile(d.path)
+                    else os.path.abspath(config_path + "/" + d.path)
+                )
+                self.get_dataset(data_path, d.text_column, d.label_column)
+                task_configs.append(self.config["task"])
         else:
             datasets = []
             task_configs = [self.config["task"]]
@@ -91,21 +107,22 @@ class Benchmark:
             "plot_format": plot_format,
         }
 
-    def get_predictor(self, model, tokenizer) -> DNAPredictor:
-        """Create a predictor object for the model.
+    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+        """Create an inference engine object for the model.
 
         Args:
-            model: The model to be used for prediction
+            model: The model to be used for inference
             tokenizer: The tokenizer to be used for encoding sequences
 
         Returns:
-            DNAPredictor: The predictor object configured with the given model and tokenizer
+            DNAInference: The inference engine object configured with the given
+                model and tokenizer
         """
 
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=model, tokenizer=tokenizer, config=self.config
         )
-        return predictor
+        return inference_engine
 
     def get_dataset(
         self,
@@ -123,10 +140,10 @@ class Benchmark:
         Returns:
             DNADataset: Dataset object containing the sequences and labels
         """
-        predictor = DNAPredictor(
+        inference_engine = DNAInference(
             model=None, tokenizer=None, config=self.config
         )
-        ds, _ = predictor.generate_dataset(
+        ds, _ = inference_engine.generate_dataset(
             seq_or_path=seq_or_path,
             seq_col=seq_col,
             label_col=label_col,
@@ -140,10 +157,12 @@ class Benchmark:
         """List all available models.
 
         Args:
-            show_all: If True, show all models. If False, show only the models that are available
+                        show_all: If True, show all models. If False,
+                show only the models that are available
 
         Returns:
-            List of model names if show_all=True, otherwise dictionary mapping model names to tags
+                        List of model names if show_all=True,
+                otherwise dictionary mapping model names to tags
         """
         # Load the model information
         if show_all:
@@ -155,18 +174,20 @@ class Benchmark:
     def run(
         self,
         model_names: list[str] | dict | None = None,
-        source: str = "local",
+        source: str = "huggingface",
         use_mirror: bool = False,
         save_preds: bool = False,
         save_scores: bool = True,
     ) -> None:
         """Perform the benchmark evaluation on multiple models.
 
-        This method loads each model, runs predictions on the dataset, calculates metrics,
+                This method loads each model, runs predictions on the dataset,
+            calculates metrics,
         and optionally saves the results.
 
         Args:
-            model_names: List of model names or a dictionary mapping model names to paths
+                        model_names: List of model names or
+                a dictionary mapping model names to paths
             source: Source of the models ('local', 'huggingface', 'modelscope')
             use_mirror: Whether to use a mirror for downloading models
             save_preds: Whether to save the predictions
@@ -176,18 +197,19 @@ class Benchmark:
             None
 
         Raises:
-            NameError: If model cannot be found in either the given source or local storage
+            NameError: If model cannot be found in either the given source or
+                local storage
         """
-        all_results = {}
-        selected_results = {}
-        metrics_save = {}
+        all_results: dict[str, Any] = {}
+        selected_results: dict[str, Any] = {}
+        metrics_save: dict[str, Any] = {}
         if self.prepared:
             task_configs = self.prepared["tasks"]
             pred_config = self.config["inference"]
             # Get datasets and model names from preset config
             dataset_names = [d.name for d in self.prepared["dataset"]]
             model_names = self.prepared["models"]
-            sources = self.prepared["sources"]
+            sources = [s if s else source for s in self.prepared["sources"]]
             selected_metrics = self.prepared["metrics"]
         else:
             # Get configurations from the provided config
@@ -209,7 +231,8 @@ class Benchmark:
             )
             for mi, model_name in enumerate(model_names):
                 print("Model name:", model_name)
-                # Check if the model name is provided as a string or a dictionary
+                # Check if the model name is provided as a string or a
+                # dictionary
                 if isinstance(model_names, dict):
                     model_path = model_names[model_name]
                 else:
@@ -225,46 +248,46 @@ class Benchmark:
                 else:
                     # Check if the model is available in the model library
                     # if model_path not in self.all_models[source]:
-                    #     print(f"Model \'{model_path}\' not found in our available models list.")
+                    # print(f"Model \'{model_path}\' not found in our available
+                    # models list.")
                     #     continue
-                    try:
-                        model, tokenizer = load_model_and_tokenizer(
-                            model_path,
-                            task_config=task_config,
-                            source=source,
-                            use_mirror=use_mirror,
-                        )
-                    except Exception:
-                        if os.path.exists(model_path):
-                            model, tokenizer = load_model_and_tokenizer(
-                                model_path, task_config=task_config
-                            )
-                        else:
-                            raise NameError(
-                                "Cannot find model in either the given source or local."
-                            ) from None
+                    # try:
+                    model, tokenizer = load_model_and_tokenizer(
+                        model_path,
+                        task_config=task_config,
+                        source=source,
+                        use_mirror=use_mirror,
+                    )
+                    # except Exception:
+                    #     if os.path.exists(model_path):
+                    #         model, tokenizer = load_model_and_tokenizer(
+                    #             model_path, task_config=task_config
+                    #         )
+                    #     else:
+                    #         raise NameError(
+                    # "Cannot find model in either the given source or local."
+                    #         ) from None
                 dataset = DNADataset(
                     self.datasets[di],
                     tokenizer=tokenizer,
                     max_length=pred_config.max_length,
                 )
                 dataset.encode_sequences(remove_unused_columns=True)
-                dataloader = DataLoader(
+                dataloader: DataLoader = DataLoader(
                     dataset,
                     batch_size=pred_config.batch_size,
                     num_workers=pred_config.num_workers,
                 )
-                predictor = self.get_predictor(model, tokenizer)
+                inference_engine = self.get_inference_engine(model, tokenizer)
                 # Perform the prediction
-                logits, _, _ = predictor.batch_predict(
+                logits, _, _ = inference_engine.batch_infer(
                     dataloader, do_pred=False
                 )
                 if len(labels) == len(logits):
-                    metrics = predictor.calculate_metrics(
+                    metrics = inference_engine.calculate_metrics(
                         logits, labels, plot=True
                     )
                     all_results[dname][model_name] = metrics
-                    selected_results[dname][model_name] = {}
                     # keep selected metrics
                     if selected_metrics:
                         selected_results[dname][model_name] = {}
@@ -275,6 +298,8 @@ class Benchmark:
                                 selected_results[dname][model_name][metric] = (
                                     all_results[dname][model_name][metric]
                                 )
+                    else:
+                        selected_results[dname][model_name] = metrics
                     # keep all metrics if save_scores is True
                     if save_scores:
                         metrics2 = dict(metrics)
@@ -307,7 +332,8 @@ class Benchmark:
         Args:
             metrics: Dictionary containing model metrics
             show_score: Whether to show the score on the plot
-            save_path: Path to save the plot. If None, plots will be shown interactively
+                        save_path: Path to save the plot. If None,
+                plots will be shown interactively
             separate: Whether to save the plots separately
 
         Returns:

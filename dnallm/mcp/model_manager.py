@@ -11,7 +11,7 @@ import torch
 import time
 
 from dnallm.models import load_model_and_tokenizer
-from dnallm.inference.predictor import DNAPredictor
+from dnallm.inference.inference import DNAInference
 from dnallm.configuration.configs import TaskConfig
 from dnallm.utils import get_logger
 from .config_manager import MCPConfigManager
@@ -29,7 +29,7 @@ class ModelManager:
             config_manager: MCPConfigManager instance
         """
         self.config_manager = config_manager
-        self.loaded_models: dict[str, DNAPredictor] = {}
+        self.loaded_models: dict[str, DNAInference] = {}
         self.model_loading_status: dict[
             str, str
         ] = {}  # "loading", "loaded", "error"
@@ -76,7 +76,8 @@ class ModelManager:
                 logger.info(f"   Source: {model_config.model.source}")
                 logger.info(f"   Task type: {model_config.task.task_type}")
                 logger.info(
-                    f"   Architecture: {model_config.model.task_info.architecture}"
+                    f"   Architecture: "
+                    f"{model_config.model.task_info.architecture}"
                 )
                 logger.info("   📥 Downloading/loading model and tokenizer...")
 
@@ -105,19 +106,22 @@ class ModelManager:
                 )
 
                 # Create predictor
-                logger.info("   🔧 Creating DNA predictor...")
+                logger.info("   🔧 Creating DNA inference engine...")
                 predictor_config = {
                     "task": model_config.task,
                     "inference": model_config.inference,
                 }
 
-                predictor = DNAPredictor(model, tokenizer, predictor_config)
-                self.loaded_models[model_name] = predictor
+                inference_engine = DNAInference(
+                    model, tokenizer, predictor_config
+                )
+                self.loaded_models[model_name] = inference_engine
                 self.model_loading_status[model_name] = "loaded"
 
                 total_time = time.time() - start_time
                 logger.success(
-                    f"Successfully loaded model: {model_name} (total: {total_time:.2f}s)"
+                    f"Successfully loaded model: {model_name} "
+                    f"(total: {total_time:.2f}s)"
                 )
                 loguru_logger.info(f"Successfully loaded model: {model_name}")
                 return True
@@ -180,10 +184,12 @@ class ModelManager:
         successful_loads = sum(loading_results.values())
         logger.info("\n📊 Loading Summary:")
         logger.info(
-            f"   ✅ Successfully loaded: {successful_loads}/{len(enabled_models)} models"
+            f"   ✅ Successfully loaded: {successful_loads}/"
+            f"{len(enabled_models)} models"
         )
         logger.info(
-            f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/{len(enabled_models)} models"
+            f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/"
+            f"{len(enabled_models)} models"
         )
 
         if successful_loads > 0:
@@ -199,7 +205,8 @@ class ModelManager:
                     logger.failure(f"   {model_name}")
 
         logger.info(
-            f"Successfully loaded {successful_loads}/{len(enabled_models)} models"
+            f"Successfully loaded {successful_loads}/{len(enabled_models)} "
+            f"models"
         )
 
         return loading_results
@@ -223,14 +230,14 @@ class ModelManager:
         """
         return self.model_loading_status.get(model_name, "not_found")
 
-    def get_predictor(self, model_name: str) -> DNAPredictor | None:
-        """Get predictor instance for a specific model.
+    def get_inference_engine(self, model_name: str) -> DNAInference | None:
+        """Get inference engine instance for a specific model.
 
         Args:
             model_name: Name of the model
 
         Returns:
-            DNAPredictor instance or None if not loaded
+            DNAInference instance or None if not loaded
         """
         return self.loaded_models.get(model_name)
 
@@ -247,8 +254,8 @@ class ModelManager:
         Returns:
             Prediction results or None if model not available
         """
-        predictor = self.get_predictor(model_name)
-        if not predictor:
+        inference_engine = self.get_inference_engine(model_name)
+        if not inference_engine:
             logger.error(f"Model {model_name} not loaded")
             return None
 
@@ -256,7 +263,7 @@ class ModelManager:
             # Run prediction in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
-                None, predictor.predict_seqs, sequence, **kwargs
+                None, inference_engine.infer_seqs, sequence, **kwargs
             )
             return result
         except Exception as e:
@@ -276,8 +283,8 @@ class ModelManager:
         Returns:
             Batch prediction results or None if model not available
         """
-        predictor = self.get_predictor(model_name)
-        if not predictor:
+        inference_engine = self.get_inference_engine(model_name)
+        if not inference_engine:
             logger.error(f"Model {model_name} not loaded")
             return None
 
@@ -285,7 +292,7 @@ class ModelManager:
             # Run prediction in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
-                None, predictor.predict_seqs, sequences, **kwargs
+                None, inference_engine.infer_seqs, sequences, **kwargs
             )
             return result
         except Exception as e:
@@ -326,7 +333,8 @@ class ModelManager:
             result = results[i]
             if isinstance(result, Exception):
                 logger.error(
-                    f"Exception in multi-model prediction for {model_name}: {result}"
+                    f"Exception in multi-model prediction for {model_name}: "
+                    f"{result}"
                 )
                 multi_results[model_name] = {"error": str(result)}
             else:
@@ -347,7 +355,7 @@ class ModelManager:
         if not model_config:
             return None
 
-        predictor = self.get_predictor(model_name)
+        inference_engine = self.get_inference_engine(model_name)
 
         info = {
             "name": model_name,
@@ -360,14 +368,16 @@ class ModelManager:
             "tokenizer": model_config.model.task_info.tokenizer,
             "species": model_config.model.task_info.species,
             "task_category": model_config.model.task_info.task_category,
-            "performance_metrics": model_config.model.task_info.performance_metrics,
+            "performance_metrics": (
+                model_config.model.task_info.performance_metrics
+            ),
             "status": self.get_model_status(model_name),
             "loaded": model_name in self.loaded_models,
         }
 
-        if predictor:
+        if inference_engine:
             try:
-                memory_usage = predictor.estimate_memory_usage()
+                memory_usage = inference_engine.estimate_memory_usage()
                 info["memory_usage"] = memory_usage
             except Exception as e:
                 logger.warning(

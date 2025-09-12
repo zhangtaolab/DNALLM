@@ -92,7 +92,7 @@ def test_random_generate_sequences():
     assert all(0.4 <= calc_gc_content(seq) <= 0.6 for seq in seqs)
 
     # Test with N ratio
-    seqs = random_generate_sequences(minl=20, samples=5, N_ratio=0.1, seed=42)
+    seqs = random_generate_sequences(minl=20, samples=5, n_ratio=0.1, seed=42)
     assert len(seqs) == 5
     assert any("N" in seq for seq in seqs)
 

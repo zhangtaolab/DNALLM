@@ -1,0 +1,35 @@
+# Inference Model Configuration for Promoter Prediction
+# Individual model configuration file
+
+task:
+  task_type: "binary"
+  num_labels: 2
+  label_names: ["Not promoter", "Core promoter"]
+  threshold: 0.5
+  description: "Predict whether a DNA sequence is a core promoter in plants"
+
+inference:
+  batch_size: 16
+  max_length: 512
+  device: "cpu"
+  num_workers: 4
+  precision: "float16"
+  output_dir: "./outputs/promoter_predictions"
+  save_predictions: true
+  save_hidden_states: false
+  save_attentions: false
+
+model:
+  name: "Plant DNABERT BPE promoter"
+  path: "zhangtaolab/plant-dnabert-BPE-promoter"
+  source: "modelscope"  # or "huggingface"
+  task_info:
+    architecture: "DNABERT"
+    tokenizer: "BPE"
+    species: "plant"
+    task_category: "promoter_prediction"
+    performance_metrics:
+      accuracy: 0.85
+      f1_score: 0.82
+      precision: 0.80
+      recall: 0.85

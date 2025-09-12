@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Test real model inference with zhangtaolab/plant-dnagpt-BPE-promoter.
 
-This script demonstrates how to use the DNAPredictor with a real model
+This script demonstrates how to use the DNAInference with a real model
 for DNA sequence classification.
 """
 
@@ -27,7 +27,7 @@ class TestRealModelInference(unittest.TestCase):
                 AutoModelForSequenceClassification,
                 AutoTokenizer,
             )
-            from dnallm.inference.predictor import DNAPredictor
+            from dnallm.inference.inference import DNAInference
             from dnallm.configuration.configs import load_config
 
             print("🚀 Setting up test class...")
@@ -49,15 +49,20 @@ class TestRealModelInference(unittest.TestCase):
 
             print("✅ Configuration loaded")
 
-            # Create predictor
-            cls.predictor = DNAPredictor(cls.model, cls.tokenizer, cls.config)
+            # Create inference engine
+            cls.inference_engine = DNAInference(
+                cls.model, cls.tokenizer, cls.config
+            )
+            # Keep backward compatibility for tests
+            cls.predictor = cls.inference_engine
 
-            print("✅ Predictor created")
+            print("✅ Inference engine created")
 
         except ImportError as e:
             print(f"❌ Import error: {e}")
             print(
-                "Please install required packages: pip install transformers torch"
+                "Please install required packages:"
+                "pip install transformers torch"
             )
             raise unittest.SkipTest(
                 f"Required packages not available: {e}"
@@ -96,15 +101,23 @@ class TestRealModelInference(unittest.TestCase):
 
         # Test with sample sequences
         test_sequences = [
-            "TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAGTCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGATAGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAGGCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGATCCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT",
-            "ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCATGAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAATGCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTGCTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGATGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC",
+            "TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAG\
+            TCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGAT\
+            AGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAG\
+            GCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGAT\
+            CCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT",
+            "ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCAT\
+            GAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAAT\
+            GCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTG\
+            CTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGA\
+            TGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC",
         ]
 
         print(f"🧬 Testing with {len(test_sequences)} sequences...")
 
         # Perform prediction - just ensure it runs without error
         try:
-            results = self.predictor.predict_seqs(test_sequences)
+            results = self.predictor.infer_seqs(test_sequences)
             print("✅ Basic inference completed successfully")
             assert results is not None
         except Exception as e:
@@ -116,8 +129,16 @@ class TestRealModelInference(unittest.TestCase):
 
         # Create a temporary test file
         test_sequences = [
-            "TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAGTCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGATAGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAGGCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGATCCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT",
-            "ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCATGAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAATGCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTGCTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGATGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC",
+            "TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAG\
+            TCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGAT\
+            AGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAG\
+            GCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGAT\
+            CCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT",
+            "ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCAT\
+            GAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAAT\
+            GCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTG\
+            CTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGA\
+            TGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC",
         ]
 
         test_data = {
@@ -137,7 +158,7 @@ class TestRealModelInference(unittest.TestCase):
 
         try:
             # Predict from file - just ensure it runs without error
-            file_results = self.predictor.predict_file(
+            file_results = self.predictor.infer_file(
                 test_file_path,
                 seq_col="sequence",
                 label_col="label",
@@ -178,14 +199,15 @@ class TestRealModelInference(unittest.TestCase):
 
     def test_with_test_csv(self):
         """Test with test.csv if it exists."""
-        if not os.path.exists("test.csv"):
+        test_csv_path = "tests/test_data/binary_classification/test.csv"
+        if not os.path.exists(test_csv_path):
             self.skipTest("test.csv not found, skipping this test")
 
         print("📊 Testing with test.csv data...")
 
         try:
-            results = self.predictor.predict_file(
-                "test.csv",
+            results = self.predictor.infer_file(
+                test_csv_path,
                 seq_col="sequence",
                 label_col="label",
                 evaluate=True,
@@ -212,7 +234,7 @@ class TestRealModelInference(unittest.TestCase):
 def run_tests():
     """Run the tests with proper setup and teardown."""
     try:
-        print("🧪 DNAPredictor Real Model Testing")
+        print("🧪 DNAInference Real Model Testing")
         print("=" * 50)
 
         # Create test suite

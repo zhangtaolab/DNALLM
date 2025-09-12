@@ -79,24 +79,22 @@ class TRECEval(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": {
-                        "query": datasets.Sequence(datasets.Value("int64")),
-                        "q0": datasets.Sequence(datasets.Value("string")),
-                        "docid": datasets.Sequence(datasets.Value("string")),
-                        "rank": datasets.Sequence(datasets.Value("int64")),
-                        "score": datasets.Sequence(datasets.Value("float")),
-                        "system": datasets.Sequence(datasets.Value("string")),
-                    },
-                    "references": {
-                        "query": datasets.Sequence(datasets.Value("int64")),
-                        "q0": datasets.Sequence(datasets.Value("string")),
-                        "docid": datasets.Sequence(datasets.Value("string")),
-                        "rel": datasets.Sequence(datasets.Value("int64")),
-                    },
-                }
-            ),
+            features=datasets.Features({
+                "predictions": {
+                    "query": datasets.Sequence(datasets.Value("int64")),
+                    "q0": datasets.Sequence(datasets.Value("string")),
+                    "docid": datasets.Sequence(datasets.Value("string")),
+                    "rank": datasets.Sequence(datasets.Value("int64")),
+                    "score": datasets.Sequence(datasets.Value("float")),
+                    "system": datasets.Sequence(datasets.Value("string")),
+                },
+                "references": {
+                    "query": datasets.Sequence(datasets.Value("int64")),
+                    "q0": datasets.Sequence(datasets.Value("string")),
+                    "docid": datasets.Sequence(datasets.Value("string")),
+                    "rel": datasets.Sequence(datasets.Value("int64")),
+                },
+            }),
             homepage="https://github.com/joaopalotti/trectools",
         )
 

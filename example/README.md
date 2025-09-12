@@ -55,7 +55,7 @@ An example that shows how to finetune a model for gene Name Entity Recognition t
 * rice_gene_ner_BPE.pkl (an example training dataset stored with pickle format)
 
 #### inference_and_benchmark
-An example that shows how to predict with a finetuned model and how to benchmark several models.
+An example that shows how to perform inference with a finetuned model and how to benchmark several models.
 * inference_config.yaml (config file)
 * inference_and_benchmark.ipynb (notebook file)
 * test.csv (a test dataset)

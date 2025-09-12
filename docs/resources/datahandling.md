@@ -67,8 +67,8 @@ dna_ds = DNADataset.load_local_data(
 # 2.1 From HuggingFace
 dna_ds = DNADataset.from_huggingface(
     "zhangtaolab/plant-multi-species-open-chromatin", 
-    seq_field="sequence", 
-    label_field="label", 
+    seq_col="sequence", 
+    label_col="label", 
     tokenizer=tokenizer, 
     max_length=512
 )
@@ -76,10 +76,17 @@ dna_ds = DNADataset.from_huggingface(
 # 2.2 From ModelScope
 dna_ds = DNADataset.from_modelscope(
     "zhangtaolab/plant-multi-species-open-chromatin", 
-    seq_field="sequence", 
-    label_field="label", 
+    seq_col="sequence", 
+    label_col="label", 
     tokenizer=tokenizer, 
     max_length=512
+)
+
+# 2.3 From preset dataset
+show_preset_dataset()  # Show available preset dataset
+dna_ds = load_preset_dataset(
+    dataset_name='plant-genomic-benchmark',
+    task='promoter_strength.leaf'
 )
 ```
 
@@ -132,6 +139,12 @@ tmp_ds = dna_ds.head(head=5)  # Extract first N data entries
 
 # 8. Sequence tokenization (requires DNADataset.tokenizer to be defined)
 dna_ds.encode_sequences()
+
+# 9. Data statistics
+dna_ds.statistics()
+
+# 10. Data statistics visualization
+dna_ds.plot_statistics()
 ```
 
 ## API Reference

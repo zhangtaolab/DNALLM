@@ -326,16 +326,14 @@ class Sari(evaluate.Metric):
             description=_DESCRIPTION,
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "sources": datasets.Value("string", id="sequence"),
-                    "predictions": datasets.Value("string", id="sequence"),
-                    "references": datasets.Sequence(
-                        datasets.Value("string", id="sequence"),
-                        id="references",
-                    ),
-                }
-            ),
+            features=datasets.Features({
+                "sources": datasets.Value("string", id="sequence"),
+                "predictions": datasets.Value("string", id="sequence"),
+                "references": datasets.Sequence(
+                    datasets.Value("string", id="sequence"),
+                    id="references",
+                ),
+            }),
             codebase_urls=[
                 "https://github.com/cocoxu/simplification/blob/master/SARI.py",
                 "https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/sari_hook.py",

@@ -108,16 +108,14 @@ class Seqeval(evaluate.Metric):
             citation=_CITATION,
             homepage="https://github.com/chakki-works/seqeval",
             inputs_description=_KWARGS_DESCRIPTION,
-            features=datasets.Features(
-                {
-                    "predictions": datasets.Sequence(
-                        datasets.Value("string", id="label"), id="sequence"
-                    ),
-                    "references": datasets.Sequence(
-                        datasets.Value("string", id="label"), id="sequence"
-                    ),
-                }
-            ),
+            features=datasets.Features({
+                "predictions": datasets.Sequence(
+                    datasets.Value("string", id="label"), id="sequence"
+                ),
+                "references": datasets.Sequence(
+                    datasets.Value("string", id="label"), id="sequence"
+                ),
+            }),
             codebase_urls=["https://github.com/chakki-works/seqeval"],
             reference_urls=["https://github.com/chakki-works/seqeval"],
         )

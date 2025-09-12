@@ -94,20 +94,16 @@ class NistMt(evaluate.Metric):
             citation=_CITATION,
             inputs_description=_KWARGS_DESCRIPTION,
             features=[
-                datasets.Features(
-                    {
-                        "predictions": Value("string", id="prediction"),
-                        "references": Sequence(
-                            Value("string", id="reference"), id="references"
-                        ),
-                    }
-                ),
-                datasets.Features(
-                    {
-                        "predictions": Value("string", id="prediction"),
-                        "references": Value("string", id="reference"),
-                    }
-                ),
+                datasets.Features({
+                    "predictions": Value("string", id="prediction"),
+                    "references": Sequence(
+                        Value("string", id="reference"), id="references"
+                    ),
+                }),
+                datasets.Features({
+                    "predictions": Value("string", id="prediction"),
+                    "references": Value("string", id="reference"),
+                }),
             ],
             homepage="https://www.nltk.org/api/nltk.translate.nist_score.html",
             codebase_urls=[
