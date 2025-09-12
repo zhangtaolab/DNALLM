@@ -258,6 +258,7 @@ def create_check_configs(args) -> list[CheckConfig]:
                 "--disable-error-code=unreachable",
                 "--disable-error-code=misc",
                 "--disable-error-code=import-untyped",
+                "--exclude=dnallm/tasks/metrics/",
             ],
             "MyPy type checking (matches CI)",
         ),

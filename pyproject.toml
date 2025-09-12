@@ -74,6 +74,7 @@ Documentation = "https://zhangtaolab.github.io/DNALLM/"
 [project.optional-dependencies]
 dev = [
     "ruff>=0.1.12",
+    "flake8>=7.0.0",
     "pre-commit>=3.6.0",
     "ipywidgets>=8",
     "jupyter>=1.1.1",
@@ -106,6 +107,7 @@ mcp = [
 base = [
     "asyncio>=3.4.3",
     "ruff>=0.1.12",
+    "flake8>=7.0.0",
     "ipywidgets>=8",
     "isort>=6.0.1",
     "jupyter>=1.1.1",
@@ -339,6 +341,79 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "transformers.*",
+    "datasets.*",
+    "altair.*",
+    "umap.*",
+    "wandb.*",
+    "modelscope.*",
+    "mcp.*",
+    "peft.*",
+    "accelerate.*",
+    "evaluate.*",
+    "seqeval.*",
+    "tensorboardx.*",
+    "tokenizers.*",
+    "sentencepiece.*",
+    "einops.*",
+    "loguru.*",
+    "rich.*",
+    "colorama.*",
+    "tqdm.*",
+    "websockets.*",
+    "uvicorn.*",
+    "aiohttp.*",
+    "jax.*",
+    "mambapy.*",
+    "ninja.*",
+    "openpyxl.*",
+    "scipy.*",
+    "sklearn.*",
+    "sklearn.*.*",
+    "scikit_learn.*",
+    "scikit_learn.*.*",
+    "pandas.*",
+    "numpy.*",
+    "torch.*",
+    "torch.*.*",
+    "torchvision.*",
+    "torchaudio.*",
+    "huggingface_hub.*",
+    "addict.*",
+    "pydantic.*",
+    "pydantic.*.*",
+    "python_dotenv.*",
+    "yaml.*",
+    "PyYAML.*",
+    "ipykernel.*",
+    "ipywidgets.*",
+    "jupyter.*",
+    "marimo.*",
+    "nbstripout.*",
+    "mamba_ssm.*",
+    "causal_conv1d.*",
+]
+ignore_missing_imports = true
 
 # Pytest configuration
 [tool.pytest.ini_options]
