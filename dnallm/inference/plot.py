@@ -640,7 +640,7 @@ def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
     Returns:
         pandas DataFrame ready for plotting
     """
-    if labels is None:
+    if labels is None or len(labels) == 0:
         labels = ["Uncategorized"] * dim_reduced_vectors.shape[0]
 
     processed_labels = [

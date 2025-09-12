@@ -1796,12 +1796,12 @@ class TestPDFOutputQuality:
         # Test with invalid save path
         data = {"models": TEST_MODELS, "accuracy": TEST_ACCURACY_VALUES}
 
-        # Test with invalid path (should not crash)
+        # Test with invalid path (should raise FileNotFoundError)
         invalid_path = "/invalid/path/test.pdf"
 
-        # This should not crash, even with invalid path
-        chart = plot_bars(data, save_path=invalid_path)
-        assert_chart_valid(chart)
+        # This should raise an error for invalid path
+        with pytest.raises(FileNotFoundError):
+            plot_bars(data, save_path=invalid_path)
 
     def test_pdf_format_compatibility(self):
         """Test PDF format compatibility.

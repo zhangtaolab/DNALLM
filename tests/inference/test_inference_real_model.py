@@ -199,14 +199,15 @@ class TestRealModelInference(unittest.TestCase):
 
     def test_with_test_csv(self):
         """Test with test.csv if it exists."""
-        if not os.path.exists("test.csv"):
+        test_csv_path = "tests/test_data/binary_classification/test.csv"
+        if not os.path.exists(test_csv_path):
             self.skipTest("test.csv not found, skipping this test")
 
         print("📊 Testing with test.csv data...")
 
         try:
             results = self.predictor.infer_file(
-                "test.csv",
+                test_csv_path,
                 seq_col="sequence",
                 label_col="label",
                 evaluate=True,

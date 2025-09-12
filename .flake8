@@ -14,6 +14,7 @@ exclude =
     .tox,
     dnallm/tasks/metrics/,
     example/
+    site/
 per-file-ignores =
     # Tests can use magic values, assertions, and relative imports
     tests/**/*.py: S101,S106,S108,PLR2004,TID252,F401,F403,F841,E402

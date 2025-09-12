@@ -454,23 +454,27 @@ task:
         """Clean up integration test fixtures."""
         shutil.rmtree(cls.test_dir)
 
-    @unittest.skip(
-        "Skip integration test by default - requires model download"
-    )
     def test_real_model_integration(self):
-        """Test with real model loading (skipped by default)."""
+        """Test with real model loading from ModelScope."""
         try:
             from transformers import (
                 AutoModelForSequenceClassification,
                 AutoTokenizer,
             )
 
-            # Load real model and tokenizer
+            # Load real model and tokenizer from ModelScope
             model_name = "zhangtaolab/plant-dnagpt-BPE-promoter"
+            print(f"🔄 Downloading model {model_name} from ModelScope...")
+            
+            # Use ModelScope to download model
+            from modelscope import snapshot_download
+            model_dir = snapshot_download(model_name)
+            
             model = AutoModelForSequenceClassification.from_pretrained(
-                model_name
+                model_dir
             )
-            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_dir)
+            print("✅ Model and tokenizer loaded successfully")
 
             # Load configuration
             from dnallm.configuration.configs import load_config
