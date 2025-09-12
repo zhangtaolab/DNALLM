@@ -1,7 +1,8 @@
 """Test suite for the plot.py module.
 
-This module contains comprehensive tests for all plotting functions in the plot.py module,
-including edge cases, error handling, and various data scenarios.
+This module contains comprehensive tests for all plotting functions in the
+plot.py module, including edge cases, error handling, and various data
+scenarios.
 
 Enhanced test structure with better organization, performance improvements,
 and comprehensive coverage of all edge cases and error conditions.
@@ -11,17 +12,15 @@ Optimized to output PDF files to the tests/inference/pdf/ directory.
 # Group imports by functionality for better organization
 # Standard library imports
 import os
-import tempfile
 import time
 from typing import Any
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from pathlib import Path
 
 # Third-party imports
 import pytest
-import pandas as pd
 import numpy as np
-import altair as alt
+
 
 # Local imports - Import only what's needed
 from dnallm.inference.plot import (
@@ -266,12 +265,14 @@ class TestPrepareData:
         metrics = {}
 
         # The function should handle empty metrics gracefully
-        # We expect it to fail, but not necessarily with a specific exception type
+        # We expect it to fail, but not necessarily with a
+        # specific exception type
         try:
             prepare_data(metrics, "binary")
         except Exception as e:
             # Expected to fail, but not necessarily with KeyError
-            # This test validates that the function doesn't crash with empty input
+            # This test validates that the function doesn't crash
+            # with empty input
             print(f"Expected exception in test: {e}")
             pass
 
@@ -419,7 +420,8 @@ class TestPlotBars:
             # Validate PDF file creation and quality
             assert_pdf_created(pdf_file_path)
 
-            # Check file size is reasonable (not too small, indicating empty file)
+            # Check file size is reasonable (not too small,
+            # indicating empty file)
             file_size = os.path.getsize(pdf_file_path)
             assert file_size > 1000, (
                 f"PDF file too small ({file_size} bytes), may be corrupted"
@@ -969,7 +971,8 @@ class TestPlotEmbeddings:
     """Test cases for the plot_embeddings function.
 
     Enhanced test structure with comprehensive embedding testing,
-    improved mock handling for external dependencies, and better resource management.
+    improved mock handling for external dependencies, and better resource
+    management.
     """
 
     def test_plot_embeddings_tsne(self):
@@ -1601,7 +1604,8 @@ class TestPerformance:
 
         # Validate performance characteristics
         assert processing_time < 1.0, (
-            f"Large dataset processing took {processing_time:.3f}s, should be under 1.0s"
+            f"Large dataset processing took {processing_time:.3f}s,\
+            should be under 1.0s"
         )
         assert len(bars_data["models"]) == 10, "Should process 10 models"
         assert len(curves_data["ROC"]["models"]) == 1000, (
@@ -1665,7 +1669,8 @@ class TestPerformance:
 
             # Validate performance (should complete in reasonable time)
             assert total_time < 5.0, (
-                f"Concurrent PDF generation took {total_time:.3f}s, should be under 5.0s"
+                f"Concurrent PDF generation took {total_time:.3f}s,\
+                    should be under 5.0s"
             )
 
             # Validate all files were created
@@ -1701,7 +1706,8 @@ class TestPerformance:
 
         # Validate performance characteristics
         assert rendering_time < 2.0, (
-            f"Large chart rendering took {rendering_time:.3f}s, should be under 2.0s"
+            f"Large chart rendering took {rendering_time:.3f}s,\
+            should be under 2.0s"
         )
         assert_chart_valid(chart)
 

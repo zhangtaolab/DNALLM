@@ -57,9 +57,10 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 class DNAInference:
     """DNA sequence inference engine using fine-tuned models.
 
-    This class provides comprehensive functionality for performing inference using DNA language models.
-    It handles model loading, inference, result processing, and various output formats including
-    hidden states and attention weights for model interpretability.
+    This class provides comprehensive functionality for performing inference
+    using DNA language models. It handles model loading, inference, result
+    processing, and various output formats including hidden states and 
+    attention weights for model interpretability.
 
     Attributes:
         model: Fine-tuned model instance for inference
@@ -78,7 +79,8 @@ class DNAInference:
         Args:
             model: Fine-tuned model instance for inference
             tokenizer: Tokenizer for encoding DNA sequences
-            config: Configuration dictionary containing task settings and inference parameters
+            config: Configuration dictionary containing task settings and
+            inference parameters
         """
 
         self.model = model
