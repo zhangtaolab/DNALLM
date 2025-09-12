@@ -87,7 +87,7 @@ def calculate_metric_with_sklearn(eval_pred):
     }
 
 
-## Load evaluate metrics locally to avoid downloading from Hugging Face
+# Load evaluate metrics locally to avoid downloading from Hugging Face
 
 
 def classification_metrics(plot=False):

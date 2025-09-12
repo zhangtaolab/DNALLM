@@ -230,6 +230,12 @@ def create_check_configs(args) -> list[CheckConfig]:
              entire codebase",
         ),
         CheckConfig(
+            "Block Comment Check (E266)",
+            ["flake8", ".", "--select=E266", "--max-line-length=79"],
+            "Too many leading '#' for block comment check (E266) for \
+             entire codebase",
+        ),
+        CheckConfig(
             "Type Checking (MyPy)",
             [
                 "mypy",
