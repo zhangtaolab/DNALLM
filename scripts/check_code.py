@@ -2,7 +2,16 @@
 """
 DNALLM Code Quality Check Script
 This script runs all code quality checks required before committing.
-Usage: python scripts/check_code.py [--fix] [--verbose]
+It includes both CI-matching checks and additional strict checks to prevent CI
+failures.
+
+Strategy:
+1. First runs exact same checks as CI workflow to ensure compatibility
+2. Then runs additional strict checks (E501, E203, E402, E266) on entire
+codebase
+3. This ensures local checks are stricter than CI, preventing CI failures
+
+Usage: python scripts/check_code.py [--fix] [--verbose] [--with-tests]
 """
 
 import argparse
@@ -187,56 +196,48 @@ def check_environment() -> bool:
 def create_check_configs(args) -> list[CheckConfig]:
     """Create check configurations based on command line arguments."""
     base_checks = [
+        # CI Checks (must match exactly)
         CheckConfig(
-            "Code Formatting",
+            "Ruff Format Check (CI)",
             ["ruff", "format", "."]
             if args.fix
             else ["ruff", "format", "--check", "."],
-            "Code formatting check" + (" (auto-fix)" if args.fix else ""),
+            "Ruff code formatting check (matches CI)"
+            + (" (auto-fix)" if args.fix else ""),
             auto_fixable=True,
         ),
         CheckConfig(
-            "Code Quality (Ruff)",
+            "Ruff Linting Check (CI)",
             ["ruff", "check", ".", "--fix", "--statistics"]
             if args.fix
             else ["ruff", "check", ".", "--statistics"],
-            "Code quality check" + (" (auto-fix)" if args.fix else ""),
+            "Ruff code quality check (matches CI)"
+            + (" (auto-fix)" if args.fix else ""),
             auto_fixable=True,
         ),
         CheckConfig(
-            "Flake8 (MCP Module)",
+            "Flake8 MCP Module (CI)",
             [
                 "flake8",
                 "dnallm/mcp/",
                 "--max-line-length=79",
                 "--extend-ignore=E203,W503,C901,E402",
             ],
-            "Flake8 check for MCP module",
+            "Flake8 check for MCP module (matches CI)",
         ),
         CheckConfig(
-            "Line Length Check (E501)",
-            ["flake8", ".", "--select=E501", "--max-line-length=79"],
-            "Line length check (E501) for entire codebase",
+            "Flake8 Other Modules (CI)",
+            [
+                "flake8",
+                "dnallm/",
+                "--max-line-length=79",
+                "--extend-ignore=E203,W503,C901,E402",
+                "--exclude=dnallm/tasks/metrics/",
+            ],
+            "Flake8 check for other modules excluding metrics (matches CI)",
         ),
         CheckConfig(
-            "Whitespace Check (E203)",
-            ["flake8", ".", "--select=E203", "--max-line-length=79"],
-            "Whitespace before ':' check (E203) for entire codebase",
-        ),
-        CheckConfig(
-            "Import Check (E402)",
-            ["flake8", ".", "--select=E402", "--max-line-length=79"],
-            "Module level import not at top of file check (E402) for \
-             entire codebase",
-        ),
-        CheckConfig(
-            "Block Comment Check (E266)",
-            ["flake8", ".", "--select=E266", "--max-line-length=79"],
-            "Too many leading '#' for block comment check (E266) for \
-             entire codebase",
-        ),
-        CheckConfig(
-            "Type Checking (MyPy)",
+            "MyPy Type Checking (CI)",
             [
                 "mypy",
                 "dnallm/",
@@ -258,7 +259,31 @@ def create_check_configs(args) -> list[CheckConfig]:
                 "--disable-error-code=misc",
                 "--disable-error-code=import-untyped",
             ],
-            "Type checking with MyPy",
+            "MyPy type checking (matches CI)",
+        ),
+        # Additional Strict Checks (more strict than CI)
+        CheckConfig(
+            "Line Length Check (E501) - Strict",
+            ["flake8", ".", "--select=E501", "--max-line-length=79"],
+            "Line length check (E501) for entire codebase - stricter than CI",
+        ),
+        CheckConfig(
+            "Whitespace Check (E203) - Strict",
+            ["flake8", ".", "--select=E203", "--max-line-length=79"],
+            "Whitespace before ':' check (E203) for entire codebase - stricter\
+            than CI",
+        ),
+        CheckConfig(
+            "Import Check (E402) - Strict",
+            ["flake8", ".", "--select=E402", "--max-line-length=79"],
+            "Module level import not at top of file check (E402) for entire\
+            codebase - stricter than CI",
+        ),
+        CheckConfig(
+            "Block Comment Check (E266) - Strict",
+            ["flake8", ".", "--select=E266", "--max-line-length=79"],
+            "Too many leading '#' for block comment check (E266) for entire\
+            codebase - stricter than CI",
         ),
     ]
 
@@ -293,14 +318,32 @@ def create_check_configs(args) -> list[CheckConfig]:
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(
-        description="DNALLM Code Quality Check Script",
+        description="DNALLM Code Quality Check Script - Stricter than CI to\
+                     prevent failures",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+Strategy:
+  This script runs CI-matching checks first, then additional strict checks.
+  This ensures local development catches issues before CI fails.
+
 Examples:
-  python scripts/check_code.py              # Run code quality checks only
+  python scripts/check_code.py              # Run all checks (CI + strict)
   python scripts/check_code.py --fix        # Auto-fix issues where possible
   python scripts/check_code.py --verbose    # Show detailed output
   python scripts/check_code.py --with-tests # Include test suite execution
+
+CI-Matching Checks:
+  - Ruff format check
+  - Ruff linting check
+  - Flake8 MCP module check
+  - Flake8 other modules check (excluding metrics)
+  - MyPy type checking
+
+Additional Strict Checks:
+  - E501: Line length check (entire codebase)
+  - E203: Whitespace before ':' check (entire codebase)
+  - E402: Import placement check (entire codebase)
+  - E266: Block comment check (entire codebase)
         """,
     )
     parser.add_argument(
