@@ -6,22 +6,22 @@ and plotting.
 """
 
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
-import torch
 import pandas as pd
+import torch
 from datasets import Dataset
 
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from dnallm.inference.benchmark import Benchmark
 from dnallm.datahandling.data import DNADataset
+from dnallm.inference.benchmark import Benchmark
 from dnallm.inference.inference import DNAInference
 
 

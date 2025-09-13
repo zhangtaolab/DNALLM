@@ -13,24 +13,24 @@ Optimized to output PDF files to the tests/inference/pdf/ directory.
 # Standard library imports
 import os
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
-from pathlib import Path
+
+import numpy as np
 
 # Third-party imports
 import pytest
-import numpy as np
-
 
 # Local imports - Import only what's needed
 from dnallm.inference.plot import (
-    prepare_data,
+    plot_attention_map,
     plot_bars,
     plot_curve,
-    plot_scatter,
-    plot_attention_map,
     plot_embeddings,
     plot_muts,
+    plot_scatter,
+    prepare_data,
 )
 
 # Define test constants for better maintainability and performance

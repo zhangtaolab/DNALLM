@@ -9,13 +9,14 @@ This module contains all tests for the DNADataset class, including:
 - Utility methods and edge cases
 """
 
-import pytest
-import pandas as pd
-import os
-import tempfile
-import pickle  # noqa: S403
 import json
+import os
+import pickle  # noqa: S403
+import tempfile
 from unittest.mock import Mock, patch
+
+import pandas as pd
+import pytest
 from datasets import Dataset, DatasetDict
 
 from dnallm.datahandling.data import (

@@ -5,11 +5,11 @@ This script demonstrates how to use the DNAInference with a real model
 for DNA sequence classification.
 """
 
+import json
 import os
 import sys
-import json
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 
 # Add the parent directory to the path to import dnallm modules
@@ -27,8 +27,9 @@ class TestRealModelInference(unittest.TestCase):
                 AutoModelForSequenceClassification,
                 AutoTokenizer,
             )
-            from dnallm.inference.inference import DNAInference
+
             from dnallm.configuration.configs import load_config
+            from dnallm.inference.inference import DNAInference
 
             print("🚀 Setting up test class...")
 
@@ -267,8 +268,8 @@ def run_tests():
         print("\n🧹 Final cleanup...")
 
         # Force cleanup of any remaining processes
-        import signal
         import multiprocessing
+        import signal
 
         # Terminate any remaining multiprocessing processes
         try:

@@ -154,7 +154,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_load_datasets(self):
         """Test loading datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("📊 Loading datasets...")
 
@@ -189,7 +189,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_encode_datasets(self):
         """Test encoding datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("🔤 Encoding datasets...")
 
@@ -226,7 +226,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_sample_datasets(self):
         """Test sampling datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("📝 Sampling datasets...")
 
@@ -265,7 +265,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_initialize_trainer(self):
         """Test trainer initialization independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🏋️ Initializing trainer...")
 
@@ -310,7 +310,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_training(self):
         """Test training process independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🚀 Starting training...")
 
@@ -358,7 +358,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_prediction(self):
         """Test prediction on test set independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🔮 Running prediction...")
 
@@ -433,10 +433,10 @@ def test_with_config_file():
     """Test with the provided finetune config file."""
     try:
         from dnallm import (
-            load_config,
-            load_model_and_tokenizer,
             DNADataset,
             DNATrainer,
+            load_config,
+            load_model_and_tokenizer,
         )
 
         print("🔧 Testing with test_finetune_config.yaml...")
@@ -528,9 +528,9 @@ if __name__ == "__main__":
         print("\n🧹 Cleaning up resources...")
 
         # Force cleanup of any remaining processes
+        import multiprocessing
         import os
         import signal
-        import multiprocessing
 
         # Terminate any remaining multiprocessing processes
         try:

@@ -1,10 +1,11 @@
 import pytest
+
 from dnallm.utils.sequence import (
     calc_gc_content,
-    reverse_complement,
-    seq2kmer,
     check_sequence,
     random_generate_sequences,
+    reverse_complement,
+    seq2kmer,
 )
 
 

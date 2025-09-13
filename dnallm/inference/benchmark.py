@@ -178,7 +178,7 @@ class Benchmark:
         use_mirror: bool = False,
         save_preds: bool = False,
         save_scores: bool = True,
-    ) -> None:
+    ) -> dict[str, Any]:
         """Perform the benchmark evaluation on multiple models.
 
                 This method loads each model, runs predictions on the dataset,
@@ -194,7 +194,8 @@ class Benchmark:
             save_scores: Whether to save the metrics
 
         Returns:
-            None
+            dict[str, Any]: Dictionary containing benchmark results for each
+                dataset and model
 
         Raises:
             NameError: If model cannot be found in either the given source or
