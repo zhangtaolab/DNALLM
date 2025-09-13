@@ -85,11 +85,15 @@ dev = [
     "pytest>=8.3.5",
     "pytest-asyncio>=0.21.1",
     "pytest-cov>=6.0.0",
+    "pytest-progress>=0.1.0",
+    "pytest-timeout>=2.3.1",
 ]
 test = [
     "pytest>=8.3.5",
     "pytest-asyncio>=0.21.1",
     "pytest-cov>=6.0.0",
+    "pytest-progress>=0.1.0",
+    "pytest-timeout>=2.3.1",
 ]
 notebook = [
     "ipywidgets>=8",
@@ -119,6 +123,7 @@ base = [
     "types-transformers>=0.1.0",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
+    "pytest-progress>=0.1.0",
 ]
 cpu = [
     "torch>=2.4.0,<2.7",
@@ -425,7 +430,9 @@ addopts = [
     "-v",
     "--tb=short",
     "--strict-markers",
-    "--strict-config"
+    "--strict-config",
+    "--asyncio-mode=auto",
+    "--timeout=300"
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

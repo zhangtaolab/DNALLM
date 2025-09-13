@@ -18,13 +18,13 @@ datasets:
 models:
   - name: Plant DNABERT
     path: zhangtaolab/plant-dnabert-BPE-promoter
-    source: huggingface
+    source: modelscope
   - name: Plant DNAGPT
     path: zhangtaolab/plant-dnagpt-BPE-promoter
-    source: huggingface
+    source: modelscope
   - name: Nucleotide Transformer
     path: zhangtaolab/nucleotide-transformer-v2-100m-promoter
-    source: huggingface
+    source: modelscope
 
 evaluation:
   batch_size: 32

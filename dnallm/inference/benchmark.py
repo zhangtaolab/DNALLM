@@ -153,7 +153,7 @@ class Benchmark:
         self.datasets.append(ds.dataset)
         return ds
 
-    def available_models(self, show_all: bool = True) -> list[str]:
+    def available_models(self, show_all: bool = True) -> dict[str, Any]:
         """List all available models.
 
         Args:

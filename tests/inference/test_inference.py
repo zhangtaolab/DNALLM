@@ -424,6 +424,10 @@ task:
 class TestDNAInferenceIntegration(unittest.TestCase):
     """Integration tests for DNAInference with real model loading."""
 
+    # Class attributes for type checking
+    test_dir: str
+    config_path: str
+
     @classmethod
     def setUpClass(cls):
         """Set up test fixtures for integration tests."""
@@ -497,5 +501,9 @@ task:
 
 
 if __name__ == "__main__":
-    # Run tests
-    unittest.main(verbosity=2)
+    # Only run when executed directly, not when imported by pytest
+    import sys
+
+    if "pytest" not in sys.modules:
+        # Run tests
+        unittest.main(verbosity=2)

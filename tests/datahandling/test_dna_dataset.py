@@ -13,6 +13,7 @@ import json
 import os
 import pickle  # noqa: S403
 import tempfile
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -390,7 +391,7 @@ class TestDNADatasetDataTypes:
 
     def test_data_type_with_empty_dataset(self):
         """Test data type detection with empty dataset."""
-        test_data = {"sequence": [], "labels": []}
+        test_data: dict[str, Any] = {"sequence": [], "labels": []}
         ds = Dataset.from_dict(test_data)
         dna_ds = DNADataset(ds)
 
@@ -805,4 +806,8 @@ class TestDNADatasetIntegration:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    # Only run when executed directly, not when imported by pytest
+    import sys
+
+    if "pytest" not in sys.modules:
+        pytest.main([__file__, "-v"])

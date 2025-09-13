@@ -53,12 +53,24 @@ def print_status(status: str, message: str) -> None:
     print(f"{color}[{status}]{Colors.NC} {message}")
 
 
-def _show_output(result, verbose: bool, is_success: bool) -> None:
+def _show_output(
+    result, verbose: bool, is_success: bool, description: str = ""
+) -> None:
     """Show command output based on success status and verbosity."""
     if not result.stdout:
         return
 
-    if is_success and not verbose:
+    # Special handling for test suite - always show progress
+    is_test_suite = "test" in description.lower() and (
+        "pytest" in result.stdout or "test session" in result.stdout
+    )
+
+    if is_test_suite:
+        # For test suite, show all output to display progress
+        print(result.stdout)
+        if result.stderr and result.stderr != result.stdout:
+            print(result.stderr)
+    elif is_success and not verbose:
         # Show only summary lines for successful commands
         lines = result.stdout.strip().split("\n")
         for line in lines:
@@ -132,10 +144,115 @@ def _extract_detailed_errors(output: str) -> list[str]:
     return detailed_errors
 
 
+def colorize_pytest_line(line: str) -> str:
+    """Add colors to pytest output lines."""
+    line = line.rstrip()
+
+    # Color patterns for pytest output
+    if "PASSED" in line:
+        return f"{Colors.GREEN}{line}{Colors.NC}"
+    elif "FAILED" in line:
+        return f"{Colors.RED}{line}{Colors.NC}"
+    elif "ERROR" in line:
+        return f"{Colors.RED}{line}{Colors.NC}"
+    elif "SKIPPED" in line:
+        return f"{Colors.YELLOW}{line}{Colors.NC}"
+    elif "WARNING" in line or "WARN" in line:
+        return f"{Colors.YELLOW}{line}{Colors.NC}"
+    elif "XFAIL" in line:
+        return f"{Colors.YELLOW}{line}{Colors.NC}"
+    elif "XPASS" in line:
+        return f"{Colors.YELLOW}{line}{Colors.NC}"
+    elif "FAILURES" in line or "ERRORS" in line:
+        return f"{Colors.RED}{line}{Colors.NC}"
+    elif "short test summary info" in line:
+        return f"{Colors.RED}{line}{Colors.NC}"
+    elif "passed" in line and "failed" in line and "warnings" in line:
+        # Summary line like "2 passed, 1 failed, 1 warning in 5.80s"
+        if "failed" in line and int(line.split()[0]) > 0:
+            return f"{Colors.RED}{line}{Colors.NC}"
+        elif "passed" in line and "failed" not in line:
+            return f"{Colors.GREEN}{line}{Colors.NC}"
+        else:
+            return f"{Colors.YELLOW}{line}{Colors.NC}"
+    else:
+        return line
+
+
+def run_command_realtime(
+    cmd: list[str], description: str, verbose: bool = False
+) -> tuple[bool, str]:
+    """Run a command with real-time output for test suites."""
+    try:
+        print_status("INFO", f"Running: {description}")
+        if verbose:
+            print(f"Command: {' '.join(cmd)}")
+            print("-" * 40)
+
+        # Start the process without capturing output
+        process = subprocess.Popen(  # noqa: S603
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+        )
+
+        output_lines = []
+
+        # Read output line by line and print immediately with colors
+        for line in iter(process.stdout.readline, ""):
+            if line:
+                # Colorize and print line without extra newline
+                colored_line = colorize_pytest_line(line)
+                print(colored_line)
+                output_lines.append(line)
+
+        # Wait for process to complete
+        process.wait()
+        is_success = process.returncode == 0
+
+        # Combine all output
+        full_output = "".join(output_lines)
+
+        # Only show status if verbose or failed
+        if verbose or not is_success:
+            if is_success:
+                print_status(
+                    "SUCCESS", f"{description} completed successfully"
+                )
+            else:
+                print_status("ERROR", f"{description} failed")
+        elif is_success:
+            # For successful test runs, just show a brief success indicator
+            print()
+
+        return is_success, full_output
+
+    except FileNotFoundError as e:
+        print_status("ERROR", f"Command not found: {e}")
+        print()
+        return False, str(e)
+    except Exception as e:
+        print_status("ERROR", f"Unexpected error: {e}")
+        print()
+        return False, str(e)
+
+
 def run_command(
     cmd: list[str], description: str, verbose: bool = False
 ) -> tuple[bool, str]:
     """Run a command and return success status and output."""
+    # Check if this is a test suite command
+    is_test_suite = "pytest" in cmd[0] and any(
+        "test" in arg.lower() for arg in cmd
+    )
+
+    if is_test_suite:
+        return run_command_realtime(cmd, description, verbose)
+
+    # Use original method for other commands
     try:
         print_status("INFO", f"Running: {description}")
         if verbose:
@@ -155,7 +272,7 @@ def run_command(
                 print("Error details:")
                 print(result.stderr)
 
-        _show_output(result, verbose, is_success)
+        _show_output(result, verbose, is_success, description)
 
         if not is_success and result.stdout:
             error_files = _extract_error_files(result.stdout)
@@ -332,11 +449,42 @@ def create_check_configs(args) -> list[CheckConfig]:
 
     # Add test checks if requested
     if args.with_tests:
+        # Determine test selection based on arguments
+        test_args = ["pytest", "tests/", "-v", "--tb=short", "--durations=10"]
+        test_description = "Test suite execution"
+
+        # Handle slow test selection
+        if args.slow and args.not_slow:
+            print_status(
+                "WARNING",
+                "Both --slow and --not-slow specified. Using --slow.",
+            )
+            test_args.extend(["-m", "slow"])
+            test_description += " (slow tests only)"
+        elif args.slow:
+            test_args.extend(["-m", "slow"])
+            test_description += " (slow tests only)"
+        elif args.not_slow:
+            test_args.extend(["-m", "not slow"])
+            test_description += " (excluding slow tests)"
+        else:
+            # Default behavior: exclude slow tests
+            test_args.extend(["-m", "not slow"])
+            test_description += " (excluding slow tests - default)"
+            print_status(
+                "INFO", "Running tests excluding slow ones by default (~24s)."
+            )
+            print_status(
+                "INFO",
+                "Use --slow to include all tests (~10min) or --not-slow to be\
+                    explicit.",
+            )
+
         base_checks.append(
             CheckConfig(
                 "Test Suite",
-                ["pytest", "tests/", "-v", "--tb=short"],
-                "Test suite execution",
+                test_args,
+                test_description,
             )
         )
 
@@ -347,6 +495,8 @@ def create_check_configs(args) -> list[CheckConfig]:
                     [
                         "pytest",
                         "tests/",
+                        "-v",
+                        "--durations=10",
                         "--cov=dnallm",
                         "--cov-report=term-missing",
                         "--cov-report=xml",
@@ -370,10 +520,12 @@ Strategy:
   This ensures local development catches issues before CI fails.
 
 Examples:
-  python scripts/check_code.py              # Run all checks (CI + strict)
-  python scripts/check_code.py --fix        # Auto-fix issues where possible
-  python scripts/check_code.py --verbose    # Show detailed output
-  python scripts/check_code.py --with-tests # Include test suite execution
+  python scripts/check_code.py                    # Run all checks (CI + strict)  # noqa: E501
+  python scripts/check_code.py --fix              # Auto-fix issues where possible  # noqa: E501
+  python scripts/check_code.py --verbose          # Show detailed output  # noqa: E501
+  python scripts/check_code.py --with-tests       # Include tests (excludes slow by default)  # noqa: E501
+  python scripts/check_code.py --with-tests --slow # Include all tests including slow ones  # noqa: E501
+  python scripts/check_code.py --with-tests --not-slow # Explicitly exclude slow tests  # noqa: E501
 
 CI-Matching Checks:
   - Ruff format check
@@ -399,6 +551,16 @@ Additional Strict Checks:
         "--with-tests",
         action="store_true",
         help="Include test suite execution",
+    )
+    parser.add_argument(
+        "--slow",
+        action="store_true",
+        help="Include slow tests (finetune and inference real model tests)",
+    )
+    parser.add_argument(
+        "--not-slow",
+        action="store_true",
+        help="Exclude slow tests (default behavior when --with-tests is used)",
     )
 
     args = parser.parse_args()

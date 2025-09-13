@@ -51,7 +51,13 @@ class TestBenchmark(unittest.TestCase):
 
     def create_test_config(self):
         """Create a test configuration file."""
-        config_content = f"""benchmark:
+        config_content = f"""task:
+  task_type: "binary"
+  num_labels: 2
+  label_names: ["negative", "positive"]
+  threshold: 0.5
+
+benchmark:
   name: "Test Benchmark"
   description: "Comparing DNA models"
 models:
@@ -231,7 +237,19 @@ output:
     def test_plot_for_classification(self, mock_plot_curve, mock_plot_bars):
         """Test the plotting function for classification tasks."""
         benchmark = Benchmark(self.config)
-        self.config["task"].task_type = "binary"
+        # Type assertion for task config
+        from dnallm.configuration.configs import TaskConfig
+
+        task_config = self.config["task"]
+        # Check if task_config has the expected attributes instead of
+        # isinstance check
+        assert hasattr(task_config, "task_type"), (
+            "task_config should have task_type attribute"
+        )
+        assert hasattr(task_config, "num_labels"), (
+            "task_config should have num_labels attribute"
+        )
+        task_config.task_type = "binary"
         metrics_data = {
             "test_dataset": {
                 "model_A": {
@@ -267,7 +285,19 @@ output:
         """Test the plotting function for regression tasks."""
         # Modify the config for this specific test
         benchmark = Benchmark(self.config)
-        self.config["task"].task_type = "regression"
+        # Type assertion for task config
+        from dnallm.configuration.configs import TaskConfig
+
+        task_config = self.config["task"]
+        # Check if task_config has the expected attributes instead of
+        # isinstance check
+        assert hasattr(task_config, "task_type"), (
+            "task_config should have task_type attribute"
+        )
+        assert hasattr(task_config, "num_labels"), (
+            "task_config should have num_labels attribute"
+        )
+        task_config.task_type = "regression"
 
         metrics_data = {
             "test_dataset": {
@@ -296,4 +326,8 @@ output:
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    # Only run when executed directly, not when imported by pytest
+    import sys
+
+    if "pytest" not in sys.modules:
+        unittest.main(verbosity=2)
