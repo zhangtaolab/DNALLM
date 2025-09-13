@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 from datasets import Dataset
 
@@ -458,6 +459,7 @@ task:
         """Clean up integration test fixtures."""
         shutil.rmtree(cls.test_dir)
 
+    @pytest.mark.slow
     def test_real_model_integration(self):
         """Test with real model loading from ModelScope."""
         try:
