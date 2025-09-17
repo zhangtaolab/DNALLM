@@ -135,7 +135,7 @@ cuda124 = [
     "torch>=2.4.0,<2.7",
 ]
 cuda126 = [
-    "torch>=2.6.0,<2.7",
+    "torch>=2.6.0,<=2.7",
 ]
 cuda128 = [
     "torch>=2.7.0",
@@ -144,8 +144,9 @@ rocm = [
     "torch>=2.5.0,<2.7",
 ]
 mamba = [
-    "mamba-ssm==2.2.4",
     "causal_conv1d==1.5.0.post8",
+    "mamba-ssm==2.2.4",
+    "torch>=2.4.0,<=2.7",
 ]
 
 #mamba = [

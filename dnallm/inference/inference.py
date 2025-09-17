@@ -89,7 +89,10 @@ class DNAInference:
         self.pred_config = config["inference"]
         self.device = self._get_device()
         if model:
-            self.model.to(self.device)
+            if "CustomEvo" in str(type(self.model)):
+                self.model.model.to(self.device)
+            else:
+                self.model.to(self.device)
             # mamba only support cuda and cpu, and only allow fp32
             if "mamba" in str(type(self.model)).lower():
                 if self.device.type != "cuda":
@@ -1357,6 +1360,172 @@ class DNAInference:
         except Exception as e:
             return {"error": str(e)}
 
+    def generate(
+        self,
+        inputs: DataLoader | list[str],
+        n_tokens: int = 400,
+        n_samples: int = 1,
+        temperature: float = 1.0,
+        top_k: int = 4,
+        top_p: float = 1.0,
+        batched: bool = True,
+    ) -> dict[Any, Any]:
+        """Generate DNA sequences using the model.
+
+        This function performs sequence generation tasks using the loaded
+        model, currently supporting CausalLM and EVO2 models for
+        DNA sequence generation.
+
+        Args:
+            inputs: DataLoader or List containing prompt sequences
+            n_tokens: Number of tokens to generate, default 400
+            n_samples: Do samples n times
+            temperature: Sampling temperature for generation, default 1.0
+            top_k: Top-k sampling parameter, default 4
+            top_p: Top-p sampling paramether, default 1
+            batched: Do batched generation
+
+        Returns:
+            Dictionary containing generated sequences
+
+        Note:
+            Currently only supports EVO2 models for sequence generation
+        """
+        # Prepare prompt sequences
+        if isinstance(inputs, DataLoader):
+            for data in tqdm(inputs, desc="Generating"):
+                prompt_seqs = data["sequence"]
+                if isinstance(prompt_seqs, list):
+                    prompt_seqs = [seq for seq in prompt_seqs if seq]
+                if not prompt_seqs:
+                    continue
+        else:
+            prompt_seqs = inputs
+        # Check if model supports generation
+        if "evo2" in str(self.model).lower():
+            # Generate sequences
+            outputs = self.model.generate(
+                prompt_seqs=prompt_seqs,
+                n_tokens=n_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                batched=batched,
+                cached_generation=True,
+            )
+            formatted_outputs = []
+            for i, seq in enumerate(prompt_seqs):
+                generated_seqs = outputs.sequences[i]
+                scores = outputs.logprobs_mean[i]
+                formatted_outputs.append({
+                    "Prompt": seq,
+                    "Output": generated_seqs,
+                    "Score": scores,
+                })
+            return formatted_outputs
+        elif "evo1" in str(self.model).lower():
+            from evo import generate
+
+            model = self.model.model
+            tokenizer = self.tokenizer
+            # Generate sequences
+            outputs = generate(
+                prompt_seqs * n_samples,
+                model=model,
+                tokenizer=tokenizer,
+                n_tokens=n_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                cached_generation=True,
+                batched=batched,
+                device=self.device,
+                verbose=1,
+            )
+            formatted_outputs = []
+            for i, seq in enumerate(prompt_seqs):
+                generated_seqs = outputs[0][i]
+                scores = outputs[1][i]
+                formatted_outputs.append({
+                    "Prompt": seq,
+                    "Output": generated_seqs,
+                    "Score": scores,
+                })
+            return formatted_outputs
+        elif (
+            "causallm" in str(self.model).lower()
+            or "lmhead" in str(self.model).lower()
+        ):
+            outputs = []
+            # Tokenize prompt sequences
+            for seq in prompt_seqs:
+                inputs = self.tokenizer(seq, return_tensors="pt").to(
+                    self.device
+                )
+                output = self.model.generate(
+                    **inputs,
+                    max_new_tokens=n_tokens,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    do_sample=True,
+                )
+                decoded = self.tokenizer.decode(
+                    output[0], skip_special_tokens=True
+                )
+                outputs.append({"Prompt": seq, "Output": decoded})
+            return outputs
+        else:
+            raise ValueError(
+                "This model is not supported for sequence generation."
+            )
+
+        return {}
+
+    def scoring(
+        self,
+        inputs: DataLoader | list[str],
+        reduce_method: str = "mean",
+    ) -> dict[Any, Any]:
+        # Prepare prompt sequences
+        if isinstance(inputs, DataLoader):
+            for data in tqdm(inputs, desc="Generating"):
+                score_seqs = data["sequence"]
+                if isinstance(score_seqs, list):
+                    score_seqs = [seq for seq in score_seqs if seq]
+                if not score_seqs:
+                    continue
+        else:
+            score_seqs = inputs
+        # Check if model supports scoring
+        if "evo2" in str(self.model).lower():
+            outputs = self.model.score_sequences(
+                score_seqs, reduce_method=reduce_method
+            )
+            outputs = [
+                {"Input": score_seqs[i], "Score": s}
+                for i, s in enumerate(outputs)
+            ]
+            return outputs
+        elif "evo1" in str(self.model).lower():
+            from evo import score_sequences
+
+            model = self.model.model
+            tokenizer = self.tokenizer
+            outputs = score_sequences(
+                score_seqs,
+                model=model,
+                tokenizer=tokenizer,
+                reduce_method=reduce_method,
+                device=self.device,
+            )
+            outputs = [
+                {"Input": score_seqs[i], "Score": s}
+                for i, s in enumerate(outputs)
+            ]
+            return outputs
+        return {}
+
 
 def save_predictions(predictions: dict, output_dir: Path) -> None:
     """Save predictions to JSON file.
@@ -1390,50 +1559,3 @@ def save_metrics(metrics: dict, output_dir: Path) -> None:
     # Save metrics
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=4)
-
-
-def generate(
-    self,
-    dataloader: DataLoader,
-    n_tokens: int = 400,
-    temperature: float = 1.0,
-    top_k: int = 4,
-) -> dict[Any, Any]:
-    """Generate DNA sequences using the model.
-
-    This function performs sequence generation tasks using the loaded model,
-    currently supporting EVO2 models for DNA sequence generation.
-
-    Args:
-        dataloader: DataLoader containing prompt sequences
-        n_tokens: Number of tokens to generate, default 400
-        temperature: Sampling temperature for generation, default 1.0
-        top_k: Top-k sampling parameter, default 4
-
-    Returns:
-        Dictionary containing generated sequences
-
-    Note:
-        Currently only supports EVO2 models for sequence generation
-    """
-    if "evo2" in str(self.model):
-        for data in tqdm(dataloader, desc="Generating"):
-            prompt_seqs = data["sequence"]
-            if isinstance(prompt_seqs, list):
-                prompt_seqs = [seq for seq in prompt_seqs if seq]
-            if not prompt_seqs:
-                continue
-            # Generate sequences
-            output: dict[Any, Any] = self.model.generate(
-                prompt_seqs=prompt_seqs,
-                n_tokens=n_tokens,
-                temperature=temperature,
-                top_k=top_k,
-            )
-            return output
-    else:
-        raise ValueError(
-            "Only EVO2 models are supported for sequence generation"
-        )
-
-    return {}

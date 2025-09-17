@@ -97,14 +97,15 @@ If you need native Mamba architecture support, after installing DNALLM dependenc
 ```bash
 # For venv users: activate virtual environment
 source .venv/bin/activate  # Linux/MacOS
-# or
-.venv\Scripts\activate     # Windows
 
 # For conda users: activate conda environment
 # conda activate dnallm
 
 # Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+
+# If encounter network or compile issue, using the special install script for mamba (optional)
+sh scripts/install_mamba.sh  # select github proxy
 ```
 
 Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
@@ -113,35 +114,49 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 
 Some models require support from other dependencies. We will continue to add dependencies needed for different models.
 
-### EVO2 Models
+### EVO Models
+
+#### EVO2
 
 **`EVO2`** model fine-tuning and inference depends on its own [software package](https://github.com/ArcInstitute/evo2) or third-party Python [library1](https://github.com/Zymrael/savanna)/[library2](https://github.com/NVIDIA/bionemo-framework):
 
 ```bash
 # evo2 requires python version >=3.11
-git clone --recurse-submodules git@github.com:ArcInstitute/evo2.git
-cd evo2
-# install required dependency 'vortex'
-cd vortex
-uv pip install .
-# install evo2
-cd ..
-uv pip install .
+# Install transformer torch engine
+uv pip install "transformer-engine[pytorch]==2.3.0" --no-build-isolation --no-cache-dir
+# Install evo2
+uv pip install evo2
+# (Optional) Install flash attention 2
+uv pip install "flash_attn<=2.7.4.post1" --no-build-isolation --no-cache-dir
+## Note that build transformer-engine and flash-attn package will cost much time.
 
 # add cudnn path to environment
 export LD_LIBRARY_PATH=[path_to_DNALLM]/.venv/lib64/python3.11/site-packages/nvidia/cudnn/lib:${LD_LIBRARY_PATH}
+```
+
+#### EVO-1
+
+```bash
+# Install evo-1 model
+uv pip install evo-model
+# (Optional) Install flash attention
+uv pip install "flash_attn<=2.7.4.post1" --no-build-isolation --no-cache-dir
 ```
 
 ### Specialized Model Dependencies
 
 Some models use their own developed model architectures that haven't been integrated into HuggingFace's transformers library yet. Therefore, fine-tuning and inference for these models require pre-installing the corresponding model dependency libraries:
 
+#### LucaOne
+Project address: https://github.com/LucaOne/LucaOneTasks
+```bash
+uv pip install lucagplm
+```
+
 #### GPN
 Project address: https://github.com/songlab-cal/gpn
 ```bash
-git clone https://github.com/songlab-cal/gpn
-cd gpn
-uv pip install .
+uv pip install git+https://github.com/songlab-cal/gpn.git
 ```
 
 #### Omni-DNA
@@ -175,7 +190,7 @@ uv pip install borzoi-pytorch
 Some models support Flash Attention acceleration. If you need to install this dependency, you can refer to the [project GitHub](https://github.com/Dao-AILab/flash-attention) for installation. Note that `flash-attn` versions are tied to different Python versions, PyTorch versions, and CUDA versions. Please first check if there are matching version installation packages in [GitHub Releases](https://github.com/Dao-AILab/flash-attention/releases), otherwise you may encounter `HTTP Error 404: Not Found` errors.
 
 ```bash
-uv pip install flash-attn --no-build-isolation
+uv pip install flash-attn --no-build-isolation --no-cache-dir
 ```
 
 ### Compilation Dependencies
