@@ -1,0 +1,8 @@
+inference:
+  batch_size: 16
+  device: auto
+  max_length: 1024
+  num_workers: 4
+  output_dir: ./results
+task:
+  task_type: mask

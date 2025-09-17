@@ -274,9 +274,7 @@ def _handle_evo1_models(model_name: str, source: str) -> tuple | None:
                         del model
                         del model_config
                         global_config = dotdict(
-                            yaml.safe_load(
-                                open(config_path), Loader=yaml.FullLoader
-                            )
+                            yaml.safe_load(open(config_path))
                         )
                         model = StripedHyena(global_config)
                         model.load_state_dict(state_dict, strict=True)

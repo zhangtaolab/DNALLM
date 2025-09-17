@@ -1392,12 +1392,13 @@ class DNAInference:
             Currently only supports EVO2 models for sequence generation
         """
         # Prepare prompt sequences
+        prompt_seqs = []
         if isinstance(inputs, DataLoader):
             for data in tqdm(inputs, desc="Generating"):
-                prompt_seqs = data["sequence"]
+                seqs = data["sequence"]
                 if isinstance(prompt_seqs, list):
-                    prompt_seqs = [seq for seq in prompt_seqs if seq]
-                if not prompt_seqs:
+                    seqs.extend([seq for seq in seqs if seq])
+                if not seqs:
                     continue
         else:
             prompt_seqs = inputs
@@ -1487,13 +1488,14 @@ class DNAInference:
         inputs: DataLoader | list[str],
         reduce_method: str = "mean",
     ) -> dict[Any, Any]:
-        # Prepare prompt sequences
+        # Prepare score sequences
+        score_seqs = []
         if isinstance(inputs, DataLoader):
-            for data in tqdm(inputs, desc="Generating"):
-                score_seqs = data["sequence"]
+            for data in tqdm(inputs, desc="Scoring"):
+                seqs = data["sequence"]
                 if isinstance(score_seqs, list):
-                    score_seqs = [seq for seq in score_seqs if seq]
-                if not score_seqs:
+                    score_seqs.extend([seq for seq in seqs if seq])
+                if not seqs:
                     continue
         else:
             score_seqs = inputs
