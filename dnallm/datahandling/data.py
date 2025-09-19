@@ -339,7 +339,10 @@ class DNADataset:
             labels = example["labels"]
             if isinstance(labels, str):
                 try:
-                    if multi_label_sep and multi_label_sep in labels:
+                    if (
+                        multi_label_sep is not None
+                        and multi_label_sep in labels
+                    ):
                         example["labels"] = [
                             float(x) for x in labels.split(multi_label_sep)
                         ]
@@ -731,7 +734,7 @@ class DNADataset:
             "np": "numpy",
             "pt": "torch",
         }
-        self.dataset.set_format(type=format_map.get(return_tensors, "torch"))
+        self.dataset.set_format(type=format_map.get(return_tensors, None))
         self.dataset._is_encoded = True
 
     def _remove_unused_columns(self) -> None:
@@ -1261,7 +1264,9 @@ class DNADataset:
 
     def _determine_string_label_type(self, first_label: str) -> str:
         """Determine data type for string labels."""
-        if self.multi_label_sep and self.multi_label_sep in str(first_label):
+        if self.multi_label_sep is not None and self.multi_label_sep in str(
+            first_label
+        ):
             multi_labels = str(first_label).split(self.multi_label_sep)
             return (
                 "multi_regression" if "." in multi_labels[0] else "multi_label"

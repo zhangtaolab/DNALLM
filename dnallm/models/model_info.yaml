@@ -49,6 +49,11 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
+  - name: "PlantCAD2"
+    model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
   - name: "DNABERT"
     model: "zhihan1996/DNA_bert_6"
     task:
@@ -1430,4 +1435,181 @@ finetuned:
       task_type: "token"
       num_labels: 7
       label_names: ['O','B-Intron', 'I-Intron', 'B-tRNA', 'I-tRNA', 'B-anti', 'I-anti']
-      threshold: 0.5 
+      threshold: 0.5
+  - name: "PlantCAD2 cell type specific acr small"
+    model: "plantcad/cell_type_specific_acr_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of ACRs in different cell types by using PlantCAD2 small model."
+      task_type: "multilabel"
+      num_labels: 92
+      label_names: []
+      threshold: 0.5
+  - name: "PlantCAD2 cell type specific acr medium"
+    model: "plantcad/cell_type_specific_acr_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of ACRs in different cell types by using PlantCAD2 medium model."
+      task_type: "multilabel"
+      num_labels: 92
+      label_names: []
+      threshold: 0.5
+  - name: "PlantCAD2 cell type specific acr large"
+    model: "plantcad/cell_type_specific_acr_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of ACRs in different cell types by using PlantCAD2 large model."
+      task_type: "multilabel"
+      num_labels: 92
+      label_names: []
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on arabidopsis small"
+    model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 small model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on arabidopsis medium"
+    model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on arabidopsis large"
+    model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 large model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on nine species small"
+    model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 small model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on nine species medium"
+    model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species acr train on nine species large"
+    model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of ACRs in different species by using PlantCAD2 large model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Negative", "Positive"]
+      threshold: 0.5
+  - name: "PlantCAD2 cross species leaf absolute expression small"
+    model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 small model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["expression"]
+  - name: "PlantCAD2 cross species leaf absolute expression medium"
+    model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 medium model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["expression"]
+  - name: "PlantCAD2 cross species leaf absolute expression large"
+    model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 large model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["expression"]
+  - name: "PlantCAD2 cross species leaf absolute translation small"
+    model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 small model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["translation"]
+  - name: "PlantCAD2 cross species leaf absolute translation medium"
+    model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 medium model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["translation"]
+  - name: "PlantCAD2 cross species leaf absolute translation large"
+    model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 large model."
+      task_type: "regression"
+      num_labels: 1
+      label_names: ["translation"]
+  - name: "PlantCAD2 cross species leaf on off expression small"
+    model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of on/off expression in different species leaf by using PlantCAD2 small model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]
+  - name: "PlantCAD2 cross species leaf on off expression medium"
+    model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of on/off expression in different species leaf by using PlantCAD2 medium model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]
+  - name: "PlantCAD2 cross species leaf on off expression large"
+    model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of on/off expression in different species leaf by using PlantCAD2 large model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]
+  - name: "PlantCAD2 cross species leaf on off translation small"
+    model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_small"
+    base_model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    task:
+      describe: "Predict of on/off translation in different species leaf by using PlantCAD2 small model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]
+  - name: "PlantCAD2 cross species leaf on off translation medium"
+    model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_medium"
+    base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    task:
+      describe: "Predict of on/off translation in different species leaf by using PlantCAD2 medium model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]
+  - name: "PlantCAD2 cross species leaf on off translation large"
+    model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_large"
+    base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    task:
+      describe: "Predict of on/off translation in different species leaf by using PlantCAD2 large model."
+      task_type: "classification"
+      num_labels: 2
+      label_names: ["off", "on"]

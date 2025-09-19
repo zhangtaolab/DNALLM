@@ -674,7 +674,9 @@ def load_model_and_tokenizer(
         model, tokenizer = _load_model_by_task_type(
             task_type, model_name, safe_num_labels, id2label, label2id, modules
         )
+        # Set model path and source attributes
         model._model_path = downloaded_model_path
+        model.source = source
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}") from e
 
@@ -682,6 +684,71 @@ def load_model_and_tokenizer(
     _configure_model_padding(model, tokenizer)
 
     return model, tokenizer
+
+
+def peft_forward_compatiable(model):
+    """Convert base model forward to be compatiable with HF
+
+    Args:
+        model: Base model
+
+    Returns:
+        model with changed forward function
+    """
+    import inspect
+
+    sig = inspect.signature(model.forward)
+    accepted_forward_args = set(sig.parameters.keys())
+    original_forward = model.forward
+
+    def forward_hf(*args, **kwargs):
+        return original_forward(**{
+            k: v for k, v in kwargs.items() if k in accepted_forward_args
+        })
+
+    model.forward = forward_hf
+    return model
+
+
+def clear_model_cache(source: str = "huggingface"):
+    """Remove all the cached models
+
+    Args:
+        source: Source to clear model cache from (
+                'huggingface',
+                'modelscope'),
+            default 'huggingface'
+    """
+    source_lower = source.lower()
+    if source_lower == "huggingface":
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache/huggingface/hub"
+        )
+    elif source_lower == "modelscope":
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache/modelscope/hub"
+        )
+    else:
+        logger.warning(f"Unsupported source: {source}. No action taken.")
+        return
+
+    if os.path.exists(cache_dir):
+        files = glob(os.path.join(cache_dir, "*"))
+        for f in files:
+            try:
+                if os.path.isdir(f):
+                    import shutil
+
+                    shutil.rmtree(f)
+                else:
+                    os.remove(f)
+                logger.info(f"Removed cached file/directory: {f}")
+            except Exception as e:
+                logger.warning(f"Failed to remove {f}: {e}")
+    else:
+        logger.info(
+            f"No cache directory found at {cache_dir}. Nothing to clear."
+        )
 
 
 def load_preset_model(

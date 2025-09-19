@@ -45,6 +45,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset, DatasetDict
 
 from ..datahandling.data import DNADataset
+from ..models.model import _get_model_path_and_imports
 from ..tasks.metrics import compute_metrics
 from ..utils import get_logger
 from .plot import plot_attention_map, plot_embeddings
@@ -73,7 +74,13 @@ class DNAInference:
         embeddings: Dictionary containing hidden states and attention weights
     """
 
-    def __init__(self, model: Any, tokenizer: Any, config: dict):
+    def __init__(
+        self,
+        model: Any,
+        tokenizer: Any,
+        config: dict,
+        lora_adapter: str | None = None,
+    ) -> None:
         """Initialize the inference engine.
 
         Args:
@@ -81,9 +88,36 @@ class DNAInference:
             tokenizer: Tokenizer for encoding DNA sequences
             config: Configuration dictionary containing task settings and
             inference parameters
+            lora_adapter: Optional path to LoRA adapter for model
         """
 
-        self.model = model
+        if lora_adapter:
+            from peft import PeftModel
+            from ..models.model import peft_forward_compatiable
+
+            if os.path.isdir(lora_adapter):
+                source = "local"
+            else:
+                source = (
+                    model.source if hasattr(model, "source") else "huggingface"
+                )
+            try:
+                lora_adapter_path, _ = _get_model_path_and_imports(
+                    lora_adapter, source
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load LoRA adapter from {lora_adapter}: {e}"
+                ) from e
+
+            self.accepted_args = self._get_accepted_forward_args(model)
+
+            model = peft_forward_compatiable(model)
+            self.model = PeftModel.from_pretrained(model, lora_adapter_path)
+            logger.info(f"Loaded LoRA adapter from {lora_adapter}")
+        else:
+            self.model = model
+            self.accepted_args = self._get_accepted_forward_args(model)
         self.tokenizer = tokenizer
         self.task_config = config["task"]
         self.pred_config = config["inference"]
@@ -311,6 +345,17 @@ class DNAInference:
             )
         return False
 
+    def _get_accepted_forward_args(self, model) -> set:
+        """Get the set of argument names the model's forward method accepts.
+
+        Returns:
+            set: Set of accepted argument names
+        """
+        import inspect
+
+        sig = inspect.signature(model.forward)
+        return set(sig.parameters.keys())
+
     def generate_dataset(
         self,
         seq_or_path: str | list[str],
@@ -322,6 +367,7 @@ class DNAInference:
         multi_label_sep: str | None = None,
         uppercase: bool = False,
         lowercase: bool = False,
+        sampling: float | None = None,
         keep_seqs: bool = True,
         do_encode: bool = True,
     ) -> tuple[DNADataset, DataLoader]:
@@ -342,6 +388,7 @@ class DNAInference:
             multi_label_sep: Delimiter for multi-label sequences
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
+            sampling: Fraction of data to randomly sample for inference
             keep_seqs: Whether to keep sequences in the dataset for later use
             do_encode: Whether to encode sequences for the model
 
@@ -379,6 +426,10 @@ class DNAInference:
                 "Input should be a file path or a list of sequences."
             )
 
+        # If sampling is specified, randomly sample the sequences
+        if sampling:
+            dataset = dataset.sampling(sampling) if dataset else None
+
         # Create dataset from sequences if we have any and no dataset was
         # loaded from file
         if len(sequences) > 0 and dataset is None:
@@ -388,7 +439,7 @@ class DNAInference:
             )
 
         # Ensure dataset is not None before proceeding
-        if dataset is None:
+        if not dataset:
             raise ValueError(
                 "No valid dataset could be created from the input."
             )
@@ -404,6 +455,21 @@ class DNAInference:
                 uppercase=uppercase,
                 lowercase=lowercase,
             )
+            all_cols = dataset.dataset.features
+            cols_drop = [c for c in all_cols if c not in self.accepted_args]
+        else:
+            all_cols = dataset.dataset.features
+            if "sequence" in all_cols and "input_ids" not in all_cols:
+                dataset.dataset = dataset.dataset.rename_column(
+                    "sequence", "input_ids"
+                )
+                dataset.dataset.set_format(type="torch")
+                cols_drop = [
+                    c
+                    for c in dataset.dataset.features
+                    if c not in self.accepted_args
+                ]
+        dataset.dataset = dataset.dataset.remove_columns(cols_drop)
         # Check for labels in dataset - handle both Dataset and
         # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
@@ -786,7 +852,10 @@ class DNAInference:
 
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
-            inputs = {k: v.to(self.device) for k, v in batch.items()}
+            inputs = {
+                k: v.to(self.device) if hasattr(v, "to") else v
+                for k, v in batch.items()
+            }
 
             # Run model inference
             if self.pred_config.use_fp16:
@@ -894,6 +963,8 @@ class DNAInference:
         multi_label_sep: str | None = None,
         uppercase: bool = False,
         lowercase: bool = False,
+        sampling: float | None = None,
+        do_encode: bool = True,
         save_to_file: bool = False,
         plot_metrics: bool = False,
     ) -> dict | tuple[dict, dict]:
@@ -916,6 +987,7 @@ class DNAInference:
             multi_label_sep: Delimiter for multi-label sequences
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
+            sampling: Fraction of data to randomly sample for inference
             save_to_file: Whether to save predictions and metrics to
                 output directory
             plot_metrics: Whether to generate metric plots
@@ -938,6 +1010,8 @@ class DNAInference:
             multi_label_sep=multi_label_sep,
             uppercase=uppercase,
             lowercase=lowercase,
+            sampling=sampling,
+            do_encode=do_encode,
             batch_size=self.pred_config.batch_size,
         )
         # Do batch inference
