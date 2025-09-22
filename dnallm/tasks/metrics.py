@@ -195,8 +195,14 @@ def regression_metrics(plot=False):
             )
             metrics = {**mse, **mae, "r2": r2, **spearmanr}
             if plot:
+                # Fix: logits is already a numpy array,
+                # no need to call .numpy()
+                if hasattr(logits, "numpy"):
+                    predicted = logits.numpy().flatten()
+                else:
+                    predicted = logits.flatten()
                 metrics["scatter"] = {
-                    "predicted": logits.numpy().flatten(),
+                    "predicted": predicted,
                     "experiment": labels,
                 }
         return metrics

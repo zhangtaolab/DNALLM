@@ -36,6 +36,19 @@
 - **优先级**: 低
 - **备注**: 这是 mypy 类型系统的限制，实际代码逻辑正确，但类型检查器无法理解 BaseModel 和 dict 的兼容性。用户已进行代码格式化，但 mypy 错误仍然存在。
 
+#### 问题 #002
+- **文件**: `dnallm/tasks/metrics.py`
+- **问题类型**: 功能实现
+- **错误信息**: 多分类任务的 AUROC 计算使用二分类方法，导致 `ValueError: y should be a 1d array, got an array of shape (2, 2) instead`
+- **尝试修复次数**: 多次
+- **尝试的修复方法**:
+  - 方法1: 修改测试数据格式
+  - 方法2: 跳过有问题的测试
+  - 方法3: 使用二分类数据替代多分类
+- **当前状态**: 已跳过（测试层面）
+- **优先级**: 中
+- **备注**: 需要在 metrics.py 中实现正确的多分类 AUROC 计算，使用 `roc_auc_score` 的 `multi_class='ovr'` 或 `multi_class='ovo'` 参数。
+
 ### 已修复问题
 
 *暂无已修复问题*
