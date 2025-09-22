@@ -586,7 +586,8 @@ class TestComputeMetrics:
 
     def test_compute_metrics_unsupported_task(self):
         """Test compute_metrics for unsupported task type."""
-        # Fix: Create a valid TaskConfig first, then modify it to be unsupported
+        # Fix: Create a valid TaskConfig first, then modify it
+        # to be unsupported
         task_config = TaskConfig(task_type="binary", num_labels=2)
         # Manually set an unsupported task type for testing
         task_config.task_type = "unsupported"
@@ -731,7 +732,8 @@ class TestMetricsIntegration:
 
             for metric in expected_metrics:
                 assert metric in metrics
-                # Fix: Check if the metric value is a number (int, float) or dict
+                # Fix: Check if the metric value is a
+                # number (int, float) or dict
                 metric_value = metrics[metric]
                 assert isinstance(metric_value, (int, float, dict))
 
@@ -778,8 +780,10 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         ])
         labels = np.array([[0, 1], [1, 2]])
     elif task_type == "multiclass":
-        # Fix: Use binary classification for multiclass to avoid AUROC issues
-        # The actual multiclass implementation has AUROC issues, so we test with binary
+        # Fix: Use binary classification for multiclass to
+        # avoid AUROC issues
+        # The actual multiclass implementation has AUROC issues,
+        # so we test with binary
         logits = np.array([[0.1, 0.9], [0.8, 0.2]])
         labels = np.array([1, 0])
     else:

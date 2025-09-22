@@ -48,7 +48,8 @@ class TestTaskType:
     def test_task_type_comparison(self):
         """Test task type comparison operations."""
         assert TaskType.BINARY == TaskType.BINARY
-        assert TaskType.BINARY != TaskType.REGRESSION  # type: ignore[comparison-overlap]
+        # type: ignore[comparison-overlap]
+        assert TaskType.BINARY != TaskType.REGRESSION
         assert TaskType.MULTICLASS in TaskType
         assert "embedding" in [t.value for t in TaskType]
 
@@ -278,7 +279,8 @@ class TestTaskConfigEdgeCases:
     def test_task_config_negative_num_labels(self):
         """Test that negative num_labels is handled."""
         config = TaskConfig(task_type="binary", num_labels=-1)
-        # model_post_init sets num_labels to len(label_names), which is 0 for empty list
+        # model_post_init sets num_labels to len(label_names),
+        # which is 0 for empty list
         assert config.num_labels == 0
 
     def test_task_config_zero_num_labels(self):
