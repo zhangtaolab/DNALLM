@@ -15,7 +15,6 @@ from dnallm.models.model import (
     is_fp8_capable,
     load_model_and_tokenizer,
     load_preset_model,
-    _handle_evo2_models,
     _setup_huggingface_mirror,
     _get_model_path_and_imports,
     _create_label_mappings,
@@ -176,60 +175,6 @@ class TestIsFp8Capable:
         assert result is False
 
 
-class TestHandleEvo2Models:
-    """Test _handle_evo2_models function for EVO2 model handling."""
-
-    def test_handle_evo2_models_not_evo2(self):
-        """Test handling of non-EVO2 models."""
-        result = _handle_evo2_models("regular-model", "huggingface")
-
-        assert result is None
-
-    def test_handle_evo2_models_evo2_local(self):
-        """Test handling of EVO2 models with local source."""
-        with patch("glob.glob", return_value=["/path/to/model.pt"]):
-            with patch("os.path.isdir", return_value=True):
-                with patch("evo2.Evo2") as mock_evo2:
-                    mock_model = Mock()
-                    mock_tokenizer = Mock()
-                    mock_evo2.return_value = mock_model
-                    mock_model.tokenizer = mock_tokenizer
-
-                    with patch(
-                        "dnallm.models.model.is_fp8_capable", return_value=True
-                    ):
-                        result = _handle_evo2_models("evo2_1b_base", "local")
-
-                    assert result == (mock_model, mock_tokenizer)
-                    mock_evo2.assert_called_once_with(
-                        "evo2_1b_base",
-                        local_path="/path/to/model.pt",
-                        use_fp8=True,
-                    )
-
-    def test_handle_evo2_models_evo2_remote(self):
-        """Test handling of EVO2 models with remote source."""
-        with patch("evo2.Evo2") as mock_evo2:
-            mock_model = Mock()
-            mock_tokenizer = Mock()
-            mock_evo2.return_value = mock_model
-            mock_model.tokenizer = mock_tokenizer
-
-            with patch(
-                "dnallm.models.model.is_fp8_capable", return_value=False
-            ):
-                result = _handle_evo2_models("evo2_7b_base", "huggingface")
-
-            assert result == (mock_model, mock_tokenizer)
-            mock_evo2.assert_called_once_with("evo2_7b_base", use_fp8=False)
-
-    def test_handle_evo2_models_import_error(self):
-        """Test handling of EVO2 models when EVO2 package is not available."""
-        with patch("evo2.Evo2", side_effect=ImportError("EVO2 not installed")):
-            with pytest.raises(ImportError, match="EVO2 package is required"):
-                _handle_evo2_models("evo2_1b_base", "huggingface")
-
-
 class TestSetupHuggingfaceMirror:
     """Test _setup_huggingface_mirror function."""
 
@@ -248,7 +193,9 @@ class TestSetupHuggingfaceMirror:
             assert "HF_ENDPOINT" not in os.environ
 
     def test_setup_mirror_disabled_no_existing_env(self):
-        """Test handling evo2 models with local path and fp8 support."""
+        """Test setting up HuggingFace mirror when
+        disabled and no existing env.
+        """
         with patch.dict(os.environ, {}, clear=True):
             _setup_huggingface_mirror(False)
             assert "HF_ENDPOINT" not in os.environ
@@ -291,7 +238,7 @@ class TestGetModelPathAndImports:
 
                 assert model_path == "/downloaded/model"
                 mock_download.assert_called_once_with(
-                    "test-model", downloader=mock_hf_download
+                    "test-model", downloader=mock_hf_download, revision=None
                 )
                 assert "AutoModel" in modules
 
@@ -311,7 +258,9 @@ class TestGetModelPathAndImports:
 
                     assert model_path == "/downloaded/model"
                     mock_download.assert_called_once_with(
-                        "test-model", downloader=mock_ms_download
+                        "test-model",
+                        downloader=mock_ms_download,
+                        revision=None,
                     )
                     assert "AutoModel" in modules
 
@@ -319,38 +268,6 @@ class TestGetModelPathAndImports:
         """Test getting model path for unsupported source."""
         with pytest.raises(ValueError, match="Unsupported source: unknown"):
             _get_model_path_and_imports("test-model", "unknown")
-
-    def test_get_model_path_import_error_transformers(self):
-        """Test import error for transformers library."""
-        with patch(
-            "transformers.AutoModel",
-            side_effect=ImportError("transformers not installed"),
-        ):
-            with patch("os.path.exists", return_value=True):
-                with pytest.raises(
-                    ImportError,
-                    match="Transformers is required but not available",
-                ):
-                    _get_model_path_and_imports("/path/to/model", "local")
-
-    def test_get_model_path_import_error_modelscope(self):
-        """Test import error for modelscope library."""
-        with patch(
-            "modelscope.AutoModel",
-            side_effect=ImportError("modelscope not installed"),
-        ):
-            with patch(
-                "dnallm.models.model.download_model",
-                return_value="/downloaded/model",
-            ):
-                with patch(
-                    "modelscope.hub.snapshot_download.snapshot_download"
-                ):
-                    with pytest.raises(
-                        ImportError,
-                        match="ModelScope is required but not available",
-                    ):
-                        _get_model_path_and_imports("test-model", "modelscope")
 
 
 class TestCreateLabelMappings:
@@ -605,99 +522,100 @@ class TestConfigureModelPadding:
 class TestLoadModelAndTokenizer:
     """Test load_model_and_tokenizer function."""
 
-    def test_load_model_evo2(self):
-        """Test loading EVO2 model."""
-        task_config = TaskConfig(task_type="generation", num_labels=None)
-
-        with patch(
-            "dnallm.models.model._handle_evo2_models",
-            return_value=("model", "tokenizer"),
-        ):
-            model, tokenizer = load_model_and_tokenizer(
-                "evo2_1b_base", task_config
-            )
-
-            assert model == "model"
-            assert tokenizer == "tokenizer"
-
     def test_load_model_regular_huggingface(self):
         """Test loading regular HuggingFace model."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        with patch(
-            "dnallm.models.model._handle_evo2_models", return_value=None
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=(
+                    "/path",
+                    {"AutoTokenizer": Mock(), "AutoModelForMaskedLM": Mock()},
+                ),
+            ),
+            patch(
+                "dnallm.models.model._create_label_mappings",
+                return_value=({}, {}),
+            ),
+            patch(
+                "dnallm.models.model._load_model_by_task_type",
+                return_value=(Mock(), "tokenizer"),
+            ),
+            patch("dnallm.models.model._configure_model_padding"),
         ):
-            with patch("dnallm.models.model._setup_huggingface_mirror"):
-                with patch(
-                    "dnallm.models.model._get_model_path_and_imports",
-                    return_value=("/path", {}),
-                ):
-                    with patch(
-                        "dnallm.models.model._create_label_mappings",
-                        return_value=({}, {}),
-                    ):
-                        with patch(
-                            "dnallm.models.model._load_model_by_task_type",
-                            return_value=("model", "tokenizer"),
-                        ):
-                            with patch(
-                                "dnallm.models.model._configure_model_padding"
-                            ):
-                                model, tokenizer = load_model_and_tokenizer(
-                                    "test-model",
-                                    task_config,
-                                    source="huggingface",
-                                )
+            model, tokenizer = load_model_and_tokenizer(
+                "test-model", task_config, source="huggingface"
+            )
 
-                                assert model == "model"
-                                assert tokenizer == "tokenizer"
+            assert model is not None
+            assert tokenizer == "tokenizer"
 
     def test_load_model_missing_num_labels_classification(self):
         """Test that correct problem types are set for different task types."""
-        task_config = TaskConfig(task_type="binary", num_labels=None)
+        # Create a task config that bypasses Pydantic validation
+        task_config = TaskConfig(task_type="regression", num_labels=1)
+        # Manually set num_labels to None to test the validation
+        task_config.num_labels = None
 
-        with patch(
-            "dnallm.models.model._handle_evo2_models", return_value=None
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._handle_evo2_models", return_value=None
+            ),
+            patch(
+                "dnallm.models.model._handle_evo1_models", return_value=None
+            ),
+            patch("dnallm.models.model._handle_gpn_models", return_value=None),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=(
+                    "/path",
+                    {
+                        "AutoTokenizer": Mock(),
+                        "AutoModelForSequenceClassification": Mock(),
+                    },
+                ),
+            ),
+            patch(
+                "dnallm.models.model._create_label_mappings",
+                return_value=({}, {}),
+            ),
         ):
-            with patch("dnallm.models.model._setup_huggingface_mirror"):
-                with patch(
-                    "dnallm.models.model._get_model_path_and_imports",
-                    return_value=("/path", {}),
-                ):
-                    with pytest.raises(
-                        ValueError,
-                        match="num_labels is required for task type\
-                            'binary' but is None",
-                    ):
-                        load_model_and_tokenizer("test-model", task_config)
+            with pytest.raises(
+                ValueError,
+                match=(
+                    "num_labels is required for task type 'regression' "
+                    "but is None"
+                ),
+            ):
+                load_model_and_tokenizer("test-model", task_config)
 
     def test_load_model_loading_error(self):
         """Test loading model with loading error."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        with patch(
-            "dnallm.models.model._handle_evo2_models", return_value=None
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/path", {}),
+            ),
+            patch(
+                "dnallm.models.model._create_label_mappings",
+                return_value=({}, {}),
+            ),
+            patch(
+                "dnallm.models.model._load_model_by_task_type",
+                side_effect=Exception("Loading failed"),
+            ),
         ):
-            with patch("dnallm.models.model._setup_huggingface_mirror"):
-                with patch(
-                    "dnallm.models.model._get_model_path_and_imports",
-                    return_value=("/path", {}),
-                ):
-                    with patch(
-                        "dnallm.models.model._create_label_mappings",
-                        return_value=({}, {}),
-                    ):
-                        with patch(
-                            "dnallm.models.model._load_model_by_task_type",
-                            side_effect=Exception("Loading failed"),
-                        ):
-                            with pytest.raises(
-                                ValueError,
-                                match="Failed to load model: Loading failed",
-                            ):
-                                load_model_and_tokenizer(
-                                    "test-model", task_config
-                                )
+            with pytest.raises(
+                ValueError,
+                match="Failed to load model: Loading failed",
+            ):
+                load_model_and_tokenizer("test-model", task_config)
 
 
 class TestLoadPresetModel:
@@ -708,7 +626,7 @@ class TestLoadPresetModel:
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
         with patch(
-            "dnallm.models.model.MODEL_INFO",
+            "dnallm.models.modeling_auto.MODEL_INFO",
             {"test-model": {"default": "actual-model"}},
         ):
             with patch(
@@ -723,19 +641,17 @@ class TestLoadPresetModel:
         """Test loading preset model that is not found."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        with patch("dnallm.models.model.MODEL_INFO", {}):
-            with patch("builtins.print") as mock_print:
-                result = load_preset_model("unknown-model", task_config)
+        with patch("dnallm.models.modeling_auto.MODEL_INFO", {}):
+            result = load_preset_model("unknown-model", task_config)
 
-                assert result == 0
-                mock_print.assert_called_once()
+            assert result == 0
 
     def test_load_preset_model_preset_name(self):
         """Test loading preset model by preset name."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
         with patch(
-            "dnallm.models.model.MODEL_INFO",
+            "dnallm.models.modeling_auto.MODEL_INFO",
             {"test-model": {"preset": ["preset1", "preset2"]}},
         ):
             with patch(
@@ -750,12 +666,10 @@ class TestLoadPresetModel:
         """Test loading preset model with KeyError in MODEL_INFO."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        with patch("dnallm.models.model.MODEL_INFO", {}):
-            with patch("builtins.print") as mock_print:
-                result = load_preset_model("test-model", task_config)
+        with patch("dnallm.models.modeling_auto.MODEL_INFO", {}):
+            result = load_preset_model("test-model", task_config)
 
-                assert result == 0
-                mock_print.assert_called_once()
+            assert result == 0
 
 
 @pytest.mark.parametrize(

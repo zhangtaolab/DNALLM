@@ -111,9 +111,11 @@ task:
         # Mock model parameters
         mock_model.parameters.return_value = iter([torch.randn(100, 100)])
 
-        # Mock model forward method
-        def mock_forward(**kwargs):
-            batch_size = kwargs.get("input_ids", torch.randn(1, 10)).shape[0]
+        # Mock model forward method with proper signature
+        def mock_forward(
+            input_ids, attention_mask=None, labels=None, **kwargs
+        ):
+            batch_size = input_ids.shape[0]
             mock_output = Mock()
             mock_output.logits = torch.randn(batch_size, 2)
             return mock_output
