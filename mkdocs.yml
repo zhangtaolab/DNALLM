@@ -52,32 +52,87 @@ nav:
     - Quick Start: getting_started/quick_start.md
     - Installation: getting_started/installation.md
     # - Installation (中文): getting_started/installation_zh.md
+  - User Guide:
+    - Getting Started: user_guide/getting_started.md
+    - Common Workflows: user_guide/common_workflows.md
+    - Best Practices: user_guide/best_practices.md
+    - Performance Guide: user_guide/performance_guide.md
+    - Troubleshooting: user_guide/troubleshooting.md
   - CLI Tools:
     - Overview: cli/index.md
     - Usage Guide: cli/usage.md
     - Configuration Generator: cli/config_generator.md
     - MCP Server: cli/mcp_server.md
   - Tutorials:
+    - Data Processing:
+      - Data Preparation: tutorials/data_processing/data_preparation.md
+      - Quality Control: tutorials/data_processing/quality_control.md
+      - Supported Formats: tutorials/data_processing/format_conversion.md
+      - Data Augmentation: tutorials/data_processing/data_augmentation.md
     - Fine Tuning:
       - Overview: tutorials/fine_tuning/index.md
       - Getting Started: tutorials/fine_tuning/getting_started.md
       - Configuration: tutorials/fine_tuning/configuration.md
       - Advanced Techniques: tutorials/fine_tuning/advanced_techniques.md
       - Task Guides: tutorials/fine_tuning/task_guides.md
+    - Inference:
+      - Getting Started: tutorials/inference/getting_started.md
+      - Basic Inference: tutorials/inference/basic_inference.md
+      - Advanced Inference: tutorials/inference/advanced_inference.md
+      - Mutagenesis Analysis: tutorials/inference/mutagenesis_analysis.md
+      - Visualization: tutorials/inference/visualization.md
+      - Performance Optimization: tutorials/inference/performance_optimization.md
     - Benchmark:
       - Overview: tutorials/benchmark/index.md
       - Getting Started: tutorials/benchmark/getting_started.md
       - Configuration: tutorials/benchmark/configuration.md
       - Advanced Techniques: tutorials/benchmark/advanced_techniques.md
       - Examples: tutorials/benchmark/examples.md
-
+    - Performance Optimization:
+      - GPU Optimization: tutorials/performance/gpu_optimization.md
+      - Memory Optimization: tutorials/performance/memory_optimization.md
+      - Inference Speed: tutorials/performance/inference_speed.md
+      - Model Quantization: tutorials/performance/model_quantization.md
+    - Model Information:
+      - Categories:
+        - BERT Models: tutorials/model_categories/bert_models.md
+        - Caduceus Models: tutorials/model_categories/caduceus_models.md
+        - ESM Models: tutorials/model_categories/esm_models.md
+        - Hyena Models: tutorials/model_categories/hyena_models.md
+        - Llama Models: tutorials/model_categories/llama_models.md
+      - Guides:
+        - Model Selection: tutorials/model_guides/model_selection.md
+        - Mamba Models: tutorials/model_guides/mamba_models.md
+        - EVO Models: tutorials/model_guides/evo_models.md
+        - Flash Attention Models: tutorials/model_guides/flash_attention_models.md
+        - Special Models: tutorials/model_guides/special_models.md
+        - Troubleshooting Models: tutorials/model_guides/troubleshooting_models.md
+  - Case Studies:
+    - Promoter Prediction: case_studies/promoter_prediction.md
+    - Motif Detection: case_studies/motif_detection.md
+    - Sequence Generation: case_studies/sequence_generation.md
+    - Multi-Task Learning: case_studies/multi_task_learning.md
   - Resources:
     - Model Zoo: resources/model_zoo.md
-    - Datahandling: resources/datahandling.md
-    # - Datahandling (中文): resources/datahandling_zh.md
+    - Data_Handling: resources/datahandling.md
   - Concepts:
+    - Biology:
+      - DNA Sequences: concepts/biology/dna_sequences.md
+      - Genomic Features: concepts/biology/genomic_features.md
+      - Biological Tasks: concepts/biology/biological_tasks.md
+      - Sequence Analysis: concepts/biology/sequence_analysis.md
     - Training: concepts/training.md
     - Inference: concepts/inference.md
+    - Architecture:
+      - Model Architectures: concepts/architecture/model_architectures.md
+      - Tokenization: concepts/architecture/tokenization.md
+      - Attention Mechanisms: concepts/architecture/attention_mechanisms.md
+      - Embedding Layers: concepts/architecture/embedding_layers.md
+    - Technical Guides:
+      - Transfer Learning: concepts/technical/transfer_learning.md
+      - Fine-tuning Strategies: concepts/technical/fine_tuning_strategies.md
+      - Evaluation Metrics: concepts/technical/evaluation_metrics.md
+      - Performance Optimization: concepts/technical/performance_optimization.md
   - API: 
     - Utils: 
       - Sequence: api/utils/sequence.md
@@ -100,11 +155,12 @@ plugins:
         python:
           options:
             docstring_style: google
-            extra:
-              show_source: true
-              strict: false
-              show_root_heading: true
-              show_root_toc_entry: true
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_category_heading: true
+            merge_init_into_class: true
+            separate_signature: true
 
 
 markdown_extensions:

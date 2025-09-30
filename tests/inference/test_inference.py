@@ -5,23 +5,24 @@ including model loading, inference, and result processing.
 """
 
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
-import torch
 import numpy as np
 import pandas as pd
+import pytest
+import torch
 from datasets import Dataset
 
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from dnallm.inference.inference import DNAInference
 from dnallm.datahandling.data import DNADataset
+from dnallm.inference.inference import DNAInference
 
 
 class TestDNAInference(unittest.TestCase):
@@ -110,9 +111,11 @@ task:
         # Mock model parameters
         mock_model.parameters.return_value = iter([torch.randn(100, 100)])
 
-        # Mock model forward method
-        def mock_forward(**kwargs):
-            batch_size = kwargs.get("input_ids", torch.randn(1, 10)).shape[0]
+        # Mock model forward method with proper signature
+        def mock_forward(
+            input_ids, attention_mask=None, labels=None, **kwargs
+        ):
+            batch_size = input_ids.shape[0]
             mock_output = Mock()
             mock_output.logits = torch.randn(batch_size, 2)
             return mock_output
@@ -424,6 +427,10 @@ task:
 class TestDNAInferenceIntegration(unittest.TestCase):
     """Integration tests for DNAInference with real model loading."""
 
+    # Class attributes for type checking
+    test_dir: str
+    config_path: str
+
     @classmethod
     def setUpClass(cls):
         """Set up test fixtures for integration tests."""
@@ -454,6 +461,7 @@ task:
         """Clean up integration test fixtures."""
         shutil.rmtree(cls.test_dir)
 
+    @pytest.mark.slow
     def test_real_model_integration(self):
         """Test with real model loading from ModelScope."""
         try:
@@ -497,5 +505,9 @@ task:
 
 
 if __name__ == "__main__":
-    # Run tests
-    unittest.main(verbosity=2)
+    # Only run when executed directly, not when imported by pytest
+    import sys
+
+    if "pytest" not in sys.modules:
+        # Run tests
+        unittest.main(verbosity=2)

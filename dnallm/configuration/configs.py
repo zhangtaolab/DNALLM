@@ -99,6 +99,41 @@ class TrainingConfig(BaseModel):
     resume_from_checkpoint: str | None = None
 
 
+class LoraConfig(BaseModel):
+    """Configuration for LoRA (Low-Rank Adaptation)"""
+
+    r: int = Field(default=8, description="LoRA attention dimension (rank).")
+    lora_alpha: int = Field(
+        default=16, description="The alpha parameter for LoRA scaling."
+    )
+    target_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "The names of the modules to apply LoRA to.",
+            "E.g., ['query', 'value'] or ['q_proj', 'v_proj'].",
+        ),
+    )
+    lora_dropout: float = Field(
+        default=0.1, description="The dropout probability for LoRA layers."
+    )
+    bias: str = Field(
+        default="none",
+        pattern="^(none|all|lora_only)$",
+        description="Bias type for LoRA. Can be 'none', 'all' or 'lora_only'.",
+    )
+    lora_bias: bool = Field(
+        default=False, description="Whether to use bias in LoRA layers."
+    )
+    inference_mode: bool = Field(
+        default=False,
+        description="Whether to set the model in inference mode.",
+    )
+    task_type: str | None = Field(
+        default="SEQ_CLS",
+        description="The task type for PEFT. E.g., 'CAUSAL_LM', 'TOKEN_CLS'.",
+    )
+
+
 class InferenceConfig(BaseModel):
     """Configuration for model inference"""
 
@@ -129,6 +164,10 @@ class ModelConfig(BaseModel):
         ...,
         description="Path to the model, can be a local path or a Hugging "
         "Face model identifier.",
+    )
+    lora_adapter_path: str | None = Field(
+        default=None,
+        description="Optional path to a trained LoRA adapter for inference.",
     )
     source: str | None = "huggingface"
     task_type: str | None = "classification"
@@ -238,25 +277,30 @@ def load_config(config_path: str) -> dict[str, BaseModel]:
 
     configs: dict[str, BaseModel] = {}
 
-    # 根据配置文件内容动态创建配置
+    # Initialize empty dictionary to hold configurations
     configs = {}
 
-    # 任务配置
+    # Configurations for tasks
     if "task" in config_dict:
         configs["task"] = TaskConfig(**config_dict["task"])
 
-    # 推理配置
+    # Configurations for inference
     if "inference" in config_dict:
         configs["inference"] = InferenceConfig(**config_dict["inference"])
 
-    # 模型配置
+    # Configurations for models
     if "model" in config_dict:
         configs["model"] = config_dict["model"]  # 保持为字典格式
 
-    # 训练配置(可选)
+    # Configurations for training (Optional)
     if "finetune" in config_dict:
         configs["finetune"] = TrainingConfig(**config_dict["finetune"])
 
+    # Configurations for LoRA (Optional)
+    if "lora" in config_dict:
+        configs["lora"] = LoraConfig(**config_dict["lora"])
+
+    # Configurations for benchmark (Optional)
     if "benchmark" in config_dict:
         configs["benchmark"] = BenchmarkConfig(**config_dict)
 

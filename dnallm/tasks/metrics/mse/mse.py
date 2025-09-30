@@ -125,7 +125,6 @@ class Mse(evaluate.Metric):
             predictions,
             sample_weight=sample_weight,
             multioutput=multioutput,
-            squared=squared,
         )
 
         return {"mse": mse}

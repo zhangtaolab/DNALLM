@@ -176,6 +176,7 @@ def regression_metrics(plot=False):
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        logits = logits[0] if isinstance(logits, tuple) else logits
         num_outputs = logits.shape[1]
         if num_outputs > 1:
             mse = mean_squared_error(labels, logits)
@@ -195,8 +196,14 @@ def regression_metrics(plot=False):
             )
             metrics = {**mse, **mae, "r2": r2, **spearmanr}
             if plot:
+                # Fix: logits is already a numpy array,
+                # no need to call .numpy()
+                if hasattr(logits, "numpy"):
+                    predicted = logits.numpy().flatten()
+                else:
+                    predicted = logits.flatten()
                 metrics["scatter"] = {
-                    "predicted": logits.numpy().flatten(),
+                    "predicted": predicted,
                     "experiment": labels,
                 }
         return metrics

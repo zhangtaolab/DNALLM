@@ -8,17 +8,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
-DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis.
+DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 30+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
-- **🌐 MCP Support**: Model Context Protocol for server/client deployment
+- **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
+- **🧪 Comprehensive Testing**: 200+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
@@ -79,6 +80,9 @@ pip install uv
 # Install DNALLM with base dependencies
 uv pip install -e '.[base]'
 
+# For MCP server support (optional)
+uv pip install -e '.[mcp]'
+
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
@@ -101,6 +105,9 @@ conda install uv -c conda-forge
 
 # Install DNALLM with base dependencies
 uv pip install -e '.[base]'
+
+# For MCP server support (optional)
+uv pip install -e '.[mcp]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -219,6 +226,36 @@ trainer = DNATrainer(
 trainer.train()
 ```
 
+### 4. MCP Server Deployment
+
+```python
+# Start MCP server for real-time DNA sequence prediction
+from dnallm.mcp import DNALLMMCPServer
+
+# Initialize MCP server
+server = DNALLMMCPServer("config/mcp_server_config.yaml")
+await server.initialize()
+
+# Start server with SSE transport for real-time streaming
+server.start_server(host="0.0.0.0", port=8000, transport="sse")
+```
+
+#### MCP Server Features
+- **Real-time Streaming**: Server-Sent Events (SSE) for live prediction updates
+- **Multiple Transport Protocols**: STDIO, SSE, and Streamable HTTP
+- **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
+- **Model Management**: Dynamic model loading and switching
+- **Batch Processing**: Efficient handling of multiple sequences
+- **Health Monitoring**: Built-in server diagnostics and status checks
+
+#### Available MCP Tools
+- `dna_sequence_predict` - Single sequence prediction
+- `dna_batch_predict` - Batch sequence processing
+- `dna_multi_model_predict` - Multi-model comparison
+- `dna_stream_predict` - Real-time streaming prediction
+- `list_loaded_models` - Model management
+- `health_check` - Server monitoring
+
 ## 📚 Examples and Tutorials
 
 ### Interactive Demos (Marimo)
@@ -239,17 +276,29 @@ uv run marimo run example/marimo/inference/inference_demo.py
 uv run marimo run example/marimo/benchmark/benchmark_demo.py
 ```
 
+### Web-based UI (Gradio)
+```bash
+# Launch Gradio configuration generator app
+uv run python ui/run_config_app.py
+
+# Or run the model config generator directly
+uv run python ui/model_config_generator_app.py
+```
+
 ### Jupyter Notebooks
 ```bash
 # Launch Jupyter Lab
 uv run jupyter lab
 
 # Available notebooks:
-# - example/notebooks/finetune_plant_dnabert/ - Classification fine-tuning
+# - example/notebooks/finetune_binary/ - Binary classification fine-tuning
 # - example/notebooks/finetune_multi_labels/ - Multi-label classification
 # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
 # - example/notebooks/inference_and_benchmark/ - Model evaluation
 # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
+# - example/notebooks/inference_for_tRNA/ - tRNA-specific analysis
+# - example/notebooks/inference_evo_models/ - EVO model inference
+# - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
 # - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
 ```
 
@@ -308,8 +357,7 @@ DNALLM/
 │   │   └── sequence.py         # DNA sequence processing
 │   └── mcp/                   # Model Context Protocol server
 │       ├── __init__.py
-│       ├── README.md           # MCP documentation
-│       ├── API_DOCUMENTATION.md # API reference
+│       ├── README.md           # MCP documentation (Chinese)
 │       ├── DEVELOPMENT.md      # Development guide
 │       ├── server.py           # MCP server implementation
 │       ├── start_server.py     # Server startup script
@@ -319,6 +367,7 @@ DNALLM/
 │       ├── example_sse_usage.py # SSE usage examples
 │       ├── run_tests.py        # Test runner
 │       ├── requirements.txt    # MCP-specific dependencies
+│       ├── test_mcp_curl.md    # MCP testing documentation
 │       ├── configs/            # MCP configuration files
 │       │   ├── mcp_server_config.yaml
 │       │   ├── promoter_inference_config.yaml
@@ -416,10 +465,17 @@ DNALLM/
 DNALLM provides convenient CLI tools:
 
 ```bash
+# Main CLI with subcommands
+dnallm --help
+
 # Training
+dnallm train --config path/to/config.yaml
+# or
 dnallm-train --config path/to/config.yaml
 
 # Inference
+dnallm inference --config path/to/config.yaml --input path/to/sequences.txt
+# or
 dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
 
 # Model configuration generator
@@ -441,6 +497,23 @@ DNALLM supports the following task types:
 - **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
 - **REGRESSION**: Regression task which returns a continuous score
 - **NER**: Token classification task which is usually for Named Entity Recognition
+
+## 🧪 Testing
+
+DNALLM includes a comprehensive test suite with 200+ test cases:
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run specific test categories
+uv run pytest tests/inference/ -v
+uv run pytest tests/mcp/ -v
+uv run pytest tests/tasks/ -v
+
+# Run with coverage
+uv run pytest --cov=dnallm --cov-report=html
+```
 
 ## 📖 Documentation
 

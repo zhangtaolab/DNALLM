@@ -14,6 +14,7 @@ import numpy as np
 from scipy.special import softmax, expit
 from tqdm import tqdm
 
+import torch
 from torch.utils.data import DataLoader
 from datasets import Dataset
 
@@ -169,6 +170,9 @@ class Mutagenesis:
         if do_encode:
             dataset.encode_sequences(remove_unused_columns=True)
         # Create DataLoader
+        if batch_size <= 1:
+            batch_size = pred_config.batch_size
+        print(batch_size)
         self.dataloader: DataLoader = DataLoader(
             dataset, batch_size=batch_size, num_workers=pred_config.num_workers
         )
@@ -211,12 +215,92 @@ class Mutagenesis:
         elif task_config.task_type == "token":
             raw_score = np.argmax(raw_pred, dim=-1)
             mut_score = np.argmax(mut_pred, dim=-1)
+        elif task_config.task_type == "generation":
+            raw_score = np.array([raw_pred])
+            mut_score = np.array([mut_pred])
+        elif task_config.task_type == "mask":
+            raw_score = np.array([raw_pred])
+            mut_score = np.array([mut_pred])
         else:
             raise ValueError(f"Unknown task type: {task_config.task_type}")
 
         logfc = np.log2(mut_score / raw_score)
+        diff = mut_score - raw_score
 
-        return raw_score, mut_score, logfc
+        return raw_score, mut_score, logfc, diff
+
+    @torch.no_grad()
+    def mlm_evaluate(self) -> list[float]:
+        """Calculate pseudo-log-likelihood score using masked token prediction.
+
+        This method computes the pseudo-log-likelihood (PLL) score for each
+        sequence by iteratively masking each token and predicting it using the
+        model. The PLL score is the sum of the log probabilities of the true
+        tokens given the masked context.
+
+        Returns:
+            List of pseudo-log-likelihood scores for each sequence
+        """
+        all_logprobs = []
+        model = self.model
+        tokenizer = self.tokenizer
+        for seq in tqdm(self.sequences["sequence"], desc="Inferring"):
+            toks = tokenizer(
+                seq, return_tensors="pt", add_special_tokens=True
+            ).to(model.device)
+            input_ids = toks["input_ids"].clone()
+            seq_len = input_ids.size(1)
+            total = 0.0
+
+            for i in range(seq_len):
+                tok_id = input_ids[0, i].item()
+                if tok_id in tokenizer.all_special_ids:
+                    continue
+                masked = input_ids.clone()
+                masked[0, i] = tokenizer.mask_token_id
+                masked_inputs = {
+                    "input_ids": masked,
+                    "attention_mask": toks["attention_mask"],
+                }
+                outputs = model(**masked_inputs)
+                logits = outputs.logits
+                logp = torch.nn.functional.log_softmax(logits[0, i], dim=-1)
+                total += float(logp[tok_id].item())
+            all_logprobs.append(total)
+        return all_logprobs
+
+    @torch.no_grad()
+    def clm_evaluate(self) -> list[float]:
+        """Calculate sequence log-probability using causal language modeling.
+
+        This method computes the log-probability of each sequence under a
+        causal language model by summing the log probabilities of each token
+        given its preceding context.
+
+        Returns:
+            List of log-probabilities for each sequence
+        """
+        all_logprobs = []
+        model = self.model
+        tokenizer = self.tokenizer
+        for seq in tqdm(self.sequences["sequence"], desc="Inferring"):
+            toks = tokenizer(
+                seq, return_tensors="pt", add_special_tokens=True
+            ).to(model.device)
+            input_ids = toks["input_ids"]
+            outputs = model(**toks)
+            logits = outputs.logits  # (1, L, V)
+
+            # shift for causal LM: predict token t given tokens < t
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = input_ids[:, 1:].contiguous()
+            log_probs = torch.nn.functional.log_softmax(shift_logits, dim=-1)
+            token_logps = log_probs.gather(
+                -1, shift_labels.unsqueeze(-1)
+            ).squeeze(-1)  # (1, L-1)
+            seq_logp = float(token_logps.sum().item())
+            all_logprobs.append(seq_logp)
+        return all_logprobs
 
     def evaluate(self, strategy: str | int = "last") -> list[dict]:
         """Evaluate the impact of mutations on model predictions.
@@ -244,16 +328,44 @@ class Mutagenesis:
         inference_engine = self.get_inference_engine(
             self.model, self.tokenizer
         )
+        # Special models list
+        sp_models = ["evo1", "evo2"]
+        sp_model_found = False
         # Do prediction
-        logits, _, _ = inference_engine.batch_infer(
-            self.dataloader, do_pred=False
-        )
-        logits = logits[0] if isinstance(logits, tuple) else logits
         all_predictions = {}
-        # Get the raw predictions
-        raw_pred = logits[0].numpy()
-        # Get the mutated predictions
-        mut_preds = logits[1:].numpy()
+        for sp_model in sp_models:
+            if sp_model in str(self.model).lower():
+                logits = inference_engine.scoring(
+                    self.dataloader,
+                    reduce_method=strategy if strategy == "sum" else "mean",
+                )
+                raw_pred = logits[0]["Score"]
+                mut_preds = [logit["Score"] for logit in logits[1:]]
+                self.config["task"].task_type = "generation"
+                sp_model_found = True
+                break
+        if not sp_model_found:
+            if self.config["task"].task_type == "mask":
+                logits = self.mlm_evaluate()
+            elif self.config["task"].task_type == "generation":
+                logits = self.clm_evaluate()
+            else:
+                logits, _, _ = inference_engine.batch_infer(
+                    self.dataloader, do_pred=False
+                )
+            logits = logits[0] if isinstance(logits, tuple) else logits
+            # Get the raw predictions
+            raw_pred = (
+                logits[0].numpy()
+                if isinstance(logits, torch.Tensor)
+                else logits[0]
+            )
+            # Get the mutated predictions
+            mut_preds = (
+                logits[1:].numpy()
+                if isinstance(logits, torch.Tensor)
+                else logits[1:]
+            )
         for i, mut_pred in tqdm(
             enumerate(mut_preds), desc="Evaluating mutations"
         ):
@@ -262,7 +374,7 @@ class Mutagenesis:
             # Get the mutated sequence
             mut_seq = self.sequences["sequence"][i + 1]
             # Compare the predictions
-            raw_score, mut_score, logfc = self.pred_comparison(
+            raw_score, mut_score, logfc, diff = self.pred_comparison(
                 raw_pred, mut_pred
             )
             # Store the results
@@ -271,12 +383,14 @@ class Mutagenesis:
                     "sequence": self.sequences["sequence"][0],
                     "pred": raw_score,
                     "logfc": np.zeros(len(raw_score)),
+                    "diff": np.zeros(len(raw_score)),
                     "score": 0.0,
                 }
             all_predictions[mut_name] = {
                 "sequence": mut_seq,
                 "pred": mut_score,
                 "logfc": logfc,
+                "diff": diff,
             }
             # Get final score
             if strategy == "first":

@@ -45,6 +45,7 @@ from torch.utils.data import DataLoader
 from datasets import Dataset, DatasetDict
 
 from ..datahandling.data import DNADataset
+from ..models.model import _get_model_path_and_imports
 from ..tasks.metrics import compute_metrics
 from ..utils import get_logger
 from .plot import plot_attention_map, plot_embeddings
@@ -73,7 +74,13 @@ class DNAInference:
         embeddings: Dictionary containing hidden states and attention weights
     """
 
-    def __init__(self, model: Any, tokenizer: Any, config: dict):
+    def __init__(
+        self,
+        model: Any,
+        tokenizer: Any,
+        config: dict,
+        lora_adapter: str | None = None,
+    ) -> None:
         """Initialize the inference engine.
 
         Args:
@@ -81,15 +88,45 @@ class DNAInference:
             tokenizer: Tokenizer for encoding DNA sequences
             config: Configuration dictionary containing task settings and
             inference parameters
+            lora_adapter: Optional path to LoRA adapter for model
         """
 
-        self.model = model
+        if lora_adapter:
+            from peft import PeftModel
+            from ..models.model import peft_forward_compatiable
+
+            if os.path.isdir(lora_adapter):
+                source = "local"
+            else:
+                source = (
+                    model.source if hasattr(model, "source") else "huggingface"
+                )
+            try:
+                lora_adapter_path, _ = _get_model_path_and_imports(
+                    lora_adapter, source
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load LoRA adapter from {lora_adapter}: {e}"
+                ) from e
+
+            self.accepted_args = self._get_accepted_forward_args(model)
+
+            model = peft_forward_compatiable(model)
+            self.model = PeftModel.from_pretrained(model, lora_adapter_path)
+            logger.info(f"Loaded LoRA adapter from {lora_adapter}")
+        else:
+            self.model = model
+            self.accepted_args = self._get_accepted_forward_args(model)
         self.tokenizer = tokenizer
         self.task_config = config["task"]
         self.pred_config = config["inference"]
         self.device = self._get_device()
         if model:
-            self.model.to(self.device)
+            if "CustomEvo" in str(type(self.model)):
+                self.model.model.to(self.device)
+            else:
+                self.model.to(self.device)
             # mamba only support cuda and cpu, and only allow fp32
             if "mamba" in str(type(self.model)).lower():
                 if self.device.type != "cuda":
@@ -308,6 +345,17 @@ class DNAInference:
             )
         return False
 
+    def _get_accepted_forward_args(self, model) -> set:
+        """Get the set of argument names the model's forward method accepts.
+
+        Returns:
+            set: Set of accepted argument names
+        """
+        import inspect
+
+        sig = inspect.signature(model.forward)
+        return set(sig.parameters.keys())
+
     def generate_dataset(
         self,
         seq_or_path: str | list[str],
@@ -319,6 +367,7 @@ class DNAInference:
         multi_label_sep: str | None = None,
         uppercase: bool = False,
         lowercase: bool = False,
+        sampling: float | None = None,
         keep_seqs: bool = True,
         do_encode: bool = True,
     ) -> tuple[DNADataset, DataLoader]:
@@ -339,6 +388,7 @@ class DNAInference:
             multi_label_sep: Delimiter for multi-label sequences
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
+            sampling: Fraction of data to randomly sample for inference
             keep_seqs: Whether to keep sequences in the dataset for later use
             do_encode: Whether to encode sequences for the model
 
@@ -376,6 +426,10 @@ class DNAInference:
                 "Input should be a file path or a list of sequences."
             )
 
+        # If sampling is specified, randomly sample the sequences
+        if sampling:
+            dataset = dataset.sampling(sampling) if dataset else None
+
         # Create dataset from sequences if we have any and no dataset was
         # loaded from file
         if len(sequences) > 0 and dataset is None:
@@ -385,7 +439,7 @@ class DNAInference:
             )
 
         # Ensure dataset is not None before proceeding
-        if dataset is None:
+        if not dataset:
             raise ValueError(
                 "No valid dataset could be created from the input."
             )
@@ -401,6 +455,21 @@ class DNAInference:
                 uppercase=uppercase,
                 lowercase=lowercase,
             )
+            all_cols = dataset.dataset.features
+            cols_drop = [c for c in all_cols if c not in self.accepted_args]
+        else:
+            all_cols = dataset.dataset.features
+            if "sequence" in all_cols and "input_ids" not in all_cols:
+                dataset.dataset = dataset.dataset.rename_column(
+                    "sequence", "input_ids"
+                )
+                dataset.dataset.set_format(type="torch")
+                cols_drop = [
+                    c
+                    for c in dataset.dataset.features
+                    if c not in self.accepted_args
+                ]
+        dataset.dataset = dataset.dataset.remove_columns(cols_drop)
         # Check for labels in dataset - handle both Dataset and
         # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
@@ -466,7 +535,7 @@ class DNAInference:
         elif task_type == "regression":
             preds = logits.squeeze(-1)
             probs = preds
-            labels = preds.tolist()
+            labels = label_names
         elif task_type == "token":
             probs = torch.softmax(logits, dim=-1)
             preds = torch.argmax(logits, dim=-1)
@@ -500,12 +569,16 @@ class DNAInference:
         label_names = self.task_config.label_names
         for i, label in enumerate(labels):
             prob = probs[i]
+            if task_type == "regression":
+                scores = {label_names[0]: prob}
+            elif task_type == "token":
+                scores = [max(x) for x in prob]
+            else:
+                scores = {label_names[j]: p for j, p in enumerate(prob)}
             formatted_predictions[i] = {
                 "sequence": self.sequences[i] if keep_seqs else "",
                 "label": label,
-                "scores": {label_names[j]: p for j, p in enumerate(prob)}
-                if task_type != "token"
-                else [max(x) for x in prob],
+                "scores": scores,
             }
         return formatted_predictions
 
@@ -783,7 +856,10 @@ class DNAInference:
 
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
-            inputs = {k: v.to(self.device) for k, v in batch.items()}
+            inputs = {
+                k: v.to(self.device) if hasattr(v, "to") else v
+                for k, v in batch.items()
+            }
 
             # Run model inference
             if self.pred_config.use_fp16:
@@ -891,6 +967,8 @@ class DNAInference:
         multi_label_sep: str | None = None,
         uppercase: bool = False,
         lowercase: bool = False,
+        sampling: float | None = None,
+        do_encode: bool = True,
         save_to_file: bool = False,
         plot_metrics: bool = False,
     ) -> dict | tuple[dict, dict]:
@@ -913,6 +991,7 @@ class DNAInference:
             multi_label_sep: Delimiter for multi-label sequences
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
+            sampling: Fraction of data to randomly sample for inference
             save_to_file: Whether to save predictions and metrics to
                 output directory
             plot_metrics: Whether to generate metric plots
@@ -935,6 +1014,8 @@ class DNAInference:
             multi_label_sep=multi_label_sep,
             uppercase=uppercase,
             lowercase=lowercase,
+            sampling=sampling,
+            do_encode=do_encode,
             batch_size=self.pred_config.batch_size,
         )
         # Do batch inference
@@ -1357,6 +1438,174 @@ class DNAInference:
         except Exception as e:
             return {"error": str(e)}
 
+    def generate(
+        self,
+        inputs: DataLoader | list[str],
+        n_tokens: int = 400,
+        n_samples: int = 1,
+        temperature: float = 1.0,
+        top_k: int = 4,
+        top_p: float = 1.0,
+        batched: bool = True,
+    ) -> dict[Any, Any]:
+        """Generate DNA sequences using the model.
+
+        This function performs sequence generation tasks using the loaded
+        model, currently supporting CausalLM and EVO2 models for
+        DNA sequence generation.
+
+        Args:
+            inputs: DataLoader or List containing prompt sequences
+            n_tokens: Number of tokens to generate, default 400
+            n_samples: Do samples n times
+            temperature: Sampling temperature for generation, default 1.0
+            top_k: Top-k sampling parameter, default 4
+            top_p: Top-p sampling paramether, default 1
+            batched: Do batched generation
+
+        Returns:
+            Dictionary containing generated sequences
+
+        Note:
+            Currently only supports EVO2 models for sequence generation
+        """
+        # Prepare prompt sequences
+        prompt_seqs = []
+        if isinstance(inputs, DataLoader):
+            for data in tqdm(inputs, desc="Generating"):
+                seqs = data["sequence"]
+                if isinstance(prompt_seqs, list):
+                    seqs.extend([seq for seq in seqs if seq])
+                if not seqs:
+                    continue
+        else:
+            prompt_seqs = inputs
+        # Check if model supports generation
+        if "evo2" in str(self.model).lower():
+            # Generate sequences
+            outputs = self.model.generate(
+                prompt_seqs=prompt_seqs,
+                n_tokens=n_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                batched=batched,
+                cached_generation=True,
+            )
+            formatted_outputs = []
+            for i, seq in enumerate(prompt_seqs):
+                generated_seqs = outputs.sequences[i]
+                scores = outputs.logprobs_mean[i]
+                formatted_outputs.append({
+                    "Prompt": seq,
+                    "Output": generated_seqs,
+                    "Score": scores,
+                })
+            return formatted_outputs
+        elif "evo1" in str(self.model).lower():
+            from evo import generate
+
+            model = self.model.model
+            tokenizer = self.tokenizer
+            # Generate sequences
+            outputs = generate(
+                prompt_seqs * n_samples,
+                model=model,
+                tokenizer=tokenizer,
+                n_tokens=n_tokens,
+                temperature=temperature,
+                top_k=top_k,
+                top_p=top_p,
+                cached_generation=True,
+                batched=batched,
+                device=self.device,
+                verbose=1,
+            )
+            formatted_outputs = []
+            for i, seq in enumerate(prompt_seqs):
+                generated_seqs = outputs[0][i]
+                scores = outputs[1][i]
+                formatted_outputs.append({
+                    "Prompt": seq,
+                    "Output": generated_seqs,
+                    "Score": scores,
+                })
+            return formatted_outputs
+        elif (
+            "causallm" in str(self.model).lower()
+            or "lmhead" in str(self.model).lower()
+        ):
+            outputs = []
+            # Tokenize prompt sequences
+            for seq in prompt_seqs:
+                inputs = self.tokenizer(seq, return_tensors="pt").to(
+                    self.device
+                )
+                output = self.model.generate(
+                    **inputs,
+                    max_new_tokens=n_tokens,
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    do_sample=True,
+                )
+                decoded = self.tokenizer.decode(
+                    output[0], skip_special_tokens=True
+                )
+                outputs.append({"Prompt": seq, "Output": decoded})
+            return outputs
+        else:
+            raise ValueError(
+                "This model is not supported for sequence generation."
+            )
+
+        return {}
+
+    def scoring(
+        self,
+        inputs: DataLoader | list[str],
+        reduce_method: str = "mean",
+    ) -> dict[Any, Any]:
+        # Prepare score sequences
+        score_seqs = []
+        if isinstance(inputs, DataLoader):
+            for data in tqdm(inputs, desc="Scoring"):
+                seqs = data["sequence"]
+                if isinstance(score_seqs, list):
+                    score_seqs.extend([seq for seq in seqs if seq])
+                if not seqs:
+                    continue
+        else:
+            score_seqs = inputs
+        # Check if model supports scoring
+        if "evo2" in str(self.model).lower():
+            outputs = self.model.score_sequences(
+                score_seqs, reduce_method=reduce_method
+            )
+            outputs = [
+                {"Input": score_seqs[i], "Score": s}
+                for i, s in enumerate(outputs)
+            ]
+            return outputs
+        elif "evo1" in str(self.model).lower():
+            from evo import score_sequences
+
+            model = self.model.model
+            tokenizer = self.tokenizer
+            outputs = score_sequences(
+                score_seqs,
+                model=model,
+                tokenizer=tokenizer,
+                reduce_method=reduce_method,
+                device=self.device,
+            )
+            outputs = [
+                {"Input": score_seqs[i], "Score": s}
+                for i, s in enumerate(outputs)
+            ]
+            return outputs
+        return {}
+
 
 def save_predictions(predictions: dict, output_dir: Path) -> None:
     """Save predictions to JSON file.
@@ -1390,50 +1639,3 @@ def save_metrics(metrics: dict, output_dir: Path) -> None:
     # Save metrics
     with open(output_dir / "metrics.json", "w") as f:
         json.dump(metrics, f, indent=4)
-
-
-def generate(
-    self,
-    dataloader: DataLoader,
-    n_tokens: int = 400,
-    temperature: float = 1.0,
-    top_k: int = 4,
-) -> dict[Any, Any]:
-    """Generate DNA sequences using the model.
-
-    This function performs sequence generation tasks using the loaded model,
-    currently supporting EVO2 models for DNA sequence generation.
-
-    Args:
-        dataloader: DataLoader containing prompt sequences
-        n_tokens: Number of tokens to generate, default 400
-        temperature: Sampling temperature for generation, default 1.0
-        top_k: Top-k sampling parameter, default 4
-
-    Returns:
-        Dictionary containing generated sequences
-
-    Note:
-        Currently only supports EVO2 models for sequence generation
-    """
-    if "evo2" in str(self.model):
-        for data in tqdm(dataloader, desc="Generating"):
-            prompt_seqs = data["sequence"]
-            if isinstance(prompt_seqs, list):
-                prompt_seqs = [seq for seq in prompt_seqs if seq]
-            if not prompt_seqs:
-                continue
-            # Generate sequences
-            output: dict[Any, Any] = self.model.generate(
-                prompt_seqs=prompt_seqs,
-                n_tokens=n_tokens,
-                temperature=temperature,
-                top_k=top_k,
-            )
-            return output
-    else:
-        raise ValueError(
-            "Only EVO2 models are supported for sequence generation"
-        )
-
-    return {}

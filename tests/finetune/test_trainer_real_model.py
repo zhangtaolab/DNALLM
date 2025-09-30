@@ -9,13 +9,21 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
+@pytest.mark.slow
 class TestTrainerRealModel(unittest.TestCase):
     """Test DNATrainer with real model."""
+
+    # Class attributes for type checking
+    test_dir: str
+    configs: Any
 
     @classmethod
     def setUpClass(cls):
@@ -154,7 +162,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_load_datasets(self):
         """Test loading datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("📊 Loading datasets...")
 
@@ -189,7 +197,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_encode_datasets(self):
         """Test encoding datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("🔤 Encoding datasets...")
 
@@ -226,7 +234,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_sample_datasets(self):
         """Test sampling datasets independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset
+            from dnallm import DNADataset, load_model_and_tokenizer
 
             print("📝 Sampling datasets...")
 
@@ -265,7 +273,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_initialize_trainer(self):
         """Test trainer initialization independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🏋️ Initializing trainer...")
 
@@ -310,7 +318,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_training(self):
         """Test training process independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🚀 Starting training...")
 
@@ -358,7 +366,7 @@ class TestTrainerRealModel(unittest.TestCase):
     def test_prediction(self):
         """Test prediction on test set independently."""
         try:
-            from dnallm import load_model_and_tokenizer, DNADataset, DNATrainer
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
 
             print("🔮 Running prediction...")
 
@@ -429,14 +437,15 @@ class TestTrainerRealModel(unittest.TestCase):
         print("✅ Cleanup completed")
 
 
+@pytest.mark.slow
 def test_with_config_file():
     """Test with the provided finetune config file."""
     try:
         from dnallm import (
-            load_config,
-            load_model_and_tokenizer,
             DNADataset,
             DNATrainer,
+            load_config,
+            load_model_and_tokenizer,
         )
 
         print("🔧 Testing with test_finetune_config.yaml...")
@@ -455,8 +464,13 @@ def test_with_config_file():
 
         # Load the model and tokenizer
         model_name = "zhangtaolab/plant-dnabert-BPE"
+        # Type assertion for task config
+        from dnallm.configuration.configs import TaskConfig
+
+        task_config = configs["task"]
+        assert isinstance(task_config, TaskConfig)
         model, tokenizer = load_model_and_tokenizer(
-            model_name, task_config=configs["task"], source="modelscope"
+            model_name, task_config=task_config, source="modelscope"
         )
 
         # Load the datasets
@@ -499,54 +513,61 @@ def test_with_config_file():
 
 
 if __name__ == "__main__":
-    try:
-        print("🧪 DNATrainer Real Model Testing")
-        print("=" * 50)
+    # Only run when executed directly, not when imported by pytest
+    import sys
 
-        # Test 1: Unittest framework
-        print("\n1️⃣ Running unittest framework tests...")
-        unittest.main(verbosity=2, exit=False)
-
-        # Test 2: With config file (manual test)
-        print("\n2️⃣ Testing with config file...")
-        success = test_with_config_file()
-
-        print("\n" + "=" * 50)
-        if success:
-            print("🎉 All tests completed successfully!")
-        else:
-            print("⚠️  Some tests failed. Check the output above for details.")
-
-    except KeyboardInterrupt:
-        print("\n⚠️  Test interrupted by user")
-    except Exception as e:
-        print(f"\n❌ Unexpected error: {e}")
-        import traceback
-
-        traceback.print_exc()
-    finally:
-        print("\n🧹 Cleaning up resources...")
-
-        # Force cleanup of any remaining processes
-        import os
-        import signal
-        import multiprocessing
-
-        # Terminate any remaining multiprocessing processes
+    if "pytest" not in sys.modules:
         try:
-            for process in multiprocessing.active_children():
-                process.terminate()
-                process.join(timeout=1)
-                if process.is_alive():
-                    process.kill()
+            print("🧪 DNATrainer Real Model Testing")
+            print("=" * 50)
+
+            # Test 1: Unittest framework
+            print("\n1️⃣ Running unittest framework tests...")
+            unittest.main(verbosity=2, exit=False)
+
+            # Test 2: With config file (manual test)
+            print("\n2️⃣ Testing with config file...")
+            success = test_with_config_file()
+
+            print("\n" + "=" * 50)
+            if success:
+                print("🎉 All tests completed successfully!")
+            else:
+                print(
+                    "⚠️  Some tests failed. Check the output above\
+                        for details."
+                )
+
+        except KeyboardInterrupt:
+            print("\n⚠️  Test interrupted by user")
         except Exception as e:
-            print(f"Warning: Failed to cleanup processes: {e}")
-            pass
+            print(f"\n❌ Unexpected error: {e}")
+            import traceback
 
-        # Clear any remaining references
-        import gc
+            traceback.print_exc()
+        finally:
+            print("\n🧹 Cleaning up resources...")
 
-        gc.collect()
+            # Force cleanup of any remaining processes
+            import multiprocessing
+            import os
+            import signal
 
-        print("✅ Cleanup completed")
-        print("👋 Exiting program...")
+            # Terminate any remaining multiprocessing processes
+            try:
+                for process in multiprocessing.active_children():
+                    process.terminate()
+                    process.join(timeout=1)
+                    if process.is_alive():
+                        process.kill()
+            except Exception as e:
+                print(f"Warning: Failed to cleanup processes: {e}")
+                pass
+
+            # Clear any remaining references
+            import gc
+
+            gc.collect()
+
+            print("✅ Cleanup completed")
+            print("👋 Exiting program...")

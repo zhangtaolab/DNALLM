@@ -13,24 +13,24 @@ Optimized to output PDF files to the tests/inference/pdf/ directory.
 # Standard library imports
 import os
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
-from pathlib import Path
+
+import numpy as np
 
 # Third-party imports
 import pytest
-import numpy as np
-
 
 # Local imports - Import only what's needed
 from dnallm.inference.plot import (
-    prepare_data,
+    plot_attention_map,
     plot_bars,
     plot_curve,
-    plot_scatter,
-    plot_attention_map,
     plot_embeddings,
     plot_muts,
+    plot_scatter,
+    prepare_data,
 )
 
 # Define test constants for better maintainability and performance
@@ -262,7 +262,7 @@ class TestPrepareData:
         and proper exception handling validation.
         """
         # Test with completely empty metrics dictionary
-        metrics = {}
+        metrics: dict[str, Any] = {}
 
         # The function should handle empty metrics gracefully
         # We expect it to fail, but not necessarily with a
@@ -291,7 +291,7 @@ class TestPlotBars:
         and uses helper functions for better code organization.
         """
         # Use pre-defined test data for consistency
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "accuracy": TEST_ACCURACY_VALUES,
             "f1": TEST_F1_VALUES,
@@ -310,7 +310,7 @@ class TestPlotBars:
         validation of returned chart structure.
         """
         # Use pre-defined test data for consistency
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "accuracy": TEST_ACCURACY_VALUES,
             "f1": TEST_F1_VALUES,
@@ -337,7 +337,10 @@ class TestPlotBars:
         and comprehensive file existence validation.
         """
         # Use pre-defined test data for consistency
-        data = {"models": TEST_MODELS, "accuracy": TEST_ACCURACY_VALUES}
+        data: dict[str, Any] = {
+            "models": TEST_MODELS,
+            "accuracy": TEST_ACCURACY_VALUES,
+        }
 
         # Use helper functions for better resource management
         pdf_file_path = create_pdf_file("test_plot_bars_with_save")
@@ -363,7 +366,7 @@ class TestPlotBars:
         different Y-axis scaling (MAE/MSE vs accuracy/F1).
         """
         # Use test data specifically designed for domain testing
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "mae": [0.15, 0.25],  # Values that will trigger domain adjustment
             "mse": [0.05, 0.08],  # Values that will trigger domain adjustment
@@ -380,7 +383,7 @@ class TestPlotBars:
         and validates graceful degradation behavior.
         """
         # Test with minimal valid data structure
-        data = {"models": []}
+        data: dict[str, Any] = {"models": []}
 
         # Should handle empty data gracefully
         chart = plot_bars(data)
@@ -393,7 +396,10 @@ class TestPlotBars:
         and validates chart creation behavior.
         """
         # Test with single metric for edge case coverage
-        data = {"models": TEST_MODELS, "accuracy": TEST_ACCURACY_VALUES}
+        data: dict[str, Any] = {
+            "models": TEST_MODELS,
+            "accuracy": TEST_ACCURACY_VALUES,
+        }
 
         # Test single metric visualization
         chart = plot_bars(data, ncols=1)
@@ -405,7 +411,7 @@ class TestPlotBars:
         Tests that PDF files are generated with proper content
         and validates file integrity.
         """
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "accuracy": TEST_ACCURACY_VALUES,
             "f1": TEST_F1_VALUES,
@@ -448,7 +454,7 @@ class TestPlotCurve:
         comprehensive data structure validation and chart verification.
         """
         # Use comprehensive test data for both ROC and PR curves
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1", "model2", "model2"],
                 "fpr": [0.0, 0.1, 0.0, 0.1],
@@ -472,7 +478,7 @@ class TestPlotCurve:
         curve access and validates chart structure comprehensively.
         """
         # Use test data with consistent model entries for each curve
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1"],
                 "fpr": [0.0, 0.1],
@@ -506,7 +512,7 @@ class TestPlotCurve:
         comprehensive file existence validation, and chart verification.
         """
         # Use test data with consistent model entries for each curve
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1"],
                 "fpr": [0.0, 0.1],
@@ -543,7 +549,7 @@ class TestPlotCurve:
         and validates graceful degradation behavior.
         """
         # Test with empty curve data structure
-        data = {
+        data: dict[str, Any] = {
             "ROC": {"models": [], "fpr": [], "tpr": []},
             "PR": {"models": [], "precision": [], "recall": []},
         }
@@ -559,7 +565,7 @@ class TestPlotCurve:
         and validates chart creation behavior.
         """
         # Test with only ROC curve data (PR will be empty)
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1"],
                 "fpr": [0.0, 0.1],
@@ -578,7 +584,7 @@ class TestPlotCurve:
         Tests that PDF files are generated with proper content
         and validates file integrity for curve visualizations.
         """
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1", "model1", "model1", "model1"],
                 "fpr": [0.0, 0.1, 0.2, 0.3, 1.0],
@@ -627,7 +633,7 @@ class TestPlotScatter:
         comprehensive data validation, and chart verification.
         """
         # Use comprehensive test data for multiple models
-        data = {
+        data: dict[str, Any] = {
             "model1": {
                 "predicted": [1.1, 2.2, 3.3],
                 "experiment": [1.0, 2.0, 3.0],
@@ -651,7 +657,7 @@ class TestPlotScatter:
         model visualization and validates chart structure comprehensively.
         """
         # Use test data for single model visualization
-        data = {
+        data: dict[str, Any] = {
             "model1": {
                 "predicted": [1.1, 2.2, 3.3],
                 "experiment": [1.0, 2.0, 3.0],
@@ -678,7 +684,7 @@ class TestPlotScatter:
         and validates chart creation without score annotations.
         """
         # Use test data for score display testing
-        data = {
+        data: dict[str, Any] = {
             "model1": {
                 "predicted": [1.1, 2.2, 3.3],
                 "experiment": [1.0, 2.0, 3.0],
@@ -697,7 +703,7 @@ class TestPlotScatter:
         comprehensive file existence validation, and chart verification.
         """
         # Use test data for save functionality testing
-        data = {
+        data: dict[str, Any] = {
             "model1": {
                 "predicted": [1.1, 2.2, 3.3],
                 "experiment": [1.0, 2.0, 3.0],
@@ -729,7 +735,7 @@ class TestPlotScatter:
         and validates graceful degradation behavior.
         """
         # Test with completely empty data
-        data = {}
+        data: dict[str, Any] = {}
 
         # Should handle empty data gracefully
         chart = plot_scatter(data)
@@ -742,7 +748,7 @@ class TestPlotScatter:
         and validates chart creation behavior with limited data.
         """
         # Test with single data point for edge case coverage
-        data = {
+        data: dict[str, Any] = {
             "model1": {"predicted": [1.1], "experiment": [1.0], "r2": 0.85}
         }
 
@@ -756,7 +762,7 @@ class TestPlotScatter:
         Tests that PDF files are generated with proper content
         and validates file integrity for scatter visualizations.
         """
-        data = {
+        data: dict[str, Any] = {
             "model1": {
                 "predicted": [1.1, 2.2, 3.3, 4.4, 5.5],
                 "experiment": [1.0, 2.0, 3.0, 4.0, 5.0],
@@ -1232,7 +1238,7 @@ class TestPlotMuts:
         mutation data including all base substitutions and chart validation.
         """
         # Use comprehensive test data for all mutation types
-        data = {
+        data: dict[str, Any] = {
             "raw": {"sequence": "ATCG"},
             "mut_0_A_T": {"score": 0.1},
             "mut_0_A_C": {"score": -0.2},
@@ -1259,7 +1265,7 @@ class TestPlotMuts:
         validation and chart verification.
         """
         # Use test data specifically designed for deletion testing
-        data = {
+        data: dict[str, Any] = {
             "raw": {"sequence": "ATCG"},
             "mut_0_A_T": {"score": 0.1},
             "del_0_A": {"score": -0.3},
@@ -1278,7 +1284,7 @@ class TestPlotMuts:
         validation and chart verification.
         """
         # Use test data specifically designed for insertion testing
-        data = {
+        data: dict[str, Any] = {
             "raw": {"sequence": "ATCG"},
             "mut_0_A_T": {"score": 0.1},
             "ins_0_A": {"score": -0.25},
@@ -1297,7 +1303,7 @@ class TestPlotMuts:
         comprehensive file existence validation, and chart verification.
         """
         # Use test data for save functionality testing
-        data = {
+        data: dict[str, Any] = {
             "raw": {"sequence": "ATCG"},
             "mut_0_A_T": {"score": 0.1},
             "mut_1_T_A": {"score": -0.15},
@@ -1327,7 +1333,7 @@ class TestPlotMuts:
         and validates graceful degradation behavior.
         """
         # Test with minimal valid data structure
-        data = {"raw": {"sequence": "ATCG"}}
+        data: dict[str, Any] = {"raw": {"sequence": "ATCG"}}
 
         # Should handle empty mutation data gracefully
         chart = plot_muts(data)
@@ -1340,7 +1346,7 @@ class TestPlotMuts:
         and validates chart creation behavior with extended input.
         """
         # Test with longer sequence for edge case coverage
-        data = {
+        data: dict[str, Any] = {
             "raw": {
                 "sequence": "ATCGATCGATCG"  # Longer sequence
             },
@@ -1360,7 +1366,7 @@ class TestPlotMuts:
         substitutions, deletions, and insertions in a single visualization.
         """
         # Use test data with all mutation types for comprehensive testing
-        data = {
+        data: dict[str, Any] = {
             "raw": {"sequence": "ATCG"},
             "mut_0_A_T": {"score": 0.1},  # Substitution
             "del_1_T": {"score": -0.3},  # Deletion
@@ -1378,7 +1384,7 @@ class TestPlotMuts:
         Tests that PDF files are generated with proper content
         and validates file integrity for mutation visualizations.
         """
-        data = {
+        data: dict[str, Any] = {
             "raw": {
                 "sequence": "ATCGATCG"  # Medium length sequence
             },
@@ -1428,7 +1434,7 @@ class TestEdgeCases:
         and validates graceful degradation behavior.
         """
         # Test with minimal valid data structure
-        data = {"models": []}
+        data: dict[str, Any] = {"models": []}
 
         # Should handle empty data gracefully
         chart = plot_bars(data)
@@ -1441,7 +1447,7 @@ class TestEdgeCases:
         and validates graceful degradation behavior.
         """
         # Test with empty curve data structure
-        data = {
+        data: dict[str, Any] = {
             "ROC": {"models": [], "fpr": [], "tpr": []},
             "PR": {"models": [], "precision": [], "recall": []},
         }
@@ -1457,7 +1463,7 @@ class TestEdgeCases:
         and validates graceful degradation behavior.
         """
         # Test with completely empty data
-        data = {}
+        data: dict[str, Any] = {}
 
         # Should handle empty data gracefully
         chart = plot_scatter(data)
@@ -1514,7 +1520,7 @@ class TestEdgeCases:
         and validates chart creation behavior with single base input.
         """
         # Test with single base sequence for edge case coverage
-        data = {
+        data: dict[str, Any] = {
             "raw": {
                 "sequence": "A"  # Single base
             },
@@ -1532,7 +1538,7 @@ class TestEdgeCases:
         and validates graceful error handling.
         """
         # Test with invalid data types
-        data = {
+        data: dict[str, Any] = {
             "models": [1, 2],  # Numbers instead of strings
             "accuracy": ["0.85", "0.78"],  # Strings instead of numbers
         }
@@ -1548,7 +1554,7 @@ class TestEdgeCases:
         and validates graceful degradation behavior.
         """
         # Test with missing data keys but consistent array lengths
-        data = {
+        data: dict[str, Any] = {
             "ROC": {
                 "models": ["model1", "model1"],
                 "fpr": [0.0, 1.0],
@@ -1725,7 +1731,7 @@ class TestPDFOutputQuality:
         Tests that multiple runs generate consistent
         PDF files with similar characteristics.
         """
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "accuracy": TEST_ACCURACY_VALUES,
             "f1": TEST_F1_VALUES,
@@ -1763,7 +1769,10 @@ class TestPDFOutputQuality:
         Tests that generated PDF files contain
         expected content and are not corrupted.
         """
-        data = {"models": TEST_MODELS, "accuracy": TEST_ACCURACY_VALUES}
+        data: dict[str, Any] = {
+            "models": TEST_MODELS,
+            "accuracy": TEST_ACCURACY_VALUES,
+        }
 
         pdf_path = create_pdf_file("content_validation_test")
 
@@ -1794,7 +1803,10 @@ class TestPDFOutputQuality:
         and validates error recovery mechanisms.
         """
         # Test with invalid save path
-        data = {"models": TEST_MODELS, "accuracy": TEST_ACCURACY_VALUES}
+        data: dict[str, Any] = {
+            "models": TEST_MODELS,
+            "accuracy": TEST_ACCURACY_VALUES,
+        }
 
         # Test with invalid path (should raise FileNotFoundError)
         invalid_path = "/invalid/path/test.pdf"
@@ -1809,7 +1821,7 @@ class TestPDFOutputQuality:
         Tests that generated PDF files are compatible
         with standard PDF viewers and tools.
         """
-        data = {
+        data: dict[str, Any] = {
             "models": TEST_MODELS,
             "accuracy": TEST_ACCURACY_VALUES,
             "f1": TEST_F1_VALUES,
@@ -2026,17 +2038,21 @@ class TestIntegration:
 
 # Main execution section for direct test running
 if __name__ == "__main__":
-    # Ensure PDF directory exists
-    PDF_OUTPUT_DIR.mkdir(exist_ok=True)
-    print(f"PDF output directory: {PDF_OUTPUT_DIR}")
+    # Only run when executed directly, not when imported by pytest
+    import sys
 
-    # Run tests with verbose output and coverage reporting
-    pytest.main([
-        __file__,
-        "-v",  # Verbose output
-        "--tb=short",  # Short traceback format
-        "--strict-markers",  # Strict marker validation
-        "--disable-warnings",  # Disable warnings for cleaner output
-        "--pdf-output-dir",
-        str(PDF_OUTPUT_DIR),  # Custom PDF output directory
-    ])
+    if "pytest" not in sys.modules:
+        # Ensure PDF directory exists
+        PDF_OUTPUT_DIR.mkdir(exist_ok=True)
+        print(f"PDF output directory: {PDF_OUTPUT_DIR}")
+
+        # Run tests with verbose output and coverage reporting
+        pytest.main([
+            __file__,
+            "-v",  # Verbose output
+            "--tb=short",  # Short traceback format
+            "--strict-markers",  # Strict marker validation
+            "--disable-warnings",  # Disable warnings for cleaner output
+            "--pdf-output-dir",
+            str(PDF_OUTPUT_DIR),  # Custom PDF output directory
+        ])

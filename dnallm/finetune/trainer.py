@@ -104,12 +104,16 @@ class DNATrainer:
         self.train_config = config["finetune"]
         self.datasets = datasets
         self.extra_args = extra_args
+        self.use_lora = use_lora
 
         # LoRA
         if use_lora:
+            from ..models.model import peft_forward_compatiable
+
             print("[Info] Applying LoRA to the model...")
-            lora_config = LoraConfig(**config["lora"])
-            self.model = get_peft_model(self.model, lora_config)
+            lora_config = LoraConfig(**config["lora"].dict())
+            model = peft_forward_compatiable(model)
+            self.model = get_peft_model(model, lora_config)
             self.model.print_trainable_parameters()
 
         # Multi-GPU support
@@ -141,6 +145,9 @@ class DNATrainer:
             training_args.update(self.extra_args)
         self.training_args = TrainingArguments(
             **training_args,
+        )
+        self.training_args.remove_unused_columns = (
+            False if self.use_lora else True
         )
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):

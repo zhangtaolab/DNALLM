@@ -11,7 +11,10 @@ import time
 from glob import glob
 from typing import Any
 from ..configuration.configs import TaskConfig
+from ..utils import get_logger
 import torch
+
+logger = get_logger("dnallm.models.model")
 
 # Type checking imports - removed as they're not used in the actual code
 
@@ -28,7 +31,9 @@ import torch
 #         pass
 
 
-def download_model(model_name: str, downloader, max_try: int = 10) -> str:
+def download_model(
+    model_name: str, downloader, revision: str | None = None, max_try: int = 10
+) -> str:
     """Download a model with retry mechanism for network issues.
 
     In case of network issues, this function will attempt to download the model
@@ -54,9 +59,9 @@ def download_model(model_name: str, downloader, max_try: int = 10) -> str:
             break
         cnt += 1
         try:
-            status = downloader(model_name)
+            status = downloader(model_name, revision=revision)
             if status != "incomplete":
-                print(f"Model files are stored in {status}")
+                logger.info(f"Model files are stored in {status}")
                 break
         # track the error
         except Exception as e:
@@ -66,22 +71,38 @@ def download_model(model_name: str, downloader, max_try: int = 10) -> str:
             # model not found in HuggingFace
             elif "not found" in str(e).lower():
                 reason = "repo is not found."
-                print(e)
+                logger.debug(e)
                 break
             # model not exist in ModelScope
             elif "response [404]" in str(e).lower():
                 reason = "repo is not existed."
-                print(e)
+                logger.debug(e)
                 break
             else:
                 reason = str(e)
-            print(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
+            logger.warning(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
             time.sleep(1)
 
     if status == "incomplete":
         raise ValueError(f"Model {model_name} download failed.")
 
     return status
+
+
+def is_flash_attention_capable():
+    """Check if Flash Attention has been installed.
+    Returns:
+                True if Flash Attention is installed and the device supports it
+            False otherwise
+    """
+    try:
+        import flash_attn  # pyright: ignore[reportMissingImports]
+
+        _ = flash_attn
+        return True
+    except Exception as e:
+        logger.warning(f"Cannot find supported Flash Attention: {e}")
+        return False
 
 
 def is_fp8_capable():
@@ -94,7 +115,14 @@ def is_fp8_capable():
     """
     major, minor = torch.cuda.get_device_capability()
     # Hopper (H100) has compute capability 9.0
-    return (major, minor) >= (9, 0)
+    if (major, minor) >= (9, 0):
+        return True
+    else:
+        logger.warning(
+            f"Current device compute capability is {major}.{minor}, "
+            "which does not support FP8."
+        )
+        return False
 
 
 def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
@@ -107,18 +135,27 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
     Returns:
         Tuple of (model, tokenizer) if EVO2 model, None otherwise
     """
-    evo_models = [
-        "evo2_1b_base",
-        "evo2_7b_base",
-        "evo2_40b_base",
-        "evo2_7b",
-        "evo2_40b",
-    ]
+    evo_models = {
+        "evo2_1b_base": "evo2-1b-8k",
+        "evo2_7b_base": "evo2-7b-8k",
+        "evo2_7b": "evo2-7b-1m",
+        "evo2_40b_base": "evo2-40b-8k",
+        "evo2_40b": "evo2-40b-1m",
+    }
 
     for m in evo_models:
         if m in model_name.lower():
             try:
                 from evo2 import Evo2  # pyright: ignore[reportMissingImports]
+                from vortex.model.tokenizer import CharLevelTokenizer
+
+                # Overwrite Evo2 to avoid init errors
+                class CustomEvo2(Evo2):
+                    def __init__(self):
+                        pass
+
+                    load_evo2_model = Evo2.load_evo2_model
+
             except ImportError as e:
                 raise ImportError(
                     f"EVO2 package is required for "
@@ -132,15 +169,183 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
                 if os.path.isdir(model_name)
                 else model_name
             )
+            # Check the dependencies and find the correct config file
+            is_fp8 = is_fp8_capable()
+            has_flash_attention = is_flash_attention_capable()
+            config_dir = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), "..", "configuration/evo"
+                )
+            )
+            if has_flash_attention:
+                suffix1 = ""
+            else:
+                suffix1 = "-noFA"
+            if is_fp8:
+                suffix2 = ""
+            else:
+                suffix2 = "-noFP8"
+            suffix = suffix1 + suffix2 + ".yml"
+            config_path = os.path.join(config_dir, evo_models[m] + suffix)
+            # Load the model with the built-in method
+            evo2_model = CustomEvo2()
             if source.lower() == "local":
-                model = Evo2(
-                    m, local_path=model_path, use_fp8=is_fp8_capable()
+                evo2_model.model = evo2_model.load_evo2_model(
+                    None,
+                    local_path=model_path,
+                    config_path=config_path,
                 )
             else:
-                model = Evo2(m, use_fp8=is_fp8_capable())
-            tokenizer = model.tokenizer
-            return model, tokenizer
+                downloaded_model_path, _ = _get_model_path_and_imports(
+                    model_name, source
+                )
+                downloaded_model_path = os.path.join(
+                    downloaded_model_path, m + ".pt"
+                )
+                evo2_model.model = evo2_model.load_evo2_model(
+                    None,
+                    local_path=downloaded_model_path,
+                    config_path=config_path,
+                )
+            tokenizer = CharLevelTokenizer(512)
+            evo2_model.tokenizer = tokenizer
+            evo2_model._model_path = downloaded_model_path
+            return evo2_model, tokenizer
 
+    return None
+
+
+def _handle_evo1_models(model_name: str, source: str) -> tuple | None:
+    """Handle special case for EVO1 models.
+
+    Args:
+        model_name: Model name or path
+        source: Source to load model from
+
+    Returns:
+        Tuple of (model, tokenizer) if EVO1 model, None otherwise
+    """
+    evo_models = {
+        "evo-1.5-8k-base": "evo-1-131k-base",
+        "evo-1-8k-base": "evo-1-8k-base",
+        "evo-1-131k-base": "evo-1-131k-base",
+        "evo-1-8k-crispr": "evo-1-8k-base",
+        "evo-1-8k-transposon": "evo-1-8k-base",
+    }
+
+    for m in evo_models:
+        if m in model_name.lower():
+            try:
+                import yaml
+                from evo import Evo  # pyright: ignore[reportMissingImports]
+                from stripedhyena.utils import dotdict
+                from stripedhyena.model import StripedHyena
+                from stripedhyena.tokenizer import CharLevelTokenizer
+
+                # Overwrite Evo2 to avoid init errors
+                class CustomEvo1(Evo):
+                    def __init__(self):
+                        self.device = None
+                        self.model = None
+
+                    def load_checkpoint(
+                        self,
+                        model_name: str = "evo-1-8k-base",
+                        revision: str = "main",
+                        config_path: str | None = None,
+                        modules: dict | None = None,
+                    ) -> StripedHyena:
+                        autoconfig = modules["AutoConfig"]
+                        automodelforcausallm = modules["AutoModelForCausalLM"]
+                        # Load the model configuration and weights
+                        model_config = autoconfig.from_pretrained(
+                            model_name,
+                            trust_remote_code=True,
+                            revision=revision,
+                        )
+                        model_config.use_cache = True
+                        model = automodelforcausallm.from_pretrained(
+                            model_name,
+                            config=model_config,
+                            trust_remote_code=True,
+                            revision=revision,
+                        )
+                        state_dict = model.backbone.state_dict()
+                        del model
+                        del model_config
+                        global_config = dotdict(
+                            yaml.safe_load(open(config_path))
+                        )
+                        model = StripedHyena(global_config)
+                        model.load_state_dict(state_dict, strict=True)
+                        model.to_bfloat16_except_poles_residues()
+                        return model
+
+            except ImportError as e:
+                raise ImportError(
+                    f"EVO-1 package is required for "
+                    f"{model_name} but not installed. "
+                    "Please install it following the instructions at: "
+                    "https://github.com/evo-design/evo"
+                ) from e
+
+            has_flash_attention = is_flash_attention_capable()
+            config_dir = os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), "..", "configuration/evo"
+                )
+            )
+            if has_flash_attention:
+                suffix1 = ""
+            else:
+                suffix1 = "-noFA"
+            suffix = suffix1 + ".yml"
+            config_path = os.path.join(config_dir, evo_models[m] + suffix)
+            # Load the model with the built-in method
+            evo_model = CustomEvo1()
+            revision = (
+                "1.1_fix"
+                if "." in model_name and source == "huggingface"
+                else "main"
+            )
+            _, modules = _get_model_path_and_imports(
+                model_name, source, revision=revision
+            )
+            evo_model.model = evo_model.load_checkpoint(
+                model_name=model_name,
+                revision=revision,
+                config_path=config_path,
+                modules=modules,
+            )
+            tokenizer = CharLevelTokenizer(512)
+            evo_model.tokenizer = tokenizer
+            return evo_model, tokenizer
+
+    return None
+
+
+def _handle_gpn_models(model_name: str) -> str | None:
+    gpn_models = [
+        "gpn-brassicales",
+        "gpn-animal-promoter",
+        "gpn-msa-sapiens",
+        "PhyloGPN",
+        "gpn-brassicales-gxa-sorghum-v1",
+    ]
+    for m in gpn_models:
+        if m in model_name:
+            try:
+                import gpn.model
+
+                _ = gpn.model
+            except ImportError as e:
+                raise ImportError(
+                    f"gpn package is required for "
+                    f"{model_name} but not installed. "
+                    "Please install it following the instructions at: "
+                    "https://github.com/songlab-cal/gpn"
+                ) from e
+            return m
     return None
 
 
@@ -152,22 +357,25 @@ def _setup_huggingface_mirror(use_mirror: bool) -> None:
     """
     if use_mirror:
         os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+        logger.info("Using HuggingFace mirror at hf-mirror.com")
     else:
         if "HF_ENDPOINT" in os.environ:
             del os.environ["HF_ENDPOINT"]
 
 
 def _get_model_path_and_imports(
-    model_name: str, source: str
+    model_name: str, source: str, revision: str | None = None
 ) -> tuple[str, dict[str, Any]]:
     """Get model path and import the required libraries based on source.
 
     Args:
         model_name: Model name or path
-                source: Source to load model from (
-            'local',
-            'huggingface',
-            'modelscope')
+        source: Source to load model from (
+                'local',
+                'huggingface',
+                'modelscope')
+        revision: Specific model revision (branch, tag, commit),
+                  default None
 
     Returns:
         Tuple of (model_path, imported_modules_dict)
@@ -186,7 +394,7 @@ def _get_model_path_and_imports(
         from huggingface_hub import snapshot_download as hf_snapshot_download
 
         model_path = download_model(
-            model_name, downloader=hf_snapshot_download
+            model_name, downloader=hf_snapshot_download, revision=revision
         )
 
     elif source_lower == "modelscope":
@@ -195,12 +403,13 @@ def _get_model_path_and_imports(
         )
 
         model_path = download_model(
-            model_name, downloader=ms_snapshot_download
+            model_name, downloader=ms_snapshot_download, revision=revision
         )
 
         # Import ModelScope modules
         try:
             from modelscope import (
+                AutoConfig,
                 AutoModel,
                 AutoModelForMaskedLM,
                 AutoModelForCausalLM,
@@ -215,6 +424,7 @@ def _get_model_path_and_imports(
             ) from e
 
         modules = {
+            "AutoConfig": AutoConfig,
             "AutoModel": AutoModel,
             "AutoModelForMaskedLM": AutoModelForMaskedLM,
             "AutoModelForCausalLM": AutoModelForCausalLM,
@@ -233,6 +443,7 @@ def _get_model_path_and_imports(
     # Import transformers modules for local and huggingface sources
     try:
         from transformers import (
+            AutoConfig,
             AutoModel,
             AutoModelForMaskedLM,
             AutoModelForCausalLM,
@@ -247,6 +458,7 @@ def _get_model_path_and_imports(
         ) from e
 
     modules = {
+        "AutoConfig": AutoConfig,
         "AutoModel": AutoModel,
         "AutoModelForMaskedLM": AutoModelForMaskedLM,
         "AutoModelForCausalLM": AutoModelForCausalLM,
@@ -381,6 +593,7 @@ def load_model_and_tokenizer(
     task_config: TaskConfig,
     source: str = "local",
     use_mirror: bool = False,
+    revision: str | None = None,
 ) -> tuple[Any, Any]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
@@ -409,16 +622,29 @@ def load_model_and_tokenizer(
         Raises:
             ValueError: If model is not found locally or loading fails
     """
-    # Handle special case for EVO2 models
-    evo_result = _handle_evo2_models(model_name, source)
-    if evo_result is not None:
-        return evo_result
-
     # Setup HuggingFace mirror if needed
     _setup_huggingface_mirror(use_mirror)
 
+    # Handle special case for EVO2 models
+    evo2_result = _handle_evo2_models(model_name, source)
+    if evo2_result is not None:
+        return evo2_result
+
+    # Handle special case for EVO1 models
+    evo1_result = _handle_evo1_models(model_name, source)
+    if evo1_result is not None:
+        return evo1_result
+
+    # Handle special case for GPN models
+    _ = _handle_gpn_models(model_name)
+
+    # Handle other models such as LucaOne, Omni-DNA, etc.
+    # TODO: Add more special cases if needed
+
     # Get model path and import required modules
-    _model_path, modules = _get_model_path_and_imports(model_name, source)
+    downloaded_model_path, modules = _get_model_path_and_imports(
+        model_name, source, revision=revision
+    )
 
     # Extract task configuration
     task_type = task_config.task_type
@@ -448,6 +674,9 @@ def load_model_and_tokenizer(
         model, tokenizer = _load_model_by_task_type(
             task_type, model_name, safe_num_labels, id2label, label2id, modules
         )
+        # Set model path and source attributes
+        model._model_path = downloaded_model_path
+        model.source = source
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}") from e
 
@@ -455,6 +684,71 @@ def load_model_and_tokenizer(
     _configure_model_padding(model, tokenizer)
 
     return model, tokenizer
+
+
+def peft_forward_compatiable(model):
+    """Convert base model forward to be compatiable with HF
+
+    Args:
+        model: Base model
+
+    Returns:
+        model with changed forward function
+    """
+    import inspect
+
+    sig = inspect.signature(model.forward)
+    accepted_forward_args = set(sig.parameters.keys())
+    original_forward = model.forward
+
+    def forward_hf(*args, **kwargs):
+        return original_forward(**{
+            k: v for k, v in kwargs.items() if k in accepted_forward_args
+        })
+
+    model.forward = forward_hf
+    return model
+
+
+def clear_model_cache(source: str = "huggingface"):
+    """Remove all the cached models
+
+    Args:
+        source: Source to clear model cache from (
+                'huggingface',
+                'modelscope'),
+            default 'huggingface'
+    """
+    source_lower = source.lower()
+    if source_lower == "huggingface":
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache/huggingface/hub"
+        )
+    elif source_lower == "modelscope":
+        cache_dir = os.path.join(
+            os.path.expanduser("~"), ".cache/modelscope/hub"
+        )
+    else:
+        logger.warning(f"Unsupported source: {source}. No action taken.")
+        return
+
+    if os.path.exists(cache_dir):
+        files = glob(os.path.join(cache_dir, "*"))
+        for f in files:
+            try:
+                if os.path.isdir(f):
+                    import shutil
+
+                    shutil.rmtree(f)
+                else:
+                    os.remove(f)
+                logger.info(f"Removed cached file/directory: {f}")
+            except Exception as e:
+                logger.warning(f"Failed to remove {f}: {e}")
+    else:
+        logger.info(
+            f"No cache directory found at {cache_dir}. Nothing to clear."
+        )
 
 
 def load_preset_model(
@@ -500,7 +794,7 @@ def load_preset_model(
     elif model_name in preset_models:
         pass
     else:
-        print(
+        logger.debug(
             f"Model {model_name} not found in preset models. "
             "Please check the model name or use "
             "`load_model_and_tokenizer` function."
