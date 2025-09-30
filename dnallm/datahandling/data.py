@@ -528,6 +528,9 @@ class DNADataset:
                 max_length=config["max_length"],
             )
 
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
         self.dataset = self.dataset.map(
             tokenize_for_sequence_classification,
             batched=True,

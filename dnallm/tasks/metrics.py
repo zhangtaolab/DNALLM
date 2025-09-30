@@ -176,6 +176,7 @@ def regression_metrics(plot=False):
 
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
+        logits = logits[0] if isinstance(logits, tuple) else logits
         num_outputs = logits.shape[1]
         if num_outputs > 1:
             mse = mean_squared_error(labels, logits)

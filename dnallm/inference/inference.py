@@ -535,7 +535,7 @@ class DNAInference:
         elif task_type == "regression":
             preds = logits.squeeze(-1)
             probs = preds
-            labels = preds.tolist()
+            labels = label_names
         elif task_type == "token":
             probs = torch.softmax(logits, dim=-1)
             preds = torch.argmax(logits, dim=-1)
@@ -569,12 +569,16 @@ class DNAInference:
         label_names = self.task_config.label_names
         for i, label in enumerate(labels):
             prob = probs[i]
+            if task_type == "regression":
+                scores = {label_names[0]: prob}
+            elif task_type == "token":
+                scores = [max(x) for x in prob]
+            else:
+                scores = {label_names[j]: p for j, p in enumerate(prob)}
             formatted_predictions[i] = {
                 "sequence": self.sequences[i] if keep_seqs else "",
                 "label": label,
-                "scores": {label_names[j]: p for j, p in enumerate(prob)}
-                if task_type != "token"
-                else [max(x) for x in prob],
+                "scores": scores,
             }
         return formatted_predictions
 
