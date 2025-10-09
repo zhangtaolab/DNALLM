@@ -91,6 +91,20 @@ class DNAInference:
             lora_adapter: Optional path to LoRA adapter for model
         """
 
+        default_forward_args = {
+            "input_ids",
+            "attention_mask",
+            "token_type_ids",
+            "position_ids",
+            "inputs_embeds",
+            "labels",
+            "output_attentions",
+            "output_hidden_states",
+            "return_dict",
+            "past_key_values",
+            "use_cache",
+        }
+
         if lora_adapter:
             from peft import PeftModel
             from ..models.model import peft_forward_compatiable
@@ -110,14 +124,20 @@ class DNAInference:
                     f"Failed to load LoRA adapter from {lora_adapter}: {e}"
                 ) from e
 
-            self.accepted_args = self._get_accepted_forward_args(model)
+            if model is not None:
+                self.accepted_args = self._get_accepted_forward_args(model)
+            else:
+                self.accepted_args = set(default_forward_args)
 
             model = peft_forward_compatiable(model)
             self.model = PeftModel.from_pretrained(model, lora_adapter_path)
             logger.info(f"Loaded LoRA adapter from {lora_adapter}")
         else:
             self.model = model
-            self.accepted_args = self._get_accepted_forward_args(model)
+            if model is not None:
+                self.accepted_args = self._get_accepted_forward_args(model)
+            else:
+                self.accepted_args = set(default_forward_args)
         self.tokenizer = tokenizer
         self.task_config = config["task"]
         self.pred_config = config["inference"]
@@ -457,19 +477,31 @@ class DNAInference:
             )
             all_cols = dataset.dataset.features
             cols_drop = [c for c in all_cols if c not in self.accepted_args]
+            dataset.dataset = dataset.dataset.remove_columns(cols_drop)
         else:
             all_cols = dataset.dataset.features
-            if "sequence" in all_cols and "input_ids" not in all_cols:
-                dataset.dataset = dataset.dataset.rename_column(
-                    "sequence", "input_ids"
-                )
-                dataset.dataset.set_format(type="torch")
-                cols_drop = [
-                    c
-                    for c in dataset.dataset.features
-                    if c not in self.accepted_args
-                ]
-        dataset.dataset = dataset.dataset.remove_columns(cols_drop)
+            # check if dataset is already encoded
+            if "sequence" in all_cols:
+                check_seq = dataset.dataset["sequence"][0]
+                if isinstance(check_seq, torch.Tensor):
+                    # already encoded
+                    if "input_ids" not in all_cols:
+                        dataset.dataset = dataset.dataset.rename_column(
+                            "sequence", "input_ids"
+                        )
+                    dataset.dataset.set_format(type="torch")
+                    cols_drop = [
+                        c
+                        for c in dataset.dataset.features
+                        if c not in self.accepted_args
+                    ]
+                    dataset.dataset = dataset.dataset.remove_columns(cols_drop)
+                else:
+                    cols_drop = [
+                        c
+                        for c in dataset.dataset.features
+                        if c not in self.accepted_args
+                    ]
         # Check for labels in dataset - handle both Dataset and
         # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
@@ -1467,7 +1499,8 @@ class DNAInference:
             Dictionary containing generated sequences
 
         Note:
-            Currently only supports EVO2 models for sequence generation
+            Currently only supports Causal language models
+            for sequence generation
         """
         # Prepare prompt sequences
         prompt_seqs = []
@@ -1530,6 +1563,27 @@ class DNAInference:
                     "Output": generated_seqs,
                     "Score": scores,
                 })
+            return formatted_outputs
+        elif "megadna" in str(self.model).lower():
+            model = self.model
+            tokenizer = self.tokenizer
+            formatted_outputs = []
+            for seq in prompt_seqs:
+                for _ in range(n_samples):
+                    input_ids = tokenizer(seq, return_tensors="pt").to(
+                        self.device
+                    )
+                    output = model.generate(
+                        input_ids,
+                        seq_len=n_tokens,
+                        temperature=temperature,
+                        filter_thres=top_p,
+                    )
+                    decoded = tokenizer.decode(output.squeeze().cpu().int())
+                    formatted_outputs.append({
+                        "Prompt": seq,
+                        "Output": decoded,
+                    })
             return formatted_outputs
         elif (
             "causallm" in str(self.model).lower()
@@ -1603,6 +1657,16 @@ class DNAInference:
                 {"Input": score_seqs[i], "Score": s}
                 for i, s in enumerate(outputs)
             ]
+            return outputs
+        elif "megadna" in str(self.model).lower():
+            model = self.model
+            tokenizer = self.tokenizer
+            outputs = []
+            for seq in score_seqs:
+                input_ids = tokenizer(seq, return_tensors="pt").to(self.device)
+                with torch.no_grad():
+                    loss = model(input_ids, return_value="loss")
+                outputs.append({"Input": seq, "Score": loss})
             return outputs
         return {}
 

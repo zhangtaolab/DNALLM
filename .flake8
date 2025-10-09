@@ -13,7 +13,8 @@ exclude =
     dist,
     .tox,
     dnallm/tasks/metrics/,
-    example/
+    example/,
+    test_demo/,
     site/
 per-file-ignores =
     # Tests can use magic values, assertions, and relative imports

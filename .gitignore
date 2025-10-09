@@ -60,6 +60,7 @@ wandb/
 checkpoints/
 logs/
 benchmark_results/
+test_demo/
 
 # Data
 *.fasta
