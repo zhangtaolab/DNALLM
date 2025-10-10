@@ -800,6 +800,12 @@ def load_model_and_tokenizer(
                 f"but got {safe_num_labels}."
             )
             safe_num_labels = 1
+        elif task_type == "generation" and safe_num_labels != 0:
+            logger.warning(
+                f"Generation task does not require num_labels, "
+                f"but got {safe_num_labels}. Setting to 0."
+            )
+            safe_num_labels = 0
         elif task_type != "binary":
             if safe_num_labels < 2:
                 raise ValueError(

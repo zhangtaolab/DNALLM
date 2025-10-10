@@ -560,11 +560,15 @@ MODEL_INFO = {
     },
     "megaDNA": {
         "title": "A long-context language model for deciphering and "
-                 "generating bacteriophage genomes",
+        "generating bacteriophage genomes",
         "reference": "https://www.nature.com/articles/s41467-024-53759-4",
         "model_architecture": "MEGADNA",
-        "model_tags": ["phage_145M", "phage_78M", "phage_277M",
-                       "phage_ecoli_finetuned"],
+        "model_tags": [
+            "phage_145M",
+            "phage_78M",
+            "phage_277M",
+            "phage_ecoli_finetuned",
+        ],
         "huggingface": [
             "lingxusb/megaDNA_updated",
             "lingxusb/megaDNA_variants",
@@ -579,9 +583,9 @@ MODEL_INFO = {
         ],
         "default": "lgq12697/megaDNA_updated",
         "dependencies": "pip install"
-                        "git+https://github.com/lingxusb/megaDNA.git",
+        "git+https://github.com/lingxusb/megaDNA.git",
         "note": "The model weights stored at Hugging Face can be accessed"
-                "after requesting permission from the author."
+        "after requesting permission from the author.",
     },
     "Mistral-DNA": {
         "title": "Mistral-DNA: Mistral large language model for DNA sequences",
