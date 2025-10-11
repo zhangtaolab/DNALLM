@@ -32,7 +32,10 @@ logger = get_logger("dnallm.models.model")
 
 
 def download_model(
-    model_name: str, downloader, revision: str | None = None, max_try: int = 10
+    model_name: str,
+    downloader: Any,
+    revision: str | None = None,
+    max_try: int = 10,
 ) -> str:
     """Download a model with retry mechanism for network issues.
 
@@ -105,7 +108,7 @@ def is_flash_attention_capable():
         return False
 
 
-def is_fp8_capable():
+def is_fp8_capable() -> bool:
     """Check if the current CUDA device supports FP8 precision.
 
     Returns:
@@ -828,7 +831,7 @@ def load_model_and_tokenizer(
     return model, tokenizer
 
 
-def peft_forward_compatiable(model):
+def peft_forward_compatiable(model: Any) -> Any:
     """Convert base model forward to be compatiable with HF
 
     Args:

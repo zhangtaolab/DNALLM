@@ -86,8 +86,8 @@ class DNAInference:
         Args:
             model: Fine-tuned model instance for inference
             tokenizer: Tokenizer for encoding DNA sequences
-            config: Configuration dictionary containing task settings and
-            inference parameters
+            config: Configuration dictionary containing task settings\
+                    and inference parameters
             lora_adapter: Optional path to LoRA adapter for model
         """
 
@@ -1093,7 +1093,7 @@ class DNAInference:
         output_hidden_states: bool = False,
         output_attentions: bool = False,
         save_to_file: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict | tuple[dict, dict]:
         """Main inference method for sequences or files.
 

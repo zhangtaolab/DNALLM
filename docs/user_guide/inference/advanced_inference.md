@@ -175,3 +175,12 @@ embedding_figure = inference_engine.plot_hidden_states(
 ---
 
 Next, learn how to squeeze every drop of performance out of your hardware in the Performance Optimization guide.
+
+---
+
+## Next Steps
+
+- [Performance Optimization](performance_optimization.md) - Optimize inference performance
+- [Visualization](visualization.md) - Learn about result visualization
+- [Mutagenesis Analysis](mutagenesis_analysis.md) - Analyze mutation effects
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

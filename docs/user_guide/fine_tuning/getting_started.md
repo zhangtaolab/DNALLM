@@ -357,7 +357,7 @@ After completing this basic tutorial:
 1. **Explore Task-Specific Guides**: Learn about [different task types](task_guides.md)
 2. **Advanced Techniques**: Discover [custom training strategies](advanced_techniques.md)
 3. **Configuration Options**: Check [detailed configuration](configuration.md) options
-4. **Real-world Examples**: See [practical use cases](examples.md)
+4. **Real-world Examples**: See [practical use cases](../case_studies/promoter_prediction.md)
 
 ## Troubleshooting
 
@@ -392,8 +392,8 @@ finetune:
 - [Task-Specific Guides](task_guides.md) - Fine-tuning for different tasks
 - [Advanced Techniques](advanced_techniques.md) - Custom training and optimization
 - [Configuration Guide](configuration.md) - Detailed configuration options
-- [Examples and Use Cases](examples.md) - Real-world scenarios
-- [Troubleshooting](troubleshooting.md) - Common problems and solutions
+- [Examples and Use Cases](../case_studies/promoter_prediction.md) - Real-world scenarios
+- [Troubleshooting](../../faq/finetuning_troubleshooting.md) - Common problems and solutions
 
 ---
 

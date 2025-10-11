@@ -17,7 +17,7 @@ This section provides comprehensive tutorials and guides for benchmarking DNA la
 | [Advanced Techniques](advanced_techniques.md) | Cross-validation, custom metrics, profiling | Intermediate |
 | [Configuration Guide](configuration.md) | Detailed configuration options and examples | Intermediate |
 | [Examples and Use Cases](examples.md) | Real-world benchmarking scenarios | All Levels |
-| [Troubleshooting](troubleshooting.md) | Common issues and solutions | All Levels |
+| [Troubleshooting](../../faq/benchmark_troubleshooting.md) | Common issues and solutions | All Levels |
 
 ## Prerequisites
 
@@ -60,4 +60,4 @@ Choose your path:
 
 ---
 
-**Need Help?** Check our [FAQ](../../faq/faq.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).
+**Need Help?** Check our [FAQ](../../faq/index.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).

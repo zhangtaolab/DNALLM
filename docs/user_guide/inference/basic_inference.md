@@ -151,3 +151,12 @@ A: The `infer()` method has `output_hidden_states=True` and `output_attentions=T
 
 **Q: Can I run inference on a FASTA file?**
 A: Yes. The `infer_file` method automatically handles `.fasta`, `.fa`, `.csv`, `.tsv`, and `.txt` files. For FASTA, the sequence is read directly. For CSV/TSV, you must specify the `seq_col`. Other structured formats such as pickle, arrow, parquet, etc. are also supported.
+
+---
+
+## Next Steps
+
+- [Advanced Inference](advanced_inference.md) - Explore advanced inference features
+- [Performance Optimization](performance_optimization.md) - Optimize inference performance
+- [Visualization](visualization.md) - Learn about result visualization
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

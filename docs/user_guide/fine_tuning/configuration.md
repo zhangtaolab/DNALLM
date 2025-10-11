@@ -681,8 +681,8 @@ After configuring your fine-tuning:
 1. **Run Your Training**: Follow the [Getting Started](getting_started.md) guide
 2. **Explore Task-Specific Guides**: Check [Task-Specific Guides](task_guides.md)
 3. **Advanced Techniques**: Learn about [Advanced Techniques](advanced_techniques.md)
-4. **Real-world Examples**: See [Examples and Use Cases](examples.md)
+4. **Real-world Examples**: See [Examples and Use Cases](../case_studies/promoter_prediction.md)
 
 ---
 
-**Need help with configuration?** Check our [FAQ](../../faq/faq.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).
+**Need help with configuration?** Check our [FAQ](../../faq/index.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).

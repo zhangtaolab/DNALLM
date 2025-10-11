@@ -608,6 +608,5 @@ async def safe_prediction(sequence, model_name):
 ## Next Steps
 
 - [Configuration Guide](configuration.md) for advanced setup
-- [Examples](examples.md) for practical use cases
-- [Troubleshooting](troubleshooting.md) for common issues
-- [API Reference](../api/mcp/server.md) for detailed documentation
+- [Troubleshooting](../../faq/mcp_troubleshooting.md) for common issues
+- [API Reference](../../api/mcp/server.md) for detailed documentation

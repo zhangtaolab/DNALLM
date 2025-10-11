@@ -439,14 +439,13 @@ After successfully starting the MCP server:
 
 1. [Read the Usage Guide](usage.md) for detailed API documentation
 2. [Check the Configuration Reference](configuration.md) for advanced settings
-3. [Explore Examples](examples.md) for practical use cases
-4. [Review Troubleshooting](troubleshooting.md) for common issues
+4. [Review Troubleshooting](../../faq/mcp_troubleshooting.md) for common issues
 
 ## Support
 
 For additional help:
 
-- Check the [FAQ](faq.md)
+- Check the [FAQ](../../faq/index.md)
 - Review [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
 - Join our [Discord Community](https://discord.gg/dnallm)
-- Read the [API Documentation](../api/mcp/server.md)
+- Read the [API Documentation](../../api/mcp/server.md)

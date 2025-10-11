@@ -584,7 +584,7 @@ After mastering these advanced techniques:
 
 1. **Explore Real-world Examples**: See [Examples and Use Cases](examples.md)
 2. **Learn Configuration Options**: Check [Configuration Guide](configuration.md)
-3. **Troubleshoot Issues**: Visit [Troubleshooting](troubleshooting.md)
+3. **Troubleshoot Issues**: Visit [Troubleshooting](../../faq/benchmark_troubleshooting.md)
 4. **Contribute**: Help improve DNALLM's benchmarking capabilities
 
 ---

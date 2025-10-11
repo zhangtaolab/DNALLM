@@ -114,3 +114,11 @@ This error occurs because the default high-performance attention implementation 
   Be aware that the `eager` implementation is slower. Only use it when you need attention weights.
 
 By applying these optimization techniques, you can significantly improve the speed and efficiency of your DNALLM inference pipelines, enabling you to process larger datasets and iterate on your research faster.
+
+---
+
+## Next Steps
+
+- [Visualization](visualization.md) - Learn about result visualization
+- [Mutagenesis Analysis](mutagenesis_analysis.md) - Analyze mutation effects
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

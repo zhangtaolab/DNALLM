@@ -54,3 +54,12 @@ Based on the distribution, you can decide whether to filter out sequences that a
     -   **Oversampling**: Randomly duplicate samples from the minority class.
     -   **Undersampling**: Randomly remove samples from the majority class.
 -   **Weighted Loss**: During training, you can assign a higher weight to the minority class in the loss function. The DNALLM `finetune` command can handle this if class weights are provided.
+
+---
+
+## Next Steps
+
+- [Data Preparation](data_preparation.md) - Learn about data collection and organization
+- [Data Augmentation](data_augmentation.md) - Learn about data augmentation techniques
+- [Format Conversion](format_conversion.md) - Convert between different data formats
+- [Data Processing Troubleshooting](../../faq/data_processing_troubleshooting.md) - Common data processing issues and solutions

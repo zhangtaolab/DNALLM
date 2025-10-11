@@ -291,6 +291,7 @@ dnallm-mcp-server --help
 
 - [Configuration Generator](config_generator.md) - Learn how to create configuration files
 - [MCP Server](mcp_server.md) - Learn about the Model Context Protocol server
-- [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Learn to train models
-- [Benchmark Tutorials](../tutorials/benchmark/index.md) - Compare model performance
-- [Inference Tutorials](../tutorials/inference/changeme.md) - Run model inference
+- [Fine-tuning Tutorials](../fine_tuning/index.md) - Learn to train models
+- [Benchmark Tutorials](../benchmark/index.md) - Compare model performance
+- [Inference Tutorials](../inference/getting_started.md) - Run model inference
+- [CLI Troubleshooting](../../faq/cli_troubleshooting.md) - Common CLI issues and solutions

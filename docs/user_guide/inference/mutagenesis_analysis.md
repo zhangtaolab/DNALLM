@@ -189,3 +189,11 @@ mut_analyzer.plot(predictions, save_path="./results/evo_mut_effects.pdf")
 - **Check Model & Task Type**: Ensure the `task_type` in your config matches the model you are using. Using a `regression` config with a base MLM model will not produce meaningful results.
 - **Check Sequence Length**: If your sequence is much longer than the model's `max_length`, it will be truncated, and mutations outside the context window will have no effect.
 - **Model Sensitivity**: Some models may not be sensitive to single-nucleotide changes. This is an insight in itself! You might need a model with higher resolution or one fine-tuned on a relevant task.
+
+---
+
+## Next Steps
+
+- [Performance Optimization](performance_optimization.md) - Optimize inference performance
+- [Visualization](visualization.md) - Learn about result visualization
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

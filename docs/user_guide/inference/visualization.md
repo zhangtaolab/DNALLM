@@ -178,3 +178,11 @@ for curve_type, chart in pline_dict.items():
 
 ### Problem: Saved plots are too small or have overlapping text.
 - **Solution**: Adjust the `width` and `height` parameters. For plots with many items (e.g., a bar chart with many models, or a mutation plot for a long sequence), you will need to increase the `width` significantly to prevent labels from overlapping.
+
+---
+
+## Next Steps
+
+- [Mutagenesis Analysis](mutagenesis_analysis.md) - Analyze mutation effects
+- [Performance Optimization](performance_optimization.md) - Optimize inference performance
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

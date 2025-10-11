@@ -4,7 +4,7 @@ This guide provides a detailed walkthrough for using models based on the Mamba a
 
 **Related Documents**:
 - [Installation Guide](../../getting_started/installation.md)
-- [Model Selection Guide](./model_selection.md)
+- [Model Selection Guide](../model_selection.md)
 
 ## 1. Introduction to Mamba and SSMs
 

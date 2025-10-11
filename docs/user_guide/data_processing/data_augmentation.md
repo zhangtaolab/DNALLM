@@ -56,3 +56,12 @@ print(f"Mutations:  {num_mutations}")
 ```
 
 **Caution**: Use a low `mutation_rate`. High rates can destroy the biological signal in the sequence, turning it into noise.
+
+---
+
+## Next Steps
+
+- [Data Preparation](data_preparation.md) - Learn about data collection and organization
+- [Format Conversion](format_conversion.md) - Convert between different data formats
+- [Quality Control](quality_control.md) - Ensure data quality and consistency
+- [Data Processing Troubleshooting](../../faq/data_processing_troubleshooting.md) - Common data processing issues and solutions

@@ -4,8 +4,8 @@ This guide explains what Flash Attention is, which models support it, and how to
 
 **Related Documents**:
 - [Installation Guide](../../getting_started/installation.md)
-- [Performance Optimization](../inference/performance_optimization.md)
-- [Troubleshooting Models](./troubleshooting_models.md)
+- [Performance Optimization](../../user_guide/inference/performance_optimization.md)
+- [Troubleshooting Models](../troubleshooting_models.md)
 
 ## 1. What is Flash Attention?
 

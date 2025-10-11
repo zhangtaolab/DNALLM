@@ -13,6 +13,7 @@ import os
 import numpy as np
 from scipy.special import softmax, expit
 from tqdm import tqdm
+from typing import Any
 
 import torch
 from torch.utils.data import DataLoader
@@ -44,7 +45,7 @@ class Mutagenesis:
             dataloader: DataLoader for batch processing of sequences
     """
 
-    def __init__(self, model, tokenizer, config: dict):
+    def __init__(self, model: Any, tokenizer: Any, config: dict):
         """Initialize Mutagenesis class.
 
         Args:
@@ -59,7 +60,7 @@ class Mutagenesis:
         self.config = config
         self.sequences = None
 
-    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+    def get_inference_engine(self, model: Any, tokenizer: Any) -> DNAInference:
         """Create an inference engine object for the model.
 
         Args:
@@ -79,7 +80,7 @@ class Mutagenesis:
 
     def mutate_sequence(
         self,
-        sequence,
+        sequence: str,
         batch_size: int = 1,
         replace_mut: bool = True,
         include_n: bool = False,
@@ -88,7 +89,7 @@ class Mutagenesis:
         insert_seq: str | None = None,
         lowercase: bool = False,
         do_encode: bool = True,
-    ):
+    ) -> None:
         """Generate dataset from sequences with various mutation types.
 
         This method creates mutated versions of the input sequence including:
@@ -309,14 +310,15 @@ class Mutagenesis:
         with the original sequence to calculate mutation effects.
 
         Args:
-            strategy: Strategy for selecting the score from the log fold change
-                - "first": Use the first log fold change
-                - "last": Use the last log fold change
-                - "sum": Use the sum of log fold changes
-                - "mean": Use the mean of log fold changes
-            - "max": Use the index of the maximum raw score to select the log
-                fold change
-                - int: Use the log fold change at the specified index
+            strategy: Strategy for selecting the score from the log fold\
+                change:
+                "first": Use the first log fold change
+                "last": Use the last log fold change
+                "sum": Use the sum of log fold changes
+                "mean": Use the mean of log fold changes
+                "max": Use the index of the maximum raw score to select\
+                    the log fold change
+                int: Use the log fold change at the specified index
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:

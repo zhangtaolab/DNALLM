@@ -668,8 +668,8 @@ After mastering task-specific fine-tuning:
 
 1. **Explore Advanced Techniques**: Learn about [custom training strategies](advanced_techniques.md)
 2. **Configuration Options**: Check [detailed configuration](configuration.md) options
-3. **Real-world Examples**: See [practical use cases](examples.md)
-4. **Troubleshooting**: Visit [common issues and solutions](troubleshooting.md)
+3. **Real-world Examples**: See [practical use cases](../case_studies/promoter_prediction.md)
+4. **Troubleshooting**: Visit [common issues and solutions](../../faq/finetuning_troubleshooting.md)
 
 ---
 

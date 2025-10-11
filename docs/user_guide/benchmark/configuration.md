@@ -712,8 +712,8 @@ After configuring your benchmark:
 1. **Run Your Benchmark**: Follow the [Getting Started](getting_started.md) guide
 2. **Explore Advanced Features**: Learn about [Advanced Techniques](advanced_techniques.md)
 3. **See Real Examples**: Check [Examples and Use Cases](examples.md)
-4. **Troubleshoot Issues**: Visit [Troubleshooting](troubleshooting.md)
+4. **Troubleshoot Issues**: Visit [Troubleshooting](../../faq/benchmark_troubleshooting.md)
 
 ---
 
-**Need help with configuration?** Check our [FAQ](../../faq/faq.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).
+**Need help with configuration?** Check our [FAQ](../../faq/index.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).

@@ -846,7 +846,7 @@ class DNADataset:
             maxl: Maximum length of the sequences, default is the same as minl
             samples: Number of sequences to generate, default 1
             gc: GC content range, default (0,1)
-            N_ratio: Include N base in the generated sequence, default 0.0
+            n_ratio: Include N base in the generated sequence, default 0.0
             padding_size: Padding size for sequence length, default 0
             seed: Random seed, default None
             label_func: A function that generates a label from a sequence
@@ -1133,7 +1133,7 @@ class DNADataset:
         """
         self.head(head=head, show=True)
 
-    def iter_batches(self, batch_size: int):
+    def iter_batches(self, batch_size: int) -> Any:
         """Generator that yields batches of examples from the dataset.
 
         Args:
@@ -1179,7 +1179,7 @@ class DNADataset:
         else:
             return None
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         """Get an item from the dataset.
 
         Args:
@@ -1198,7 +1198,7 @@ class DNADataset:
                 "instead."
             )
         else:
-            return self.dataset[idx]
+            return self.dataset[idx]  # type: ignore[no-any-return]
 
     def __data_type__(self) -> None:
         """Get the data type of the dataset (classification, regression, etc.).

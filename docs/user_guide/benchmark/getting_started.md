@@ -297,7 +297,7 @@ evaluation:
 - [Configuration Guide](configuration.md) - Detailed configuration options
 - [Advanced Techniques](advanced_techniques.md) - Cross-validation and custom metrics
 - [Examples and Use Cases](examples.md) - Real-world scenarios
-- [Troubleshooting](troubleshooting.md) - Common problems and solutions
+- [Troubleshooting](../../faq/benchmark_troubleshooting.md) - Common problems and solutions
 
 ---
 

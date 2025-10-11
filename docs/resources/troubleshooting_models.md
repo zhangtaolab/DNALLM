@@ -4,8 +4,8 @@ This guide addresses common issues you might encounter when loading and using DN
 
 **Related Documents**:
 - [Model Selection Guide](./model_selection.md)
-- [Installation Guide](../../getting_started/installation.md)
-- [Performance Optimization](../inference/performance_optimization.md)
+- [Installation Guide](../getting_started/installation.md)
+- [Performance Optimization](../user_guide/inference/performance_optimization.md)
 
 ## 1. Installation and Dependency Issues
 

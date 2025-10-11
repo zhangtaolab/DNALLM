@@ -5,7 +5,7 @@ DNALLM supports several specialized models that have unique architectures or req
 
 **Related Documents**:
 - [Installation Guide](../../getting_started/installation.md)
-- [Model Selection Guide](./model_selection.md)
+- [Model Selection Guide](../model_selection.md)
 - [Guide to Mamba and State-Space Models (SSMs)](./mamba_models.md)
 - [Guide to EVO Models (EVO-1 & EVO-2)](./evo_models.md)
 

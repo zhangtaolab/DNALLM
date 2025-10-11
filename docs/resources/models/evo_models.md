@@ -4,7 +4,7 @@ This guide covers the installation and usage of the EVO family of models, which 
 
 **Related Documents**:
 - [Installation Guide](../../getting_started/installation.md)
-- [Model Selection Guide](./model_selection.md)
+- [Model Selection Guide](../model_selection.md)
 
 ## 1. Introduction to EVO Models
 

@@ -119,5 +119,5 @@ To add support for new DNA language models:
 3. Submit a pull request with integration code
 4. Include proper documentation and examples
 
-For detailed integration instructions, see the [Development Guide](../concepts/development.md).
+For detailed integration instructions, see the [Development Guide](../concepts/training.md).
 

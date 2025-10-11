@@ -477,5 +477,4 @@ python -c "from dnallm.mcp.config_manager import MCPConfigManager; MCPConfigMana
 
 - [Start the MCP Server](startserver.md) with your configuration
 - [Read the Usage Guide](usage.md) for API documentation
-- [Check Examples](examples.md) for practical use cases
-- [Review Troubleshooting](troubleshooting.md) for common issues
+- [Review Troubleshooting](../../faq/mcp_troubleshooting.md) for common issues

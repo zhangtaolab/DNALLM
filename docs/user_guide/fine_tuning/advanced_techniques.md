@@ -617,11 +617,11 @@ def bayesian_optimization():
 
 After mastering these advanced techniques:
 
-1. **Explore Real-world Examples**: See [Examples and Use Cases](examples.md)
+1. **Explore Real-world Examples**: See [Examples and Use Cases](../case_studies/promoter_prediction.md)
 2. **Configuration Options**: Check [detailed configuration](configuration.md) options
-3. **Troubleshooting**: Visit [common issues and solutions](troubleshooting.md)
+3. **Troubleshooting**: Visit [common issues and solutions](../../faq/finetuning_troubleshooting.md)
 4. **Deployment**: Learn about model deployment and serving
 
 ---
 
-**Ready for real-world examples?** Continue to [Examples and Use Cases](examples.md) to see these advanced techniques in action.
+**Ready for real-world examples?** Continue to [Examples and Use Cases](../case_studies/promoter_prediction.md) to see these advanced techniques in action.

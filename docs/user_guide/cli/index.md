@@ -63,5 +63,6 @@ dnallm --help
 - [Usage Guide](usage.md) - Complete CLI usage instructions and examples
 - [Configuration Generator](config_generator.md) - Learn how to create configuration files
 - [MCP Server](mcp_server.md) - Learn about the Model Context Protocol server
-- [Fine-tuning Tutorials](../tutorials/fine_tuning/index.md) - Learn to train models
-- [Benchmark Tutorials](../tutorials/benchmark/index.md) - Compare model performance
+- [Fine-tuning Tutorials](../fine_tuning/index.md) - Learn to train models
+- [Benchmark Tutorials](../benchmark/index.md) - Compare model performance
+- [CLI Troubleshooting](../../faq/cli_troubleshooting.md) - Common CLI issues and solutions

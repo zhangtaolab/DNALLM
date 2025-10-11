@@ -138,7 +138,7 @@ def random_generate_sequences(
             Defaults to 1.
         gc (tuple, optional): GC content range (min, max).
             Defaults to (0, 1).
-        N_ratio (float, optional): Proportion of 'N' bases (0.0 ~ 1.0).
+        n_ratio (float, optional): Proportion of 'N' bases (0.0 ~ 1.0).
             Defaults to 0.0.
         padding_size (int, optional): Pad length to nearest multiple.
             Defaults to 0.

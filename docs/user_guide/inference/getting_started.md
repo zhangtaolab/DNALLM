@@ -77,3 +77,12 @@ task:
 ---
 
 Next, proceed to the Basic Inference Tutorial to see how to use this configuration to run predictions.
+
+---
+
+## Next Steps
+
+- [Basic Inference](basic_inference.md) - Learn basic inference techniques
+- [Advanced Inference](advanced_inference.md) - Explore advanced inference features
+- [Performance Optimization](performance_optimization.md) - Optimize inference performance
+- [Inference Troubleshooting](../../faq/inference_troubleshooting.md) - Common inference issues and solutions

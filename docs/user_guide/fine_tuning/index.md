@@ -17,8 +17,8 @@ This section provides comprehensive tutorials and guides for fine-tuning DNA lan
 | [Task-Specific Guides](task_guides.md) | Fine-tuning for different task types | Intermediate |
 | [Advanced Techniques](advanced_techniques.md) | Custom training, optimization, and monitoring | Advanced |
 | [Configuration Guide](configuration.md) | Detailed configuration options and examples | Intermediate |
-| [Examples and Use Cases](examples.md) | Real-world fine-tuning scenarios | All Levels |
-| [Troubleshooting](troubleshooting.md) | Common issues and solutions | All Levels |
+| [Examples and Use Cases](../case_studies/promoter_prediction.md) | Real-world fine-tuning scenarios | All Levels |
+| [Troubleshooting](../../faq/finetuning_troubleshooting.md) | Common issues and solutions | All Levels |
 
 ## Prerequisites
 
@@ -98,8 +98,8 @@ Choose your path:
 - **New to fine-tuning?** Start with [Getting Started](getting_started.md)
 - **Want task-specific guidance?** Check [Task-Specific Guides](task_guides.md)
 - **Need advanced features?** Explore [Advanced Techniques](advanced_techniques.md)
-- **Looking for examples?** See [Examples and Use Cases](examples.md)
+- **Looking for examples?** See [Examples and Use Cases](../case_studies/promoter_prediction.md)
 
 ---
 
-**Need Help?** Check our [FAQ](../../faq/faq.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).
+**Need Help?** Check our [FAQ](../../faq/index.md) or open an issue on [GitHub](https://github.com/zhangtaolab/DNALLM/issues).

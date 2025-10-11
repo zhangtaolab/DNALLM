@@ -3,8 +3,8 @@
 Choosing the right DNA language model is crucial for the success of your analysis. DNALLM supports a wide array of models, each with unique architectures, training data, and strengths. This guide will help you understand the different model types, browse the available options, and select the best model for your task.
 
 **Related Documents**:
-- [Model Zoo](../../resources/model_zoo.md)
-- [Installation Guide](../../getting_started/installation.md)
+- [Model Zoo](model_zoo.md)
+- [Installation Guide](../getting_started/installation.md)
 
 ## 1. Overview of DNA LLM Categories
 
@@ -40,7 +40,7 @@ DNALLM integrates models built on several foundational architectures:
 
 ## 3. Supported Models and Their Properties
 
-DNALLM provides access to a vast collection of pre-trained and fine-tuned models. You can find a complete, up-to-date list in our [Model Zoo](../../resources/model_zoo.md).
+DNALLM provides access to a vast collection of pre-trained and fine-tuned models. You can find a complete, up-to-date list in our [Model Zoo](model_zoo.md).
 
 Here is a summary of key model families available in DNALLM:
 
