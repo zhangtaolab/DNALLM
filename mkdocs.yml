@@ -58,81 +58,57 @@ nav:
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md
     - Troubleshooting: user_guide/troubleshooting.md
-  - CLI Tools:
-    - Overview: cli/index.md
-    - Usage Guide: cli/usage.md
-    - Configuration Generator: cli/config_generator.md
-    - MCP Server: cli/mcp_server.md
-  - Tutorials:
-    - Data Processing:
-      - Data Preparation: tutorials/data_processing/data_preparation.md
-      - Quality Control: tutorials/data_processing/quality_control.md
-      - Supported Formats: tutorials/data_processing/format_conversion.md
-      - Data Augmentation: tutorials/data_processing/data_augmentation.md
-    - Fine Tuning:
-      - Overview: tutorials/fine_tuning/index.md
-      - Getting Started: tutorials/fine_tuning/getting_started.md
-      - Configuration: tutorials/fine_tuning/configuration.md
-      - Advanced Techniques: tutorials/fine_tuning/advanced_techniques.md
-      - Task Guides: tutorials/fine_tuning/task_guides.md
     - Inference:
-      - Getting Started: tutorials/inference/getting_started.md
-      - Basic Inference: tutorials/inference/basic_inference.md
-      - Advanced Inference: tutorials/inference/advanced_inference.md
-      - Mutagenesis Analysis: tutorials/inference/mutagenesis_analysis.md
-      - Visualization: tutorials/inference/visualization.md
-      - Performance Optimization: tutorials/inference/performance_optimization.md
+      - Getting Started: user_guide/inference/getting_started.md
+      - Basic Inference: user_guide/inference/basic_inference.md
+      - Advanced Inference: user_guide/inference/advanced_inference.md
+      - Mutagenesis Analysis: user_guide/inference/mutagenesis_analysis.md
+      - Visualization: user_guide/inference/visualization.md
+      - Performance Optimization: user_guide/inference/performance_optimization.md
+    - Fine Tuning:
+      - Getting Started: user_guide/fine_tuning/getting_started.md
+      - Configuration: user_guide/fine_tuning/configuration.md
+      - Advanced Techniques: user_guide/fine_tuning/advanced_techniques.md
+      - Task Guides: user_guide/fine_tuning/task_guides.md
+    - Data Processing:
+      - Data Preparation: user_guide/data_processing/data_preparation.md
+      - Quality Control: user_guide/data_processing/quality_control.md
+      - Format Conversion: user_guide/data_processing/format_conversion.md
+      - Data Augmentation: user_guide/data_processing/data_augmentation.md
     - Benchmark:
-      - Overview: tutorials/benchmark/index.md
-      - Getting Started: tutorials/benchmark/getting_started.md
-      - Configuration: tutorials/benchmark/configuration.md
-      - Advanced Techniques: tutorials/benchmark/advanced_techniques.md
-      - Examples: tutorials/benchmark/examples.md
+      - Getting Started: user_guide/benchmark/getting_started.md
+      - Configuration: user_guide/benchmark/configuration.md
+      - Advanced Techniques: user_guide/benchmark/advanced_techniques.md
+      - Examples: user_guide/benchmark/examples.md
+    - MCP:
+      - Configuration: user_guide/mcp/configuration.md
+      - Server Setup: user_guide/mcp/startserver.md
+      - Usage Guide: user_guide/mcp/usage.md
+    - CLI Tools:
+      - Overview: user_guide/cli/index.md
+      - Usage Guide: user_guide/cli/usage.md
+      - Configuration Generator: user_guide/cli/config_generator.md
+      - MCP Server: user_guide/cli/mcp_server.md
     - Performance Optimization:
-      - GPU Optimization: tutorials/performance/gpu_optimization.md
-      - Memory Optimization: tutorials/performance/memory_optimization.md
-      - Inference Speed: tutorials/performance/inference_speed.md
-      - Model Quantization: tutorials/performance/model_quantization.md
-    - Model Information:
-      - Categories:
-        - BERT Models: tutorials/model_categories/bert_models.md
-        - Caduceus Models: tutorials/model_categories/caduceus_models.md
-        - ESM Models: tutorials/model_categories/esm_models.md
-        - Hyena Models: tutorials/model_categories/hyena_models.md
-        - Llama Models: tutorials/model_categories/llama_models.md
-      - Guides:
-        - Model Selection: tutorials/model_guides/model_selection.md
-        - Mamba Models: tutorials/model_guides/mamba_models.md
-        - EVO Models: tutorials/model_guides/evo_models.md
-        - Flash Attention Models: tutorials/model_guides/flash_attention_models.md
-        - Special Models: tutorials/model_guides/special_models.md
-        - Troubleshooting Models: tutorials/model_guides/troubleshooting_models.md
-  - Case Studies:
-    - Promoter Prediction: case_studies/promoter_prediction.md
-    - Motif Detection: case_studies/motif_detection.md
-    - Sequence Generation: case_studies/sequence_generation.md
-    - Multi-Task Learning: case_studies/multi_task_learning.md
-  - Resources:
-    - Model Zoo: resources/model_zoo.md
-    - Data_Handling: resources/datahandling.md
-  - Concepts:
-    - Biology:
-      - DNA Sequences: concepts/biology/dna_sequences.md
-      - Genomic Features: concepts/biology/genomic_features.md
-      - Biological Tasks: concepts/biology/biological_tasks.md
-      - Sequence Analysis: concepts/biology/sequence_analysis.md
-    - Training: concepts/training.md
-    - Inference: concepts/inference.md
-    - Architecture:
-      - Model Architectures: concepts/architecture/model_architectures.md
-      - Tokenization: concepts/architecture/tokenization.md
-      - Attention Mechanisms: concepts/architecture/attention_mechanisms.md
-      - Embedding Layers: concepts/architecture/embedding_layers.md
-    - Technical Guides:
-      - Transfer Learning: concepts/technical/transfer_learning.md
-      - Fine-tuning Strategies: concepts/technical/fine_tuning_strategies.md
-      - Evaluation Metrics: concepts/technical/evaluation_metrics.md
-      - Performance Optimization: concepts/technical/performance_optimization.md
+      - GPU Optimization: user_guide/performance/gpu_optimization.md
+      - Memory Optimization: user_guide/performance/memory_optimization.md
+      - Inference Speed: user_guide/performance/inference_speed.md
+      - Model Quantization: user_guide/performance/model_quantization.md
+    - Models:
+      - BERT Models: user_guide/models/bert_models.md
+      - Caduceus Models: user_guide/models/caduceus_models.md
+      - ESM Models: user_guide/models/esm_models.md
+      - Hyena Models: user_guide/models/hyena_models.md
+      - Llama Models: user_guide/models/llama_models.md
+      - Mamba Models: user_guide/models/mamba_models.md
+      - EVO Models: user_guide/models/evo_models.md
+      - Flash Attention Models: user_guide/models/flash_attention_models.md
+      - Special Models: user_guide/models/special_models.md
+    - Case Studies:
+      - Promoter Prediction: user_guide/case_studies/promoter_prediction.md
+      - Motif Detection: user_guide/case_studies/motif_detection.md
+      - Sequence Generation: user_guide/case_studies/sequence_generation.md
+      - Multi-Task Learning: user_guide/case_studies/multi_task_learning.md
   - API: 
     - Utils: 
       - Sequence: api/utils/sequence.md
@@ -147,6 +123,37 @@ nav:
       - Trainer: api/finetune/trainer.md
     - MCP:
       - Server: api/mcp/server.md
+    - Configuration:
+      - Configs: api/configuration/configs.md
+    - Models:
+      - Model: api/models/model.md
+    - Tasks:
+      - Task: api/tasks/task.md
+  - Concepts:
+    - Biology:
+      - DNA Sequences: concepts/biology/dna_sequences.md
+      - Genomic Features: concepts/biology/genomic_features.md
+      - Biological Tasks: concepts/biology/biological_tasks.md
+      - Sequence Analysis: concepts/biology/sequence_analysis.md
+    - Training: concepts/training.md
+    - Inference: concepts/inference.md
+    - MCP: concepts/mcp.md
+    - Architecture:
+      - Model Architectures: concepts/architecture/model_architectures.md
+      - Tokenization: concepts/architecture/tokenization.md
+      - Attention Mechanisms: concepts/architecture/attention_mechanisms.md
+      - Embedding Layers: concepts/architecture/embedding_layers.md
+    - Technical Guides:
+      - Transfer Learning: concepts/technical/transfer_learning.md
+      - Fine-tuning Strategies: concepts/technical/fine_tuning_strategies.md
+      - Evaluation Metrics: concepts/technical/evaluation_metrics.md
+      - Performance Optimization: concepts/technical/performance_optimization.md
+  - Resources:
+    - Model Zoo: resources/model_zoo.md
+    - Data Handling: resources/datahandling.md
+    - Model Selection: resources/model_selection.md
+    - Model Troubleshooting: resources/troubleshooting_models.md
+  - FAQ: faq/
 
 plugins:
   - search
