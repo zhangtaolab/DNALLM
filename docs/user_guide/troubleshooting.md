@@ -5,7 +5,7 @@ This page provides quick access to troubleshooting resources and solutions for c
 ## Quick Links
 
 ### 🔧 **Comprehensive FAQ**
-For detailed solutions to common problems, see our [Frequently Asked Questions (FAQ)](/faq/) page, which covers:
+For detailed solutions to common problems, see our [Frequently Asked Questions (FAQ)](../faq/index.md) page, which covers:
 
 - **Installation Issues**: Package installation, dependency conflicts, network problems
 - **Training Issues**: CUDA out of memory, loss instability, optimization problems
@@ -15,10 +15,10 @@ For detailed solutions to common problems, see our [Frequently Asked Questions (
 
 ### 📚 **Related Resources**
 
-- **[Model Selection Guide](/resources/model_selection.md)**: Choose the right model for your task
-- **[Model Troubleshooting](/resources/troubleshooting_models.md)**: Model-specific issues and solutions
-- **[Performance Optimization](/user_guide/performance/)**: Speed and memory optimization guides
-- **[Installation Guide](/getting_started/installation.md)**: Complete installation instructions
+- **[Model Selection Guide](../resources/model_selection.md)**: Choose the right model for your task
+- **[Model Troubleshooting](../resources/troubleshooting_models.md)**: Model-specific issues and solutions
+- **[Performance Optimization](inference/performance_optimization.md)**: Speed and memory optimization guides
+- **[Installation Guide](../getting_started/installation.md)**: Complete installation instructions
 
 ## Common Quick Fixes
 
@@ -59,11 +59,11 @@ model, tokenizer = load_model_and_tokenizer(
 
 If you can't find the answer to your question:
 
-1. **Check the [FAQ](/faq/)** for comprehensive solutions
+1. **Check the [FAQ](../faq/index.md)** for comprehensive solutions
 2. **Search [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)** for similar problems
 3. **Create a new issue** with detailed information about your problem
 4. **Join community discussions** on GitHub
 
 ---
 
-*For the most up-to-date troubleshooting information, always refer to the [FAQ](/faq/) page.*
+*For the most up-to-date troubleshooting information, always refer to the [FAQ](../faq/index.md) page.*

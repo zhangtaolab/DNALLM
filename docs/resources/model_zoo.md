@@ -86,6 +86,18 @@ The following table shows all currently supported models and their fine-tuning/i
 3. **For Large-scale Analysis**: Consider Nucleotide Transformer or EVO models
 4. **For Plant-specific Tasks**: Prefer Plant-prefixed models
 
+### Plant Models
+
+The following models are specifically designed for plant genomics:
+
+- **Plant DNABERT**: BERT-based model for plant DNA sequence analysis
+- **Plant DNAGPT**: GPT-based model for plant DNA sequence generation
+- **Plant Nucleotide Transformer**: ESM-based model for plant genomics
+- **Plant DNAGemma**: Gemma-based model for plant DNA analysis
+- **Plant DNAMamba**: Mamba-based model for efficient plant sequence processing
+- **Plant DNAModernBert**: ModernBert-based model for plant genomics
+- **PlantCaduceus**: Caduceus-based model for plant sequence analysis
+
 ### Performance Considerations
 
 - **Small Models (<100M)**: Fast inference, suitable for real-time applications

@@ -51,7 +51,6 @@ nav:
   - Getting Started: 
     - Quick Start: getting_started/quick_start.md
     - Installation: getting_started/installation.md
-    # - Installation (中文): getting_started/installation_zh.md
   - User Guide:
     - Getting Started: user_guide/getting_started.md
     - Common Workflows: user_guide/common_workflows.md
@@ -64,6 +63,7 @@ nav:
       - Format Conversion: user_guide/data_processing/format_conversion.md
       - Data Augmentation: user_guide/data_processing/data_augmentation.md
     - Fine Tuning:
+      - Overview: user_guide/fine_tuning/index.md
       - Getting Started: user_guide/fine_tuning/getting_started.md
       - Configuration: user_guide/fine_tuning/configuration.md
       - Advanced Techniques: user_guide/fine_tuning/advanced_techniques.md
@@ -76,6 +76,7 @@ nav:
       - Visualization: user_guide/inference/visualization.md
       - Performance Optimization: user_guide/inference/performance_optimization.md
     - Benchmark:
+      - Overview: user_guide/benchmark/index.md
       - Getting Started: user_guide/benchmark/getting_started.md
       - Configuration: user_guide/benchmark/configuration.md
       - Advanced Techniques: user_guide/benchmark/advanced_techniques.md
@@ -154,7 +155,14 @@ nav:
       - EVO Models: resources/models/evo_models.md
       - Flash Attention Models: resources/models/flash_attention_models.md
       - Special Models: resources/models/special_models.md
-  - FAQ: faq/index.md
+  - FAQ: 
+    - Overview: faq/index.md
+    - Benchmark Troubleshooting: faq/benchmark_troubleshooting.md
+    - Fine-tuning Troubleshooting: faq/finetuning_troubleshooting.md
+    - Data Processing Troubleshooting: faq/data_processing_troubleshooting.md
+    - CLI Troubleshooting: faq/cli_troubleshooting.md
+    - Inference Troubleshooting: faq/inference_troubleshooting.md
+    - MCP Troubleshooting: faq/mcp_troubleshooting.md
 
 plugins:
   - search

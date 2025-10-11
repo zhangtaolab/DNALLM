@@ -262,7 +262,7 @@ See the [Model Selection Guide](../resources/model_selection.md) for detailed gu
 - Use batch processing for multiple sequences
 - Consider model quantization for deployment
 
-See the [Performance Optimization Guide](../user_guide/performance/) for detailed tips.
+See the [Performance Optimization Guide](../user_guide/inference/performance_optimization.md) for detailed tips.
 
 ### Q: Where can I find example configurations?
 
@@ -291,7 +291,7 @@ For specific troubleshooting guides by topic:
 
 If you can't find the answer to your question in this FAQ:
 
-1. **Check the Documentation**: Browse the [User Guide](../user_guide/) for detailed tutorials and guides
+1. **Check the Documentation**: Browse the [User Guide](../user_guide/getting_started.md) for detailed tutorials and guides
 2. **Search Issues**: Look through existing [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
 3. **Create an Issue**: If your problem isn't documented, create a new issue with:
    - A clear description of the problem

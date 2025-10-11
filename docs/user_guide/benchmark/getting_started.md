@@ -263,7 +263,7 @@ num_labels: 1
 
 After completing this basic tutorial:
 
-1. **Explore Advanced Features**: Learn about [cross-validation](advanced_techniques.md#cross-validation) and [custom metrics](advanced_techniques.md#custom-evaluation-metrics)
+1. **Explore Advanced Features**: Learn about [cross-validation](advanced_techniques.md#cross-validation-benchmarking) and [custom metrics](advanced_techniques.md#custom-evaluation-metrics)
 2. **Optimize Performance**: Discover [performance profiling](advanced_techniques.md#performance-profiling) techniques
 3. **Customize Output**: Learn about [advanced configuration](configuration.md) options
 4. **Real-world Examples**: See [practical use cases](examples.md)
