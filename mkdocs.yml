@@ -157,12 +157,14 @@ nav:
       - Special Models: resources/models/special_models.md
   - FAQ: 
     - Overview: faq/index.md
-    - Benchmark Troubleshooting: faq/benchmark_troubleshooting.md
-    - Fine-tuning Troubleshooting: faq/finetuning_troubleshooting.md
-    - Data Processing Troubleshooting: faq/data_processing_troubleshooting.md
-    - CLI Troubleshooting: faq/cli_troubleshooting.md
-    - Inference Troubleshooting: faq/inference_troubleshooting.md
-    - MCP Troubleshooting: faq/mcp_troubleshooting.md
+    - Installation: faq/install_troubleshooting.md
+    - Models: faq/models_troubleshooting.md
+    - Benchmark: faq/benchmark_troubleshooting.md
+    - Fine-tuning: faq/finetuning_troubleshooting.md
+    - Data Processing: faq/data_processing_troubleshooting.md
+    - CLI: faq/cli_troubleshooting.md
+    - Inference: faq/inference_troubleshooting.md
+    - MCP: faq/mcp_troubleshooting.md
 
 plugins:
   - search
