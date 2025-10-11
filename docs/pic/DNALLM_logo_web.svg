@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 326 326">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        stroke: url(#_未命名的渐变_3);
+      }
+
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10 {
+        fill: none;
+      }
+
+      .st0, .st1, .st3, .st5 {
+        stroke-miterlimit: 10;
+      }
+
+      .st0, .st5 {
+        stroke-dasharray: 6.8;
+        stroke-width: 6.8px;
+      }
+
+      .st1 {
+        stroke: url(#_未命名的渐变_2);
+        stroke-dasharray: 6.9;
+        stroke-width: 6.9px;
+      }
+
+      .st2 {
+        stroke: #e4007f;
+      }
+
+      .st2, .st4, .st6, .st7, .st8, .st9, .st10 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .st2, .st4, .st7, .st8, .st9, .st10 {
+        stroke-width: 20px;
+      }
+
+      .st11 {
+        fill: #1d2088;
+        font-family: Courier-Bold, Courier;
+        font-size: 11.3px;
+      }
+
+      .st11, .st12, .st13 {
+        isolation: isolate;
+      }
+
+      .st11, .st13 {
+        font-weight: 700;
+      }
+
+      .st3 {
+        stroke: #036eb8;
+        stroke-width: 14px;
+      }
+
+      .st4 {
+        stroke: #e60012;
+      }
+
+      .st5 {
+        stroke: url(#_未命名的渐变);
+      }
+
+      .st6 {
+        stroke: #fff;
+        stroke-width: 16.9px;
+      }
+
+      .st7 {
+        stroke: #2ea7e0;
+      }
+
+      .st8 {
+        stroke: #f39800;
+      }
+
+      .st13 {
+        fill: #244f72;
+        font-family: Helvetica-Bold, Helvetica;
+        font-size: 53px;
+      }
+
+      .st9 {
+        stroke: #22ac38;
+      }
+
+      .st10 {
+        stroke: #1887c8;
+      }
+    </style>
+    <linearGradient id="_未命名的渐变" data-name="未命名的渐变" x1="133.4" y1="-295.9" x2="262.5" y2="-295.9" gradientTransform="translate(0 -227.9) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_2" data-name="未命名的渐变 2" x1="133.4" y1="-390.4" x2="188" y2="-390.4" gradientTransform="translate(0 -227.9) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_3" data-name="未命名的渐变 3" x1="133.4" y1="1298.4" x2="262.5" y2="1298.4" gradientTransform="translate(0 -1041.1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+  </defs>
+  <line class="st9" x1="21.1" y1="44.2" x2="111.7" y2="44.2"/>
+  <line class="st2" x1="21.1" y1="280.7" x2="111.7" y2="280.7"/>
+  <line class="st8" x1="29.1" y1="130.4" x2="103.7" y2="130.4"/>
+  <line class="st4" x1="15.7" y1="162.5" x2="117" y2="162.5"/>
+  <line class="st7" x1="29.1" y1="194.5" x2="103.7" y2="194.5"/>
+  <path class="st6" d="M119.3,312.5s9.6-34.5-51.3-79c-45.7-33.4-55.2-54.5-55.2-71.1s9.5-37.7,55.2-71.1C128.9,46.9,119.3,12.4,119.3,12.4"/>
+  <path class="st10" d="M119.3,312.5s9.6-34.5-51.3-79c-45.7-33.4-55.2-54.5-55.2-71.1s9.5-37.7,55.2-71.1C128.9,46.9,119.3,12.4,119.3,12.4"/>
+  <path class="st6" d="M13.4,312.5s-9.6-34.5,51.3-79c45.7-33.4,55.2-54.5,55.2-71.1s-9.5-37.7-55.2-71.1C3.8,46.9,13.4,12.4,13.4,12.4"/>
+  <path class="st10" d="M13.4,312.5s-9.6-34.5,51.3-79c45.7-33.4,55.2-54.5,55.2-71.1s-9.5-37.7-55.2-71.1C3.8,46.9,13.4,12.4,13.4,12.4"/>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st11" transform="translate(39.3 48.3)"><tspan x="0" y="0">01011010</tspan></text>
+      </g>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st11" transform="translate(39.9 136.1)"><tspan x="0" y="0">01010100</tspan></text>
+      </g>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st11" transform="translate(39.3 166.5)"><tspan x="0" y="0">01001100</tspan></text>
+      </g>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st11" transform="translate(39.9 194.5)"><tspan x="0" y="0">01000001</tspan></text>
+      </g>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st11" transform="translate(39.3 284.2)"><tspan x="0" y="0">01000010</tspan></text>
+      </g>
+    </g>
+  </g>
+  <rect class="st3" x="199.9" y="103.2" width="118.5" height="118.5" rx="9.7" ry="9.7"/>
+  <g class="st12">
+    <g class="st12">
+      <g class="st12">
+        <text class="st13" transform="translate(203.9 183.6)"><tspan x="0" y="0">LLM</tspan></text>
+      </g>
+    </g>
+  </g>
+  <polyline class="st5" points="133.4 44.2 259.1 44.2 259.1 95.1"/>
+  <line class="st1" x1="133.4" y1="162.5" x2="188" y2="162.5"/>
+  <polyline class="st0" points="133.4 280.7 259.1 280.7 259.1 230.4"/>
+</svg>
