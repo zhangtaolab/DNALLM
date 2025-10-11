@@ -22,7 +22,19 @@ jobs:
       with:
         version: "latest"
     
+    - name: Cache uv dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/uv
+        key: ${{ runner.os }}-uv-publish-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-publish-
+          ${{ runner.os }}-uv-
+    
     - name: Install dependencies
+      env:
+        UV_HTTP_TIMEOUT: 120s
+        UV_CONCURRENT_DOWNLOADS: 1
       run: |
         uv pip install -e '.[dev]'
         uv pip install build twine

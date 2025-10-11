@@ -31,7 +31,18 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
+      - name: Cache uv dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+        
       - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 120s
+          UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
           uv pip install -e ".[test,dev]"
@@ -93,7 +104,19 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
+      - name: Cache uv dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-cuda-${{ matrix.cuda-version }}-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-cuda-${{ matrix.cuda-version }}-
+            ${{ runner.os }}-uv-
+        
       - name: Create virtual environment and install CUDA dependencies
+        env:
+          UV_HTTP_TIMEOUT: 120s
+          UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
           if [ "${{ matrix.cuda-version }}" = "12.1" ]; then
@@ -165,6 +188,9 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
       - name: Create virtual environment and install documentation dependencies
+        env:
+          UV_HTTP_TIMEOUT: 120s
+          UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
           uv pip install -e ".[base,docs]"
