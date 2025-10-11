@@ -41,7 +41,7 @@ jobs:
         
       - name: Create virtual environment and install dependencies
         env:
-          UV_HTTP_TIMEOUT: 120s
+          UV_HTTP_TIMEOUT: 120
           UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
@@ -115,7 +115,7 @@ jobs:
         
       - name: Create virtual environment and install CUDA dependencies
         env:
-          UV_HTTP_TIMEOUT: 120s
+          UV_HTTP_TIMEOUT: 120
           UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
@@ -189,7 +189,7 @@ jobs:
         
       - name: Create virtual environment and install documentation dependencies
         env:
-          UV_HTTP_TIMEOUT: 120s
+          UV_HTTP_TIMEOUT: 120
           UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv

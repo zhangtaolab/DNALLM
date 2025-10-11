@@ -33,7 +33,7 @@ jobs:
     
     - name: Install dependencies
       env:
-        UV_HTTP_TIMEOUT: 120s
+        UV_HTTP_TIMEOUT: 120
         UV_CONCURRENT_DOWNLOADS: 1
       run: |
         uv pip install -e '.[dev]'
