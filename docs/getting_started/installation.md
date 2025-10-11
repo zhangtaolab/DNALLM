@@ -112,9 +112,9 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 
 ## Additional Model Dependencies
 
-Some models require support from other dependencies. We will continue to add dependencies needed for different models.
+### Specialized Model Dependencies
 
-### EVO Models
+Some models use their own developed model architectures that haven't been integrated into HuggingFace's transformers library yet. Therefore, fine-tuning and inference for these models require pre-installing the corresponding model dependency libraries:
 
 #### EVO2
 
@@ -143,9 +143,22 @@ uv pip install evo-model
 uv pip install "flash_attn<=2.7.4.post1" --no-build-isolation --no-cache-dir
 ```
 
-### Specialized Model Dependencies
+#### GPN
+Project address: https://github.com/songlab-cal/gpn
+```bash
+uv pip install git+https://github.com/songlab-cal/gpn.git
+```
 
-Some models use their own developed model architectures that haven't been integrated into HuggingFace's transformers library yet. Therefore, fine-tuning and inference for these models require pre-installing the corresponding model dependency libraries:
+#### megaDNA
+Note that megaDNA weights stored at the [Hugging Face](https://huggingface.co/lingxusb) can be accessed after requesting permission from the author.
+
+Project address: https://github.com/lingxusb/megaDNA
+
+```bash
+git clone https://github.com/lingxusb/megaDNA
+cd megaDNA
+uv pip install .
+```
 
 #### LucaOne
 Project address: https://github.com/LucaOne/LucaOneTasks
@@ -153,24 +166,10 @@ Project address: https://github.com/LucaOne/LucaOneTasks
 uv pip install lucagplm
 ```
 
-#### GPN
-Project address: https://github.com/songlab-cal/gpn
-```bash
-uv pip install git+https://github.com/songlab-cal/gpn.git
-```
-
 #### Omni-DNA
 Project address: https://huggingface.co/zehui127/Omni-DNA-20M
 ```bash
 uv pip install ai2-olmo
-```
-
-#### megaDNA
-Project address: https://github.com/lingxusb/megaDNA
-```bash
-git clone https://github.com/lingxusb/megaDNA
-cd megaDNA
-uv pip install .
 ```
 
 #### Enformer
@@ -184,6 +183,8 @@ Project address: https://github.com/johahi/borzoi-pytorch
 ```bash
 uv pip install borzoi-pytorch
 ```
+
+Some models require support from other dependencies. We will continue to add dependencies requirement for different models.
 
 ### Flash Attention Support
 

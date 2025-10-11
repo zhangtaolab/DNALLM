@@ -29,11 +29,13 @@ PRETRAIN_MODEL_MAPS = OrderedDict([
     ("Jamba-DNA", ["RaphaelMourad", "Causal Language Model"]),
     ("JanusDNA", ["Qihao-Duan", "Causal Language Model"]),
     ("LucaOne", ["LucaGroup", "Masked Language Model"]),
+    ("megaDNA", ["lingxusb", "Causal Language Model"]),
     ("Mistral-DNA", ["RaphaelMourad", "Causal Language Model"]),
     ("ModernBert-DNA", ["RaphaelMourad", "Masked Language Model"]),
     ("MutBERT", ["JadenLong", "Masked Language Model"]),
     ("OmniNA", ["XLS", "Causal Language Model"]),
     ("Omni-DNA", ["Zehui127", "Causal Language Model"]),
+    ("plant-genomic-jamba", ["suzuki-2001", "Masked Language Model"]),
     ("ProkBERT", ["neuralbioinfo", "Masked Language Model"]),
 ])
 
@@ -556,6 +558,35 @@ MODEL_INFO = {
         ],
         "default": "lgq12697/Jamba-DNA-v1-114M-hg38",
     },
+    "megaDNA": {
+        "title": "A long-context language model for deciphering and "
+        "generating bacteriophage genomes",
+        "reference": "https://www.nature.com/articles/s41467-024-53759-4",
+        "model_architecture": "MEGADNA",
+        "model_tags": [
+            "phage_145M",
+            "phage_78M",
+            "phage_277M",
+            "phage_ecoli_finetuned",
+        ],
+        "huggingface": [
+            "lingxusb/megaDNA_updated",
+            "lingxusb/megaDNA_variants",
+            "lingxusb/megaDNA_variants",
+            "lingxusb/megaDNA_finetuned",
+        ],
+        "modelscope": [
+            None,
+            None,
+            None,
+            None,
+        ],
+        "default": "lgq12697/megaDNA_updated",
+        "dependencies": "pip install"
+        "git+https://github.com/lingxusb/megaDNA.git",
+        "note": "The model weights stored at Hugging Face can be accessed"
+        "after requesting permission from the author.",
+    },
     "Mistral-DNA": {
         "title": "Mistral-DNA: Mistral large language model for DNA sequences",
         "reference": "https://github.com/raphaelmourad/Mistral-DNA",
@@ -707,6 +738,21 @@ MODEL_INFO = {
         "default": "lgq12697/Omni-DNA-20M",
         "dependencies": "pip install ai2-olmo",
     },
+    # "plant-genomic-jamba": {
+    #     "title": "An implementation of a hybrid architecture combining"
+    #              "Mamba2 and Flash Attention2 mechanisms for"
+    #              "efficient sequence modeling",
+    #     "reference": "https://github.com/suzuki-2001/genomic-jamba",
+    #     "model_architecture": "StripedMambaForMaskedLM",
+    #     "model_tags": ["50M"],
+    #     "huggingface": [
+    #         "suzuki-2001/plant-genomic-jamba",
+    #     ],
+    #     "modelscope": [
+    #         None,
+    #     ],
+    #     "default": "lgq12697/plant-genomic-jamba",
+    # },
     "ProkBERT": {
         "title": "ProkBERT family: genomic"
         "language models for microbiome applications",
@@ -718,11 +764,11 @@ MODEL_INFO = {
             "neuralbioinfo/prokbert-mini-c",
             "neuralbioinfo/prokbert-mini-long",
         ],
-        "default": "lgq12697/prokbert-mini",
         "modelscope": [
             None,
             None,
             None,
         ],
+        "default": "lgq12697/prokbert-mini",
     },
 }

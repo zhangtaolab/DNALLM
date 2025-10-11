@@ -121,6 +121,8 @@ def classification_metrics(plot=False):
         logits = logits[0] if isinstance(logits, tuple) else logits
         predictions = np.argmax(logits, axis=-1)
         pred_probs = softmax(logits, axis=1)
+        # Handle NaN and infinite values in pred_probs
+        pred_probs = np.nan_to_num(pred_probs, nan=0.0, posinf=1.0, neginf=0.0)
         # metrics = clf_metrics.compute(predictions=predictions,
         # references=labels)
         # roc_auc = auc_metric.compute(references=labels,
@@ -241,6 +243,8 @@ def multi_classification_metrics(plot=False):
         if logits.ndim == 3:
             logits = logits[:, 0, :]  # 调整此处以适应模型结构
         pred_probs = softmax(logits, axis=1)
+        # Handle NaN and infinite values in pred_probs
+        pred_probs = np.nan_to_num(pred_probs, nan=0.0, posinf=1.0, neginf=0.0)
         predictions = np.argmax(logits, axis=-1)
 
         metrics = {}
@@ -350,6 +354,8 @@ def multi_labels_metrics(label_list, plot=False):
         if hasattr(labels, "numpy"):
             labels = labels.numpy()
         pred_probs = sigmoid(logits)
+        # Handle NaN and infinite values in pred_probs
+        pred_probs = np.nan_to_num(pred_probs, nan=0.0, posinf=1.0, neginf=0.0)
         raw_pred = (pred_probs > 0.5).astype(int)
         # predictions = raw_pred.reshape(-1) # Not used in current
         # implementation

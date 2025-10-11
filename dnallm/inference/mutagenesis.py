@@ -329,7 +329,7 @@ class Mutagenesis:
             self.model, self.tokenizer
         )
         # Special models list
-        sp_models = ["evo1", "evo2"]
+        sp_models = ["evo1", "evo2", "megadna"]
         sp_model_found = False
         # Do prediction
         all_predictions = {}

@@ -349,6 +349,124 @@ def _handle_gpn_models(model_name: str) -> str | None:
     return None
 
 
+def _handle_lucaone_models(model_name: str) -> str | None:
+    pass
+
+
+def _handle_megadna_models(model_name: str, source: str) -> tuple | None:
+    """Handle special case for megaDNA models."""
+    megadna_models = [
+        "megaDNA_updated",
+        "megaDNA_variants",
+        "megaDNA_finetuned",
+        "megaDNA_phage_145M",
+        "megaDNA_phage_78M",
+        "megaDNA_phage_277M",
+        "megaDNA_phage_ecoli_finetuned",
+    ]
+    for m in megadna_models:
+        if m in model_name:
+            from torch.nn.utils.rnn import pad_sequence
+
+            class DNATokenizer:
+                DEFAULT_TOKENS = ("**", "#")
+
+                def __init__(
+                    self,
+                    vocab=None,
+                    pad_token=DEFAULT_TOKENS[0],
+                    eos_token=DEFAULT_TOKENS[1],
+                ):
+                    self.vocab = vocab or [
+                        pad_token,
+                        "A",
+                        "T",
+                        "C",
+                        "G",
+                        eos_token,
+                    ]
+                    self.token_to_id = {
+                        tok: idx for idx, tok in enumerate(self.vocab)
+                    }
+                    self.id_to_token = dict(enumerate(self.vocab))
+                    self.pad_token = pad_token
+                    self.pad_id = self.token_to_id[pad_token]
+                    self.eos_token = eos_token
+                    self.eos_id = self.token_to_id[eos_token]
+
+                def encode(self, text):
+                    """text: 'ATCGAT...' → [1,2,3,4,...]"""
+                    return [
+                        self.token_to_id.get(ch, self.pad_id) for ch in text
+                    ]
+
+                def decode(self, ids):
+                    """tensor/list ids → 'ATCG...'"""
+                    if isinstance(ids, torch.Tensor):
+                        ids = ids.tolist()
+                    return "".join(self.id_to_token.get(i, "N") for i in ids)
+
+                def __call__(self, text, return_tensors=None):
+                    """
+                    text: str or list[str]
+                    return_tensors: tensor[batch, seq_len] if is 'pt'
+                    """
+                    # Single text
+                    if isinstance(text, str):
+                        ids = torch.tensor(
+                            self.encode(text), dtype=torch.long
+                        ).unsqueeze(0)
+                        return ids
+
+                    # Batch texts (list[str])
+                    elif isinstance(text, list):
+                        seqs = [
+                            torch.tensor(self.encode(t), dtype=torch.long)
+                            for t in text
+                        ]
+                        padded = pad_sequence(
+                            seqs, batch_first=True, padding_value=self.pad_id
+                        )
+                        return padded
+
+                    else:
+                        raise ValueError(
+                            "Tokenizer input must be str or List[str]"
+                        )
+
+            try:
+                downloaded_model_path, _ = _get_model_path_and_imports(
+                    model_name, source
+                )
+                if m in "megaDNA_updated".lower():
+                    full_model_name = "megaDNA_phage_145M.pt"
+                elif m in "megaDNA_variants".lower():
+                    full_model_name = "megaDNA_phage_78M.pt"
+                elif m in "megaDNA_finetuned".lower():
+                    full_model_name = "megaDNA_phage_ecoli_finetuned.pt"
+                else:
+                    full_model_name = "megaDNA_phage_145M.pt"
+                downloaded_model_path = os.path.join(
+                    downloaded_model_path, full_model_name
+                )
+                megadna_model = torch.load(
+                    downloaded_model_path, weights_only=False
+                )
+
+            except ImportError as e:
+                raise ImportError(
+                    f"megaDNA package is required for "
+                    f"{model_name} but not installed. "
+                    "Please install it following the instructions at: "
+                    "https://github.com/lingxusb/megaDNA"
+                ) from e
+
+            megadna_tokenizer = DNATokenizer()
+            return megadna_model, megadna_tokenizer
+
+    return None
+
+
 def _setup_huggingface_mirror(use_mirror: bool) -> None:
     """Configure HuggingFace mirror settings.
 
@@ -638,6 +756,11 @@ def load_model_and_tokenizer(
     # Handle special case for GPN models
     _ = _handle_gpn_models(model_name)
 
+    # Handle special case for megaDNA models
+    megadna_result = _handle_megadna_models(model_name, source)
+    if megadna_result is not None:
+        return megadna_result
+
     # Handle other models such as LucaOne, Omni-DNA, etc.
     # TODO: Add more special cases if needed
 
@@ -670,6 +793,25 @@ def load_model_and_tokenizer(
 
         # Use default value if num_labels is None for other tasks
         safe_num_labels = num_labels if num_labels is not None else 1
+        # num_labels check for non-binary classification tasks
+        if task_type == "regression" and safe_num_labels != 1:
+            logger.warning(
+                f"Regression task typically has num_labels=1, "
+                f"but got {safe_num_labels}."
+            )
+            safe_num_labels = 1
+        elif task_type == "generation" and safe_num_labels != 0:
+            logger.warning(
+                f"Generation task does not require num_labels, "
+                f"but got {safe_num_labels}. Setting to 0."
+            )
+            safe_num_labels = 0
+        elif task_type != "binary":
+            if safe_num_labels < 2:
+                raise ValueError(
+                    f"num_labels should be at least 2 for task type "
+                    f"'{task_type}', but got {safe_num_labels}."
+                )
 
         model, tokenizer = _load_model_by_task_type(
             task_type, model_name, safe_num_labels, id2label, label2id, modules
