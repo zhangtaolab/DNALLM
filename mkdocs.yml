@@ -58,6 +58,16 @@ nav:
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md
     - Troubleshooting: user_guide/troubleshooting.md
+    - Data Processing:
+      - Data Preparation: user_guide/data_processing/data_preparation.md
+      - Quality Control: user_guide/data_processing/quality_control.md
+      - Format Conversion: user_guide/data_processing/format_conversion.md
+      - Data Augmentation: user_guide/data_processing/data_augmentation.md
+    - Fine Tuning:
+      - Getting Started: user_guide/fine_tuning/getting_started.md
+      - Configuration: user_guide/fine_tuning/configuration.md
+      - Advanced Techniques: user_guide/fine_tuning/advanced_techniques.md
+      - Task Guides: user_guide/fine_tuning/task_guides.md
     - Inference:
       - Getting Started: user_guide/inference/getting_started.md
       - Basic Inference: user_guide/inference/basic_inference.md
@@ -65,16 +75,6 @@ nav:
       - Mutagenesis Analysis: user_guide/inference/mutagenesis_analysis.md
       - Visualization: user_guide/inference/visualization.md
       - Performance Optimization: user_guide/inference/performance_optimization.md
-    - Fine Tuning:
-      - Getting Started: user_guide/fine_tuning/getting_started.md
-      - Configuration: user_guide/fine_tuning/configuration.md
-      - Advanced Techniques: user_guide/fine_tuning/advanced_techniques.md
-      - Task Guides: user_guide/fine_tuning/task_guides.md
-    - Data Processing:
-      - Data Preparation: user_guide/data_processing/data_preparation.md
-      - Quality Control: user_guide/data_processing/quality_control.md
-      - Format Conversion: user_guide/data_processing/format_conversion.md
-      - Data Augmentation: user_guide/data_processing/data_augmentation.md
     - Benchmark:
       - Getting Started: user_guide/benchmark/getting_started.md
       - Configuration: user_guide/benchmark/configuration.md
@@ -94,16 +94,7 @@ nav:
       - Memory Optimization: user_guide/performance/memory_optimization.md
       - Inference Speed: user_guide/performance/inference_speed.md
       - Model Quantization: user_guide/performance/model_quantization.md
-    - Models:
-      - BERT Models: user_guide/models/bert_models.md
-      - Caduceus Models: user_guide/models/caduceus_models.md
-      - ESM Models: user_guide/models/esm_models.md
-      - Hyena Models: user_guide/models/hyena_models.md
-      - Llama Models: user_guide/models/llama_models.md
-      - Mamba Models: user_guide/models/mamba_models.md
-      - EVO Models: user_guide/models/evo_models.md
-      - Flash Attention Models: user_guide/models/flash_attention_models.md
-      - Special Models: user_guide/models/special_models.md
+    - Models: user_guide/models.md
     - Case Studies:
       - Promoter Prediction: user_guide/case_studies/promoter_prediction.md
       - Motif Detection: user_guide/case_studies/motif_detection.md
@@ -153,7 +144,17 @@ nav:
     - Data Handling: resources/datahandling.md
     - Model Selection: resources/model_selection.md
     - Model Troubleshooting: resources/troubleshooting_models.md
-  - FAQ: faq/
+    - Model Guides:
+      - BERT Models: resources/models/bert_models.md
+      - Caduceus Models: resources/models/caduceus_models.md
+      - ESM Models: resources/models/esm_models.md
+      - Hyena Models: resources/models/hyena_models.md
+      - Llama Models: resources/models/llama_models.md
+      - Mamba Models: resources/models/mamba_models.md
+      - EVO Models: resources/models/evo_models.md
+      - Flash Attention Models: resources/models/flash_attention_models.md
+      - Special Models: resources/models/special_models.md
+  - FAQ: faq/index.md
 
 plugins:
   - search
