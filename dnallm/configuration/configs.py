@@ -1,6 +1,93 @@
 import os
 import yaml
+from typing import Any
 from pydantic import BaseModel, Field
+
+
+class HeadConfig(BaseModel):
+    """Configuration for the classification/regression head"""
+
+    head: str = Field(
+        default="mlp",
+        description="Type of head to use",
+    )
+    num_classes: int = Field(
+        default=2, description="Number of output classes (default 2)"
+    )
+    hidden_dims: list[int] | None = Field(
+        default=None,
+        description=(
+            "List of hidden layer dimensions for the head MLP. If None, "
+            "a single linear layer is used."
+        ),
+    )
+    activation_fn: str = Field(
+        default="relu",
+        description=(
+            "Activation function to use in the head MLP. Options include "
+            "'relu', 'gelu', 'silu', 'tanh', 'sigmoid'."
+        ),
+    )
+    use_normalization: bool = Field(
+        default=True,
+        description="Whether to use normalization layers in the head MLP.",
+    )
+    norm_type: str = Field(
+        default="layernorm",
+        pattern="^(layernorm|batchnorm)$",
+        description="Type of normalization to use: "
+        "'layernorm' or 'batchnorm'.",
+    )
+    num_filters: int = Field(
+        default=128,
+        description=(
+            "Number of filters for convolutional layers in the head. "
+            "If None, no convolutional layers are used."
+        ),
+    )
+    kernel_sizes: list[int] | None = Field(
+        default=None,
+        description=(
+            "List of kernel sizes for convolutional layers in the head. "
+            "Must match the length of num_filters. If None, no convolutional "
+            "layers are used."
+        ),
+    )
+    hidden_size: int = Field(
+        default=256, description="Hidden size for RNN heads."
+    )
+    num_layers: int = Field(
+        default=2, description="Number of layers for RNN heads."
+    )
+    bidirectional: bool = Field(
+        default=True, description="Whether to use bidirectional RNNs."
+    )
+    initial_filters: int | None = Field(
+        default=None, description="Initial number of filters for U-Net."
+    )
+    dropout: float = Field(
+        default=0.1, description="Dropout probability for the head."
+    )
+    pooling_strategy: str | None = Field(
+        default=None,
+        description=(
+            "Pooling strategy to convert token embeddings to a single "
+            "vector. Options: 'mean', 'max', 'cls', 'last'."
+        ),
+    )
+    embedding_dims: list[int] | None = Field(
+        default=None,
+        description=(
+            "List of embedding dimensions for model with multi-scale features."
+        ),
+    )
+    custom_head: Any | None = Field(
+        default=None,
+        description=(
+            "Custom head class. If provided, this will override other head "
+            "configuration parameters."
+        ),
+    )
 
 
 class TaskConfig(BaseModel):
@@ -20,6 +107,11 @@ class TaskConfig(BaseModel):
     )
     mlm_probability: float | None = Field(
         default=0.15, description="Masking probability for MLM tasks"
+    )
+    # Add HeadConfig as a nested model
+    head_config: HeadConfig | None = Field(
+        default=None,
+        description="Configuration for the classification/regression head",
     )
 
     def model_post_init(self, __context):
