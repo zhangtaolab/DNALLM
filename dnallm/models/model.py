@@ -1063,7 +1063,10 @@ def _handle_megadna_models(
                 def get_vocab(self) -> dict[str, int]:
                     return self.token_to_id.copy()
 
-                def _tokenize(self, text: str) -> list[str]:
+                def _tokenize(self,
+                              text: Any,
+                              **kwargs: Any
+                              ) -> list[str]:  # type: ignore[override]
                     return list(text)
 
                 def _convert_token_to_id(self, token: str) -> int:
