@@ -565,7 +565,26 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         self.pooling_strategy = self._determine_pooling_strategy()
         logger.info(f"Using {self.pooling_strategy} pooling strategy.")
 
-        self.post_init()
+        # self.post_init()
+
+    @classmethod
+    def from_base_model(cls, model_name_or_path: str, config):
+        """
+        Handles weights diffusion when loading a model from
+        a pre-trained base model.
+        """
+        from transformers import AutoModel
+
+        # 1. Use config to create an instance of our custom class.
+        model = cls(config)
+        # 2. Load the base pre-trained model separately.
+        base_model = AutoModel.from_pretrained(
+            model_name_or_path, trust_remote_code=True
+        )
+        # 3. Assign the loaded weights to our backbone.
+        model.backbone.load_state_dict(base_model.state_dict())
+
+        return model
 
     def _determine_pooling_strategy(self):
         if self.config.head_config.get("pooling_strategy") is not None:
@@ -1325,8 +1344,8 @@ def _load_model_by_task_type(
         model_config.head_config = head_config
         if hasattr(tokenizer, "cls_token_id"):
             model_config.cls_token_id = tokenizer.cls_token_id
-        model = DNALLMforSequenceClassification.from_pretrained(
-            model_name, config=model_config, trust_remote_code=True
+        model = DNALLMforSequenceClassification.from_base_model(
+            model_name, config=model_config
         )
         return model, tokenizer
 
