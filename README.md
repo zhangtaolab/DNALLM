@@ -463,7 +463,6 @@ DNALLM/
 │   ├── install_mamba.sh        # Mamba installation script
 │   ├── publish.sh              # Package publishing script
 │   └── setup_uv.sh             # UV package manager setup
-├── benchmark_results/          # Benchmark output storage
 ├── .github/                    # GitHub workflows and templates
 ├── .flake8                     # Code style configuration
 ├── .gitignore                  # Git ignore patterns
@@ -471,6 +470,7 @@ DNALLM/
 ├── CONTRIBUTING.md             # Contribution guidelines
 ├── LICENSE                     # MIT license
 ├── README.md                   # This file
+├── conftest.py                 # Pytest configuration
 ├── mkdocs.yml                  # Documentation configuration
 ├── pyproject.toml              # Project metadata and dependencies
 ├── setup.py                    # Package setup script

@@ -278,6 +278,8 @@ dnallm model-config-generator --output my_config.yaml
 
 For specific troubleshooting guides by topic:
 
+- [Installation Troubleshooting](install_troubleshooting.md) - Common installation issues and solutions
+- [Models Troubleshooting](models_troubleshooting.md) - Common model-related issues and solutions
 - [Benchmark Troubleshooting](benchmark_troubleshooting.md) - Common issues with model benchmarking
 - [Fine-tuning Troubleshooting](finetuning_troubleshooting.md) - Common issues with model fine-tuning
 - [Data Processing Troubleshooting](data_processing_troubleshooting.md) - Common issues with data preparation and processing
