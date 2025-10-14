@@ -540,23 +540,35 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
             self.score = MegaDNAMultiScaleHead(**self.config.head_config)
-        else:
-            self.backbone = AutoModel.from_config(config)
+        elif "lucaone" in self.config.head_config.get("head", "").lower():
+            from lucagplm import LucaGPLMModel
+
+            self.backbone = LucaGPLMModel(config)
             transformer_output_dim = self.config.hidden_size
-            if (
-                hasattr(self.config.head_config, "custom_head")
-                and self.config.head_config["custom_head"] is not None
-            ):
-                # Use the custom head class provided in the config
-                classifier = self.config.head_config["custom_head"]
-            elif self.config.head_config.get("head", "").lower() == "mlp":
-                classifier = BasicMLPHead
-            elif self.config.head_config.get("head", "").lower() == "cnn":
-                classifier = BasicCNNHead
-            elif self.config.head_config.get("head", "").lower() == "lstm":
-                classifier = BasicLSTMHead
-            elif self.config.head_config.get("head", "").lower() == "unet":
-                classifier = BasicUNet1DHead
+            classifier = self._determine_classifier()
+            self.score = classifier(
+                input_dim=transformer_output_dim, **self.config.head_config
+            )
+        else:
+            import inspect
+
+            self.backbone = AutoModel.from_config(
+                config, trust_remote_code=True
+            )
+            forward_signature = inspect.signature(self.backbone.forward)
+            self._backbone_supported_args = set(
+                forward_signature.parameters.keys()
+            )
+            if hasattr(self.backbone.config, "hidden_size"):
+                transformer_output_dim = self.backbone.config.hidden_size
+            elif hasattr(self.backbone.config, "d_model"):
+                transformer_output_dim = self.backbone.config.d_model
+            else:
+                raise ValueError(
+                    "Cannot determine transformer output dimension. "
+                    "Please specify 'input_dim' in head_config."
+                )
+            classifier = self._determine_classifier()
             self.score = classifier(
                 input_dim=transformer_output_dim, **self.config.head_config
             )
@@ -568,7 +580,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         # self.post_init()
 
     @classmethod
-    def from_base_model(cls, model_name_or_path: str, config):
+    def from_base_model(cls, model_name_or_path: str, config, module=None):
         """
         Handles weights diffusion when loading a model from
         a pre-trained base model.
@@ -578,13 +590,35 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
         # 2. Load the base pre-trained model separately.
-        base_model = AutoModel.from_pretrained(
-            model_name_or_path, trust_remote_code=True
-        )
+        if module is not None:
+            base_model = module.from_pretrained(
+                model_name_or_path, trust_remote_code=True
+            )
+        else:
+            base_model = AutoModel.from_pretrained(
+                model_name_or_path, trust_remote_code=True
+            )
         # 3. Assign the loaded weights to our backbone.
         model.backbone.load_state_dict(base_model.state_dict())
 
         return model
+
+    def _determine_classifier(self):
+        if (
+            hasattr(self.config.head_config, "custom_head")
+            and self.config.head_config["custom_head"] is not None
+        ):
+            # Use the custom head class provided in the config
+            classifier = self.config.head_config["custom_head"]
+        elif self.config.head_config.get("head", "").lower().endswith("mlp"):
+            classifier = BasicMLPHead
+        elif self.config.head_config.get("head", "").lower().endswith("cnn"):
+            classifier = BasicCNNHead
+        elif self.config.head_config.get("head", "").lower().endswith("lstm"):
+            classifier = BasicLSTMHead
+        elif self.config.head_config.get("head", "").lower().endswith("unet"):
+            classifier = BasicUNet1DHead
+        return classifier
 
     def _determine_pooling_strategy(self):
         if self.config.head_config.get("pooling_strategy") is not None:
@@ -593,6 +627,9 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             return "last"
         if hasattr(self.config, "cls_token_id"):
             if self.config.cls_token_id is not None:
+                return "cls"
+        if hasattr(self.config, "cls_idx"):
+            if self.config.cls_idx is not None:
                 return "cls"
         logger.warning(
             "Warning: Could not determine model type, "
@@ -641,10 +678,15 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             outputs = self.backbone(input_ids, return_value="embedding")
             last_hidden_state = outputs
         else:
+            # Keep kwargs in the backbone's forward method
+            backbone_kwargs = {
+                k: v
+                for k, v in kwargs.items()
+                if k in self._backbone_supported_args
+            }
             outputs = self.backbone(
                 input_ids=input_ids,
-                attention_mask=attention_mask,
-                return_dict=True,
+                **backbone_kwargs,
             )
             if isinstance(outputs, dict) or hasattr(
                 outputs, "last_hidden_state"
@@ -653,7 +695,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             else:
                 last_hidden_state = outputs[0]
         # Get sentence embedding if needed
-        if self.config.head_config.get("head", "").lower() == "mlp":
+        if self.config.head_config.get("head", "").lower().endswith("mlp"):
             sentence_embedding = self._get_sentence_embedding(
                 last_hidden_state, attention_mask
             )
@@ -987,7 +1029,9 @@ def _handle_evo1_models(model_name: str, source: str) -> tuple | None:
     return None
 
 
-def _handle_gpn_models(model_name: str) -> str | None:
+def _handle_gpn_models(
+    model_name: str, extra: str | None = None
+) -> str | None:
     gpn_models = [
         "gpn-brassicales",
         "gpn-animal-promoter",
@@ -995,6 +1039,8 @@ def _handle_gpn_models(model_name: str) -> str | None:
         "PhyloGPN",
         "gpn-brassicales-gxa-sorghum-v1",
     ]
+    if extra:
+        gpn_models.append(extra)
     for m in gpn_models:
         if m in model_name:
             try:
@@ -1012,12 +1058,72 @@ def _handle_gpn_models(model_name: str) -> str | None:
     return None
 
 
-def _handle_lucaone_models(model_name: str) -> str | None:
-    pass
+def _handle_lucaone_models(
+    model_name: str,
+    source: str,
+    head_config: dict | None,
+    extra: str | None = None,
+) -> tuple | None:
+    lucaone_models = [
+        "LucaOne-default-step5.6M",
+        "LucaOne-default-step17.6M",
+        "LucaOne-default-step36M",
+        "LucaOne-gene-step36.8M",
+    ]
+    if extra:
+        lucaone_models.append(extra)
+    for m in lucaone_models:
+        if m in model_name:
+            try:
+                from lucagplm import (
+                    LucaGPLMModel,
+                    LucaGPLMTokenizer,
+                    LucaGPLMConfig,
+                )
+
+                downloaded_model_path, _ = _get_model_path_and_imports(
+                    model_name, source
+                )
+                lucaone_tokenizer = LucaGPLMTokenizer.from_pretrained(
+                    downloaded_model_path
+                )
+                lucaone_model = LucaGPLMModel.from_pretrained(
+                    downloaded_model_path
+                )
+                if head_config is not None:
+                    head_config = head_config.__dict__
+                    head_config["pooling_strategy"] = "cls"
+                    model_config = LucaGPLMConfig.from_pretrained(
+                        downloaded_model_path
+                    )
+                    model_config.head_config = head_config
+                    lucaone_model.config = model_config
+                    lucaone_model.config.pad_token_id = (
+                        lucaone_tokenizer.pad_token_id
+                    )
+                    lucaone_model = (
+                        DNALLMforSequenceClassification.from_base_model(
+                            downloaded_model_path,
+                            config=model_config,
+                            module=LucaGPLMModel,
+                        )
+                    )
+            except ImportError as e:
+                raise ImportError(
+                    f"lucagplm package is required for "
+                    f"{model_name} but not installed. "
+                    "Please install it following the instructions at: "
+                    "https://github.com/LucaOne/LucaOne"
+                ) from e
+            return lucaone_model, lucaone_tokenizer
+    return None
 
 
 def _handle_megadna_models(
-    model_name: str, source: str, head_config: dict | None
+    model_name: str,
+    source: str,
+    head_config: dict | None,
+    extra: str | None = None,
 ) -> tuple | None:
     """Handle special case for megaDNA models."""
     megadna_models = [
@@ -1029,6 +1135,8 @@ def _handle_megadna_models(
         "megaDNA_phage_277M",
         "megaDNA_phage_ecoli_finetuned",
     ]
+    if extra:
+        megadna_models.append(extra)
     for m in megadna_models:
         if m in model_name:
             from transformers import PretrainedConfig, PreTrainedTokenizer
@@ -1153,6 +1261,36 @@ def _handle_megadna_models(
 
             return megadna_model, megadna_tokenizer
 
+    return None
+
+
+def _handle_omnidna_models(
+    model_name: str, extra: str | None = None
+) -> str | None:
+    omnidna_models = [
+        "Omni-DNA-20M",
+        "Omni-DNA-60M",
+        "Omni-DNA-116M",
+        "Omni-DNA-300M",
+        "Omni-DNA-700M",
+        "Omni-DNA-1B",
+    ]
+    if extra:
+        omnidna_models.append(extra)
+    for m in omnidna_models:
+        if m in model_name:
+            try:
+                from olmo import version
+
+                _ = version.VERSION
+            except ImportError as e:
+                raise ImportError(
+                    f"ai2-olmo package is required for "
+                    f"{model_name} but not installed. "
+                    "Please install it following the instructions at: "
+                    "https://huggingface.co/zehui127/Omni-DNA-20M"
+                ) from e
+            return m
     return None
 
 
@@ -1344,6 +1482,8 @@ def _load_model_by_task_type(
         model_config.head_config = head_config
         if hasattr(tokenizer, "cls_token_id"):
             model_config.cls_token_id = tokenizer.cls_token_id
+        if hasattr(tokenizer, "cls_idx"):
+            model_config.cls_idx = tokenizer.cls_idx
         model = DNALLMforSequenceClassification.from_base_model(
             model_name, config=model_config
         )
@@ -1412,6 +1552,17 @@ def _configure_model_padding(model, tokenizer) -> None:
         model.config.pad_token_id = tokenizer.pad_token_id
 
 
+def _get_device() -> torch.device:
+    """Automatically select the best available device."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    if hasattr(torch, "xpu") and torch.xpu.is_available():
+        return torch.device("xpu")
+    return torch.device("cpu")
+
+
 def load_model_and_tokenizer(
     model_name: str,
     task_config: TaskConfig,
@@ -1475,7 +1626,14 @@ def load_model_and_tokenizer(
     if megadna_result is not None:
         return megadna_result
 
-    # Handle other models such as LucaOne, Omni-DNA, etc.
+    # Handle special case for LucaOne models
+    lucaone_result = _handle_lucaone_models(model_name, source, head_config)
+    if lucaone_result is not None:
+        return lucaone_result
+
+    # Handle special case for Omni-DNA models
+    _ = _handle_omnidna_models(model_name)
+
     # TODO: Add more special cases if needed
 
     # Get model path and import required modules
@@ -1542,6 +1700,7 @@ def load_model_and_tokenizer(
 
     # Configure model padding
     _configure_model_padding(model, tokenizer)
+    model = model.to(_get_device())
 
     return model, tokenizer
 
