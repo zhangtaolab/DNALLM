@@ -611,18 +611,32 @@ def _get_dimensionality_reducer(reducer: str):
         ) from e
 
 
-def _compute_mean_embeddings(hidden_states, attention_mask):
+def _compute_mean_embeddings(
+    hidden_states, attention_mask=None, strategy="last"
+):
     """Compute mean embeddings using attention mask for pooling.
 
     Args:
         hidden_states: Hidden states from model layers
         attention_mask: Attention mask for sequence padding
+        strategy: Pooling strategy ('last' or 'mean')
 
     Returns:
         Mean pooled embeddings as numpy array
     """
     embeddings = np.array(hidden_states)
-    attention_mask_array = np.array(attention_mask)
+    if attention_mask is None:
+        if strategy == "last":
+            attention_mask_array = np.zeros(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+            attention_mask_array[:, -1] = 1
+        else:  # mean pooling without mask
+            attention_mask_array = np.ones(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+    else:
+        attention_mask_array = np.array(attention_mask)
 
     mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
     mean_embeddings = (
@@ -723,6 +737,7 @@ def plot_embeddings(
     height: int = 300,
     save_path: str | None = None,
     separate: bool = False,
+    averaged: bool = False,
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Visualize embeddings using dimensionality reduction techniques.
 
@@ -771,7 +786,10 @@ def plot_embeddings(
         zip(hidden_states, attention_mask, strict=False)
     ):
         # Compute mean embeddings
-        mean_embeddings = _compute_mean_embeddings(hidden, mask)
+        if averaged:
+            mean_embeddings = np.array(hidden)
+        else:
+            mean_embeddings = _compute_mean_embeddings(hidden, mask)
 
         # Apply dimensionality reduction
         layer_dim_reduced_vectors = np.array(

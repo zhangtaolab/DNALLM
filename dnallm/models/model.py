@@ -1676,7 +1676,7 @@ def load_model_and_tokenizer(
                 f"but got {safe_num_labels}. Setting to 0."
             )
             safe_num_labels = 0
-        elif task_type != "binary":
+        if task_type not in ["binary", "regression", "generation"]:
             if safe_num_labels < 2:
                 raise ValueError(
                     f"num_labels should be at least 2 for task type "
