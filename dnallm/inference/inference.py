@@ -197,6 +197,16 @@ class DNAInference:
                 lambda: hasattr(torch, "xpu") and torch.xpu.is_available(),
                 "XPU",
             ),
+            "npu": (
+                "npu",
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
+                "NPU",
+            ),
+            "ascend": (
+                "npu",
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
+                "NPU",
+            ),
         }
 
         if device_str not in device_map:
@@ -233,6 +243,8 @@ class DNAInference:
             return torch.device("mps")
         if hasattr(torch, "xpu") and torch.xpu.is_available():
             return torch.device("xpu")
+        if hasattr(torch, "npu") and torch.npu.is_available():
+            return torch.device("npu")
         return torch.device("cpu")
 
     def _has_model_config_attr(self, attr_name: str) -> bool:
