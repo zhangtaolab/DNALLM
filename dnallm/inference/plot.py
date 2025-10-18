@@ -8,9 +8,10 @@ including metrics visualization, attention maps, embeddings, and
 
 # Add more specific type hints and import numpy for better performance
 import altair as alt
+from collections import defaultdict
 import pandas as pd
 import numpy as np
-from collections import defaultdict
+from sklearn.preprocessing import StandardScaler
 
 
 def _prepare_classification_data(
@@ -565,61 +566,169 @@ def plot_attention_map(
     return attn_map
 
 
-def _get_dimensionality_reducer(reducer: str):
-    """Initialize and return a dimensionality reducer based on the specified
-    method.
+def _get_dimensionality_reducer(
+    reducer: str,
+    n_samples: int | None = None,
+    quality: str = "balanced",  # fast / balanced / high
+    **kwargs,
+):
+    """
+    Initialize and return a dimensionality reducer with recommended parameters.
 
     Args:
-        reducer: Dimensionality reduction method ('PCA', 't-SNE', 'UMAP')
+        reducer: Dimensionality reduction method
+            ('PCA', 't-SNE', 'UMAP', 'PaCMAP')
+        n_samples: Number of samples in dataset, used to auto-adjust parameters
+        quality: 'fast', 'balanced', 'high'
+        kwargs: Custom override parameters
 
     Returns:
         Initialized dimensionality reducer object
-
-    Raises:
-        ValueError: If unsupported dimensionality reduction method is specified
-        ImportError: If required package for the reducer is not installed
     """
-    reducer_map = {
-        "pca": ("sklearn.decomposition", "PCA"),
-        "t-sne": ("sklearn.manifold", "TSNE"),
-        "umap": ("umap", "UMAP"),
-    }
+    reducer = reducer.lower()
+    quality = quality.lower()
 
-    reducer_lower = reducer.lower()
-    if reducer_lower not in reducer_map:
-        raise ValueError(
-            f"Unsupported dim reducer '{reducer}', please try PCA, "
-            "t-SNE or UMAP."
-        )
+    # Safety checks
+    if quality not in ["fast", "balanced", "high"]:
+        quality = "balanced"
+    if n_samples is None:
+        # Default assume medium size
+        n_samples = 3000
 
+    def tsne_params():
+        if n_samples < 5000:
+            presets = {
+                "fast": {
+                    "perplexity": 20,
+                    "max_iter": 500,
+                    "learning_rate": 100,
+                },
+                "balanced": {
+                    "perplexity": 30,
+                    "max_iter": 1000,
+                    "learning_rate": 200,
+                },
+                "high": {
+                    "perplexity": 40,
+                    "max_iter": 2000,
+                    "learning_rate": 300,
+                },
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"perplexity": 30, "max_iter": 500},
+                "balanced": {"perplexity": 40, "max_iter": 1000},
+                "high": {"perplexity": 50, "max_iter": 2000},
+            }
+        else:
+            raise ValueError(
+                "t-SNE is unsupported for samples > 50k, "
+                "please use UMAP/PaCMAP."
+            )
+        base = {"n_components": 2, "init": "pca"}
+        base.update(presets[quality])
+        return base
+
+    def umap_params():
+        if n_samples < 5000:
+            presets = {
+                "fast": {"n_neighbors": 10, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 15, "min_dist": 0.3},
+                "high": {"n_neighbors": 30, "min_dist": 0.1},
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"n_neighbors": 15, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 30, "min_dist": 0.3},
+                "high": {"n_neighbors": 50, "min_dist": 0.1},
+            }
+        else:
+            presets = {
+                "fast": {"n_neighbors": 30, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 50, "min_dist": 0.3},
+                "high": {"n_neighbors": 80, "min_dist": 0.2},
+            }
+        base = {"n_components": 2, "metric": "euclidean"}
+        base.update(presets[quality])
+        return base
+
+    def pacmap_params():
+        if n_samples < 5000:
+            presets = {
+                "fast": {"n_neighbors": 8, "FP_ratio": 2.0, "MN_ratio": 0.5},
+                "balanced": {
+                    "n_neighbors": 12,
+                    "FP_ratio": 2.0,
+                    "MN_ratio": 0.5,
+                },
+                "high": {"n_neighbors": 20, "FP_ratio": 2.5, "MN_ratio": 0.5},
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"n_neighbors": 10},
+                "balanced": {"n_neighbors": 20},
+                "high": {"n_neighbors": 30, "FP_ratio": 2.0},
+            }
+        else:
+            presets = {
+                "fast": {"n_neighbors": 20},
+                "balanced": {"n_neighbors": 30, "FP_ratio": 1.5},
+                "high": {"n_neighbors": 50, "FP_ratio": 1.0},
+            }
+        base = {"n_components": 2}
+        base.update(presets[quality])
+        return base
+
+    # -----------------------
+    # Reducer initialization
+    # -----------------------
     try:
-        if reducer_lower == "pca":
+        if reducer == "pca":
             from sklearn.decomposition import PCA
 
-            return PCA(n_components=2)
-        elif reducer_lower == "t-sne":
+            params = {"n_components": 2}
+            params.update(kwargs)
+            return PCA(**params)
+
+        elif reducer in ["t-sne", "tsne"]:
             from sklearn.manifold import TSNE
 
-            return TSNE(n_components=2)
-        elif reducer_lower == "umap":
+            params = tsne_params()
+            params.update(kwargs)
+            return TSNE(**params)
+
+        elif reducer == "umap":
             from umap import UMAP
 
-            return UMAP(n_components=2)
+            params = umap_params()
+            params.update(kwargs)
+            return UMAP(**params)
+
+        elif reducer == "pacmap":
+            from pacmap import PaCMAP
+
+            params = pacmap_params()
+            params.update(kwargs)
+            return PaCMAP(**params)
+
+        else:
+            raise ValueError("Unsupported reducer")
+
     except ImportError as e:
-        raise ImportError(
-            f"Required package for {reducer} not installed: {e}"
-        ) from e
+        raise ImportError(f"Required package not installed: {e}") from e
 
 
 def _compute_mean_embeddings(
-    hidden_states, attention_mask=None, strategy="last"
+    hidden_states,
+    attention_mask=None,
+    strategy="mean",
 ):
     """Compute mean embeddings using attention mask for pooling.
 
     Args:
         hidden_states: Hidden states from model layers
         attention_mask: Attention mask for sequence padding
-        strategy: Pooling strategy ('last' or 'mean')
+        strategy: Pooling strategy ('last' or 'mean' or 'first')
 
     Returns:
         Mean pooled embeddings as numpy array
@@ -631,6 +740,11 @@ def _compute_mean_embeddings(
                 (embeddings.shape[0], embeddings.shape[1]), dtype=int
             )
             attention_mask_array[:, -1] = 1
+        elif strategy == "first":
+            attention_mask_array = np.zeros(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+            attention_mask_array[:, 0] = 1
         else:  # mean pooling without mask
             attention_mask_array = np.ones(
                 (embeddings.shape[0], embeddings.shape[1]), dtype=int
@@ -643,6 +757,7 @@ def _compute_mean_embeddings(
         np.sum(attention_mask_array[..., None] * embeddings, axis=-2)
         / mask_sum
     )
+
     return mean_embeddings
 
 
@@ -658,7 +773,11 @@ def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
         pandas DataFrame ready for plotting
     """
     if labels is None or len(labels) == 0:
-        labels = ["Uncategorized"] * dim_reduced_vectors.shape[0]
+        label_names = ["Uncategorized"]
+        labels = [0] * dim_reduced_vectors.shape[0]
+    if labels[0] is None:
+        label_names = ["Uncategorized"]
+        labels = [0] * dim_reduced_vectors.shape[0]
 
     processed_labels = [
         label_names[int(i)]
@@ -728,7 +847,7 @@ def _arrange_plots(plots, ncols):
 
 def plot_embeddings(
     hidden_states: tuple | list,
-    attention_mask: tuple | list,
+    attention_mask: tuple | list | None,
     reducer: str = "t-SNE",
     labels: tuple | list | None = None,
     label_names: str | list | None = None,
@@ -737,7 +856,8 @@ def plot_embeddings(
     height: int = 300,
     save_path: str | None = None,
     separate: bool = False,
-    averaged: bool = False,
+    norm: bool = True,
+    reduced: bool = False,
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Visualize embeddings using dimensionality reduction techniques.
 
@@ -760,6 +880,8 @@ def plot_embeddings(
                     save_path: Path to save the plot. If None,
                 plot will be shown interactively
             separate: Whether to return separate plots for each layer
+            norm: Whether to normalize embeddings before reduction
+            reduced: Whether the input hidden states are already 2D
 
         Returns:
                     Altair chart object (combined or
@@ -770,7 +892,8 @@ def plot_embeddings(
                 specified
     """
     # Initialize dimensionality reducer
-    dim_reducer = _get_dimensionality_reducer(reducer)
+    n_samples = hidden_states[0].shape[0] if hidden_states else None
+    dim_reducer = _get_dimensionality_reducer(reducer, n_samples=n_samples)
     # Type assertion: dim_reducer is guaranteed to be non-None from helper
     # function
     if dim_reducer is None:
@@ -782,16 +905,17 @@ def plot_embeddings(
     plots = []
     p_separate = {}
 
-    for i, (hidden, mask) in enumerate(
-        zip(hidden_states, attention_mask, strict=False)
-    ):
+    for i, hidden in enumerate(hidden_states):
         # Compute mean embeddings
-        if averaged:
+        if reduced:
             mean_embeddings = np.array(hidden)
         else:
-            mean_embeddings = _compute_mean_embeddings(hidden, mask)
+            mean_embeddings = _compute_mean_embeddings(hidden, attention_mask)
 
         # Apply dimensionality reduction
+        if norm:
+            # embeddings_normalized = normalize(mean_embeddings)
+            mean_embeddings = StandardScaler().fit_transform(mean_embeddings)
         layer_dim_reduced_vectors = np.array(
             dim_reducer.fit_transform(mean_embeddings)
         )

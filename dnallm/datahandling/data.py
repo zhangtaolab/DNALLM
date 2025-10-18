@@ -494,7 +494,37 @@ class DNADataset:
         """Get tokenizer configuration."""
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
-        sp_token_map = self.tokenizer.special_tokens_map
+        sp_token_map = (
+            self.tokenizer.special_tokens_map
+            if hasattr(self.tokenizer, "special_tokens_map")
+            else {}
+        )
+        for tok_id in ["pad_id", "eos_id", "bos_id", "cls_id", "sep_id"]:
+            if hasattr(self.tokenizer, tok_id):
+                sp_token_map[tok_id] = getattr(self.tokenizer, tok_id)
+        for token in [
+            "pad_token",
+            "eos_token",
+            "bos_token",
+            "cls_token",
+            "sep_token",
+        ]:
+            if not sp_token_map.get(token) and hasattr(self.tokenizer, token):
+                sp_token_map[token] = getattr(self.tokenizer, token)
+        if not sp_token_map.get("pad_token"):
+            if hasattr(self.tokenizer, "decode"):
+                sp_token_map["pad_token"] = self.tokenizer.decode(
+                    sp_token_map["pad_id"]
+                )
+            elif hasattr(self.tokenizer, "convert_ids_to_tokens"):
+                pad_token = self.tokenizer.convert_ids_to_tokens(
+                    sp_token_map["pad_id"]
+                )
+                sp_token_map["pad_token"] = pad_token
+            elif hasattr(self.tokenizer, "decode_token"):
+                sp_token_map["pad_token"] = self.tokenizer.decode_token(
+                    sp_token_map["pad_id"]
+                )
         return {
             "pad_token": sp_token_map.get("pad_token"),
             "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[

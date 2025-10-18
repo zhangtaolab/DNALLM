@@ -647,6 +647,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             masked_sum = torch.sum(last_hidden_state * expanded_mask, 1)
             actual_lengths = torch.clamp(expanded_mask.sum(1), min=1e-9)
             return masked_sum / actual_lengths
+        elif self.pooling_strategy == "max":
+            masked_hidden_state = last_hidden_state.masked_fill(
+                ~attention_mask.unsqueeze(-1).bool(), -float("inf")
+            )
+            return masked_hidden_state.max(dim=1).values
         elif self.pooling_strategy == "last":
             batch_size = last_hidden_state.shape[0]
             sequence_lengths = attention_mask.sum(dim=1) - 1
@@ -654,6 +659,8 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 batch_size, device=last_hidden_state.device
             )
             return last_hidden_state[batch_indices, sequence_lengths, :]
+        elif self.pooling_strategy == "first":
+            return last_hidden_state[:, 0, :]
         else:
             raise ValueError(
                 "Internal error: "
@@ -692,8 +699,12 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 outputs, "last_hidden_state"
             ):
                 last_hidden_state = outputs.last_hidden_state
+            elif "last_hidden_state" in outputs:
+                last_hidden_state = outputs["last_hidden_state"]
             else:
                 last_hidden_state = outputs[0]
+                if isinstance(last_hidden_state, tuple):
+                    last_hidden_state = last_hidden_state[-1]
         # Get sentence embedding if needed
         if self.config.head_config.get("head", "").lower().endswith("mlp"):
             sentence_embedding = self._get_sentence_embedding(
@@ -705,19 +716,91 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
         loss = None
         if labels is not None:
+            loss_fct = None
+            # Allow other loss functions that user selected or provided
+            if self.config.head_config.get("loss_function") is not None:
+                loss_fct = self.config.head_config["loss_function"]
+
+                class FocalLoss(nn.Module):
+                    def __init__(
+                        self,
+                        alpha=0.25,
+                        gamma=2.0,
+                        reduction="mean",
+                    ):
+                        super().__init__()
+                        self.alpha = alpha  # controls class imbalance
+                        self.gamma = gamma  # focuses on hard examples
+                        self.reduction = reduction
+
+                    def forward(self, inputs, targets):
+                        # Calculate Binary Cross-Entropy Loss for each sample
+                        bce_loss = (
+                            nn.functional.binary_cross_entropy_with_logits(
+                                inputs, targets, reduction="none"
+                            )
+                        )
+                        # Compute pt (model confidence on true class)
+                        pt = torch.exp(-bce_loss)
+                        # Apply the focal adjustment
+                        focal_loss = (
+                            self.alpha * (1 - pt) ** self.gamma * bce_loss
+                        )
+                        # Apply reduction (mean, sum, or no reduction)
+                        if self.reduction == "mean":
+                            return focal_loss.mean()
+                        elif self.reduction == "sum":
+                            return focal_loss.sum()
+                        else:
+                            return focal_loss
+
+                if isinstance(loss_fct, str):
+                    loss_fn_kwargs = self.config.head_config.get(
+                        "loss_function_kwargs", {}
+                    )
+                    if loss_fct.lower() == "mse":
+                        loss_fct = nn.MSELoss()
+                    elif loss_fct.lower() == "crossentropy":
+                        loss_fct = nn.CrossEntropyLoss()
+                    elif loss_fct.lower() == "bce":
+                        loss_fct = nn.BCELoss()
+                    elif loss_fct.lower() == "bcewithlogits":
+                        loss_fct = nn.BCEWithLogitsLoss()
+                    elif loss_fct.lower() == "focal":
+                        loss_fct = FocalLoss(**loss_fn_kwargs)
+                    elif loss_fct.lower() == "poisson":
+                        loss_fct = nn.PoissonNLLLoss(**loss_fn_kwargs)
+                    elif loss_fct.lower() == "cosine_similarity":
+                        # Cosine Similarity Loss
+                        loss_fct = nn.CosineEmbeddingLoss(**loss_fn_kwargs)
+                    else:
+                        raise ValueError(
+                            f"Unsupported loss function: {loss_fct}"
+                        )
+                elif isinstance(loss_fct, nn.Module):
+                    pass
+                else:
+                    raise ValueError(
+                        "Loss function must be a string or "
+                        "an nn.Module instance."
+                    )
             if self.score.task_type == "regression":
-                loss_fct = nn.MSELoss()
+                loss_fct = nn.MSELoss() if loss_fct is None else loss_fct
                 if self.num_labels == 1:
                     loss = loss_fct(logits.squeeze(), labels.squeeze())
                 else:
                     loss = loss_fct(logits, labels)
             elif self.score.task_type in ["binary", "multiclass"]:
-                loss_fct = nn.CrossEntropyLoss()
+                loss_fct = (
+                    nn.CrossEntropyLoss() if loss_fct is None else loss_fct
+                )
                 loss = loss_fct(
                     logits.view(-1, self.num_labels), labels.view(-1)
                 )
             elif self.score.task_type == "multilabel":
-                loss_fct = nn.BCEWithLogitsLoss()
+                loss_fct = (
+                    nn.BCEWithLogitsLoss() if loss_fct is None else loss_fct
+                )
                 loss = loss_fct(logits, labels)
 
         # Expected output format for Trainer
@@ -785,6 +868,8 @@ def download_model(
                 break
             else:
                 reason = str(e)
+                if "no revision" in reason.lower():
+                    revision = None
             logger.warning(f"Retry: {cnt}, Status: {status}, Reason: {reason}")
             time.sleep(1)
 
@@ -843,9 +928,11 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
     evo_models = {
         "evo2_1b_base": "evo2-1b-8k",
         "evo2_7b_base": "evo2-7b-8k",
+        "evo2_7b_262k": "evo2-7b-262k",
         "evo2_7b": "evo2-7b-1m",
         "evo2_40b_base": "evo2-40b-8k",
         "evo2_40b": "evo2-40b-1m",
+        "evo2_7b_microviridae": "evo2-7b-8k",
     }
 
     for m in evo_models:
@@ -1224,11 +1311,11 @@ def _handle_megadna_models(
                 downloaded_model_path, _ = _get_model_path_and_imports(
                     model_name, source
                 )
-                if m in "megaDNA_updated".lower():
+                if m in "megaDNA_updated":
                     full_model_name = "megaDNA_phage_145M.pt"
-                elif m in "megaDNA_variants".lower():
+                elif m in "megaDNA_variants":
                     full_model_name = "megaDNA_phage_78M.pt"
-                elif m in "megaDNA_finetuned".lower():
+                elif m in "megaDNA_finetuned":
                     full_model_name = "megaDNA_phage_ecoli_finetuned.pt"
                 else:
                     full_model_name = "megaDNA_phage_145M.pt"
@@ -1267,6 +1354,7 @@ def _handle_megadna_models(
 def _handle_omnidna_models(
     model_name: str, extra: str | None = None
 ) -> str | None:
+    """Handle special case for Omni-DNA models."""
     omnidna_models = [
         "Omni-DNA-20M",
         "Omni-DNA-60M",
@@ -1292,6 +1380,69 @@ def _handle_omnidna_models(
                 ) from e
             return m
     return None
+
+
+def _handle_dnabert2_models(model_path: str, load_args: list) -> tuple:
+    """Handle special case for DNABERT-2 models.
+    If the installed Triton version not supports trans_b in tl.dot,
+    we disable the triton flash attention by renaming the file
+    flash_attn_triton.py to flash_attn_triton.py.disabled.
+    This is a workaround for the issue in triton 2.0.0+ that
+    causes flash attention to produce incorrect results.
+    Args:
+        model_path: Path to the model directory
+    """
+    if "DNABERT-2" not in os.path.basename(
+        model_path
+    ) and "DNABERT-S" not in os.path.basename(model_path):
+        return None, None
+
+    def triton_supports_trans_b():
+        try:
+            import triton.language as tl
+
+            a = tl.zeros((1, 1), dtype=tl.float32)
+            b = tl.zeros((1, 1), dtype=tl.float32)
+            tl.dot(a, b, trans_b=True)
+            return True
+        except TypeError:
+            return False
+        except Exception:
+            return True
+
+    triton_file_path = None
+    original_content = None
+    should_disable_triton = triton_supports_trans_b()
+
+    try:
+        if should_disable_triton:
+            triton_file_path = os.path.join(model_path, "flash_attn_triton.py")
+            if os.path.exists(triton_file_path):
+                # Step 1: Read and back up the original file content
+                with open(triton_file_path, encoding="utf-8") as f:
+                    original_content = f.read()
+                # Step 2: Overwrite the file with code
+                # that will raise an ImportError
+                with open(triton_file_path, "w", encoding="utf-8") as f:
+                    f.write(
+                        'raise ImportError("Temporarily disabled '
+                        'by script due to incompatible Triton version.")\n'
+                    )
+                logger.warning(
+                    "Triton version does not support, "
+                    "flash_attn_triton disabled."
+                )
+            else:
+                triton_file_path = None
+
+        model, tokenizer = _load_model_by_task_type(*load_args)
+        return model, tokenizer
+    finally:
+        # This block will execute no matter what,
+        # ensuring the original file is restored.
+        if original_content is not None and triton_file_path is not None:
+            with open(triton_file_path, "w", encoding="utf-8") as f:
+                f.write(original_content)
 
 
 def _setup_huggingface_mirror(use_mirror: bool) -> None:
@@ -1535,7 +1686,10 @@ def _load_model_by_task_type(
         )
     else:
         model = modules["AutoModel"].from_pretrained(
-            model_name, trust_remote_code=True, attn_implementation="eager"
+            model_name,
+            trust_remote_code=True,
+            attn_implementation="eager",
+            ignore_mismatched_sizes=True,
         )
 
     return model, tokenizer
@@ -1676,14 +1830,25 @@ def load_model_and_tokenizer(
                 f"but got {safe_num_labels}. Setting to 0."
             )
             safe_num_labels = 0
-        if task_type not in ["binary", "regression", "generation"]:
+        elif task_type == "embedding" and safe_num_labels != 0:
+            logger.warning(
+                f"Embedding task does not require num_labels, "
+                f"but got {safe_num_labels}. Setting to 0."
+            )
+            safe_num_labels = 0
+        if task_type not in [
+            "binary",
+            "regression",
+            "generation",
+            "embedding",
+        ]:
             if safe_num_labels < 2:
                 raise ValueError(
                     f"num_labels should be at least 2 for task type "
                     f"'{task_type}', but got {safe_num_labels}."
                 )
 
-        model, tokenizer = _load_model_by_task_type(
+        load_args = [
             task_type,
             model_name,
             safe_num_labels,
@@ -1691,7 +1856,12 @@ def load_model_and_tokenizer(
             label2id,
             modules,
             head_config,
+        ]
+        model, tokenizer = _handle_dnabert2_models(
+            downloaded_model_path, load_args
         )
+        if model is None or tokenizer is None:
+            model, tokenizer = _load_model_by_task_type(*load_args)
         # Set model path and source attributes
         model._model_path = downloaded_model_path
         model.source = source

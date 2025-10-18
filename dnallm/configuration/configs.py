@@ -81,11 +81,26 @@ class HeadConfig(BaseModel):
             "List of embedding dimensions for model with multi-scale features."
         ),
     )
-    custom_head: Any | None = Field(
+    custom_head: Any | None = (
+        Field(
+            default=None,
+            description=(
+                "Custom head class. If provided, this will override other "
+                "head configuration parameters."
+            ),
+        ),
+    )
+    loss_function: str | None = Field(
         default=None,
         description=(
-            "Custom head class. If provided, this will override other head "
-            "configuration parameters."
+            "Custom loss function for the head. If None, default loss "
+            "functions will be used based on the task."
+        ),
+    )
+    loss_fn_kwargs: dict | None = Field(
+        default=None,
+        description=(
+            "Additional keyword arguments for the custom loss function."
         ),
     )
 
