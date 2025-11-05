@@ -10,39 +10,40 @@ from captum.attr import (
     NoiseTunnel,
     IntegratedGradients,
     DeepLift,
-    GradientShap
+    GradientShap,
 )
 from transformers import PreTrainedModel, PreTrainedTokenizer
-from .plot import (plot_attributions_token, plot_attributions_line,
-                   plot_attributions_multi)
+from .plot import (
+    plot_attributions_token,
+    plot_attributions_line,
+    plot_attributions_multi,
+)
 
 
-# --- 内部包装器 ---
-# 包装器 1: 接受 input_ids
-# 用于 LayerIntegratedGradients (归因于Embedding层时)
-# 用于 Occlusion 和 FeatureAblation (基于扰动的方法)
+# Used for LIG, DeepLIFT (Attribution to Embedding layer)
+# Also used for Occlusion and FeatureAblation (perturbation-based methods)
 class _CaptumWrapperInputIDs(nn.Module):
     """
-    Captum 包装器，forward 方法接受 input_ids (LongTensor)。
+    Captum wrapper, forward method accepts input_ids (LongTensor).
     """
+
     def __init__(self, model: PreTrainedModel):
         super().__init__()
         self.model = model
 
-    def forward(self,
-                input_ids: torch.Tensor,
-                attention_mask: torch.Tensor | None = None
-                ) -> torch.Tensor:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+    ):
         """
-        这个 'forward' 接受 input_ids。
-        它假定模型输出一个带有 .logits 属性的对象。
+        Accepts input_ids.
+        It assumes the model outputs an object with a .logits attribute.
         """
-        # 传递给Hugging Face模型
         outputs = self.model(
-            input_ids=input_ids,
-            attention_mask=attention_mask
+            input_ids=input_ids, attention_mask=attention_mask
         )
-        # 适用于 ...ForSequenceClassification,
+        # Supports ...ForSequenceClassification,
         # ...ForTokenClassification, ...ForCausalLM
         if hasattr(outputs, "logits"):
             return outputs.logits
@@ -57,27 +58,28 @@ class _CaptumWrapperInputIDs(nn.Module):
             )
 
 
-# 包装器 2: 接受 inputs_embeds
-# 用于 LayerConductance (归因于Transformer/Mamba内部层时)
+# Use for LayerConductance
+# (when attributing to internal layers of Transformer/Mamba)
 class _CaptumWrapperInputEmbeds(nn.Module):
     """
-    Captum 包装器，forward 方法接受 inputs_embeds (FloatTensor)。
+    Captum class, which forward method accepts inputs_embeds (FloatTensor).
     """
+
     def __init__(self, model: PreTrainedModel):
         super().__init__()
         self.model = model
 
-    def forward(self,
-                inputs_embeds: torch.Tensor,
-                attention_mask: torch.Tensor | None = None
-                ) -> torch.Tensor:
+    def forward(
+        self,
+        inputs_embeds: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+    ):
         """
-        这个 'forward' 接受 inputs_embeds。
+        Accepts inputs_embeds instead of input_ids.
         """
-        # 假定模型支持 inputs_embeds
+        # Assume the model supports inputs_embeds
         outputs = self.model(
-            inputs_embeds=inputs_embeds,
-            attention_mask=attention_mask
+            inputs_embeds=inputs_embeds, attention_mask=attention_mask
         )
 
         if hasattr(outputs, "logits"):
@@ -93,12 +95,11 @@ class _CaptumWrapperInputEmbeds(nn.Module):
             )
 
 
-# --- 主解释类 ---
 class DNAInterpret:
     """
-    DNA大语言模型可解释性工具包，集成了Captum。
+    A class for interpreting DNA language models using Captum.
 
-    使用方法:
+    Usage:
     >>> model, tokenizer = load_model_and_tokenizer(...)
     >>> interpreter = DNAInterpret(model, tokenizer)
     >>> tokens, scores = interpreter.run_lig(
@@ -107,16 +108,19 @@ class DNAInterpret:
     >>>     task_type="seq_clf"
     >>> )
     """
-    def __init__(self,
-                 model: PreTrainedModel,
-                 tokenizer: PreTrainedTokenizer,
-                 config: dict | None = None):
+
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizer,
+        config: dict | None = None,
+    ):
         """
-        初始化解释器。
+        Initialize the interpreter.
 
         Args:
-            model (PreTrainedModel): 已经加载的、带有任务头（task head）的Hugging Face模型。
-            tokenizer (PreTrainedTokenizer): 已经加载的tokenizer。
+            model (PreTrainedModel): Model with a task head.
+            tokenizer (PreTrainedTokenizer): Tokenizer for the model.
         """
         self.model = model.eval()
         self.tokenizer = tokenizer
@@ -126,50 +130,51 @@ class DNAInterpret:
         self.embedding_layer = None
         self.model.to(self.device)
 
-        # 寻找合适的 PAD token ID 作为基线
+        # Find suitable PAD token ID for baselines
         if hasattr(tokenizer, "pad_token_id"):
             if tokenizer.pad_token_id is not None:
                 self.pad_token_id = tokenizer.pad_token_id
             else:
                 if hasattr(tokenizer, "eos_token_id"):
                     if tokenizer.eos_token_id is not None:
-                        print("Warning: tokenizer.pad_token_id is None. "
-                              "Using tokenizer.eos_token_id as pad token "
-                              "for baselines.")
+                        print(
+                            "Warning: tokenizer.pad_token_id is None. "
+                            "Using tokenizer.eos_token_id as pad token "
+                            "for baselines."
+                        )
                         self.pad_token_id = tokenizer.eos_token_id
                     else:
-                        print("Warning: No pad_token_id or eos_token_id "
-                              "found. Using 0. This may be incorrect.")
+                        print(
+                            "Warning: No pad_token_id or eos_token_id "
+                            "found. Using 0. This may be incorrect."
+                        )
                         self.pad_token_id = 0
         else:
             if hasattr(tokenizer, "pad_token"):
                 pad_token = tokenizer.pad_token
                 if hasattr(tokenizer, "convert_tokens_to_ids"):
-                    self.pad_token_id = (
-                        tokenizer.convert_tokens_to_ids(pad_token)
+                    self.pad_token_id = tokenizer.convert_tokens_to_ids(
+                        pad_token
                     )
                 elif hasattr(tokenizer, "tokenize"):
-                    self.pad_token_id = (
-                        tokenizer.tokenize(pad_token)[0]
-                    )
+                    self.pad_token_id = tokenizer.tokenize(pad_token)[0]
                 elif hasattr(tokenizer, "encode"):
-                    self.pad_token_id = (
-                        tokenizer.encode(
-                            pad_token, add_special_tokens=False
-                        )[0]
-                    )
+                    self.pad_token_id = tokenizer.encode(
+                        pad_token, add_special_tokens=False
+                    )[0]
                 else:
-                    print("Warning: Cannot determine pad_token_id. "
-                          "Using 0. This may be incorrect.")
+                    print(
+                        "Warning: Cannot determine pad_token_id. "
+                        "Using 0. This may be incorrect."
+                    )
                     self.pad_token_id = 0
 
-    # --- 内部辅助函数 ---
     def _find_embedding_layer(self) -> nn.Module:
         """
-        启发式地自动查找模型的主 nn.Embedding 层。
-        这是适配多种架构的关键。
+        Heuristically find the model's main nn.Embedding layer.
+        This is key for adapting to various architectures.
         """
-        # 常见模型的 Embedding 层路径
+        # Common paths for embedding layers in popular models
         # (BERT, DNABERT, ModernBert)
         common_paths = [
             "bert.embeddings.word_embeddings",
@@ -181,7 +186,7 @@ class DNAInterpret:
             # (Mamba, Jamba)
             "backbone.embeddings",
             "embeddings",
-            # (Hyena) - 假设它遵循类似 'embeddings' 的模式
+            # (Hyena) - Assume it follows a similar pattern to 'embeddings'
         ]
 
         for path in common_paths:
@@ -197,16 +202,18 @@ class DNAInterpret:
             except AttributeError:
                 continue
 
-        # 如果常见路径都失败了，进行一次通用搜索
+        # General fallback: search all modules for nn.Embedding
         for name, module in self.model.named_modules():
             if isinstance(module, nn.Embedding):
-                # 这是一个有风险的猜测，因为它可能是位置嵌入
-                # 但作为最后的手段
+                # This is a risky guess since it might be a position embedding
+                # But as a last resort
                 if "position" not in name and "pos" not in name:
                     if self.embedding_layer != name:
-                        print(f"Warning: Fallback detection found "
-                              f"an nn.Embedding: {name}. "
-                              "This might be incorrect.")
+                        print(
+                            f"Warning: Fallback detection found "
+                            f"an nn.Embedding: {name}. "
+                            "This might be incorrect."
+                        )
                     self.embedding_layer = name
                     return module
 
@@ -216,35 +223,34 @@ class DNAInterpret:
             "via the `embedding_layer` argument."
         )
 
-    def _get_input_tensors(self,
-                           sequence: str,
-                           max_length: int
-                           ) -> tuple[torch.Tensor, torch.Tensor]:
-        """将DNA序列tokenize并移动到设备。"""
+    def _get_input_tensors(
+        self, sequence: str, max_length: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Tokenize the DNA sequence and move to device."""
         try:
             inputs = self.tokenizer(
                 sequence,
                 return_tensors="pt",
                 truncation=True,
                 max_length=max_length,
-                padding="max_length"  # 填充对于创建一致的基线很重要
+                padding="max_length",
             )
             input_ids = inputs["input_ids"].to(self.device)
             attention_mask = inputs["attention_mask"].to(self.device)
         except Exception:
             inputs = self.tokenizer.tokenize(sequence)
-            input_ids = torch.tensor(
-                inputs, dtype=torch.long
-            ).unsqueeze(0).to(self.device)
-            attention_mask = torch.ones_like(
-                input_ids
-            ).to(self.device)
+            input_ids = (
+                torch.tensor(inputs, dtype=torch.long)
+                .unsqueeze(0)
+                .to(self.device)
+            )
+            attention_mask = torch.ones_like(input_ids).to(self.device)
         return input_ids, attention_mask
 
-    def _ids_to_tokens(self,
-                       token_ids: int,
-                       input_seq: str | None = None) -> list[str]:
-        """将 token IDs 转换为字符串 tokens。"""
+    def _ids_to_tokens(
+        self, token_ids: int, input_seq: str | None = None
+    ) -> list[str]:
+        """Convert token IDs to string tokens."""
         if hasattr(self.tokenizer, "convert_ids_to_tokens"):
             tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
         elif hasattr(self.tokenizer, "decode"):
@@ -258,44 +264,40 @@ class DNAInterpret:
         return tokens
 
     def _get_pad_baseline(self, input_ids: torch.Tensor) -> torch.Tensor:
-        """创建全PAD的基线张量 (用于 LIG, FeatureAblation)。"""
+        """Create a baseline tensor filled with PAD token IDs."""
         return torch.full_like(input_ids, self.pad_token_id).to(self.device)
 
     def _format_captum_target(
-        self,
-        target: int | str,
-        token_index: int | None = None
+        self, target: int | str, token_index: int | None = None
     ) -> int | tuple[int, int]:
         """
-        根据任务类型格式化 Captum 的 'target' 参数。
+        Formats the Captum 'target' parameter based on task type.
         """
         task_type = self.task_config.task_type
         if isinstance(target, str):
             target = self.task_config.label_names.index(target)
         if task_type in ["binary", "multiclass", "multilabel", "regression"]:
-            # 序列分类 (或回归): target 是类别索引 (int)
-            # logits 形状: [batch, num_classes]
+            # Sequence classification/regression: target is class index (int)
+            # logits shape: [batch, num_classes]
             return target
 
         elif task_type == "token":
-            # Token 分类 (NER): target 是 (token_index, class_index)
-            # logits 形状: [batch, seq_len, num_classes]
+            # Token classification (NER): target is (token_index, class_index)
+            # logits shape: [batch, seq_len, num_classes]
             if token_index is None:
                 raise ValueError("`token_index` must be provided.")
             return (token_index, target)
 
         elif task_type == "generation":
-            # CausalLM (生成): target 是 (token_index, vocab_id)
-            # logits 形状: [batch, seq_len, vocab_size]
+            # CausalLM (Generation): target is (token_index, vocab_id)
+            # logits shape: [batch, seq_len, vocab_size]
             if token_index is None:
-                token_index = -1  # 默认解释最后一个token的预测
+                token_index = -1  # last token's prediction
 
-            # 此时 'target' 被解释为 *词汇表ID*
+            # At this point, 'target' is interpreted as *vocab_id*
             return (token_index, target)
         else:
             raise ValueError(f"Unknown task_type: {task_type}.")
-
-    # --- 公共归因方法 ---
 
     def run_lig(
         self,
@@ -303,35 +305,39 @@ class DNAInterpret:
         target: int | str,
         token_index: int | None = None,
         embedding_layer: nn.Module | None = None,
-        max_length: int | None = None ,
-        **kwargs
+        max_length: int | None = None,
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 Layer Integrated Gradients (LIG)，归因于 Embedding 层。
-        这是最推荐的 k-mer 重要性分析方法。
+        Run Layer Integrated Gradients (LIG) for
+        attribution to the Embedding layer.
+        This is the most recommended method for k-mer importance analysis.
 
         Args:
-            input_seq (str): 输入的DNA序列。
-            target (int): 目标类别索引。
-                          - 对于 'seq_clf': 目标类的索引 (e.g., 1)。
-                          - 对于 'token_clf': 目标类的索引 (e.g., 2 for 'Promoter')。
-                          - 对于 'causal_lm': 目标 *词汇表ID* (e.g., 8 for 'G')。
-            task_type (str): 任务类型 ('seq_clf', 'token_clf', 'causal_lm')。
-            token_index (int, optional): 对于 'token_clf'/'causal_lm'
-                要解释的token位置。
-            embedding_layer (nn.Module, optional): 手动指定Embedding层。
-                如果为None，则自动查找。
-            max_length (int): Tokenizer的最大长度。
-            **kwargs: 传递给 captum.attr.LayerIntegratedGradients.attribute 的额外参数
-                      (例如: internal_batch_size=4)。
+            input_seq (str): input DNA sequence.
+            target (int): Target for attribution.
+                          - For 'seq_cls': target index (e.g., 1).
+                          - for 'token_cls': target type index
+                                (e.g., 2 for 'Promoter').
+                          - For 'causal_lm': Target *Token ID*
+                                 (e.g., 8 for 'G').
+            task_type (str): Task type
+            token_index (int, optional): for 'token_cls'/'causal_lm'
+                Token position to explain.
+            embedding_layer (nn.Module, optional): Specific Embedding layer.
+                Auto-detected if None.
+            max_length (int): Max token length for tokenizer.
+            **kwargs: Extra args for
+                captum.attr.LayerIntegratedGradients.attribute
+                (for example: internal_batch_size=4).
 
         Returns:
-            Tuple[List[str], np.ndarray]: (tokens 列表, 归因分数数组)
+            Tuple[List[str], np.ndarray]: tokens list, attribution scores array
         """
-        # 1. 使用接受 input_ids 的包装器
+        # 1. Use wrapper that accepts input_ids
         wrapper = _CaptumWrapperInputIDs(self.model)
 
-        # 2. 查找或使用指定的 Embedding 层
+        # 2. Find or use specified Embedding layer
         if embedding_layer is None:
             embedding_layer = self._find_embedding_layer()
 
@@ -341,31 +347,31 @@ class DNAInterpret:
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 3. 准备输入和基线
+        # 3. Prepare inputs and baselines
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baseline_input_ids = self._get_pad_baseline(input_ids)
 
-        # 4. 格式化 Captum target
+        # 4. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 5. 计算归因
+        # 5. Compute attributions
         attributions = lig.attribute(
             inputs=input_ids,
             baselines=baseline_input_ids,
             target=captum_target,
             additional_forward_args=(attention_mask,),
-            **kwargs
+            **kwargs,
         )
 
-        # 6. 处理结果
-        # 形状: (batch, seq_len, embed_dim) -> (seq_len)
+        # 6. Process results
+        # Shape: (batch, seq_len, embed_dim) -> (seq_len)
         attr_scores = attributions.sum(dim=-1).squeeze(0)
         attr_scores = attr_scores.cpu().detach().numpy()
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -375,17 +381,17 @@ class DNAInterpret:
         target: int | str,
         token_index: int | None = None,
         embedding_layer: nn.Module | None = None,
-        max_length: int | None = None ,
-        **kwargs
+        max_length: int | None = None,
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 Layer DeepLIFT，归因于 Embedding 层。
+        Run DeepLIFT for attribution to Embedding layer.
         """
         wrapper = _CaptumWrapperInputIDs(self.model)
         if embedding_layer is None:
             embedding_layer = self._find_embedding_layer()
 
-        # 使用 LayerDeepLift
+        # Use LayerDeepLift
         ldl = LayerDeepLift(wrapper, embedding_layer)
 
         # Get max token length from config if not provided
@@ -393,23 +399,25 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baseline_input_ids = self._get_pad_baseline(input_ids)
         captum_target = self._format_captum_target(target, token_index)
 
         attributions = ldl.attribute(
-            inputs=input_ids, baselines=baseline_input_ids,
-            target=captum_target, additional_forward_args=(attention_mask,),
-            **kwargs
+            inputs=input_ids,
+            baselines=baseline_input_ids,
+            target=captum_target,
+            additional_forward_args=(attention_mask,),
+            **kwargs,
         )
 
-        attr_scores = attributions.sum(
-            dim=-1
-        ).squeeze(0).cpu().detach().numpy()
+        attr_scores = (
+            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
+        )
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -418,58 +426,58 @@ class DNAInterpret:
         input_seq: str,
         target: int | str,
         token_index: int | None = None,
-        max_length: int | None = None ,
+        max_length: int | None = None,
         n_samples: int = 5,
-        **kwargs
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 GradientSHAP，归因于 Embedding 层。
-        注意: GradientSHAP 速度较慢。
+        Run GradientSHAP at the Embedding layer.
+        Attention: GradientSHAP can be slow.
 
         Args:
             ...
-            n_samples (int): 从基线中采样的数量。
+            n_samples (int): Number of samples to draw from the baseline.
         """
-        # 1. 使用接受 inputs_embeds 的包装器
+        # 1. Use wrapper that accepts inputs_embeds
         wrapper = _CaptumWrapperInputEmbeds(self.model)
 
-        # 2. 使用基础的 GradientShap (非 Layer 版本)
+        # 2. Use basic GradientShap (non-layer version)
         gs = GradientShap(wrapper)
 
         # Get max token length from config if not provided
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 3. 准备 Embeddings (与 LayerConductance 相同)
+        # 3. Prepare Embeddings (the same as LayerConductance)
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baseline_input_ids = self._get_pad_baseline(input_ids)
         embedding_layer = self._find_embedding_layer()
         with torch.no_grad():
             inputs_embeds = embedding_layer(input_ids)
             baseline_embeds = embedding_layer(baseline_input_ids)
 
-        # 4. 格式化 Captum target
+        # 4. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 5. 在 embeds 层面调用 attribute
+        # 5. Call attribute at the embeds level
         attributions = gs.attribute(
-            inputs=inputs_embeds,       # <--- 传入 embeds
-            baselines=baseline_embeds,  # <--- 传入 embeds (作为基线分布)
+            inputs=inputs_embeds,  # Pass in embeds
+            baselines=baseline_embeds,  # Pass in baseline embeds
             n_samples=n_samples,
             target=captum_target,
             additional_forward_args=(attention_mask,),
-            **kwargs
+            **kwargs,
         )
 
-        # 6. 处理结果 (形状: (batch, seq_len, embed_dim) -> (seq_len))
-        attr_scores = attributions.sum(
-            dim=-1
-        ).squeeze(0).cpu().detach().numpy()
+        # 6. Process results (shape: (batch, seq_len, embed_dim) -> (seq_len))
+        attr_scores = (
+            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
+        )
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -478,22 +486,24 @@ class DNAInterpret:
         input_seq: str,
         target: int | str,
         token_index: int | None = None,
-        max_length: int | None = None ,
+        max_length: int | None = None,
         sliding_window_shapes: tuple[int] = (1,),
-        **kwargs
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 Occlusion (遮挡)。
-        注意：此方法可能非常慢。
+        Run Occlusion (perturbation-based method).
+        Attention: This method can be very slow.
 
         Args:
-            ... (参数与 run_lig 类似) ...
-            sliding_window_shapes (Tuple[int]): 遮挡窗口的大小，(1,) 表示一次遮挡1个token。
+            ... (Args similar to run_lig) ...
+            sliding_window_shapes (Tuple[int]):
+                Size of the occlusion window,
+                (1,) means occluding 1 token at a time.
 
         Returns:
-            Tuple[List[str], np.ndarray]: (tokens 列表, 归因分数数组)
+            Tuple[List[str], np.ndarray]: tokens list, attribution scores array
         """
-        # 1. 使用接受 input_ids 的包装器
+        # 1. Use wrapper that accepts input_ids
         wrapper = _CaptumWrapperInputIDs(self.model)
         occlusion = Occlusion(wrapper)
 
@@ -501,33 +511,33 @@ class DNAInterpret:
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 2. 准备输入
+        # 2. Prepare inputs
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
 
-        # 3. Occlusion 的基线是单个 PAD token ID (标量)
+        # 3. Occlusion baseline is a single PAD token ID (scalar)
         baselines = self.pad_token_id
 
-        # 4. 格式化 Captum target
+        # 4. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 5. 计算归因
+        # 5. Compute attributions
         attributions = occlusion.attribute(
             inputs=input_ids,
             sliding_window_shapes=sliding_window_shapes,
             target=captum_target,
             additional_forward_args=(attention_mask,),
             baselines=baselines,
-            **kwargs
+            **kwargs,
         )
 
-        # 6. 处理结果
-        # 形状: (batch, seq_len) -> (seq_len)
+        # 6. Process results
+        # Shape: (batch, seq_len) -> (seq_len)
         attr_scores = attributions.squeeze(0).cpu().detach().numpy()
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -536,19 +546,19 @@ class DNAInterpret:
         input_seq: str,
         target: int | str,
         token_index: int | None = None,
-        max_length: int | None = None ,
-        **kwargs
+        max_length: int | None = None,
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 Feature Ablation (特征消融)。
+        Run Feature Ablation (perturbation-based method).
 
         Args:
-            ... (参数与 run_occlusion 类似) ...
+            ... (Args similar to run_occlusion) ...
 
         Returns:
-            Tuple[List[str], np.ndarray]: (tokens 列表, 归因分数数组)
+            Tuple[List[str], np.ndarray]: tokens list, attribution scores array
         """
-        # 1. 使用接受 input_ids 的包装器
+        # 1. Use wrapper that accepts input_ids
         wrapper = _CaptumWrapperInputIDs(self.model)
         ablation = FeatureAblation(wrapper)
 
@@ -556,37 +566,39 @@ class DNAInterpret:
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 2. 准备输入和基线 (FeatureAblation 需要一个张量基线)
+        # 2. Prepare inputs and baselines
+        # (FeatureAblation requires a tensor baseline)
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baselines = self._get_pad_baseline(input_ids)
 
-        # 3. 格式化 Captum target
+        # 3. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 4. FeatureAblation 需要 feature_mask 来定义特征（默认每个token一个特征）
-        # 形状: (batch_size, num_features) -> (1, seq_len)
-        feature_mask = torch.arange(
-            input_ids.shape[1]
-        ).unsqueeze(0).to(self.device)
+        # 4. FeatureAblation requires feature_mask to define features
+        # (default one feature per token)
+        # Shape: (batch_size, num_features) -> (1, seq_len)
+        feature_mask = (
+            torch.arange(input_ids.shape[1]).unsqueeze(0).to(self.device)
+        )
 
-        # 5. 计算归因
+        # 5. Compute attributions
         attributions = ablation.attribute(
             inputs=input_ids,
             target=captum_target,
             additional_forward_args=(attention_mask,),
             baselines=baselines,
             feature_mask=feature_mask,
-            **kwargs
+            **kwargs,
         )
 
-        # 6. 处理结果
-        # 形状: (batch, seq_len) -> (seq_len)
+        # 6. Process results
+        # Shape: (batch, seq_len) -> (seq_len)
         attr_scores = attributions.squeeze(0).cpu().detach().numpy()
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -596,25 +608,25 @@ class DNAInterpret:
         target: int | str,
         target_layer: nn.Module,
         token_index: int | None = None,
-        max_length: int | None = None ,
-        **kwargs
+        max_length: int | None = None,
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 Layer Conductance (层电导)。
+        Run Layer Conductance for attribution to an internal layer.
 
-        重要: 
-        1. 此方法假定 self.model.forward 支持 'inputs_embeds'。
-        2. 您必须手动传入 'target_layer'。
+        Important:
+        1. This method assumes self.model.forward supports 'inputs_embeds'.
+        2. You must manually pass in 'target_layer'.
 
         Args:
-            ... (参数与 run_lig 类似) ...
-            target_layer (nn.Module): 要分析的内部层 
-                                     (例如: `model.bert.encoder.layer[-1]`)。
+            ... (Args similar to run_lig) ...
+            target_layer (nn.Module): internal layer to analyze
+                                     (such as: `model.bert.encoder.layer[-1]`).
 
         Returns:
-            Tuple[List[str], np.ndarray]: (tokens 列表, 归因分数数组)
+            Tuple[List[str], np.ndarray]: tokens list, attribution scores array
         """
-        # 1. 使用接受 inputs_embeds 的包装器
+        # 1. Use wrapper that accepts inputs_embeds
         wrapper = _CaptumWrapperInputEmbeds(self.model)
         lc = LayerConductance(wrapper, target_layer)
 
@@ -622,41 +634,41 @@ class DNAInterpret:
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 2. 准备输入 (input_ids)
+        # 2. Prepare inputs (input_ids)
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baseline_input_ids = self._get_pad_baseline(input_ids)
 
-        # 3. 【关键】手动将 IDs 转换为 Embeddings
+        # 3. Manually convert IDs to Embeddings
         embedding_layer = self._find_embedding_layer()
         with torch.no_grad():
             inputs_embeds = embedding_layer(input_ids)
             baseline_embeds = embedding_layer(baseline_input_ids)
 
-        # 4. 格式化 Captum target
+        # 4. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 5. 计算归因 (输入是 embeds)
+        # 5. Compute attributions (inputs are embeds)
         attributions_tuple = lc.attribute(
-            inputs=inputs_embeds,       # <--- 传入 embeds
-            baselines=baseline_embeds,  # <--- 传入 embeds
+            inputs=inputs_embeds,  # <--- Pass in embeds
+            baselines=baseline_embeds,  # <--- Pass in embeds
             target=captum_target,
             additional_forward_args=(attention_mask,),
-            **kwargs
+            **kwargs,
         )
 
-        # 6. 处理结果
+        # 6. Process results
         if isinstance(attributions_tuple, tuple):
             attributions = attributions_tuple[0]
         else:
             attributions = attributions_tuple
-        # 形状: (batch, seq_len, hidden_dim) -> (seq_len)
+        # Shape: (batch, seq_len, hidden_dim) -> (seq_len)
         attr_scores = attributions.sum(dim=-1).squeeze(0)
         attr_scores = attr_scores.cpu().detach().numpy()
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
@@ -666,34 +678,37 @@ class DNAInterpret:
         target: int | str,
         base_method: str,
         token_index: int | None = None,
-        max_length: int | None = None ,
+        max_length: int | None = None,
         nt_type: str = "smoothgrad",
         nt_samples: int = 5,
         nt_stdevs: float = 0.1,
-        **kwargs
+        **kwargs,
     ) -> tuple[list[str], np.ndarray]:
         """
-        运行 NoiseTunnel (例如 SmoothGrad) 以获得更平滑的归因。
-
-        这将在 'inputs_embeds' 层面运行，以避免 'nn.Embedding' 的类型冲突。
+        Run NoiseTunnel (e.g., SmoothGrad) for smoother attributions.
+        This will run at the 'inputs_embeds' level to avoid
+        type conflicts with 'nn.Embedding'.
 
         Args:
             ...
-            base_method (str): 要使用的基础归因方法。
-                               支持: 'lig' (IntegratedGradients), 
-                                     'deeplift' (DeepLift),
-                                     'gradshap' (GradientShap)。
-            nt_type (str): 'smoothgrad' (默认), 'smoothgrad_sq', 或 'vargrad'.
-            nt_samples (int): 噪声采样的数量。
-            nt_stdevs (float): 噪声的标准差。
+            base_method (str): The base attribution method to use.
+                               Support:
+                                 'lig' (IntegratedGradients),
+                                 'deeplift' (DeepLift),
+                                 'gradshap' (GradientShap).
+            nt_type (str): 'smoothgrad'(default), 'smoothgrad_sq' or 'vargrad'.
+            nt_samples (int): The number of noise samples.
+            nt_stdevs (float): The standard deviation of the noise.
         """
-        print(f"Running NoiseTunnel ({nt_type}) "
-              f"with base method: {base_method}...")
+        print(
+            f"Running NoiseTunnel ({nt_type}) "
+            f"with base method: {base_method}..."
+        )
 
-        # 1. 使用接受 inputs_embeds 的包装器
+        # 1. Use wrapper that accepts inputs_embeds
         wrapper = _CaptumWrapperInputEmbeds(self.model)
 
-        # 2. 选择基础归因方法 (非 Layer 版本)
+        # 2. Select base attribution method (non-Layer version)
         if base_method.lower() == "lig":
             attr_method = IntegratedGradients(wrapper)
         elif base_method.lower() == "deeplift":
@@ -701,140 +716,146 @@ class DNAInterpret:
         elif base_method.lower() == "gradshap":
             attr_method = GradientShap(wrapper)
         else:
-            raise ValueError(f"Unknown base_method: {base_method}. "
-                             "Supported: 'lig', 'deeplift', 'gradshap'")
+            raise ValueError(
+                f"Unknown base_method: {base_method}. "
+                "Supported: 'lig', 'deeplift', 'gradshap'"
+            )
 
-        # 3. 用 NoiseTunnel 包装
+        # 3. Wrap with NoiseTunnel
         nt = NoiseTunnel(attr_method)
 
         # Get max token length from config if not provided
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        # 4. 准备 Embeddings (与 LayerConductance 相同)
+        # 4. Prepare Embeddings (same as LayerConductance)
         input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length)
+            input_seq, max_length
+        )
         baseline_input_ids = self._get_pad_baseline(input_ids)
         embedding_layer = self._find_embedding_layer()
         with torch.no_grad():
             inputs_embeds = embedding_layer(input_ids)
             baseline_embeds = embedding_layer(baseline_input_ids)
 
-        # 5. 格式化 Captum target
+        # 5. Format Captum target
         captum_target = self._format_captum_target(target, token_index)
 
-        # 6. 准备归因参数
+        # 6. Prepare attribution parameters
         attr_kwargs = {
             "target": captum_target,
             "additional_forward_args": (attention_mask,),
             "nt_type": nt_type,
             "nt_samples": nt_samples,
-            "stdevs": nt_stdevs,  # 注意: NoiseTunnel 参数叫 'stdevs'
-            **kwargs
+            "stdevs": nt_stdevs,
+            **kwargs,
         }
 
-        # 7. 根据基础方法调用 attribute
-        # GradientShap 需要 n_samples 和 baselines (分布)
+        # 7. Call attribute method
+        # GradientShap need n_samples and baselines (distribution)
         if base_method.lower() == "gradshap":
             attributions = nt.attribute(
                 inputs=inputs_embeds,
-                baselines=baseline_embeds,  # 使用 PAD embeds 作为基线分布
-                n_samples=nt_samples,  # gradshap 自己的 n_samples
-                **attr_kwargs
-            )
-        else:  # LIG 和 DeepLIFT
-            attributions = nt.attribute(
-                inputs=inputs_embeds,
                 baselines=baseline_embeds,
-                **attr_kwargs
+                n_samples=nt_samples,  # gradshap own n_samples
+                **attr_kwargs,
+            )
+        else:  # LIG or DeepLIFT
+            attributions = nt.attribute(
+                inputs=inputs_embeds, baselines=baseline_embeds, **attr_kwargs
             )
 
-        # 8. 处理结果
-        # 形状: (batch, seq_len, hidden_dim) -> (seq_len)
-        attr_scores = attributions.sum(
-            dim=-1
-        ).squeeze(0).cpu().detach().numpy()
+        # 8. Process results
+        # Shape: (batch, seq_len, hidden_dim) -> (seq_len)
+        attr_scores = (
+            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
+        )
 
         tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0),
-            input_seq=input_seq
+            token_ids=input_ids.squeeze(0), input_seq=input_seq
         )
         return tokens, attr_scores
 
-    def interpret(self, input_seq: str,
-                  method: str,
-                  target: int | str,
-                  token_index: int | None = None,
-                  target_layer: nn.Module | None = None,
-                  max_length: int | None = None,
-                  plot: bool = True,
-                  **kwargs
-                  ) -> tuple[list[str], np.ndarray]:
+    def interpret(
+        self,
+        input_seq: str,
+        method: str,
+        target: int | str,
+        token_index: int | None = None,
+        target_layer: nn.Module | None = None,
+        max_length: int | None = None,
+        plot: bool = True,
+        **kwargs,
+    ) -> tuple[list[str], np.ndarray]:
         """
-        综合解释接口，根据指定方法运行归因。
+        A unified interpretation interface that runs
+        the specified attribution method.
 
         Args:
-            input_seq (str): 输入的DNA序列。
-            method (str): 归因方法名称。
-                支持: 'lig', 'deeplift', 'gradshap',
-                      'occlusion', 'feature_ablation',
-                      'layer_conductance', 'noise_tunnel'。
-            target (int): 目标类别索引。
-            token_index (int, optional): 对于 'token_clf'/'causal_lm'
-                要解释的token位置。
-            target_layer (nn.Module, optional): 对于 'layer_conductance'，
-                要分析的内部层。
-            max_length (int, optional): Tokenizer的最大长度。
-            plot (bool): 是否存储归因以供绘图使用。
-            **kwargs: 传递给具体归因方法的额外参数。
+            input_seq (str): Input DNA sequence.
+            method (str): Attribution method name.
+                Support:
+                    'lig', 'deeplift', 'gradshap',
+                    'occlusion', 'feature_ablation',
+                    'layer_conductance', 'noise_tunnel'.
+            target (int): Target for attribution.
+            token_index (int, optional): For 'token_cls'/'causal_lm'
+                token position to explain.
+            target_layer (nn.Module, optional): for 'layer_conductance',
+                internal layer to analyze.
+            max_length (int, optional): Max token length for tokenizer.
+            plot (bool): Whether to store attributions for plotting.
+            **kwargs: Extra args for specific attribution methods.
 
         Returns:
-            Tuple[List[str], np.ndarray]: (tokens 列表, 归因分数数组)
+            Tuple[List[str], np.ndarray]: tokens list, attribution scores array
         """
         method = method.lower()
         if method == "lig":
             tokens, attr_scores = self.run_lig(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         elif method == "deeplift":
             tokens, attr_scores = self.run_deeplift(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         elif method == "gradshap":
             tokens, attr_scores = self.run_gradshap(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         elif method == "occlusion":
             tokens, attr_scores = self.run_occlusion(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         elif method == "feature_ablation":
             tokens, attr_scores = self.run_feature_ablation(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         elif method == "layer_conductance":
             if target_layer is None:
-                raise ValueError("`target_layer` must be provided for "
-                                 "`layer_conductance` method.")
+                raise ValueError(
+                    "`target_layer` must be provided for "
+                    "`layer_conductance` method."
+                )
             tokens, attr_scores = self.run_layer_conductance(
-                input_seq, target, target_layer, token_index,
-                max_length=max_length, **kwargs
+                input_seq,
+                target,
+                target_layer,
+                token_index,
+                max_length=max_length,
+                **kwargs,
             )
         elif method == "noise_tunnel":
             tokens, attr_scores = self.run_noise_tunnel(
-                input_seq, target, token_index,
-                max_length=max_length, **kwargs
+                input_seq, target, token_index, max_length=max_length, **kwargs
             )
         else:
-            raise ValueError(f"Unknown method: {method}. "
-                             "Supported methods: 'lig', 'deeplift', "
-                             "'gradshap', 'occlusion', 'feature_ablation', "
-                             "'layer_conductance', 'noise_tunnel'.")
+            raise ValueError(
+                f"Unknown method: {method}. "
+                "Supported methods: 'lig', 'deeplift', "
+                "'gradshap', 'occlusion', 'feature_ablation', "
+                "'layer_conductance', 'noise_tunnel'."
+            )
         if plot:
             self.attributions = (tokens, attr_scores)
         else:
@@ -842,29 +863,36 @@ class DNAInterpret:
 
         return tokens, attr_scores
 
-    def batch_interpret(self, input_seqs: list[str],
-                        method: str,
-                        targets: list[int],
-                        token_indices: list[int] | None = None,
-                        target_layers: list[nn.Module] | None = None,
-                        max_length: int | None = None,
-                        plot: bool = True,
-                        **kwargs
-                        ) -> list[tuple[list[str], np.ndarray]]:
+    def batch_interpret(
+        self,
+        input_seqs: list[str],
+        method: str,
+        targets: list[int],
+        token_indices: list[int] | None = None,
+        target_layers: list[nn.Module] | None = None,
+        max_length: int | None = None,
+        plot: bool = True,
+        **kwargs,
+    ) -> list[tuple[list[str], np.ndarray]]:
         """
-        批量解释多个序列。
+        Batch interpret multiple sequences.
 
         Args:
-            input_seqs (List[str]): 输入的DNA序列列表。
-            method (str): 归因方法名称。
-            targets (List[int]): 每个序列的目标类别索引列表。
-            token_indices (List[int], optional): 每个序列的token位置列表。
-            target_layers (List[nn.Module], optional): 每个序列的target_layer列表。
-            max_length (int, optional): Tokenizer的最大长度。
-            **kwargs: 传递给具体归因方法的额外参数。
+            input_seqs (List[str]): List of input DNA sequences.
+            method (str): Attribution method name.
+            targets (List[int]):
+                List of target class indices for each sequence.
+            token_indices (List[int], optional):
+                Each sequence's token_index list.
+            target_layers (List[nn.Module], optional):
+                Each sequence's target_layer list.
+            max_length (int, optional): Max token length for tokenizer.
+            plot (bool): Whether to store attributions for plotting.
+            **kwargs: Extra args for specific attribution methods.
 
         Returns:
-            List[Tuple[List[str], np.ndarray]]: 每个序列的 (tokens 列表, 归因分数数组) 列表。
+            List[Tuple[List[str], np.ndarray]]:
+                List of (tokens list, attribution scores array) tuples.
         """
         results = []
         for i, seq in enumerate(input_seqs):
@@ -881,7 +909,7 @@ class DNAInterpret:
                 token_index=token_index,
                 target_layer=target_layer,
                 max_length=max_length,
-                **kwargs
+                **kwargs,
             )
             results.append((tokens, scores))
         if plot:
@@ -891,41 +919,44 @@ class DNAInterpret:
 
         return results
 
-    def plot_attributions(self,
-                          plot_type: str = "token",
-                          **kwargs
-                          ):
+    def plot_attributions(self, plot_type: str = "token", **kwargs):
         """
-        绘制归因结果。
+        Plot the attributions using specified plot type.
 
         Args:
-            plot_type (str): 绘图类型，'token' (默认), 'line', 或 'multi'。
-            **kwargs: 传递给具体绘图函数的额外参数。
+            plot_type (str): Plot type, 'token' (default), 'line', or 'multi'.
+            **kwargs: Extra parameters for specific plotting functions.
         """
         if self.attributions is None:
-            raise RuntimeError("No attributions found. "
-                               "Please run `interpret` or `batch_interpret` "
-                               "with `plot=True` first.")
+            raise RuntimeError(
+                "No attributions found. "
+                "Please run `interpret` or `batch_interpret` "
+                "with `plot=True` first."
+            )
 
         plot_type = plot_type.lower()
         if isinstance(self.attributions, list):
             if plot_type != "multi":
-                print("Warning: Multiple attributions found, "
-                      "falling back to 'multi' plot.")
-            # 多个序列的归因图
+                print(
+                    "Warning: Multiple attributions found, "
+                    "falling back to 'multi' plot."
+                )
+            # Multiple sequences' attributions
             plot = plot_attributions_multi(self.attributions, **kwargs)
         elif plot_type == "token":
-            # 单个序列的 token 归因图
+            # Single sequence's token attribution plot
             tokens, scores = self.attributions
             plot = plot_attributions_token(tokens, scores, **kwargs)
         elif plot_type == "line":
-            # 单个序列的线性归因图
+            # Single sequence's line attribution plot
             tokens, scores = self.attributions
             plot = plot_attributions_line(tokens, scores, **kwargs)
         elif plot_type == "multi":
-            # 多个序列的归因图
+            # Multiple sequences' attributions
             plot = plot_attributions_multi(self.attributions, **kwargs)
         else:
-            raise ValueError(f"Unknown plot_type: {plot_type}. "
-                             "Supported: 'token', 'line', 'multi'.")
+            raise ValueError(
+                f"Unknown plot_type: {plot_type}. "
+                "Supported: 'token', 'line', 'multi'."
+            )
         return plot

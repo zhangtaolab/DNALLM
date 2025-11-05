@@ -268,9 +268,9 @@ def plot_bars(
 
 
 def plot_polar_bar(
-       data: dict,
-       title: str | None = None,
-       save_path: str | None = None,
+    data: dict,
+    title: str | None = None,
+    save_path: str | None = None,
 ) -> alt.Chart:
     """Plot a polar bar chart.
 
@@ -284,17 +284,29 @@ def plot_polar_bar(
     Returns:
         Altair chart object.
     """
-    _default_colors = [
-        "#a6cee3", "#1f78b4", "#b2df8a", "#33a02c",
-        "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00",
-        "#cab2d6", "#6a3d9a", "#ffff99", "#b15928"
-    ]
+    # _default_colors = [
+    #     "#a6cee3",
+    #     "#1f78b4",
+    #     "#b2df8a",
+    #     "#33a02c",
+    #     "#fb9a99",
+    #     "#e31a1c",
+    #     "#fdbf6f",
+    #     "#ff7f00",
+    #     "#cab2d6",
+    #     "#6a3d9a",
+    #     "#ffff99",
+    #     "#b15928",
+    # ]
 
     metrics = {}
     for name in data:
         metric = name.replace("test_", "")
         if metric in [
-            "loss", "runtime", "samples_per_second", "steps_per_second"
+            "loss",
+            "runtime",
+            "samples_per_second",
+            "steps_per_second",
         ]:
             continue
         metrics[metric.capitalize()] = data[name]
@@ -303,27 +315,26 @@ def plot_polar_bar(
         "Metric": list(metrics.keys()),
         "Value": [v * 100 for v in metrics.values()],
         "index": list(range(len(metrics))),
-        "color": _default_colors[:len(metrics)]
+        # "color": _default_colors[: len(metrics)],
     })
 
-    base = alt.Chart(df).mark_arc(
-        stroke="grey",
-        padAngle=0.05,
-        cornerRadius=10,
-        tooltip=True
-        ).encode(
-        theta=alt.Theta("Metric:O", sort=None),
-        radius=alt.Radius("Value").scale(type="sqrt", zero=True),
-        radius2=alt.datum(5),
-        color=alt.Color("Metric:N", sort=None).scale(scheme="tableau20"),
-        order=alt.Order("index:Q"),
+    base = (
+        alt.Chart(df)
+        .mark_arc(stroke="grey", padAngle=0.05, cornerRadius=10, tooltip=True)
+        .encode(
+            theta=alt.Theta("Metric:O", sort=None),
+            radius=alt.Radius("Value").scale(type="sqrt", zero=True),
+            radius2=alt.datum(5),
+            color=alt.Color("Metric:N", sort=None).scale(scheme="tableau20"),
+            order=alt.Order("index:Q"),
+        )
     )
 
     text = base.mark_text(radiusOffset=10).encode(
         radius=alt.Radius("Value:Q", scale=alt.Scale(type="sqrt", zero=True)),
         angle=alt.Angle("Metric:N", sort=None),
         text=alt.Text("Value:Q", format=".2f"),
-        color=alt.value("black")
+        color=alt.value("black"),
     )
 
     chart = alt.layer(base, text)
@@ -347,24 +358,24 @@ def plot_curve(
 ) -> alt.Chart | dict[str, alt.Chart]:
     """Plot ROC and PR curves for classification tasks.
 
-          This function creates ROC (Receiver Operating Characteristic) and
-          PR (Precision-Recall)
-      curves to evaluate model performance on classification tasks.
+        This function creates ROC (Receiver Operating Characteristic) and
+        PR (Precision-Recall)
+    curves to evaluate model performance on classification tasks.
 
-      Args:
-          data: Dictionary containing ROC and PR curve data with "ROC" and
-                "PR" keys, and optionally "AUROC" and "AUPRC" score dicts.
-          show_score: Whether to show the score values on the plot (now
-                implemented in the legend).
-          width: Width of each plot
-          height: Height of each plot
-                  save_path: Path to save the plot. If None,
-                plot will be shown interactively
-          separate: Whether to return separate plots for ROC and PR curves
+    Args:
+        data: Dictionary containing ROC and PR curve data with "ROC" and
+              "PR" keys, and optionally "AUROC" and "AUPRC" score dicts.
+        show_score: Whether to show the score values on the plot (now
+              implemented in the legend).
+        width: Width of each plot
+        height: Height of each plot
+                save_path: Path to save the plot. If None,
+              plot will be shown interactively
+        separate: Whether to return separate plots for ROC and PR curves
 
-      Returns:
-                Altair chart object (combined or
-                separate plots based on separate parameter)
+    Returns:
+              Altair chart object (combined or
+              separate plots based on separate parameter)
     """
     pline = {}
     p_separate = {}
@@ -385,12 +396,13 @@ def plot_curve(
     )
 
     # Diagonal line
-    diag_line = alt.Chart(pd.DataFrame(
-        {"fpr": [0, 1], "tpr": [0, 1]})).mark_line(
-        strokeDash=[5, 5], color="gray"
-    ).encode(
-        x=alt.X("fpr").scale(domain=(0.0, 1.0)),
-        y=alt.Y("tpr").scale(domain=(0.0, 1.0)),
+    diag_line = (
+        alt.Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
+        .mark_line(strokeDash=[5, 5], color="gray")
+        .encode(
+            x=alt.X("fpr").scale(domain=(0.0, 1.0)),
+            y=alt.Y("tpr").scale(domain=(0.0, 1.0)),
+        )
     )
 
     pline[0] = roc_chart + diag_line
@@ -402,7 +414,7 @@ def plot_curve(
         # Create a DataFrame for the text annotations
         text_data = []
         y_offset = 0.05  # Vertical spacing between text lines
-        y_start = 0.05    # Start from the bottom
+        y_start = 0.05  # Start from the bottom
 
         # Dynamically calculate y positions based on the number of models
         for i, (model, score) in enumerate(auroc_scores.items()):
@@ -410,7 +422,7 @@ def plot_curve(
                 "models": model,
                 "label": f"{model} (AUC={score:.3f})",
                 "fpr": 0.95,
-                "tpr": y_start + i * y_offset
+                "tpr": y_start + i * y_offset,
             })
 
         auroc_text_df = pd.DataFrame(text_data)
@@ -425,7 +437,7 @@ def plot_curve(
                 y=alt.Y("tpr:Q", scale=alt.Scale(domain=(0.0, 1.0))),
                 text="label:N",
                 # Use the same color encoding as the line chart
-                color=alt.Color("models:N", legend=None)
+                color=alt.Color("models:N", legend=None),
             )
         )
         # Add the text layer to the ROC plot
@@ -450,16 +462,21 @@ def plot_curve(
         )
         .properties(width=width, height=height, title="PR Curve")
     )
-    pr_baseline = alt.Chart(pd.DataFrame(
-        {"recall": [0, 1],
-         "precision": [
-             pr_data["precision"].min(),
-             pr_data["precision"].min()]}
-        )).mark_line(
-        strokeDash=[5, 5], color="gray"
-    ).encode(
-        x=alt.X("recall").scale(domain=(0.0, 1.0)),
-        y=alt.Y("precision").scale(domain=(0.0, 1.0)),
+    pr_baseline = (
+        alt.Chart(
+            pd.DataFrame({
+                "recall": [0, 1],
+                "precision": [
+                    pr_data["precision"].min(),
+                    pr_data["precision"].min(),
+                ],
+            })
+        )
+        .mark_line(strokeDash=[5, 5], color="gray")
+        .encode(
+            x=alt.X("recall").scale(domain=(0.0, 1.0)),
+            y=alt.Y("precision").scale(domain=(0.0, 1.0)),
+        )
     )
 
     pline[1] = pr_chart + pr_baseline
@@ -471,14 +488,14 @@ def plot_curve(
         # Create a DataFrame for the text annotations
         text_data = []
         y_offset = 0.05  # Vertical spacing between text lines
-        y_start = 0.05   # Start from the bottom
+        y_start = 0.05  # Start from the bottom
 
         for i, (model, score) in enumerate(auprc_scores.items()):
             text_data.append({
                 "models": model,
                 "label": f"{model} (AUC={score:.3f})",
                 "recall": 0.05,
-                "precision": y_start + i * y_offset
+                "precision": y_start + i * y_offset,
             })
 
         auprc_text_df = pd.DataFrame(text_data)
@@ -493,7 +510,7 @@ def plot_curve(
                 y=alt.Y("precision:Q", scale=alt.Scale(domain=(0.0, 1.0))),
                 text="label:N",
                 # Use the same color encoding as the line chart
-                color=alt.Color("models:N", legend=None)
+                color=alt.Color("models:N", legend=None),
             )
         )
 
@@ -594,20 +611,17 @@ def plot_scatter(
         base = alt.Chart(ddot, title=model).properties(
             width=width, height=height
         )
-        dot = (
-            base.mark_point(filled=True, size=15, opacity=1)
-            .encode(
-                x=alt.X("experiment:Q", title="Observed"),
-                y=alt.Y("predicted:Q", title="Predicted"),
-
-                color=alt.Color(
-                    "density:Q",
-                    scale=alt.Scale(scheme="viridis"),
-                    legend=alt.Legend(title="Density")
-                ) if density_calculated else alt.value("blue"),
-
-                tooltip=["experiment", "predicted", "density"]
+        dot = base.mark_point(filled=True, size=15, opacity=1).encode(
+            x=alt.X("experiment:Q", title="Observed"),
+            y=alt.Y("predicted:Q", title="Predicted"),
+            color=alt.Color(
+                "density:Q",
+                scale=alt.Scale(scheme="viridis"),
+                legend=alt.Legend(title="Density"),
             )
+            if density_calculated
+            else alt.value("blue"),
+            tooltip=["experiment", "predicted", "density"],
         )
 
         if show_score:
@@ -1035,9 +1049,9 @@ def _create_embedding_plot(source_df, layer_idx, width, height):
         .encode(
             x=alt.X("Dimension 1:Q"),
             y=alt.Y("Dimension 2:Q"),
-            color=alt.Color("labels:N",
-                            legend=alt.Legend(title="Labels")
-                            ).scale(scheme="set1"),
+            color=alt.Color(
+                "labels:N", legend=alt.Legend(title="Labels")
+            ).scale(scheme="set1"),
         )
         .properties(width=width, height=height)
     )
@@ -1476,7 +1490,7 @@ def plot_attributions_token(
     tokens: list[str],
     scores: np.ndarray,
     title: str = "Token-level Attributions",
-    special_tokens: list[str] | None = None
+    special_tokens: list[str] | None = None,
 ) -> alt.Chart:
     """
     Visualize token-level attribution scores as colored text using Altair.
@@ -1495,20 +1509,31 @@ def plot_attributions_token(
     # 1. Filter out special tokens
     if special_tokens is None:
         special_tokens = [
-            "[CLS]", "[SEP]", "[PAD]",
-            "<s>", "</s>", "<pad>",
-            "<unk>", "[UNK]",
-            "<bos>", "<eos>",
-            "<cls>", "<sep>"
+            "[CLS]",
+            "[SEP]",
+            "[PAD]",
+            "<s>",
+            "</s>",
+            "<pad>",
+            "<unk>",
+            "[UNK]",
+            "<bos>",
+            "<eos>",
+            "<cls>",
+            "<sep>",
         ]
-    valid_indices = [i for i, token in enumerate(tokens)
-                     if token not in special_tokens]
+    valid_indices = [
+        i for i, token in enumerate(tokens) if token not in special_tokens
+    ]
     vis_tokens = [tokens[i] for i in valid_indices]
     vis_scores = scores[valid_indices]
 
     if len(vis_tokens) == 0:
         print("Warning: No valid tokens to plot after filtering.")
-        return alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
 
     # 2. Calculate each token"s length and precise position in the sequence
     token_lengths = [len(t) for t in vis_tokens]
@@ -1522,7 +1547,7 @@ def plot_attributions_token(
         "token_length": token_lengths,
         "start_pos": start_pos,
         "end_pos": end_pos,
-        "center_pos": center_pos
+        "center_pos": center_pos,
     })
 
     # 3. Calculate color scale domain and range
@@ -1535,21 +1560,23 @@ def plot_attributions_token(
     base = alt.Chart(source).properties(
         width=max(600, int(source["end_pos"].max() * 12)),  # dynamic width
         height=50,
-        title=title
+        title=title,
     )
 
     # Background rectangles, using x and x2 to define variable width
     rects = base.mark_rect().encode(
         x=alt.X("start_pos:Q", axis=None, title="Base Position"),
         x2=alt.X2("end_pos:Q"),
-        color=alt.Color("score:Q",
-                        scale=alt.Scale(domain=domain, range=color_range),
-                        legend=alt.Legend(title="Attribution Score")),
+        color=alt.Color(
+            "score:Q",
+            scale=alt.Scale(domain=domain, range=color_range),
+            legend=alt.Legend(title="Attribution Score"),
+        ),
         tooltip=[
             alt.Tooltip("token:N", title="Token"),
             alt.Tooltip("score:Q", title="Score", format=".4f"),
-            alt.Tooltip("token_length:Q", title="Length (bp)")
-        ]
+            alt.Tooltip("token_length:Q", title="Length (bp)"),
+        ],
     )
 
     # Text layer, centered
@@ -1559,11 +1586,12 @@ def plot_attributions_token(
         color=alt.condition(
             alt.datum.score > max_abs_score * 0.5,
             alt.value("white"),
-            alt.value("black")
-        )
+            alt.value("black"),
+        ),
     )
+    chart = (rects + text).configure_view(strokeWidth=0)
 
-    return (rects + text).configure_view(strokeWidth=0)
+    return chart
 
 
 def plot_attributions_line(
@@ -1571,7 +1599,7 @@ def plot_attributions_line(
     scores: np.ndarray,
     title: str = "Positional Attribution Scores",
     window_size: int | None = 5,
-    special_tokens: list[str] | None = None
+    special_tokens: list[str] | None = None,
 ) -> alt.Chart:
     """
     Plot attribution scores as a line chart to show regional importance.
@@ -1587,81 +1615,97 @@ def plot_attributions_line(
     """
     if special_tokens is None:
         special_tokens = [
-            "[CLS]", "[SEP]", "[PAD]",
-            "<s>", "</s>", "<pad>",
-            "<unk>", "[UNK]",
-            "<bos>", "<eos>",
-            "<cls>", "<sep>"
+            "[CLS]",
+            "[SEP]",
+            "[PAD]",
+            "<s>",
+            "</s>",
+            "<pad>",
+            "<unk>",
+            "[UNK]",
+            "<bos>",
+            "<eos>",
+            "<cls>",
+            "<sep>",
         ]
-    valid_indices = [i for i, token in enumerate(tokens)
-                     if token not in special_tokens]
+    valid_indices = [
+        i for i, token in enumerate(tokens) if token not in special_tokens
+    ]
     vis_scores = scores[valid_indices]
 
     if len(vis_scores) == 0:
         print("Warning: No valid scores to plot after filtering.")
-        return alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
 
     source = pd.DataFrame({
         "position": range(len(vis_scores)),
-        "Raw": vis_scores
+        "Raw": vis_scores,
     })
 
     # Create base chart (raw scores)
-    area = alt.Chart(source).mark_area(opacity=0.2, color="lightblue").encode(
-        x=alt.X("position:Q", title="Token Position"),
-        y=alt.Y("Raw:Q", title="Attribution Score")
+    area = (
+        alt.Chart(source)
+        .mark_area(opacity=0.2, color="lightblue")
+        .encode(
+            x=alt.X("position:Q", title="Token Position"),
+            y=alt.Y("Raw:Q", title="Attribution Score"),
+        )
     )
     # Add base line at y=0 (dashed line)
-    area += alt.Chart(
-        pd.DataFrame({"y": [0]})
-    ).mark_rule(color="black", strokeDash=[5, 5]).encode(
-        y="y:Q"
+    area += (
+        alt.Chart(pd.DataFrame({"y": [0]}))
+        .mark_rule(color="black", strokeDash=[5, 5])
+        .encode(y="y:Q")
     )
 
     # if need to smooth the scores
     if window_size and window_size > 1:
-        source["Smoothed"] = source["Raw"].rolling(
-            window=window_size,
-            center=True,
-            min_periods=1
-        ).mean()
+        source["Smoothed"] = (
+            source["Raw"]
+            .rolling(window=window_size, center=True, min_periods=1)
+            .mean()
+        )
         # Convert to long format for Altair
         long_source = source.melt(
-            id_vars=["position"],
-            var_name="type",
-            value_name="value"
+            id_vars=["position"], var_name="type", value_name="value"
         )
     else:  # if no smoothing, just use raw scores
         long_source = source.melt(
-            id_vars=["position"],
-            var_name="type",
-            value_name="value"
+            id_vars=["position"], var_name="type", value_name="value"
         )
 
     # Create line chart layer
-    lines = alt.Chart(long_source).mark_line().encode(
-        x=alt.X("position:Q"),
-        y=alt.Y("value:Q"),
-        color=alt.Color("type:N", legend=alt.Legend(title="Score Type")),
-        tooltip=[
-            alt.Tooltip("position:Q"),
-            alt.Tooltip("value:Q", format=".4f", title="Score"),
-            alt.Tooltip("type:N", title="Type")
-        ]
+    lines = (
+        alt.Chart(long_source)
+        .mark_line()
+        .encode(
+            x=alt.X("position:Q"),
+            y=alt.Y("value:Q"),
+            color=alt.Color("type:N", legend=alt.Legend(title="Score Type")),
+            tooltip=[
+                alt.Tooltip("position:Q"),
+                alt.Tooltip("value:Q", format=".4f", title="Score"),
+                alt.Tooltip("type:N", title="Type"),
+            ],
+        )
     )
 
     chart = area + lines
 
-    return chart.properties(
-        width=800,
-        height=200,
-        title=title
-    ).interactive().configure_axis(grid=False)
+    chart: alt.Chart = (
+        chart.properties(width=800, height=200, title=title)
+        .interactive()
+        .configure_axis(grid=False)
+    )
+    return chart
 
 
 def plot_attributions_multi(
     all_attributions: list[tuple[list[str], np.ndarray]],
-    title: str = "Aggregated Attribution Heatmap"
+    title: str = "Aggregated Attribution Heatmap",
 ) -> alt.Chart:
     """
     Plot an aggregated heatmap of attribution scores from multiple sequences.
@@ -1681,14 +1725,23 @@ def plot_attributions_multi(
     """
     if not all_attributions:
         print("Warning: No scores provided to plot.")
-        return alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
 
     # 0. Remove right padding tokens/scores if any
     trimmed_attributions = []
     possible_padding_tokens = [
-        "[PAD]", "<pad>", "</s>", "<eos>",
-        "[SEP]", "<sep>",
-        " ", "#", "*"
+        "[PAD]",
+        "<pad>",
+        "</s>",
+        "<eos>",
+        "[SEP]",
+        "<sep>",
+        " ",
+        "#",
+        "*",
     ]
     pad_token = possible_padding_tokens[0]
     for tokens, scores in all_attributions:
@@ -1700,9 +1753,10 @@ def plot_attributions_multi(
             else:
                 last_valid_index = i + 1
                 break
-        trimmed_attributions.append(
-            (tokens[:last_valid_index], scores[:last_valid_index])
-        )
+        trimmed_attributions.append((
+            tokens[:last_valid_index],
+            scores[:last_valid_index],
+        ))
 
     # 1. Check for consistent lengths
     first_len = len(trimmed_attributions[0][1])
@@ -1713,15 +1767,18 @@ def plot_attributions_multi(
         for tokens, scores in trimmed_attributions:
             if len(scores) < max_len:
                 extended_scores = np.pad(
-                    scores, (0, max_len - len(scores)),
-                    mode="constant", constant_values=np.nan
+                    scores,
+                    (0, max_len - len(scores)),
+                    mode="constant",
+                    constant_values=np.nan,
                 )
-                extended_tokens = (
-                    tokens + [pad_token] * (max_len - len(tokens))
+                extended_tokens = tokens + [pad_token] * (
+                    max_len - len(tokens)
                 )
-                extended_attributions.append(
-                    (extended_tokens, extended_scores)
-                )
+                extended_attributions.append((
+                    extended_tokens,
+                    extended_scores,
+                ))
             else:
                 extended_attributions.append((tokens, scores))
         all_attributions = extended_attributions
@@ -1741,22 +1798,31 @@ def plot_attributions_multi(
     color_range = ["#2166ac", "#f7f7f7", "#b2182b"]  # Blue -> White -> Red
 
     # 4. Create heatmap
-    heatmap = alt.Chart(source).mark_rect().encode(
-        x=alt.X(
-            "position:O", title="Aligned Position",
-            axis=alt.Axis(labels=True, ticks=True)
-        ),
-        y=alt.Y(
-            "sample_index:O", title="Sample Index",
-            axis=alt.Axis(labels=False, ticks=False)
-        ),
-        color=alt.Color("score:Q",
-                        scale=alt.Scale(domain=domain, range=color_range),
-                        legend=alt.Legend(title="Attribution"))
-    ).properties(
-        width=len(all_attributions[0][1]) * 15,
-        height=len(all_attributions) * 15,
-        title=title
+    heatmap: alt.Chart = (
+        alt.Chart(source)
+        .mark_rect()
+        .encode(
+            x=alt.X(
+                "position:O",
+                title="Aligned Position",
+                axis=alt.Axis(labels=True, ticks=True),
+            ),
+            y=alt.Y(
+                "sample_index:O",
+                title="Sample Index",
+                axis=alt.Axis(labels=False, ticks=False),
+            ),
+            color=alt.Color(
+                "score:Q",
+                scale=alt.Scale(domain=domain, range=color_range),
+                legend=alt.Legend(title="Attribution"),
+            ),
+        )
+        .properties(
+            width=len(all_attributions[0][1]) * 15,
+            height=len(all_attributions) * 15,
+            title=title,
+        )
     )
 
     return heatmap

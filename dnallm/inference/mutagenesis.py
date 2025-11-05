@@ -381,10 +381,7 @@ class Mutagenesis:
             )
 
         # Calculate scores
-        def get_score(
-                values: np.ndarray,
-                raw_score: np.ndarray = None
-                ) -> float:
+        def get_score(values: np.ndarray, raw_score: np.ndarray = None):
             # Get final score
             if strategy == "first":
                 score = values[0]
@@ -430,12 +427,8 @@ class Mutagenesis:
                 "logfc": logfc,
                 "diff": diff,
             }
-            all_predictions[mut_name]["score"] = get_score(
-                logfc, raw_score
-            )
-            all_predictions[mut_name]["score2"] = get_score(
-                diff, raw_score
-            )
+            all_predictions[mut_name]["score"] = get_score(logfc, raw_score)
+            all_predictions[mut_name]["score2"] = get_score(diff, raw_score)
             all_predictions[mut_name]["logits"] = get_score(
                 mut_score, raw_score
             )
@@ -495,7 +488,7 @@ class Mutagenesis:
         preds: dict[str, dict],
         strategy="maxabs",
         window_size: int = 10,
-        percentile_threshold: float = 90.0
+        percentile_threshold: float = 90.0,
     ) -> list[tuple[int, int]]:
         """
         Identify hotspot regions from base-level importance scores.
@@ -515,9 +508,7 @@ class Mutagenesis:
                                    for each hotspot.
         """
         # We care about the magnitude of change, so use absolute scores
-        base_scores = self.process_ism_data(
-            preds, strategy=strategy
-        )
+        base_scores = self.process_ism_data(preds, strategy=strategy)
         abs_scores = pd.Series(np.abs(base_scores))
 
         # Calculate rolling average of scores
@@ -563,8 +554,7 @@ class Mutagenesis:
         return hotspots_regioned
 
     def prepare_tfmodisco_inputs(
-        self,
-        ism_results_list: list[dict[str, dict]]
+        self, ism_results_list: list[dict[str, dict]]
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Prepares inputs required for a TF-MoDISco run from

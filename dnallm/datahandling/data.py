@@ -1426,9 +1426,9 @@ class DNADataset:
             final = self._create_final_chart(df, task_type)
         self._display_or_save_chart(final, save_path)
 
-    def _create_final_chart(self,
-                            df: pd.DataFrame | dict[str, pd.DataFrame],
-                            task_type: str) -> Any:
+    def _create_final_chart(
+        self, df: pd.DataFrame | dict[str, pd.DataFrame], task_type: str
+    ) -> Any:
         """Create the final chart based on dataset type."""
         import altair as alt
 
@@ -1505,12 +1505,10 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
-                color=alt.Color("label_str:N",
-                                legend=alt.Legend(title="Labels")),
-                tooltip=[
-                    alt.Tooltip("seq_len:Q"),
-                    alt.Tooltip("count():Q")
-                ],
+                color=alt.Color(
+                    "label_str:N", legend=alt.Legend(title="Labels")
+                ),
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("count():Q")],
             )
             .properties(width=300, height=240)
         )
@@ -1552,10 +1550,7 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
-                tooltip=[
-                    alt.Tooltip("seq_len:Q"),
-                    alt.Tooltip("count():Q")
-                ],
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("count():Q")],
             )
             .properties(width=300, height=240)
         )

@@ -1744,15 +1744,12 @@ class DNAInference:
         # Use batch_infer to get embeddings and compute scores
         if isinstance(inputs, list):
             _, dataloader = self.generate_dataset(
-                inputs,
-                batch_size=self.pred_config.batch_size
+                inputs, batch_size=self.pred_config.batch_size
             )
         else:
             dataloader = inputs
         _, _, embeddings = self.batch_infer(
-            dataloader,
-            output_hidden_states=True,
-            do_pred=False
+            dataloader, output_hidden_states=True, do_pred=False
         )
         # Compute scores
         if "hidden_states" in embeddings:
