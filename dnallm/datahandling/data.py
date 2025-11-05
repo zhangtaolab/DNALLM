@@ -1370,19 +1370,21 @@ class DNADataset:
         seq_col = "sequence"
         # label_col = "labels"  # Not used in current implementation
         if isinstance(self.dataset, DatasetDict):
+            self.stats_for_plot = {}
             for split_name, split_ds in self.dataset.items():
                 df = prepare_dataframe(split_ds)
                 data_type = self.data_type
                 basic = compute_basic_stats(df, seq_col)
                 stats[split_name] = {"data_type": data_type, **basic}
+                self.stats_for_plot[split_name] = df
         else:
             df = prepare_dataframe(self.dataset)
             data_type = self.data_type
             basic = compute_basic_stats(df, seq_col)
             stats["full"] = {"data_type": data_type, **basic}
+            self.stats_for_plot = df
 
         self.stats = stats  # Store stats in the instance for later use
-        self.stats_for_plot = df
 
         return stats
 
@@ -1414,11 +1416,19 @@ class DNADataset:
             )
 
         task_type = self.data_type or "unknown"
-        df = self.stats_for_plot.copy()
-        final = self._create_final_chart(df, task_type)
+        if isinstance(self.stats_for_plot, dict):
+            df_list = {}
+            for split_name, df in self.stats_for_plot.items():
+                df_list[split_name] = df.copy()
+            final = self._create_final_chart(df_list, task_type)
+        else:
+            df = self.stats_for_plot.copy()
+            final = self._create_final_chart(df, task_type)
         self._display_or_save_chart(final, save_path)
 
-    def _create_final_chart(self, df: pd.DataFrame, task_type: str) -> Any:
+    def _create_final_chart(self,
+                            df: pd.DataFrame | dict[str, pd.DataFrame],
+                            task_type: str) -> Any:
         """Create the final chart based on dataset type."""
         import altair as alt
 
@@ -1427,9 +1437,10 @@ class DNADataset:
         split_charts = []
 
         if isinstance(self.stats, dict):
-            for split_name, _split_stats in self.stats.items():
+            for split_name, _ in self.stats.items():
+                stats = df[split_name] if isinstance(df, dict) else df
                 chart = self._per_split_charts(
-                    df, task_type, seq_col, label_col
+                    stats, task_type, seq_col, label_col
                 ).properties(title=split_name)
                 split_charts.append(chart)
             return alt.hconcat(*split_charts).properties(
@@ -1494,7 +1505,12 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
-                color=alt.Color("label_str:N", title="Label"),
+                color=alt.Color("label_str:N",
+                                legend=alt.Legend(title="Labels")),
+                tooltip=[
+                    alt.Tooltip("seq_len:Q"),
+                    alt.Tooltip("count():Q")
+                ],
             )
             .properties(width=300, height=240)
         )
@@ -1506,6 +1522,10 @@ class DNADataset:
                 x=alt.X("label_str:N", title="Label"),
                 y=alt.Y("gc:Q", title="GC content"),
                 color=alt.Color("label_str:N", legend=None),
+                tooltip=[
+                    alt.Tooltip("label_str:N"),
+                    alt.Tooltip("gc:Q"),
+                ],
             )
             .properties(width=300, height=240)
         )
@@ -1532,6 +1552,10 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
+                tooltip=[
+                    alt.Tooltip("seq_len:Q"),
+                    alt.Tooltip("count():Q")
+                ],
             )
             .properties(width=300, height=240)
         )
@@ -1744,6 +1768,8 @@ def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> Any:
     from modelscope import MsDataset
 
     actual_dataset_name = ds_info["name"]
+    print(f"Loading dataset: {actual_dataset_name} ...")
+    print(task)
     if task and task in ds_info["tasks"]:
         return MsDataset.load(actual_dataset_name, data_dir=task)
     else:

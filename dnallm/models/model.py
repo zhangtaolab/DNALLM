@@ -1830,6 +1830,12 @@ def load_model_and_tokenizer(
                 f"but got {safe_num_labels}. Setting to 0."
             )
             safe_num_labels = 0
+        elif task_type == "mask" and safe_num_labels != 0:
+            logger.warning(
+                f"Mask task does not require num_labels, "
+                f"but got {safe_num_labels}. Setting to 0."
+            )
+            safe_num_labels = 0
         elif task_type == "embedding" and safe_num_labels != 0:
             logger.warning(
                 f"Embedding task does not require num_labels, "
@@ -1840,6 +1846,7 @@ def load_model_and_tokenizer(
             "binary",
             "regression",
             "generation",
+            "mask",
             "embedding",
         ]:
             if safe_num_labels < 2:

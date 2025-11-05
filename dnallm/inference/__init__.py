@@ -1,4 +1,5 @@
 from .inference import DNAInference
+from .interpret import DNAInterpret
 from .benchmark import Benchmark
 from .mutagenesis import Mutagenesis
 from .plot import (
@@ -14,6 +15,7 @@ from .plot import (
 __all__ = [
     "Benchmark",
     "DNAInference",
+    "DNAInterpret",
     "Mutagenesis",
     "plot_attention_map",
     "plot_bars",

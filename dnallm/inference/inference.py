@@ -993,6 +993,7 @@ class DNAInference:
     def infer_seqs(
         self,
         sequences: str | list[str],
+        do_pred: bool = True,
         evaluate: bool = False,
         output_hidden_states: bool = False,
         output_attentions: bool = False,
@@ -1030,6 +1031,7 @@ class DNAInference:
             dataloader,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
+            do_pred=do_pred,
         )
         # Keep hidden states
         if output_hidden_states or output_attentions:
@@ -1233,6 +1235,7 @@ class DNAInference:
         seq_idx: int = 0,
         layer: int = -1,
         head: int = -1,
+        skip_cls=True,
         width: int = 800,
         height: int = 800,
         save_path: str | None = None,
@@ -1277,6 +1280,7 @@ class DNAInference:
                 self.tokenizer,
                 seq_idx=seq_idx,
                 layer=layer,
+                skip_cls=skip_cls,
                 head=head,
                 width=width,
                 height=height,
@@ -1735,6 +1739,39 @@ class DNAInference:
                     loss = model(input_ids, return_value="loss")
                 outputs.append({"Input": seq, "Score": loss})
             return outputs
+
+        # General scoring for other base models (No classification head)
+        # Use batch_infer to get embeddings and compute scores
+        if isinstance(inputs, list):
+            _, dataloader = self.generate_dataset(
+                inputs,
+                batch_size=self.pred_config.batch_size
+            )
+        else:
+            dataloader = inputs
+        _, _, embeddings = self.batch_infer(
+            dataloader,
+            output_hidden_states=True,
+            do_pred=False
+        )
+        # Compute scores
+        if "hidden_states" in embeddings:
+            hidden_states = embeddings["hidden_states"]
+            scores = []
+            for i in range(len(score_seqs)):
+                # (layers, seq_len, dim)
+                seq_hidden = hidden_states[:, i, :, :]
+                if reduce_method == "mean":
+                    score = seq_hidden.mean().item()
+                elif reduce_method == "max":
+                    score = seq_hidden.max().item()
+                elif reduce_method == "min":
+                    score = seq_hidden.min().item()
+                else:
+                    score = seq_hidden.mean().item()
+                scores.append({"Input": score_seqs[i], "Score": score})
+            return scores
+
         return {}
 
     def get_embeddings(
