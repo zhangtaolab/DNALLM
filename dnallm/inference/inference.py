@@ -200,12 +200,12 @@ class DNAInference:
             ),
             "npu": (
                 "npu",
-                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),  # type: ignore[attr-defined]
                 "NPU",
             ),
             "ascend": (
                 "npu",
-                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),  # type: ignore[attr-defined]
                 "NPU",
             ),
         }
@@ -242,9 +242,9 @@ class DNAInference:
             return torch.device("cuda")
         if torch.backends.mps.is_available():
             return torch.device("mps")
-        if hasattr(torch, "xpu") and torch.xpu.is_available():
+        if hasattr(torch, "xpu") and torch.xpu.is_available():  # type: ignore[attr-defined]
             return torch.device("xpu")
-        if hasattr(torch, "npu") and torch.npu.is_available():
+        if hasattr(torch, "npu") and torch.npu.is_available():  # type: ignore[attr-defined]
             return torch.device("npu")
         return torch.device("cpu")
 
