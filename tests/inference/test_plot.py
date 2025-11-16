@@ -1007,7 +1007,11 @@ class TestPlotEmbeddings:
 
             # Test t-SNE embedding visualization
             chart = plot_embeddings(
-                hidden_states, attention_mask, "t-SNE", labels, label_names
+                hidden_states,
+                attention_mask,
+                reducer="t-SNE",
+                labels=labels,
+                label_names=label_names,
             )
             assert_chart_valid(chart)
 
@@ -1202,9 +1206,9 @@ class TestPlotEmbeddings:
                 chart = plot_embeddings(
                     hidden_states,
                     attention_mask,
-                    "t-SNE",
-                    labels,
-                    label_names,
+                    reducer="t-SNE",
+                    labels=labels,
+                    label_names=label_names,
                     save_path=pdf_file_path,
                 )
 
@@ -1930,9 +1934,9 @@ class TestPDFOutputQuality:
             plot_embeddings(
                 hidden_states,
                 attention_mask,
-                "t-SNE",
-                labels,
-                label_names,
+                reducer="t-SNE",
+                labels=labels,
+                label_names=label_names,
                 save_path=embeddings_pdf,
             )
             assert_pdf_created(embeddings_pdf)

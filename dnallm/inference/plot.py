@@ -39,8 +39,10 @@ def _prepare_classification_data(
 
     for model, model_metrics in metrics.items():
         bars_data["models"].append(model)
-        curves_data["AUROC"][model] = model_metrics["AUROC"]
-        curves_data["AUPRC"][model] = model_metrics["AUPRC"]
+        if "AUROC" in model_metrics:
+            curves_data["AUROC"][model] = model_metrics["AUROC"]
+        if "AUPRC" in model_metrics:
+            curves_data["AUPRC"][model] = model_metrics["AUPRC"]
         for metric, metric_data in model_metrics.items():
             if metric == "curve":
                 _process_curve_data(metric_data, curves_data, model)
@@ -196,9 +198,8 @@ def plot_bars(
     metrics_list = [x for x in data if x != "models"]
 
     for n, metric in enumerate(metrics_list):
-        # More efficient domain calculation with numpy
-        # Original: if metric in ["mae", "mse"]: domain_use = [0,
-        # dbar[metric].max()*1.1]
+        # convert to float for proper plotting
+        dbar[metric] = dbar[metric].astype(float)
         if metric in ["mae", "mse"]:
             domain_use = [0, dbar[metric].max() * 1.1]
         else:
@@ -425,7 +426,9 @@ def plot_curve(
                 "tpr": y_start + i * y_offset,
             })
 
-        auroc_text_df = pd.DataFrame(text_data)
+        auroc_text_df = pd.DataFrame(
+            text_data, columns=["models", "label", "fpr", "tpr"]
+        )
         auroc_text_layer = (
             alt.Chart(auroc_text_df)
             .mark_text(
@@ -441,8 +444,7 @@ def plot_curve(
             )
         )
         # Add the text layer to the ROC plot
-        pline[0] = pline[0] + auroc_text_layer
-    pline[0] = alt.layer(roc_chart, diag_line, auroc_text_layer)
+        pline[0] = alt.layer(roc_chart, diag_line, auroc_text_layer)
 
     if separate:
         p_separate["ROC"] = pline[0]
@@ -498,7 +500,9 @@ def plot_curve(
                 "precision": y_start + i * y_offset,
             })
 
-        auprc_text_df = pd.DataFrame(text_data)
+        auprc_text_df = pd.DataFrame(
+            text_data, columns=["models", "label", "recall", "precision"]
+        )
         auprc_text_layer = (
             alt.Chart(auprc_text_df)
             .mark_text(
@@ -514,7 +518,7 @@ def plot_curve(
             )
         )
 
-        pline[1] = pline[1] + auprc_text_layer
+        pline[1] = alt.layer(pr_chart, pr_baseline, auprc_text_layer)
 
     if separate:
         p_separate["PR"] = pline[1]
@@ -674,6 +678,216 @@ def plot_scatter(
         return pdots
 
 
+def plot_token_scatter(
+    scores: list[tuple[str, float]],
+    threshold_std: float = 2.0,
+    show_labels: bool = False,
+    extra_data: list[tuple[str, int, int]] | None = None,
+    width: int = 800,
+    height: int = 300,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Uses Z-score to plot outlier scatter plot.
+
+    This function takes a list of (name, value) pairs, computes Z-scores,
+    and uses Altair to plot a scatter plot highlighting outliers with different
+    colors and sizes. This mimics the functionality of the matplotlib code you
+    provided.
+
+    Args:
+        scores: a list of [(name, value), ...]。
+        threshold_std: Z-score threshold to identify outliers.
+        width: figure width.
+        height: figure height.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        alt.Chart: Altair chart object.
+    """
+
+    try:
+        df = pd.DataFrame(
+            [(x[0], -x[1]) for x in scores], columns=["Token", "Value"]
+        )
+    except Exception as e:
+        print(f"Format Error: {e}")
+        return alt.Chart()
+
+    # Use index as a base x-axis
+    df = df.reset_index()
+    mean_val = df["Value"].mean()
+    std_val = df["Value"].std()
+    # Calculate upper limit for outlier detection
+    upper_limit = mean_val + threshold_std * std_val
+
+    # Mark outliers based on Z-score
+    df["zscore"] = (df["Value"] - mean_val) / std_val
+    # Only consider positive Z-scores for outlier detection
+    df["is_outlier"] = df["zscore"] > threshold_std
+
+    # For legend and size encoding
+    num_outliers = df["is_outlier"].sum()
+    num_normal = len(df) - num_outliers
+
+    df["Status"] = np.where(
+        df["is_outlier"],
+        f"Outlier (n={num_outliers})",
+        f"Normal (n={num_normal})",
+    )
+
+    # Base Scatter Layer
+    # Use status for color encoding
+    base_scatter = (
+        alt.Chart(df)
+        .mark_point(filled=True)
+        .encode(
+            x=alt.X("index:Q", title="Token Index"),
+            y=alt.Y(
+                "Value:Q",
+                title="-LogP Score",
+                scale=alt.Scale(domain=(0.0, df["Value"].max() * 1.1)),
+            ),
+            color=alt.Color(
+                "Status:N",
+                scale=alt.Scale(
+                    domain=[
+                        f"Outlier (n={num_outliers})",
+                        f"Normal (n={num_normal})",
+                    ],
+                    range=["#fb8072", "#80b1d3"],
+                ),
+                legend=alt.Legend(title="Importance"),
+            ),
+            # Point size encoding
+            size=alt.condition(
+                alt.datum.is_outlier, alt.value(40), alt.value(20)
+            ),
+            # Alpha encoding
+            opacity=alt.condition(
+                alt.datum.is_outlier, alt.value(1.0), alt.value(0.6)
+            ),
+            tooltip=["index", "Token", "Value", "zscore"],
+        )
+    )
+    # Rule Layers
+    line_data = pd.DataFrame([
+        {
+            "label": f"Mean ({mean_val:.2f})",
+            "value": mean_val,
+            "color": "grey",
+            "dash": [3, 3],
+        },
+        {
+            "label": f"+{threshold_std}σ ({upper_limit:.2f})",  # noqa: RUF001
+            "value": upper_limit,
+            "color": "orange",
+            "dash": [3, 3],
+        },
+    ])
+    rule_lines = (
+        alt.Chart(line_data)
+        .mark_rule(strokeWidth=2)
+        .encode(
+            y="value:Q",
+            color=alt.Color(
+                "label:N",
+                scale={
+                    "domain": line_data["label"].tolist(),
+                    "range": line_data["color"].tolist(),
+                },
+                legend=alt.Legend(title="Threshold"),
+            ),
+            strokeDash=alt.StrokeDash(
+                "label:N",
+                scale={
+                    "domain": line_data["label"].tolist(),
+                    "range": line_data["dash"].tolist(),
+                },
+                legend=None,
+            ),
+        )
+    )
+    # Text Layer for Outliers
+    text_labels = (
+        alt.Chart(df)
+        .mark_text(align="left", dx=5, color="darkred")
+        .encode(x="index:Q", y="Value:Q", text="Token:N")
+        .transform_filter(alt.datum.is_outlier)
+    )
+    if extra_data:
+        # Convert to zero started index if necessary
+        start_pos = extra_data[0][1]
+        if len(extra_data[0]) == 4:
+            color_map = {item[0]: item[3] for item in extra_data}
+        else:
+            color_map = {}
+        for i, item in enumerate(extra_data):
+            region_type, start, end = item[:3]
+            extra_data[i] = (region_type, start - start_pos, end - start_pos)
+        extra_df = pd.DataFrame(extra_data, columns=["Type", "Start", "End"])
+        # assign colors if provided
+        if color_map:
+            domain = list(color_map.keys())
+            range_colors = [color_map[k] for k in domain]
+        else:
+            # assign default colors based on region type
+            # Use Set3 color palette (12 colors)
+            colors = [
+                "#8dd3c7",
+                "#ffffb3",
+                "#bebada",
+                "#fb8072",
+                "#80b1d3",
+                "#fdb462",
+                "#b3b3b3",
+                "#fccde5",
+                "#d9d9d9",
+                "#bc80bd",
+                "#ccebc5",
+                "#ffed6f",
+            ]
+            unique_types = list(
+                dict.fromkeys([x[0] for x in extra_data])
+            )  # Preserve order
+            domain = unique_types
+            range_colors = colors[: len(unique_types)]
+        band_chart = (
+            alt.Chart(extra_df)
+            .mark_rect(opacity=0.3)
+            .encode(
+                x=alt.X("Start:Q", title="Token Index"),
+                x2="End:Q",
+                color=alt.Color(
+                    "Type:N",
+                    scale=alt.Scale(domain=domain, range=range_colors),
+                    legend=alt.Legend(title="Region Type"),
+                ),
+                tooltip=["Type", "Start", "End"],
+            )
+        )
+
+    # Combine Layers
+    chart: alt.Chart = (base_scatter + rule_lines).resolve_scale(
+        color="independent"
+    )
+    if show_labels:
+        chart += text_labels
+    if extra_data:
+        chart = band_chart + chart
+    chart = (
+        chart.properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Figure saved to {save_path}")
+
+    return chart
+
+
 def plot_attention_map(
     attentions: tuple | list,
     sequences: list[str],
@@ -681,6 +895,7 @@ def plot_attention_map(
     seq_idx: int = 0,
     layer: int = -1,
     head: int | str = -1,
+    norm_method: str | None = None,
     skip_cls: bool = True,
     width: int = 800,
     height: int = 800,
@@ -719,6 +934,34 @@ def plot_attention_map(
     else:
         attn_head = attn_layer[seq_idx][head]
 
+    # do normalization
+    if norm_method == "softmax":
+        exp_attn = np.exp(attn_head - np.max(attn_head))
+        attn_head = exp_attn / exp_attn.sum(axis=-1, keepdims=True)
+    elif norm_method == "minmax":
+        attn_head = (attn_head - np.min(attn_head)) / (
+            np.max(attn_head) - np.min(attn_head)
+        )
+    elif norm_method == "l1":
+        attn_head = attn_head / np.sum(
+            np.abs(attn_head), axis=-1, keepdims=True
+        )
+    elif norm_method == "l2":
+        attn_head = attn_head / np.sqrt(
+            np.sum(attn_head**2, axis=-1, keepdims=True)
+        )
+    elif norm_method == "log1p":
+        attn_head = np.log1p(attn_head) / attn_head.max()
+    elif norm_method == "zscore":
+        attn_head = (attn_head - np.mean(attn_head)) / np.std(attn_head)
+    elif norm_method == "entropy":
+        from scipy.stats import entropy
+
+        ent = entropy(attn_head + 1e-12, base=2, axis=-1, keepdims=True)
+        attn_head = 1 - (ent / np.log2(attn_head.shape[-1] + 1e-12))
+    else:
+        pass  # No normalization
+
     # More efficient token processing with error handling
     # Original: seq = sequences[seq_idx]; tokens_id = tokenizer.encode(seq)
     seq = sequences[seq_idx]
@@ -736,7 +979,7 @@ def plot_attention_map(
 
     # Use list comprehension for more efficient data creation
     # Original: Multiple loops with append operations
-    if skip_cls:
+    if skip_cls and len(tokens) > 0:
         if tokens[0].lower() in ["[cls]", "<cls>", "<s>", "cls"]:
             tokens = tokens[1:]
             attn_head = attn_head[1:, 1:]
@@ -794,7 +1037,7 @@ def plot_attention_map(
         )
         .properties(width=width, height=height)
         .configure_axis(grid=False)
-    )
+    ).interactive()
 
     # Save the plot
     if save_path:
@@ -807,7 +1050,7 @@ def plot_attention_map(
 def _get_dimensionality_reducer(
     reducer: str,
     n_samples: int | None = None,
-    quality: str = "balanced",  # fast / balanced / high
+    quality: str | dict = "balanced",  # fast / balanced / high
     **kwargs,
 ):
     """
@@ -824,17 +1067,17 @@ def _get_dimensionality_reducer(
         Initialized dimensionality reducer object
     """
     reducer = reducer.lower()
-    quality = quality.lower()
 
     # Safety checks
-    if quality not in ["fast", "balanced", "high"]:
-        quality = "balanced"
+    if isinstance(quality, str):
+        if quality.lower() not in ["fast", "balanced", "high"]:
+            quality = "balanced"
     if n_samples is None:
         # Default assume medium size
         n_samples = 3000
 
     def tsne_params():
-        if n_samples < 5000:
+        if n_samples < 10000:
             presets = {
                 "fast": {
                     "perplexity": 20,
@@ -864,30 +1107,36 @@ def _get_dimensionality_reducer(
                 "please use UMAP/PaCMAP."
             )
         base = {"n_components": 2, "init": "pca"}
-        base.update(presets[quality])
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
         return base
 
     def umap_params():
-        if n_samples < 5000:
+        if n_samples < 10000:
             presets = {
-                "fast": {"n_neighbors": 10, "min_dist": 0.5},
-                "balanced": {"n_neighbors": 15, "min_dist": 0.3},
-                "high": {"n_neighbors": 30, "min_dist": 0.1},
+                "fast": {"n_neighbors": 10, "min_dist": 0.3},
+                "balanced": {"n_neighbors": 15, "min_dist": 0.2},
+                "high": {"n_neighbors": 20, "min_dist": 0.1},
             }
         elif n_samples < 50000:
             presets = {
                 "fast": {"n_neighbors": 15, "min_dist": 0.5},
-                "balanced": {"n_neighbors": 30, "min_dist": 0.3},
-                "high": {"n_neighbors": 50, "min_dist": 0.1},
+                "balanced": {"n_neighbors": 25, "min_dist": 0.3},
+                "high": {"n_neighbors": 35, "min_dist": 0.1},
             }
         else:
             presets = {
-                "fast": {"n_neighbors": 30, "min_dist": 0.5},
-                "balanced": {"n_neighbors": 50, "min_dist": 0.3},
-                "high": {"n_neighbors": 80, "min_dist": 0.2},
+                "fast": {"n_neighbors": 20, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 40, "min_dist": 0.3},
+                "high": {"n_neighbors": 60, "min_dist": 0.2},
             }
         base = {"n_components": 2, "metric": "euclidean"}
-        base.update(presets[quality])
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
         return base
 
     def pacmap_params():
@@ -914,7 +1163,10 @@ def _get_dimensionality_reducer(
                 "high": {"n_neighbors": 50, "FP_ratio": 1.0},
             }
         base = {"n_components": 2}
-        base.update(presets[quality])
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
         return base
 
     # -----------------------
@@ -950,7 +1202,7 @@ def _get_dimensionality_reducer(
             return PaCMAP(**params)
 
         else:
-            raise ValueError("Unsupported reducer")
+            raise ValueError("Unsupported dim reducer")
 
     except ImportError as e:
         raise ImportError(f"Required package not installed: {e}") from e
@@ -990,10 +1242,20 @@ def _compute_mean_embeddings(
     else:
         attention_mask_array = np.array(attention_mask)
 
+    # use center (middle of window) embeddings within window size
+    if isinstance(strategy, int):
+        seq_len = np.sum(attention_mask_array, axis=1).max().astype(int)
+        attention_mask_array = np.zeros(
+            (embeddings.shape[0], embeddings.shape[1]), dtype=int
+        )
+        center_idx = seq_len // 2
+        start_idx = max(0, center_idx - strategy // 2)
+        end_idx = min(embeddings.shape[1], center_idx + strategy // 2)
+        attention_mask_array[:, start_idx:end_idx] = 1
+
     mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
     mean_embeddings = (
-        np.sum(attention_mask_array[..., None] * embeddings, axis=-2)
-        / mask_sum
+        np.sum(attention_mask_array[..., None] * embeddings, axis=1) / mask_sum
     )
 
     return mean_embeddings
@@ -1031,7 +1293,7 @@ def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
     })
 
 
-def _create_embedding_plot(source_df, layer_idx, width, height):
+def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
     """Create individual embedding plot for a layer.
 
     Args:
@@ -1039,13 +1301,14 @@ def _create_embedding_plot(source_df, layer_idx, width, height):
         layer_idx: Layer index for plot title
         width: Plot width
         height: Plot height
+        size: Point size
 
     Returns:
         Altair chart object
     """
     return (
         alt.Chart(source_df, title=f"Layer {layer_idx + 1}")
-        .mark_point(filled=True)
+        .mark_point(filled=True, size=size, opacity=0.6)
         .encode(
             x=alt.X("Dimension 1:Q"),
             y=alt.Y("Dimension 2:Q"),
@@ -1089,11 +1352,13 @@ def plot_embeddings(
     hidden_states: tuple | list,
     attention_mask: tuple | list | None,
     reducer: str = "t-SNE",
+    quality: str = "fast",
     labels: tuple | list | None = None,
     label_names: str | list | None = None,
     ncols: int = 4,
     width: int = 300,
     height: int = 300,
+    point_size: int = 10,
     save_path: str | None = None,
     separate: bool = False,
     norm: bool = True,
@@ -1119,6 +1384,7 @@ def plot_embeddings(
             height: Height of each plot
                     save_path: Path to save the plot. If None,
                 plot will be shown interactively
+            point_size: Size of the points in the scatter plot
             separate: Whether to return separate plots for each layer
             norm: Whether to normalize embeddings before reduction
             reduced: Whether the input hidden states are already 2D
@@ -1133,7 +1399,11 @@ def plot_embeddings(
     """
     # Initialize dimensionality reducer
     n_samples = hidden_states[0].shape[0] if hidden_states else None
-    dim_reducer = _get_dimensionality_reducer(reducer, n_samples=n_samples)
+    dim_reducer = _get_dimensionality_reducer(
+        reducer,
+        n_samples=n_samples,
+        quality=quality,
+    )
     # Type assertion: dim_reducer is guaranteed to be non-None from helper
     # function
     if dim_reducer is None:
@@ -1150,8 +1420,12 @@ def plot_embeddings(
         if reduced:
             mean_embeddings = np.array(hidden)
         else:
-            mean_embeddings = _compute_mean_embeddings(hidden, attention_mask)
-
+            if attention_mask is None:
+                mean_embeddings = _compute_mean_embeddings(hidden)
+            else:
+                mean_embeddings = _compute_mean_embeddings(
+                    hidden, attention_mask[i]
+                )
         # Apply dimensionality reduction
         if norm:
             # embeddings_normalized = normalize(mean_embeddings)
@@ -1166,7 +1440,7 @@ def plot_embeddings(
         )
 
         # Create individual plot
-        plot = _create_embedding_plot(source_df, i, width, height)
+        plot = _create_embedding_plot(source_df, i, width, height, point_size)
         plots.append(plot)
 
         if separate:

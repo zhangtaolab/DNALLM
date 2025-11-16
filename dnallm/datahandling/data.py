@@ -511,6 +511,13 @@ class DNADataset:
         ]:
             if not sp_token_map.get(token) and hasattr(self.tokenizer, token):
                 sp_token_map[token] = getattr(self.tokenizer, token)
+        if "pad_id" not in sp_token_map:
+            if hasattr(self.tokenizer, "pad_token_id"):
+                if self.tokenizer.pad_token_id is not None:
+                    sp_token_map["pad_id"] = self.tokenizer.pad_token_id
+            if not sp_token_map.get("pad_id"):
+                if hasattr(self.tokenizer, "eos_token_id"):
+                    sp_token_map["pad_id"] = self.tokenizer.eos_token_id
         if not sp_token_map.get("pad_token"):
             if hasattr(self.tokenizer, "decode"):
                 sp_token_map["pad_token"] = self.tokenizer.decode(
@@ -1091,10 +1098,10 @@ class DNADataset:
         if ratio <= 0 or ratio > 1:
             raise ValueError("ratio must be between 0 and 1")
 
+        random.seed(seed)
         dataset = self.dataset
         if isinstance(dataset, DatasetDict):
             for dt in dataset.keys():
-                random.seed(seed)
                 random_idx = random.sample(
                     range(len(dataset[dt])), int(len(dataset[dt]) * ratio)
                 )

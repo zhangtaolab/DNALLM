@@ -1685,12 +1685,19 @@ def _load_model_by_task_type(
             attn_implementation="eager",
         )
     else:
-        model = modules["AutoModel"].from_pretrained(
-            model_name,
-            trust_remote_code=True,
-            attn_implementation="eager",
-            ignore_mismatched_sizes=True,
-        )
+        try:
+            model = modules["AutoModel"].from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                attn_implementation="eager",
+            )
+        except Exception:
+            model = modules["AutoModel"].from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                attn_implementation="eager",
+                ignore_mismatched_sizes=True,
+            )
 
     return model, tokenizer
 

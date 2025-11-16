@@ -172,7 +172,10 @@ class DNATrainer:
             self.training_args.eval_strategy = "no"
 
         # Get compute metrics
-        compute_metrics = self.compute_task_metrics()
+        if self.task_config.task_type in ["mask", "generation", "embedding"]:
+            compute_metrics = None
+        else:
+            compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
             from transformers import DataCollatorForLanguageModeling
@@ -201,6 +204,25 @@ class DNATrainer:
             compute_metrics=compute_metrics,
             data_collator=data_collator,
         )
+
+    def customize_trainer(self, trainer_cls: Trainer):
+        """Customize the HuggingFace Trainer instance.
+
+        This method allows users to replace the default Trainer instance
+        with a custom one, enabling advanced customization of the training
+        process.
+
+        Args:
+            trainer: A custom HuggingFace Trainer instance to replace the
+                default one
+        """
+        # Use custom loss function if provided
+        if isinstance(trainer_cls, type):
+            # Directly replace the class of the existing trainer
+            self.trainer.__class__ = trainer_cls
+        else:
+            # Replace the entire trainer instance
+            self.trainer = trainer_cls
 
     def compute_task_metrics(self) -> Callable[..., dict[str, float]]:
         """Compute task-specific evaluation metrics.

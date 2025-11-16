@@ -86,6 +86,7 @@ class Mutagenesis:
         replace_mut: bool = True,
         include_n: bool = False,
         delete_size: int = 0,
+        cut_size: int = 0,
         fill_gap: bool = False,
         insert_seq: str | None = None,
         lowercase: bool = False,
@@ -154,6 +155,17 @@ class Mutagenesis:
             for i in range(len(sequence) + 1):
                 name = f"ins_{i}_{insert_seq}"
                 mutated_sequence = sequence[:i] + insert_seq + sequence[i:]
+                sequences["name"].append(name)
+                sequences["sequence"].append(mutated_sequence)
+        # Cut mutations
+        if cut_size != 0:
+            step = abs(cut_size)
+            for i in range(0, len(sequence) - step + 1, step):
+                name = f"cut_{i}_{cut_size}"
+                if cut_size > 0:
+                    mutated_sequence = sequence[i:]
+                else:
+                    mutated_sequence = sequence[: len(sequence) - i]
                 sequences["name"].append(name)
                 sequences["sequence"].append(mutated_sequence)
         # Lowercase sequences
@@ -282,7 +294,7 @@ class Mutagenesis:
         return all_logprobs
 
     @torch.no_grad()
-    def clm_evaluate(self) -> list[float]:
+    def clm_evaluate(self, use_last: bool = False) -> list[float]:
         """Calculate sequence log-probability using causal language modeling.
 
         This method computes the log-probability of each sequence under a
@@ -311,6 +323,9 @@ class Mutagenesis:
                 -1, shift_labels.unsqueeze(-1)
             ).squeeze(-1)  # (1, L-1)
             seq_logp = float(token_logps.sum().item())
+            # Get last token logp
+            if use_last:
+                seq_logp = float(token_logps[0, -1].item())
             all_logprobs.append(seq_logp)
         return all_logprobs
 
