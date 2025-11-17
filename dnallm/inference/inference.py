@@ -1744,7 +1744,7 @@ class DNAInference:
                 for _ in range(n_samples):
                     input_ids = tokenizer(seq, return_tensors="pt").to(
                         self.device
-                    )
+                    )["input_ids"]
                     output = model.generate(
                         input_ids,
                         seq_len=n_tokens,
@@ -1835,7 +1835,9 @@ class DNAInference:
             tokenizer = self.tokenizer
             outputs = []
             for seq in score_seqs:
-                input_ids = tokenizer(seq, return_tensors="pt").to(self.device)
+                input_ids = tokenizer(seq, return_tensors="pt").to(
+                    self.device
+                )["input_ids"]
                 with torch.no_grad():
                     loss = model(input_ids, return_value="loss")
                 outputs.append({"Input": seq, "Score": loss})

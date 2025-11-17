@@ -308,6 +308,8 @@ def plot_polar_bar(
             "runtime",
             "samples_per_second",
             "steps_per_second",
+            "curve",
+            "scatter",
         ]:
             continue
         metrics[metric.capitalize()] = data[name]
