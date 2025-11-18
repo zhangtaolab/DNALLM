@@ -167,7 +167,113 @@ nav:
     - MCP: faq/mcp_troubleshooting.md
 
 plugins:
-  - search
+  - search:
+      lang:
+        - en
+        - zh
+  - i18n:
+      docs_structure: suffix
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh
+          name: 中文
+          build: true
+          nav_translations:
+            Introduction: 简介
+            Getting Started: 快速开始
+            Quick Start: 快速入门
+            Installation: 安装指南
+            User Guide: 用户指南
+            Common Workflows: 常见工作流
+            Best Practices: 最佳实践
+            Performance Guide: 性能指南
+            Troubleshooting: 故障排查
+            Data Processing: 数据处理
+            Data Preparation: 数据准备
+            Quality Control: 质量控制
+            Format Conversion: 格式转换
+            Data Augmentation: 数据增强
+            Fine Tuning: 微调
+            Overview: 概述
+            Configuration: 配置
+            Advanced Techniques: 高级技巧
+            Task Guides: 任务指南
+            Inference: 推理
+            Basic Inference: 基础推理
+            Advanced Inference: 高级推理
+            Mutagenesis Analysis: 突变分析
+            Visualization: 可视化
+            Performance Optimization: 性能优化
+            Benchmark: 基准测试
+            Examples: 示例
+            MCP: 模型上下文协议
+            Server Setup: 服务器设置
+            Usage Guide: 使用指南
+            CLI Tools: 命令行工具
+            Config Generator: 配置生成器
+            MCP Server: MCP 服务器
+            GPU Optimization: GPU 优化
+            Memory Optimization: 内存优化
+            Inference Speed: 推理速度
+            Model Quantization: 模型量化
+            Models: 模型
+            Case Studies: 案例研究
+            Promoter Prediction: 启动子预测
+            Motif Detection: 基序检测
+            Sequence Generation: 序列生成
+            Multi-Task Learning: 多任务学习
+            API: API 参考
+            Utils: 工具
+            Sequence: 序列
+            Datahandling: 数据处理
+            Data: 数据
+            Plot: 绘图
+            Mutagenesis: 突变分析
+            Finetune: 微调
+            Trainer: 训练器
+            Configs: 配置
+            Model: 模型
+            Tasks: 任务
+            Task: 任务
+            Concepts: 核心概念
+            Biology: 生物学
+            DNA Sequences: DNA 序列
+            Genomic Features: 基因组特征
+            Biological Tasks: 生物学任务
+            Sequence Analysis: 序列分析
+            Training: 训练
+            Architecture: 架构
+            Model Architectures: 模型架构
+            Tokenization: 分词
+            Attention Mechanisms: 注意力机制
+            Embedding Layers: 嵌入层
+            Technical Guides: 技术指南
+            Transfer Learning: 迁移学习
+            Fine-tuning Strategies: 微调策略
+            Evaluation Metrics: 评估指标
+            Resources: 资源
+            Model Zoo: 模型库
+            Data Handling: 数据处理
+            Model Selection: 模型选择
+            Model Troubleshooting: 模型故障排查
+            Model Guides: 模型指南
+            BERT Models: BERT 模型
+            Caduceus Models: Caduceus 模型
+            ESM Models: ESM 模型
+            Hyena Models: Hyena 模型
+            Llama Models: Llama 模型
+            Mamba Models: Mamba 模型
+            EVO Models: EVO 模型
+            Flash Attention Models: Flash Attention 模型
+            Special Models: 特殊模型
+            FAQ: 常见问题
+            Fine-tuning: 微调问题
   - mkdocstrings:
       handlers:
         python:

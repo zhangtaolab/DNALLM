@@ -142,7 +142,7 @@ print(f"Inference result: {inference_result}")
 ### 2. *In-silico* Mutagenesis Analysis
 
 ```python
-from dnallm import load_config
+from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import Mutagenesis
 
 # Load configuration
@@ -173,7 +173,7 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ### 3. Model Fine-tuning
 
 ```python
-from dnallm import load_config
+from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 

@@ -193,7 +193,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
+inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs)
 
 # Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
@@ -204,10 +204,10 @@ print(f"Inference result: {inference_result}")
 ### 2. In-silico Mutagenesis Analysis
 
 ```python
-from dnallm import Mutagenesis
+from dnallm.inference import Mutagenesis
 
 # Initialize mutagenesis analyzer
-mutagenesis = Mutagenesis(config=configs, model=model, tokenizer=tokenizer)
+mutagenesis = Mutagenesis(model=model, tokenizer=tokenizer, config=configs)
 
 # Generate saturation mutations
 mutagenesis.mutate_sequence(sequence, replace_mut=True)
@@ -222,23 +222,37 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ### 3. Model Fine-tuning
 
 ```python
+from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
-# Prepare dataset
-dataset = DNADataset(
-    data_path="path/to/your/data.csv",
-    task_type="binary_classification",
-    text_column="sequence",
-    label_column="label"
+# Load configuration
+configs = load_config("path/to/config.yaml")
+
+# Load model and tokenizer
+model_name = "zhangtaolab/plant-dnabert-BPE"
+model, tokenizer = load_model_and_tokenizer(
+    model_name,
+    task_config=configs["task"],
+    source="huggingface"
 )
+
+# Prepare dataset
+dataset = DNADataset.load_local_data(
+    file_paths="path/to/your/data.csv",
+    seq_col="sequence",
+    label_col="label",
+    tokenizer=tokenizer,
+)
+
+# Encode the sequences
+dataset.encode_sequences()
 
 # Initialize trainer
 trainer = DNATrainer(
-    config=configs,
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset
+    config=configs,
+    datasets=dataset
 )
 
 # Start training
@@ -249,14 +263,19 @@ trainer.train()
 
 ```python
 # Start MCP server for real-time DNA sequence prediction
-from dnallm.mcp import DNALLMMCPServer
+import asyncio
+from dnallm.mcp.server import DNALLMMCPServer
 
-# Initialize MCP server
-server = DNALLMMCPServer("config/mcp_server_config.yaml")
-await server.initialize()
+async def main():
+    # Initialize MCP server
+    server = DNALLMMCPServer("config/mcp_server_config.yaml")
+    await server.initialize()
+    
+    # Start server with SSE transport for real-time streaming
+    await server.start_server(host="0.0.0.0", port=8000, transport="sse")
 
-# Start server with SSE transport for real-time streaming
-server.start_server(host="0.0.0.0", port=8000, transport="sse")
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 #### MCP Server Features
