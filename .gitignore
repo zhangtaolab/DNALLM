@@ -91,7 +91,7 @@ dnallm/ui/tmp/
 # Jupyter Notebook tmp files
 .ipynb_checkpoints/
 *.output.txt
-example/notebooks/*/outputs*/
+example/notebooks/*/output*/
 example/notebooks/*/*.pdf
 example/notebooks/*/results*/
 

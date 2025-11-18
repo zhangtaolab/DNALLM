@@ -149,7 +149,7 @@ dna_ds.plot_statistics()
 
 ## API Reference
 
-For detailed function documentation and parameter descriptions, please refer to the [API Reference](../api/datasets/data.md).
+For detailed function documentation and parameter descriptions, please refer to the [API Reference](../api/datahandling/data.md).
 
 ## Key Features Summary
 

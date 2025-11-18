@@ -306,9 +306,9 @@ DNALLM supports the following task types:
 
 ## Next Steps
 
-- Explore the [API documentation](../api/) for detailed function references
-- Check out [tutorials](../tutorials/) for specific use cases
-- Visit the [FAQ](../faq/) for common questions
+- Explore the [API documentation](../api/inference/inference.md) for detailed function references
+- Check out [user guides](../user_guide/getting_started.md) for specific use cases
+- Visit the [FAQ](../faq/index.md) for common questions
 - Join the community discussions on GitHub
 
 ## Need Help?

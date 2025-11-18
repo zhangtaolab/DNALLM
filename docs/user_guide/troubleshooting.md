@@ -1,55 +1,69 @@
-# Troubleshooting Guide
+# Troubleshooting
 
-This guide provides solutions to common issues you might encounter while using DNALLM.
+This page provides quick access to troubleshooting resources and solutions for common DNALLM issues.
 
-## Installation Issues
+## Quick Links
 
-1.  **`mamba-ssm` or `flash-attn` Installation Fails**
-    -   **Problem**: These packages require specific versions of the CUDA toolkit and a C++ compiler, and compilation often fails.
-    -   **Solution**:
-        -   Ensure you have a compatible NVIDIA GPU and the correct CUDA toolkit version installed on your system.
-        -   Install the necessary build tools: `conda install -c conda-forge gxx clang`.
-        -   Try installing pre-compiled wheels if available for your system. Check the official repositories for `mamba-ssm` and `flash-attention` for installation instructions.
-        -   For Mamba, use the provided installation script: `sh scripts/install_mamba.sh`.
+### 🔧 **Comprehensive FAQ**
+For detailed solutions to common problems, see our [Frequently Asked Questions (FAQ)](../faq/index.md) page, which covers:
 
-2.  **`uv pip install` Fails Due to Network Issues**
-    -   **Problem**: Your network may be blocking access to PyPI or GitHub.
-    -   **Solution**: Configure `uv` or `pip` to use a proxy or a mirror. For example, you can set environment variables:
-        ```bash
-        export HTTP_PROXY="http://your.proxy.server:port"
-        export HTTPS_PROXY="http://your.proxy.server:port"
-        ```
+- **Installation Issues**: Package installation, dependency conflicts, network problems
+- **Training Issues**: CUDA out of memory, loss instability, optimization problems
+- **Model Loading**: Custom architectures, tokenizer mismatches, cache issues
+- **Performance Issues**: Memory optimization, speed improvements, hardware requirements
+- **Task-Specific Issues**: Model-task mismatches, label encoding problems
 
-## Training and Fine-tuning Issues
+### 📚 **Related Resources**
 
-1.  **`CUDA out of memory` Error**
-    -   **Problem**: Your model, data, and gradients are too large to fit in your GPU's VRAM.
-    -   **Solution**: This is the most common training error. Try these steps in order:
-        1.  **Enable Gradient Accumulation**: In your config file, set `training_args.gradient_accumulation_steps` to a value like 4 or 8. This is the most effective solution.
-        2.  **Reduce Batch Size**: Lower `training_args.per_device_train_batch_size` to 4, 2, or even 1.
-        3.  **Enable Mixed Precision**: Set `training_args.fp16: true`. This halves the memory required for the model and activations.
-        4.  **Use an 8-bit Optimizer**: Set `training_args.optim: "adamw_8bit"`. This requires the `bitsandbytes` library.
-        5.  **Enable Gradient Checkpointing**: Set `training_args.gradient_checkpointing: true`. This saves a lot of memory at the cost of slower training.
+- **[Model Selection Guide](../resources/model_selection.md)**: Choose the right model for your task
+- **[Model Troubleshooting](../resources/troubleshooting_models.md)**: Model-specific issues and solutions
+- **[Performance Optimization](inference/performance_optimization.md)**: Speed and memory optimization guides
+- **[Installation Guide](../getting_started/installation.md)**: Complete installation instructions
 
-2.  **Loss is `NaN` or Explodes**
-    -   **Problem**: The training process is unstable. This can be caused by a learning rate that is too high, or numerical instability with FP16.
-    -   **Solution**:
-        -   **Lower the Learning Rate**: Decrease `training_args.learning_rate` by a factor of 10 (e.g., from `5e-5` to `5e-6`).
-        -   **Use a Learning Rate Scheduler**: Ensure `lr_scheduler_type` is set to `linear` or `cosine`.
-        -   **Use BF16 instead of FP16**: If you have an Ampere-based GPU (A100, RTX 30xx/40xx) or newer, use `bf16: true` instead of `fp16: true`. Bfloat16 is more numerically stable.
+## Common Quick Fixes
 
-## Model Loading and Inference Issues
+### Installation Problems
+```bash
+# For Mamba models
+uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 
-1.  **`trust_remote_code=True` is Required**
-    -   **Problem**: You are trying to load a model with a custom architecture (e.g., Hyena, Caduceus, Evo) that is not yet part of the main `transformers` library.
-    -   **Solution**: You **must** pass `trust_remote_code=True` when loading the model. This allows `transformers` to download and run the model's defining Python code from the Hugging Face Hub.
-        ```python
-        model, tokenizer = load_model_and_tokenizer(
-            "togethercomputer/evo-1-131k-base",
-            trust_remote_code=True
-        )
-        ```
+# For EVO models
+uv pip install evo-model  # EVO-1
+uv pip install evo2       # EVO-2
 
-2.  **Tokenizer Mismatch or Poor Performance**
-    -   **Problem**: You are using a model pre-trained on natural language (like the original LLaMA) directly on DNA sequences. The tokenizer doesn't understand DNA k-mers, leading to poor results.
-    -   **Solution**: Always use a model that has been specifically pre-trained or fine-tuned on DNA. These models, like **DNABERT** or **GENERator**, come with a tokenizer designed for DNA. Check the model card on Hugging Face to confirm it's intended for genomic data.
+# For network issues
+export HTTP_PROXY="http://your.proxy.server:port"
+export HTTPS_PROXY="http://your.proxy.server:port"
+```
+
+### Memory Issues
+```yaml
+# In your config file
+training_args:
+  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 2
+  fp16: true
+  gradient_checkpointing: true
+```
+
+### Model Loading
+```python
+# For custom architectures
+model, tokenizer = load_model_and_tokenizer(
+    "model_name",
+    trust_remote_code=True
+)
+```
+
+## Still Need Help?
+
+If you can't find the answer to your question:
+
+1. **Check the [FAQ](../faq/index.md)** for comprehensive solutions
+2. **Search [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)** for similar problems
+3. **Create a new issue** with detailed information about your problem
+4. **Join community discussions** on GitHub
+
+---
+
+*For the most up-to-date troubleshooting information, always refer to the [FAQ](../faq/index.md) page.*

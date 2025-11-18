@@ -11,8 +11,10 @@ including single nucleotide polymorphisms (
 
 import os
 import numpy as np
+import pandas as pd
 from scipy.special import softmax, expit
 from tqdm import tqdm
+from typing import Any
 
 import torch
 from torch.utils.data import DataLoader
@@ -44,7 +46,7 @@ class Mutagenesis:
             dataloader: DataLoader for batch processing of sequences
     """
 
-    def __init__(self, model, tokenizer, config: dict):
+    def __init__(self, model: Any, tokenizer: Any, config: dict):
         """Initialize Mutagenesis class.
 
         Args:
@@ -59,7 +61,7 @@ class Mutagenesis:
         self.config = config
         self.sequences = None
 
-    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+    def get_inference_engine(self, model: Any, tokenizer: Any) -> DNAInference:
         """Create an inference engine object for the model.
 
         Args:
@@ -79,16 +81,17 @@ class Mutagenesis:
 
     def mutate_sequence(
         self,
-        sequence,
+        sequence: str,
         batch_size: int = 1,
         replace_mut: bool = True,
         include_n: bool = False,
         delete_size: int = 0,
+        cut_size: int = 0,
         fill_gap: bool = False,
         insert_seq: str | None = None,
         lowercase: bool = False,
         do_encode: bool = True,
-    ):
+    ) -> None:
         """Generate dataset from sequences with various mutation types.
 
         This method creates mutated versions of the input sequence including:
@@ -154,6 +157,17 @@ class Mutagenesis:
                 mutated_sequence = sequence[:i] + insert_seq + sequence[i:]
                 sequences["name"].append(name)
                 sequences["sequence"].append(mutated_sequence)
+        # Cut mutations
+        if cut_size != 0:
+            step = abs(cut_size)
+            for i in range(0, len(sequence) - step + 1, step):
+                name = f"cut_{i}_{cut_size}"
+                if cut_size > 0:
+                    mutated_sequence = sequence[i:]
+                else:
+                    mutated_sequence = sequence[: len(sequence) - i]
+                sequences["name"].append(name)
+                sequences["sequence"].append(mutated_sequence)
         # Lowercase sequences
         if lowercase:
             sequences["sequence"] = [
@@ -172,7 +186,6 @@ class Mutagenesis:
         # Create DataLoader
         if batch_size <= 1:
             batch_size = pred_config.batch_size
-        print(batch_size)
         self.dataloader: DataLoader = DataLoader(
             dataset, batch_size=batch_size, num_workers=pred_config.num_workers
         )
@@ -230,7 +243,7 @@ class Mutagenesis:
         return raw_score, mut_score, logfc, diff
 
     @torch.no_grad()
-    def mlm_evaluate(self) -> list[float]:
+    def mlm_evaluate(self, return_sum: bool = True) -> list[float]:
         """Calculate pseudo-log-likelihood score using masked token prediction.
 
         This method computes the pseudo-log-likelihood (PLL) score for each
@@ -251,6 +264,7 @@ class Mutagenesis:
             input_ids = toks["input_ids"].clone()
             seq_len = input_ids.size(1)
             total = 0.0
+            p_values = []
 
             for i in range(seq_len):
                 tok_id = input_ids[0, i].item()
@@ -260,17 +274,27 @@ class Mutagenesis:
                 masked[0, i] = tokenizer.mask_token_id
                 masked_inputs = {
                     "input_ids": masked,
-                    "attention_mask": toks["attention_mask"],
+                    # "attention_mask": toks["attention_mask"],
                 }
                 outputs = model(**masked_inputs)
                 logits = outputs.logits
                 logp = torch.nn.functional.log_softmax(logits[0, i], dim=-1)
-                total += float(logp[tok_id].item())
-            all_logprobs.append(total)
+                if return_sum:
+                    total += float(logp[tok_id].item())
+                else:
+                    try:
+                        token = tokenizer.decode([tok_id])[0]
+                    except KeyError:
+                        token = tokenizer.convert_ids_to_tokens(tok_id)
+                    p_values.append((token, float(logp[tok_id].item())))
+            if return_sum:
+                all_logprobs.append(total)
+            else:
+                all_logprobs.append(p_values)
         return all_logprobs
 
     @torch.no_grad()
-    def clm_evaluate(self) -> list[float]:
+    def clm_evaluate(self, use_last: bool = False) -> list[float]:
         """Calculate sequence log-probability using causal language modeling.
 
         This method computes the log-probability of each sequence under a
@@ -299,6 +323,9 @@ class Mutagenesis:
                 -1, shift_labels.unsqueeze(-1)
             ).squeeze(-1)  # (1, L-1)
             seq_logp = float(token_logps.sum().item())
+            # Get last token logp
+            if use_last:
+                seq_logp = float(token_logps[0, -1].item())
             all_logprobs.append(seq_logp)
         return all_logprobs
 
@@ -309,14 +336,15 @@ class Mutagenesis:
         with the original sequence to calculate mutation effects.
 
         Args:
-            strategy: Strategy for selecting the score from the log fold change
-                - "first": Use the first log fold change
-                - "last": Use the last log fold change
-                - "sum": Use the sum of log fold changes
-                - "mean": Use the mean of log fold changes
-            - "max": Use the index of the maximum raw score to select the log
-                fold change
-                - int: Use the log fold change at the specified index
+            strategy: Strategy for selecting the score from the log fold\
+                change:
+                "first": Use the first log fold change
+                "last": Use the last log fold change
+                "sum": Use the sum of log fold changes
+                "mean": Use the mean of log fold changes
+                "max": Use the index of the maximum raw score to select\
+                    the log fold change
+                int: Use the log fold change at the specified index
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:
@@ -366,6 +394,27 @@ class Mutagenesis:
                 if isinstance(logits, torch.Tensor)
                 else logits[1:]
             )
+
+        # Calculate scores
+        def get_score(values: np.ndarray, raw_score: np.ndarray = None):
+            # Get final score
+            if strategy == "first":
+                score = values[0]
+            elif strategy == "last":
+                score = values[-1]
+            elif strategy == "sum":
+                score = np.sum(values)
+            elif strategy == "mean":
+                score = np.mean(values)
+            elif strategy == "max":
+                idx = raw_score.index(max(raw_score))
+                score = values[idx]
+            elif isinstance(strategy, int):
+                score = values[strategy]
+            else:
+                score = np.mean(values)
+            return score
+
         for i, mut_pred in tqdm(
             enumerate(mut_preds), desc="Evaluating mutations"
         ):
@@ -385,6 +434,7 @@ class Mutagenesis:
                     "logfc": np.zeros(len(raw_score)),
                     "diff": np.zeros(len(raw_score)),
                     "score": 0.0,
+                    "logits": get_score(raw_score),
                 }
             all_predictions[mut_name] = {
                 "sequence": mut_seq,
@@ -392,23 +442,169 @@ class Mutagenesis:
                 "logfc": logfc,
                 "diff": diff,
             }
-            # Get final score
-            if strategy == "first":
-                score = logfc[0]
-            elif strategy == "last":
-                score = logfc[-1]
-            elif strategy == "sum":
-                score = np.sum(logfc)
-            elif strategy == "mean":
-                score = np.mean(logfc)
-            elif strategy == "max":
-                idx = raw_score.index(max(raw_score))
-                score = logfc[idx]
-            elif isinstance(strategy, int):
-                score = logfc[strategy]
-            all_predictions[mut_name]["score"] = score
+            all_predictions[mut_name]["score"] = get_score(logfc, raw_score)
+            all_predictions[mut_name]["score2"] = get_score(diff, raw_score)
+            all_predictions[mut_name]["logits"] = get_score(
+                mut_score, raw_score
+            )
 
         return all_predictions
+
+    def process_ism_data(
+        self,
+        ism_results: dict[str, dict],
+        strategy: str = "maxabs",
+    ) -> np.ndarray:
+        """
+        Process raw ISM result dictionary to get a single importance score
+        per base.
+
+        Args:
+            ism_results (Dict[str, Dict]): The raw output from
+                the ISM experiment.
+            strategy (str): Strategy to aggregate scores at each position.
+                            'maxabs': Use the score of the mutation with
+                                      the max absolute effect.
+                            'mean': Use the mean of all mutation scores.
+
+        Returns:
+            np.ndarray: A 1D array of importance scores, one per base pair.
+        """
+        raw_seq = ism_results["raw"]["sequence"]
+        seq_len = len(raw_seq)
+        base_scores = np.zeros(seq_len)
+
+        # Group mutations by position
+        pos_muts = {}
+        for key, value in ism_results.items():
+            if key.startswith("mut_"):
+                parts = key.split("_")
+                pos = int(parts[1])
+                if pos not in pos_muts:
+                    pos_muts[pos] = []
+                pos_muts[pos].append(value["score"])
+
+        # Apply aggregation strategy
+        for pos, scores in pos_muts.items():
+            if not scores:
+                continue
+            if strategy in ["maxabs", "min", "max"]:
+                max_abs_idx = np.argmax(np.abs(scores))
+                base_scores[pos] = scores[max_abs_idx]
+            elif strategy == "mean":
+                base_scores[pos] = np.mean(scores)
+            else:
+                raise ValueError(f"Unknown strategy: {strategy}")
+
+        return base_scores
+
+    def find_hotspots(
+        self,
+        preds: dict[str, dict],
+        strategy="maxabs",
+        window_size: int = 10,
+        percentile_threshold: float = 90.0,
+    ) -> list[tuple[int, int]]:
+        """
+        Identify hotspot regions from base-level importance scores.
+
+        Args:
+            preds (Dict[str, Dict]): The raw output from the ISM experiment.
+            strategy (str): Strategy to aggregate scores at each position.
+                            'maxabs': Use the score of the mutation with
+                                      the max absolute effect.
+                            'mean': Use the mean of all mutation scores.
+            window_size (int): The size of the sliding window to find hotspots.
+            percentile_threshold (float): The percentile of window scores to be
+                                        considered a hotspot.
+
+        Returns:
+            List[Tuple[int, int]]: A list of (start, end) tuples
+                                   for each hotspot.
+        """
+        # We care about the magnitude of change, so use absolute scores
+        base_scores = self.process_ism_data(preds, strategy=strategy)
+        abs_scores = pd.Series(np.abs(base_scores))
+
+        # Calculate rolling average of scores
+        rolling_mean = abs_scores.rolling(
+            window=window_size, center=True, min_periods=1
+        ).mean()
+
+        # Determine the score threshold for a hotspot
+        threshold = np.percentile(rolling_mean, percentile_threshold)
+
+        # Find regions above the threshold
+        hotspot_mask = rolling_mean >= threshold
+
+        # Find contiguous blocks of 'True'
+        hotspots = []
+        start = -1
+        for i, is_hot in enumerate(hotspot_mask):
+            if is_hot and start == -1:
+                start = i
+            elif not is_hot and start != -1:
+                hotspots.append((start, i))
+                start = -1
+        if start != -1:
+            hotspots.append((start, len(hotspot_mask)))
+
+        # Return list of hotspot regions with window size
+        hotspots_regioned = []
+        for i, (start, end) in enumerate(hotspots):
+            mid = (start + end) // 2
+            window_start = min(max(0, mid - window_size // 2), start)
+            window_end = max(
+                min(mid + window_size // 2, len(base_scores)), end
+            )
+            # if the window is within last detected hotspot,
+            # skip the current one
+            if i > 0:
+                prev_start, prev_end = hotspots_regioned[-1]
+                if window_start >= prev_start and window_end <= prev_end:
+                    continue
+            hotspots_regioned.append((window_start, window_end))
+        self.hotspots = hotspots_regioned
+
+        return hotspots_regioned
+
+    def prepare_tfmodisco_inputs(
+        self, ism_results_list: list[dict[str, dict]]
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Prepares inputs required for a TF-MoDISco run from
+        a list of ISM results.
+        """
+        print("Preparing inputs for TF-MoDISco...")
+        acgt = ["A", "C", "G", "T"]
+        acgt_to_idx = {base: i for i, base in enumerate(acgt)}
+
+        all_one_hot, all_hyp_scores = [], []
+
+        for ism_results in ism_results_list:
+            raw_seq = ism_results["raw"]["sequence"].upper()
+            seq_len = len(raw_seq)
+
+            one_hot = np.zeros((seq_len, 4))
+            for i, base in enumerate(raw_seq):
+                idx = acgt_to_idx.get(base)
+                if idx is not None:
+                    one_hot[i, idx] = 1
+            all_one_hot.append(one_hot)
+
+            hyp_scores = np.zeros((seq_len, 4))
+            for key, value in ism_results.items():
+                if key.startswith("mut_"):
+                    parts = key.split("_")
+                    pos, _, mut_base = int(parts[1]), parts[2], parts[-1]
+                    if mut_base in acgt_to_idx:
+                        hyp_scores[pos, acgt_to_idx[mut_base]] = value["score"]
+            all_hyp_scores.append(hyp_scores)
+
+        one_hot_seqs = np.array(all_one_hot)
+        hyp_scores = np.array(all_hyp_scores)
+        contrib_scores = hyp_scores * one_hot_seqs
+        return one_hot_seqs, hyp_scores, contrib_scores
 
     def plot(
         self,

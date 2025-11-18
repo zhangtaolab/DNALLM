@@ -494,7 +494,44 @@ class DNADataset:
         """Get tokenizer configuration."""
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
-        sp_token_map = self.tokenizer.special_tokens_map
+        sp_token_map = (
+            self.tokenizer.special_tokens_map
+            if hasattr(self.tokenizer, "special_tokens_map")
+            else {}
+        )
+        for tok_id in ["pad_id", "eos_id", "bos_id", "cls_id", "sep_id"]:
+            if hasattr(self.tokenizer, tok_id):
+                sp_token_map[tok_id] = getattr(self.tokenizer, tok_id)
+        for token in [
+            "pad_token",
+            "eos_token",
+            "bos_token",
+            "cls_token",
+            "sep_token",
+        ]:
+            if not sp_token_map.get(token) and hasattr(self.tokenizer, token):
+                sp_token_map[token] = getattr(self.tokenizer, token)
+        if "pad_id" not in sp_token_map:
+            if hasattr(self.tokenizer, "pad_token_id"):
+                if self.tokenizer.pad_token_id is not None:
+                    sp_token_map["pad_id"] = self.tokenizer.pad_token_id
+            if not sp_token_map.get("pad_id"):
+                if hasattr(self.tokenizer, "eos_token_id"):
+                    sp_token_map["pad_id"] = self.tokenizer.eos_token_id
+        if not sp_token_map.get("pad_token"):
+            if hasattr(self.tokenizer, "decode"):
+                sp_token_map["pad_token"] = self.tokenizer.decode(
+                    sp_token_map["pad_id"]
+                )
+            elif hasattr(self.tokenizer, "convert_ids_to_tokens"):
+                pad_token = self.tokenizer.convert_ids_to_tokens(
+                    sp_token_map["pad_id"]
+                )
+                sp_token_map["pad_token"] = pad_token
+            elif hasattr(self.tokenizer, "decode_token"):
+                sp_token_map["pad_token"] = self.tokenizer.decode_token(
+                    sp_token_map["pad_id"]
+                )
         return {
             "pad_token": sp_token_map.get("pad_token"),
             "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[
@@ -846,7 +883,7 @@ class DNADataset:
             maxl: Maximum length of the sequences, default is the same as minl
             samples: Number of sequences to generate, default 1
             gc: GC content range, default (0,1)
-            N_ratio: Include N base in the generated sequence, default 0.0
+            n_ratio: Include N base in the generated sequence, default 0.0
             padding_size: Padding size for sequence length, default 0
             seed: Random seed, default None
             label_func: A function that generates a label from a sequence
@@ -1061,10 +1098,10 @@ class DNADataset:
         if ratio <= 0 or ratio > 1:
             raise ValueError("ratio must be between 0 and 1")
 
+        random.seed(seed)
         dataset = self.dataset
         if isinstance(dataset, DatasetDict):
             for dt in dataset.keys():
-                random.seed(seed)
                 random_idx = random.sample(
                     range(len(dataset[dt])), int(len(dataset[dt]) * ratio)
                 )
@@ -1133,7 +1170,7 @@ class DNADataset:
         """
         self.head(head=head, show=True)
 
-    def iter_batches(self, batch_size: int):
+    def iter_batches(self, batch_size: int) -> Any:
         """Generator that yields batches of examples from the dataset.
 
         Args:
@@ -1179,7 +1216,7 @@ class DNADataset:
         else:
             return None
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> dict[str, Any]:
         """Get an item from the dataset.
 
         Args:
@@ -1198,7 +1235,7 @@ class DNADataset:
                 "instead."
             )
         else:
-            return self.dataset[idx]
+            return self.dataset[idx]  # type: ignore[no-any-return]
 
     def __data_type__(self) -> None:
         """Get the data type of the dataset (classification, regression, etc.).
@@ -1340,19 +1377,21 @@ class DNADataset:
         seq_col = "sequence"
         # label_col = "labels"  # Not used in current implementation
         if isinstance(self.dataset, DatasetDict):
+            self.stats_for_plot = {}
             for split_name, split_ds in self.dataset.items():
                 df = prepare_dataframe(split_ds)
                 data_type = self.data_type
                 basic = compute_basic_stats(df, seq_col)
                 stats[split_name] = {"data_type": data_type, **basic}
+                self.stats_for_plot[split_name] = df
         else:
             df = prepare_dataframe(self.dataset)
             data_type = self.data_type
             basic = compute_basic_stats(df, seq_col)
             stats["full"] = {"data_type": data_type, **basic}
+            self.stats_for_plot = df
 
         self.stats = stats  # Store stats in the instance for later use
-        self.stats_for_plot = df
 
         return stats
 
@@ -1384,11 +1423,19 @@ class DNADataset:
             )
 
         task_type = self.data_type or "unknown"
-        df = self.stats_for_plot.copy()
-        final = self._create_final_chart(df, task_type)
+        if isinstance(self.stats_for_plot, dict):
+            df_list = {}
+            for split_name, df in self.stats_for_plot.items():
+                df_list[split_name] = df.copy()
+            final = self._create_final_chart(df_list, task_type)
+        else:
+            df = self.stats_for_plot.copy()
+            final = self._create_final_chart(df, task_type)
         self._display_or_save_chart(final, save_path)
 
-    def _create_final_chart(self, df: pd.DataFrame, task_type: str) -> Any:
+    def _create_final_chart(
+        self, df: pd.DataFrame | dict[str, pd.DataFrame], task_type: str
+    ) -> Any:
         """Create the final chart based on dataset type."""
         import altair as alt
 
@@ -1397,9 +1444,10 @@ class DNADataset:
         split_charts = []
 
         if isinstance(self.stats, dict):
-            for split_name, _split_stats in self.stats.items():
+            for split_name, _ in self.stats.items():
+                stats = df[split_name] if isinstance(df, dict) else df
                 chart = self._per_split_charts(
-                    df, task_type, seq_col, label_col
+                    stats, task_type, seq_col, label_col
                 ).properties(title=split_name)
                 split_charts.append(chart)
             return alt.hconcat(*split_charts).properties(
@@ -1464,7 +1512,10 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
-                color=alt.Color("label_str:N", title="Label"),
+                color=alt.Color(
+                    "label_str:N", legend=alt.Legend(title="Labels")
+                ),
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("count():Q")],
             )
             .properties(width=300, height=240)
         )
@@ -1476,6 +1527,10 @@ class DNADataset:
                 x=alt.X("label_str:N", title="Label"),
                 y=alt.Y("gc:Q", title="GC content"),
                 color=alt.Color("label_str:N", legend=None),
+                tooltip=[
+                    alt.Tooltip("label_str:N"),
+                    alt.Tooltip("gc:Q"),
+                ],
             )
             .properties(width=300, height=240)
         )
@@ -1502,6 +1557,7 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
+                tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("count():Q")],
             )
             .properties(width=300, height=240)
         )
@@ -1714,6 +1770,8 @@ def _load_dataset_from_modelscope(ds_info: dict, task: str | None) -> Any:
     from modelscope import MsDataset
 
     actual_dataset_name = ds_info["name"]
+    print(f"Loading dataset: {actual_dataset_name} ...")
+    print(task)
     if task and task in ds_info["tasks"]:
         return MsDataset.load(actual_dataset_name, data_dir=task)
     else:

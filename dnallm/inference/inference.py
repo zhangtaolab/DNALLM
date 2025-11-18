@@ -39,6 +39,7 @@ import json
 from typing import Any
 from pathlib import Path
 from tqdm import tqdm
+import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
@@ -48,7 +49,7 @@ from ..datahandling.data import DNADataset
 from ..models.model import _get_model_path_and_imports
 from ..tasks.metrics import compute_metrics
 from ..utils import get_logger
-from .plot import plot_attention_map, plot_embeddings
+from .plot import plot_attention_map, plot_embeddings, _compute_mean_embeddings
 
 logger = get_logger("dnallm.inference.inference")
 
@@ -86,8 +87,8 @@ class DNAInference:
         Args:
             model: Fine-tuned model instance for inference
             tokenizer: Tokenizer for encoding DNA sequences
-            config: Configuration dictionary containing task settings and
-            inference parameters
+            config: Configuration dictionary containing task settings\
+                    and inference parameters
             lora_adapter: Optional path to LoRA adapter for model
         """
 
@@ -139,6 +140,7 @@ class DNAInference:
             else:
                 self.accepted_args = set(default_forward_args)
         self.tokenizer = tokenizer
+        self.pad_id = self._get_pad_id()
         self.task_config = config["task"]
         self.pred_config = config["inference"]
         self.device = self._get_device()
@@ -197,6 +199,16 @@ class DNAInference:
                 lambda: hasattr(torch, "xpu") and torch.xpu.is_available(),
                 "XPU",
             ),
+            "npu": (
+                "npu",
+                lambda: (hasattr(torch, "npu") and torch.npu.is_available()),
+                "NPU",
+            ),
+            "ascend": (
+                "npu",
+                lambda: (hasattr(torch, "npu") and torch.npu.is_available()),
+                "NPU",
+            ),
         }
 
         if device_str not in device_map:
@@ -231,8 +243,12 @@ class DNAInference:
             return torch.device("cuda")
         if torch.backends.mps.is_available():
             return torch.device("mps")
-        if hasattr(torch, "xpu") and torch.xpu.is_available():
-            return torch.device("xpu")
+        if hasattr(torch, "xpu"):
+            if torch.xpu.is_available():
+                return torch.device("xpu")
+        if hasattr(torch, "npu"):
+            if torch.npu.is_available():
+                return torch.device("npu")
         return torch.device("cpu")
 
     def _has_model_config_attr(self, attr_name: str) -> bool:
@@ -374,7 +390,14 @@ class DNAInference:
         import inspect
 
         sig = inspect.signature(model.forward)
-        return set(sig.parameters.keys())
+        accepted = set(sig.parameters.keys())
+        if any(
+            p.kind == inspect.Parameter.VAR_KEYWORD
+            for p in sig.parameters.values()
+        ):
+            accepted.add("**kwargs")
+
+        return accepted
 
     def generate_dataset(
         self,
@@ -726,7 +749,9 @@ class DNAInference:
         output_hidden_states: bool,
         output_attentions: bool,
         embeddings: dict,
-    ) -> torch.Tensor:
+        reduce_hidden_states: bool = False,
+        reduce_strategy: str | int = "mean",
+    ) -> torch.Tensor | None:
         """Process outputs from a single batch.
 
         Args:
@@ -735,22 +760,89 @@ class DNAInference:
             output_hidden_states: Whether hidden states are enabled
             output_attentions: Whether attentions are enabled
             embeddings: Embeddings dictionary to update
+            reduce_hidden_states: Whether to average hidden states across
+                layers
 
         Returns:
             torch.Tensor: Batch logits
         """
-        logits: torch.Tensor = outputs.logits.cpu().detach()
+        if self.task_config.task_type == "embedding":
+            logits = None
+        else:
+            logits: torch.Tensor = outputs.logits.cpu().detach()
 
         if output_hidden_states:
-            self._process_hidden_states(outputs, inputs, embeddings)
+            self._process_hidden_states(
+                outputs,
+                inputs,
+                embeddings,
+                reduce_hidden_states,
+                reduce_strategy,
+            )
 
         if output_attentions:
             self._process_attentions(outputs, embeddings)
 
         return logits
 
+    def _get_pad_id(self) -> int | None:
+        """Get padding token ID from tokenizer.
+
+        Returns:
+            int | None: Padding token ID if available, else None
+        """
+        # Get padding token if available
+        pad_id: int | None = None
+        if hasattr(self.tokenizer, "pad_token_id"):
+            pad_id = self.tokenizer.pad_token_id
+        elif hasattr(self.tokenizer, "pad_token"):
+            pad_token = self.tokenizer.pad_token
+            try:
+                pad_id = self.tokenizer.convert_tokens_to_ids(pad_token)
+                if pad_id is None:
+                    raise ValueError("No convert_tokens_to_ids")
+            except Exception:
+                try:
+                    pad_id = self.tokenizer.encode(pad_token)[0]
+                except Exception:
+                    pad_id = None
+        if pad_id is None and hasattr(self.tokenizer, "eos_token_id"):
+            pad_id = self.tokenizer.eos_token_id
+        return pad_id
+
+    def _create_attention_mask(self, inputs: dict) -> torch.Tensor | None:
+        """Create attention mask from inputs.
+
+        Args:
+            inputs: Model inputs
+
+        Returns:
+            torch.Tensor | None: Attention mask tensor if padding ID is
+                available, else None
+        """
+        attention_mask: torch.Tensor | None = (
+            inputs["attention_mask"].long().cpu().detach()
+            if "attention_mask" in inputs
+            else None
+        )
+        if attention_mask is None:
+            if self.pad_id is not None and "input_ids" in inputs:
+                try:
+                    input_ids = inputs["input_ids"]
+                    attention_mask = (
+                        (input_ids != self.pad_id).long().cpu().detach()
+                    )
+                except Exception:
+                    attention_mask = None
+        return attention_mask
+
     def _process_hidden_states(
-        self, outputs: Any, inputs: dict, embeddings: dict
+        self,
+        outputs: Any,
+        inputs: dict,
+        embeddings: dict,
+        reduce_hidden_states: bool = False,
+        reduce_strategy: str | int = "mean",
     ) -> None:
         """Process hidden states from model outputs.
 
@@ -758,12 +850,49 @@ class DNAInference:
             outputs: Model outputs
             inputs: Model inputs
             embeddings: Embeddings dictionary to update
+            reduce_hidden_states: Whether to average hidden states across
+                layers
         """
-        hidden_states = (
-            [h.cpu().detach() for h in outputs.hidden_states]
-            if hasattr(outputs, "hidden_states")
-            else None
-        )
+        attention_mask = self._create_attention_mask(inputs)
+        hiddens = None
+        hidden_states = []
+        if hasattr(outputs, "hidden_states"):
+            hiddens = outputs.hidden_states
+        elif "hidden_states" in outputs:
+            hiddens = outputs["hidden_states"]
+        if hiddens is None:
+            if hasattr(outputs, "last_hidden_state"):
+                hiddens = outputs.last_hidden_state
+            elif isinstance(outputs, (list, tuple)) and len(outputs) > 0:
+                # Assume hidden states are in outputs[0] if outputs
+                # is a list or tuple
+                hiddens = outputs[0]
+        if hiddens is not None:
+            if isinstance(hiddens, (list, tuple)):
+                # Multiple layers of hidden states
+                for h in hiddens:
+                    h = h.cpu().detach()
+                    hidden_states.append(
+                        torch.tensor(
+                            _compute_mean_embeddings(
+                                h, attention_mask, reduce_strategy
+                            )
+                        )
+                        if reduce_hidden_states
+                        else h
+                    )
+            else:
+                # Single layer of hidden states
+                h = hiddens.cpu().detach()
+                hidden_states.append(
+                    torch.tensor(
+                        _compute_mean_embeddings(
+                            h, attention_mask, reduce_strategy
+                        )
+                    )
+                    if reduce_hidden_states
+                    else h
+                )
 
         if hidden_states:
             if embeddings["hidden_states"] is None:
@@ -771,12 +900,6 @@ class DNAInference:
             else:
                 for i, h in enumerate(hidden_states):
                     embeddings["hidden_states"][i].append(h)
-
-        attention_mask = (
-            inputs["attention_mask"].cpu().detach()
-            if "attention_mask" in inputs
-            else None
-        )
         embeddings["attention_mask"].append(attention_mask)
 
         labels = (
@@ -824,11 +947,15 @@ class DNAInference:
                     for lst in embeddings["hidden_states"]
                 )
             if embeddings.get("attention_mask"):
-                embeddings["attention_mask"] = torch.cat(
-                    embeddings["attention_mask"], dim=0
-                )
+                if embeddings["attention_mask"][0] is not None:
+                    embeddings["attention_mask"] = torch.cat(
+                        embeddings["attention_mask"], dim=0
+                    )
             if embeddings.get("labels"):
-                embeddings["labels"] = torch.cat(embeddings["labels"], dim=0)
+                if embeddings["labels"][0]:
+                    embeddings["labels"] = torch.cat(
+                        embeddings["labels"], dim=0
+                    )
 
         if output_attentions:
             if embeddings.get("attentions"):
@@ -843,6 +970,8 @@ class DNAInference:
         do_pred: bool = True,
         output_hidden_states: bool = False,
         output_attentions: bool = False,
+        reduce_hidden_states: bool = False,
+        reduce_strategy: str | int = "mean",
     ) -> tuple[torch.Tensor, dict | None, dict]:
         """Perform batch inference on sequences.
 
@@ -857,6 +986,8 @@ class DNAInference:
                 all layers
             output_attentions: Whether to output attention weights from
                 all layers
+            reduce_hidden_states: Whether to average hidden states across
+                layers
 
         Returns:
             Tuple containing:
@@ -892,6 +1023,18 @@ class DNAInference:
                 k: v.to(self.device) if hasattr(v, "to") else v
                 for k, v in batch.items()
             }
+            # Add output flags if supported
+            # In case model config does not recognize these args
+            if output_attentions:
+                if "output_attentions" in self.accepted_args:
+                    inputs["output_attentions"] = True
+                elif "**kwargs" in self.accepted_args:
+                    inputs["output_attentions"] = True
+            if output_hidden_states:
+                if "output_hidden_states" in self.accepted_args:
+                    inputs["output_hidden_states"] = True
+                elif "**kwargs" in self.accepted_args:
+                    inputs["output_hidden_states"] = True
 
             # Run model inference
             if self.pred_config.use_fp16:
@@ -908,11 +1051,14 @@ class DNAInference:
                 output_hidden_states,
                 output_attentions,
                 embeddings,
+                reduce_hidden_states,
+                reduce_strategy,
             )
             all_logits.append(logits)
 
         # Concatenate all logits
-        all_logits = torch.cat(all_logits, dim=0)
+        if all_logits and all_logits[0] is not None:
+            all_logits = torch.cat(all_logits, dim=0)
 
         # Finalize embeddings
         self._finalize_embeddings(
@@ -921,7 +1067,7 @@ class DNAInference:
 
         # Get predictions if requested
         predictions = None
-        if do_pred:
+        if do_pred and len(all_logits) > 0:
             predictions = self.logits_to_preds(all_logits)
             predictions = self.format_output(predictions)
 
@@ -930,6 +1076,7 @@ class DNAInference:
     def infer_seqs(
         self,
         sequences: str | list[str],
+        do_pred: bool = True,
         evaluate: bool = False,
         output_hidden_states: bool = False,
         output_attentions: bool = False,
@@ -967,6 +1114,7 @@ class DNAInference:
             dataloader,
             output_hidden_states=output_hidden_states,
             output_attentions=output_attentions,
+            do_pred=do_pred,
         )
         # Keep hidden states
         if output_hidden_states or output_attentions:
@@ -988,7 +1136,7 @@ class DNAInference:
 
     def infer_file(
         self,
-        file_path: str,
+        file_path: str | Dataset,
         evaluate: bool = False,
         output_hidden_states: bool = False,
         output_attentions: bool = False,
@@ -1037,19 +1185,29 @@ class DNAInference:
             Setting output_attentions=True may consume significant memory
         """
         # Get dataset and dataloader from file
-        _, dataloader = self.generate_dataset(
-            file_path,
-            seq_col=seq_col,
-            label_col=label_col,
-            sep=sep,
-            fasta_sep=fasta_sep,
-            multi_label_sep=multi_label_sep,
-            uppercase=uppercase,
-            lowercase=lowercase,
-            sampling=sampling,
-            do_encode=do_encode,
-            batch_size=self.pred_config.batch_size,
-        )
+        if isinstance(file_path, Dataset):
+            dataloader = DataLoader(
+                file_path,
+                batch_size=self.pred_config.batch_size,
+                num_workers=self.pred_config.num_workers,
+            )
+            self.labels = (
+                file_path["labels"] if "labels" in file_path.features else []
+            )
+        else:
+            _, dataloader = self.generate_dataset(
+                file_path,
+                seq_col=seq_col,
+                label_col=label_col,
+                sep=sep,
+                fasta_sep=fasta_sep,
+                multi_label_sep=multi_label_sep,
+                uppercase=uppercase,
+                lowercase=lowercase,
+                sampling=sampling,
+                do_encode=do_encode,
+                batch_size=self.pred_config.batch_size,
+            )
         # Do batch inference
         if output_attentions:
             warnings.warn(
@@ -1093,7 +1251,7 @@ class DNAInference:
         output_hidden_states: bool = False,
         output_attentions: bool = False,
         save_to_file: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> dict | tuple[dict, dict]:
         """Main inference method for sequences or files.
 
@@ -1170,6 +1328,8 @@ class DNAInference:
         seq_idx: int = 0,
         layer: int = -1,
         head: int = -1,
+        norm_method: str | None = None,
+        skip_cls=True,
         width: int = 800,
         height: int = 800,
         save_path: str | None = None,
@@ -1214,6 +1374,8 @@ class DNAInference:
                 self.tokenizer,
                 seq_idx=seq_idx,
                 layer=layer,
+                norm_method=norm_method,
+                skip_cls=skip_cls,
                 head=head,
                 width=width,
                 height=height,
@@ -1227,9 +1389,12 @@ class DNAInference:
     def plot_hidden_states(
         self,
         reducer: str = "t-SNE",
+        reduced: bool = False,
+        quality: str = "fast",
         ncols: int = 4,
         width: int = 300,
         height: int = 300,
+        point_size: int = 10,
         save_path: str | None = None,
     ) -> Any | None:
         """Visualize embeddings using dimensionality reduction.
@@ -1241,9 +1406,12 @@ class DNAInference:
         Args:
             reducer: Dimensionality reduction method to use
                 ('PCA', 't-SNE', 'UMAP')
+            reduced: Whether to use already reduced embeddings if available
+            quality: Quality/speed trade-off for reduction
             ncols: Number of columns in the plot grid
             width: Width of each plot
             height: Height of each plot
+            point_size: Size of points in the plot
             save_path: Path to save the plot. If None, plot will be shown
                 interactively
 
@@ -1257,9 +1425,10 @@ class DNAInference:
         """
         if hasattr(self, "embeddings"):
             hidden_states = self.embeddings["hidden_states"]
-            attention_mask = torch.unsqueeze(
-                self.embeddings["attention_mask"], dim=-1
-            )
+            # attention_mask = torch.unsqueeze(
+            #     self.embeddings["attention_mask"], dim=-1
+            # )
+            attention_mask = self.embeddings["attention_mask"]
             labels = self.embeddings["labels"]
             if save_path:
                 suffix = os.path.splitext(save_path)[-1]
@@ -1277,12 +1446,15 @@ class DNAInference:
                 hidden_states,
                 attention_mask,
                 reducer=reducer,
+                quality=quality,
                 labels=labels,
                 label_names=label_names,
                 ncols=ncols,
                 width=width,
                 height=height,
+                point_size=point_size,
                 save_path=embedding,
+                reduced=reduced,
             )
             return embeddings_vis
         else:
@@ -1572,7 +1744,7 @@ class DNAInference:
                 for _ in range(n_samples):
                     input_ids = tokenizer(seq, return_tensors="pt").to(
                         self.device
-                    )
+                    )["input_ids"]
                     output = model.generate(
                         input_ids,
                         seq_len=n_tokens,
@@ -1663,12 +1835,191 @@ class DNAInference:
             tokenizer = self.tokenizer
             outputs = []
             for seq in score_seqs:
-                input_ids = tokenizer(seq, return_tensors="pt").to(self.device)
+                input_ids = tokenizer(seq, return_tensors="pt").to(
+                    self.device
+                )["input_ids"]
                 with torch.no_grad():
                     loss = model(input_ids, return_value="loss")
                 outputs.append({"Input": seq, "Score": loss})
             return outputs
+
+        # General scoring for other base models (No classification head)
+        # Use batch_infer to get embeddings and compute scores
+        if isinstance(inputs, list):
+            _, dataloader = self.generate_dataset(
+                inputs, batch_size=self.pred_config.batch_size
+            )
+        else:
+            dataloader = inputs
+        _, _, embeddings = self.batch_infer(
+            dataloader, output_hidden_states=True, do_pred=False
+        )
+        # Compute scores
+        if "hidden_states" in embeddings:
+            hidden_states = embeddings["hidden_states"]
+            scores = []
+            for i in range(len(score_seqs)):
+                # (layers, seq_len, dim)
+                seq_hidden = hidden_states[:, i, :, :]
+                if reduce_method == "mean":
+                    score = seq_hidden.mean().item()
+                elif reduce_method == "max":
+                    score = seq_hidden.max().item()
+                elif reduce_method == "min":
+                    score = seq_hidden.min().item()
+                else:
+                    score = seq_hidden.mean().item()
+                scores.append({"Input": score_seqs[i], "Score": score})
+            return scores
+
         return {}
+
+    def get_embeddings(
+        self,
+        inputs: DataLoader | list[str] | str,
+        do_reduce: bool = False,
+        reduce_strategy: str | int = "mean",
+        force: bool = False,
+    ):
+        """Get embeddings from the last inference.
+        This method performs inference on the provided inputs and extracts
+        embeddings from the model's hidden states.
+
+        Args:
+            inputs: DataLoader or list of sequences for inference
+            do_reduce: Whether to reduce hidden states to 2D using PCA
+            reduce_strategy: Strategy to reduce hidden states
+                ('mean', 'max', 'min', or int for center window size)
+            force: Whether to force re-computation of embeddings
+
+        Returns:
+            Dict containing embeddings from the last inference
+        """
+        # Initialize embeddings
+        if force or not hasattr(self, "embeddings"):
+            self.embeddings = {"hidden_states": None, "attention_mask": None}
+        # Check specific models
+        is_special = ""
+        special_list = ["CustomEvo", "MEGADNA"]
+        for name in special_list:
+            if name in str(self.model):
+                sequences = inputs
+                is_special = name
+                break
+        if not is_special:
+            if isinstance(inputs, list):
+                _, dataloader = self.generate_dataset(
+                    inputs, batch_size=self.pred_config.batch_size
+                )
+            elif isinstance(inputs, str):
+                # Assume it's a file path
+                if os.path.isfile(inputs):
+                    file_path = os.path.abspath(inputs)
+                else:
+                    raise ValueError(
+                        f"Input {inputs} is not a valid file path. "
+                        "Please provide a valid file path "
+                        "or a list contains valid sequences."
+                    )
+                _, dataloader = self.generate_dataset(
+                    file_path,
+                    do_encode=True,
+                    batch_size=self.pred_config.batch_size,
+                )
+            else:
+                dataloader = inputs
+
+        # Check if model supports generation
+        if is_special.startswith("CustomEvo"):
+            # Get model and tokenizer
+            model = self.model.model
+            tokenizer = self.tokenizer
+            # Get layer names
+            layers = []
+            layer_prefix = "blocks"
+            for name, _ in model.named_parameters():
+                if name.startswith(layer_prefix):
+                    layer = layer_prefix + "." + name.split(".")[1]
+                    if layer not in layers:
+                        layers.append(layer)
+            # Get embeddings
+            all_embeddings = [[] for _ in layers]
+            for sequence in tqdm(sequences):
+                input_ids = (
+                    torch.tensor(
+                        tokenizer.tokenize(sequence),
+                        dtype=torch.int,
+                    )
+                    .unsqueeze(0)
+                    .to(self.device)
+                )
+                _, embeddings = self.model(
+                    input_ids, return_embeddings=True, layer_names=layers
+                )
+                for i, n in enumerate(layers):
+                    tmp = embeddings[n].detach().cpu().to(torch.float32)
+                    if do_reduce:
+                        mean_emb = _compute_mean_embeddings(tmp, None).squeeze(
+                            0
+                        )
+                        all_embeddings[i].append(mean_emb)
+                    else:
+                        all_embeddings[i].append(tmp)
+            for i, _ in enumerate(layers):
+                all_embeddings[i] = np.stack(all_embeddings[i], axis=0)
+            if self.embeddings["hidden_states"] is None:
+                self.embeddings["hidden_states"] = all_embeddings
+            return all_embeddings
+
+        elif is_special == "MEGADNA":
+            model = self.model
+            tokenizer = self.tokenizer
+            all_embeddings = [None] * 3
+            out_embeddings = []
+            for sequence in tqdm(sequences):
+                input_ids = tokenizer(sequence, return_tensors="pt").to(
+                    self.device
+                )["input_ids"]
+                if not isinstance(input_ids, torch.LongTensor):
+                    input_ids = input_ids.long()
+                with torch.no_grad():
+                    embeddings = model(input_ids, return_value="embedding")
+                for i in range(len(embeddings)):
+                    if all_embeddings[i] is None:
+                        all_embeddings[i] = []
+                    all_embeddings[i].append(embeddings[i].detach().cpu())
+                out_embeddings = all_embeddings
+            for i in range(len(all_embeddings)):
+                emb = (
+                    np.stack(all_embeddings[i], axis=0)
+                    if i > 0
+                    else np.concatenate(all_embeddings[i], axis=0)
+                )
+                reshaped_emb = emb.reshape(emb.shape[0], -1, emb.shape[-1])
+                if do_reduce:
+                    mean_emb = _compute_mean_embeddings(reshaped_emb, None)
+                else:
+                    mean_emb = reshaped_emb
+                # proj_emb = torch.nn.Linear(mean_emb.shape[-1], 128)
+                all_embeddings[i] = mean_emb
+            # Save embeddings
+            if self.embeddings["hidden_states"] is None:
+                self.embeddings["hidden_states"] = all_embeddings
+            return out_embeddings
+
+        if (
+            "hidden_states" not in self.embeddings
+            or self.embeddings["hidden_states"] is None
+        ):
+            _, _, embeddings = self.batch_infer(
+                dataloader,
+                do_pred=False,
+                output_hidden_states=True,
+                reduce_hidden_states=do_reduce,
+                reduce_strategy=reduce_strategy,
+            )
+            self.embeddings = embeddings
+        return self.embeddings["hidden_states"]
 
 
 def save_predictions(predictions: dict, output_dir: Path) -> None:

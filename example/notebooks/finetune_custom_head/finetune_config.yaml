@@ -1,0 +1,72 @@
+# Config example
+# Note:
+# task configurations are mandatory for both finetune and inference.
+# when performing finetune or inference, leave the other one as it is.
+# 
+# For detailed TrainingArguments documentation, please refer to:
+# https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+task:
+    # 'mask' - mask language model; 'generation' - casual language model;
+    # 'binary' - binary classification; 'multiclass' - multi-class classification; 'multilabel' - multi-label classification;
+    # 'regression' - regression; 'token' - token classification, such as NER;
+    # 'embedding' - get embedding, attention map and token probability
+    task_type: "binary"
+    # Labels information
+    num_labels: 2
+    label_names: ["negative", "positive"]
+    # Threshold to distinguish between true and false sample in binary/multi-class classification tasks
+    threshold: 0.5
+    head_config:                   # Configuration for custom head (MLP) on top of base model
+        head: "mlp"
+        hidden_dims: [1024, 512]   # List of hidden layer sizes
+        activation_fn: "gelu"      # Activation function (e.g., 'relu', 'tanh', 'gelu')
+        use_normalization: True    # Whether to use normalization
+        norm_type: "layernorm"     # Type of normalization ('layernorm' or 'batchnorm')
+        num_filters: 128           # Number of convolutional filters
+        kernel_sizes: [3, 5, 7]    # List of kernel sizes for convolutional layers
+        hidden_size: 256           # Hidden size for LSTM layer
+        bidirectional: True        # Whether the LSTM is bidirectional
+        num_layers: 3              # Number of layers for LSTM or U-Net
+        initial_filters: 512       # Initial number of filters for U-Net
+        dropout: 0.1               # Dropout probability
+        pooling_strategy:
+finetune:
+    # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
+    # Unlisted arguments can be added in the `extra_args` of DNATrainer
+    output_dir: "./outputs"
+    num_train_epochs: 3
+    per_device_train_batch_size: 48
+    per_device_eval_batch_size: 48
+    gradient_accumulation_steps: 1
+    max_steps: -1
+    logging_strategy: "steps"
+    logging_steps: 100
+    eval_strategy: "steps"
+    eval_steps: 100
+    save_strategy: "steps"
+    save_steps: 200
+    save_total_limit: 20
+    save_safetensors: True
+    learning_rate: 2e-5
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_epsilon: 1e-8
+    max_grad_norm: 1.0
+    warmup_ratio: 0.1
+    lr_scheduler_type: "linear"
+    lr_scheduler_kwargs: {}  # Empty dict for linear scheduler, or add specific parameters for other schedulers
+    # Examples for other schedulers:
+    # lr_scheduler_type: "cosine_with_restarts"
+    # lr_scheduler_kwargs: {"num_restarts": 2}
+    # lr_scheduler_type: "polynomial" 
+    # lr_scheduler_kwargs: {"power": 1.0}
+    # lr_scheduler_type: "reduce_lr_on_plateau"
+    # lr_scheduler_kwargs: {"patience": 10, "factor": 0.1}
+    seed: 42
+    bf16: False
+    fp16: False
+    load_best_model_at_end: True
+    metric_for_best_model: "eval_loss"
+    report_to: "tensorboard"
+    resume_from_checkpoint: 

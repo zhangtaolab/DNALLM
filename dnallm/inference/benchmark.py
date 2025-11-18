@@ -107,7 +107,7 @@ class Benchmark:
             "plot_format": plot_format,
         }
 
-    def get_inference_engine(self, model, tokenizer) -> DNAInference:
+    def get_inference_engine(self, model: Any, tokenizer: Any) -> DNAInference:
         """Create an inference engine object for the model.
 
         Args:
