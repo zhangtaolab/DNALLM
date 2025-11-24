@@ -18,6 +18,7 @@ alt.data_transformers.enable("default", max_rows=None)
 
 def _prepare_classification_data(
     metrics: dict[str, dict],
+    task_type: str = "binary",
 ) -> tuple[dict, dict]:
     """Prepare data for classification tasks (binary, multiclass, multilabel,
     token).
@@ -39,15 +40,31 @@ def _prepare_classification_data(
 
     for model, model_metrics in metrics.items():
         bars_data["models"].append(model)
-        if "AUROC" in model_metrics:
-            curves_data["AUROC"][model] = model_metrics["AUROC"]
-        if "AUPRC" in model_metrics:
-            curves_data["AUPRC"][model] = model_metrics["AUPRC"]
-        for metric, metric_data in model_metrics.items():
-            if metric == "curve":
-                _process_curve_data(metric_data, curves_data, model)
-            else:
-                _add_bar_metric(bars_data, metric, metric_data)
+        if task_type in ["multilabel", "token"]:
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    for label in metric_data:
+                        _process_curve_data(
+                            metric_data[label], curves_data, label
+                        )
+                        curves_data["AUROC"][label] = metric_data[label][
+                            "AUROC"
+                        ]
+                        curves_data["AUPRC"][label] = metric_data[label][
+                            "AUPRC"
+                        ]
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
+        else:
+            if "AUROC" in model_metrics:
+                curves_data["AUROC"][model] = model_metrics["AUROC"]
+            if "AUPRC" in model_metrics:
+                curves_data["AUPRC"][model] = model_metrics["AUPRC"]
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    _process_curve_data(metric_data, curves_data, model)
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
 
     return dict(bars_data), dict(curves_data)
 
@@ -271,6 +288,8 @@ def plot_bars(
 def plot_polar_bar(
     data: dict,
     title: str | None = None,
+    width: int = 400,
+    height: int = 400,
     save_path: str | None = None,
 ) -> alt.Chart:
     """Plot a polar bar chart.
@@ -351,6 +370,162 @@ def plot_polar_bar(
     return chart
 
 
+def plot_radar(
+    data: dict,
+    metric: str = "AUROC",
+    models: str | list[str] | None = None,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a radar chart.
+
+    Args:
+        data: Dictionary containing the data to plot.
+        metric: Metric to plot (e.g., "AUROC", "AUPRC").
+        models: List of models to include in the chart.
+        width: Width of the chart.
+        height: Height of the chart.
+        save_path: Path to save the chart.
+
+    Returns:
+        Altair chart object.
+    """
+    # Load metrics and models if available
+    metrics = []
+    if models is None:
+        default_model = "Model"
+    elif isinstance(models, str):
+        default_model = models
+    metric = metric.upper()
+    selected_models = set()
+    for name in data:
+        met = name.replace("test_", "")
+        if met == "curve":
+            for label in data[met]:
+                item = data[met][label][metric]
+                if isinstance(item, (int, float)):
+                    score = item
+                    metrics.append({
+                        "labels": label,
+                        "score": score,
+                        "model": default_model,
+                    })
+                    selected_models.add(default_model)
+                else:
+                    for model, score in item.items():
+                        if model in models or models is None:
+                            selected_models.add(model)
+                            metrics.append({
+                                "labels": label,
+                                "score": score,
+                                "model": model,
+                            })
+        else:
+            continue
+    # Convert to DataFrame
+    source = pd.DataFrame(metrics)
+    labels = source["labels"].unique()
+    angles = np.linspace(
+        np.pi / 2, np.pi / 2 - 2 * np.pi, len(labels), endpoint=False
+    )
+    cat_angle_map = dict(zip(labels, angles, strict=True))
+
+    source["angle"] = source["labels"].map(cat_angle_map)
+    source["x"] = source["score"] * np.cos(source["angle"])
+    source["y"] = source["score"] * np.sin(source["angle"])
+
+    closed_source = []
+    for model in selected_models:
+        subset = source[source["model"] == model].copy()
+        first_row = subset.iloc[[0]].copy()
+        closed_source.append(pd.concat([subset, first_row], ignore_index=True))
+    plot_df = pd.concat(closed_source).reset_index()
+
+    # Create base radar chart
+    rings = pd.DataFrame({"ring": [0.2, 0.4, 0.6, 0.8, 1.0]})
+    base_rings = (
+        alt.Chart(rings)
+        .mark_arc(stroke="lightgrey", fill=None)
+        .encode(
+            theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False)
+        )
+    )
+    base_rings_labels = base_rings.mark_text(
+        color="black", radiusOffset=5, align="center"
+    ).encode(text="ring", theta=alt.value(np.pi / len(labels)))
+    out_rings = (
+        alt.Chart(rings)
+        .mark_arc(stroke="black", fill=None)
+        .encode(theta=alt.value(np.pi * 2), radius=alt.datum(1))
+    )
+    # Create spokes
+    spokes = (
+        alt.Chart(plot_df)
+        .mark_arc(stroke="lightgrey", fill=None, strokeDash=[5, 5])
+        .encode(
+            theta=alt.Theta("labels:O"),
+            radius=alt.datum(1),
+            radius2=alt.datum(0),
+        )
+    )
+    labels_text = (
+        alt.Chart(plot_df)
+        .mark_text(radiusOffset=10, align="center")
+        .encode(
+            radius=alt.datum(1.1),
+            theta=alt.Theta("labels:O", sort=None),
+            text=alt.Text("labels"),
+            color=alt.value("black"),
+        )
+    )
+    # Create radar fill and line
+    radar_fill = (
+        alt.Chart(plot_df)
+        .mark_line(filled=True, fillOpacity=0.3)
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    radar_line = (
+        alt.Chart(plot_df)
+        .mark_line(
+            point=True,
+            fill=None,
+        )
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    # Create merge and configure chart
+    chart: alt.Chart = (
+        (
+            base_rings
+            + spokes
+            + out_rings
+            + radar_fill
+            + radar_line
+            + base_rings_labels
+            + labels_text
+        )
+        .properties(width=width, height=height, title=metric)
+        .configure_view(stroke=None)
+        .configure_axis(grid=False, domain=False, ticks=False)
+    )
+    # Check if save path is provided
+    if save_path:
+        chart.save(save_path)
+        print(f"Radar chart saved to {save_path}")
+    return chart
+
+
 def plot_curve(
     data: dict,
     show_score: bool = True,
@@ -377,8 +552,8 @@ def plot_curve(
         separate: Whether to return separate plots for ROC and PR curves
 
     Returns:
-              Altair chart object (combined or
-              separate plots based on separate parameter)
+        Altair chart object (combined or
+        separate plots based on separate parameter)
     """
     pline = {}
     p_separate = {}
@@ -886,6 +1061,52 @@ def plot_token_scatter(
     if save_path:
         chart.save(save_path)
         print(f"Figure saved to {save_path}")
+
+    return chart
+
+
+def plot_line(
+    scores: dict,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a line chart for average score ratios.
+
+    Args:
+        scores: A dictionary including labels and lists of scores.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the line plot.
+    """
+    records = []
+    for key, values in scores.items():
+        for pos, val in enumerate(values):
+            records.append({"type": key, "position": pos, "score": val})
+    df = pd.DataFrame(records)
+
+    chart: alt.Chart = (
+        alt.Chart(df)
+        .mark_line(interpolate="monotone")
+        .encode(
+            x=alt.X("position:Q", title="Position"),
+            y=alt.Y(
+                "score:Q", title="Likelihood", scale=alt.Scale(zero=False)
+            ),
+            color=alt.Color("type:N", title="Types"),
+            tooltip=["type", "position", "score"],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
 
     return chart
 

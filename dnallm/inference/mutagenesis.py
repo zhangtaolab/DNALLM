@@ -257,7 +257,11 @@ class Mutagenesis:
         all_logprobs = []
         model = self.model
         tokenizer = self.tokenizer
-        for seq in tqdm(self.sequences["sequence"], desc="Inferring"):
+        if len(self.sequences["sequence"]) > 1:
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")
+        else:
+            input_data = self.sequences["sequence"]
+        for seq in input_data:
             toks = tokenizer(
                 seq, return_tensors="pt", add_special_tokens=True
             ).to(model.device)
@@ -294,7 +298,7 @@ class Mutagenesis:
         return all_logprobs
 
     @torch.no_grad()
-    def clm_evaluate(self, use_last: bool = False) -> list[float]:
+    def clm_evaluate(self, return_sum: bool = True) -> list[float]:
         """Calculate sequence log-probability using causal language modeling.
 
         This method computes the log-probability of each sequence under a
@@ -307,7 +311,11 @@ class Mutagenesis:
         all_logprobs = []
         model = self.model
         tokenizer = self.tokenizer
-        for seq in tqdm(self.sequences["sequence"], desc="Inferring"):
+        if len(self.sequences["sequence"]) > 1:
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")
+        else:
+            input_data = self.sequences["sequence"]
+        for seq in input_data:
             toks = tokenizer(
                 seq, return_tensors="pt", add_special_tokens=True
             ).to(model.device)
@@ -322,10 +330,14 @@ class Mutagenesis:
             token_logps = log_probs.gather(
                 -1, shift_labels.unsqueeze(-1)
             ).squeeze(-1)  # (1, L-1)
-            seq_logp = float(token_logps.sum().item())
-            # Get last token logp
-            if use_last:
-                seq_logp = float(token_logps[0, -1].item())
+            if return_sum:
+                seq_logp = float(token_logps.sum().item())
+            else:
+                # Get all token logp
+                seq_logp = [
+                    float(token_logps[0, i].item())
+                    for i in range(len(token_logps[0]))
+                ]
             all_logprobs.append(seq_logp)
         return all_logprobs
 

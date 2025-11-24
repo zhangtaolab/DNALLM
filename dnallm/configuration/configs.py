@@ -249,6 +249,7 @@ class InferenceConfig(BaseModel):
     device: str = "auto"  # cpu, cuda, rocm, mps, tpu, ipex, auto
     num_workers: int = 4
     use_fp16: bool = False  # Whether to use half precision
+    use_bf16: bool = False  # Whether to use bfloat16 precision
     output_dir: str | None = None
 
 
