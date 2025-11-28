@@ -181,12 +181,11 @@ class Benchmark:
     ) -> dict[str, Any]:
         """Perform the benchmark evaluation on multiple models.
 
-                This method loads each model, runs predictions on the dataset,
-            calculates metrics,
-        and optionally saves the results.
+        This method loads each model, runs predictions on the dataset,
+        calculates metrics, and optionally saves the results.
 
         Args:
-                        model_names: List of model names or
+            model_names: List of model names or
                 a dictionary mapping model names to paths
             source: Source of the models ('local', 'huggingface', 'modelscope')
             use_mirror: Whether to use a mirror for downloading models

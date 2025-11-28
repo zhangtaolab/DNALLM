@@ -766,11 +766,26 @@ class DNAInference:
         Returns:
             torch.Tensor: Batch logits
         """
+        # Process logits
         if self.task_config.task_type == "embedding":
-            logits = None
+            logits: None = None
         else:
-            logits: torch.Tensor = outputs.logits.cpu().detach()
-
+            if hasattr(outputs, "logits"):
+                logits: torch.Tensor = outputs.logits.detach().float().cpu()
+            elif "logits" in outputs:
+                logits: torch.Tensor = outputs["logits"].detach().float().cpu()
+            elif isinstance(outputs, tuple) or isinstance(outputs, list):
+                # Assume logits are in outputs if outputs is a tuple or list
+                # index 0 is usually hidden states or last hidden state
+                # index 1 is usually logits
+                # indexes beyond 1 are usually other outputs like attentions
+                if len(outputs) > 1:
+                    logits: torch.Tensor = outputs[1].detach().float().cpu()
+                else:
+                    logits: None = None
+            else:
+                logits: None = None
+        # Process hidden states
         if output_hidden_states:
             self._process_hidden_states(
                 outputs,
@@ -779,7 +794,7 @@ class DNAInference:
                 reduce_hidden_states,
                 reduce_strategy,
             )
-
+        # Process attentions
         if output_attentions:
             self._process_attentions(outputs, embeddings)
 
@@ -963,7 +978,7 @@ class DNAInference:
                     torch.cat(lst, dim=0) for lst in embeddings["attentions"]
                 )
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def batch_infer(
         self,
         dataloader: DataLoader,
@@ -1017,6 +1032,14 @@ class DNAInference:
         # Combine embeddings dictionaries
         embeddings = {**hidden_embeddings, **attention_embeddings}
 
+        # Check model precision settings
+        if self.pred_config.use_fp16:
+            dtype = torch.float16
+        elif self.pred_config.use_bf16:
+            dtype = torch.bfloat16
+        else:
+            dtype = torch.float32
+
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
             inputs = {
@@ -1041,16 +1064,15 @@ class DNAInference:
             args = inputs.keys()
             accepted_inputs = {}
             for arg in args:
-                if arg in self.accepted_args:
+                if (
+                    arg in self.accepted_args
+                    or "**kwargs" in self.accepted_args
+                ):
                     accepted_inputs[arg] = inputs[arg]
 
-            if self.pred_config.use_fp16:
-                self.model = self.model.half()
-                with torch.amp.autocast("cuda"):
-                    outputs = self.model(**accepted_inputs)
-            elif self.pred_config.use_bf16:
-                self.model = self.model.to(torch.bfloat16)
-                with torch.amp.autocast("cuda"):
+            # Use autocast for mixed precision if enabled
+            if self.pred_config.use_fp16 or self.pred_config.use_bf16:
+                with torch.amp.autocast("cuda", dtype=dtype):
                     outputs = self.model(**accepted_inputs)
             else:
                 outputs = self.model(**accepted_inputs)
