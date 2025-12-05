@@ -49,6 +49,7 @@ from peft import get_peft_model, LoraConfig
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
+from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
 
 class DNATrainer:
@@ -203,6 +204,7 @@ class DNATrainer:
             eval_dataset=eval_dataset,
             compute_metrics=compute_metrics,
             data_collator=data_collator,
+            preprocess_logits_for_metrics=preprocess_logits,
         )
 
     def customize_trainer(self, trainer_cls: Trainer):

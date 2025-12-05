@@ -24,12 +24,15 @@ from .logger import (
     LoggingContext,
     log_function_call,
 )
+from .support import is_fp8_capable, is_flash_attention_capable
 
 __all__ = [
     "LoggingContext",
     "calc_gc_content",
     "check_sequence",
     "get_logger",
+    "is_flash_attention_capable",
+    "is_fp8_capable",
     "log_debug",
     "log_error",
     "log_failure",

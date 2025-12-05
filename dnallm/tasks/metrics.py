@@ -441,8 +441,10 @@ def multi_labels_metrics(label_list, plot=False):
                 metrics["curve"][label] = {
                     "fpr": roc_data[label][0],
                     "tpr": roc_data[label][1],
+                    "AUROC": roc_auc[label],
                     "precision": pr_data[label][0],
                     "recall": pr_data[label][1],
+                    "AUPRC": pr_auc[label],
                 }
         return metrics
 
@@ -504,6 +506,24 @@ def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
         }
 
     return compute_metrics
+
+
+def preprocess_logits_for_metrics(logits, labels):
+    """Preprocess logits for metrics computation.
+
+    This function handles logits preprocessing to avoid memory leaks
+    in the original Trainer implementation.
+
+    Args:
+        logits: Model output logits
+        labels: Ground truth labels
+
+    Returns:
+        Tuple of (processed_logits, labels)
+    """
+    logits = logits[0] if isinstance(logits, tuple) else logits
+
+    return logits
 
 
 def metrics_for_dnabert2(task):
@@ -586,24 +606,9 @@ def metrics_for_dnabert2(task):
                     "AUROC_ovo": roc_auc_ovo["roc_auc"],
                 }
 
-    def preprocess_logits_for_metrics(logits, labels):
-        """Preprocess logits for metrics computation.
+    preprocessing = preprocess_logits_for_metrics
 
-        This function handles logits preprocessing to avoid memory leaks
-        in the original Trainer implementation.
-
-        Args:
-            logits: Model output logits
-            labels: Ground truth labels
-
-        Returns:
-            Tuple of (processed_logits, labels)
-        """
-        logits = logits[0] if isinstance(logits, tuple) else logits
-        # pred_ids = torch.argmax(logits, dim=-1)
-        return logits, labels
-
-    return compute_metrics, preprocess_logits_for_metrics
+    return compute_metrics, preprocessing
 
 
 def compute_metrics(task_config: TaskConfig, plot: bool = False):

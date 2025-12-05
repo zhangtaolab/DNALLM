@@ -766,11 +766,26 @@ class DNAInference:
         Returns:
             torch.Tensor: Batch logits
         """
+        # Process logits
         if self.task_config.task_type == "embedding":
-            logits = None
+            logits: None = None
         else:
-            logits: torch.Tensor = outputs.logits.cpu().detach()
-
+            if hasattr(outputs, "logits"):
+                logits: torch.Tensor = outputs.logits.detach().float().cpu()
+            elif "logits" in outputs:
+                logits: torch.Tensor = outputs["logits"].detach().float().cpu()
+            elif isinstance(outputs, tuple) or isinstance(outputs, list):
+                # Assume logits are in outputs if outputs is a tuple or list
+                # index 0 is usually hidden states or last hidden state
+                # index 1 is usually logits
+                # indexes beyond 1 are usually other outputs like attentions
+                if len(outputs) > 1:
+                    logits: torch.Tensor = outputs[1].detach().float().cpu()
+                else:
+                    logits: None = None
+            else:
+                logits: None = None
+        # Process hidden states
         if output_hidden_states:
             self._process_hidden_states(
                 outputs,
@@ -779,7 +794,7 @@ class DNAInference:
                 reduce_hidden_states,
                 reduce_strategy,
             )
-
+        # Process attentions
         if output_attentions:
             self._process_attentions(outputs, embeddings)
 
@@ -963,7 +978,7 @@ class DNAInference:
                     torch.cat(lst, dim=0) for lst in embeddings["attentions"]
                 )
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def batch_infer(
         self,
         dataloader: DataLoader,
@@ -1017,6 +1032,14 @@ class DNAInference:
         # Combine embeddings dictionaries
         embeddings = {**hidden_embeddings, **attention_embeddings}
 
+        # Check model precision settings
+        if self.pred_config.use_fp16:
+            dtype = torch.float16
+        elif self.pred_config.use_bf16:
+            dtype = torch.bfloat16
+        else:
+            dtype = torch.float32
+
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
             inputs = {
@@ -1037,12 +1060,22 @@ class DNAInference:
                     inputs["output_hidden_states"] = True
 
             # Run model inference
-            if self.pred_config.use_fp16:
-                self.model = self.model.half()
-                with torch.amp.autocast("cuda"):
-                    outputs = self.model(**inputs)
+            # check accepted forward method
+            args = inputs.keys()
+            accepted_inputs = {}
+            for arg in args:
+                if (
+                    arg in self.accepted_args
+                    or "**kwargs" in self.accepted_args
+                ):
+                    accepted_inputs[arg] = inputs[arg]
+
+            # Use autocast for mixed precision if enabled
+            if self.pred_config.use_fp16 or self.pred_config.use_bf16:
+                with torch.amp.autocast("cuda", dtype=dtype):
+                    outputs = self.model(**accepted_inputs)
             else:
-                outputs = self.model(**inputs)
+                outputs = self.model(**accepted_inputs)
 
             # Process batch outputs
             logits = self._process_batch_outputs(
@@ -1754,7 +1787,7 @@ class DNAInference:
                     decoded = tokenizer.decode(output.squeeze().cpu().int())
                     formatted_outputs.append({
                         "Prompt": seq,
-                        "Output": decoded,
+                        "Output": decoded.replace(" ", ""),
                     })
             return formatted_outputs
         elif (
@@ -1778,7 +1811,10 @@ class DNAInference:
                 decoded = self.tokenizer.decode(
                     output[0], skip_special_tokens=True
                 )
-                outputs.append({"Prompt": seq, "Output": decoded})
+                outputs.append({
+                    "Prompt": seq,
+                    "Output": decoded.replace(" ", ""),
+                })
             return outputs
         else:
             raise ValueError(
@@ -1791,20 +1827,25 @@ class DNAInference:
         self,
         inputs: DataLoader | list[str],
         reduce_method: str = "mean",
+        score_type: str = "embedding",
     ) -> dict[Any, Any]:
         # Prepare score sequences
         score_seqs = []
         if isinstance(inputs, DataLoader):
             for data in tqdm(inputs, desc="Scoring"):
-                seqs = data["sequence"]
-                if isinstance(score_seqs, list):
-                    score_seqs.extend([seq for seq in seqs if seq])
+                seqs = (
+                    data.get("sequence", None)
+                    if isinstance(data, dict)
+                    else getattr(data, "sequence", None)
+                )
                 if not seqs:
                     continue
+                score_seqs.extend([s for s in seqs if s])
         else:
             score_seqs = inputs
         # Check if model supports scoring
-        if "evo2" in str(self.model).lower():
+        model_name = str(self.model).lower()
+        if "evo2" in model_name:
             outputs = self.model.score_sequences(
                 score_seqs, reduce_method=reduce_method
             )
@@ -1813,7 +1854,7 @@ class DNAInference:
                 for i, s in enumerate(outputs)
             ]
             return outputs
-        elif "evo1" in str(self.model).lower():
+        elif "evo1" in model_name:
             from evo import score_sequences
 
             model = self.model.model
@@ -1830,7 +1871,7 @@ class DNAInference:
                 for i, s in enumerate(outputs)
             ]
             return outputs
-        elif "megadna" in str(self.model).lower():
+        elif "megadna" in model_name:
             model = self.model
             tokenizer = self.tokenizer
             outputs = []
@@ -1851,16 +1892,33 @@ class DNAInference:
             )
         else:
             dataloader = inputs
-        _, _, embeddings = self.batch_infer(
-            dataloader, output_hidden_states=True, do_pred=False
+        all_logits, _, embeddings = self.batch_infer(
+            dataloader,
+            output_hidden_states=True if score_type == "embedding" else False,
+            do_pred=False,
         )
+        # Prepare logits list for scoring
+        logits_list = []
+        if isinstance(all_logits, torch.Tensor):
+            # assume shape (N, L, V)
+            for i in range(all_logits.size(0)):
+                logits_list.append(all_logits[i].detach().cpu())
+        elif isinstance(all_logits, (list, tuple)):
+            for item in all_logits:
+                logits_list.append(
+                    item.detach().cpu()
+                    if isinstance(item, torch.Tensor)
+                    else torch.tensor(item)
+                )
+        else:
+            logits_list = []
         # Compute scores
-        if "hidden_states" in embeddings:
+        scores = []
+        if "hidden_states" in embeddings and score_type == "embedding":
             hidden_states = embeddings["hidden_states"]
-            scores = []
             for i in range(len(score_seqs)):
                 # (layers, seq_len, dim)
-                seq_hidden = hidden_states[:, i, :, :]
+                seq_hidden = torch.stack([h[i] for h in hidden_states], dim=0)
                 if reduce_method == "mean":
                     score = seq_hidden.mean().item()
                 elif reduce_method == "max":
@@ -1870,6 +1928,96 @@ class DNAInference:
                 else:
                     score = seq_hidden.mean().item()
                 scores.append({"Input": score_seqs[i], "Score": score})
+        elif logits_list and score_type == "logits":
+            # use logits as scores
+            for i in range(len(score_seqs)):
+                logits = logits_list[i]
+                if logits.dim() == 3:
+                    logits = logits.squeeze(0)
+                if reduce_method == "mean":
+                    score = logits.mean().item()
+                elif reduce_method == "max":
+                    score = logits.max().item()
+                elif reduce_method == "min":
+                    score = logits.min().item()
+                else:
+                    score = logits.mean().item()
+                scores.append({"Input": score_seqs[i], "Score": score})
+        elif logits_list and score_type == "probability":
+            tokenizer = self.tokenizer
+            for i, seq in enumerate(score_seqs):
+                logits = logits_list[i].to(self.device)  # (L, V) or (1,L,V)
+                if logits.dim() == 3 and logits.size(0) == 1:
+                    logits = logits.squeeze(0)
+                # Re-tokenize the sequence to obtain input_ids & attention_mask
+                enc = tokenizer(seq, return_tensors="pt", padding=False)
+                input_ids = enc["input_ids"].to(self.device)  # (1, L)
+                attention_mask = enc.get("attention_mask", None)
+                if attention_mask is not None:
+                    attention_mask = attention_mask.to(self.device)
+                # Decide model type by presence of mask token
+                mask_token_id = getattr(tokenizer, "mask_token_id", None)
+                is_mlm = False
+                if mask_token_id is not None:
+                    if (input_ids == mask_token_id).any():
+                        is_mlm = True
+                with torch.no_grad():
+                    # (L, V)
+                    logprobs = torch.log_softmax(
+                        logits.to(self.device), dim=-1
+                    )
+                tgt_ids = input_ids.squeeze(0)
+                if is_mlm:
+                    # MLM: logits[t] predicts token at t
+                    # Gather token logprobs at each position
+                    gathered = logprobs.gather(
+                        1, tgt_ids.unsqueeze(-1)
+                    ).squeeze(-1)  # (L,)
+                    # only keep positions where mask appears
+                    mask_positions = tgt_ids == mask_token_id
+                    if mask_positions.any():
+                        token_logprobs = gathered[mask_positions]
+                    else:
+                        # No explicit mask found; fall back to using all tokens
+                        token_logprobs = gathered
+                else:
+                    # Causal LM: logits[t] predicts token at t+1
+                    # Align: drop last logit, drop first input id
+                    if logprobs.size(0) >= 2 and tgt_ids.size(0) >= 2:
+                        lp = logprobs[:-1, :]  # (L-1, V)
+                        tgt = tgt_ids[1:]  # (L-1,)
+                        gathered = lp.gather(1, tgt.unsqueeze(-1)).squeeze(-1)
+                        # apply attention_mask if available (exclude padding)
+                        if attention_mask is not None:
+                            attn = attention_mask.squeeze(0)[1:].to(torch.bool)
+                            if attn.any():
+                                token_logprobs = gathered[attn]
+                            else:
+                                token_logprobs = gathered
+                        else:
+                            token_logprobs = gathered
+                    else:
+                        # fallback: gather directly (if short)
+                        gathered = logprobs.gather(
+                            1, tgt_ids.unsqueeze(-1)
+                        ).squeeze(-1)
+                        token_logprobs = gathered
+                if token_logprobs.numel() == 0:
+                    score = float("nan")  # no tokens to score
+                else:
+                    if reduce_method == "mean":
+                        score = float(token_logprobs.mean().item())
+                    elif reduce_method == "sum":
+                        score = float(token_logprobs.sum().item())
+                    elif reduce_method == "max":
+                        score = float(token_logprobs.max().item())
+                    elif reduce_method == "min":
+                        score = float(token_logprobs.min().item())
+                    else:
+                        score = float(token_logprobs.mean().item())
+
+                scores.append({"Input": seq, "Score": score})
+
             return scores
 
         return {}
