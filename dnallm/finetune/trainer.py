@@ -258,6 +258,10 @@ class DNATrainer:
         metrics: dict[str, float] = train_result.metrics
         # Save the model
         self.trainer.save_model()
+        self.model.save_pretrained(
+            self.train_config.output_dir,
+            safe_serialization=self.trainer.args.save_safetensors,
+        )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(
                 self.train_config.output_dir

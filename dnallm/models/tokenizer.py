@@ -6,10 +6,16 @@ import torch.nn as nn
 
 class DNAOneHotTokenizer:
     def __init__(
-        self, max_length: int | None = 1024, padding_side: str = "right"
+        self,
+        max_length: int | None = 196_608,
+        padding_side: str = "right",
+        return_embeds: bool = False,
+        embeds_transpose: bool = False,
     ):
         self.max_length = max_length
         self.padding_side = padding_side
+        self.return_embeds = return_embeds
+        self.embeds_transpose = embeds_transpose
 
         self.token_to_id = {
             "A": 0,
@@ -42,8 +48,8 @@ class DNAOneHotTokenizer:
                 [0.0, 1.0, 0.0, 0.0],  # 1: C
                 [0.0, 0.0, 1.0, 0.0],  # 2: G
                 [0.0, 0.0, 0.0, 1.0],  # 3: T / U
-                [0.0, 0.0, 0.0, 0.0],  # 4: N / X
-                [0.25, 0.25, 0.25, 0.25],  # 5: Padding, index=-1
+                [0.25, 0.25, 0.25, 0.25],  # 4: N / X
+                [0.0, 0.0, 0.0, 0.0],  # 5: Padding, index=-1
             ],
             dtype=torch.float32,
         )
@@ -57,7 +63,8 @@ class DNAOneHotTokenizer:
         return_tensors: str = "pt",
         return_dict: bool = True,
         return_input_ids: bool = True,
-        return_inputs_embeds: bool = False,
+        return_inputs_embeds: bool | None = None,
+        **kwargs,
     ) -> dict[str, torch.Tensor] | torch.Tensor | None:
         if isinstance(sequences, str):
             sequences = [sequences]
@@ -104,6 +111,8 @@ class DNAOneHotTokenizer:
         attention_mask = torch.tensor(attention_masks, dtype=torch.long)
 
         output = {}
+        if return_inputs_embeds is None:
+            return_inputs_embeds = self.return_embeds
         if return_dict:
             output["attention_mask"] = attention_mask
 
@@ -114,9 +123,11 @@ class DNAOneHotTokenizer:
                 return ids_tensor
 
         if return_inputs_embeds:
-            one_hot_output = nn.functional.embedding(
-                ids_tensor, self.vocab_vectors
-            )
+            idx = ids_tensor.clone()
+            idx[idx == -1] = 5  # Padding index
+            one_hot_output = nn.functional.embedding(idx, self.vocab_vectors)
+            if self.embeds_transpose:
+                one_hot_output = one_hot_output.transpose(1, 2)
 
             if return_dict:
                 output["inputs_embeds"] = one_hot_output

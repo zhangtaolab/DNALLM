@@ -130,6 +130,29 @@ def _add_bar_metric(bars_data: dict, metric: str, metric_data) -> None:
     bars_data[metric].append(metric_data)
 
 
+def _prepare_annotations(data: list | dict) -> dict:
+    """Prepare annotations for plots."""
+    if isinstance(data, list):
+        label_names = set(data)
+        # label_dict = {name: i for i, name in enumerate(label_names)}
+        annotations = {"model": {name: set() for name in label_names}}
+        for i, name in enumerate(data):
+            annotations["model"][name].add(i)
+        return annotations
+    elif isinstance(data, dict):
+        models = data.keys()
+        label_names = set(data[models[0]])
+        annotations = {
+            model: {name: set() for name in label_names} for model in models
+        }
+        for model in models:
+            for i, name in enumerate(data[model]):
+                annotations[model][name].add(i)
+        return annotations
+    else:
+        raise TypeError("Data must be a list or a dictionary")
+
+
 def prepare_data(
     metrics: dict[str, dict], task_type: str = "binary"
 ) -> tuple[dict, dict | dict]:
@@ -172,8 +195,8 @@ def plot_bars(
     show_score: bool = True,
     ncols: int = 3,
     width: int = 200,
-    height: int = 50,
-    bar_width: int = 30,
+    height: int | None = None,
+    bar_width: int = 20,
     domain: tuple[float, float] | list[float] = (0.0, 1.0),
     save_path: str | None = None,
     separate: bool = False,
@@ -223,6 +246,8 @@ def plot_bars(
             domain_use = domain
 
         # Create bar chart with optimized encoding
+        if height is None:
+            height = 25 * len(dbar["models"])
         bar = (
             alt.Chart(dbar)
             .mark_bar(size=bar_width)
@@ -232,7 +257,7 @@ def plot_bars(
                 color=alt.Color("models").legend(None),
                 tooltip=["models", metric],
             )
-            .properties(width=width, height=height * len(dbar["models"]))
+            .properties(width=width, height=height)
         )
 
         if show_score:
@@ -1107,6 +1132,137 @@ def plot_line(
 
     if save_path:
         chart.save(save_path)
+
+    return chart
+
+
+def plot_annotations(
+    data: dict,
+    start: int | None = None,
+    end: int | None = None,
+    custom_colors: dict | None = None,
+    width: int = 800,
+    height: int | None = None,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot sequence annotations such as domains, motifs, or other features.
+
+    Args:
+        annotations: A dictionary where keys are annotation types and values.
+        start: Start position for the plot.
+        end: End position for the plot.
+        custom_colors: A dictionary mapping annotation types to colors.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the annotations.
+    """
+    from itertools import groupby
+    from operator import itemgetter
+
+    def get_intervals_from_set(pos_set, min_val, max_val):
+        """
+        Given a set of positions, return a list of continuous intervals
+        within the specified min and max values.
+        """
+        valid_pos = sorted([p for p in pos_set if min_val <= p < max_val])
+
+        if not valid_pos:
+            return []
+
+        intervals = []
+        for _, g in groupby(enumerate(valid_pos), lambda ix: ix[0] - ix[1]):
+            group = list(map(itemgetter(1), g))
+            start = group[0]
+            end = group[-1] + 1
+            intervals.append((start, end))
+
+        return intervals
+
+    records = []
+    all_types = set()
+    for model, anno in data.items():
+        for ann_type, pos_set in anno.items():
+            all_types.add(ann_type)
+
+            intervals = get_intervals_from_set(pos_set, start, end)
+            for s, e in intervals:
+                records.append({
+                    "Model": model,
+                    "Type": ann_type,
+                    "Start": s,
+                    "End": e,
+                    "Length": e - s,
+                })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        print("Warning: No annotations to plot.")
+        return None
+
+    # Assign Set1 color to each types
+    type_list = sorted(all_types)
+    if custom_colors:
+        color_map = custom_colors
+    else:
+        default_colors = [
+            "#e41a1c",
+            "#377eb8",
+            "#4daf4a",
+            "#984ea3",
+            "#ff7f00",
+            "#ffff33",
+            "#a65628",
+            "#f781bf",
+            "#999999",
+        ]
+        color_map = {}
+        for i, t in enumerate(type_list):
+            if custom_colors and t in custom_colors:
+                color_map[t] = custom_colors[t]
+            else:
+                color_map[t] = default_colors[i % len(default_colors)]
+    range_colors = [color_map.get(t, "#7f7f7f") for t in type_list]
+
+    if height is None:
+        height = len(data) * 30
+
+    chart: alt.Chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(
+                "Start",
+                scale=alt.Scale(domain=[start, end]),
+                axis=alt.Axis(format="d", title="Genomic Position (bp)"),
+            ),
+            x2="End",
+            y=alt.Y("Model", title=None, sort=list(data.keys())),
+            color=alt.Color(
+                "Type",
+                scale=alt.Scale(domain=type_list, range=range_colors),
+                legend=alt.Legend(title="Type"),
+            ),
+            tooltip=[
+                alt.Tooltip("Model", title="Model"),
+                alt.Tooltip("Type", title="Type"),
+                alt.Tooltip("Start", title="Start"),
+                alt.Tooltip("End", title="End"),
+                alt.Tooltip("Length", title="Length (bp)"),
+            ],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .configure_view(strokeWidth=0)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Annotation heatmap saved to {save_path}")
 
     return chart
 

@@ -626,16 +626,16 @@ class EnformerForSequenceClassification(PreTrainedModel):
     config_class = EnformerConfig
     base_model_prefix = "model"
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         super().__init__(config)
-        self.num_labels = config.num_labels
+        self.num_labels = kwargs.get("num_labels", config.num_labels)
         self.config = config
 
         self.model = from_pretrained(
             self.config._name_or_path, use_tf_gamma=self.config.use_tf_gamma
         )
         self.score = nn.Linear(self.config.dim * 2, self.num_labels)
-        self.loss = nn.CrossEntropyLoss()
+        self.resolution = 128
         self.target_length = getattr(self.config, "target_length", 896)
 
         # Initialize weights and apply final processing
@@ -645,6 +645,7 @@ class EnformerForSequenceClassification(PreTrainedModel):
         self,
         input_ids=None,
         labels=None,
+        pooling: str = "mean",
         return_only_embeddings=True,
         output_hidden_states: bool | None = None,
         return_dict: bool | None = None,
@@ -660,7 +661,10 @@ class EnformerForSequenceClassification(PreTrainedModel):
             return_only_embeddings=return_only_embeddings,
             target_length=self.target_length,
         )  # (bs, seq_len, dim)
-        pooled_output = torch.sum(outputs, dim=1)  # (bs, dim)
+        if pooling == "mean":
+            pooled_output = torch.mean(outputs, dim=1)  # (bs, dim)
+        else:
+            pooled_output = torch.sum(outputs, dim=1)  # (bs, dim))
         logits = self.score(pooled_output)
         loss = None
         if labels is not None:
@@ -676,17 +680,20 @@ class EnformerForSequenceClassification(PreTrainedModel):
 
             if self.config.problem_type == "regression":
                 loss_fct = nn.MSELoss()
-                loss = loss_fct(logits.view(-1), labels.view(-1))
+                if self.num_labels == 1:
+                    loss = loss_fct(logits.squeeze(), labels.squeeze())
+                else:
+                    loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = nn.CrossEntropyLoss()
-            elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()
-            else:
-                raise NotImplementedError(self.config.problem_type)
-            if labels is not None:
                 loss = loss_fct(
                     logits.view(-1, self.num_labels), labels.view(-1)
                 )
+            elif self.config.problem_type == "multi_label_classification":
+                loss_fct = nn.BCEWithLogitsLoss()
+                loss = loss_fct(logits, labels)
+            else:
+                raise NotImplementedError(self.config.problem_type)
 
         if not return_dict:
             output = (

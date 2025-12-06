@@ -13,6 +13,7 @@ def _handle_enformer_models(
     model_name: str,
     source: str,
     task_type: str,
+    num_labels: int,
     extra: str | None = None,
 ) -> tuple | None:
     """Handle special case for Enformer models."""
@@ -35,6 +36,7 @@ def _handle_enformer_models(
             )
             config_path = os.path.join(downloaded_model_path, "config.json")
             config = EnformerConfig.from_pretrained(config_path)
+            config.num_labels = num_labels
             if task_type in [
                 "binary",
                 "regression",

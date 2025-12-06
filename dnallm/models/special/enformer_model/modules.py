@@ -441,9 +441,16 @@ class Experts(nn.Module):
         output_list = []
 
         for i in range(self.num_experts):
-            expert_output = torch.mm(input_list[i], self.weight[i])
+            inp = input_list[i]
+            weight = self.weight[i]
+            if inp.dtype != weight.dtype:
+                weight = weight.to(inp.dtype)
+            expert_output = torch.mm(inp, weight)
             if self.bias is not None:
-                expert_output += self.bias[i]
+                bias = self.bias[i]
+                if inp.dtype != bias.dtype:
+                    bias = bias.to(inp.dtype)
+                expert_output += bias
             output_list.append(expert_output)
             del expert_output
         output = torch.cat(output_list, dim=0)
@@ -463,6 +470,11 @@ def compute_gating(
     top_k_indices: [batch_size * length, k]
     """
     gates = torch.zeros_like(logits)
+
+    # Add this to avoid dtype mismatch error in mixed precision training
+    if top_k_gates.dtype != gates.dtype:
+        top_k_gates = top_k_gates.to(gates.dtype)
+
     gates.scatter_(1, top_k_indices, top_k_gates)
 
     expert_size = (gates > 0).sum(dim=0)

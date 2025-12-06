@@ -85,6 +85,7 @@ def _handle_evo2_models(model_name: str, source: str) -> tuple | None:
                     local_path=model_path,
                     config_path=config_path,
                 )
+                downloaded_model_path = model_path
             else:
                 from ..model import _get_model_path_and_imports
 

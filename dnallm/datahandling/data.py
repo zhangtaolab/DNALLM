@@ -432,12 +432,14 @@ class DNADataset:
     def encode_sequences(
         self,
         padding: str = "max_length",
+        padding_side: str | None = None,
         return_tensors: str = "pt",
         remove_unused_columns: bool = False,
         uppercase: bool = False,
         lowercase: bool = False,
         task: str | None = "SequenceClassification",
         tokenizer: PreTrainedTokenizerBase | None = None,
+        seq_sep: str | None = None,
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
@@ -476,13 +478,27 @@ class DNADataset:
             task = "sequenceclassification"
         task = task.lower()
 
+        if task == "sequenceclassification":
+            if padding_side is None:
+                padding_side = "right"
+        else:
+            if hasattr(self.tokenizer, "padding_side"):
+                padding_side = self.tokenizer.padding_side
+            else:
+                padding_side = "right"
+
         if task in ["tokenclassification", "token", "ner"]:
             self._apply_token_classification_tokenization(
                 tokenizer_config, padding, uppercase, lowercase
             )
         else:
             self._apply_sequence_classification_tokenization(
-                tokenizer_config, padding, uppercase, lowercase
+                tokenizer_config,
+                padding,
+                padding_side,
+                uppercase,
+                lowercase,
+                seq_sep,
             )
 
         # Post-process dataset
@@ -532,6 +548,12 @@ class DNADataset:
                 sp_token_map["pad_token"] = self.tokenizer.decode_token(
                     sp_token_map["pad_id"]
                 )
+        eos_token = sp_token_map.get("eos_token")
+        if not eos_token:
+            if hasattr(self.tokenizer, "sep_token"):
+                eos_token = self.tokenizer.sep_token
+            elif hasattr(self.tokenizer, "pad_token"):
+                eos_token = self.tokenizer.pad_token
         return {
             "pad_token": sp_token_map.get("pad_token"),
             "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[
@@ -541,14 +563,31 @@ class DNADataset:
             else None,
             "cls_token": sp_token_map.get("cls_token"),
             "sep_token": sp_token_map.get("sep_token"),
-            "eos_token": sp_token_map.get("eos_token"),
+            "eos_token": eos_token,
             "max_length": self.max_length,
         }
 
     def _apply_sequence_classification_tokenization(
-        self, config: dict, padding: str, uppercase: bool, lowercase: bool
+        self,
+        config: dict,
+        padding: str,
+        padding_side: str,
+        uppercase: bool,
+        lowercase: bool,
+        seq_sep: str | None = None,
     ) -> None:
         """Apply sequence classification tokenization."""
+
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        if hasattr(self.tokenizer, "sep_token"):
+            sep_token = self.tokenizer.sep_token
+        elif hasattr(self.tokenizer, "eos_token"):
+            sep_token = self.tokenizer.eos_token
+        elif hasattr(self.tokenizer, "pad_token"):
+            sep_token = self.tokenizer.pad_token
+        else:
+            sep_token = ""
 
         def tokenize_for_sequence_classification(example):
             sequences = example["sequence"]
@@ -556,17 +595,17 @@ class DNADataset:
                 sequences = [x.upper() for x in sequences]
             if lowercase:
                 sequences = [x.lower() for x in sequences]
+            if seq_sep is not None:
+                sequences = sequences.replace(seq_sep, sep_token)
             if self.tokenizer is None:
                 raise ValueError("Tokenizer is not initialized")
             return self.tokenizer(
                 sequences,
                 truncation=True,
                 padding=padding,
+                padding_side=padding_side,
                 max_length=config["max_length"],
             )
-
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.dataset = self.dataset.map(
             tokenize_for_sequence_classification,
@@ -654,6 +693,8 @@ class DNADataset:
         all_masks = [1] * len(all_ids) + [0] * pad_len
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
+        if isinstance(example_tokens, str):
+            example_tokens = list(example_tokens)
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
                 example_tokens, example_ner_tags, pad_len, config
@@ -779,7 +820,13 @@ class DNADataset:
 
     def _remove_unused_columns(self) -> None:
         """Remove unused columns from the dataset."""
-        used_cols = ["labels", "input_ids", "attention_mask"]
+        used_cols = [
+            "labels",
+            "input_ids",
+            "inputs_embeds",
+            "attention_mask",
+            "token_type_ids",
+        ]
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
                 unused_cols = [

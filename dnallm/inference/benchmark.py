@@ -267,10 +267,16 @@ class Benchmark:
                     #         raise NameError(
                     # "Cannot find model in either the given source or local."
                     #         ) from None
+                if hasattr(tokenizer, "model_max_length"):
+                    max_length = min(
+                        tokenizer.model_max_length, pred_config.max_length
+                    )
+                else:
+                    max_length = pred_config.max_length
                 dataset = DNADataset(
                     self.datasets[di],
                     tokenizer=tokenizer,
-                    max_length=pred_config.max_length,
+                    max_length=max_length,
                 )
                 dataset.encode_sequences(remove_unused_columns=True)
                 dataloader: DataLoader = DataLoader(
@@ -402,6 +408,7 @@ class Benchmark:
                     scatter_plot = os.path.join(save_path, "scatter.pdf")
             else:
                 bar_chart = None
+                scatter_plot = None
             # Plot bar charts
             pbar = plot_bars(
                 bars_data,

@@ -213,7 +213,7 @@ def regression_metrics(plot=False):
     return compute_metrics
 
 
-def multi_classification_metrics(plot=False):
+def multi_classification_metrics(label_list, plot=False):
     """Create metrics computation function for multi-class classification
     tasks.
 
@@ -310,13 +310,58 @@ def multi_classification_metrics(plot=False):
         # metrics["AUROC_ovr"] = roc_auc_ovr['roc_auc']
         # metrics["AUROC_ovo"] = roc_auc_ovo['roc_auc']
         if plot:
-            fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
-            prec, rec, _ = precision_recall_curve(labels, pred_probs[:, 1])
+            label_curves = {}
+            for i, label_name in enumerate(label_list):
+                fpr, tpr, _ = roc_curve(
+                    np.array(labels) == i, pred_probs[:, i]
+                )
+                prec, rec, _ = precision_recall_curve(
+                    np.array(labels) == i, pred_probs[:, i]
+                )
+                label_curves[label_name] = {
+                    "fpr": fpr,
+                    "tpr": tpr,
+                    "precision": prec,
+                    "recall": rec,
+                }
+            # overall fpr, tpr for macro-average ROC curve
+            # and precision-recall curve can be added here if needed
+            all_fpr = np.unique(
+                np.concatenate([
+                    label_curves[label]["fpr"] for label in label_list
+                ])
+            )
+            mean_tpr = np.zeros_like(all_fpr)
+            for label in label_list:
+                mean_tpr += np.interp(
+                    all_fpr,
+                    label_curves[label]["fpr"],
+                    label_curves[label]["tpr"],
+                )
+            mean_tpr /= len(label_list)
+            all_recall = np.unique(
+                np.concatenate([
+                    label_curves[label]["recall"] for label in label_list
+                ])
+            )
+            mean_precision = np.zeros_like(all_recall)
+            for label in label_list:
+                mean_precision += np.interp(
+                    all_recall,
+                    label_curves[label]["recall"],
+                    label_curves[label]["precision"],
+                )
+            mean_precision /= len(label_list)
+
+            fpr = all_fpr
+            tpr = mean_tpr
+            precision = mean_precision
+            recall = all_recall
             metrics["curve"] = {
                 "fpr": fpr,
                 "tpr": tpr,
-                "precision": prec,
-                "recall": rec,
+                "precision": precision,
+                "recall": recall,
             }
         return metrics
 
@@ -632,7 +677,7 @@ def compute_metrics(task_config: TaskConfig, plot: bool = False):
     if task_config.task_type == "binary":
         return classification_metrics(plot=plot)
     elif task_config.task_type == "multiclass":
-        return multi_classification_metrics(plot=plot)
+        return multi_classification_metrics(task_config.label_names, plot=plot)
     elif task_config.task_type == "multilabel":
         return multi_labels_metrics(task_config.label_names, plot=plot)
     elif task_config.task_type == "regression":

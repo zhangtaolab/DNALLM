@@ -7,9 +7,11 @@ from .mutbert import _handle_mutbert_tokenizer
 from .omnidna import _handle_omnidna_models
 from .enformer import _handle_enformer_models
 from .space import _handle_space_models
+from .borzoi import _handle_borzoi_models
 
 
 __all__ = [
+    "_handle_borzoi_models",
     "_handle_dnabert2_models",
     "_handle_enformer_models",
     "_handle_evo1_models",

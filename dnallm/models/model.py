@@ -28,6 +28,7 @@ from .special import (
     _handle_omnidna_models,
     _handle_enformer_models,
     _handle_space_models,
+    _handle_borzoi_models,
 )
 from .head import (
     BasicMLPHead,
@@ -693,6 +694,70 @@ def _get_device() -> torch.device:
     return torch.device("cpu")
 
 
+def _safe_num_labels(num_labels: int | None, task_type: str) -> int:
+    """Ensure num_labels is at least 2 for classification tasks.
+
+    Args:
+        num_labels: Original number of labels
+
+    Returns:
+        Safe number of labels (at least 2)
+    """
+    # Ensure num_labels is not None for classification tasks
+    if num_labels is None and task_type in [
+        "binary",
+        "multiclass",
+        "multilabel",
+        "regression",
+        "token",
+    ]:
+        raise ValueError(
+            f"num_labels is required for task type '{task_type}' but is None"
+        )
+
+    # Use default value if num_labels is None for other tasks
+    safe_num_labels = num_labels if num_labels is not None else 1
+    # num_labels check for non-binary classification tasks
+    if task_type == "regression" and safe_num_labels != 1:
+        logger.warning(
+            f"Regression task typically has num_labels=1, "
+            f"but got {safe_num_labels}."
+        )
+        safe_num_labels = 1
+    elif task_type == "generation" and safe_num_labels != 0:
+        logger.warning(
+            f"Generation task does not require num_labels, "
+            f"but got {safe_num_labels}. Setting to 0."
+        )
+        safe_num_labels = 0
+    elif task_type == "mask" and safe_num_labels != 0:
+        logger.warning(
+            f"Mask task does not require num_labels, "
+            f"but got {safe_num_labels}. Setting to 0."
+        )
+        safe_num_labels = 0
+    elif task_type == "embedding" and safe_num_labels != 0:
+        logger.warning(
+            f"Embedding task does not require num_labels, "
+            f"but got {safe_num_labels}. Setting to 0."
+        )
+        safe_num_labels = 0
+    if task_type not in [
+        "binary",
+        "regression",
+        "generation",
+        "mask",
+        "embedding",
+    ]:
+        if safe_num_labels < 2:
+            raise ValueError(
+                f"num_labels should be at least 2 for task type "
+                f"'{task_type}', but got {safe_num_labels}."
+            )
+
+    return safe_num_labels
+
+
 def load_model_and_tokenizer(
     model_name: str,
     task_config: TaskConfig,
@@ -738,6 +803,7 @@ def load_model_and_tokenizer(
     else:
         head_config = None
     num_labels = task_config.num_labels
+    safe_num_labels = _safe_num_labels(num_labels, task_type)
 
     # Handle special case for EVO2 models
     evo2_result = _handle_evo2_models(model_name, source)
@@ -766,14 +832,37 @@ def load_model_and_tokenizer(
     _ = _handle_omnidna_models(model_name)
 
     # Handle special case for Enformer models
-    enformer_result = _handle_enformer_models(model_name, source, task_type)
+    enformer_result = _handle_enformer_models(
+        model_name,
+        source,
+        task_type,
+        safe_num_labels,
+        extra=model_name if "enformer" in model_name.lower() else None,
+    )
     if enformer_result is not None:
         return enformer_result
 
     # Handle special case for SPACE models
-    space_result = _handle_space_models(model_name, source, task_type)
+    space_result = _handle_space_models(
+        model_name,
+        source,
+        task_type,
+        safe_num_labels,
+        extra=model_name if "space" in model_name.lower() else None,
+    )
     if space_result is not None:
         return space_result
+
+    # Handle special case for Borzoi models
+    borzoi_result = _handle_borzoi_models(
+        model_name,
+        source,
+        task_type,
+        safe_num_labels,
+        extra=model_name if "borzoi" in model_name.lower() else None,
+    )
+    if borzoi_result is not None:
+        return borzoi_result
 
     # TODO: Add more special cases if needed
 
@@ -789,59 +878,6 @@ def load_model_and_tokenizer(
 
     # Load model and tokenizer based on task type
     try:
-        # Ensure num_labels is not None for classification tasks
-        if num_labels is None and task_type in [
-            "binary",
-            "multiclass",
-            "multilabel",
-            "regression",
-            "token",
-        ]:
-            raise ValueError(
-                f"num_labels is required for task type "
-                f"'{task_type}' but is None"
-            )
-
-        # Use default value if num_labels is None for other tasks
-        safe_num_labels = num_labels if num_labels is not None else 1
-        # num_labels check for non-binary classification tasks
-        if task_type == "regression" and safe_num_labels != 1:
-            logger.warning(
-                f"Regression task typically has num_labels=1, "
-                f"but got {safe_num_labels}."
-            )
-            safe_num_labels = 1
-        elif task_type == "generation" and safe_num_labels != 0:
-            logger.warning(
-                f"Generation task does not require num_labels, "
-                f"but got {safe_num_labels}. Setting to 0."
-            )
-            safe_num_labels = 0
-        elif task_type == "mask" and safe_num_labels != 0:
-            logger.warning(
-                f"Mask task does not require num_labels, "
-                f"but got {safe_num_labels}. Setting to 0."
-            )
-            safe_num_labels = 0
-        elif task_type == "embedding" and safe_num_labels != 0:
-            logger.warning(
-                f"Embedding task does not require num_labels, "
-                f"but got {safe_num_labels}. Setting to 0."
-            )
-            safe_num_labels = 0
-        if task_type not in [
-            "binary",
-            "regression",
-            "generation",
-            "mask",
-            "embedding",
-        ]:
-            if safe_num_labels < 2:
-                raise ValueError(
-                    f"num_labels should be at least 2 for task type "
-                    f"'{task_type}', but got {safe_num_labels}."
-                )
-
         load_args = [
             task_type,
             model_name,
