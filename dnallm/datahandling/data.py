@@ -527,13 +527,23 @@ class DNADataset:
         ]:
             if not sp_token_map.get(token) and hasattr(self.tokenizer, token):
                 sp_token_map[token] = getattr(self.tokenizer, token)
+        # Get pad id
         if "pad_id" not in sp_token_map:
             if hasattr(self.tokenizer, "pad_token_id"):
                 if self.tokenizer.pad_token_id is not None:
                     sp_token_map["pad_id"] = self.tokenizer.pad_token_id
+            elif hasattr(self.tokenizer, "pad_id"):
+                if self.tokenizer.pad_id is not None:
+                    sp_token_map["pad_id"] = self.tokenizer.pad_id
+            elif hasattr(self.tokenizer, "encode"):
+                if sp_token_map.get("pad_token"):
+                    sp_token_map["pad_id"] = self.tokenizer.encode(
+                        sp_token_map.get("pad_token", "")
+                    )[-1]
             if not sp_token_map.get("pad_id"):
                 if hasattr(self.tokenizer, "eos_token_id"):
                     sp_token_map["pad_id"] = self.tokenizer.eos_token_id
+        # Get pad token
         if not sp_token_map.get("pad_token"):
             if hasattr(self.tokenizer, "decode"):
                 sp_token_map["pad_token"] = self.tokenizer.decode(
@@ -548,6 +558,8 @@ class DNADataset:
                 sp_token_map["pad_token"] = self.tokenizer.decode_token(
                     sp_token_map["pad_id"]
                 )
+            self.tokenizer.pad_token = sp_token_map["pad_token"]
+        # Get eos token
         eos_token = sp_token_map.get("eos_token")
         if not eos_token:
             if hasattr(self.tokenizer, "sep_token"):
@@ -556,11 +568,7 @@ class DNADataset:
                 eos_token = self.tokenizer.pad_token
         return {
             "pad_token": sp_token_map.get("pad_token"),
-            "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[
-                -1
-            ]
-            if sp_token_map.get("pad_token")
-            else None,
+            "pad_id": sp_token_map.get("pad_id", 0),
             "cls_token": sp_token_map.get("cls_token"),
             "sep_token": sp_token_map.get("sep_token"),
             "eos_token": eos_token,
@@ -580,11 +588,11 @@ class DNADataset:
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        if hasattr(self.tokenizer, "sep_token"):
+        if hasattr(self.tokenizer, "sep_token") and self.tokenizer.sep_token:
             sep_token = self.tokenizer.sep_token
-        elif hasattr(self.tokenizer, "eos_token"):
+        elif hasattr(self.tokenizer, "eos_token") and self.tokenizer.eos_token:
             sep_token = self.tokenizer.eos_token
-        elif hasattr(self.tokenizer, "pad_token"):
+        elif hasattr(self.tokenizer, "pad_token") and self.tokenizer.pad_token:
             sep_token = self.tokenizer.pad_token
         else:
             sep_token = ""
@@ -596,7 +604,9 @@ class DNADataset:
             if lowercase:
                 sequences = [x.lower() for x in sequences]
             if seq_sep is not None:
-                sequences = sequences.replace(seq_sep, sep_token)
+                sequences = [
+                    seq.replace(seq_sep, sep_token) for seq in sequences
+                ]
             if self.tokenizer is None:
                 raise ValueError("Tokenizer is not initialized")
             return self.tokenizer(

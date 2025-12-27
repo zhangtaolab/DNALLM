@@ -29,6 +29,7 @@ from .special import (
     _handle_enformer_models,
     _handle_space_models,
     _handle_borzoi_models,
+    _handle_basenji2_tokenizer,
 )
 from .head import (
     BasicMLPHead,
@@ -36,6 +37,7 @@ from .head import (
     BasicLSTMHead,
     BasicUNet1DHead,
     MegaDNAMultiScaleHead,
+    EVOForSeqClsHead,
 )
 
 
@@ -63,6 +65,12 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
             self.score = MegaDNAMultiScaleHead(**self.config.head_config)
+        elif self.config.head_config.get("head", "").lower().startswith("evo"):
+            self.backbone = custom_model
+            self.score = EVOForSeqClsHead(
+                **self.config.head_config,
+                base_model=custom_model,
+            )
         elif "lucaone" in self.config.head_config.get("head", "").lower():
             from lucagplm import LucaGPLMModel
 
@@ -100,7 +108,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         self.pooling_strategy = self._determine_pooling_strategy()
         logger.info(f"Using {self.pooling_strategy} pooling strategy.")
 
-        # self.post_init()
+        if self.config.head_config.get("frozen", False):
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+
+        self.post_init()
 
     @classmethod
     def from_base_model(cls, model_name_or_path: str, config, module=None):
@@ -194,6 +206,8 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         self,
         input_ids: torch.LongTensor | None = None,
         labels: torch.LongTensor | None = None,
+        output_attentions: bool = False,
+        output_hidden_states: bool = False,
         **kwargs,
     ):
         if kwargs.get("attention_mask") is not None:
@@ -207,6 +221,13 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 input_ids = input_ids.long()
             outputs = self.backbone(input_ids, return_value="embedding")
             last_hidden_state = outputs
+        elif self.config.head_config.get("head", "").lower().startswith("evo"):
+            outputs = self.backbone(
+                input_ids,
+                return_embeddings=True,
+                layer_names=self.score.target_layers,
+            )
+            last_hidden_state = outputs[1]
         else:
             # Keep kwargs in the backbone's forward method
             backbone_kwargs = {
@@ -327,15 +348,33 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 loss = loss_fct(logits, labels)
 
         # Expected output format for Trainer
+        if output_hidden_states:
+            if hasattr(outputs, "hidden_states"):
+                hidden_states = outputs.hidden_states
+            elif hasattr(outputs, "last_hidden_state"):
+                hidden_states = outputs.last_hidden_state
+            elif hasattr(outputs, "encoder_hidden_states"):
+                hidden_states = outputs.encoder_hidden_states
+            elif hasattr(outputs, "decoder_hidden_states"):
+                hidden_states = outputs.decoder_hidden_states
+            elif len(outputs) > 1:
+                hidden_states = outputs[1]
+            else:
+                hidden_states = None
+        else:
+            hidden_states = None
+        if output_attentions:
+            if hasattr(outputs, "attentions"):
+                attentions = outputs.attentions
+            else:
+                attentions = None
+        else:
+            attentions = None
         return SequenceClassifierOutput(
             loss=loss,
             logits=logits,
-            hidden_states=outputs.hidden_states
-            if hasattr(outputs, "hidden_states")
-            else None,
-            attentions=outputs.attentions
-            if hasattr(outputs, "attentions")
-            else None,
+            hidden_states=hidden_states,
+            attentions=attentions,
         )
 
 
@@ -721,9 +760,8 @@ def _safe_num_labels(num_labels: int | None, task_type: str) -> int:
     if task_type == "regression" and safe_num_labels != 1:
         logger.warning(
             f"Regression task typically has num_labels=1, "
-            f"but got {safe_num_labels}."
+            f"but got {safe_num_labels}. Maybe multi-regression task."
         )
-        safe_num_labels = 1
     elif task_type == "generation" and safe_num_labels != 0:
         logger.warning(
             f"Generation task does not require num_labels, "
@@ -806,12 +844,12 @@ def load_model_and_tokenizer(
     safe_num_labels = _safe_num_labels(num_labels, task_type)
 
     # Handle special case for EVO2 models
-    evo2_result = _handle_evo2_models(model_name, source)
+    evo2_result = _handle_evo2_models(model_name, source, head_config)
     if evo2_result is not None:
         return evo2_result
 
     # Handle special case for EVO1 models
-    evo1_result = _handle_evo1_models(model_name, source)
+    evo1_result = _handle_evo1_models(model_name, source, head_config)
     if evo1_result is not None:
         return evo1_result
 
@@ -896,6 +934,8 @@ def load_model_and_tokenizer(
         # Process model with custom tokenizer if needed
         if "mutbert" in downloaded_model_path.lower():
             tokenizer = _handle_mutbert_tokenizer(tokenizer)
+        if "basenji2" in downloaded_model_path.lower():
+            tokenizer = _handle_basenji2_tokenizer(tokenizer)
         # Set model path and source attributes
         model._model_path = downloaded_model_path
         model.source = source

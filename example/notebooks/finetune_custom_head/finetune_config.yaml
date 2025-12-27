@@ -30,6 +30,7 @@ task:
         initial_filters: 512       # Initial number of filters for U-Net
         dropout: 0.1               # Dropout probability
         pooling_strategy:
+        custom_head:
 finetune:
     # For detailed arguments, please refer to https://huggingface.co/docs/transformers/en/main_classes/trainer#transformers.TrainingArguments
     # Unlisted arguments can be added in the `extra_args` of DNATrainer

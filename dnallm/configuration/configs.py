@@ -11,8 +11,14 @@ class HeadConfig(BaseModel):
         default="mlp",
         description="Type of head to use",
     )
-    num_classes: int = Field(
-        default=2, description="Number of output classes (default 2)"
+    frozen: bool = Field(
+        default=False,
+        description=(
+            "Whether to freeze the model except the head during training."
+        ),
+    )
+    task_type: str = Field(
+        default="binary", description="Task type (default is binary)"
     )
     hidden_dims: list[int] | None = Field(
         default=None,

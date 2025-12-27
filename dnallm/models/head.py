@@ -437,6 +437,7 @@ class MegaDNAMultiScaleHead(nn.Module):
     def forward(self, embedding_list: list):
         # embedding_list contains 3 tensors from MegaDNA model
         # e.g., [ [1, 2, 512], [1, 65, 256], [64, 17, 196] ]
+        # e.g., [ [24, 3, 512], [48, 65, 256], [3072, 17, 196] ]
 
         if len(embedding_list) != 3:
             raise ValueError(
@@ -446,11 +447,16 @@ class MegaDNAMultiScaleHead(nn.Module):
 
         # 1. Average pooling on the first scale's embedding
         # [batch, seq1, dim1] -> [batch, dim1]
-        pooled_emb1 = torch.mean(embedding_list[0], dim=1)
+        emb1 = embedding_list[0]
+        real_batch_size = emb1.shape[0]
+        pooled_emb1 = torch.mean(emb1, dim=1)
 
         # 2. Average pooling on the second scale's embedding
         # [batch, seq2, dim2] -> [batch, dim2]
-        pooled_emb2 = torch.mean(embedding_list[1], dim=1)
+        emb2 = embedding_list[1]
+        pool2_temp = torch.mean(emb2, dim=1)
+        pool2_temp = pool2_temp.view(real_batch_size, -1, pool2_temp.shape[-1])
+        pooled_emb2 = torch.mean(pool2_temp, dim=1)
 
         # 3. Special processing for the third scale's embedding
         # [eff_batch, seq3, dim3] -> [batch, dim3]
@@ -460,7 +466,7 @@ class MegaDNAMultiScaleHead(nn.Module):
         # except the feature dimension
         emb3 = embedding_list[2]
         # First, flatten the eff_batch and seq3 dimensions
-        emb3_flat = emb3.reshape(-1, emb3.shape[-1])
+        pool3_temp = torch.mean(emb3, dim=1)
         # Then, take the mean while keeping the batch dimension as 1
         # for concatenation
         #
@@ -472,11 +478,12 @@ class MegaDNAMultiScaleHead(nn.Module):
         # batch size, but this requires knowing the
         # specific parameters of Rearrange.
         # Currently, global average is a reasonable approximation.
-        pooled_emb3 = torch.mean(emb3_flat, dim=0, keepdim=True)
+        pool3_temp = pool3_temp.view(real_batch_size, -1, pool3_temp.shape[-1])
+        pooled_emb3 = torch.mean(pool3_temp, dim=1)
         # If the original batch_size > 1, we need to repeat this vector
         # to match the batch size
-        if pooled_emb1.shape[0] > 1 and pooled_emb3.shape[0] == 1:
-            pooled_emb3 = pooled_emb3.repeat(pooled_emb1.shape[0], 1)
+        # if pooled_emb1.shape[0] > 1 and pooled_emb3.shape[0] == 1:
+        #     pooled_emb3 = pooled_emb3.repeat(pooled_emb1.shape[0], 1)
 
         # 4. Concatenate the three pooled vectors
         concatenated_vector = torch.cat(
@@ -486,5 +493,111 @@ class MegaDNAMultiScaleHead(nn.Module):
         # 5. Pass through MLP and output layer to get logits
         hidden_output = self.mlp(concatenated_vector)
         logits = self.output_layer(hidden_output)
+
+        return logits
+
+
+class EVOForSeqClsHead(nn.Module):
+    """
+    A classification head tailored for the embedding outputs
+    of the EVO-series model.
+
+    Args:
+        base_model: The EVO model instance providing embeddings.
+        num_classes: Number of output classes for classification.
+        task_type: Type of task - 'binary', 'multiclass',
+                   'multilabel', or 'regression'.
+        target_layer: Specific layer(s) from which to extract embeddings.
+                      Can be 'all' to average all layers,
+                      a list of layer names, or a single layer name.
+        pooling_method: Method to pool sequence embeddings.
+        dropout_prob: Dropout probability for regularization
+    """
+
+    def __init__(
+        self,
+        base_model: any,
+        num_classes: int = 2,
+        task_type: str = "binary",
+        target_layer: str | list[str] | None = None,
+        pooling_method: str = "mean",
+        dropout_prob: float = 0.1,
+        **kwargs,
+    ):
+        super().__init__()
+        self.num_classes = num_classes
+        self.task_type = task_type
+        self.pooling_method = pooling_method
+
+        if target_layer == "all" or target_layer is None:
+            self.target_layers = []
+            for name, _ in base_model.model.named_parameters():
+                if name.startswith("blocks"):
+                    layer = "blocks." + name.split(".")[1]
+                    if layer not in self.target_layers:
+                        self.target_layers.append(layer)
+            if target_layer is None:
+                # Find middle layer which performs better than
+                # the last layer
+                mid_layer = round(len(self.target_layers) * 26 / 32)
+                self.target_layers = [self.target_layers[mid_layer]]
+                self.use_layer_averaging = False
+            else:
+                self.use_layer_averaging = True
+
+        elif isinstance(target_layer, list):
+            self.target_layers = target_layer
+            self.use_layer_averaging = True
+
+        else:
+            self.target_layers = [target_layer]
+            self.use_layer_averaging = False
+
+        if target_layer != "all":
+            print(f"Use layers: {self.target_layers} embeddings.")
+
+        self.dropout = nn.Dropout(dropout_prob)
+        self.classifier = nn.Linear(base_model.config.hidden_size, num_classes)
+
+    def forward(
+        self,
+        embeddings: tuple,
+        attention_mask: torch.Tensor | None = None,
+        **kwargs,
+    ):
+        if self.use_layer_averaging:
+            all_layers_tensor = torch.stack(
+                [embeddings[name] for name in self.target_layers], dim=0
+            )
+            sequence_output = torch.mean(all_layers_tensor, dim=0)
+        else:
+            sequence_output = embeddings[self.target_layers[0]]
+
+        if self.pooling_method == "last":
+            pooled_output = sequence_output[:, -1, :]
+
+        elif self.pooling_method == "mean":
+            if attention_mask is not None:
+                mask_expanded = (
+                    attention_mask.unsqueeze(-1)
+                    .expand(sequence_output.size())
+                    .float()
+                )
+                sum_embeddings = torch.sum(sequence_output * mask_expanded, 1)
+                sum_mask = torch.clamp(mask_expanded.sum(1), min=1e-9)
+                pooled_output = sum_embeddings / sum_mask
+            else:
+                pooled_output = torch.mean(sequence_output, dim=1)
+
+        elif self.pooling_method == "max":
+            pooled_output, _ = torch.max(sequence_output, dim=1)
+
+        else:
+            raise ValueError(
+                f"Unsupported pooling method: {self.pooling_method}"
+            )
+
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
 
         return logits

@@ -8,9 +8,11 @@ from .omnidna import _handle_omnidna_models
 from .enformer import _handle_enformer_models
 from .space import _handle_space_models
 from .borzoi import _handle_borzoi_models
+from .basenji2 import _handle_basenji2_tokenizer
 
 
 __all__ = [
+    "_handle_basenji2_tokenizer",
     "_handle_borzoi_models",
     "_handle_dnabert2_models",
     "_handle_enformer_models",

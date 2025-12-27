@@ -17,7 +17,7 @@ from dnallm.tasks.metrics import (
     multi_classification_metrics,
     multi_labels_metrics,
     token_classification_metrics,
-    metrics_for_dnabert2,
+    preprocess_logits_for_metrics,
     compute_metrics,
 )
 from dnallm.configuration.configs import TaskConfig
@@ -242,7 +242,8 @@ class TestMultiClassificationMetrics:
 
     def test_multi_classification_metrics_basic(self):
         """Test basic multi-class classification metrics."""
-        compute_func = multi_classification_metrics()
+        label_list = ["label1", "label2", "label3"]
+        compute_func = multi_classification_metrics(label_list=label_list)
 
         logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
         labels = np.array([1, 0, 2])
@@ -274,7 +275,8 @@ class TestMultiClassificationMetrics:
 
     def test_multi_classification_metrics_3d_logits(self):
         """Test multi-class classification metrics with 3D logits."""
-        compute_func = multi_classification_metrics()
+        label_list = ["label1", "label2", "label3"]
+        compute_func = multi_classification_metrics(label_list=label_list)
 
         logits = np.array([
             [[0.1, 0.7, 0.2]],
@@ -465,21 +467,26 @@ class TestMetricsForDnabert2:
 
     def test_metrics_for_dnabert2_regression(self):
         """Test DNABERT2 metrics for regression task."""
-        compute_metrics, _preprocess_func = metrics_for_dnabert2("regression")
+        compute_metrics = regression_metrics()
 
         # Fix: Use proper format for DNABERT2 regression - tuple of logits
-        logits = (np.array([[1.5], [2.3], [0.8]]),)
+        logits = np.array([[1.5], [2.3], [0.8]])
         labels = np.array([1.4, 2.1, 0.9])
         eval_pred = (logits, labels)
 
-        with patch("evaluate.load") as mock_load:
-            mock_r2 = Mock()
-            mock_spearman = Mock()
-            mock_r2.compute.return_value = {"r2": 0.8}
-            mock_spearman.compute.return_value = {"spearmanr": 0.9}
+        def fake_load(path):
+            m = Mock()
+            if "mse" in path:
+                m.compute.return_value = {"mse": 0.1}
+            elif "mae" in path:
+                m.compute.return_value = {"mae": 0.2}
+            elif "r_squared" in path:
+                m.compute.return_value = {"r2": 0.8}
+            elif "spearmanr" in path:
+                m.compute.return_value = {"spearmanr": 0.9}
+            return m
 
-            mock_load.side_effect = [mock_r2, mock_spearman]
-
+        with patch("evaluate.load", side_effect=fake_load):
             metrics = compute_metrics(eval_pred)
 
             assert "r2" in metrics
@@ -487,9 +494,7 @@ class TestMetricsForDnabert2:
 
     def test_metrics_for_dnabert2_classification(self):
         """Test DNABERT2 metrics for classification task."""
-        compute_metrics, _preprocess_func = metrics_for_dnabert2(
-            "classification"
-        )
+        compute_metrics = classification_metrics()
 
         # Fix: Use proper format for DNABERT2 classification - tuple of logits
         logits = (np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]]),)
@@ -503,7 +508,7 @@ class TestMetricsForDnabert2:
                 "f1": 0.75,
                 "precision": 0.7,
                 "recall": 0.8,
-                "matthews_correlation": 0.6,
+                "mcc": 0.6,
             }
             mock_load.return_value = mock_clf
 
@@ -513,16 +518,17 @@ class TestMetricsForDnabert2:
             assert "f1" in metrics
             assert "precision" in metrics
             assert "recall" in metrics
-            assert "matthews_correlation" in metrics
+            assert "mcc" in metrics
 
     def test_metrics_for_dnabert2_preprocess_function(self):
         """Test DNABERT2 preprocess function."""
-        _compute_metrics, preprocess_func = metrics_for_dnabert2("regression")
+        preprocess_func = preprocess_logits_for_metrics
 
         logits = (np.array([[1.5], [2.3]]),)
         labels = np.array([1.4, 2.1])
 
-        processed_logits, processed_labels = preprocess_func(logits, labels)
+        processed_logits = preprocess_func(logits, labels)
+        processed_labels = labels
 
         assert isinstance(processed_logits, np.ndarray)
         assert isinstance(processed_labels, np.ndarray)
