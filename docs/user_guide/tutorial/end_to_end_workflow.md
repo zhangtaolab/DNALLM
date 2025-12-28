@@ -5,9 +5,9 @@
 ## Table of Contents
 
 1. [Tutorial Overview](#1-tutorial-overview)
-2. [Task 1: Binary Classification - Promoter Strength Prediction](#2-task-1-binary-classification-promoter-strength-prediction)
-3. [Task 2: Multi-label Classification - Sequence Functional Annotation](#3-task-2-multi-label-classification-sequence-functional-annotation)
-4. [Task 3: Named Entity Recognition - Genomic Element Localization](#4-task-3-named-entity-recognition-genomic-element-localization)
+2. [Task 1: Binary Classification - Promoter Strength Prediction](#2-task-1-promoter-strength-prediction)
+3. [Task 2: Multi-label Classification - Sequence Functional Annotation](#3-task-2-multi-label-classification)
+4. [Task 3: Named Entity Recognition - Genomic Element Localization](#4-task-3-named-entity-recognition)
 5. [Task 4: Using LoRA for Efficient Fine-tuning](#5-task-4-using-lora-for-efficient-fine-tuning)
 6. [Task 5: Model Inference and Mutagenesis Analysis](#6-task-5-model-inference-and-mutagenesis-analysis)
 7. [Task 6: MCP Service Deployment](#7-task-6-mcp-service-deployment)
@@ -51,7 +51,7 @@ tutorial_project/
 
 ### 1.3 Environment Setup
 
-First, ensure you have correctly installed DNALLM following the [Installation Guide](../getting_started/installation.md).
+First, ensure you have correctly installed DNALLM following the [Installation Guide](../../getting_started/installation.md).
 
 ```bash
 # Activate environment
@@ -1204,10 +1204,10 @@ finetune:
 
 ## Related Resources
 
-- [API Documentation](../api/inference/inference.md) - Detailed API documentation
-- [Configuration Documentation](./fine_tuning/configuration.md) - Configuration file details
-- [Model Selection Guide](../resources/model_selection.md) - How to choose the right model
-- [FAQ](../faq/index.md) - More frequently asked questions
+- [API Documentation](../../api/inference/inference.md) - Detailed API documentation
+- [Configuration Documentation](../fine_tuning/configuration.md) - Configuration file details
+- [Model Selection Guide](../../resources/model_selection.md) - How to choose the right model
+- [FAQ](../../faq/index.md) - More frequently asked questions
 
 ---
 

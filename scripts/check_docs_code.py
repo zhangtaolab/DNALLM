@@ -8,7 +8,6 @@ This script checks code examples in docs directory for correctness.
 import re
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Core libraries to skip during import checks
 CORE_LIBRARIES = {
@@ -27,19 +26,67 @@ CORE_LIBRARIES = {
     "Benchmark",
     "peft",
     # Third party libraries
-    "torch", "transformers", "pandas", "numpy", "matplotlib",
-    "sklearn", "scipy", "huggingface", "modelscope", "accelerate",
-    "datasets", "tokenizers", "sentencepiece", "einops", "loguru", "rich",
-    "pydantic", "pyyaml", "tqdm", "requests", "aiohttp", "uvicorn",
-    "websockets", "captum", "umap", "altair", "addict", "colorama",
-    "seaborn", "plotly", "wandb", "tensorboardx", "evaluate",
-    "seqeval", "jax", "flax", "optimum",
+    "torch",
+    "transformers",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "sklearn",
+    "scipy",
+    "huggingface",
+    "modelscope",
+    "accelerate",
+    "datasets",
+    "tokenizers",
+    "sentencepiece",
+    "einops",
+    "loguru",
+    "rich",
+    "pydantic",
+    "pyyaml",
+    "tqdm",
+    "requests",
+    "aiohttp",
+    "uvicorn",
+    "websockets",
+    "captum",
+    "umap",
+    "altair",
+    "addict",
+    "colorama",
+    "seaborn",
+    "plotly",
+    "wandb",
+    "tensorboardx",
+    "evaluate",
+    "seqeval",
+    "jax",
+    "flax",
+    "optimum",
     # Standard library modules (commonly used)
-    "contextmanager", "contextlib", "functools", "itertools",
-    "collections", "pathlib", "typing", "dataclasses", "enum",
-    "json", "yaml", "pickle", "csv", "re", "sys", "os",
-    "memory_profiler", "KFold", "StratifiedKFold", "CustomMetric",
-    "autoclt", "product", "reverse_complement",
+    "contextmanager",
+    "contextlib",
+    "functools",
+    "itertools",
+    "collections",
+    "pathlib",
+    "typing",
+    "dataclasses",
+    "enum",
+    "json",
+    "yaml",
+    "pickle",
+    "csv",
+    "re",
+    "sys",
+    "os",
+    "memory_profiler",
+    "KFold",
+    "StratifiedKFold",
+    "CustomMetric",
+    "autoclt",
+    "product",
+    "reverse_complement",
 }
 
 
@@ -82,7 +129,7 @@ class DocCodeChecker:
             return code_blocks
 
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
                 lines = content.split("\n")
 
@@ -97,19 +144,23 @@ class DocCodeChecker:
                 if stripped.startswith("```"):
                     if not in_code_block:
                         in_code_block = True
-                        # Extract language (handle cases like ```python title="file.py")
+                        # Extract language (handle cases like ```python)
                         lang_part = stripped[3:].strip()
-                        # Split by whitespace and take first part as language
-                        current_lang = lang_part.split()[0] if lang_part else ""
+                        # Take first part as language
+                        current_lang = (
+                            lang_part.split()[0] if lang_part else ""
+                        )
                         current_code = []
                         start_line = i
                     else:
                         in_code_block = False
                         if current_code:
                             code_content = "\n".join(current_code)
-                            code_blocks.append(
-                                (current_lang, code_content, start_line)
-                            )
+                            code_blocks.append((
+                                current_lang,
+                                code_content,
+                                start_line,
+                            ))
                     continue
 
                 if in_code_block:
@@ -125,7 +176,7 @@ class DocCodeChecker:
             self.issues.append({
                 "file": file_path,
                 "type": "read_error",
-                "message": f"Read error: {str(e)}",
+                "message": f"Read error: {e!s}",
             })
 
         return code_blocks
@@ -162,9 +213,17 @@ class DocCodeChecker:
             }
 
         yaml_prefixes = (
-            "task:", "finetune:", "inference:", "server:",
-            "mcp:", "lora:", "models:", "multi_model:",
-            "sse:", "logging:", "training_args:",
+            "task:",
+            "finetune:",
+            "inference:",
+            "server:",
+            "mcp:",
+            "lora:",
+            "models:",
+            "multi_model:",
+            "sse:",
+            "logging:",
+            "training_args:",
         )
         if code.startswith(yaml_prefixes):
             return {
@@ -204,10 +263,27 @@ class DocCodeChecker:
 
                 # Check if it's a standard library module
                 stdlib_modules = {
-                    "contextmanager", "contextlib", "functools", "itertools",
-                    "collections", "pathlib", "typing", "dataclasses", "enum",
-                    "json", "pickle", "csv", "re", "sys", "os", "io",
-                    "datetime", "time", "random", "math", "hashlib",
+                    "contextmanager",
+                    "contextlib",
+                    "functools",
+                    "itertools",
+                    "collections",
+                    "pathlib",
+                    "typing",
+                    "dataclasses",
+                    "enum",
+                    "json",
+                    "pickle",
+                    "csv",
+                    "re",
+                    "sys",
+                    "os",
+                    "io",
+                    "datetime",
+                    "time",
+                    "random",
+                    "math",
+                    "hashlib",
                 }
                 if top_level in stdlib_modules:
                     continue
@@ -232,7 +308,7 @@ class DocCodeChecker:
         except Exception as e:
             return {
                 "status": "error",
-                "message": f"Check failed: {str(e)}",
+                "message": f"Check failed: {e!s}",
                 "line": line_num,
                 "file": file_path,
             }
@@ -410,9 +486,9 @@ def main() -> int:
         f"Code blocks: {len(results)}",
     ]
 
-    err_warn_count = len(
-        [r for r in results if r["result"].get("status") in ["error", "warning"]]
-    )
+    err_warn_count = len([
+        r for r in results if r["result"].get("status") in ["error", "warning"]
+    ])
     report_lines.append(f"Issues found: {err_warn_count}")
     report_lines.extend([
         f"Processing issues: {len(issues)}",
@@ -439,7 +515,7 @@ def main() -> int:
 
     report_lines.extend(["", "## Details", ""])
 
-    current_file: Optional[str] = None
+    current_file: str | None = None
     for r in results:
         file_path = str(r["file"])
         if file_path != current_file:
@@ -461,12 +537,12 @@ def main() -> int:
     print(f"\n📊 Report saved to: {report_file}")
 
     total_results = len(results)
-    error_count = len(
-        [r for r in results if r["result"].get("status") == "error"]
-    )
-    warnings = len(
-        [r for r in results if r["result"].get("status") == "warning"]
-    )
+    error_count = len([
+        r for r in results if r["result"].get("status") == "error"
+    ])
+    warnings = len([
+        r for r in results if r["result"].get("status") == "warning"
+    ])
 
     print("\n📈 Statistics:")
     print(f"  - Total blocks: {total_results}")
