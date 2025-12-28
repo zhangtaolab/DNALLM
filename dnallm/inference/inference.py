@@ -201,12 +201,12 @@ class DNAInference:
             ),
             "npu": (
                 "npu",
-                lambda: (hasattr(torch, "npu") and torch.npu.is_available()),
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
                 "NPU",
             ),
             "ascend": (
                 "npu",
-                lambda: (hasattr(torch, "npu") and torch.npu.is_available()),
+                lambda: hasattr(torch, "npu") and torch.npu.is_available(),
                 "NPU",
             ),
         }
@@ -2094,7 +2094,8 @@ class DNAInference:
             all_embeddings = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
-                    torch.tensor(
+                    torch
+                    .tensor(
                         tokenizer.tokenize(sequence),
                         dtype=torch.int,
                     )
