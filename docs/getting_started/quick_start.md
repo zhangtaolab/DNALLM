@@ -265,12 +265,14 @@ uv run marimo run example/marimo/benchmark/benchmark_demo.py
 uv run jupyter lab
 
 # Available notebooks:
-# - example/notebooks/finetune_plant_dnabert/ - Classification fine-tuning
+# - example/notebooks/finetune_binary/ - Binary classification fine-tuning
 # - example/notebooks/finetune_multi_labels/ - Multi-label classification
 # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
-# - example/notebooks/inference_and_benchmark/ - Model evaluation
+# - example/notebooks/inference/ - Model inference
 # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
 # - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
+# - example/notebooks/generation_evo_models/ - EVO model inference
+# - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
 ```
 
 ## Command Line Interface
@@ -310,6 +312,14 @@ DNALLM supports the following task types:
 - Check out [user guides](../user_guide/getting_started.md) for specific use cases
 - Visit the [FAQ](../faq/index.md) for common questions
 - Join the community discussions on GitHub
+
+## Need More Details?
+
+- See [Installation Guide](installation.md) for complete dependency information, including:
+  - All available dependency groups (base, dev, test, notebook, docs, mcp)
+  - Hardware-specific groups (cpu, cuda121, cuda124, cuda126, cuda128, rocm, mamba)
+  - Installation scenarios for different use cases
+  - Troubleshooting common issues
 
 ## Need Help?
 

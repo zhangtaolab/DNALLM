@@ -1,7 +1,7 @@
 # DNALLM - DNA Large Language Model Toolkit
 
 <div align="center">
-  <img src="docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
+  <img src="./docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -310,12 +310,19 @@ uv run jupyter lab
 # - example/notebooks/finetune_binary/ - Binary classification fine-tuning
 # - example/notebooks/finetune_multi_labels/ - Multi-label classification
 # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
-# - example/notebooks/inference_and_benchmark/ - Model evaluation
+# - example/notebooks/inference/ - Model inference
 # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
 # - example/notebooks/inference_for_tRNA/ - tRNA-specific analysis
-# - example/notebooks/inference_evo_models/ - EVO model inference
+# - example/notebooks/generation_evo_models/ - EVO model inference
 # - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
 # - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
+# - example/notebooks/finetune_custom_head/ - Custom classification head
+# - example/notebooks/finetune_generation/ - Sequence generation
+# - example/notebooks/generation/ - Sequence generation examples
+# - example/notebooks/generation_megaDNA/ - MegaDNA model inference
+# - example/notebooks/interpretation/ - Model interpretation
+# - example/notebooks/data_prepare/ - Data preparation examples
+# - example/notebooks/benchmark/ - Model evaluation and benchmarking
 ```
 
 ## 🏗️ Project Structure
@@ -347,13 +354,27 @@ DNALLM/
 │   │   ├── __init__.py
 │   │   ├── benchmark.py        # Multi-model performance comparison
 │   │   ├── inference.py        # Core inference engine
+│   │   ├── interpret.py        # Model interpretation and analysis
 │   │   ├── mutagenesis.py      # In-silico mutation analysis
 │   │   └── plot.py             # Result visualization tools
 │   ├── models/                 # Model loading and management
 │   │   ├── __init__.py
 │   │   ├── model.py            # Model utilities and helpers
 │   │   ├── model_info.yaml     # Model registry and metadata
-│   │   └── modeling_auto.py    # Automatic model loading
+│   │   ├── modeling_auto.py    # Automatic model loading
+│   │   ├── special/            # Specialized model implementations
+│   │   │   ├── basenji2.py     # Basenji-2 model support
+│   │   │   ├── borzoi.py       # Borzoi model support
+│   │   │   ├── dnabert2.py     # DNABERT-2 model support
+│   │   │   ├── evo.py          # EVO-1/EVO-2 model support
+│   │   │   ├── enformer.py     # Enformer model support
+│   │   │   ├── enformer_model/ # Enformer model components
+│   │   │   ├── gpn.py          # GPN model support
+│   │   │   ├── lucaone.py      # LucaOne model support
+│   │   │   ├── megadna.py      # megaDNA model support
+│   │   │   ├── mutbert.py      # MutBERT model support
+│   │   │   ├── omnidna.py      # Omni-DNA model support
+│   │   │   └── space.py        # SPACE model support
 │   ├── tasks/                  # Task definitions and evaluation
 │   │   ├── __init__.py
 │   │   ├── task.py             # Task type definitions
@@ -411,8 +432,9 @@ DNALLM/
 │   │   ├── finetune/           # Fine-tuning demos
 │   │   └── inference/          # Inference demos
 │   ├── mcp_example/            # MCP usage examples
-│   │   └── mcp_client_ollama_pydantic_ai.ipynb
-│   └── notebooks/              # Jupyter notebook tutorials
+│   │   ├── mcp_client_ollama_pydantic_ai.ipynb
+│   │   └── mcp_client_ollama_langchain_agents.ipynb
+│   └── notebooks/              # Jupyter notebook examples
 │       ├── benchmark/          # Model comparison notebooks
 │       ├── finetune_binary/    # Binary classification training
 │       ├── finetune_multi_labels/ # Multi-label classification
@@ -432,7 +454,6 @@ DNALLM/
 │   ├── cli/                    # Command-line interface docs
 │   ├── concepts/               # Core concepts and architecture
 │   ├── getting_started/        # Installation and setup guides
-│   ├── tutorials/              # Step-by-step tutorials
 │   ├── resources/              # Additional resources
 │   └── pic/                    # Documentation images
 ├── tests/                      # Comprehensive test suite
@@ -535,7 +556,6 @@ uv run pytest --cov=dnallm --cov-report=html
 ## 📖 Documentation
 
 - **[Getting Started](docs/getting_started/)** - Installation and basic usage
-- **[Tutorials](docs/tutorials/)** - Step-by-step guides for specific tasks
 - **[API Reference](docs/api/)** - Detailed function documentation
 - **[Concepts](docs/concepts/)** - Core concepts and architecture
 - **[FAQ](docs/faq/)** - Common questions and solutions

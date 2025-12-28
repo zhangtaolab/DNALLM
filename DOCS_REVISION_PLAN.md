@@ -1039,7 +1039,255 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 
 ---
 
-## 6. Implementation Steps and Timeline
+## 6. Jupyter Notebooks Integration Plan
+
+### 6.1 Integration Rationale
+
+Currently, the `example/notebooks/` directory contains 19 Jupyter notebooks but they are not fully integrated into the MkDocs documentation. While `mkdocs-jupyter` plugin is installed, only README.md files are linked in the navigation, not the actual notebooks.
+
+**Benefits of Integration**:
+- Users can view and execute notebooks directly in the documentation
+- Interactive examples improve learning experience
+- Single source of truth for examples
+- Better searchability and discoverability
+
+### 6.2 Current Notebook Inventory
+
+| Category | Notebook | Path | Priority |
+|----------|----------|------|----------|
+| **Fine-Tuning** | Binary Classification | `finetune_binary/finetune_binary.ipynb` | 🔴 High |
+| | Multi-Label Classification | `finetune_multi_labels/finetune_multi_labels.ipynb` | 🔴 High |
+| | NER Task (2 notebooks) | `finetune_NER_task/` | 🔴 High |
+| | Custom Head | `finetune_custom_head/finetune.ipynb` | 🟡 Medium |
+| | Generation | `finetune_generation/finetune_generation.ipynb` | 🟡 Medium |
+| | LoRA (2 notebooks) | `lora_finetune_inference/` | 🔴 High |
+| **Inference** | Basic Inference | `inference/inference.ipynb` | 🔴 High |
+| | EVO Models | `generation_evo_models/inference.ipynb` | 🟡 Medium |
+| | MegaDNA Models | `generation_megaDNA/inference.ipynb` | 🟡 Medium |
+| | Sequence Generation | `generation/inference.ipynb` | 🟡 Medium |
+| | tRNA Inference | `inference_for_tRNA/inference.ipynb` | 🟢 Low |
+| **Analysis** | In Silico Mutagenesis | `in_silico_mutagenesis/in_silico_mutagenesis.ipynb` | 🔴 High |
+| | Model Interpretation | `interpretation/interpretation.ipynb` | 🟡 Medium |
+| | Embedding & Attention | `embedding_attention.ipynb` | 🟢 Low |
+| **Benchmarking** | Benchmark | `benchmark/benchmark.ipynb` | 🟡 Medium |
+| **Data Prep** | Fine-tuning Data | `data_prepare/finetune/finetune_data.ipynb` | 🟡 Medium |
+| | Prediction Data | `data_prepare/predict/predict_data.ipynb` | 🟡 Medium |
+| **MCP** | LangChain Agents | `../mcp_example/mcp_client_ollama_langchain_agents.ipynb` | 🟡 Medium |
+| | Pydantic AI | `../mcp_example/mcp_client_ollama_pydantic_ai.ipynb` | 🟡 Medium |
+
+**Total**: 19 notebooks across 6 categories
+
+### 6.3 Proposed Navigation Structure
+
+```yaml
+- Examples:
+  - Notebooks:
+    - Overview: example/notebooks/overview.md  # NEW: Introduction to notebooks
+    - Fine-Tuning:
+      - Binary Classification: example/notebooks/finetune_binary/finetune_binary.ipynb
+      - Multi-Label Classification: example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
+      - NER Task:
+        - Fine-tuning: example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
+        - Data Generation: example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
+      - Custom Head: example/notebooks/finetune_custom_head/finetune.ipynb
+      - Generation: example/notebooks/finetune_generation/finetune_generation.ipynb
+      - LoRA Fine-tuning:
+        - Fine-tuning: example/notebooks/lora_finetune_inference/lora_finetune.ipynb
+        - Inference: example/notebooks/lora_finetune_inference/lora_inference.ipynb
+    - Inference:
+      - Basic Inference: example/notebooks/inference/inference.ipynb
+      - EVO Models: example/notebooks/generation_evo_models/inference.ipynb
+      - MegaDNA Models: example/notebooks/generation_megaDNA/inference.ipynb
+      - Sequence Generation: example/notebooks/generation/inference.ipynb
+      - tRNA Inference: example/notebooks/inference_for_tRNA/inference.ipynb
+    - Analysis:
+      - In Silico Mutagenesis: example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
+      - Model Interpretation: example/notebooks/interpretation/interpretation.ipynb
+      - Embedding & Attention: example/notebooks/embedding_attention.ipynb
+    - Benchmarking:
+      - Benchmark Evaluation: example/notebooks/benchmark/benchmark.ipynb
+    - Data Preparation:
+      - Fine-tuning Data: example/notebooks/data_prepare/finetune/finetune_data.ipynb
+      - Prediction Data: example/notebooks/data_prepare/predict/predict_data.ipynb
+    - MCP Examples:  # NEW section
+      - LangChain Agents: example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
+      - Pydantic AI: example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+```
+
+### 6.4 Implementation Tasks
+
+#### Task 1: Create Notebook Overview Page
+
+**File to Create**: `example/notebooks/overview.md`
+
+**Content Requirements**:
+- Introduction to notebook examples
+- Prerequisites (data, models, environment)
+- How to use notebooks (view in docs vs. download)
+- Notebook categories overview
+- Tips for running notebooks
+- Troubleshooting common issues
+
+**Template**:
+```markdown
+# Jupyter Notebook Examples
+
+This section contains interactive Jupyter notebooks demonstrating various DNALLM features.
+
+## Prerequisites
+
+## Notebook Categories
+
+### Fine-Tuning Notebooks
+Learn how to fine-tune DNA language models for specific tasks.
+
+### Inference Notebooks
+Run inference with pre-trained models.
+
+### Analysis Notebooks
+Analyze model behavior and predictions.
+
+## Running Notebooks
+
+### Option 1: View in Documentation
+Browse notebooks directly in this documentation.
+
+### Option 2: Run Locally
+```bash
+# Clone repository
+git clone https://github.com/zhangtaolab/DNALLM.git
+cd DNALLM
+
+# Install dependencies
+uv pip install -e '.[base,notebook,cuda124]'
+
+# Start Jupyter
+jupyter notebook example/notebooks/
+```
+
+## Tips
+
+- notebooks expect data in specific locations
+- adjust model paths in configuration files
+- GPU recommended for most notebooks
+```
+
+#### Task 2: Update mkdocs.yml Configuration
+
+**Changes Required**:
+1. Replace current README.md links with .ipynb files
+2. Organize notebooks by category (Fine-Tuning, Inference, Analysis, etc.)
+3. Add MCP examples section
+4. Ensure proper indentation
+
+**Current State**: Links to README.md files
+**Target State**: Direct links to .ipynb files with category organization
+
+#### Task 3: Verify mkdocs-jupyter Plugin Configuration
+
+**Current Configuration** (already in mkdocs.yml):
+```yaml
+plugins:
+  - mkdocs-jupyter:
+      include_source: True
+      execute: False  # Notebooks not executed during build
+      allow_errors: False
+      ignore_hashes: True
+      timeout: 60
+      write_markdown_columns: False
+```
+
+**Verification Needed**:
+- Test if plugin converts notebooks to HTML properly
+- Check if code cells render correctly
+- Verify notebook outputs are displayed
+- Test download link functionality
+
+#### Task 4: Clean Up Notebooks
+
+**Actions Needed**:
+1. Remove unnecessary output cells (`nbstripout` is already installed)
+2. Add metadata badges (complexity, time, requirements)
+3. Ensure all notebooks have clear titles and descriptions
+4. Add prerequisites section to each notebook
+5. Verify all file paths are relative
+
+**Testing Commands**:
+```bash
+# Strip outputs from all notebooks
+nbstripout example/notebooks/**/*.ipynb
+
+# Verify notebook validity
+jupyter nbconvert --to notebook --execute example/notebooks/finetune_binary/finetune_binary.ipynb --ExecutePreprocessor.timeout=60
+```
+
+#### Task 5: Test Documentation Build
+
+**Commands**:
+```bash
+# Build documentation with notebooks
+mkdocs build
+
+# Serve locally to test
+mkdocs serve
+
+# Check for errors
+grep -i "error" site/.buildinfo
+```
+
+**Success Criteria**:
+- All notebooks render without errors
+- Navigation structure is correct
+- Notebooks display code and outputs properly
+- Download links work
+- No broken internal links
+
+### 6.5 Testing Verification Commands
+
+```bash
+# Test steps
+cd /Users/forrest/GitHub/DNALLM
+
+# 1. Check mkdocs-jupyter plugin is installed
+pip show mkdocs-jupyter
+
+# 2. Verify all notebooks exist
+find example/notebooks -name "*.ipynb" | wc -l  # Should be 19
+
+# 3. Test build documentation
+mkdocs build --verbose 2>&1 | tee build.log
+
+# 4. Check for notebook-related errors
+grep -i "notebook\|jupyter" build.log | grep -i "error\|warning"
+
+# 5. Test local server
+mkdocs serve -a localhost:8000
+
+# 6. Verify notebook links in built site
+find site/example/notebooks -name "*.html" | wc -l
+```
+
+### 6.6 Documentation Files to Update
+
+| File Path | Update Content | Priority |
+|-----------|---------------|----------|
+| `mkdocs.yml` | Replace README.md links with .ipynb files, organize by category | 🔴 High |
+| `example/notebooks/overview.md` | Create new overview page | 🔴 High |
+| `DOCS_REVISION_PLAN.md` | Add this integration plan | ✅ Done |
+
+### 6.7 Estimated Effort
+
+| Task | Estimated Time | Priority |
+|------|---------------|----------|
+| Create overview page | 30 min | 🔴 High |
+| Update mkdocs.yml | 20 min | 🔴 High |
+| Clean notebooks | 15 min | 🟡 Medium |
+| Test build | 15 min | 🔴 High |
+| **Total** | **~1.5 hours** | |
+
+---
+
+## 7. Implementation Steps and Timeline
 
 ### Phase 1: README.md Fix (High Priority)
 
@@ -1116,6 +1364,14 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 - [ ] Create `docs/api/index.md` index page
 - [ ] Create Contributing guide (optional)
 
+#### Step 3.6: Jupyter Notebooks Integration (NEW)
+- [ ] Create `example/notebooks/overview.md`
+- [ ] Update mkdocs.yml with .ipynb files
+- [ ] Organize notebooks by category
+- [ ] Add MCP examples section
+- [ ] Clean and verify all notebooks
+- [ ] Test documentation build
+
 ### Phase 4: Documentation Quality Improvement (Medium-Low Priority)
 
 #### Step 4.1: mkdocs.yml Navigation Fix
@@ -1131,19 +1387,19 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 
 ---
 
-## 7. Progress Tracking
+## 8. Progress Tracking
 
-### 7.1 Overall Progress
+### 8.1 Overall Progress
 
 | Phase | Total Tasks | Completed | Progress |
 |-------|-------------|-----------|----------|
 | Phase 1 | 5 | 0 | 0% |
 | Phase 2 | 4 | 1 | 25% |
-| Phase 3 | 7 | 2 | 29% |
+| Phase 3 | 8 | 2 | 25% |
 | Phase 4 | 3 | 1 | 33% |
-| **Total** | **19** | **4** | **21%** |
+| **Total** | **20** | **4** | **20%** |
 
-### 7.2 Phase 1 Progress: README.md Fix
+### 8.2 Phase 1 Progress: README.md Fix
 
 | Step | Task Description | Status | Notes |
 |------|-----------------|--------|-------|
@@ -1153,7 +1409,7 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 | 1.4 | Add missing file descriptions | ⏳ Pending | |
 | 1.5 | Verify test case count | ⏳ Pending | |
 
-### 7.3 Phase 2 Progress: Installation Documentation Enhancement
+### 8.3 Phase 2 Progress: Installation Documentation Enhancement
 
 | Step | Task Description | Status | Notes |
 |------|-----------------|--------|-------|
@@ -1162,7 +1418,7 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 | 2.3 | Update quick_start.md | ⏳ Pending | Need to fix path errors |
 | 2.4 | Update FAQ | ⏳ Pending | |
 
-### 7.4 Phase 3 Progress: Docs Directory Supplementation
+### 8.4 Phase 3 Progress: Docs Directory Supplementation
 
 | Step | Task Description | Status | Notes |
 |------|-----------------|--------|-------|
@@ -1171,10 +1427,11 @@ find docs/ -name "*.md" -exec grep -l "uv run\|python -c" {} \;
 | 3.3 | API docs - mcp | ⏳ Pending | 3 files |
 | 3.4 | API docs - other | ⏳ Pending | 4 files |
 | 3.5 | User guide supplementation | ⏳ Pending | |
-| **3.6** | **End-to-end tutorial** | ✅ **Completed** | **29KB, contains 7 tasks** |
-| **3.7** | **Code verification** | ✅ **Completed** | **Created 2 verification reports** |
+| 3.6 | Jupyter Notebooks Integration | ⏳ Pending | 19 notebooks, 6 categories |
+| 3.7 | End-to-end tutorial | ✅ Completed | 29KB, contains 7 tasks |
+| 3.8 | Code verification | ✅ Completed | Created 2 verification reports |
 
-### 7.5 Phase 4 Progress: Documentation Quality Improvement
+### 8.5 Phase 4 Progress: Documentation Quality Improvement
 
 | Step | Task Description | Status | Notes |
 |------|-----------------|--------|-------|
