@@ -49,11 +49,6 @@ class DNALLMforSequenceClassification(PreTrainedModel):
     An automated wrapper that selects an appropriate pooling strategy
     based on the underlying model architecture and appends a customizable
     MLP head for sequence classification or regression tasks.
-
-    Args:
-        model: Pre-trained transformer model (e.g., BERT, GPT)
-        tokenizer: Corresponding tokenizer for the model
-        mlp_head_config: Configuration dictionary for the MLP head
     """
 
     config_class = AutoConfig

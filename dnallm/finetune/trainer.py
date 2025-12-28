@@ -215,7 +215,7 @@ class DNATrainer:
         process.
 
         Args:
-            trainer: A custom HuggingFace Trainer instance to replace the
+            trainer_cls: A custom HuggingFace Trainer instance to replace the
                 default one
         """
         # Use custom loss function if provided

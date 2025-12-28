@@ -2028,7 +2028,7 @@ class DNAInference:
         do_reduce: bool = False,
         reduce_strategy: str | int = "mean",
         force: bool = False,
-    ):
+    ) -> Any:
         """Get embeddings from the last inference.
         This method performs inference on the provided inputs and extracts
         embeddings from the model's hidden states.

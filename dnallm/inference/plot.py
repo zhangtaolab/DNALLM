@@ -321,13 +321,6 @@ def plot_polar_bar(
 ) -> alt.Chart:
     """Plot a polar bar chart.
 
-    Args:
-        data: Dictionary containing the data to plot.
-        categories: List of categories for the bars.
-        values: List of values for the bars.
-        title: Title of the chart.
-        color: Color of the bars.
-
     Returns:
         Altair chart object.
     """
@@ -1171,7 +1164,7 @@ def plot_annotations(
     Plot sequence annotations such as domains, motifs, or other features.
 
     Args:
-        annotations: A dictionary where keys are annotation types and values.
+        data: A dictionary where keys are annotation types and values.
         start: Start position for the plot.
         end: End position for the plot.
         custom_colors: A dictionary mapping annotation types to colors.
@@ -2396,9 +2389,9 @@ def plot_attributions_multi(
     Plot an aggregated heatmap of attribution scores from multiple sequences.
 
     Args:
-            all_attributions (List[Tuple[List[str], np.ndarray]]): List of
-                tuples containing tokens and their corresponding attribution
-                scores for multiple sequences.
+        all_attributions (List[Tuple[List[str], np.ndarray]]): List of
+            tuples containing tokens and their corresponding attribution
+            scores for multiple sequences.
             **Crucially, all arrays must be of the same length.**
         title (str): The title for the chart.
 

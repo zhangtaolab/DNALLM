@@ -354,11 +354,17 @@ class TestTaskConfigIntegration:
 
     def test_multilabel_classification_config(self):
         """Test multi-label classification task configuration."""
-        # Note: "multilabel" is not supported in the current regex pattern
-        # This test is skipped until the pattern is fixed
-        pytest.skip(
-            "multilabel task type not supported in current regex pattern"
+        config = TaskConfig(
+            task_type="multilabel",
+            num_labels=3,
+            label_names=["gene_A", "gene_B", "gene_C"],
+            threshold=0.4,
         )
+
+        assert config.task_type == "multilabel"
+        assert config.num_labels == 3
+        assert config.label_names == ["gene_A", "gene_B", "gene_C"]
+        assert config.threshold == 0.4
 
     def test_regression_config(self):
         """Test regression task configuration."""
@@ -418,7 +424,7 @@ class TestTaskConfigIntegration:
         ("generation", True),
         ("binary", True),
         ("multiclass", True),
-        ("multilabel", False),  # Not supported in current regex pattern
+        ("multilabel", True),  # Now supported in regex pattern
         ("regression", True),
         ("token", True),
         ("invalid", False),
