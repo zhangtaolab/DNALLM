@@ -57,6 +57,8 @@ nav:
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md
     - Troubleshooting: user_guide/troubleshooting.md
+    - Tutorial:
+      - End-to-End Workflow: user_guide/tutorial/end_to_end_workflow.md
     - Data Processing:
       - Data Preparation: user_guide/data_processing/data_preparation.md
       - Quality Control: user_guide/data_processing/quality_control.md
@@ -155,6 +157,23 @@ nav:
       - EVO Models: resources/models/evo_models.md
       - Flash Attention Models: resources/models/flash_attention_models.md
       - Special Models: resources/models/special_models.md
+  - Examples:
+    - Notebooks:
+      - Binary Classification: example/notebooks/finetune_binary/README.md
+      - Multi-Label Classification: example/notebooks/finetune_multi_labels/README.md
+      - NER Task: example/notebooks/finetune_NER_task/README.md
+      - Custom Head: example/notebooks/finetune_custom_head/README.md
+      - Generation: example/notebooks/finetune_generation/README.md
+      - LoRA Fine-tuning: example/notebooks/lora_finetune_inference/README.md
+      - Inference: example/notebooks/inference/README.md
+      - Benchmark: example/notebooks/benchmark/README.md
+      - Mutagenesis: example/notebooks/in_silico_mutagenesis/README.md
+      - Interpretation: example/notebooks/interpretation/README.md
+      - Data Preparation: example/notebooks/data_prepare/README.md
+    - Marimo Demos:
+      - Fine-tuning Demo: example/marimo/finetune/finetune_demo.py
+      - Inference Demo: example/marimo/inference/inference_demo.py
+      - Benchmark Demo: example/marimo/benchmark/benchmark_demo.py
   - FAQ: 
     - Overview: faq/index.md
     - Installation: faq/install_troubleshooting.md
@@ -168,6 +187,13 @@ nav:
 
 plugins:
   - search
+  - mkdocs-jupyter:
+      include_source: True
+      execute: False  # Set to True to execute notebooks during build (requires more time)
+      allow_errors: False
+      ignore_hashes: True
+      timeout: 60  # Timeout for notebook execution in seconds
+      write_markdown_columns: False
   - mkdocstrings:
       handlers:
         python:
