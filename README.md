@@ -330,172 +330,81 @@ uv run jupyter lab
 ```
 DNALLM/
 ├── dnallm/                     # Core library package
-│   ├── __init__.py             # Package initialization and main exports
+│   ├── __init__.py             # Main exports: load_config, load_model_and_tokenizer, DNAInference, etc.
 │   ├── version.py              # Version information
 │   ├── cli/                    # Command-line interface tools
-│   │   ├── __init__.py
-│   │   ├── cli.py              # Main CLI entry point
-│   │   ├── train.py            # Training command implementation
-│   │   ├── inference.py        # Inference command implementation
+│   │   ├── cli.py              # Main CLI entry point (train, inference, benchmark, mutagenesis, etc.)
+│   │   ├── train.py            # Training command
+│   │   ├── inference.py        # Inference command
 │   │   └── model_config_generator.py # Interactive config generator
-│   ├── configuration/          # Configuration management system
-│   │   ├── __init__.py
-│   │   ├── configs.py          # Configuration classes and loaders
-│   │   └── evo                 # Folder contains configs for loading evo models
-│   ├── datahandling/           # Dataset processing and management
-│   │   ├── __init__.py
-│   │   ├── README.md
-│   │   ├── data.py             # Core dataset classes
+│   ├── configuration/          # Configuration management
+│   │   ├── configs.py          # Config classes (TaskConfig, TrainingConfig, InferenceConfig)
+│   │   └── evo/                # EVO model configurations
+│   ├── datahandling/           # Dataset processing
+│   │   ├── data.py             # DNADataset and data loading utilities
 │   │   └── dataset_auto.py     # Automatic dataset builders
-│   ├── finetune/               # Model fine-tuning pipeline
-│   │   ├── __init__.py
-│   │   └── trainer.py          # Training logic and utilities
+│   ├── finetune/               # Model fine-tuning
+│   │   └── trainer.py          # DNATrainer class for training pipelines
 │   ├── inference/              # Inference and analysis tools
-│   │   ├── __init__.py
-│   │   ├── benchmark.py        # Multi-model performance comparison
-│   │   ├── inference.py        # Core inference engine
-│   │   ├── interpret.py        # Model interpretation and analysis
-│   │   ├── mutagenesis.py      # In-silico mutation analysis
-│   │   └── plot.py             # Result visualization tools
+│   │   ├── inference.py        # DNAInference engine
+│   │   ├── mutagenesis.py      # In-silico mutagenesis analysis (Mutagenesis class)
+│   │   ├── benchmark.py        # Multi-model benchmarking (Benchmark class)
+│   │   ├── interpret.py        # Model interpretation (DNAInterpret class)
+│   │   └── plot.py             # Visualization tools
 │   ├── models/                 # Model loading and management
-│   │   ├── __init__.py
-│   │   ├── model.py            # Model utilities and helpers
-│   │   ├── model_info.yaml     # Model registry and metadata
-│   │   ├── modeling_auto.py    # Automatic model loading
-│   │   ├── special/            # Specialized model implementations
-│   │   │   ├── basenji2.py     # Basenji-2 model support
-│   │   │   ├── borzoi.py       # Borzoi model support
-│   │   │   ├── dnabert2.py     # DNABERT-2 model support
-│   │   │   ├── evo.py          # EVO-1/EVO-2 model support
-│   │   │   ├── enformer.py     # Enformer model support
-│   │   │   ├── enformer_model/ # Enformer model components
-│   │   │   ├── gpn.py          # GPN model support
-│   │   │   ├── lucaone.py      # LucaOne model support
-│   │   │   ├── megadna.py      # megaDNA model support
-│   │   │   ├── mutbert.py      # MutBERT model support
-│   │   │   ├── omnidna.py      # Omni-DNA model support
-│   │   │   └── space.py        # SPACE model support
+│   │   ├── model.py            # DNALLMforSequenceClassification and utilities
+│   │   ├── modeling_auto.py    # Automatic model loading (215+ models)
+│   │   ├── model_info.yaml     # Model registry with metadata
+│   │   └── special/            # Specialized model implementations
 │   ├── tasks/                  # Task definitions and evaluation
-│   │   ├── __init__.py
-│   │   ├── task.py             # Task type definitions
-│   │   ├── metrics.py          # Evaluation metrics
-│   │   └── metrics/            # Individual metric implementations
-│   │       ├── accuracy/       # Accuracy metrics
-│   │       ├── f1/             # F1 score metrics
-│   │       ├── precision/      # Precision metrics
-│   │       ├── recall/         # Recall metrics
-│   │       ├── roc_auc/        # ROC-AUC metrics
-│   │       ├── mse/            # Mean squared error
-│   │       ├── mae/            # Mean absolute error
-│   │       ├── r_squared/      # R-squared metrics
-│   │       └── ... (30+ metrics)
-│   ├── utils/                  # Utility functions and helpers
-│   │   ├── __init__.py
+│   │   ├── task.py             # Task type definitions (EMBEDDING, MASK, GENERATION, BINARY, etc.)
+│   │   ├── metrics.py          # Evaluation metrics interface
+│   │   └── metrics/            # 50+ metric implementations
+│   │       ├── accuracy/, f1/, precision/, recall/  # Classification metrics
+│   │       ├── mse/, mae/, r_squared/  # Regression metrics
+│   │       ├── bleu/, rouge/, chrf/  # Generation metrics
+│   │       └── ... (40+ more)
+│   ├── utils/                  # Utility functions
 │   │   ├── logger.py           # Logging utilities
-│   │   └── sequence.py         # DNA sequence processing
+│   │   ├── sequence.py         # DNA sequence processing (GC content, kmer conversion)
+│   │   └── support.py          # Hardware capability checks (FP8, Flash Attention)
 │   └── mcp/                    # Model Context Protocol server
-│       ├── __init__.py
-│       ├── README.md           # MCP documentation (Chinese)
-│       ├── DEVELOPMENT.md      # Development guide
 │       ├── server.py           # MCP server implementation
-│       ├── start_server.py     # Server startup script
 │       ├── config_manager.py   # Configuration management
-│       ├── config_validators.py # Input validation
 │       ├── model_manager.py    # Model lifecycle management
-│       ├── example_sse_usage.py # SSE usage examples
-│       ├── run_tests.py        # Test runner
-│       ├── requirements.txt    # MCP-specific dependencies
-│       ├── test_mcp_curl.md    # MCP testing documentation
+│       ├── config_validators.py # Input validation
 │       ├── configs/            # MCP configuration files
 │       │   ├── mcp_server_config.yaml
-│       │   ├── promoter_inference_config.yaml
-│       │   ├── conservation_inference_config.yaml
 │       │   └── ... (task-specific configs)
 │       └── tests/              # MCP test suite
-│           ├── __init__.py
-│           ├── test_config_manager.py
-│           ├── test_config_validators.py
-│           ├── test_mcp_functionality.py
-│           ├── test_server_integration.py
-│           ├── test_sse_client.py
-│           └── configs/        # Test configurations
-├── cli/                        # Legacy CLI scripts (deprecated)
-│   ├── cli.py
-│   ├── inference.py
-│   ├── train.py
-│   ├── model_config_generator.py
+├── cli/                        # Legacy CLI scripts (use dnallm/cli/ instead)
+│   ├── cli.py, inference.py, train.py, model_config_generator.py
 │   └── examples/               # CLI configuration examples
-├── example/                    # Examples and interactive demos
-│   ├── README.md               # Example documentation
-│   ├── marimo/                 # Interactive Marimo applications
-│   │   ├── benchmark/          # Benchmarking demos
-│   │   ├── finetune/           # Fine-tuning demos
-│   │   └── inference/          # Inference demos
-│   ├── mcp_example/            # MCP usage examples
-│   │   ├── mcp_client_ollama_pydantic_ai.ipynb
-│   │   └── mcp_client_ollama_langchain_agents.ipynb
-│   └── notebooks/              # Jupyter notebook examples
-│       ├── benchmark/          # Model comparison notebooks
-│       ├── finetune_binary/    # Binary classification training
-│       ├── finetune_multi_labels/ # Multi-label classification
-│       ├── finetune_NER_task/  # Named entity recognition
-│       ├── inference/          # Inference demonstrations
-│       ├── inference_for_tRNA/ # tRNA-specific analysis
-│       ├── in_silico_mutagenesis/ # Mutation effect analysis
-│       └── embedding_attention.ipynb # Embedding visualization
+├── example/                    # Examples and demos
+│   ├── marimo/                 # Interactive Marimo notebooks (benchmark, finetune, inference)
+│   ├── mcp_example/            # MCP client integration examples
+│   └── notebooks/              # Jupyter notebooks (21+ examples)
+│       ├── finetune_binary/, finetune_multi_labels/, finetune_NER_task/
+│       ├── inference/, in_silico_mutagenesis/, inference_for_tRNA/
+│       ├── benchmark/, data_prepare/, interpretation/
+│       ├── finetune_custom_head/, finetune_generation/
+│       ├── generation/, generation_evo_models/, generation_megaDNA/
+│       ├── lora_finetune_inference/
+│       └── embedding_attention.ipynb
 ├── docs/                       # Comprehensive documentation
-│   ├── index.md                # Documentation home page
-│   ├── api/                    # API reference documentation
-│   │   ├── datahandling/       # Dataset handling APIs
-│   │   ├── finetune/           # Training APIs
-│   │   ├── inference/          # Inference APIs
-│   │   ├── mcp/                # MCP APIs
-│   │   └── utils/              # Utility APIs
-│   ├── cli/                    # Command-line interface docs
-│   ├── concepts/               # Core concepts and architecture
+│   ├── api/                    # API reference (datahandling, finetune, inference, mcp, utils)
 │   ├── getting_started/        # Installation and setup guides
-│   ├── resources/              # Additional resources
-│   └── pic/                    # Documentation images
-├── tests/                      # Comprehensive test suite
-│   ├── TESTING.md              # Testing documentation
-│   ├── pytest.ini              # Pytest configuration
-│   ├── benchmark/              # Benchmarking tests
-│   ├── datahandling/           # Dataset handling tests
-│   ├── finetune/               # Training pipeline tests
-│   ├── inference/              # Inference engine tests
-│   ├── utils/                  # Utility function tests
-│   └── test_data/              # Test datasets
-│       ├── binary_classification/
-│       ├── multiclass_classification/
-│       ├── multilabel_classification/
-│       ├── regression/
-│       ├── token_classification/
-│       └── embedding/
+│   ├── user_guide/             # Comprehensive user documentation
+│   ├── concepts/               # Core concepts and architecture
+│   └── faq/                    # Frequently asked questions
+├── tests/                      # test dir
 ├── ui/                         # Web-based user interfaces
-│   ├── README.md               # UI documentation
-│   ├── model_config_generator_app.py # Gradio configuration app
-│   ├── run_config_app.py       # App launcher
-│   └── requirements.txt        # UI-specific dependencies
 ├── scripts/                    # Development and deployment scripts
-│   ├── check_code.py           # Code quality checker
-│   ├── check_code.sh           # Shell script for code checks
-│   ├── check_code.bat          # Windows batch script
-│   ├── ci_checks.sh            # Continuous integration checks
-│   ├── install_mamba.sh        # Mamba installation script
-│   ├── publish.sh              # Package publishing script
-│   └── setup_uv.sh             # UV package manager setup
-├── .github/                    # GitHub workflows and templates
-├── .flake8                     # Code style configuration
-├── .gitignore                  # Git ignore patterns
-├── .pre-commit-config.yaml     # Pre-commit hooks
-├── CONTRIBUTING.md             # Contribution guidelines
 ├── LICENSE                     # MIT license
-├── README.md                   # This file
-├── conftest.py                 # Pytest configuration
 ├── mkdocs.yml                  # Documentation configuration
 ├── pyproject.toml              # Project metadata and dependencies
-├── setup.py                    # Package setup script
-└── run_cli.py                  # Legacy CLI runner
+├── setup.py                    # Package setup script (minimal wrapper)
+└── run_cli.py                  # CLI launcher script
 ```
 
 ## 🔧 Command Line Interface
