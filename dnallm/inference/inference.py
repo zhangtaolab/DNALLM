@@ -2157,7 +2157,8 @@ class DNAInference:
             all_embeddings = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
-                    torch.tensor(
+                    torch
+                    .tensor(
                         tokenizer.tokenize(sequence),
                         dtype=torch.int,
                     )

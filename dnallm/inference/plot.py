@@ -249,7 +249,8 @@ def plot_bars(
         if height is None:
             height = 25 * len(dbar["models"])
         bar = (
-            alt.Chart(dbar)
+            alt
+            .Chart(dbar)
             .mark_bar(size=bar_width)
             .encode(
                 x=alt.X(f"{metric}:Q").scale(domain=domain_use),
@@ -263,7 +264,8 @@ def plot_bars(
         if show_score:
             # Optimized text positioning and formatting
             text = (
-                alt.Chart(dbar)
+                alt
+                .Chart(dbar)
                 .mark_text(
                     dx=-10 if dbar[metric].min() >= 0.2 else 5,
                     color="white" if dbar[metric].min() >= 0.2 else "black",
@@ -359,7 +361,8 @@ def plot_polar_bar(
     })
 
     base = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_arc(stroke="grey", padAngle=0.05, cornerRadius=10, tooltip=True)
         .encode(
             theta=alt.Theta("Metric:O", sort=None),
@@ -464,7 +467,8 @@ def plot_radar(
     # Create base radar chart
     rings = pd.DataFrame({"ring": [0.2, 0.4, 0.6, 0.8, 1.0]})
     base_rings = (
-        alt.Chart(rings)
+        alt
+        .Chart(rings)
         .mark_arc(stroke="lightgrey", fill=None)
         .encode(
             theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False)
@@ -474,13 +478,15 @@ def plot_radar(
         color="black", radiusOffset=5, align="center"
     ).encode(text="ring", theta=alt.value(np.pi / len(labels)))
     out_rings = (
-        alt.Chart(rings)
+        alt
+        .Chart(rings)
         .mark_arc(stroke="black", fill=None)
         .encode(theta=alt.value(np.pi * 2), radius=alt.datum(1))
     )
     # Create spokes
     spokes = (
-        alt.Chart(plot_df)
+        alt
+        .Chart(plot_df)
         .mark_arc(stroke="lightgrey", fill=None, strokeDash=[5, 5])
         .encode(
             theta=alt.Theta("labels:O"),
@@ -489,7 +495,8 @@ def plot_radar(
         )
     )
     labels_text = (
-        alt.Chart(plot_df)
+        alt
+        .Chart(plot_df)
         .mark_text(radiusOffset=10, align="center")
         .encode(
             radius=alt.datum(1.1),
@@ -500,7 +507,8 @@ def plot_radar(
     )
     # Create radar fill and line
     radar_fill = (
-        alt.Chart(plot_df)
+        alt
+        .Chart(plot_df)
         .mark_line(filled=True, fillOpacity=0.3)
         .encode(
             x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
@@ -510,7 +518,8 @@ def plot_radar(
         )
     )
     radar_line = (
-        alt.Chart(plot_df)
+        alt
+        .Chart(plot_df)
         .mark_line(
             point=True,
             fill=None,
@@ -580,7 +589,8 @@ def plot_curve(
 
     # ROC chart
     roc_chart = (
-        alt.Chart(roc_data)
+        alt
+        .Chart(roc_data)
         .mark_line()
         .encode(
             x=alt.X("fpr", title="FPR").scale(domain=(0.0, 1.0)),
@@ -593,7 +603,8 @@ def plot_curve(
 
     # Diagonal line
     diag_line = (
-        alt.Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
+        alt
+        .Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
         .mark_line(strokeDash=[5, 5], color="gray")
         .encode(
             x=alt.X("fpr").scale(domain=(0.0, 1.0)),
@@ -625,7 +636,8 @@ def plot_curve(
             text_data, columns=["models", "label", "fpr", "tpr"]
         )
         auroc_text_layer = (
-            alt.Chart(auroc_text_df)
+            alt
+            .Chart(auroc_text_df)
             .mark_text(
                 align="right",
                 baseline="bottom",
@@ -649,7 +661,8 @@ def plot_curve(
 
     # PR chart
     pr_chart = (
-        alt.Chart(pr_data)
+        alt
+        .Chart(pr_data)
         .mark_line()
         .encode(
             x=alt.X("recall", title="Recall").scale(domain=(0.0, 1.0)),
@@ -660,7 +673,8 @@ def plot_curve(
         .properties(width=width, height=height, title="PR Curve")
     )
     pr_baseline = (
-        alt.Chart(
+        alt
+        .Chart(
             pd.DataFrame({
                 "recall": [0, 1],
                 "precision": [
@@ -699,7 +713,8 @@ def plot_curve(
             text_data, columns=["models", "label", "recall", "precision"]
         )
         auprc_text_layer = (
-            alt.Chart(auprc_text_df)
+            alt
+            .Chart(auprc_text_df)
             .mark_text(
                 align="left",
                 baseline="bottom",
@@ -831,7 +846,8 @@ def plot_scatter(
             max_y = ddot["experiment"].max()
 
             text = (
-                alt.Chart()
+                alt
+                .Chart()
                 .mark_text(size=14, align="left", baseline="top", dx=5, dy=5)
                 .encode(
                     x=alt.datum(min_x + 0.5),
@@ -934,7 +950,8 @@ def plot_token_scatter(
     # Base Scatter Layer
     # Use status for color encoding
     base_scatter = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_point(filled=True)
         .encode(
             x=alt.X("index:Q", title="Token Index"),
@@ -981,7 +998,8 @@ def plot_token_scatter(
         },
     ])
     rule_lines = (
-        alt.Chart(line_data)
+        alt
+        .Chart(line_data)
         .mark_rule(strokeWidth=2)
         .encode(
             y="value:Q",
@@ -1005,7 +1023,8 @@ def plot_token_scatter(
     )
     # Text Layer for Outliers
     text_labels = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_text(align="left", dx=5, color="darkred")
         .encode(x="index:Q", y="Value:Q", text="Token:N")
         .transform_filter(alt.datum.is_outlier)
@@ -1048,7 +1067,8 @@ def plot_token_scatter(
             domain = unique_types
             range_colors = colors[: len(unique_types)]
         band_chart = (
-            alt.Chart(extra_df)
+            alt
+            .Chart(extra_df)
             .mark_rect(opacity=0.3)
             .encode(
                 x=alt.X("Start:Q", title="Token Index"),
@@ -1071,7 +1091,8 @@ def plot_token_scatter(
     if extra_data:
         chart = band_chart + chart
     chart = (
-        chart.properties(width=width, height=height)
+        chart
+        .properties(width=width, height=height)
         .configure_axis(grid=False)
         .interactive()
     )
@@ -1108,7 +1129,8 @@ def plot_line(
     df = pd.DataFrame(records)
 
     chart: alt.Chart = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_line(interpolate="monotone")
         .encode(
             x=alt.X("position:Q", title="Position"),
@@ -1224,7 +1246,8 @@ def plot_annotations(
         height = len(data) * 30
 
     chart: alt.Chart = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_bar()
         .encode(
             x=alt.X(
@@ -1388,7 +1411,8 @@ def plot_attention_map(
     # Create attention map with optimized encoding and axis configuration
     # Original: Multiple axis configurations
     attn_map: alt.Chart = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_rect()
         .encode(
             x=alt.X(
@@ -1679,7 +1703,8 @@ def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
         Altair chart object
     """
     return (
-        alt.Chart(source_df, title=f"Layer {layer_idx + 1}")
+        alt
+        .Chart(source_df, title=f"Layer {layer_idx + 1}")
         .mark_point(filled=True, size=size, opacity=0.6)
         .encode(
             x=alt.X("Dimension 1:Q"),
@@ -2066,7 +2091,8 @@ def _create_mutation_charts(
 
     # Create heatmap
     pheat: alt.Chart = (
-        alt.Chart(df_heat)
+        alt
+        .Chart(df_heat)
         .mark_rect()
         .encode(
             x=x_axis_base,
@@ -2086,7 +2112,8 @@ def _create_mutation_charts(
 
     # Create bar chart
     pbar: alt.Chart = (
-        alt.Chart(df_bar)
+        alt
+        .Chart(df_bar)
         .mark_bar()
         .encode(
             x=x_axis_base,
@@ -2109,7 +2136,8 @@ def _create_mutation_charts(
 
     # Create line plot
     pline: alt.Chart = (
-        alt.Chart(df_line)
+        alt
+        .Chart(df_line)
         .mark_line()
         .encode(
             x=x_axis_base,
@@ -2355,7 +2383,8 @@ def plot_attributions_line(
 
     # Create base chart (raw scores)
     area = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_area(opacity=0.2, color="lightblue")
         .encode(
             x=alt.X("position:Q", title="Token Position"),
@@ -2364,7 +2393,8 @@ def plot_attributions_line(
     )
     # Add base line at y=0 (dashed line)
     area += (
-        alt.Chart(pd.DataFrame({"y": [0]}))
+        alt
+        .Chart(pd.DataFrame({"y": [0]}))
         .mark_rule(color="black", strokeDash=[5, 5])
         .encode(y="y:Q")
     )
@@ -2387,7 +2417,8 @@ def plot_attributions_line(
 
     # Create line chart layer
     lines = (
-        alt.Chart(long_source)
+        alt
+        .Chart(long_source)
         .mark_line()
         .encode(
             x=alt.X("position:Q"),
@@ -2404,7 +2435,8 @@ def plot_attributions_line(
     chart = area + lines
 
     chart: alt.Chart = (
-        chart.properties(width=800, height=200, title=title)
+        chart
+        .properties(width=800, height=200, title=title)
         .interactive()
         .configure_axis(grid=False)
     )
@@ -2507,7 +2539,8 @@ def plot_attributions_multi(
 
     # 4. Create heatmap
     heatmap: alt.Chart = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_rect()
         .encode(
             x=alt.X(

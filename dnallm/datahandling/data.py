@@ -1560,7 +1560,8 @@ class DNADataset:
         df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1578,7 +1579,8 @@ class DNADataset:
         )
 
         box = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_boxplot(size=20)
             .encode(
                 x=alt.X("label_str:N", title="Label"),
@@ -1605,7 +1607,8 @@ class DNADataset:
         df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1621,7 +1624,8 @@ class DNADataset:
 
         df["label_val"] = pd.to_numeric(df[label_col], errors="coerce")
         scatter = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_point()
             .encode(
                 x=alt.X("gc:Q", title="GC content"),
@@ -1705,7 +1709,8 @@ class DNADataset:
         )
 
         hist = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1720,7 +1725,8 @@ class DNADataset:
         )
 
         box = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_boxplot(size=20)
             .encode(
                 x=alt.X("labels_for_plot:N", title=f"{c}"),
@@ -1747,7 +1753,8 @@ class DNADataset:
         )
 
         hist = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1761,7 +1768,8 @@ class DNADataset:
         )
 
         scatter = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_point()
             .encode(
                 x=alt.X("gc:Q", title="GC content"),

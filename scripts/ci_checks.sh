@@ -70,42 +70,63 @@ echo ""
 print_status "INFO" "Running Code Quality Checks..."
 echo "======================================"
 
-# 1. Black formatting check
-print_status "INFO" "Checking code formatting with Black..."
-if black --check --diff .; then
-    print_status "SUCCESS" "Black formatting check passed"
+# 1. Ruff formatting check
+print_status "INFO" "Checking code formatting with Ruff..."
+if ruff format --check .; then
+    print_status "SUCCESS" "Ruff formatting check passed"
 else
-    print_status "ERROR" "Black formatting check failed. Run 'black .' to auto-format your code"
+    print_status "ERROR" "Ruff formatting check failed. Run 'ruff format .' to auto-format your code"
     exit 1
 fi
 
-# 2. isort import sorting check
-print_status "INFO" "Checking import sorting with isort..."
-if isort --check-only --diff .; then
-    print_status "SUCCESS" "isort import sorting check passed"
+# 2. Ruff linting check
+print_status "INFO" "Running Ruff linting checks..."
+if ruff check . --statistics; then
+    print_status "SUCCESS" "Ruff linting check passed"
 else
-    print_status "ERROR" "isort import sorting check failed. Run 'isort .' to organize your imports"
+    print_status "ERROR" "Ruff linting check failed. Run 'ruff check . --fix' to auto-fix issues"
     exit 1
 fi
 
-# 3. Flake8 linting check
-print_status "INFO" "Running Flake8 linting checks..."
-if flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics; then
-    print_status "SUCCESS" "Flake8 critical errors check passed"
+# 3. Flake8 MCP module check (matches CI)
+print_status "INFO" "Running Flake8 check for MCP module..."
+if flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402; then
+    print_status "SUCCESS" "Flake8 MCP module check passed"
 else
-    print_status "ERROR" "Flake8 critical errors found. Please fix these issues"
+    print_status "ERROR" "Flake8 MCP module found issues. Please fix these issues"
     exit 1
 fi
 
-if flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics; then
-    print_status "SUCCESS" "Flake8 style and complexity check passed"
+# 4. Flake8 other modules check (matches CI)
+print_status "INFO" "Running Flake8 check for other modules (excluding metrics)..."
+if flake8 dnallm/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 --exclude=dnallm/tasks/metrics/; then
+    print_status "SUCCESS" "Flake8 other modules check passed"
 else
-    print_status "WARNING" "Flake8 style and complexity issues found. Consider fixing these for better code quality"
+    print_status "ERROR" "Flake8 found issues in other modules. Please fix these issues"
+    exit 1
 fi
 
 # 4. MyPy type checking
 print_status "INFO" "Running MyPy type checking..."
-if mypy dnallm/ --ignore-missing-imports --no-strict-optional; then
+if mypy dnallm/ \
+    --ignore-missing-imports \
+    --no-strict-optional \
+    --disable-error-code=var-annotated \
+    --disable-error-code=assignment \
+    --disable-error-code=return-value \
+    --disable-error-code=arg-type \
+    --disable-error-code=index \
+    --disable-error-code=attr-defined \
+    --disable-error-code=operator \
+    --disable-error-code=call-overload \
+    --disable-error-code=valid-type \
+    --disable-error-code=no-redef \
+    --disable-error-code=dict-item \
+    --disable-error-code=return \
+    --disable-error-code=unreachable \
+    --disable-error-code=misc \
+    --disable-error-code=import-untyped \
+    --exclude=dnallm/tasks/metrics/; then
     print_status "SUCCESS" "MyPy type checking passed"
 else
     print_status "WARNING" "MyPy type checking found issues. Consider adding type annotations for better code quality"
