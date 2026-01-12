@@ -136,7 +136,12 @@ class DNAInference:
         else:
             self.model = model
             if model is not None:
-                self.accepted_args = self._get_accepted_forward_args(model)
+                if "CustomEvo" in str(type(self.model)):
+                    self.accepted_args = self._get_accepted_forward_args(
+                        model.model
+                    )
+                else:
+                    self.accepted_args = self._get_accepted_forward_args(model)
             else:
                 self.accepted_args = set(default_forward_args)
         self.tokenizer = tokenizer
@@ -412,6 +417,7 @@ class DNAInference:
         lowercase: bool = False,
         sampling: float | None = None,
         keep_seqs: bool = True,
+        padding: str | bool = True,
         do_encode: bool = True,
     ) -> tuple[DNADataset, DataLoader]:
         """Generate dataset from sequences or file path.
@@ -433,6 +439,7 @@ class DNAInference:
             lowercase: Whether to convert sequences to lowercase
             sampling: Fraction of data to randomly sample for inference
             keep_seqs: Whether to keep sequences in the dataset for later use
+            padding: Padding strategy for encoding sequences
             do_encode: Whether to encode sequences for the model
 
         Returns:
@@ -493,6 +500,7 @@ class DNAInference:
         if do_encode:
             task_type = self.task_config.task_type
             dataset.encode_sequences(
+                padding=padding,
                 remove_unused_columns=True,
                 task=task_type,
                 uppercase=uppercase,
@@ -987,6 +995,7 @@ class DNAInference:
         output_attentions: bool = False,
         reduce_hidden_states: bool = False,
         reduce_strategy: str | int = "mean",
+        return_dict: bool = True,
     ) -> tuple[torch.Tensor, dict | None, dict]:
         """Perform batch inference on sequences.
 
@@ -1102,7 +1111,8 @@ class DNAInference:
         predictions = None
         if do_pred and len(all_logits) > 0:
             predictions = self.logits_to_preds(all_logits)
-            predictions = self.format_output(predictions)
+            if return_dict:
+                predictions = self.format_output(predictions)
 
         return all_logits, predictions, embeddings
 
@@ -1828,7 +1838,26 @@ class DNAInference:
         inputs: DataLoader | list[str],
         reduce_method: str = "mean",
         score_type: str = "embedding",
+        reduce_hidden_states: bool = False,
     ) -> dict[Any, Any]:
+        """Score sequences using the model.
+
+        This function computes scores for input sequences using the loaded
+        model. It supports specific scoring methods for EVO2, EVO1, and
+        MegaDNA models, as well as a general scoring approach for other
+        base models.
+
+        Args:
+            inputs: DataLoader or List containing sequences to score
+            reduce_method: Method to reduce scores ('mean', 'max', 'min',
+                'last'), default 'mean'
+            score_type: Type of score to compute ('embedding', 'logits',
+                'probability', 'loss'), default 'embedding'
+            reduce_hidden_states: Whether to reduce hidden states across
+                layers, default False
+        Returns:
+            Dictionary containing sequences and their corresponding scores
+        """
         # Prepare score sequences
         score_seqs = []
         if isinstance(inputs, DataLoader):
@@ -1862,7 +1891,7 @@ class DNAInference:
             outputs = score_sequences(
                 score_seqs,
                 model=model,
-                tokenizer=tokenizer,
+                tokenizer=tokenizer.raw_tokenizer,
                 reduce_method=reduce_method,
                 device=self.device,
             )
@@ -1888,13 +1917,39 @@ class DNAInference:
         # Use batch_infer to get embeddings and compute scores
         if isinstance(inputs, list):
             _, dataloader = self.generate_dataset(
-                inputs, batch_size=self.pred_config.batch_size
+                inputs,
+                batch_size=self.pred_config.batch_size,
+                padding="longest",
             )
+        elif isinstance(inputs, dict):
+            _, dataloader = self.generate_dataset(
+                inputs["sequence"],
+                batch_size=self.pred_config.batch_size,
+                padding="longest",
+            )
+        elif isinstance(inputs, DataLoader):
+            if "sequence" in inputs.dataset.dataset.column_names:
+                seqs = inputs.dataset["sequence"]
+                if len(seqs) != len(inputs.dataset):
+                    raise ValueError(
+                        "Some sequences are missing in the dataset."
+                    )
+                score_seqs = [s for s in seqs if s]
+            if score_seqs:
+                _, dataloader = self.generate_dataset(
+                    score_seqs,
+                    batch_size=self.pred_config.batch_size,
+                    padding="longest",
+                )
+            else:
+                dataloader = inputs
         else:
             dataloader = inputs
         all_logits, _, embeddings = self.batch_infer(
             dataloader,
             output_hidden_states=True if score_type == "embedding" else False,
+            reduce_hidden_states=reduce_hidden_states,
+            reduce_strategy=reduce_method,
             do_pred=False,
         )
         # Prepare logits list for scoring
@@ -1905,11 +1960,12 @@ class DNAInference:
                 logits_list.append(all_logits[i].detach().cpu())
         elif isinstance(all_logits, (list, tuple)):
             for item in all_logits:
-                logits_list.append(
-                    item.detach().cpu()
-                    if isinstance(item, torch.Tensor)
-                    else torch.tensor(item)
-                )
+                if item is not None:
+                    logits_list.append(
+                        item.detach().cpu()
+                        if isinstance(item, torch.Tensor)
+                        else torch.tensor(item)
+                    )
         else:
             logits_list = []
         # Compute scores
@@ -1918,7 +1974,14 @@ class DNAInference:
             hidden_states = embeddings["hidden_states"]
             for i in range(len(score_seqs)):
                 # (layers, seq_len, dim)
-                seq_hidden = torch.stack([h[i] for h in hidden_states], dim=0)
+                if reduce_method == "last":
+                    seq_hidden = hidden_states[-1][i]
+                elif reduce_method == "first":
+                    seq_hidden = hidden_states[0][i]
+                else:
+                    seq_hidden = torch.stack(
+                        [h[i] for h in hidden_states], dim=0
+                    )
                 if reduce_method == "mean":
                     score = seq_hidden.mean().item()
                 elif reduce_method == "max":
@@ -1928,6 +1991,7 @@ class DNAInference:
                 else:
                     score = seq_hidden.mean().item()
                 scores.append({"Input": score_seqs[i], "Score": score})
+            return scores
         elif logits_list and score_type == "logits":
             # use logits as scores
             for i in range(len(score_seqs)):
@@ -1943,6 +2007,7 @@ class DNAInference:
                 else:
                     score = logits.mean().item()
                 scores.append({"Input": score_seqs[i], "Score": score})
+            return scores
         elif logits_list and score_type == "probability":
             tokenizer = self.tokenizer
             for i, seq in enumerate(score_seqs):
@@ -2015,9 +2080,7 @@ class DNAInference:
                         score = float(token_logprobs.min().item())
                     else:
                         score = float(token_logprobs.mean().item())
-
                 scores.append({"Input": seq, "Score": score})
-
             return scores
 
         return {}

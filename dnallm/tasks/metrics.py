@@ -23,7 +23,6 @@ import numpy as np
 from scipy.special import softmax
 from typing import Any, cast
 
-# from scipy.stats import spearmanr
 import sklearn.metrics
 from sklearn.metrics import (
     accuracy_score,
@@ -177,6 +176,37 @@ def regression_metrics(plot=False):
     Returns:
         Callable function that computes regression metrics
     """
+    mse_metric = evaluate.load(metrics_path + "mse/mse.py")
+    mae_metric = evaluate.load(metrics_path + "mae/mae.py")
+    r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
+    pearson_metric = evaluate.load(metrics_path + "pearsonr/pearsonr.py")
+    spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
+
+    def pearson_macro(y_true, y_pred):
+        rs = []
+        for k in range(y_true.shape[1]):
+            yt = y_true[:, k]
+            yp = y_pred[:, k]
+            if np.std(yt) == 0:
+                continue
+            r = pearson_metric.compute(
+                predictions=yp.tolist(), references=yt.tolist()
+            )["pearsonr"]
+            rs.append(r)
+        return np.mean(rs), rs
+
+    def spearman_macro(y_true, y_pred):
+        rs = []
+        for k in range(y_true.shape[1]):
+            yt = y_true[:, k]
+            yp = y_pred[:, k]
+            if np.std(yt) == 0:
+                continue
+            r = spm_metric.compute(
+                predictions=yp.tolist(), references=yt.tolist()
+            )["spearmanr"]
+            rs.append(r)
+        return np.mean(rs), rs
 
     def compute_metrics(eval_pred: tuple) -> dict[str, float]:
         logits, labels = eval_pred
@@ -186,12 +216,16 @@ def regression_metrics(plot=False):
             mse = mean_squared_error(labels, logits)
             mae = mean_absolute_error(labels, logits)
             r2 = r2_score(labels, logits, multioutput="uniform_average")
-            metrics = {"mse": mse, "mae": mae, "r2": r2}
+            pearsonr, _ = pearson_macro(labels, logits)
+            spearmanr, _ = spearman_macro(labels, logits)
+            metrics = {
+                "mse": mse,
+                "mae": mae,
+                "r2": r2,
+                "pearsonr": pearsonr,
+                "spearmanr": spearmanr,
+            }
         else:
-            mse_metric = evaluate.load(metrics_path + "mse/mse.py")
-            mae_metric = evaluate.load(metrics_path + "mae/mae.py")
-            r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
-            spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
             mse = mse_metric.compute(references=labels, predictions=logits)
             mae = mae_metric.compute(references=labels, predictions=logits)
             r2 = r2_metric.compute(references=labels, predictions=logits)

@@ -226,21 +226,41 @@ class Mutagenesis:
             raw_score = raw_pred
             mut_score = mut_pred
         elif task_config.task_type == "token":
-            raw_score = np.argmax(raw_pred, dim=-1)
-            mut_score = np.argmax(mut_pred, dim=-1)
+            raw_score = np.argmax(raw_pred, axis=-1)
+            mut_score = np.argmax(mut_pred, axis=-1)
         elif task_config.task_type == "generation":
             raw_score = np.array([raw_pred])
             mut_score = np.array([mut_pred])
         elif task_config.task_type == "mask":
             raw_score = np.array([raw_pred])
             mut_score = np.array([mut_pred])
+        elif task_config.task_type == "embedding":
+            raw_score = np.array([raw_pred])
+            mut_score = np.array([mut_pred])
         else:
             raise ValueError(f"Unknown task type: {task_config.task_type}")
 
+        # eps = 1e-8
+        # logfc = np.log2((mut_score + eps) / (raw_score + eps))
         logfc = np.log2(mut_score / raw_score)
         diff = mut_score - raw_score
 
         return raw_score, mut_score, logfc, diff
+
+    def get_model_device(self, model):
+        """Get the device of the model.
+
+        Returns:
+            torch.device: The device on which the model is located
+        """
+        if hasattr(model, "device"):
+            device = model.device
+        elif hasattr(model, "parameters"):
+            device = next(model.parameters()).device
+        else:
+            device = torch.device("cpu")
+
+        return device
 
     @torch.no_grad()
     def mlm_evaluate(self, return_sum: bool = True) -> list[float]:
@@ -257,6 +277,7 @@ class Mutagenesis:
         all_logprobs = []
         model = self.model
         tokenizer = self.tokenizer
+        device = self.get_model_device(model)
         if len(self.sequences["sequence"]) > 1:
             input_data = tqdm(self.sequences["sequence"], desc="Inferring")
         else:
@@ -264,7 +285,7 @@ class Mutagenesis:
         for seq in input_data:
             toks = tokenizer(
                 seq, return_tensors="pt", add_special_tokens=True
-            ).to(model.device)
+            ).to(device)
             input_ids = toks["input_ids"].clone()
             seq_len = input_ids.size(1)
             total = 0.0
@@ -311,6 +332,7 @@ class Mutagenesis:
         all_logprobs = []
         model = self.model
         tokenizer = self.tokenizer
+        device = self.get_model_device(model)
         if len(self.sequences["sequence"]) > 1:
             input_data = tqdm(self.sequences["sequence"], desc="Inferring")
         else:
@@ -318,7 +340,7 @@ class Mutagenesis:
         for seq in input_data:
             toks = tokenizer(
                 seq, return_tensors="pt", add_special_tokens=True
-            ).to(model.device)
+            ).to(device)
             input_ids = toks["input_ids"]
             outputs = model(**toks)
             logits = outputs.logits  # (1, L, V)
@@ -341,13 +363,23 @@ class Mutagenesis:
             all_logprobs.append(seq_logp)
         return all_logprobs
 
-    def evaluate(self, strategy: str | int = "last") -> list[dict]:
+    def evaluate(
+        self,
+        score_type: str = "embedding",
+        strategy: str | int = "last",
+        do_pred: bool = False,
+        reduce_hidden_states: bool = True,
+    ) -> list[dict]:
         """Evaluate the impact of mutations on model predictions.
 
         This method runs predictions on all mutated sequences and compares them
         with the original sequence to calculate mutation effects.
 
         Args:
+            score_type: Type of score to compute:
+                "embedding": Use embedding-based scoring
+                "logits": Use logits-based scoring
+                "probability": Use probability-based scoring
             strategy: Strategy for selecting the score from the log fold\
                 change:
                 "first": Use the first log fold change
@@ -357,6 +389,10 @@ class Mutagenesis:
                 "max": Use the index of the maximum raw score to select\
                     the log fold change
                 int: Use the log fold change at the specified index
+            do_pred: Whether to perform prediction (if False, only data is\
+                prepared)
+            reduce_hidden_states: Whether to reduce hidden states when using\
+                embedding task
 
         Returns:
             Dictionary containing predictions and metadata for all sequences:
@@ -368,43 +404,42 @@ class Mutagenesis:
         inference_engine = self.get_inference_engine(
             self.model, self.tokenizer
         )
-        # Special models list
-        sp_models = ["evo1", "evo2", "megadna"]
-        sp_model_found = False
+        task_type = self.config["task"].task_type
         # Do prediction
         all_predictions = {}
-        for sp_model in sp_models:
-            if sp_model in str(self.model).lower():
-                logits = inference_engine.scoring(
-                    self.dataloader,
-                    reduce_method=strategy if strategy == "sum" else "mean",
-                )
-                raw_pred = logits[0]["Score"]
-                mut_preds = [logit["Score"] for logit in logits[1:]]
-                self.config["task"].task_type = "generation"
-                sp_model_found = True
-                break
-        if not sp_model_found:
+        if task_type == "embedding":
+            scores = inference_engine.scoring(
+                self.dataloader,
+                score_type=score_type,
+                reduce_hidden_states=reduce_hidden_states,
+                reduce_method=strategy,
+            )
+            raw_pred = scores[0]["Score"]
+            mut_preds = [score["Score"] for score in scores[1:]]
+        else:
             if self.config["task"].task_type == "mask":
-                logits = self.mlm_evaluate()
+                scores = self.mlm_evaluate()
             elif self.config["task"].task_type == "generation":
-                logits = self.clm_evaluate()
+                scores = self.clm_evaluate()
             else:
-                logits, _, _ = inference_engine.batch_infer(
-                    self.dataloader, do_pred=False
+                outputs = inference_engine.batch_infer(
+                    self.dataloader,
+                    do_pred=do_pred,
+                    return_dict=False,
                 )
-            logits = logits[0] if isinstance(logits, tuple) else logits
+                scores = outputs[1] if do_pred else outputs[0]
+            scores = scores[0] if isinstance(scores, tuple) else scores
             # Get the raw predictions
             raw_pred = (
-                logits[0].numpy()
-                if isinstance(logits, torch.Tensor)
-                else logits[0]
+                scores[0].numpy()
+                if isinstance(scores, torch.Tensor)
+                else scores[0]
             )
             # Get the mutated predictions
             mut_preds = (
-                logits[1:].numpy()
-                if isinstance(logits, torch.Tensor)
-                else logits[1:]
+                scores[1:].numpy()
+                if isinstance(scores, torch.Tensor)
+                else scores[1:]
             )
 
         # Calculate scores
@@ -425,6 +460,8 @@ class Mutagenesis:
                 score = values[strategy]
             else:
                 score = np.mean(values)
+            if np.isnan(score):
+                score = 0.0
             return score
 
         for i, mut_pred in tqdm(
@@ -621,7 +658,9 @@ class Mutagenesis:
     def plot(
         self,
         preds: dict,
-        show_score: bool = False,
+        width: int | None = None,
+        height: int = 400,
+        show_score: bool = True,
         save_path: str | None = None,
     ) -> None:
         """Plot the mutagenesis analysis results.
@@ -650,5 +689,11 @@ class Mutagenesis:
         else:
             outfile = None
         # Plot heatmap
-        pmut = plot_muts(preds, show_score=show_score, save_path=outfile)
+        pmut = plot_muts(
+            preds,
+            width=width,
+            height=height,
+            show_score=show_score,
+            save_path=outfile,
+        )
         return pmut

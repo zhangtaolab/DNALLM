@@ -172,6 +172,9 @@ class DNATrainer:
             eval_dataset = None
             self.training_args.eval_strategy = "no"
 
+        # Set problem type specific settings
+        if self.task_config.task_type == "regression":
+            self.model.config.problem_type = "regression"
         # Get compute metrics
         if self.task_config.task_type in ["mask", "generation", "embedding"]:
             compute_metrics = None

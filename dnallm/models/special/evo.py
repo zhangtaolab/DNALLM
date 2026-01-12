@@ -2,6 +2,7 @@ import os
 import json
 from glob import glob
 import torch
+from transformers import PretrainedConfig, BatchEncoding
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
@@ -112,12 +113,12 @@ class EvoTokenizerWrapper:
             attention_masks = [[1] * len(ids) for ids in input_ids_list]
 
         if return_tensors == "pt":
-            return {
+            return BatchEncoding({
                 "input_ids": torch.tensor(padded_input_ids, dtype=torch.long),
                 "attention_mask": torch.tensor(
                     attention_masks, dtype=torch.long
                 ),
-            }
+            })
 
         result = {
             "input_ids": padded_input_ids,
@@ -127,7 +128,7 @@ class EvoTokenizerWrapper:
         if not is_batched and return_tensors is None:
             return {k: v[0] for k, v in result.items()}
 
-        return result
+        return BatchEncoding(result)
 
     def save_pretrained(self, save_directory):
         if os.path.isfile(save_directory):
@@ -216,6 +217,15 @@ def _handle_evo2_models(
                     "https://github.com/ArcInstitute/evo2"
                 ) from e
 
+            class Evo2Config(PretrainedConfig):
+                model_type = "evo2"
+
+                def __init__(self, **kwargs):
+                    super().__init__(**kwargs)
+
+                    for key, value in kwargs.items():
+                        setattr(self, key, value)
+
             model_path = (
                 glob(model_name + "/*.pt")[0]
                 if os.path.isdir(model_name)
@@ -264,29 +274,20 @@ def _handle_evo2_models(
                 )
             tokenizer = CharLevelTokenizer(512)
             evo2_model.tokenizer = tokenizer
+            model_config = Evo2Config(**evo2_model.model.config)
             evo2_model._model_path = downloaded_model_path
+            tokenizer = EvoTokenizerWrapper(
+                raw_tokenizer=evo2_model.tokenizer,
+                model_max_length=model_config.max_seqlen,
+            )
+
             if head_config is not None:
-                from transformers import PretrainedConfig
                 from ..model import DNALLMforSequenceClassification
 
-                class Evo2Config(PretrainedConfig):
-                    model_type = "evo2"
-
-                    def __init__(self, **kwargs):
-                        super().__init__(**kwargs)
-
-                        for key, value in kwargs.items():
-                            setattr(self, key, value)
-
-                model_config = Evo2Config(**evo2_model.model.config)
                 head_config = head_config.__dict__
                 model_config.head_config = head_config
                 evo2_model.config = model_config
                 evo2_model.config.pad_token_id = evo2_model.tokenizer.pad_id
-                tokenizer = EvoTokenizerWrapper(
-                    raw_tokenizer=evo2_model.tokenizer,
-                    model_max_length=model_config.max_seqlen,
-                )
                 evo2_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo2_model,
@@ -367,6 +368,15 @@ def _handle_evo1_models(
                     "https://github.com/evo-design/evo"
                 ) from e
 
+            class EvoConfig(PretrainedConfig):
+                model_type = "evo"
+
+                def __init__(self, **kwargs):
+                    super().__init__(**kwargs)
+
+                    for key, value in kwargs.items():
+                        setattr(self, key, value)
+
             has_flash_attention = is_flash_attention_capable()
             config_dir = os.path.abspath(
                 os.path.join(
@@ -399,28 +409,19 @@ def _handle_evo1_models(
             )
             tokenizer = CharLevelTokenizer(512)
             evo_model.tokenizer = tokenizer
+            model_config = EvoConfig(**evo_model.model.config)
+            tokenizer = EvoTokenizerWrapper(
+                raw_tokenizer=evo_model.tokenizer,
+                model_max_length=model_config.max_sequence_len,
+            )
+
             if head_config is not None:
-                from transformers import PretrainedConfig
                 from ..model import DNALLMforSequenceClassification
 
-                class EvoConfig(PretrainedConfig):
-                    model_type = "evo"
-
-                    def __init__(self, **kwargs):
-                        super().__init__(**kwargs)
-
-                        for key, value in kwargs.items():
-                            setattr(self, key, value)
-
-                model_config = EvoConfig(**evo_model.model.config)
                 head_config = head_config.__dict__
                 model_config.head_config = head_config
                 evo_model.config = model_config
                 evo_model.config.pad_token_id = evo_model.tokenizer.pad_id
-                tokenizer = EvoTokenizerWrapper(
-                    raw_tokenizer=evo_model.tokenizer,
-                    model_max_length=model_config.max_seqlen,
-                )
                 evo_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo_model,

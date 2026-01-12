@@ -2017,14 +2017,20 @@ def _build_mutation_datasets(
 
 
 def _create_mutation_charts(
-    dheat: dict, dline: dict, dbar: dict, width: int, height: int, flen: int
+    dheat: dict,
+    dbar: dict,
+    dline: dict,
+    width: int,
+    height: int,
+    flen: int,
+    show_score: bool = False,
 ) -> alt.Chart | alt.VConcatChart:
     """Create individual charts for mutation visualization.
 
     Args:
         dheat: Heatmap data
-        dline: Line plot data
         dbar: Bar chart data
+        dline: Line plot data
         width: Chart width
         height: Chart height
         flen: Format length for position strings
@@ -2035,6 +2041,18 @@ def _create_mutation_charts(
     if not dheat["score"]:
         return alt.Chart()
 
+    df_heat = pd.DataFrame(dheat)
+    df_bar = pd.DataFrame(dbar)
+    df_line = pd.DataFrame(dline)
+
+    # Assume base name is "0001A", get position
+    df_heat["pos"] = df_heat["base"].str[:flen].astype(int) - 0.5
+    df_heat["pos_end"] = df_heat["pos"] + 1.0
+    df_bar["pos"] = df_bar["x"].str[:flen].astype(int) - 0.45
+    df_bar["pos_end"] = df_bar["pos"] + 0.9
+    df_bar["score2"] = [0.0] * len(df_bar)
+    df_line["pos"] = df_line["x"].str[:flen].astype(int)
+
     # Calculate color domains and ranges
     all_scores = dheat["score"]
     max_abs_score = max(abs(min(all_scores)), abs(max(all_scores)))
@@ -2042,9 +2060,31 @@ def _create_mutation_charts(
     range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
 
     unique_bases = sorted(set(dbar["base"]))
-    range2_ = ["#33a02c", "#e31a1c", "#1f78b4", "#ff7f00", "#cab2d6"][
+    range2_ = ["#33a02c", "#1f78b4", "#ff7f00", "#e31a1c", "#cab2d6"][
         : len(unique_bases)
     ]
+
+    # Define X axis ticks based on position
+    min_pos = df_line["pos"].min()
+    max_pos = df_line["pos"].max()
+    max_score = df_line["score"].max()
+    # top2_score = df_line.nlargest(2, "score")["score"].to_list()
+    # if top2_score[0] > top2_score[1] * 2:
+    #     max_score = top2_score[1] * 2
+    # else:
+    #     max_score = top2_score[0] + 0.001
+    step = 20 if max_pos <= 50 else 50
+    tick_values = list(range(0, max_pos + 1, step))
+
+    # Define X axis with ticks to ensure proper scaling
+    x_scale = alt.Scale(domain=[min_pos - 0.6, max_pos + 0.6])
+    x_axis_base = alt.X(
+        "pos:Q",
+        scale=x_scale,
+        axis=alt.Axis(
+            values=tick_values, format="d", title=None, labelAngle=0
+        ),
+    )
 
     # Enable VegaFusion for performance
     alt.data_transformers.enable("vegafusion")
@@ -2052,33 +2092,20 @@ def _create_mutation_charts(
     # Create heatmap
     pheat: alt.Chart = (
         alt
-        .Chart(pd.DataFrame(dheat))
+        .Chart(df_heat)
         .mark_rect()
         .encode(
-            x=alt.X(
-                "base:O",
-                axis=alt.Axis(
-                    labelExpr=f"substring(datum.value, {flen}, {flen}+1)",
-                    labelAngle=0,
-                ),
-            ).title(None),
+            x=x_axis_base,
+            x2="pos_end:Q",
             y=alt.Y("mut:O").title("mutation"),
             color=alt.Color("score:Q").scale(domain=domain1, range=range1_),
-        )
-        .properties(width=width, height=height)
-    )
-
-    # Create line plot
-    pline: alt.Chart = (
-        alt
-        .Chart(pd.DataFrame(dline))
-        .mark_line()
-        .encode(
-            x=alt.X("x:O").title(None).axis(labels=False),
-            y=alt.Y("score:Q"),
-            color=alt.Color("type:N").scale(
-                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
-            ),
+            tooltip=[
+                alt.Tooltip("base", title="Position"),
+                alt.Tooltip("mut", title="Mutation"),
+                alt.Tooltip("score:Q", title="Score", format=".4f"),
+            ]
+            if show_score
+            else None,
         )
         .properties(width=width, height=height)
     )
@@ -2086,14 +2113,47 @@ def _create_mutation_charts(
     # Create bar chart
     pbar: alt.Chart = (
         alt
-        .Chart(pd.DataFrame(dbar))
+        .Chart(df_bar)
         .mark_bar()
         .encode(
-            x=alt.X("x:O").title(None).axis(labels=False),
-            y=alt.Y("score:Q"),
+            x=x_axis_base,
+            x2="pos_end:Q",
+            y=alt.Y("score:Q").title("max logFC"),
+            y2="score2:Q",
             color=alt.Color("base:N").scale(
                 domain=unique_bases, range=range2_
             ),
+            tooltip=[
+                alt.Tooltip("x", title="Position"),
+                alt.Tooltip("base", title="Max Effect Base"),
+                alt.Tooltip("score:Q", title="Score", format=".4f"),
+            ]
+            if show_score
+            else None,
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create line plot
+    pline: alt.Chart = (
+        alt
+        .Chart(df_line)
+        .mark_line()
+        .encode(
+            x=x_axis_base,
+            y=alt.Y(
+                "score:Q", scale=alt.Scale(domain=[-0.001, max_score + 0.001])
+            ).title("gain / loss"),
+            color=alt.Color("type:N").scale(
+                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
+            ),
+            tooltip=[
+                alt.Tooltip("x", title="Position"),
+                alt.Tooltip("type", title="Type"),
+                alt.Tooltip("score:Q", title="Score", format=".4f"),
+            ]
+            if show_score
+            else None,
         )
         .properties(width=width, height=height)
     )
@@ -2150,7 +2210,9 @@ def plot_muts(
         width = 400  # Default width
 
     # Create charts
-    pmerge = _create_mutation_charts(dheat, dline, dbar, width, height, flen)
+    pmerge = _create_mutation_charts(
+        dheat, dbar, dline, width, height, flen, show_score=show_score
+    ).interactive(bind_y=False)
 
     # Save the plot if requested
     if save_path and dheat["score"]:

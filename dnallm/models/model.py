@@ -22,7 +22,7 @@ from .special import (
     _handle_evo1_models,
     _handle_evo2_models,
     _handle_gpn_models,
-    _handle_lucaone_models,
+    # _handle_lucaone_models,
     _handle_megadna_models,
     _handle_mutbert_tokenizer,
     _handle_omnidna_models,
@@ -252,6 +252,8 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             sentence_embedding = last_hidden_state
         logits = self.score(sentence_embedding)
+        if self.num_labels != logits.size(-1):
+            self.num_labels = self.config.head_config["num_classes"]
 
         loss = None
         if labels is not None:
@@ -857,9 +859,9 @@ def load_model_and_tokenizer(
         return megadna_result
 
     # Handle special case for LucaOne models
-    lucaone_result = _handle_lucaone_models(model_name, source, head_config)
-    if lucaone_result is not None:
-        return lucaone_result
+    # lucaone_result = _handle_lucaone_models(model_name, source, head_config)
+    # if lucaone_result is not None:
+    #     return lucaone_result
 
     # Handle special case for Omni-DNA models
     _ = _handle_omnidna_models(model_name)
