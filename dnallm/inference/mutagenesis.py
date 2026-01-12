@@ -247,7 +247,7 @@ class Mutagenesis:
 
         return raw_score, mut_score, logfc, diff
 
-    def get_model_device(self, model) -> torch.device:
+    def get_model_device(self, model):
         """Get the device of the model.
 
         Returns:
@@ -364,11 +364,11 @@ class Mutagenesis:
         return all_logprobs
 
     def evaluate(
-            self,
-            score_type: str = "embedding",
-            strategy: str | int = "last",
-            do_pred: bool = False,
-            reduce_hidden_states: bool = True,
+        self,
+        score_type: str = "embedding",
+        strategy: str | int = "last",
+        do_pred: bool = False,
+        reduce_hidden_states: bool = True,
     ) -> list[dict]:
         """Evaluate the impact of mutations on model predictions.
 
@@ -690,7 +690,10 @@ class Mutagenesis:
             outfile = None
         # Plot heatmap
         pmut = plot_muts(
-            preds, width=width, height=height,
-            show_score=show_score, save_path=outfile
+            preds,
+            width=width,
+            height=height,
+            show_score=show_score,
+            save_path=outfile,
         )
         return pmut

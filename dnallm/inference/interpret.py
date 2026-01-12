@@ -240,8 +240,7 @@ class DNAInterpret:
         except Exception:
             inputs = self.tokenizer.tokenize(sequence)
             input_ids = (
-                torch
-                .tensor(inputs, dtype=torch.long)
+                torch.tensor(inputs, dtype=torch.long)
                 .unsqueeze(0)
                 .to(self.device)
             )

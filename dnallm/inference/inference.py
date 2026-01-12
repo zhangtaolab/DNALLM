@@ -141,9 +141,7 @@ class DNAInference:
                         model.model
                     )
                 else:
-                    self.accepted_args = self._get_accepted_forward_args(
-                        model
-                    )
+                    self.accepted_args = self._get_accepted_forward_args(model)
             else:
                 self.accepted_args = set(default_forward_args)
         self.tokenizer = tokenizer
@@ -2159,8 +2157,7 @@ class DNAInference:
             all_embeddings = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
-                    torch
-                    .tensor(
+                    torch.tensor(
                         tokenizer.tokenize(sequence),
                         dtype=torch.int,
                     )

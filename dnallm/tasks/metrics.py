@@ -188,8 +188,7 @@ def regression_metrics(plot=False):
             if np.std(yt) == 0:
                 continue
             r = pearson_metric.compute(
-                predictions=yp.tolist(),
-                references=yt.tolist()
+                predictions=yp.tolist(), references=yt.tolist()
             )["pearsonr"]
             rs.append(r)
         return np.mean(rs), rs
@@ -202,8 +201,7 @@ def regression_metrics(plot=False):
             if np.std(yt) == 0:
                 continue
             r = spm_metric.compute(
-                predictions=yp.tolist(),
-                references=yt.tolist()
+                predictions=yp.tolist(), references=yt.tolist()
             )["spearmanr"]
             rs.append(r)
         return np.mean(rs), rs
@@ -219,8 +217,11 @@ def regression_metrics(plot=False):
             pearsonr, _ = pearson_macro(labels, logits)
             spearmanr, _ = spearman_macro(labels, logits)
             metrics = {
-                "mse": mse, "mae": mae, "r2": r2,
-                "pearsonr": pearsonr, "spearmanr": spearmanr
+                "mse": mse,
+                "mae": mae,
+                "r2": r2,
+                "pearsonr": pearsonr,
+                "spearmanr": spearmanr,
             }
         else:
             mse = mse_metric.compute(references=labels, predictions=logits)

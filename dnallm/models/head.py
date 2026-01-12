@@ -579,8 +579,7 @@ class EVOForSeqClsHead(nn.Module):
         elif self.pooling_method == "mean":
             if attention_mask is not None:
                 mask_expanded = (
-                    attention_mask
-                    .unsqueeze(-1)
+                    attention_mask.unsqueeze(-1)
                     .expand(sequence_output.size())
                     .float()
                 )
