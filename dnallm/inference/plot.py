@@ -2090,6 +2090,11 @@ def _create_mutation_charts(
     alt.data_transformers.enable("vegafusion")
 
     # Create heatmap
+    heatmap_tooltip = [
+        alt.Tooltip("base", title="Position"),
+        alt.Tooltip("mut", title="Mutation"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
     pheat: alt.Chart = (
         alt
         .Chart(df_heat)
@@ -2099,18 +2104,17 @@ def _create_mutation_charts(
             x2="pos_end:Q",
             y=alt.Y("mut:O").title("mutation"),
             color=alt.Color("score:Q").scale(domain=domain1, range=range1_),
-            tooltip=[
-                alt.Tooltip("base", title="Position"),
-                alt.Tooltip("mut", title="Mutation"),
-                alt.Tooltip("score:Q", title="Score", format=".4f"),
-            ]
-            if show_score
-            else None,
+            **({"tooltip": heatmap_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
 
     # Create bar chart
+    bar_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("base", title="Max Effect Base"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
     pbar: alt.Chart = (
         alt
         .Chart(df_bar)
@@ -2123,18 +2127,17 @@ def _create_mutation_charts(
             color=alt.Color("base:N").scale(
                 domain=unique_bases, range=range2_
             ),
-            tooltip=[
-                alt.Tooltip("x", title="Position"),
-                alt.Tooltip("base", title="Max Effect Base"),
-                alt.Tooltip("score:Q", title="Score", format=".4f"),
-            ]
-            if show_score
-            else None,
+            **({"tooltip": bar_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
 
     # Create line plot
+    line_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("type", title="Type"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
     pline: alt.Chart = (
         alt
         .Chart(df_line)
@@ -2147,13 +2150,7 @@ def _create_mutation_charts(
             color=alt.Color("type:N").scale(
                 domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
             ),
-            tooltip=[
-                alt.Tooltip("x", title="Position"),
-                alt.Tooltip("type", title="Type"),
-                alt.Tooltip("score:Q", title="Score", format=".4f"),
-            ]
-            if show_score
-            else None,
+            **({"tooltip": line_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
