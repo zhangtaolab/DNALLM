@@ -146,12 +146,18 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
+# Ensure CUDA path is set correctly (nvcc version must match your PyTorch CUDA version)
+export PATH=/usr/local/cuda-12/bin:$PATH
+nvcc -V  # Verify CUDA compiler version
+
 # Install Mamba support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation --link-mode=copy
 
 # If encounter network issue, using the special install script for mamba (optional)
 sh scripts/install_mamba.sh  # select github proxy
 ```
+
+> **Note**: The `nvcc` version must match your PyTorch CUDA version. For example, if you installed PyTorch with CUDA 12.8, you need `nvcc` from CUDA 12.x. Mismatched versions will cause build failures.
 
 Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
 
