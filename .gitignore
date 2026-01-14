@@ -111,3 +111,9 @@ results/
 .ruff_cache/
 
 test/inference/pdf/
+tests/inference/pdf/demo_attention_pdf.pdf
+tests/inference/pdf/demo_bars_pdf.pdf
+tests/inference/pdf/demo_curves_pdf.pdf
+tests/inference/pdf/demo_embeddings_pdf.pdf
+tests/inference/pdf/demo_scatter_pdf.pdf
+tests/inference/pdf/format_compatibility_test_pdf.pdf
