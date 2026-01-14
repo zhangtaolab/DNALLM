@@ -82,8 +82,10 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern="^(embedding|mask|generation|binary|multiclass|multilabel\
-                |regression|token)$",
+        pattern=(
+            "^(embedding|mask|generation|binary|multiclass|multilabel|"
+            "regression|token)$"
+        ),
     )
     num_labels: int = 2
     label_names: list | None = None

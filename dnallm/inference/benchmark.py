@@ -181,12 +181,11 @@ class Benchmark:
     ) -> dict[str, Any]:
         """Perform the benchmark evaluation on multiple models.
 
-                This method loads each model, runs predictions on the dataset,
-            calculates metrics,
-        and optionally saves the results.
+        This method loads each model, runs predictions on the dataset,
+        calculates metrics, and optionally saves the results.
 
         Args:
-                        model_names: List of model names or
+            model_names: List of model names or
                 a dictionary mapping model names to paths
             source: Source of the models ('local', 'huggingface', 'modelscope')
             use_mirror: Whether to use a mirror for downloading models
@@ -268,10 +267,16 @@ class Benchmark:
                     #         raise NameError(
                     # "Cannot find model in either the given source or local."
                     #         ) from None
+                if hasattr(tokenizer, "model_max_length"):
+                    max_length = min(
+                        tokenizer.model_max_length, pred_config.max_length
+                    )
+                else:
+                    max_length = pred_config.max_length
                 dataset = DNADataset(
                     self.datasets[di],
                     tokenizer=tokenizer,
-                    max_length=pred_config.max_length,
+                    max_length=max_length,
                 )
                 dataset.encode_sequences(remove_unused_columns=True)
                 dataloader: DataLoader = DataLoader(
@@ -403,6 +408,7 @@ class Benchmark:
                     scatter_plot = os.path.join(save_path, "scatter.pdf")
             else:
                 bar_chart = None
+                scatter_plot = None
             # Plot bar charts
             pbar = plot_bars(
                 bars_data,

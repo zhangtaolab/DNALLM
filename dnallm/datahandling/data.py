@@ -432,12 +432,14 @@ class DNADataset:
     def encode_sequences(
         self,
         padding: str = "max_length",
+        padding_side: str | None = None,
         return_tensors: str = "pt",
         remove_unused_columns: bool = False,
         uppercase: bool = False,
         lowercase: bool = False,
         task: str | None = "SequenceClassification",
         tokenizer: PreTrainedTokenizerBase | None = None,
+        seq_sep: str | None = None,
     ) -> None:
         """Encode all sequences using the provided tokenizer.
 
@@ -476,13 +478,27 @@ class DNADataset:
             task = "sequenceclassification"
         task = task.lower()
 
+        if task == "sequenceclassification":
+            if padding_side is None:
+                padding_side = "right"
+        else:
+            if hasattr(self.tokenizer, "padding_side"):
+                padding_side = self.tokenizer.padding_side
+            else:
+                padding_side = "right"
+
         if task in ["tokenclassification", "token", "ner"]:
             self._apply_token_classification_tokenization(
                 tokenizer_config, padding, uppercase, lowercase
             )
         else:
             self._apply_sequence_classification_tokenization(
-                tokenizer_config, padding, uppercase, lowercase
+                tokenizer_config,
+                padding,
+                padding_side,
+                uppercase,
+                lowercase,
+                seq_sep,
             )
 
         # Post-process dataset
@@ -511,13 +527,23 @@ class DNADataset:
         ]:
             if not sp_token_map.get(token) and hasattr(self.tokenizer, token):
                 sp_token_map[token] = getattr(self.tokenizer, token)
+        # Get pad id
         if "pad_id" not in sp_token_map:
             if hasattr(self.tokenizer, "pad_token_id"):
                 if self.tokenizer.pad_token_id is not None:
                     sp_token_map["pad_id"] = self.tokenizer.pad_token_id
+            elif hasattr(self.tokenizer, "pad_id"):
+                if self.tokenizer.pad_id is not None:
+                    sp_token_map["pad_id"] = self.tokenizer.pad_id
+            elif hasattr(self.tokenizer, "encode"):
+                if sp_token_map.get("pad_token"):
+                    sp_token_map["pad_id"] = self.tokenizer.encode(
+                        sp_token_map.get("pad_token", "")
+                    )[-1]
             if not sp_token_map.get("pad_id"):
                 if hasattr(self.tokenizer, "eos_token_id"):
                     sp_token_map["pad_id"] = self.tokenizer.eos_token_id
+        # Get pad token
         if not sp_token_map.get("pad_token"):
             if hasattr(self.tokenizer, "decode"):
                 sp_token_map["pad_token"] = self.tokenizer.decode(
@@ -532,23 +558,44 @@ class DNADataset:
                 sp_token_map["pad_token"] = self.tokenizer.decode_token(
                     sp_token_map["pad_id"]
                 )
+            self.tokenizer.pad_token = sp_token_map["pad_token"]
+        # Get eos token
+        eos_token = sp_token_map.get("eos_token")
+        if not eos_token:
+            if hasattr(self.tokenizer, "sep_token"):
+                eos_token = self.tokenizer.sep_token
+            elif hasattr(self.tokenizer, "pad_token"):
+                eos_token = self.tokenizer.pad_token
         return {
             "pad_token": sp_token_map.get("pad_token"),
-            "pad_id": self.tokenizer.encode(sp_token_map.get("pad_token", ""))[
-                -1
-            ]
-            if sp_token_map.get("pad_token")
-            else None,
+            "pad_id": sp_token_map.get("pad_id", 0),
             "cls_token": sp_token_map.get("cls_token"),
             "sep_token": sp_token_map.get("sep_token"),
-            "eos_token": sp_token_map.get("eos_token"),
+            "eos_token": eos_token,
             "max_length": self.max_length,
         }
 
     def _apply_sequence_classification_tokenization(
-        self, config: dict, padding: str, uppercase: bool, lowercase: bool
+        self,
+        config: dict,
+        padding: str,
+        padding_side: str,
+        uppercase: bool,
+        lowercase: bool,
+        seq_sep: str | None = None,
     ) -> None:
         """Apply sequence classification tokenization."""
+
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        if hasattr(self.tokenizer, "sep_token") and self.tokenizer.sep_token:
+            sep_token = self.tokenizer.sep_token
+        elif hasattr(self.tokenizer, "eos_token") and self.tokenizer.eos_token:
+            sep_token = self.tokenizer.eos_token
+        elif hasattr(self.tokenizer, "pad_token") and self.tokenizer.pad_token:
+            sep_token = self.tokenizer.pad_token
+        else:
+            sep_token = ""
 
         def tokenize_for_sequence_classification(example):
             sequences = example["sequence"]
@@ -556,17 +603,19 @@ class DNADataset:
                 sequences = [x.upper() for x in sequences]
             if lowercase:
                 sequences = [x.lower() for x in sequences]
+            if seq_sep is not None:
+                sequences = [
+                    seq.replace(seq_sep, sep_token) for seq in sequences
+                ]
             if self.tokenizer is None:
                 raise ValueError("Tokenizer is not initialized")
             return self.tokenizer(
                 sequences,
                 truncation=True,
                 padding=padding,
+                padding_side=padding_side,
                 max_length=config["max_length"],
             )
-
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.dataset = self.dataset.map(
             tokenize_for_sequence_classification,
@@ -654,6 +703,8 @@ class DNADataset:
         all_masks = [1] * len(all_ids) + [0] * pad_len
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
+        if isinstance(example_tokens, str):
+            example_tokens = list(example_tokens)
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
                 example_tokens, example_ner_tags, pad_len, config
@@ -779,7 +830,13 @@ class DNADataset:
 
     def _remove_unused_columns(self) -> None:
         """Remove unused columns from the dataset."""
-        used_cols = ["labels", "input_ids", "attention_mask"]
+        used_cols = [
+            "labels",
+            "input_ids",
+            "inputs_embeds",
+            "attention_mask",
+            "token_type_ids",
+        ]
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
                 unused_cols = [
@@ -1503,7 +1560,8 @@ class DNADataset:
         df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1521,7 +1579,8 @@ class DNADataset:
         )
 
         box = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_boxplot(size=20)
             .encode(
                 x=alt.X("label_str:N", title="Label"),
@@ -1548,7 +1607,8 @@ class DNADataset:
         df["gc"] = df[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1564,7 +1624,8 @@ class DNADataset:
 
         df["label_val"] = pd.to_numeric(df[label_col], errors="coerce")
         scatter = (
-            alt.Chart(df)
+            alt
+            .Chart(df)
             .mark_point()
             .encode(
                 x=alt.X("gc:Q", title="GC content"),
@@ -1648,7 +1709,8 @@ class DNADataset:
         )
 
         hist = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1663,7 +1725,8 @@ class DNADataset:
         )
 
         box = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_boxplot(size=20)
             .encode(
                 x=alt.X("labels_for_plot:N", title=f"{c}"),
@@ -1690,7 +1753,8 @@ class DNADataset:
         )
 
         hist = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
             .encode(
                 x=alt.X(
@@ -1704,7 +1768,8 @@ class DNADataset:
         )
 
         scatter = (
-            alt.Chart(subdf_for_plot)
+            alt
+            .Chart(subdf_for_plot)
             .mark_point()
             .encode(
                 x=alt.X("gc:Q", title="GC content"),

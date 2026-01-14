@@ -12,7 +12,6 @@ from typing import Any
 
 from dnallm.models.model import (
     download_model,
-    is_fp8_capable,
     load_model_and_tokenizer,
     load_preset_model,
     _setup_huggingface_mirror,
@@ -21,6 +20,7 @@ from dnallm.models.model import (
     _load_model_by_task_type,
     _configure_model_padding,
 )
+from dnallm.utils.support import is_fp8_capable
 from dnallm.configuration.configs import TaskConfig
 
 
@@ -138,7 +138,7 @@ class TestDownloadModel:
 class TestIsFp8Capable:
     """Test is_fp8_capable function for hardware detection."""
 
-    @patch("torch.cuda.get_device_capability")
+    @patch("dnallm.utils.support.get_device_capability")
     def test_fp8_capable_hopper(self, mock_capability):
         """Test FP8 capability detection for Hopper (H100) architecture."""
         mock_capability.return_value = (9, 0)
@@ -147,7 +147,7 @@ class TestIsFp8Capable:
 
         assert result is True
 
-    @patch("torch.cuda.get_device_capability")
+    @patch("dnallm.utils.support.get_device_capability")
     def test_fp8_capable_newer_architecture(self, mock_capability):
         """Test FP8 capability detection for newer architecture."""
         mock_capability.return_value = (9, 1)
@@ -156,7 +156,7 @@ class TestIsFp8Capable:
 
         assert result is True
 
-    @patch("torch.cuda.get_device_capability")
+    @patch("dnallm.utils.support.get_device_capability")
     def test_fp8_not_capable_older_architecture(self, mock_capability):
         """Test FP8 capability detection for older architecture."""
         mock_capability.return_value = (8, 0)
@@ -165,7 +165,7 @@ class TestIsFp8Capable:
 
         assert result is False
 
-    @patch("torch.cuda.get_device_capability")
+    @patch("dnallm.utils.support.get_device_capability")
     def test_fp8_not_capable_much_older_architecture(self, mock_capability):
         """Test FP8 capability detection for much older architecture."""
         mock_capability.return_value = (7, 5)

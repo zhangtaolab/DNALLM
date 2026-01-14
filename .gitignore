@@ -109,3 +109,5 @@ site
 results/
 
 .ruff_cache/
+
+test/inference/pdf/

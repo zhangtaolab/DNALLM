@@ -18,6 +18,7 @@ alt.data_transformers.enable("default", max_rows=None)
 
 def _prepare_classification_data(
     metrics: dict[str, dict],
+    task_type: str = "binary",
 ) -> tuple[dict, dict]:
     """Prepare data for classification tasks (binary, multiclass, multilabel,
     token).
@@ -39,15 +40,31 @@ def _prepare_classification_data(
 
     for model, model_metrics in metrics.items():
         bars_data["models"].append(model)
-        if "AUROC" in model_metrics:
-            curves_data["AUROC"][model] = model_metrics["AUROC"]
-        if "AUPRC" in model_metrics:
-            curves_data["AUPRC"][model] = model_metrics["AUPRC"]
-        for metric, metric_data in model_metrics.items():
-            if metric == "curve":
-                _process_curve_data(metric_data, curves_data, model)
-            else:
-                _add_bar_metric(bars_data, metric, metric_data)
+        if task_type in ["multilabel", "token"]:
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    for label in metric_data:
+                        _process_curve_data(
+                            metric_data[label], curves_data, label
+                        )
+                        curves_data["AUROC"][label] = metric_data[label][
+                            "AUROC"
+                        ]
+                        curves_data["AUPRC"][label] = metric_data[label][
+                            "AUPRC"
+                        ]
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
+        else:
+            if "AUROC" in model_metrics:
+                curves_data["AUROC"][model] = model_metrics["AUROC"]
+            if "AUPRC" in model_metrics:
+                curves_data["AUPRC"][model] = model_metrics["AUPRC"]
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    _process_curve_data(metric_data, curves_data, model)
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
 
     return dict(bars_data), dict(curves_data)
 
@@ -113,6 +130,29 @@ def _add_bar_metric(bars_data: dict, metric: str, metric_data) -> None:
     bars_data[metric].append(metric_data)
 
 
+def _prepare_annotations(data: list | dict) -> dict:
+    """Prepare annotations for plots."""
+    if isinstance(data, list):
+        label_names = set(data)
+        # label_dict = {name: i for i, name in enumerate(label_names)}
+        annotations = {"model": {name: set() for name in label_names}}
+        for i, name in enumerate(data):
+            annotations["model"][name].add(i)
+        return annotations
+    elif isinstance(data, dict):
+        models = data.keys()
+        label_names = set(data[models[0]])
+        annotations = {
+            model: {name: set() for name in label_names} for model in models
+        }
+        for model in models:
+            for i, name in enumerate(data[model]):
+                annotations[model][name].add(i)
+        return annotations
+    else:
+        raise TypeError("Data must be a list or a dictionary")
+
+
 def prepare_data(
     metrics: dict[str, dict], task_type: str = "binary"
 ) -> tuple[dict, dict | dict]:
@@ -155,8 +195,8 @@ def plot_bars(
     show_score: bool = True,
     ncols: int = 3,
     width: int = 200,
-    height: int = 50,
-    bar_width: int = 30,
+    height: int | None = None,
+    bar_width: int = 20,
     domain: tuple[float, float] | list[float] = (0.0, 1.0),
     save_path: str | None = None,
     separate: bool = False,
@@ -206,8 +246,11 @@ def plot_bars(
             domain_use = domain
 
         # Create bar chart with optimized encoding
+        if height is None:
+            height = 25 * len(dbar["models"])
         bar = (
-            alt.Chart(dbar)
+            alt
+            .Chart(dbar)
             .mark_bar(size=bar_width)
             .encode(
                 x=alt.X(f"{metric}:Q").scale(domain=domain_use),
@@ -215,13 +258,14 @@ def plot_bars(
                 color=alt.Color("models").legend(None),
                 tooltip=["models", metric],
             )
-            .properties(width=width, height=height * len(dbar["models"]))
+            .properties(width=width, height=height)
         )
 
         if show_score:
             # Optimized text positioning and formatting
             text = (
-                alt.Chart(dbar)
+                alt
+                .Chart(dbar)
                 .mark_text(
                     dx=-10 if dbar[metric].min() >= 0.2 else 5,
                     color="white" if dbar[metric].min() >= 0.2 else "black",
@@ -271,16 +315,11 @@ def plot_bars(
 def plot_polar_bar(
     data: dict,
     title: str | None = None,
+    width: int = 400,
+    height: int = 400,
     save_path: str | None = None,
 ) -> alt.Chart:
     """Plot a polar bar chart.
-
-    Args:
-        data: Dictionary containing the data to plot.
-        categories: List of categories for the bars.
-        values: List of values for the bars.
-        title: Title of the chart.
-        color: Color of the bars.
 
     Returns:
         Altair chart object.
@@ -322,7 +361,8 @@ def plot_polar_bar(
     })
 
     base = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_arc(stroke="grey", padAngle=0.05, cornerRadius=10, tooltip=True)
         .encode(
             theta=alt.Theta("Metric:O", sort=None),
@@ -348,6 +388,168 @@ def plot_polar_bar(
         chart.save(save_path)
         print(f"Polar bar chart saved to {save_path}")
 
+    return chart
+
+
+def plot_radar(
+    data: dict,
+    metric: str = "AUROC",
+    models: str | list[str] | None = None,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a radar chart.
+
+    Args:
+        data: Dictionary containing the data to plot.
+        metric: Metric to plot (e.g., "AUROC", "AUPRC").
+        models: List of models to include in the chart.
+        width: Width of the chart.
+        height: Height of the chart.
+        save_path: Path to save the chart.
+
+    Returns:
+        Altair chart object.
+    """
+    # Load metrics and models if available
+    metrics = []
+    if models is None:
+        default_model = "Model"
+    elif isinstance(models, str):
+        default_model = models
+    metric = metric.upper()
+    selected_models = set()
+    for name in data:
+        met = name.replace("test_", "")
+        if met == "curve":
+            for label in data[met]:
+                item = data[met][label][metric]
+                if isinstance(item, (int, float)):
+                    score = item
+                    metrics.append({
+                        "labels": label,
+                        "score": score,
+                        "model": default_model,
+                    })
+                    selected_models.add(default_model)
+                else:
+                    for model, score in item.items():
+                        if model in models or models is None:
+                            selected_models.add(model)
+                            metrics.append({
+                                "labels": label,
+                                "score": score,
+                                "model": model,
+                            })
+        else:
+            continue
+    # Convert to DataFrame
+    source = pd.DataFrame(metrics)
+    labels = source["labels"].unique()
+    angles = np.linspace(
+        np.pi / 2, np.pi / 2 - 2 * np.pi, len(labels), endpoint=False
+    )
+    cat_angle_map = dict(zip(labels, angles, strict=True))
+
+    source["angle"] = source["labels"].map(cat_angle_map)
+    source["x"] = source["score"] * np.cos(source["angle"])
+    source["y"] = source["score"] * np.sin(source["angle"])
+
+    closed_source = []
+    for model in selected_models:
+        subset = source[source["model"] == model].copy()
+        first_row = subset.iloc[[0]].copy()
+        closed_source.append(pd.concat([subset, first_row], ignore_index=True))
+    plot_df = pd.concat(closed_source).reset_index()
+
+    # Create base radar chart
+    rings = pd.DataFrame({"ring": [0.2, 0.4, 0.6, 0.8, 1.0]})
+    base_rings = (
+        alt
+        .Chart(rings)
+        .mark_arc(stroke="lightgrey", fill=None)
+        .encode(
+            theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False)
+        )
+    )
+    base_rings_labels = base_rings.mark_text(
+        color="black", radiusOffset=5, align="center"
+    ).encode(text="ring", theta=alt.value(np.pi / len(labels)))
+    out_rings = (
+        alt
+        .Chart(rings)
+        .mark_arc(stroke="black", fill=None)
+        .encode(theta=alt.value(np.pi * 2), radius=alt.datum(1))
+    )
+    # Create spokes
+    spokes = (
+        alt
+        .Chart(plot_df)
+        .mark_arc(stroke="lightgrey", fill=None, strokeDash=[5, 5])
+        .encode(
+            theta=alt.Theta("labels:O"),
+            radius=alt.datum(1),
+            radius2=alt.datum(0),
+        )
+    )
+    labels_text = (
+        alt
+        .Chart(plot_df)
+        .mark_text(radiusOffset=10, align="center")
+        .encode(
+            radius=alt.datum(1.1),
+            theta=alt.Theta("labels:O", sort=None),
+            text=alt.Text("labels"),
+            color=alt.value("black"),
+        )
+    )
+    # Create radar fill and line
+    radar_fill = (
+        alt
+        .Chart(plot_df)
+        .mark_line(filled=True, fillOpacity=0.3)
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    radar_line = (
+        alt
+        .Chart(plot_df)
+        .mark_line(
+            point=True,
+            fill=None,
+        )
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    # Create merge and configure chart
+    chart: alt.Chart = (
+        (
+            base_rings
+            + spokes
+            + out_rings
+            + radar_fill
+            + radar_line
+            + base_rings_labels
+            + labels_text
+        )
+        .properties(width=width, height=height, title=metric)
+        .configure_view(stroke=None)
+        .configure_axis(grid=False, domain=False, ticks=False)
+    )
+    # Check if save path is provided
+    if save_path:
+        chart.save(save_path)
+        print(f"Radar chart saved to {save_path}")
     return chart
 
 
@@ -377,8 +579,8 @@ def plot_curve(
         separate: Whether to return separate plots for ROC and PR curves
 
     Returns:
-              Altair chart object (combined or
-              separate plots based on separate parameter)
+        Altair chart object (combined or
+        separate plots based on separate parameter)
     """
     pline = {}
     p_separate = {}
@@ -387,7 +589,8 @@ def plot_curve(
 
     # ROC chart
     roc_chart = (
-        alt.Chart(roc_data)
+        alt
+        .Chart(roc_data)
         .mark_line()
         .encode(
             x=alt.X("fpr", title="FPR").scale(domain=(0.0, 1.0)),
@@ -400,7 +603,8 @@ def plot_curve(
 
     # Diagonal line
     diag_line = (
-        alt.Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
+        alt
+        .Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
         .mark_line(strokeDash=[5, 5], color="gray")
         .encode(
             x=alt.X("fpr").scale(domain=(0.0, 1.0)),
@@ -432,7 +636,8 @@ def plot_curve(
             text_data, columns=["models", "label", "fpr", "tpr"]
         )
         auroc_text_layer = (
-            alt.Chart(auroc_text_df)
+            alt
+            .Chart(auroc_text_df)
             .mark_text(
                 align="right",
                 baseline="bottom",
@@ -456,7 +661,8 @@ def plot_curve(
 
     # PR chart
     pr_chart = (
-        alt.Chart(pr_data)
+        alt
+        .Chart(pr_data)
         .mark_line()
         .encode(
             x=alt.X("recall", title="Recall").scale(domain=(0.0, 1.0)),
@@ -467,7 +673,8 @@ def plot_curve(
         .properties(width=width, height=height, title="PR Curve")
     )
     pr_baseline = (
-        alt.Chart(
+        alt
+        .Chart(
             pd.DataFrame({
                 "recall": [0, 1],
                 "precision": [
@@ -506,7 +713,8 @@ def plot_curve(
             text_data, columns=["models", "label", "recall", "precision"]
         )
         auprc_text_layer = (
-            alt.Chart(auprc_text_df)
+            alt
+            .Chart(auprc_text_df)
             .mark_text(
                 align="left",
                 baseline="bottom",
@@ -638,7 +846,8 @@ def plot_scatter(
             max_y = ddot["experiment"].max()
 
             text = (
-                alt.Chart()
+                alt
+                .Chart()
                 .mark_text(size=14, align="left", baseline="top", dx=5, dy=5)
                 .encode(
                     x=alt.datum(min_x + 0.5),
@@ -741,7 +950,8 @@ def plot_token_scatter(
     # Base Scatter Layer
     # Use status for color encoding
     base_scatter = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_point(filled=True)
         .encode(
             x=alt.X("index:Q", title="Token Index"),
@@ -788,7 +998,8 @@ def plot_token_scatter(
         },
     ])
     rule_lines = (
-        alt.Chart(line_data)
+        alt
+        .Chart(line_data)
         .mark_rule(strokeWidth=2)
         .encode(
             y="value:Q",
@@ -812,7 +1023,8 @@ def plot_token_scatter(
     )
     # Text Layer for Outliers
     text_labels = (
-        alt.Chart(df)
+        alt
+        .Chart(df)
         .mark_text(align="left", dx=5, color="darkred")
         .encode(x="index:Q", y="Value:Q", text="Token:N")
         .transform_filter(alt.datum.is_outlier)
@@ -855,7 +1067,8 @@ def plot_token_scatter(
             domain = unique_types
             range_colors = colors[: len(unique_types)]
         band_chart = (
-            alt.Chart(extra_df)
+            alt
+            .Chart(extra_df)
             .mark_rect(opacity=0.3)
             .encode(
                 x=alt.X("Start:Q", title="Token Index"),
@@ -878,7 +1091,8 @@ def plot_token_scatter(
     if extra_data:
         chart = band_chart + chart
     chart = (
-        chart.properties(width=width, height=height)
+        chart
+        .properties(width=width, height=height)
         .configure_axis(grid=False)
         .interactive()
     )
@@ -886,6 +1100,185 @@ def plot_token_scatter(
     if save_path:
         chart.save(save_path)
         print(f"Figure saved to {save_path}")
+
+    return chart
+
+
+def plot_line(
+    scores: dict,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a line chart for average score ratios.
+
+    Args:
+        scores: A dictionary including labels and lists of scores.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the line plot.
+    """
+    records = []
+    for key, values in scores.items():
+        for pos, val in enumerate(values):
+            records.append({"type": key, "position": pos, "score": val})
+    df = pd.DataFrame(records)
+
+    chart: alt.Chart = (
+        alt
+        .Chart(df)
+        .mark_line(interpolate="monotone")
+        .encode(
+            x=alt.X("position:Q", title="Position"),
+            y=alt.Y(
+                "score:Q", title="Likelihood", scale=alt.Scale(zero=False)
+            ),
+            color=alt.Color("type:N", title="Types"),
+            tooltip=["type", "position", "score"],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+
+    return chart
+
+
+def plot_annotations(
+    data: dict,
+    start: int | None = None,
+    end: int | None = None,
+    custom_colors: dict | None = None,
+    width: int = 800,
+    height: int | None = None,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot sequence annotations such as domains, motifs, or other features.
+
+    Args:
+        data: A dictionary where keys are annotation types and values.
+        start: Start position for the plot.
+        end: End position for the plot.
+        custom_colors: A dictionary mapping annotation types to colors.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the annotations.
+    """
+    from itertools import groupby
+    from operator import itemgetter
+
+    def get_intervals_from_set(pos_set, min_val, max_val):
+        """
+        Given a set of positions, return a list of continuous intervals
+        within the specified min and max values.
+        """
+        valid_pos = sorted([p for p in pos_set if min_val <= p < max_val])
+
+        if not valid_pos:
+            return []
+
+        intervals = []
+        for _, g in groupby(enumerate(valid_pos), lambda ix: ix[0] - ix[1]):
+            group = list(map(itemgetter(1), g))
+            start = group[0]
+            end = group[-1] + 1
+            intervals.append((start, end))
+
+        return intervals
+
+    records = []
+    all_types = set()
+    for model, anno in data.items():
+        for ann_type, pos_set in anno.items():
+            all_types.add(ann_type)
+
+            intervals = get_intervals_from_set(pos_set, start, end)
+            for s, e in intervals:
+                records.append({
+                    "Model": model,
+                    "Type": ann_type,
+                    "Start": s,
+                    "End": e,
+                    "Length": e - s,
+                })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        print("Warning: No annotations to plot.")
+        return None
+
+    # Assign Set1 color to each types
+    type_list = sorted(all_types)
+    if custom_colors:
+        color_map = custom_colors
+    else:
+        default_colors = [
+            "#e41a1c",
+            "#377eb8",
+            "#4daf4a",
+            "#984ea3",
+            "#ff7f00",
+            "#ffff33",
+            "#a65628",
+            "#f781bf",
+            "#999999",
+        ]
+        color_map = {}
+        for i, t in enumerate(type_list):
+            if custom_colors and t in custom_colors:
+                color_map[t] = custom_colors[t]
+            else:
+                color_map[t] = default_colors[i % len(default_colors)]
+    range_colors = [color_map.get(t, "#7f7f7f") for t in type_list]
+
+    if height is None:
+        height = len(data) * 30
+
+    chart: alt.Chart = (
+        alt
+        .Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(
+                "Start",
+                scale=alt.Scale(domain=[start, end]),
+                axis=alt.Axis(format="d", title="Genomic Position (bp)"),
+            ),
+            x2="End",
+            y=alt.Y("Model", title=None, sort=list(data.keys())),
+            color=alt.Color(
+                "Type",
+                scale=alt.Scale(domain=type_list, range=range_colors),
+                legend=alt.Legend(title="Type"),
+            ),
+            tooltip=[
+                alt.Tooltip("Model", title="Model"),
+                alt.Tooltip("Type", title="Type"),
+                alt.Tooltip("Start", title="Start"),
+                alt.Tooltip("End", title="End"),
+                alt.Tooltip("Length", title="Length (bp)"),
+            ],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .configure_view(strokeWidth=0)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Annotation heatmap saved to {save_path}")
 
     return chart
 
@@ -1018,7 +1411,8 @@ def plot_attention_map(
     # Create attention map with optimized encoding and axis configuration
     # Original: Multiple axis configurations
     attn_map: alt.Chart = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_rect()
         .encode(
             x=alt.X(
@@ -1309,7 +1703,8 @@ def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
         Altair chart object
     """
     return (
-        alt.Chart(source_df, title=f"Layer {layer_idx + 1}")
+        alt
+        .Chart(source_df, title=f"Layer {layer_idx + 1}")
         .mark_point(filled=True, size=size, opacity=0.6)
         .encode(
             x=alt.X("Dimension 1:Q"),
@@ -1622,14 +2017,20 @@ def _build_mutation_datasets(
 
 
 def _create_mutation_charts(
-    dheat: dict, dline: dict, dbar: dict, width: int, height: int, flen: int
+    dheat: dict,
+    dbar: dict,
+    dline: dict,
+    width: int,
+    height: int,
+    flen: int,
+    show_score: bool = False,
 ) -> alt.Chart | alt.VConcatChart:
     """Create individual charts for mutation visualization.
 
     Args:
         dheat: Heatmap data
-        dline: Line plot data
         dbar: Bar chart data
+        dline: Line plot data
         width: Chart width
         height: Chart height
         flen: Format length for position strings
@@ -1640,6 +2041,18 @@ def _create_mutation_charts(
     if not dheat["score"]:
         return alt.Chart()
 
+    df_heat = pd.DataFrame(dheat)
+    df_bar = pd.DataFrame(dbar)
+    df_line = pd.DataFrame(dline)
+
+    # Assume base name is "0001A", get position
+    df_heat["pos"] = df_heat["base"].str[:flen].astype(int) - 0.5
+    df_heat["pos_end"] = df_heat["pos"] + 1.0
+    df_bar["pos"] = df_bar["x"].str[:flen].astype(int) - 0.45
+    df_bar["pos_end"] = df_bar["pos"] + 0.9
+    df_bar["score2"] = [0.0] * len(df_bar)
+    df_line["pos"] = df_line["x"].str[:flen].astype(int)
+
     # Calculate color domains and ranges
     all_scores = dheat["score"]
     max_abs_score = max(abs(min(all_scores)), abs(max(all_scores)))
@@ -1647,55 +2060,97 @@ def _create_mutation_charts(
     range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
 
     unique_bases = sorted(set(dbar["base"]))
-    range2_ = ["#33a02c", "#e31a1c", "#1f78b4", "#ff7f00", "#cab2d6"][
+    range2_ = ["#33a02c", "#1f78b4", "#ff7f00", "#e31a1c", "#cab2d6"][
         : len(unique_bases)
     ]
+
+    # Define X axis ticks based on position
+    min_pos = df_line["pos"].min()
+    max_pos = df_line["pos"].max()
+    max_score = df_line["score"].max()
+    # top2_score = df_line.nlargest(2, "score")["score"].to_list()
+    # if top2_score[0] > top2_score[1] * 2:
+    #     max_score = top2_score[1] * 2
+    # else:
+    #     max_score = top2_score[0] + 0.001
+    step = 20 if max_pos <= 50 else 50
+    tick_values = list(range(0, max_pos + 1, step))
+
+    # Define X axis with ticks to ensure proper scaling
+    x_scale = alt.Scale(domain=[min_pos - 0.6, max_pos + 0.6])
+    x_axis_base = alt.X(
+        "pos:Q",
+        scale=x_scale,
+        axis=alt.Axis(
+            values=tick_values, format="d", title=None, labelAngle=0
+        ),
+    )
 
     # Enable VegaFusion for performance
     alt.data_transformers.enable("vegafusion")
 
     # Create heatmap
+    heatmap_tooltip = [
+        alt.Tooltip("base", title="Position"),
+        alt.Tooltip("mut", title="Mutation"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
     pheat: alt.Chart = (
-        alt.Chart(pd.DataFrame(dheat))
+        alt
+        .Chart(df_heat)
         .mark_rect()
         .encode(
-            x=alt.X(
-                "base:O",
-                axis=alt.Axis(
-                    labelExpr=f"substring(datum.value, {flen}, {flen}+1)",
-                    labelAngle=0,
-                ),
-            ).title(None),
+            x=x_axis_base,
+            x2="pos_end:Q",
             y=alt.Y("mut:O").title("mutation"),
             color=alt.Color("score:Q").scale(domain=domain1, range=range1_),
-        )
-        .properties(width=width, height=height)
-    )
-
-    # Create line plot
-    pline: alt.Chart = (
-        alt.Chart(pd.DataFrame(dline))
-        .mark_line()
-        .encode(
-            x=alt.X("x:O").title(None).axis(labels=False),
-            y=alt.Y("score:Q"),
-            color=alt.Color("type:N").scale(
-                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
-            ),
+            **({"tooltip": heatmap_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
 
     # Create bar chart
+    bar_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("base", title="Max Effect Base"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
     pbar: alt.Chart = (
-        alt.Chart(pd.DataFrame(dbar))
+        alt
+        .Chart(df_bar)
         .mark_bar()
         .encode(
-            x=alt.X("x:O").title(None).axis(labels=False),
-            y=alt.Y("score:Q"),
+            x=x_axis_base,
+            x2="pos_end:Q",
+            y=alt.Y("score:Q").title("max logFC"),
+            y2="score2:Q",
             color=alt.Color("base:N").scale(
                 domain=unique_bases, range=range2_
             ),
+            **({"tooltip": bar_tooltip} if show_score else {}),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create line plot
+    line_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("type", title="Type"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
+    pline: alt.Chart = (
+        alt
+        .Chart(df_line)
+        .mark_line()
+        .encode(
+            x=x_axis_base,
+            y=alt.Y(
+                "score:Q", scale=alt.Scale(domain=[-0.001, max_score + 0.001])
+            ).title("gain / loss"),
+            color=alt.Color("type:N").scale(
+                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
+            ),
+            **({"tooltip": line_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
@@ -1752,7 +2207,9 @@ def plot_muts(
         width = 400  # Default width
 
     # Create charts
-    pmerge = _create_mutation_charts(dheat, dline, dbar, width, height, flen)
+    pmerge = _create_mutation_charts(
+        dheat, dbar, dline, width, height, flen, show_score=show_score
+    ).interactive(bind_y=False)
 
     # Save the plot if requested
     if save_path and dheat["score"]:
@@ -1923,7 +2380,8 @@ def plot_attributions_line(
 
     # Create base chart (raw scores)
     area = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_area(opacity=0.2, color="lightblue")
         .encode(
             x=alt.X("position:Q", title="Token Position"),
@@ -1932,7 +2390,8 @@ def plot_attributions_line(
     )
     # Add base line at y=0 (dashed line)
     area += (
-        alt.Chart(pd.DataFrame({"y": [0]}))
+        alt
+        .Chart(pd.DataFrame({"y": [0]}))
         .mark_rule(color="black", strokeDash=[5, 5])
         .encode(y="y:Q")
     )
@@ -1955,7 +2414,8 @@ def plot_attributions_line(
 
     # Create line chart layer
     lines = (
-        alt.Chart(long_source)
+        alt
+        .Chart(long_source)
         .mark_line()
         .encode(
             x=alt.X("position:Q"),
@@ -1972,7 +2432,8 @@ def plot_attributions_line(
     chart = area + lines
 
     chart: alt.Chart = (
-        chart.properties(width=800, height=200, title=title)
+        chart
+        .properties(width=800, height=200, title=title)
         .interactive()
         .configure_axis(grid=False)
     )
@@ -1987,9 +2448,9 @@ def plot_attributions_multi(
     Plot an aggregated heatmap of attribution scores from multiple sequences.
 
     Args:
-            all_attributions (List[Tuple[List[str], np.ndarray]]): List of
-                tuples containing tokens and their corresponding attribution
-                scores for multiple sequences.
+        all_attributions (List[Tuple[List[str], np.ndarray]]): List of
+            tuples containing tokens and their corresponding attribution
+            scores for multiple sequences.
             **Crucially, all arrays must be of the same length.**
         title (str): The title for the chart.
 
@@ -2075,7 +2536,8 @@ def plot_attributions_multi(
 
     # 4. Create heatmap
     heatmap: alt.Chart = (
-        alt.Chart(source)
+        alt
+        .Chart(source)
         .mark_rect()
         .encode(
             x=alt.X(

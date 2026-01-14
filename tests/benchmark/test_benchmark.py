@@ -265,6 +265,7 @@ output:
             }
 
         mock_tokenizer.side_effect = mock_tokenizer_call
+        mock_tokenizer.model_max_length = 512
 
         mock_load_model_tokenizer.return_value = (mock_model, mock_tokenizer)
         mock_logits = torch.randn(4, 2)

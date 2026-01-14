@@ -49,6 +49,7 @@ from peft import get_peft_model, LoraConfig
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
+from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
 
 class DNATrainer:
@@ -171,6 +172,9 @@ class DNATrainer:
             eval_dataset = None
             self.training_args.eval_strategy = "no"
 
+        # Set problem type specific settings
+        if self.task_config.task_type == "regression":
+            self.model.config.problem_type = "regression"
         # Get compute metrics
         if self.task_config.task_type in ["mask", "generation", "embedding"]:
             compute_metrics = None
@@ -203,6 +207,7 @@ class DNATrainer:
             eval_dataset=eval_dataset,
             compute_metrics=compute_metrics,
             data_collator=data_collator,
+            preprocess_logits_for_metrics=preprocess_logits,
         )
 
     def customize_trainer(self, trainer_cls: Trainer):
@@ -213,7 +218,7 @@ class DNATrainer:
         process.
 
         Args:
-            trainer: A custom HuggingFace Trainer instance to replace the
+            trainer_cls: A custom HuggingFace Trainer instance to replace the
                 default one
         """
         # Use custom loss function if provided
@@ -256,6 +261,10 @@ class DNATrainer:
         metrics: dict[str, float] = train_result.metrics
         # Save the model
         self.trainer.save_model()
+        self.model.save_pretrained(
+            self.train_config.output_dir,
+            safe_serialization=self.trainer.args.save_safetensors,
+        )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(
                 self.train_config.output_dir
