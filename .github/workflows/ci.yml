@@ -22,9 +22,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           
@@ -32,17 +41,17 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
       - name: Cache uv dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-
-        
+
       - name: Create virtual environment and install dependencies
         env:
-          UV_HTTP_TIMEOUT: 120
-          UV_CONCURRENT_DOWNLOADS: 1
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
           uv pip install -e ".[test,dev]"
@@ -101,31 +110,31 @@ jobs:
           sudo rm -rf /usr/local/.ghcup
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          
+
       - name: Install CUDA dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y nvidia-cuda-toolkit
-          
+
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
-        
+
       - name: Cache uv dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-cuda-${{ matrix.cuda-version }}-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-uv-cuda-${{ matrix.cuda-version }}-
             ${{ runner.os }}-uv-
-        
+
       - name: Create virtual environment and install CUDA dependencies
         env:
-          UV_HTTP_TIMEOUT: 120
-          UV_CONCURRENT_DOWNLOADS: 1
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
           if [ "${{ matrix.cuda-version }}" = "12.1" ]; then
