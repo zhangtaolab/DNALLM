@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 326 326">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        stroke: url(#_未命名的渐变_3);
+      }
+
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7 {
+        fill: none;
+      }
+
+      .st0, .st2, .st3, .st6 {
+        stroke-miterlimit: 10;
+      }
+
+      .st0, .st3 {
+        stroke-dasharray: 6.8;
+        stroke-width: 6.8px;
+      }
+
+      .st1 {
+        stroke: #1887c8;
+      }
+
+      .st1, .st4, .st5, .st7 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .st1, .st5, .st7 {
+        stroke-width: 20px;
+      }
+
+      .st8, .st9 {
+        isolation: isolate;
+      }
+
+      .st2 {
+        stroke: #036eb8;
+        stroke-width: 14px;
+      }
+
+      .st9 {
+        fill: #244f72;
+        font-family: Helvetica-Bold, Helvetica;
+        font-size: 76.5px;
+        font-weight: 700;
+      }
+
+      .st3 {
+        stroke: url(#_未命名的渐变);
+      }
+
+      .st4 {
+        stroke: #fff;
+        stroke-width: 16.9px;
+      }
+
+      .st5 {
+        stroke: #2ea7e0;
+      }
+
+      .st6 {
+        stroke: url(#_未命名的渐变_2);
+        stroke-dasharray: 6.9;
+        stroke-width: 6.9px;
+      }
+
+      .st7 {
+        stroke: #1887c8;
+      }
+    </style>
+    <linearGradient id="_未命名的渐变" data-name="未命名的渐变" x1="133.4" y1="1127.4" x2="244.3" y2="1127.4" gradientTransform="translate(0 -1069.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_2" data-name="未命名的渐变 2" x1="133.4" y1="1232.3" x2="155.5" y2="1232.3" gradientTransform="translate(0 -1069.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+    <linearGradient id="_未命名的渐变_3" data-name="未命名的渐变 3" x1="133.4" y1="-979" x2="244.3" y2="-979" gradientTransform="translate(0 -715.2) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#1887c8"/>
+    </linearGradient>
+  </defs>
+  <line class="st5" x1="21.1" y1="44.2" x2="111.7" y2="44.2"/>
+  <line class="st5" x1="21.1" y1="280.7" x2="111.7" y2="280.7"/>
+  <line class="st5" x1="29.1" y1="130.4" x2="103.7" y2="130.4"/>
+  <line class="st5" x1="15.7" y1="162.5" x2="117" y2="162.5"/>
+  <line class="st5" x1="29.1" y1="194.5" x2="103.7" y2="194.5"/>
+  <path class="st4" d="M119.3,312.5s9.6-34.5-51.3-79c-45.7-33.4-55.2-54.5-55.2-71.1s9.5-37.7,55.2-71.1C128.9,46.9,119.3,12.4,119.3,12.4"/>
+  <path class="st7" d="M119.3,312.5s9.6-34.5-51.3-79c-45.7-33.4-55.2-54.5-55.2-71.1s9.5-37.7,55.2-71.1C128.9,46.9,119.3,12.4,119.3,12.4"/>
+  <path class="st4" d="M13.4,312.5s-9.6-34.5,51.3-79c45.7-33.4,55.2-54.5,55.2-71.1s-9.5-37.7-55.2-71.1C3.8,46.9,13.4,12.4,13.4,12.4"/>
+  <path class="st1" d="M13.4,312.5s-9.6-34.5,51.3-79c45.7-33.4,55.2-54.5,55.2-71.1s-9.5-37.7-55.2-71.1C3.8,46.9,13.4,12.4,13.4,12.4"/>
+  <rect class="st2" x="163.5" y="81.5" width="154.9" height="154.9" rx="12.7" ry="12.7"/>
+  <g class="st8">
+    <g class="st8">
+      <g class="st8">
+        <g class="st8">
+          <text class="st9" transform="translate(167 190.3) scale(.9 1)"><tspan x="0" y="0">LLM</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+  <polyline class="st3" points="133.4 44.2 240.9 44.2 240.9 74.5"/>
+  <line class="st6" x1="133.4" y1="162.5" x2="155.5" y2="162.5"/>
+  <polyline class="st0" points="133.4 280.7 240.9 280.7 240.9 243.5"/>
+</svg>

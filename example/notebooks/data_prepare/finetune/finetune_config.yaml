@@ -1,0 +1,35 @@
+task:
+    task_type: "regression"
+    num_labels: 1
+    label_names: ["value"]
+finetune:
+    output_dir: "./outputs"
+    num_train_epochs: 3
+    per_device_train_batch_size: 16
+    per_device_eval_batch_size: 16
+    gradient_accumulation_steps: 1
+    max_steps: -1
+    logging_strategy: "steps"
+    logging_steps: 1000
+    eval_strategy: "steps"
+    eval_steps: 1000
+    save_strategy: "steps"
+    save_steps: 1000
+    save_total_limit: 20
+    save_safetensors: True
+    learning_rate: 2e-5
+    weight_decay: 0.01
+    adam_beta1: 0.9
+    adam_beta2: 0.999
+    adam_epsilon: 1e-8
+    max_grad_norm: 1.0
+    warmup_ratio: 0.1
+    lr_scheduler_type: "linear"
+    lr_scheduler_kwargs: {}
+    seed: 42
+    bf16: False
+    fp16: False
+    load_best_model_at_end: True
+    metric_for_best_model: "eval_loss"
+    report_to: "tensorboard"
+    resume_from_checkpoint: 
