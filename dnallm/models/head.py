@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from collections import OrderedDict
+from typing import Any
 
 
 class BasicMLPHead(nn.Module):
@@ -32,7 +33,7 @@ class BasicMLPHead(nn.Module):
         use_normalization: bool = True,
         norm_type: str = "layernorm",
         dropout: float = 0.1,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         if hidden_dims is None:
@@ -108,11 +109,8 @@ class BasicCNNHead(nn.Module):
         num_classes: Number of output classes (for classification tasks)
         task_type: Type of task - 'binary', 'multiclass',
                    'multilabel', or 'regression'
-        hidden_dims: List of hidden layer dimensions
-        activation_fn: Activation function to use ('relu', 'gelu', 'silu',
-                       'tanh', 'sigmoid')
-        use_normalization: Whether to use normalization layers
-        norm_type: Type of normalization - 'batchnorm' or 'layernorm'
+        num_filters: Number of filters for each convolutional layer
+        kernel_sizes: List of kernel sizes for the convolutional layers
         dropout: Dropout probability
     """
 
@@ -124,7 +122,7 @@ class BasicCNNHead(nn.Module):
         num_filters: int = 128,
         kernel_sizes: list | None = None,
         dropout: float = 0.2,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         self.task_type = task_type
@@ -202,7 +200,7 @@ class BasicLSTMHead(nn.Module):
         num_layers: int = 1,
         dropout: float = 0.1,
         bidirectional: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         self.task_type = task_type
@@ -291,7 +289,7 @@ class BasicUNet1DHead(nn.Module):
         task_type: str = "binary",
         num_layers: int = 2,
         initial_filters: int = 64,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         self.task_type = task_type
@@ -401,7 +399,7 @@ class MegaDNAMultiScaleHead(nn.Module):
         task_type: str = "binary",
         hidden_dims: list | None = None,
         dropout: float = 0.2,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         self.embedding_dims = embedding_dims
@@ -522,7 +520,7 @@ class EVOForSeqClsHead(nn.Module):
         target_layer: str | list[str] | None = None,
         pooling_method: str = "mean",
         dropout_prob: float = 0.1,
-        **kwargs,
+        **kwargs: Any,
     ):
         super().__init__()
         self.num_classes = num_classes

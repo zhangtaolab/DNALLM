@@ -18,8 +18,10 @@ for comprehensive model evaluation.
 """
 
 import os
+import torch
 import numpy as np
 from scipy.special import softmax
+from typing import Any, cast
 
 import sklearn.metrics
 from sklearn.metrics import (
@@ -89,7 +91,7 @@ def calculate_metric_with_sklearn(eval_pred):
 # Load evaluate metrics locally to avoid downloading from Hugging Face
 
 
-def classification_metrics(plot=False):
+def classification_metrics(plot: bool = False):
     """Create metrics computation function for binary classification tasks.
 
     This function returns a callable that computes comprehensive binary
@@ -115,7 +117,7 @@ def classification_metrics(plot=False):
     # )
     # auc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "binary")
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: tuple) -> dict:
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         predictions = np.argmax(logits, axis=-1)
@@ -165,7 +167,7 @@ def regression_metrics(plot=False):
     """Create metrics computation function for regression tasks.
 
     This function returns a callable that computes regression metrics including
-    MSE, MAE, R², and Spearman correlation. For multi-output regression,
+    MSE, MAE, R2, and Spearman correlation. For multi-output regression,
     it uses scikit-learn metrics directly.
 
     Args:
@@ -206,7 +208,7 @@ def regression_metrics(plot=False):
             rs.append(r)
         return np.mean(rs), rs
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: tuple) -> dict[str, float]:
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         num_outputs = logits.shape[1]
@@ -247,7 +249,7 @@ def regression_metrics(plot=False):
     return compute_metrics
 
 
-def multi_classification_metrics(label_list, plot=False):
+def multi_classification_metrics(label_list: list, plot: bool = False):
     """Create metrics computation function for multi-class classification
     tasks.
 
@@ -257,6 +259,7 @@ def multi_classification_metrics(label_list, plot=False):
         confusion matrix derived metrics with multiple averaging strategies.
 
     Args:
+        label_list: List of class labels
         plot: Whether to include curve data for plotting (ROC and PR curves)
 
     Returns:
@@ -271,7 +274,7 @@ def multi_classification_metrics(label_list, plot=False):
     # roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py",
     # "multiclass")
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: tuple) -> dict:
         logits, labels = eval_pred
         logits = logits[0] if isinstance(logits, tuple) else logits
         if logits.ndim == 3:
@@ -402,7 +405,7 @@ def multi_classification_metrics(label_list, plot=False):
     return compute_metrics
 
 
-def multi_labels_metrics(label_list, plot=False):
+def multi_labels_metrics(label_list: list, plot: bool = False):
     """Create metrics computation function for multi-label classification
     tasks.
 
@@ -426,7 +429,7 @@ def multi_labels_metrics(label_list, plot=False):
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: tuple) -> dict:
         logits, labels = eval_pred
         if hasattr(logits, "numpy"):
             logits = logits.numpy()
@@ -530,7 +533,9 @@ def multi_labels_metrics(label_list, plot=False):
     return compute_metrics
 
 
-def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
+def token_classification_metrics(
+    label_list: list, plot: bool = False, scheme: str = "IOB2"
+):
     """Create metrics computation function for token classification tasks.
 
     This function returns a callable that computes sequence-level metrics for
@@ -547,7 +552,7 @@ def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
     """
     seqeval = evaluate.load(metrics_path + "seqeval/seqeval.py")
 
-    def compute_metrics(pred):
+    def compute_metrics(pred: tuple) -> dict:
         predictions, labels = pred
         predictions = np.argmax(predictions, axis=-1)
 
@@ -587,7 +592,9 @@ def token_classification_metrics(label_list, plot=False, scheme="IOB2"):
     return compute_metrics
 
 
-def preprocess_logits_for_metrics(logits, labels):
+def preprocess_logits_for_metrics(
+    logits: torch.Tensor, labels: torch.Tensor
+) -> torch.Tensor:
     """Preprocess logits for metrics computation.
 
     This function handles logits preprocessing to avoid memory leaks
@@ -605,7 +612,7 @@ def preprocess_logits_for_metrics(logits, labels):
     return logits
 
 
-def metrics_for_dnabert2(task):
+def metrics_for_dnabert2(task: str) -> tuple[callable, callable]:
     """Create metrics computation function for DNABERT2 model evaluation.
 
     This function provides specialized metrics computation for DNABERT2 models,
@@ -620,8 +627,6 @@ def metrics_for_dnabert2(task):
             - compute_metrics: Function for computing task-specific metrics
             - preprocess_logits_for_metrics: Function for preprocessing logits
     """
-    import torch
-
     r2_metric = evaluate.load("r_squared")
     spm_metric = evaluate.load("spearmanr")
     clf_metrics = evaluate.combine([
@@ -637,7 +642,7 @@ def metrics_for_dnabert2(task):
     metric4 = evaluate.load("matthews_correlation")
     roc_metric = evaluate.load("roc_auc", "multiclass")
 
-    def compute_metrics(eval_pred):
+    def compute_metrics(eval_pred: tuple) -> dict[str, Any]:
         logits, labels = eval_pred
         if task.lower() == "regression":
             r2 = r2_metric.compute(references=labels, predictions=logits[0])
@@ -648,8 +653,11 @@ def metrics_for_dnabert2(task):
         else:
             if task.lower() == "classification":
                 predictions = torch.argmax(torch.from_numpy(logits[0]), dim=-1)
-                return clf_metrics.compute(
-                    predictions=predictions, references=labels
+                return cast(
+                    dict[str, Any],
+                    clf_metrics.compute(
+                        predictions=predictions, references=labels
+                    ),
                 )
             else:
                 pred_probs = softmax(logits[0], axis=1)

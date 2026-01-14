@@ -242,7 +242,7 @@ class ModelManager:
         return self.loaded_models.get(model_name)
 
     async def predict_sequence(
-        self, model_name: str, sequence: str, **kwargs
+        self, model_name: str, sequence: str, **kwargs: Any
     ) -> dict[str, Any] | None:
         """Predict using a specific model.
 
@@ -271,7 +271,7 @@ class ModelManager:
             return None
 
     async def predict_batch(
-        self, model_name: str, sequences: list[str], **kwargs
+        self, model_name: str, sequences: list[str], **kwargs: Any
     ) -> dict[str, Any] | None:
         """Predict using a specific model on a batch of sequences.
 
@@ -302,7 +302,7 @@ class ModelManager:
             return None
 
     async def predict_multi_model(
-        self, model_names: list[str], sequence: str, **kwargs
+        self, model_names: list[str], sequence: str, **kwargs: Any
     ) -> dict[str, Any]:
         """Predict using multiple models in parallel.
 

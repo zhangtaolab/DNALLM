@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from typing import Any
 from captum.attr import (
     LayerIntegratedGradients,
     Occlusion,
@@ -307,7 +308,7 @@ class DNAInterpret:
         token_index: int | None = None,
         embedding_layer: nn.Module | None = None,
         max_length: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run Layer Integrated Gradients (LIG) for
@@ -328,7 +329,7 @@ class DNAInterpret:
             embedding_layer (nn.Module, optional): Specific Embedding layer.
                 Auto-detected if None.
             max_length (int): Max token length for tokenizer.
-            **kwargs: Extra args for
+            **kwargs (Any): Extra arguments for
                 captum.attr.LayerIntegratedGradients.attribute
                 (for example: internal_batch_size=4).
 
@@ -383,7 +384,7 @@ class DNAInterpret:
         token_index: int | None = None,
         embedding_layer: nn.Module | None = None,
         max_length: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run DeepLIFT for attribution to Embedding layer.
@@ -429,15 +430,19 @@ class DNAInterpret:
         token_index: int | None = None,
         max_length: int | None = None,
         n_samples: int = 5,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run GradientSHAP at the Embedding layer.
         Attention: GradientSHAP can be slow.
 
         Args:
-            ...
+            input_seq (str): Input DNA sequence.
+            target (int | str): Target for attribution.
+            token_index (int, optional): Token position to explain.
+            max_length (int, optional): Max token length for tokenizer.
             n_samples (int): Number of samples to draw from the baseline.
+            **kwargs (Any): Additional arguments for GradientShap.attribute.
         """
         # 1. Use wrapper that accepts inputs_embeds
         wrapper = _CaptumWrapperInputEmbeds(self.model)
@@ -489,17 +494,20 @@ class DNAInterpret:
         token_index: int | None = None,
         max_length: int | None = None,
         sliding_window_shapes: tuple[int] = (1,),
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run Occlusion (perturbation-based method).
         Attention: This method can be very slow.
 
         Args:
-            ... (Args similar to run_lig) ...
-            sliding_window_shapes (Tuple[int]):
-                Size of the occlusion window,
+            input_seq (str): Input DNA sequence.
+            target (int | str): Target for attribution.
+            token_index (int, optional): Token position to explain.
+            max_length (int, optional): Max token length for tokenizer.
+            sliding_window_shapes (tuple[int]): Size of the occlusion window.
                 (1,) means occluding 1 token at a time.
+            **kwargs (Any): Additional arguments for Occlusion.attribute.
 
         Returns:
             Tuple[List[str], np.ndarray]: tokens list, attribution scores array
@@ -548,13 +556,17 @@ class DNAInterpret:
         target: int | str,
         token_index: int | None = None,
         max_length: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run Feature Ablation (perturbation-based method).
 
         Args:
-            ... (Args similar to run_occlusion) ...
+            input_seq (str): Input DNA sequence.
+            target (int | str): Target for attribution.
+            token_index (int, optional): Token position to explain.
+            max_length (int, optional): Max token length for tokenizer.
+            **kwargs (Any): Additional arguments for FeatureAblation.attribute.
 
         Returns:
             Tuple[List[str], np.ndarray]: tokens list, attribution scores array
@@ -610,7 +622,7 @@ class DNAInterpret:
         target_layer: nn.Module,
         token_index: int | None = None,
         max_length: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run Layer Conductance for attribution to an internal layer.
@@ -620,9 +632,14 @@ class DNAInterpret:
         2. You must manually pass in 'target_layer'.
 
         Args:
-            ... (Args similar to run_lig) ...
-            target_layer (nn.Module): internal layer to analyze
-                                     (such as: `model.bert.encoder.layer[-1]`).
+            input_seq (str): Input DNA sequence.
+            target (int | str): Target for attribution.
+            target_layer (nn.Module): Internal layer to analyze.
+                For example: `model.bert.encoder.layer[-1]`.
+            token_index (int, optional): Token position to explain.
+            max_length (int, optional): Max token length for tokenizer.
+            **kwargs (Any): Additional arguments for
+                LayerConductance.attribute.
 
         Returns:
             Tuple[List[str], np.ndarray]: tokens list, attribution scores array
@@ -683,7 +700,7 @@ class DNAInterpret:
         nt_type: str = "smoothgrad",
         nt_samples: int = 5,
         nt_stdevs: float = 0.1,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         Run NoiseTunnel (e.g., SmoothGrad) for smoother attributions.
@@ -691,15 +708,18 @@ class DNAInterpret:
         type conflicts with 'nn.Embedding'.
 
         Args:
-            ...
+            input_seq (str): Input DNA sequence.
+            target (int | str): Target for attribution.
             base_method (str): The base attribution method to use.
-                               Support:
-                                 'lig' (IntegratedGradients),
-                                 'deeplift' (DeepLift),
-                                 'gradshap' (GradientShap).
-            nt_type (str): 'smoothgrad'(default), 'smoothgrad_sq' or 'vargrad'.
+                Supported: 'lig' (IntegratedGradients), 'deeplift' (DeepLift),
+                'gradshap' (GradientShap).
+            token_index (int, optional): Token position to explain.
+            max_length (int, optional): Max token length for tokenizer.
+            nt_type (str): 'smoothgrad' (default), 'smoothgrad_sq'
+                or 'vargrad'.
             nt_samples (int): The number of noise samples.
             nt_stdevs (float): The standard deviation of the noise.
+            **kwargs (Any): Additional arguments for NoiseTunnel.
         """
         print(
             f"Running NoiseTunnel ({nt_type}) "
@@ -786,7 +806,7 @@ class DNAInterpret:
         target_layer: nn.Module | None = None,
         max_length: int | None = None,
         plot: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> tuple[list[str], np.ndarray]:
         """
         A unified interpretation interface that runs
@@ -795,18 +815,17 @@ class DNAInterpret:
         Args:
             input_seq (str): Input DNA sequence.
             method (str): Attribution method name.
-                Support:
-                    'lig', 'deeplift', 'gradshap',
-                    'occlusion', 'feature_ablation',
-                    'layer_conductance', 'noise_tunnel'.
-            target (int): Target for attribution.
+                Supported: 'lig', 'deeplift', 'gradshap',
+                'occlusion', 'feature_ablation',
+                'layer_conductance', 'noise_tunnel'.
+            target (int | str): Target for attribution.
             token_index (int, optional): For 'token_cls'/'causal_lm'
                 token position to explain.
-            target_layer (nn.Module, optional): for 'layer_conductance',
+            target_layer (nn.Module, optional): For 'layer_conductance',
                 internal layer to analyze.
             max_length (int, optional): Max token length for tokenizer.
             plot (bool): Whether to store attributions for plotting.
-            **kwargs: Extra args for specific attribution methods.
+            **kwargs (Any): Extra args for specific attribution methods.
 
         Returns:
             Tuple[List[str], np.ndarray]: tokens list, attribution scores array
@@ -873,27 +892,27 @@ class DNAInterpret:
         target_layers: list[nn.Module] | None = None,
         max_length: int | None = None,
         plot: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> list[tuple[list[str], np.ndarray]]:
         """
         Batch interpret multiple sequences.
 
         Args:
-            input_seqs (List[str]): List of input DNA sequences.
+            input_seqs (list[str]): List of input DNA sequences.
             method (str): Attribution method name.
-            targets (List[int]):
-                List of target class indices for each sequence.
-            token_indices (List[int], optional):
-                Each sequence's token_index list.
-            target_layers (List[nn.Module], optional):
-                Each sequence's target_layer list.
+            targets (list[int]): List of target class indices for each
+                sequence.
+            token_indices (list[int], optional): Each sequence's token_index
+                list.
+            target_layers (list[nn.Module], optional): Each sequence's
+                target_layer list.
             max_length (int, optional): Max token length for tokenizer.
             plot (bool): Whether to store attributions for plotting.
-            **kwargs: Extra args for specific attribution methods.
+            **kwargs (Any): Extra args for specific attribution methods.
 
         Returns:
-            List[Tuple[List[str], np.ndarray]]:
-                List of (tokens list, attribution scores array) tuples.
+            list[tuple[list[str], np.ndarray]]: List of (tokens list,
+                attribution scores array) tuples.
         """
         results = []
         for i, seq in enumerate(input_seqs):

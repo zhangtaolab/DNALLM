@@ -6,6 +6,12 @@ repo_url: https://github.com/zhangtaolab/DNALLM
 repo_name: zhangtaolab/DNALLM
 edit_uri: edit/main/docs/
 
+# Include example directory for notebooks
+watch:
+  - example/notebooks
+  - example/marimo
+  - example/mcp_example
+
 theme:
   name: material
   
@@ -57,6 +63,8 @@ nav:
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md
     - Troubleshooting: user_guide/troubleshooting.md
+    - Tutorial:
+      - End-to-End Workflow: user_guide/tutorial/end_to_end_workflow.md
     - Data Processing:
       - Data Preparation: user_guide/data_processing/data_preparation.md
       - Quality Control: user_guide/data_processing/quality_control.md
@@ -101,26 +109,50 @@ nav:
       - Motif Detection: user_guide/case_studies/motif_detection.md
       - Sequence Generation: user_guide/case_studies/sequence_generation.md
       - Multi-Task Learning: user_guide/case_studies/multi_task_learning.md
-  - API: 
-    - Utils: 
-      - Sequence: api/utils/sequence.md
-    - Datahandling:
-      - Data: api/datahandling/data.md
-    - Inference:
-      - Inference: api/inference/inference.md
-      - Benchmark: api/inference/benchmark.md
-      - Plot: api/inference/plot.md
-      - Mutagenesis: api/inference/mutagenesis.md
-    - Finetune:
-      - Trainer: api/finetune/trainer.md
-    - MCP:
-      - Server: api/mcp/server.md
+  - API:
+    - Overview: api/index.md
     - Configuration:
       - Configs: api/configuration/configs.md
     - Models:
       - Model: api/models/model.md
+      - Auto Loading: api/models/modeling_auto.md
+      - Tokenizer: api/models/tokenizer.md
+      - Classification Heads: api/models/head.md
+      - Special Models:
+        - Basenji2: api/models/special/basenji2.md
+        - Borzoi: api/models/special/borzoi.md
+        - DNABERT2: api/models/special/dnabert2.md
+        - EVO: api/models/special/evo.md
+        - Enformer: api/models/special/enformer.md
+        - GPN: api/models/special/gpn.md
+        - LucaOne: api/models/special/lucaone.md
+        - megaDNA: api/models/special/megadna.md
+        - MutBERT: api/models/special/mutbert.md
+        - Omni-DNA: api/models/special/omnidna.md
+        - SPACE: api/models/special/space.md
+    - Datahandling:
+      - Data: api/datahandling/data.md
+      - Auto Builders: api/datahandling/dataset_auto.md
+    - Inference:
+      - Inference: api/inference/inference.md
+      - Benchmark: api/inference/benchmark.md
+      - Mutagenesis: api/inference/mutagenesis.md
+      - Interpretation: api/inference/interpret.md
+      - Plot: api/inference/plot.md
+    - Finetune:
+      - Trainer: api/finetune/trainer.md
+    - MCP:
+      - Server: api/mcp/server.md
+      - Config Manager: api/mcp/config_manager.md
+      - Config Validators: api/mcp/config_validators.md
+      - Model Manager: api/mcp/model_manager.md
     - Tasks:
       - Task: api/tasks/task.md
+      - Metrics: api/tasks/metrics.md
+    - Utils:
+      - Sequence: api/utils/sequence.md
+      - Logger: api/utils/logger.md
+      - Support: api/utils/support.md
   - Concepts:
     - Biology:
       - DNA Sequences: concepts/biology/dna_sequences.md
@@ -155,6 +187,40 @@ nav:
       - EVO Models: resources/models/evo_models.md
       - Flash Attention Models: resources/models/flash_attention_models.md
       - Special Models: resources/models/special_models.md
+  - Examples:
+    - Notebooks:
+      - Overview: example/notebooks/overview.md
+      - Fine-Tuning:
+        - Binary Classification: example/notebooks/finetune_binary/finetune_binary.ipynb
+        - Multi-Label Classification: example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
+        - NER Fine-tuning: example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
+        - NER Data Generation: example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
+        - Custom Head: example/notebooks/finetune_custom_head/finetune.ipynb
+        - Generation: example/notebooks/finetune_generation/finetune_generation.ipynb
+        - LoRA Fine-tuning: example/notebooks/lora_finetune_inference/lora_finetune.ipynb
+        - LoRA Inference: example/notebooks/lora_finetune_inference/lora_inference.ipynb
+      - Inference:
+        - Basic Inference: example/notebooks/inference/inference.ipynb
+        - EVO Models: example/notebooks/generation_evo_models/inference.ipynb
+        - MegaDNA Models: example/notebooks/generation_megaDNA/inference.ipynb
+        - Sequence Generation: example/notebooks/generation/inference.ipynb
+        - tRNA Inference: example/notebooks/inference_for_tRNA/inference.ipynb
+      - Analysis:
+        - Mutagenesis: example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
+        - Interpretation: example/notebooks/interpretation/interpretation.ipynb
+        - Embedding: example/notebooks/embedding_attention.ipynb
+      - Benchmarking:
+        - Benchmark: example/notebooks/benchmark/benchmark.ipynb
+      - Data Preparation:
+        - Fine-tuning Data: example/notebooks/data_prepare/finetune/finetune_data.ipynb
+        - Prediction Data: example/notebooks/data_prepare/predict/predict_data.ipynb
+      - MCP Examples:
+        - LangChain Agents: example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
+        - Pydantic AI: example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+    - Marimo Demos:
+      - Fine-tuning Demo: example/marimo/finetune/finetune_demo.py
+      - Inference Demo: example/marimo/inference/inference_demo.py
+      - Benchmark Demo: example/marimo/benchmark/benchmark_demo.py
   - FAQ: 
     - Overview: faq/index.md
     - Installation: faq/install_troubleshooting.md
@@ -168,6 +234,16 @@ nav:
 
 plugins:
   - search
+  - mkdocs-jupyter:
+      include_source: True
+      execute: False  # Set to True to execute notebooks during build (requires more time)
+      allow_errors: False
+      ignore_hashes: True
+      timeout: 60  # Timeout for notebook execution in seconds
+      write_markdown_columns: False
+      remove_tag_config:
+        remove_stderr_tags: # 移除标准错误输出（Warning通常在这里）
+          - hide_warnings
   - mkdocstrings:
       handlers:
         python:
