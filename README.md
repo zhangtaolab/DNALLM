@@ -317,12 +317,19 @@ uv run jupyter lab
 # - example/notebooks/finetune_binary/ - Binary classification fine-tuning
 # - example/notebooks/finetune_multi_labels/ - Multi-label classification
 # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
-# - example/notebooks/inference_and_benchmark/ - Model evaluation
+# - example/notebooks/inference/ - Model inference
 # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
 # - example/notebooks/inference_for_tRNA/ - tRNA-specific analysis
-# - example/notebooks/inference_evo_models/ - EVO model inference
+# - example/notebooks/generation_evo_models/ - EVO model inference
 # - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
 # - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
+# - example/notebooks/finetune_custom_head/ - Custom classification head
+# - example/notebooks/finetune_generation/ - Sequence generation
+# - example/notebooks/generation/ - Sequence generation examples
+# - example/notebooks/generation_megaDNA/ - MegaDNA model inference
+# - example/notebooks/interpretation/ - Model interpretation
+# - example/notebooks/data_prepare/ - Data preparation examples
+# - example/notebooks/benchmark/ - Model evaluation and benchmarking
 ```
 
 ## 🏗️ Project Structure
@@ -410,7 +417,6 @@ uv run pytest --cov=dnallm --cov-report=html
 ## 📖 Documentation
 
 - **[Getting Started](docs/getting_started/)** - Installation and basic usage
-- **[Tutorials](docs/tutorials/)** - Step-by-step guides for specific tasks
 - **[API Reference](docs/api/)** - Detailed function documentation
 - **[Concepts](docs/concepts/)** - Core concepts and architecture
 - **[FAQ](docs/faq/)** - Common questions and solutions
