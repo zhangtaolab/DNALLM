@@ -149,7 +149,7 @@ rocm = [
 mamba = [
     "causal_conv1d==1.6.0",
     "mamba-ssm==2.3.0",
-    "torch>=2.4.0,<=2.7",
+    "torch>=2.6.0,<=2.7",
 ]
 
 #mamba = [
