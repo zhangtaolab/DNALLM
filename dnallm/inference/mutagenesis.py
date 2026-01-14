@@ -253,6 +253,7 @@ class Mutagenesis:
         Returns:
             torch.device: The device on which the model is located
         """
+        device: torch.device
         if hasattr(model, "device"):
             device = model.device
         elif hasattr(model, "parameters"):
