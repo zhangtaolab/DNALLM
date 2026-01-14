@@ -130,7 +130,8 @@ source .venv/bin/activate  # Linux/MacOS
 uv pip install -e '.[cuda124]'
 
 # Other supported versions: cpu, cuda121, cuda126, cuda128
-uv pip install -e '.[cuda121]'
+# Nvidia 5090 Please use cuda128 & torch==2.7
+uv pip install -e '.[cuda128]'
 ```
 
 ### Native Mamba Support
