@@ -57,7 +57,7 @@ dependencies = [
     "starlette>=0.40.0,<0.48.0",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.4.0,<2.7",
+    "torch>=2.4.0,<=2.7",
     "tqdm>=4.67.1",
     "transformers>=4.49.0,<4.56.0",
     "umap-learn>=0.5.7",
@@ -148,9 +148,9 @@ rocm = [
     "torch>=2.5.0,<2.7",
 ]
 mamba = [
-    "causal_conv1d==1.5.0.post8",
-    "mamba-ssm==2.2.4",
-    "torch>=2.4.0,<=2.7",
+    "causal_conv1d==1.6.0",
+    "mamba-ssm==2.3.0",
+    "torch>=2.6.0,<=2.7",
 ]
 
 #mamba = [

@@ -247,12 +247,13 @@ class Mutagenesis:
 
         return raw_score, mut_score, logfc, diff
 
-    def get_model_device(self, model):
+    def get_model_device(self, model) -> torch.device:
         """Get the device of the model.
 
         Returns:
             torch.device: The device on which the model is located
         """
+        device: torch.device
         if hasattr(model, "device"):
             device = model.device
         elif hasattr(model, "parameters"):

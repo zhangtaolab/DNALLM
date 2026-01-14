@@ -4,7 +4,7 @@
   <img src="docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
@@ -43,7 +43,7 @@ DNALLM supports a wide range of DNA language models including:
 ## 🛠️ Installation
 
 ### Prerequisites
-- Python 3.10 or higher (Python 3.12 recommended)
+- Python 3.11 or higher (recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:
@@ -130,7 +130,8 @@ source .venv/bin/activate  # Linux/MacOS
 uv pip install -e '.[cuda124]'
 
 # Other supported versions: cpu, cuda121, cuda126, cuda128
-uv pip install -e '.[cuda121]'
+# Nvidia 5090 Please use cuda128 & torch==2.7
+uv pip install -e '.[cuda128]'
 ```
 
 ### Native Mamba Support
@@ -146,12 +147,18 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
+# Ensure CUDA path is set correctly (nvcc version must match your PyTorch CUDA version)
+export PATH=/usr/local/cuda-12/bin:$PATH
+nvcc -V  # Verify CUDA compiler version
+
 # Install Mamba support
-uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation --link-mode=copy
 
 # If encounter network issue, using the special install script for mamba (optional)
 sh scripts/install_mamba.sh  # select github proxy
 ```
+
+> **Note**: The `nvcc` version must match your PyTorch CUDA version. For example, if you installed PyTorch with CUDA 12.8, you need `nvcc` from CUDA 12.x. Mismatched versions will cause build failures.
 
 Please ensure your machine can connect to GitHub, otherwise Mamba dependencies may fail to download.
 
@@ -329,82 +336,27 @@ uv run jupyter lab
 
 ```
 DNALLM/
-├── dnallm/                     # Core library package
-│   ├── __init__.py             # Main exports: load_config, load_model_and_tokenizer, DNAInference, etc.
-│   ├── version.py              # Version information
-│   ├── cli/                    # Command-line interface tools
-│   │   ├── cli.py              # Main CLI entry point (train, inference, benchmark, mutagenesis, etc.)
-│   │   ├── train.py            # Training command
-│   │   ├── inference.py        # Inference command
-│   │   └── model_config_generator.py # Interactive config generator
-│   ├── configuration/          # Configuration management
-│   │   ├── configs.py          # Config classes (TaskConfig, TrainingConfig, InferenceConfig)
-│   │   └── evo/                # EVO model configurations
-│   ├── datahandling/           # Dataset processing
-│   │   ├── data.py             # DNADataset and data loading utilities
-│   │   └── dataset_auto.py     # Automatic dataset builders
-│   ├── finetune/               # Model fine-tuning
-│   │   └── trainer.py          # DNATrainer class for training pipelines
-│   ├── inference/              # Inference and analysis tools
-│   │   ├── inference.py        # DNAInference engine
-│   │   ├── mutagenesis.py      # In-silico mutagenesis analysis (Mutagenesis class)
-│   │   ├── benchmark.py        # Multi-model benchmarking (Benchmark class)
-│   │   ├── interpret.py        # Model interpretation (DNAInterpret class)
-│   │   └── plot.py             # Visualization tools
-│   ├── models/                 # Model loading and management
-│   │   ├── model.py            # DNALLMforSequenceClassification and utilities
-│   │   ├── modeling_auto.py    # Automatic model loading (215+ models)
-│   │   ├── model_info.yaml     # Model registry with metadata
-│   │   └── special/            # Specialized model implementations
-│   ├── tasks/                  # Task definitions and evaluation
-│   │   ├── task.py             # Task type definitions (EMBEDDING, MASK, GENERATION, BINARY, etc.)
-│   │   ├── metrics.py          # Evaluation metrics interface
-│   │   └── metrics/            # 50+ metric implementations
-│   │       ├── accuracy/, f1/, precision/, recall/  # Classification metrics
-│   │       ├── mse/, mae/, r_squared/  # Regression metrics
-│   │       ├── bleu/, rouge/, chrf/  # Generation metrics
-│   │       └── ... (40+ more)
-│   ├── utils/                  # Utility functions
-│   │   ├── logger.py           # Logging utilities
-│   │   ├── sequence.py         # DNA sequence processing (GC content, kmer conversion)
-│   │   └── support.py          # Hardware capability checks (FP8, Flash Attention)
-│   └── mcp/                    # Model Context Protocol server
-│       ├── server.py           # MCP server implementation
-│       ├── config_manager.py   # Configuration management
-│       ├── model_manager.py    # Model lifecycle management
-│       ├── config_validators.py # Input validation
-│       ├── configs/            # MCP configuration files
-│       │   ├── mcp_server_config.yaml
-│       │   └── ... (task-specific configs)
-│       └── tests/              # MCP test suite
-├── cli/                        # Legacy CLI scripts (use dnallm/cli/ instead)
-│   ├── cli.py, inference.py, train.py, model_config_generator.py
-│   └── examples/               # CLI configuration examples
-├── example/                    # Examples and demos
-│   ├── marimo/                 # Interactive Marimo notebooks (benchmark, finetune, inference)
-│   ├── mcp_example/            # MCP client integration examples
-│   └── notebooks/              # Jupyter notebooks (21+ examples)
-│       ├── finetune_binary/, finetune_multi_labels/, finetune_NER_task/
-│       ├── inference/, in_silico_mutagenesis/, inference_for_tRNA/
-│       ├── benchmark/, data_prepare/, interpretation/
-│       ├── finetune_custom_head/, finetune_generation/
-│       ├── generation/, generation_evo_models/, generation_megaDNA/
-│       ├── lora_finetune_inference/
-│       └── embedding_attention.ipynb
-├── docs/                       # Comprehensive documentation
-│   ├── api/                    # API reference (datahandling, finetune, inference, mcp, utils)
-│   ├── getting_started/        # Installation and setup guides
-│   ├── user_guide/             # Comprehensive user documentation
-│   ├── concepts/               # Core concepts and architecture
-│   └── faq/                    # Frequently asked questions
-├── tests/                      # test dir
-├── ui/                         # Web-based user interfaces
-├── scripts/                    # Development and deployment scripts
-├── LICENSE                     # MIT license
-├── mkdocs.yml                  # Documentation configuration
-├── pyproject.toml              # Project metadata and dependencies
-├── setup.py                    # Package setup script (minimal wrapper)
-└── run_cli.py                  # CLI launcher script
+├── dnallm/                  # Core library package
+│   ├── cli/                 # Command-line interface
+│   ├── configuration/       # Configuration management
+│   ├── datahandling/        # Dataset processing
+│   ├── finetune/            # Fine-tuning pipeline
+│   ├── inference/           # Inference & analysis tools
+│   ├── models/              # Model loading & registry
+│   ├── tasks/               # Task definitions & metrics
+│   ├── utils/               # Utility functions
+│   └── mcp/                 # MCP server implementation
+├── cli/                     # Legacy CLI scripts (deprecated)
+├── example/                 # Examples & tutorials
+│   ├── marimo/              # Interactive Marimo apps
+│   └── notebooks/           # Jupyter notebooks
+├── docs/                    # Documentation
+├── tests/                   # Test suite
+├── ui/                      # Gradio web interfaces
+├── scripts/                 # Development scripts
+├── .github/                 # GitHub workflows
+├── pyproject.toml           # Project configuration
+└── README.md                # This file
 ```
 
 ## 🔧 Command Line Interface
