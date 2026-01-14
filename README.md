@@ -147,7 +147,7 @@ source .venv/bin/activate  # Linux/MacOS
 # conda activate dnallm
 
 # Install Mamba support
-uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
+uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation --link-mode=copy
 
 # If encounter network issue, using the special install script for mamba (optional)
 sh scripts/install_mamba.sh  # select github proxy
