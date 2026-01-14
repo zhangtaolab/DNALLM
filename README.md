@@ -43,7 +43,7 @@ DNALLM supports a wide range of DNA language models including:
 ## 🛠️ Installation
 
 ### Prerequisites
-- Python 3.10 or higher (Python 3.12 recommended)
+- Python 3.11 or higher (recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:
