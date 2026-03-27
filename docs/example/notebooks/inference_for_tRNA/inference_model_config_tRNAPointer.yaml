@@ -1,0 +1,18 @@
+inference:
+  batch_size: 16
+  device: cpu
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+task:
+  label_names:
+  - O
+  - B-Intron
+  - I-Intron
+  - B-tRNA
+  - I-tRNA
+  - B-anti
+  - I-anti
+  num_labels: 7
+  task_type: token

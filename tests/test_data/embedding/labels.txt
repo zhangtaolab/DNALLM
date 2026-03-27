@@ -1,0 +1,5 @@
+label,label_name
+0,Archaea
+1,Bacteria
+2,Eukaryota
+3,Viruses

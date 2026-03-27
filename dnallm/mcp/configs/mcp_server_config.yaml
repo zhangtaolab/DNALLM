@@ -1,0 +1,69 @@
+# MCP Server Configuration
+# Main configuration file for DNALLM MCP Server
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  log_level: "INFO"
+  debug: false
+
+mcp:
+  name: "DNALLM MCP Server"
+  version: "0.1.0"
+  description: "MCP server for DNA sequence prediction using fine-tuned models"
+
+# Model configurations - one-to-many relationship
+models:
+  promoter_model:
+    name: "promoter_model"
+    model_name: "Plant DNABERT BPE promoter"
+    config_path: "./promoter_inference_config.yaml"
+    enabled: true
+    priority: 1
+    
+  conservation_model:
+    name: "conservation_model"
+    model_name: "Plant DNABERT BPE conservation"
+    config_path: "./conservation_inference_config.yaml"
+    enabled: true
+    priority: 2
+    
+  open_chromatin_model:
+    name: "open_chromatin_model"
+    model_name: "Plant DNAMamba BPE open chromatin"
+    config_path: "./open_chromatin_inference_config.yaml"
+    enabled: true
+    priority: 3
+
+# Multi-model parallel prediction configurations
+multi_model:
+  promoter_analysis:
+    name: "promoter_analysis"
+    description: "Comprehensive promoter analysis using multiple models"
+    models: ["promoter_model", "conservation_model"]
+    enabled: true
+    
+  chromatin_analysis:
+    name: "chromatin_analysis"
+    description: "Chromatin state analysis using multiple models"
+    models: ["open_chromatin_model", "conservation_model"]
+    enabled: true
+
+# SSE (Server-Sent Events) configuration
+sse:
+  heartbeat_interval: 30  # seconds
+  max_connections: 100
+  connection_timeout: 300  # seconds
+  enable_compression: true
+  mount_path: "/mcp"  # Mount path for SSE endpoint
+  cors_origins: ["*"]  # CORS origins for web clients
+  enable_heartbeat: true  # Enable heartbeat for connection monitoring
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/mcp_server.log"
+  max_size: "10MB"
+  backup_count: 5

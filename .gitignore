@@ -1,0 +1,123 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.python-version
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info
+.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+.env/
+env/
+.venv.env
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# Jupyter & Marimo
+.ipynb_checkpoints
+.marimo-cache/
+.marimo-env/
+
+# uv
+.uv.toml
+uv.lock
+
+# Testing
+.coverage
+.coverage.*
+coverage.xml
+.pytest_cache/
+htmlcov/
+
+# Training outputs
+outputs/
+runs/
+wandb/
+checkpoints/
+logs/
+benchmark_results/
+test_demo/
+
+# Data
+*.fasta
+*.fa
+*.fna
+*.fastq
+*.fq
+*.sam
+*.bam
+*.gz
+*.zip
+*.tar
+*.tar.gz
+
+# OS
+.DS_Store
+Thumbs.db
+*.db
+*.sqlite
+*.log
+*.bak
+
+# Project specific
+dnallm/models/downloads/
+dnallm/data/cache/
+dnallm/ui/tmp/
+
+# Jupyter Notebook tmp files
+.ipynb_checkpoints/
+*.output.txt
+example/notebooks/*/output*/
+example/notebooks/*/*.pdf
+example/notebooks/*/results*/
+
+# Marimo cache
+.marimo-cache/
+.marimo-env/
+example/marimo/*/__marimo__/
+
+# Mkdocs cache
+site
+
+# MyPy cache
+.mypy_cache/
+
+results/
+
+.ruff_cache/
+
+test/inference/pdf/
+tests/inference/pdf/demo_attention_pdf.pdf
+tests/inference/pdf/demo_bars_pdf.pdf
+tests/inference/pdf/demo_curves_pdf.pdf
+tests/inference/pdf/demo_embeddings_pdf.pdf
+tests/inference/pdf/demo_scatter_pdf.pdf
+tests/inference/pdf/format_compatibility_test_pdf.pdf
+
+.cache
