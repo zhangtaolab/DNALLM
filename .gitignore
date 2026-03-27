@@ -121,3 +121,4 @@ tests/inference/pdf/demo_scatter_pdf.pdf
 tests/inference/pdf/format_compatibility_test_pdf.pdf
 
 .cache
+__pycache__
