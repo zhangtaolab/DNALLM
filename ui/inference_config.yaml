@@ -1,0 +1,8 @@
+inference:
+  batch_size: 1
+  device: auto
+  max_length: 4096
+  num_workers: 4
+  output_dir: ./results
+task:
+  task_type: generation

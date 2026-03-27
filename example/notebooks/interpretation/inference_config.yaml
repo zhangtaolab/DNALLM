@@ -1,0 +1,10 @@
+inference:
+  batch_size: 16
+  device: cpu
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+task:
+  num_labels: 1
+  task_type: regression

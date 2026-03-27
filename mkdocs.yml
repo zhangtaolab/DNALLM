@@ -1,0 +1,265 @@
+site_name: DNALLM Documentation
+site_description: A comprehensive toolkit for fine-tuning and inference with DNA Language Models
+site_author: Zhangtaolab
+# site_url: https://zhangtaolab.org/DNALLM/
+repo_url: https://github.com/zhangtaolab/DNALLM
+repo_name: zhangtaolab/DNALLM
+edit_uri: edit/main/docs/
+
+# Include example directory for notebooks
+watch:
+  - example/notebooks
+  - example/marimo
+  - example/mcp_example
+
+theme:
+  name: material
+  
+  # Logo and favicon
+  logo: pic/DNALLM_logo_white.svg
+  favicon: pic/DNALLM_logo_web.svg
+  
+  # Features
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default 
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+nav:
+  - Introduction: index.md
+  - Getting Started: 
+    - Quick Start: getting_started/quick_start.md
+    - Installation: getting_started/installation.md
+  - User Guide:
+    - Getting Started: user_guide/getting_started.md
+    - Common Workflows: user_guide/common_workflows.md
+    - Best Practices: user_guide/best_practices.md
+    - Performance Guide: user_guide/performance_guide.md
+    - Troubleshooting: user_guide/troubleshooting.md
+    - Tutorial:
+      - End-to-End Workflow: user_guide/tutorial/end_to_end_workflow.md
+    - Data Processing:
+      - Data Preparation: user_guide/data_processing/data_preparation.md
+      - Quality Control: user_guide/data_processing/quality_control.md
+      - Format Conversion: user_guide/data_processing/format_conversion.md
+      - Data Augmentation: user_guide/data_processing/data_augmentation.md
+    - Fine Tuning:
+      - Overview: user_guide/fine_tuning/index.md
+      - Getting Started: user_guide/fine_tuning/getting_started.md
+      - Configuration: user_guide/fine_tuning/configuration.md
+      - Advanced Techniques: user_guide/fine_tuning/advanced_techniques.md
+      - Task Guides: user_guide/fine_tuning/task_guides.md
+    - Inference:
+      - Getting Started: user_guide/inference/getting_started.md
+      - Basic Inference: user_guide/inference/basic_inference.md
+      - Advanced Inference: user_guide/inference/advanced_inference.md
+      - Mutagenesis Analysis: user_guide/inference/mutagenesis_analysis.md
+      - Visualization: user_guide/inference/visualization.md
+      - Performance Optimization: user_guide/inference/performance_optimization.md
+    - Benchmark:
+      - Overview: user_guide/benchmark/index.md
+      - Getting Started: user_guide/benchmark/getting_started.md
+      - Configuration: user_guide/benchmark/configuration.md
+      - Advanced Techniques: user_guide/benchmark/advanced_techniques.md
+      - Examples: user_guide/benchmark/examples.md
+    - MCP:
+      - Configuration: user_guide/mcp/configuration.md
+      - Server Setup: user_guide/mcp/startserver.md
+      - Usage Guide: user_guide/mcp/usage.md
+    - CLI Tools:
+      - Overview: user_guide/cli/index.md
+      - Usage Guide: user_guide/cli/usage.md
+      - Configuration Generator: user_guide/cli/config_generator.md
+      - MCP Server: user_guide/cli/mcp_server.md
+    - Performance Optimization:
+      - GPU Optimization: user_guide/performance/gpu_optimization.md
+      - Memory Optimization: user_guide/performance/memory_optimization.md
+      - Inference Speed: user_guide/performance/inference_speed.md
+      - Model Quantization: user_guide/performance/model_quantization.md
+    - Models: user_guide/models.md
+    - Case Studies:
+      - Promoter Prediction: user_guide/case_studies/promoter_prediction.md
+      - Motif Detection: user_guide/case_studies/motif_detection.md
+      - Sequence Generation: user_guide/case_studies/sequence_generation.md
+      - Multi-Task Learning: user_guide/case_studies/multi_task_learning.md
+  - API:
+    - Overview: api/index.md
+    - Configuration:
+      - Configs: api/configuration/configs.md
+    - Models:
+      - Model: api/models/model.md
+      - Auto Loading: api/models/modeling_auto.md
+      - Tokenizer: api/models/tokenizer.md
+      - Classification Heads: api/models/head.md
+      - Special Models:
+        - Basenji2: api/models/special/basenji2.md
+        - Borzoi: api/models/special/borzoi.md
+        - DNABERT2: api/models/special/dnabert2.md
+        - EVO: api/models/special/evo.md
+        - Enformer: api/models/special/enformer.md
+        - GPN: api/models/special/gpn.md
+        - LucaOne: api/models/special/lucaone.md
+        - megaDNA: api/models/special/megadna.md
+        - MutBERT: api/models/special/mutbert.md
+        - Omni-DNA: api/models/special/omnidna.md
+        - SPACE: api/models/special/space.md
+    - Datahandling:
+      - Data: api/datahandling/data.md
+      - Auto Builders: api/datahandling/dataset_auto.md
+    - Inference:
+      - Inference: api/inference/inference.md
+      - Benchmark: api/inference/benchmark.md
+      - Mutagenesis: api/inference/mutagenesis.md
+      - Interpretation: api/inference/interpret.md
+      - Plot: api/inference/plot.md
+    - Finetune:
+      - Trainer: api/finetune/trainer.md
+    - MCP:
+      - Server: api/mcp/server.md
+      - Config Manager: api/mcp/config_manager.md
+      - Config Validators: api/mcp/config_validators.md
+      - Model Manager: api/mcp/model_manager.md
+    - Tasks:
+      - Task: api/tasks/task.md
+      - Metrics: api/tasks/metrics.md
+    - Utils:
+      - Sequence: api/utils/sequence.md
+      - Logger: api/utils/logger.md
+      - Support: api/utils/support.md
+  - Concepts:
+    - Biology:
+      - DNA Sequences: concepts/biology/dna_sequences.md
+      - Genomic Features: concepts/biology/genomic_features.md
+      - Biological Tasks: concepts/biology/biological_tasks.md
+      - Sequence Analysis: concepts/biology/sequence_analysis.md
+    - Training: concepts/training.md
+    - Inference: concepts/inference.md
+    - MCP: concepts/mcp.md
+    - Architecture:
+      - Model Architectures: concepts/architecture/model_architectures.md
+      - Tokenization: concepts/architecture/tokenization.md
+      - Attention Mechanisms: concepts/architecture/attention_mechanisms.md
+      - Embedding Layers: concepts/architecture/embedding_layers.md
+    - Technical Guides:
+      - Transfer Learning: concepts/technical/transfer_learning.md
+      - Fine-tuning Strategies: concepts/technical/fine_tuning_strategies.md
+      - Evaluation Metrics: concepts/technical/evaluation_metrics.md
+      - Performance Optimization: concepts/technical/performance_optimization.md
+  - Resources:
+    - Model Zoo: resources/model_zoo.md
+    - Data Handling: resources/datahandling.md
+    - Model Selection: resources/model_selection.md
+    - Model Troubleshooting: resources/troubleshooting_models.md
+    - Model Guides:
+      - BERT Models: resources/models/bert_models.md
+      - Caduceus Models: resources/models/caduceus_models.md
+      - ESM Models: resources/models/esm_models.md
+      - Hyena Models: resources/models/hyena_models.md
+      - Llama Models: resources/models/llama_models.md
+      - Mamba Models: resources/models/mamba_models.md
+      - EVO Models: resources/models/evo_models.md
+      - Flash Attention Models: resources/models/flash_attention_models.md
+      - Special Models: resources/models/special_models.md
+  - Examples:
+    - Notebooks:
+      - Overview: example/notebooks/overview.md
+      - Fine-Tuning:
+        - Binary Classification: example/notebooks/finetune_binary/finetune_binary.ipynb
+        - Multi-Label Classification: example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
+        - NER Fine-tuning: example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
+        - NER Data Generation: example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
+        - Custom Head: example/notebooks/finetune_custom_head/finetune.ipynb
+        - Generation: example/notebooks/finetune_generation/finetune_generation.ipynb
+        - LoRA Fine-tuning: example/notebooks/lora_finetune_inference/lora_finetune.ipynb
+        - LoRA Inference: example/notebooks/lora_finetune_inference/lora_inference.ipynb
+      - Inference:
+        - Basic Inference: example/notebooks/inference/inference.ipynb
+        - EVO Models: example/notebooks/generation_evo_models/inference.ipynb
+        - MegaDNA Models: example/notebooks/generation_megaDNA/inference.ipynb
+        - Sequence Generation: example/notebooks/generation/inference.ipynb
+        - tRNA Inference: example/notebooks/inference_for_tRNA/inference.ipynb
+      - Analysis:
+        - Mutagenesis: example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
+        - Interpretation: example/notebooks/interpretation/interpretation.ipynb
+        - Embedding: example/notebooks/embedding_attention.ipynb
+      - Benchmarking:
+        - Benchmark: example/notebooks/benchmark/benchmark.ipynb
+      - Data Preparation:
+        - Fine-tuning Data: example/notebooks/data_prepare/finetune/finetune_data.ipynb
+        - Prediction Data: example/notebooks/data_prepare/predict/predict_data.ipynb
+      - MCP Examples:
+        - LangChain Agents: example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
+        - Pydantic AI: example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+    - Marimo Demos:
+      - Fine-tuning Demo: example/marimo/finetune/finetune_demo.py
+      - Inference Demo: example/marimo/inference/inference_demo.py
+      - Benchmark Demo: example/marimo/benchmark/benchmark_demo.py
+  - FAQ: 
+    - Overview: faq/index.md
+    - Installation: faq/install_troubleshooting.md
+    - Models: faq/models_troubleshooting.md
+    - Benchmark: faq/benchmark_troubleshooting.md
+    - Fine-tuning: faq/finetuning_troubleshooting.md
+    - Data Processing: faq/data_processing_troubleshooting.md
+    - CLI: faq/cli_troubleshooting.md
+    - Inference: faq/inference_troubleshooting.md
+    - MCP: faq/mcp_troubleshooting.md
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      include_source: True
+      execute: False  # Set to True to execute notebooks during build (requires more time)
+      allow_errors: False
+      ignore_hashes: True
+      timeout: 60  # Timeout for notebook execution in seconds
+      write_markdown_columns: False
+      remove_tag_config:
+        remove_stderr_tags: # 移除标准错误输出（Warning通常在这里）
+          - hide_warnings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_category_heading: true
+            merge_init_into_class: true
+            separate_signature: true
+
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+  - pymdownx.superfences

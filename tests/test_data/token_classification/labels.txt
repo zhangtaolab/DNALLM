@@ -1,0 +1,8 @@
+label,label_name
+0,O
+1,B-UTR
+2,I-UTR
+3,B-CDS
+4,I-CDS
+5,B-INT
+6,I-INT

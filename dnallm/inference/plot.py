@@ -1,0 +1,2566 @@
+"""DNA Language Model Visualization and Plotting Module.
+
+This module provides comprehensive plotting capabilities for DNA language model
+results,
+including metrics visualization, attention maps, embeddings, and
+    mutation effects analysis.
+"""
+
+# Add more specific type hints and import numpy for better performance
+import altair as alt
+from collections import defaultdict
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+alt.data_transformers.enable("default", max_rows=None)
+
+
+def _prepare_classification_data(
+    metrics: dict[str, dict],
+    task_type: str = "binary",
+) -> tuple[dict, dict]:
+    """Prepare data for classification tasks (binary, multiclass, multilabel,
+    token).
+
+    Args:
+        metrics: Dictionary containing model metrics for different models
+
+    Returns:
+        Tuple containing bars_data and curves_data
+    """
+    bars_data: dict[str, list] = defaultdict(list)
+    bars_data["models"] = []
+    curves_data: dict[str, dict[str, list]] = {
+        "ROC": defaultdict(list),
+        "PR": defaultdict(list),
+        "AUROC": {},
+        "AUPRC": {},
+    }
+
+    for model, model_metrics in metrics.items():
+        bars_data["models"].append(model)
+        if task_type in ["multilabel", "token"]:
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    for label in metric_data:
+                        _process_curve_data(
+                            metric_data[label], curves_data, label
+                        )
+                        curves_data["AUROC"][label] = metric_data[label][
+                            "AUROC"
+                        ]
+                        curves_data["AUPRC"][label] = metric_data[label][
+                            "AUPRC"
+                        ]
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
+        else:
+            if "AUROC" in model_metrics:
+                curves_data["AUROC"][model] = model_metrics["AUROC"]
+            if "AUPRC" in model_metrics:
+                curves_data["AUPRC"][model] = model_metrics["AUPRC"]
+            for metric, metric_data in model_metrics.items():
+                if metric == "curve":
+                    _process_curve_data(metric_data, curves_data, model)
+                else:
+                    _add_bar_metric(bars_data, metric, metric_data)
+
+    return dict(bars_data), dict(curves_data)
+
+
+def _prepare_regression_data(metrics: dict[str, dict]) -> tuple[dict, dict]:
+    """Prepare data for regression tasks.
+
+    Args:
+        metrics: Dictionary containing model metrics for different models
+
+    Returns:
+        Tuple containing bars_data and scatter_data
+    """
+    bars_data: dict[str, list] = defaultdict(list)
+    bars_data["models"] = []
+    scatter_data: dict[str, dict[str, list]] = {}
+
+    for model, model_metrics in metrics.items():
+        bars_data["models"].append(model)
+        scatter_data[model] = {"predicted": [], "experiment": []}
+
+        for metric, metric_data in model_metrics.items():
+            if metric == "scatter":
+                _process_scatter_data(metric_data, scatter_data, model)
+            else:
+                _add_bar_metric(bars_data, metric, metric_data)
+                if metric == "r2":
+                    scatter_data[model][metric] = metric_data
+
+    return dict(bars_data), scatter_data
+
+
+def _process_curve_data(
+    metric_data: dict, curves_data: dict, model: str
+) -> None:
+    """Process curve data for ROC and PR curves."""
+    for score, values in metric_data.items():
+        if score.endswith("pr"):
+            if score == "fpr":
+                curves_data["ROC"]["models"].extend([model] * len(values))
+            curves_data["ROC"][score].extend(values)
+        else:
+            if score == "precision":
+                curves_data["PR"]["models"].extend([model] * len(values))
+            curves_data["PR"][score].extend(values)
+
+
+def _process_scatter_data(
+    metric_data: dict, scatter_data: dict, model: str
+) -> None:
+    """Process scatter plot data for regression tasks."""
+    for score, values in metric_data.items():
+        # convert tensor to list if needed
+        if hasattr(values, "tolist"):
+            values = values.tolist()
+        scatter_data[model][score].extend(values)
+
+
+def _add_bar_metric(bars_data: dict, metric: str, metric_data) -> None:
+    """Add metric data to bars_data dictionary."""
+    if metric not in bars_data:
+        bars_data[metric] = []
+    bars_data[metric].append(metric_data)
+
+
+def _prepare_annotations(data: list | dict) -> dict:
+    """Prepare annotations for plots."""
+    if isinstance(data, list):
+        label_names = set(data)
+        # label_dict = {name: i for i, name in enumerate(label_names)}
+        annotations = {"model": {name: set() for name in label_names}}
+        for i, name in enumerate(data):
+            annotations["model"][name].add(i)
+        return annotations
+    elif isinstance(data, dict):
+        models = data.keys()
+        label_names = set(data[models[0]])
+        annotations = {
+            model: {name: set() for name in label_names} for model in models
+        }
+        for model in models:
+            for i, name in enumerate(data[model]):
+                annotations[model][name].add(i)
+        return annotations
+    else:
+        raise TypeError("Data must be a list or a dictionary")
+
+
+def prepare_data(
+    metrics: dict[str, dict], task_type: str = "binary"
+) -> tuple[dict, dict | dict]:
+    """Prepare data for plotting various types of visualizations.
+
+    This function organizes model metrics data into formats suitable for
+        different plot types:
+        - Bar charts for classification and regression metrics
+        - ROC and PR curves for classification tasks
+        - Scatter plots for regression tasks
+
+        Args:
+            metrics: Dictionary containing model metrics for different models
+                    task_type: Type of task (
+                "binary",
+                "multiclass",
+                "multilabel",
+                "token",
+                "regression")
+
+        Returns:
+            Tuple containing:
+            - bars_data: Data formatted for bar chart visualization
+                    - curves_data/scatter_data: Data formatted for curve or
+                scatter plot visualization
+
+        Raises:
+            ValueError: If task type is not supported for plotting
+    """
+    if task_type in ["binary", "multiclass", "multilabel", "token"]:
+        return _prepare_classification_data(metrics)
+    elif task_type == "regression":
+        return _prepare_regression_data(metrics)
+    else:
+        raise ValueError(f"Unsupported task type {task_type} for plotting")
+
+
+def plot_bars(
+    data: dict,
+    show_score: bool = True,
+    ncols: int = 3,
+    width: int = 200,
+    height: int | None = None,
+    bar_width: int = 20,
+    domain: tuple[float, float] | list[float] = (0.0, 1.0),
+    save_path: str | None = None,
+    separate: bool = False,
+) -> alt.Chart | dict[str, alt.Chart]:
+    """Plot bar charts for model metrics comparison.
+
+    This function creates bar charts to compare different metrics across
+        multiple models. It supports automatic layout with multiple columns and
+            optional score labels on bars.
+
+        Args:
+            data: Dictionary containing metrics data with "models" as the first
+                key
+            show_score: Whether to show the score values on the bars
+            ncols: Number of columns to arrange the plots
+            width: Width of each individual plot
+            height: Height of each individual plot
+            bar_width: Width of the bars in the plot
+            domain: Y-axis domain range for the plots, default (0.0, 1.0)
+                    save_path: Path to save the plot. If None,
+                plot will be shown interactively
+            separate: Whether to return separate plots for each metric
+
+        Returns:
+                    Altair chart object (combined or
+                separate plots based on separate parameter)
+    """
+    # Convert to DataFrame once and cache for better performance
+    # Original: dbar = pd.DataFrame(data)
+    dbar = pd.DataFrame(data)
+
+    # Pre-allocate plot dictionaries for better memory management
+    # Original: pbar = {}; p_separate = {}
+    pbar = {}
+    p_separate = {}
+
+    # Filter metrics once and use list comprehension for better performance
+    # Original: for n, metric in enumerate([x for x in data if x != "models"]):
+    metrics_list = [x for x in data if x != "models"]
+
+    for n, metric in enumerate(metrics_list):
+        # convert to float for proper plotting
+        dbar[metric] = dbar[metric].astype(float)
+        if metric in ["mae", "mse"]:
+            domain_use = [0, dbar[metric].max() * 1.1]
+        else:
+            domain_use = domain
+
+        # Create bar chart with optimized encoding
+        if height is None:
+            height = 25 * len(dbar["models"])
+        bar = (
+            alt
+            .Chart(dbar)
+            .mark_bar(size=bar_width)
+            .encode(
+                x=alt.X(f"{metric}:Q").scale(domain=domain_use),
+                y=alt.Y("models").title(None),
+                color=alt.Color("models").legend(None),
+                tooltip=["models", metric],
+            )
+            .properties(width=width, height=height)
+        )
+
+        if show_score:
+            # Optimized text positioning and formatting
+            text = (
+                alt
+                .Chart(dbar)
+                .mark_text(
+                    dx=-10 if dbar[metric].min() >= 0.2 else 5,
+                    color="white" if dbar[metric].min() >= 0.2 else "black",
+                    baseline="middle",
+                    align="right" if dbar[metric].min() >= 0.2 else "left",
+                )
+                .encode(
+                    x=alt.X(f"{metric}:Q"),
+                    y=alt.Y("models").title(None),
+                    text=alt.Text(metric, format=".3f"),
+                )
+            )
+            p = bar + text
+        else:
+            p = bar
+
+        if separate:
+            p_separate[metric] = p.configure_axis(grid=False)
+
+        # More efficient plot arrangement logic
+        idx = n // ncols
+        if n % ncols == 0:
+            pbar[idx] = p
+        else:
+            pbar[idx] |= p
+
+    # More efficient plot combination with reduce-like approach
+    # Original: Multiple conditional checks and assignments
+    pbars: alt.Chart = pbar[0] if pbar else alt.Chart()
+    for i in range(1, len(pbar)):
+        pbars &= pbar[i]
+
+    # Configure chart once at the end
+    pbars = pbars.configure_axis(grid=False)
+
+    # Save the plot
+    if save_path:
+        pbars.save(save_path)
+        print(f"Metrics bar charts saved to {save_path}")
+
+    if separate:
+        return p_separate
+    else:
+        return pbars
+
+
+def plot_polar_bar(
+    data: dict,
+    title: str | None = None,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """Plot a polar bar chart.
+
+    Returns:
+        Altair chart object.
+    """
+    # _default_colors = [
+    #     "#a6cee3",
+    #     "#1f78b4",
+    #     "#b2df8a",
+    #     "#33a02c",
+    #     "#fb9a99",
+    #     "#e31a1c",
+    #     "#fdbf6f",
+    #     "#ff7f00",
+    #     "#cab2d6",
+    #     "#6a3d9a",
+    #     "#ffff99",
+    #     "#b15928",
+    # ]
+
+    metrics = {}
+    for name in data:
+        metric = name.replace("test_", "")
+        if metric in [
+            "loss",
+            "runtime",
+            "samples_per_second",
+            "steps_per_second",
+            "curve",
+            "scatter",
+        ]:
+            continue
+        metrics[metric.capitalize()] = data[name]
+
+    df = pd.DataFrame({
+        "Metric": list(metrics.keys()),
+        "Value": [v * 100 for v in metrics.values()],
+        "index": list(range(len(metrics))),
+        # "color": _default_colors[: len(metrics)],
+    })
+
+    base = (
+        alt
+        .Chart(df)
+        .mark_arc(stroke="grey", padAngle=0.05, cornerRadius=10, tooltip=True)
+        .encode(
+            theta=alt.Theta("Metric:O", sort=None),
+            radius=alt.Radius("Value").scale(type="sqrt", zero=True),
+            radius2=alt.datum(5),
+            color=alt.Color("Metric:N", sort=None).scale(scheme="tableau20"),
+            order=alt.Order("index:Q"),
+        )
+    )
+
+    text = base.mark_text(radiusOffset=10).encode(
+        radius=alt.Radius("Value:Q", scale=alt.Scale(type="sqrt", zero=True)),
+        angle=alt.Angle("Metric:N", sort=None),
+        text=alt.Text("Value:Q", format=".2f"),
+        color=alt.value("black"),
+    )
+
+    chart = alt.layer(base, text)
+    if title:
+        chart = chart.properties(title=title)
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Polar bar chart saved to {save_path}")
+
+    return chart
+
+
+def plot_radar(
+    data: dict,
+    metric: str = "AUROC",
+    models: str | list[str] | None = None,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a radar chart.
+
+    Args:
+        data: Dictionary containing the data to plot.
+        metric: Metric to plot (e.g., "AUROC", "AUPRC").
+        models: List of models to include in the chart.
+        width: Width of the chart.
+        height: Height of the chart.
+        save_path: Path to save the chart.
+
+    Returns:
+        Altair chart object.
+    """
+    # Load metrics and models if available
+    metrics = []
+    if models is None:
+        default_model = "Model"
+    elif isinstance(models, str):
+        default_model = models
+    metric = metric.upper()
+    selected_models = set()
+    for name in data:
+        met = name.replace("test_", "")
+        if met == "curve":
+            for label in data[met]:
+                item = data[met][label][metric]
+                if isinstance(item, (int, float)):
+                    score = item
+                    metrics.append({
+                        "labels": label,
+                        "score": score,
+                        "model": default_model,
+                    })
+                    selected_models.add(default_model)
+                else:
+                    for model, score in item.items():
+                        if model in models or models is None:
+                            selected_models.add(model)
+                            metrics.append({
+                                "labels": label,
+                                "score": score,
+                                "model": model,
+                            })
+        else:
+            continue
+    # Convert to DataFrame
+    source = pd.DataFrame(metrics)
+    labels = source["labels"].unique()
+    angles = np.linspace(
+        np.pi / 2, np.pi / 2 - 2 * np.pi, len(labels), endpoint=False
+    )
+    cat_angle_map = dict(zip(labels, angles, strict=True))
+
+    source["angle"] = source["labels"].map(cat_angle_map)
+    source["x"] = source["score"] * np.cos(source["angle"])
+    source["y"] = source["score"] * np.sin(source["angle"])
+
+    closed_source = []
+    for model in selected_models:
+        subset = source[source["model"] == model].copy()
+        first_row = subset.iloc[[0]].copy()
+        closed_source.append(pd.concat([subset, first_row], ignore_index=True))
+    plot_df = pd.concat(closed_source).reset_index()
+
+    # Create base radar chart
+    rings = pd.DataFrame({"ring": [0.2, 0.4, 0.6, 0.8, 1.0]})
+    base_rings = (
+        alt
+        .Chart(rings)
+        .mark_arc(stroke="lightgrey", fill=None)
+        .encode(
+            theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False)
+        )
+    )
+    base_rings_labels = base_rings.mark_text(
+        color="black", radiusOffset=5, align="center"
+    ).encode(text="ring", theta=alt.value(np.pi / len(labels)))
+    out_rings = (
+        alt
+        .Chart(rings)
+        .mark_arc(stroke="black", fill=None)
+        .encode(theta=alt.value(np.pi * 2), radius=alt.datum(1))
+    )
+    # Create spokes
+    spokes = (
+        alt
+        .Chart(plot_df)
+        .mark_arc(stroke="lightgrey", fill=None, strokeDash=[5, 5])
+        .encode(
+            theta=alt.Theta("labels:O"),
+            radius=alt.datum(1),
+            radius2=alt.datum(0),
+        )
+    )
+    labels_text = (
+        alt
+        .Chart(plot_df)
+        .mark_text(radiusOffset=10, align="center")
+        .encode(
+            radius=alt.datum(1.1),
+            theta=alt.Theta("labels:O", sort=None),
+            text=alt.Text("labels"),
+            color=alt.value("black"),
+        )
+    )
+    # Create radar fill and line
+    radar_fill = (
+        alt
+        .Chart(plot_df)
+        .mark_line(filled=True, fillOpacity=0.3)
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    radar_line = (
+        alt
+        .Chart(plot_df)
+        .mark_line(
+            point=True,
+            fill=None,
+        )
+        .encode(
+            x=alt.X("x", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            y=alt.Y("y", scale=alt.Scale(domain=[-1, 1]), axis=None),
+            color="model",
+            order=alt.Order("index"),
+        )
+    )
+    # Create merge and configure chart
+    chart: alt.Chart = (
+        (
+            base_rings
+            + spokes
+            + out_rings
+            + radar_fill
+            + radar_line
+            + base_rings_labels
+            + labels_text
+        )
+        .properties(width=width, height=height, title=metric)
+        .configure_view(stroke=None)
+        .configure_axis(grid=False, domain=False, ticks=False)
+    )
+    # Check if save path is provided
+    if save_path:
+        chart.save(save_path)
+        print(f"Radar chart saved to {save_path}")
+    return chart
+
+
+def plot_curve(
+    data: dict,
+    show_score: bool = True,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+    separate: bool = False,
+) -> alt.Chart | dict[str, alt.Chart]:
+    """Plot ROC and PR curves for classification tasks.
+
+        This function creates ROC (Receiver Operating Characteristic) and
+        PR (Precision-Recall)
+    curves to evaluate model performance on classification tasks.
+
+    Args:
+        data: Dictionary containing ROC and PR curve data with "ROC" and
+              "PR" keys, and optionally "AUROC" and "AUPRC" score dicts.
+        show_score: Whether to show the score values on the plot (now
+              implemented in the legend).
+        width: Width of each plot
+        height: Height of each plot
+                save_path: Path to save the plot. If None,
+              plot will be shown interactively
+        separate: Whether to return separate plots for ROC and PR curves
+
+    Returns:
+        Altair chart object (combined or
+        separate plots based on separate parameter)
+    """
+    pline = {}
+    p_separate = {}
+
+    roc_data = pd.DataFrame(data["ROC"])
+
+    # ROC chart
+    roc_chart = (
+        alt
+        .Chart(roc_data)
+        .mark_line()
+        .encode(
+            x=alt.X("fpr", title="FPR").scale(domain=(0.0, 1.0)),
+            y=alt.Y("tpr", title="TPR").scale(domain=(0.0, 1.0)),
+            color=alt.Color("models:N", title="Models"),
+            tooltip=["fpr", "tpr", "models"],
+        )
+        .properties(width=width, height=height, title="ROC Curve")
+    )
+
+    # Diagonal line
+    diag_line = (
+        alt
+        .Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
+        .mark_line(strokeDash=[5, 5], color="gray")
+        .encode(
+            x=alt.X("fpr").scale(domain=(0.0, 1.0)),
+            y=alt.Y("tpr").scale(domain=(0.0, 1.0)),
+        )
+    )
+
+    pline[0] = roc_chart + diag_line
+
+    # Add text annotations for AUROC
+    if show_score and "AUROC" in data:
+        auroc_scores = data.get("AUROC", {})
+
+        # Create a DataFrame for the text annotations
+        text_data = []
+        y_offset = 0.05  # Vertical spacing between text lines
+        y_start = 0.05  # Start from the bottom
+
+        # Dynamically calculate y positions based on the number of models
+        for i, (model, score) in enumerate(auroc_scores.items()):
+            text_data.append({
+                "models": model,
+                "label": f"{model} (AUC={score:.3f})",
+                "fpr": 0.95,
+                "tpr": y_start + i * y_offset,
+            })
+
+        auroc_text_df = pd.DataFrame(
+            text_data, columns=["models", "label", "fpr", "tpr"]
+        )
+        auroc_text_layer = (
+            alt
+            .Chart(auroc_text_df)
+            .mark_text(
+                align="right",
+                baseline="bottom",
+            )
+            .encode(
+                x=alt.X("fpr:Q", scale=alt.Scale(domain=(0.0, 1.0))),
+                y=alt.Y("tpr:Q", scale=alt.Scale(domain=(0.0, 1.0))),
+                text="label:N",
+                # Use the same color encoding as the line chart
+                color=alt.Color("models:N", legend=None),
+            )
+        )
+        # Add the text layer to the ROC plot
+        pline[0] = alt.layer(roc_chart, diag_line, auroc_text_layer)
+
+    if separate:
+        p_separate["ROC"] = pline[0]
+
+    # --- Create PR curve ---
+    pr_data = pd.DataFrame(data["PR"])
+
+    # PR chart
+    pr_chart = (
+        alt
+        .Chart(pr_data)
+        .mark_line()
+        .encode(
+            x=alt.X("recall", title="Recall").scale(domain=(0.0, 1.0)),
+            y=alt.Y("precision", title="Precision").scale(domain=(0.0, 1.0)),
+            color=alt.Color("models:N", title="Models"),
+            tooltip=["recall", "precision", "models"],
+        )
+        .properties(width=width, height=height, title="PR Curve")
+    )
+    pr_baseline = (
+        alt
+        .Chart(
+            pd.DataFrame({
+                "recall": [0, 1],
+                "precision": [
+                    pr_data["precision"].min(),
+                    pr_data["precision"].min(),
+                ],
+            })
+        )
+        .mark_line(strokeDash=[5, 5], color="gray")
+        .encode(
+            x=alt.X("recall").scale(domain=(0.0, 1.0)),
+            y=alt.Y("precision").scale(domain=(0.0, 1.0)),
+        )
+    )
+
+    pline[1] = pr_chart + pr_baseline
+
+    # Add text annotations for AUPRC
+    if show_score and "AUPRC" in data:
+        auprc_scores = data.get("AUPRC", {})
+
+        # Create a DataFrame for the text annotations
+        text_data = []
+        y_offset = 0.05  # Vertical spacing between text lines
+        y_start = 0.05  # Start from the bottom
+
+        for i, (model, score) in enumerate(auprc_scores.items()):
+            text_data.append({
+                "models": model,
+                "label": f"{model} (AUC={score:.3f})",
+                "recall": 0.05,
+                "precision": y_start + i * y_offset,
+            })
+
+        auprc_text_df = pd.DataFrame(
+            text_data, columns=["models", "label", "recall", "precision"]
+        )
+        auprc_text_layer = (
+            alt
+            .Chart(auprc_text_df)
+            .mark_text(
+                align="left",
+                baseline="bottom",
+            )
+            .encode(
+                x=alt.X("recall:Q", scale=alt.Scale(domain=(0.0, 1.0))),
+                y=alt.Y("precision:Q", scale=alt.Scale(domain=(0.0, 1.0))),
+                text="label:N",
+                # Use the same color encoding as the line chart
+                color=alt.Color("models:N", legend=None),
+            )
+        )
+
+        pline[1] = alt.layer(pr_chart, pr_baseline, auprc_text_layer)
+
+    if separate:
+        p_separate["PR"] = pline[1]
+
+    # Combine plots if not separate
+    plines: alt.Chart = pline[0] if pline else alt.Chart()
+    for i in range(1, len(pline)):
+        plines |= pline[i]
+
+    plines = plines.configure_axis(grid=False)
+
+    if save_path:
+        plines.save(save_path)
+        print(f"ROC/PR curves saved to {save_path}")
+
+    if separate:
+        return p_separate
+    else:
+        return plines
+
+
+def plot_scatter(
+    data: dict,
+    show_score: bool = True,
+    ncols: int = 3,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+    separate: bool = False,
+) -> alt.Chart | dict[str, alt.Chart]:
+    """Plot scatter plots for regression task evaluation.
+
+    This function creates scatter plots to compare predicted vs. experimental
+        values
+        for regression tasks, with optional R² score display.
+
+        Args:
+            data: Dictionary containing scatter plot data for each model
+            show_score: Whether to show the R² score on the plot
+            ncols: Number of columns to arrange the plots
+            width: Width of each plot
+            height: Height of each plot
+                    save_path: Path to save the plot. If None,
+                plot will be shown interactively
+            separate: Whether to return separate plots for each model
+
+        Returns:
+                    Altair chart object (combined or
+                separate plots based on separate parameter)
+    """
+    from scipy.stats import gaussian_kde
+
+    # Pre-allocate plot dictionaries for better memory management
+    # Original: pdot = {}; p_separate = {}
+    pdot = {}
+    p_separate = {}
+
+    # More efficient data processing with list comprehension
+    # Original: for n, model in enumerate(data):
+    for n, (model, model_data) in enumerate(data.items()):
+        # Create a copy to avoid modifying original data
+        # Original: scatter_data = dict(data[model])
+        scatter_data = dict(model_data)
+        r2 = scatter_data.pop("r2", 0)  # Use pop with default value
+
+        # More efficient DataFrame creation
+        # Original: ddot = pd.DataFrame(scatter_data)
+        ddot = pd.DataFrame(scatter_data)
+
+        try:
+            # Make density calculation more efficient
+            xy = np.vstack([ddot["experiment"], ddot["predicted"]])
+            ddot["density"] = gaussian_kde(xy)(xy)
+            density_calculated = True
+
+            # Order by density
+            ddot = ddot.sort_values(by="density", ascending=True)
+
+        except (np.linalg.LinAlgError, ValueError):
+            # If KDE fails (e.g., all points are identical), fall back
+            ddot["density"] = 1.0
+            density_calculated = False
+
+        # Create scatter plot with optimized encoding
+        # dot = (
+        #     alt.Chart(ddot, title=model)
+        #     .mark_point(filled=True)
+        #     .encode(
+        #         x=alt.X("predicted:Q"),
+        #         y=alt.Y("experiment:Q"),
+        #     )
+        #     .properties(width=width, height=height)
+        # )
+        base = alt.Chart(ddot, title=model).properties(
+            width=width, height=height
+        )
+        dot = base.mark_point(filled=True, size=15, opacity=1).encode(
+            x=alt.X("experiment:Q", title="Observed"),
+            y=alt.Y("predicted:Q", title="Predicted"),
+            color=alt.Color(
+                "density:Q",
+                scale=alt.Scale(scheme="viridis"),
+                legend=alt.Legend(title="Density"),
+            )
+            if density_calculated
+            else alt.value("blue"),
+            tooltip=["experiment", "predicted", "density"],
+        )
+
+        if show_score:
+            # More efficient text positioning calculation
+            # Original: min_x = ddot["predicted"].min(); max_y =
+            # ddot["experiment"].max()
+            min_x = ddot["predicted"].min()
+            max_y = ddot["experiment"].max()
+
+            text = (
+                alt
+                .Chart()
+                .mark_text(size=14, align="left", baseline="top", dx=5, dy=5)
+                .encode(
+                    x=alt.datum(min_x + 0.5),
+                    y=alt.datum(max_y - 0.5),
+                    text=alt.datum(f"R²={r2:.3f}"),  # Format R² value
+                )
+            )
+            p = dot + text
+        else:
+            p = dot
+
+        if separate:
+            p_separate[model] = p.configure_axis(grid=False)
+
+        # More efficient plot arrangement
+        idx = n // ncols
+        if n % ncols == 0:
+            pdot[idx] = p
+        else:
+            pdot[idx] |= p
+
+    # More efficient plot combination
+    # Original: Multiple conditional checks and assignments
+    pdots: alt.Chart = pdot[0] if pdot else alt.Chart()
+    for i in range(1, len(pdot)):
+        pdots &= pdot[i]
+
+    # Configure chart once at the end
+    pdots = pdots.configure_axis(grid=False)
+
+    # Save the plot
+    if save_path:
+        pdots.save(save_path)
+        print(f"Metrics scatter plots saved to {save_path}")
+
+    if separate:
+        return p_separate
+    else:
+        return pdots
+
+
+def plot_token_scatter(
+    scores: list[tuple[str, float]],
+    threshold_std: float = 2.0,
+    show_labels: bool = False,
+    extra_data: list[tuple[str, int, int]] | None = None,
+    width: int = 800,
+    height: int = 300,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Uses Z-score to plot outlier scatter plot.
+
+    This function takes a list of (name, value) pairs, computes Z-scores,
+    and uses Altair to plot a scatter plot highlighting outliers with different
+    colors and sizes. This mimics the functionality of the matplotlib code you
+    provided.
+
+    Args:
+        scores: a list of [(name, value), ...]。
+        threshold_std: Z-score threshold to identify outliers.
+        width: figure width.
+        height: figure height.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        alt.Chart: Altair chart object.
+    """
+
+    try:
+        df = pd.DataFrame(
+            [(x[0], -x[1]) for x in scores], columns=["Token", "Value"]
+        )
+    except Exception as e:
+        print(f"Format Error: {e}")
+        return alt.Chart()
+
+    # Use index as a base x-axis
+    df = df.reset_index()
+    mean_val = df["Value"].mean()
+    std_val = df["Value"].std()
+    # Calculate upper limit for outlier detection
+    upper_limit = mean_val + threshold_std * std_val
+
+    # Mark outliers based on Z-score
+    df["zscore"] = (df["Value"] - mean_val) / std_val
+    # Only consider positive Z-scores for outlier detection
+    df["is_outlier"] = df["zscore"] > threshold_std
+
+    # For legend and size encoding
+    num_outliers = df["is_outlier"].sum()
+    num_normal = len(df) - num_outliers
+
+    df["Status"] = np.where(
+        df["is_outlier"],
+        f"Outlier (n={num_outliers})",
+        f"Normal (n={num_normal})",
+    )
+
+    # Base Scatter Layer
+    # Use status for color encoding
+    base_scatter = (
+        alt
+        .Chart(df)
+        .mark_point(filled=True)
+        .encode(
+            x=alt.X("index:Q", title="Token Index"),
+            y=alt.Y(
+                "Value:Q",
+                title="-LogP Score",
+                scale=alt.Scale(domain=(0.0, df["Value"].max() * 1.1)),
+            ),
+            color=alt.Color(
+                "Status:N",
+                scale=alt.Scale(
+                    domain=[
+                        f"Outlier (n={num_outliers})",
+                        f"Normal (n={num_normal})",
+                    ],
+                    range=["#fb8072", "#80b1d3"],
+                ),
+                legend=alt.Legend(title="Importance"),
+            ),
+            # Point size encoding
+            size=alt.condition(
+                alt.datum.is_outlier, alt.value(40), alt.value(20)
+            ),
+            # Alpha encoding
+            opacity=alt.condition(
+                alt.datum.is_outlier, alt.value(1.0), alt.value(0.6)
+            ),
+            tooltip=["index", "Token", "Value", "zscore"],
+        )
+    )
+    # Rule Layers
+    line_data = pd.DataFrame([
+        {
+            "label": f"Mean ({mean_val:.2f})",
+            "value": mean_val,
+            "color": "grey",
+            "dash": [3, 3],
+        },
+        {
+            "label": f"+{threshold_std}σ ({upper_limit:.2f})",  # noqa: RUF001
+            "value": upper_limit,
+            "color": "orange",
+            "dash": [3, 3],
+        },
+    ])
+    rule_lines = (
+        alt
+        .Chart(line_data)
+        .mark_rule(strokeWidth=2)
+        .encode(
+            y="value:Q",
+            color=alt.Color(
+                "label:N",
+                scale={
+                    "domain": line_data["label"].tolist(),
+                    "range": line_data["color"].tolist(),
+                },
+                legend=alt.Legend(title="Threshold"),
+            ),
+            strokeDash=alt.StrokeDash(
+                "label:N",
+                scale={
+                    "domain": line_data["label"].tolist(),
+                    "range": line_data["dash"].tolist(),
+                },
+                legend=None,
+            ),
+        )
+    )
+    # Text Layer for Outliers
+    text_labels = (
+        alt
+        .Chart(df)
+        .mark_text(align="left", dx=5, color="darkred")
+        .encode(x="index:Q", y="Value:Q", text="Token:N")
+        .transform_filter(alt.datum.is_outlier)
+    )
+    if extra_data:
+        # Convert to zero started index if necessary
+        start_pos = extra_data[0][1]
+        if len(extra_data[0]) == 4:
+            color_map = {item[0]: item[3] for item in extra_data}
+        else:
+            color_map = {}
+        for i, item in enumerate(extra_data):
+            region_type, start, end = item[:3]
+            extra_data[i] = (region_type, start - start_pos, end - start_pos)
+        extra_df = pd.DataFrame(extra_data, columns=["Type", "Start", "End"])
+        # assign colors if provided
+        if color_map:
+            domain = list(color_map.keys())
+            range_colors = [color_map[k] for k in domain]
+        else:
+            # assign default colors based on region type
+            # Use Set3 color palette (12 colors)
+            colors = [
+                "#8dd3c7",
+                "#ffffb3",
+                "#bebada",
+                "#fb8072",
+                "#80b1d3",
+                "#fdb462",
+                "#b3b3b3",
+                "#fccde5",
+                "#d9d9d9",
+                "#bc80bd",
+                "#ccebc5",
+                "#ffed6f",
+            ]
+            unique_types = list(
+                dict.fromkeys([x[0] for x in extra_data])
+            )  # Preserve order
+            domain = unique_types
+            range_colors = colors[: len(unique_types)]
+        band_chart = (
+            alt
+            .Chart(extra_df)
+            .mark_rect(opacity=0.3)
+            .encode(
+                x=alt.X("Start:Q", title="Token Index"),
+                x2="End:Q",
+                color=alt.Color(
+                    "Type:N",
+                    scale=alt.Scale(domain=domain, range=range_colors),
+                    legend=alt.Legend(title="Region Type"),
+                ),
+                tooltip=["Type", "Start", "End"],
+            )
+        )
+
+    # Combine Layers
+    chart: alt.Chart = (base_scatter + rule_lines).resolve_scale(
+        color="independent"
+    )
+    if show_labels:
+        chart += text_labels
+    if extra_data:
+        chart = band_chart + chart
+    chart = (
+        chart
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Figure saved to {save_path}")
+
+    return chart
+
+
+def plot_line(
+    scores: dict,
+    width: int = 400,
+    height: int = 400,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot a line chart for average score ratios.
+
+    Args:
+        scores: A dictionary including labels and lists of scores.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the line plot.
+    """
+    records = []
+    for key, values in scores.items():
+        for pos, val in enumerate(values):
+            records.append({"type": key, "position": pos, "score": val})
+    df = pd.DataFrame(records)
+
+    chart: alt.Chart = (
+        alt
+        .Chart(df)
+        .mark_line(interpolate="monotone")
+        .encode(
+            x=alt.X("position:Q", title="Position"),
+            y=alt.Y(
+                "score:Q", title="Likelihood", scale=alt.Scale(zero=False)
+            ),
+            color=alt.Color("type:N", title="Types"),
+            tooltip=["type", "position", "score"],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+
+    return chart
+
+
+def plot_annotations(
+    data: dict,
+    start: int | None = None,
+    end: int | None = None,
+    custom_colors: dict | None = None,
+    width: int = 800,
+    height: int | None = None,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """
+    Plot sequence annotations such as domains, motifs, or other features.
+
+    Args:
+        data: A dictionary where keys are annotation types and values.
+        start: Start position for the plot.
+        end: End position for the plot.
+        custom_colors: A dictionary mapping annotation types to colors.
+        width: Width of the plot.
+        height: Height of the plot.
+        save_path: If provided, saves the plot to this path.
+
+    Returns:
+        An Altair chart object representing the annotations.
+    """
+    from itertools import groupby
+    from operator import itemgetter
+
+    def get_intervals_from_set(pos_set, min_val, max_val):
+        """
+        Given a set of positions, return a list of continuous intervals
+        within the specified min and max values.
+        """
+        valid_pos = sorted([p for p in pos_set if min_val <= p < max_val])
+
+        if not valid_pos:
+            return []
+
+        intervals = []
+        for _, g in groupby(enumerate(valid_pos), lambda ix: ix[0] - ix[1]):
+            group = list(map(itemgetter(1), g))
+            start = group[0]
+            end = group[-1] + 1
+            intervals.append((start, end))
+
+        return intervals
+
+    records = []
+    all_types = set()
+    for model, anno in data.items():
+        for ann_type, pos_set in anno.items():
+            all_types.add(ann_type)
+
+            intervals = get_intervals_from_set(pos_set, start, end)
+            for s, e in intervals:
+                records.append({
+                    "Model": model,
+                    "Type": ann_type,
+                    "Start": s,
+                    "End": e,
+                    "Length": e - s,
+                })
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        print("Warning: No annotations to plot.")
+        return None
+
+    # Assign Set1 color to each types
+    type_list = sorted(all_types)
+    if custom_colors:
+        color_map = custom_colors
+    else:
+        default_colors = [
+            "#e41a1c",
+            "#377eb8",
+            "#4daf4a",
+            "#984ea3",
+            "#ff7f00",
+            "#ffff33",
+            "#a65628",
+            "#f781bf",
+            "#999999",
+        ]
+        color_map = {}
+        for i, t in enumerate(type_list):
+            if custom_colors and t in custom_colors:
+                color_map[t] = custom_colors[t]
+            else:
+                color_map[t] = default_colors[i % len(default_colors)]
+    range_colors = [color_map.get(t, "#7f7f7f") for t in type_list]
+
+    if height is None:
+        height = len(data) * 30
+
+    chart: alt.Chart = (
+        alt
+        .Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X(
+                "Start",
+                scale=alt.Scale(domain=[start, end]),
+                axis=alt.Axis(format="d", title="Genomic Position (bp)"),
+            ),
+            x2="End",
+            y=alt.Y("Model", title=None, sort=list(data.keys())),
+            color=alt.Color(
+                "Type",
+                scale=alt.Scale(domain=type_list, range=range_colors),
+                legend=alt.Legend(title="Type"),
+            ),
+            tooltip=[
+                alt.Tooltip("Model", title="Model"),
+                alt.Tooltip("Type", title="Type"),
+                alt.Tooltip("Start", title="Start"),
+                alt.Tooltip("End", title="End"),
+                alt.Tooltip("Length", title="Length (bp)"),
+            ],
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+        .configure_view(strokeWidth=0)
+        .interactive()
+    )
+
+    if save_path:
+        chart.save(save_path)
+        print(f"Annotation heatmap saved to {save_path}")
+
+    return chart
+
+
+def plot_attention_map(
+    attentions: tuple | list,
+    sequences: list[str],
+    tokenizer,
+    seq_idx: int = 0,
+    layer: int = -1,
+    head: int | str = -1,
+    norm_method: str | None = None,
+    skip_cls: bool = True,
+    width: int = 800,
+    height: int = 800,
+    save_path: str | None = None,
+) -> alt.Chart:
+    """Plot attention map visualization for transformer models.
+
+    This function creates a heatmap visualization of attention weights between
+        tokens
+            in a sequence,
+            showing how the model attends to different parts of the input.
+
+        Args:
+                    attentions: Tuple or
+                list containing attention weights from model layers
+            sequences: List of input sequences
+            tokenizer: Tokenizer object for converting tokens to readable text
+            seq_idx: Index of the sequence to plot, default 0
+            layer: Layer index to visualize, default -1 (last layer)
+                    attention_head: Attention head index to visualize,
+                default -1 (last head)
+            width: Width of the plot
+            height: Height of the plot
+                    save_path: Path to save the plot. If None,
+                plot will be shown interactively
+
+        Returns:
+            Altair chart object showing the attention heatmap
+    """
+    # More efficient attention data extraction with numpy
+    # Original: attn_layer = attentions[layer].numpy()
+    attn_layer = np.array(attentions[layer])
+    if head == "all":
+        # Average over all heads
+        attn_head = np.mean(attn_layer[seq_idx], axis=0)
+    else:
+        attn_head = attn_layer[seq_idx][head]
+
+    # do normalization
+    if norm_method == "softmax":
+        exp_attn = np.exp(attn_head - np.max(attn_head))
+        attn_head = exp_attn / exp_attn.sum(axis=-1, keepdims=True)
+    elif norm_method == "minmax":
+        attn_head = (attn_head - np.min(attn_head)) / (
+            np.max(attn_head) - np.min(attn_head)
+        )
+    elif norm_method == "l1":
+        attn_head = attn_head / np.sum(
+            np.abs(attn_head), axis=-1, keepdims=True
+        )
+    elif norm_method == "l2":
+        attn_head = attn_head / np.sqrt(
+            np.sum(attn_head**2, axis=-1, keepdims=True)
+        )
+    elif norm_method == "log1p":
+        attn_head = np.log1p(attn_head) / attn_head.max()
+    elif norm_method == "zscore":
+        attn_head = (attn_head - np.mean(attn_head)) / np.std(attn_head)
+    elif norm_method == "entropy":
+        from scipy.stats import entropy
+
+        ent = entropy(attn_head + 1e-12, base=2, axis=-1, keepdims=True)
+        attn_head = 1 - (ent / np.log2(attn_head.shape[-1] + 1e-12))
+    else:
+        pass  # No normalization
+
+    # More efficient token processing with error handling
+    # Original: seq = sequences[seq_idx]; tokens_id = tokenizer.encode(seq)
+    seq = sequences[seq_idx]
+    try:
+        tokens_id = tokenizer.encode(seq)
+        tokens = tokenizer.convert_ids_to_tokens(tokens_id)
+    except (AttributeError, TypeError):
+        # Fallback tokenization for different tokenizer types
+        tokens = tokenizer.decode(seq).split()
+
+    # Pre-allocate DataFrame data structure for better performance
+    # Original: num_tokens = len(tokens); flen = len(str(num_tokens))
+    num_tokens = len(tokens)
+    flen = len(str(num_tokens))
+
+    # Use list comprehension for more efficient data creation
+    # Original: Multiple loops with append operations
+    if skip_cls and len(tokens) > 0:
+        if tokens[0].lower() in ["[cls]", "<cls>", "<s>", "cls"]:
+            tokens = tokens[1:]
+            attn_head = attn_head[1:, 1:]
+            num_tokens -= 1
+        if tokens[-1].lower() in ["[sep]", "<sep>", "</s>", "sep"]:
+            tokens = tokens[:-1]
+            attn_head = attn_head[:-1, :-1]
+            num_tokens -= 1
+    df_data = {
+        "token1": [
+            f"{str(i).zfill(flen)}{t1}"
+            for i, t1 in enumerate(tokens)
+            for _ in range(num_tokens)
+        ],
+        "token2": [
+            f"{str(num_tokens - j).zfill(flen)}{t2}"
+            for _ in range(num_tokens)
+            for j, t2 in enumerate(tokens)
+        ],
+        "attn": [
+            attn_head[i][j]
+            for i in range(num_tokens)
+            for j in range(num_tokens)
+        ],
+    }
+
+    # More efficient DataFrame creation
+    # Original: source = pd.DataFrame(df)
+    source = pd.DataFrame(df_data)
+
+    # Enable VegaFusion for Altair performance
+    alt.data_transformers.enable("vegafusion")
+
+    # Create attention map with optimized encoding and axis configuration
+    # Original: Multiple axis configurations
+    attn_map: alt.Chart = (
+        alt
+        .Chart(source)
+        .mark_rect()
+        .encode(
+            x=alt.X(
+                "token1:O",
+                axis=alt.Axis(
+                    labelExpr=f"substring(datum.value, {flen}, 100)",
+                    labelAngle=-45,
+                ),
+            ).title(None),
+            y=alt.Y(
+                "token2:O",
+                axis=alt.Axis(
+                    labelExpr=f"substring(datum.value, {flen}, 100)",
+                    labelAngle=0,
+                ),
+            ).title(None),
+            color=alt.Color("attn:Q").scale(scheme="bluepurple"),
+        )
+        .properties(width=width, height=height)
+        .configure_axis(grid=False)
+    ).interactive()
+
+    # Save the plot
+    if save_path:
+        attn_map.save(save_path)
+        print(f"Attention map saved to {save_path}")
+
+    return attn_map
+
+
+def _get_dimensionality_reducer(
+    reducer: str,
+    n_samples: int | None = None,
+    quality: str | dict = "balanced",  # fast / balanced / high
+    **kwargs,
+):
+    """
+    Initialize and return a dimensionality reducer with recommended parameters.
+
+    Args:
+        reducer: Dimensionality reduction method
+            ("PCA", "t-SNE", "UMAP", "PaCMAP")
+        n_samples: Number of samples in dataset, used to auto-adjust parameters
+        quality: "fast", "balanced", "high"
+        kwargs: Custom override parameters
+
+    Returns:
+        Initialized dimensionality reducer object
+    """
+    reducer = reducer.lower()
+
+    # Safety checks
+    if isinstance(quality, str):
+        if quality.lower() not in ["fast", "balanced", "high"]:
+            quality = "balanced"
+    if n_samples is None:
+        # Default assume medium size
+        n_samples = 3000
+
+    def tsne_params():
+        if n_samples < 10000:
+            presets = {
+                "fast": {
+                    "perplexity": 20,
+                    "max_iter": 500,
+                    "learning_rate": 100,
+                },
+                "balanced": {
+                    "perplexity": 30,
+                    "max_iter": 1000,
+                    "learning_rate": 200,
+                },
+                "high": {
+                    "perplexity": 40,
+                    "max_iter": 2000,
+                    "learning_rate": 300,
+                },
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"perplexity": 30, "max_iter": 500},
+                "balanced": {"perplexity": 40, "max_iter": 1000},
+                "high": {"perplexity": 50, "max_iter": 2000},
+            }
+        else:
+            raise ValueError(
+                "t-SNE is unsupported for samples > 50k, "
+                "please use UMAP/PaCMAP."
+            )
+        base = {"n_components": 2, "init": "pca"}
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
+        return base
+
+    def umap_params():
+        if n_samples < 10000:
+            presets = {
+                "fast": {"n_neighbors": 10, "min_dist": 0.3},
+                "balanced": {"n_neighbors": 15, "min_dist": 0.2},
+                "high": {"n_neighbors": 20, "min_dist": 0.1},
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"n_neighbors": 15, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 25, "min_dist": 0.3},
+                "high": {"n_neighbors": 35, "min_dist": 0.1},
+            }
+        else:
+            presets = {
+                "fast": {"n_neighbors": 20, "min_dist": 0.5},
+                "balanced": {"n_neighbors": 40, "min_dist": 0.3},
+                "high": {"n_neighbors": 60, "min_dist": 0.2},
+            }
+        base = {"n_components": 2, "metric": "euclidean"}
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
+        return base
+
+    def pacmap_params():
+        if n_samples < 5000:
+            presets = {
+                "fast": {"n_neighbors": 8, "FP_ratio": 2.0, "MN_ratio": 0.5},
+                "balanced": {
+                    "n_neighbors": 12,
+                    "FP_ratio": 2.0,
+                    "MN_ratio": 0.5,
+                },
+                "high": {"n_neighbors": 20, "FP_ratio": 2.5, "MN_ratio": 0.5},
+            }
+        elif n_samples < 50000:
+            presets = {
+                "fast": {"n_neighbors": 10},
+                "balanced": {"n_neighbors": 20},
+                "high": {"n_neighbors": 30, "FP_ratio": 2.0},
+            }
+        else:
+            presets = {
+                "fast": {"n_neighbors": 20},
+                "balanced": {"n_neighbors": 30, "FP_ratio": 1.5},
+                "high": {"n_neighbors": 50, "FP_ratio": 1.0},
+            }
+        base = {"n_components": 2}
+        if isinstance(quality, dict):
+            base.update(quality)
+        else:
+            base.update(presets[quality])
+        return base
+
+    # -----------------------
+    # Reducer initialization
+    # -----------------------
+    try:
+        if reducer == "pca":
+            from sklearn.decomposition import PCA
+
+            params = {"n_components": 2}
+            params.update(kwargs)
+            return PCA(**params)
+
+        elif reducer in ["t-sne", "tsne"]:
+            from sklearn.manifold import TSNE
+
+            params = tsne_params()
+            params.update(kwargs)
+            return TSNE(**params)
+
+        elif reducer == "umap":
+            from umap import UMAP
+
+            params = umap_params()
+            params.update(kwargs)
+            return UMAP(**params)
+
+        elif reducer == "pacmap":
+            from pacmap import PaCMAP
+
+            params = pacmap_params()
+            params.update(kwargs)
+            return PaCMAP(**params)
+
+        else:
+            raise ValueError("Unsupported dim reducer")
+
+    except ImportError as e:
+        raise ImportError(f"Required package not installed: {e}") from e
+
+
+def _compute_mean_embeddings(
+    hidden_states,
+    attention_mask=None,
+    strategy="mean",
+):
+    """Compute mean embeddings using attention mask for pooling.
+
+    Args:
+        hidden_states: Hidden states from model layers
+        attention_mask: Attention mask for sequence padding
+        strategy: Pooling strategy ("last" or "mean" or "first")
+
+    Returns:
+        Mean pooled embeddings as numpy array
+    """
+    embeddings = np.array(hidden_states)
+    if attention_mask is None:
+        if strategy == "last":
+            attention_mask_array = np.zeros(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+            attention_mask_array[:, -1] = 1
+        elif strategy == "first":
+            attention_mask_array = np.zeros(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+            attention_mask_array[:, 0] = 1
+        else:  # mean pooling without mask
+            attention_mask_array = np.ones(
+                (embeddings.shape[0], embeddings.shape[1]), dtype=int
+            )
+    else:
+        attention_mask_array = np.array(attention_mask)
+
+    # use center (middle of window) embeddings within window size
+    if isinstance(strategy, int):
+        seq_len = np.sum(attention_mask_array, axis=1).max().astype(int)
+        attention_mask_array = np.zeros(
+            (embeddings.shape[0], embeddings.shape[1]), dtype=int
+        )
+        center_idx = seq_len // 2
+        start_idx = max(0, center_idx - strategy // 2)
+        end_idx = min(embeddings.shape[1], center_idx + strategy // 2)
+        attention_mask_array[:, start_idx:end_idx] = 1
+
+    mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
+    mean_embeddings = (
+        np.sum(attention_mask_array[..., None] * embeddings, axis=1) / mask_sum
+    )
+
+    return mean_embeddings
+
+
+def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
+    """Prepare DataFrame for embedding visualization.
+
+    Args:
+        dim_reduced_vectors: 2D reduced embedding vectors
+        labels: Data point labels
+        label_names: Label names for legend display
+
+    Returns:
+        pandas DataFrame ready for plotting
+    """
+    if labels is None or len(labels) == 0:
+        label_names = ["Uncategorized"]
+        labels = [0] * dim_reduced_vectors.shape[0]
+    if labels[0] is None:
+        label_names = ["Uncategorized"]
+        labels = [0] * dim_reduced_vectors.shape[0]
+
+    processed_labels = [
+        label_names[int(i)]
+        if (label_names is not None and i < len(label_names))
+        else str(i)
+        for i in labels
+    ]
+
+    return pd.DataFrame({
+        "Dimension 1": dim_reduced_vectors[:, 0],
+        "Dimension 2": dim_reduced_vectors[:, 1],
+        "labels": processed_labels,
+    })
+
+
+def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
+    """Create individual embedding plot for a layer.
+
+    Args:
+        source_df: DataFrame containing embedding data
+        layer_idx: Layer index for plot title
+        width: Plot width
+        height: Plot height
+        size: Point size
+
+    Returns:
+        Altair chart object
+    """
+    return (
+        alt
+        .Chart(source_df, title=f"Layer {layer_idx + 1}")
+        .mark_point(filled=True, size=size, opacity=0.6)
+        .encode(
+            x=alt.X("Dimension 1:Q"),
+            y=alt.Y("Dimension 2:Q"),
+            color=alt.Color(
+                "labels:N", legend=alt.Legend(title="Labels")
+            ).scale(scheme="set1"),
+        )
+        .properties(width=width, height=height)
+    )
+
+
+def _arrange_plots(plots, ncols):
+    """Arrange multiple plots in a grid layout.
+
+    Args:
+        plots: List of individual plots
+        ncols: Number of columns in grid
+
+    Returns:
+        Combined Altair chart
+    """
+    if not plots:
+        return alt.Chart()
+
+    pdot = {}
+    for i, plot in enumerate(plots):
+        idx = i // ncols
+        if i % ncols == 0:
+            pdot[idx] = plot
+        else:
+            pdot[idx] |= plot
+
+    combined = pdot[0] if pdot else alt.Chart()
+    for i in range(1, len(pdot)):
+        combined &= pdot[i]
+
+    return combined.configure_axis(grid=False)
+
+
+def plot_embeddings(
+    hidden_states: tuple | list,
+    attention_mask: tuple | list | None,
+    reducer: str = "t-SNE",
+    quality: str = "fast",
+    labels: tuple | list | None = None,
+    label_names: str | list | None = None,
+    ncols: int = 4,
+    width: int = 300,
+    height: int = 300,
+    point_size: int = 10,
+    save_path: str | None = None,
+    separate: bool = False,
+    norm: bool = True,
+    reduced: bool = False,
+) -> alt.Chart | dict[str, alt.Chart]:
+    """Visualize embeddings using dimensionality reduction techniques.
+
+    This function creates 2D visualizations of high-dimensional embeddings
+        from different model layers using PCA, t-SNE, or UMAP dimensionality
+        reduction methods.
+
+        Args:
+            hidden_states: Tuple or list containing hidden states from model
+                layers
+                    attention_mask: Tuple or
+                list containing attention masks for sequence padding
+                    reducer: Dimensionality reduction method. Options: "PCA",
+                "t-SNE", "UMAP"
+            labels: List of labels for the data points
+            labels_names: List of label names for legend display
+            ncols: Number of columns to arrange the plots
+            width: Width of each plot
+            height: Height of each plot
+                    save_path: Path to save the plot. If None,
+                plot will be shown interactively
+            point_size: Size of the points in the scatter plot
+            separate: Whether to return separate plots for each layer
+            norm: Whether to normalize embeddings before reduction
+            reduced: Whether the input hidden states are already 2D
+
+        Returns:
+                    Altair chart object (combined or
+                separate plots based on separate parameter)
+
+        Raises:
+            ValueError: If unsupported dimensionality reduction method is
+                specified
+    """
+    # Initialize dimensionality reducer
+    n_samples = hidden_states[0].shape[0] if hidden_states else None
+    dim_reducer = _get_dimensionality_reducer(
+        reducer,
+        n_samples=n_samples,
+        quality=quality,
+    )
+    # Type assertion: dim_reducer is guaranteed to be non-None from helper
+    # function
+    if dim_reducer is None:
+        raise ValueError(
+            "Dimensionality reducer is None - this should not happen"
+        )
+
+    # Process each layer and create plots
+    plots = []
+    p_separate = {}
+
+    for i, hidden in enumerate(hidden_states):
+        # Compute mean embeddings
+        if reduced:
+            mean_embeddings = np.array(hidden)
+        else:
+            if attention_mask is None:
+                mean_embeddings = _compute_mean_embeddings(hidden)
+            else:
+                mean_embeddings = _compute_mean_embeddings(
+                    hidden, attention_mask[i]
+                )
+        # Apply dimensionality reduction
+        if norm:
+            # embeddings_normalized = normalize(mean_embeddings)
+            mean_embeddings = StandardScaler().fit_transform(mean_embeddings)
+        layer_dim_reduced_vectors = np.array(
+            dim_reducer.fit_transform(mean_embeddings)
+        )
+
+        # Prepare data for plotting
+        source_df = _prepare_embedding_dataframe(
+            layer_dim_reduced_vectors, labels, label_names
+        )
+
+        # Create individual plot
+        plot = _create_embedding_plot(source_df, i, width, height, point_size)
+        plots.append(plot)
+
+        if separate:
+            p_separate[f"Layer{i + 1}"] = plot.configure_axis(grid=False)
+
+    # Arrange plots in grid
+    combined_plot = _arrange_plots(plots, ncols)
+
+    # Save the plot
+    if save_path:
+        combined_plot.save(save_path)
+        print(f"Embeddings visualization saved to {save_path}")
+
+    return p_separate if separate else combined_plot
+
+
+def _extract_mutation_data(
+    data: dict,
+) -> tuple[str, list[str], int, int, list[str]]:
+    """Extract basic mutation data from input dictionary.
+
+    Args:
+        data: Dictionary containing mutation data with "raw" and mutation keys
+
+    Returns:
+            Tuple containing sequence, raw_bases, sequence length, format
+            length, and mutation list
+    """
+    raw_data = data["raw"]
+    sequence = raw_data["sequence"]
+    seqlen = len(sequence)
+    flen = len(str(seqlen))
+    mut_list = [x for x in data.keys() if x != "raw"]
+    raw_bases = list(sequence)
+
+    return sequence, raw_bases, seqlen, flen, mut_list
+
+
+def _process_substitution_mutations(
+    data: dict, mut_list: list[str], i: int, base1: str, flen: int
+) -> tuple[dict, float, str]:
+    """Process substitution mutations for a single position.
+
+    Args:
+        data: Mutation data dictionary
+        mut_list: List of all mutations
+        i: Position index
+        base1: Original base at position
+        flen: Format length for position strings
+
+    Returns:
+        Tuple containing heatmap data, max score, and max effect base
+    """
+    dheat_pos = defaultdict(list)
+    ref = f"mut_{i}_{base1}_{base1}"
+    mut_prefix = f"mut_{i}_{base1}_"
+
+    maxabs = 0.0
+    maxscore = 0.0
+    maxabs_index = base1
+
+    relevant_muts = [x for x in mut_list if x.startswith(mut_prefix)] + [ref]
+
+    for mut in sorted(relevant_muts):
+        if mut in data:
+            base2 = mut.split("_")[-1]
+            score = data[mut]["score"]
+        else:
+            base2 = base1
+            score = 0.0
+
+        dheat_pos["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_pos["mut"].append(base2)
+        dheat_pos["score"].append(score)
+
+        if abs(score) > maxabs:
+            maxabs = abs(score)
+            maxscore = score
+            maxabs_index = base2
+
+    return dict(dheat_pos), maxscore, maxabs_index
+
+
+def _process_indel_mutations(
+    data: dict, mut_list: list[str], i: int, base1: str, flen: int
+) -> dict:
+    """Process insertion and deletion mutations for a single position.
+
+    Args:
+        data: Mutation data dictionary
+        mut_list: List of all mutations
+        i: Position index
+        base1: Original base at position
+        flen: Format length for position strings
+
+    Returns:
+        Dictionary containing indel heatmap data
+    """
+    dheat_indel = defaultdict(list)
+
+    # Process deletions
+    del_prefix = f"del_{i}_"
+    for mut in [x for x in mut_list if x.startswith(del_prefix)]:
+        base2 = f"del_{mut.split('_')[-1]}"
+        score = data[mut]["score"]
+        dheat_indel["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_indel["mut"].append(base2)
+        dheat_indel["score"].append(score)
+
+    # Process insertions
+    ins_prefix = f"ins_{i}_"
+    for mut in [x for x in mut_list if x.startswith(ins_prefix)]:
+        base2 = f"ins_{mut.split('_')[-1]}"
+        score = data[mut]["score"]
+        dheat_indel["base"].append(f"{str(i).zfill(flen)}{base1}")
+        dheat_indel["mut"].append(base2)
+        dheat_indel["score"].append(score)
+
+    return dict(dheat_indel)
+
+
+def _build_mutation_datasets(
+    data: dict,
+    raw_bases: list[str],
+    mut_list: list[str],
+    seqlen: int,
+    flen: int,
+) -> tuple[dict, dict, dict]:
+    """Build datasets for heatmap, line plot, and bar chart visualizations.
+
+    Args:
+        data: Mutation data dictionary
+        raw_bases: List of original bases in sequence
+        mut_list: List of all mutations
+        seqlen: Sequence length
+        flen: Format length for position strings
+
+    Returns:
+        Tuple containing heatmap, line plot, and bar chart data
+    """
+    dheat = defaultdict(list)
+    dline = {
+        "x": [f"{str(i).zfill(flen)}{x}" for i, x in enumerate(raw_bases)] * 2,
+        "score": [0.0] * seqlen * 2,
+        "type": ["gain"] * seqlen + ["loss"] * seqlen,
+    }
+    dbar = defaultdict(list)
+
+    for i, base1 in enumerate(raw_bases):
+        # Process substitution mutations
+        dheat_pos, maxscore, maxabs_index = _process_substitution_mutations(
+            data, mut_list, i, base1, flen
+        )
+
+        # Accumulate heatmap data
+        for key, values in dheat_pos.items():
+            dheat[key].extend(values)
+
+        # Update line plot data
+        for score in dheat_pos["score"]:
+            if score >= 0:
+                dline["score"][i] += score
+            else:
+                dline["score"][i + seqlen] -= score
+
+        # Update bar chart data
+        dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
+        dbar["score"].append(maxscore)
+        dbar["base"].append(maxabs_index)
+
+        # Process indel mutations
+        dheat_indel = _process_indel_mutations(data, mut_list, i, base1, flen)
+        for key, values in dheat_indel.items():
+            dheat[key].extend(values)
+
+    return dict(dheat), dline, dict(dbar)
+
+
+def _create_mutation_charts(
+    dheat: dict,
+    dbar: dict,
+    dline: dict,
+    width: int,
+    height: int,
+    flen: int,
+    show_score: bool = False,
+) -> alt.Chart | alt.VConcatChart:
+    """Create individual charts for mutation visualization.
+
+    Args:
+        dheat: Heatmap data
+        dbar: Bar chart data
+        dline: Line plot data
+        width: Chart width
+        height: Chart height
+        flen: Format length for position strings
+
+    Returns:
+        Combined Altair chart
+    """
+    if not dheat["score"]:
+        return alt.Chart()
+
+    df_heat = pd.DataFrame(dheat)
+    df_bar = pd.DataFrame(dbar)
+    df_line = pd.DataFrame(dline)
+
+    # Assume base name is "0001A", get position
+    df_heat["pos"] = df_heat["base"].str[:flen].astype(int) - 0.5
+    df_heat["pos_end"] = df_heat["pos"] + 1.0
+    df_bar["pos"] = df_bar["x"].str[:flen].astype(int) - 0.45
+    df_bar["pos_end"] = df_bar["pos"] + 0.9
+    df_bar["score2"] = [0.0] * len(df_bar)
+    df_line["pos"] = df_line["x"].str[:flen].astype(int)
+
+    # Calculate color domains and ranges
+    all_scores = dheat["score"]
+    max_abs_score = max(abs(min(all_scores)), abs(max(all_scores)))
+    domain1 = [-max_abs_score, 0.0, max_abs_score]
+    range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
+
+    unique_bases = sorted(set(dbar["base"]))
+    range2_ = ["#33a02c", "#1f78b4", "#ff7f00", "#e31a1c", "#cab2d6"][
+        : len(unique_bases)
+    ]
+
+    # Define X axis ticks based on position
+    min_pos = df_line["pos"].min()
+    max_pos = df_line["pos"].max()
+    max_score = df_line["score"].max()
+    # top2_score = df_line.nlargest(2, "score")["score"].to_list()
+    # if top2_score[0] > top2_score[1] * 2:
+    #     max_score = top2_score[1] * 2
+    # else:
+    #     max_score = top2_score[0] + 0.001
+    step = 20 if max_pos <= 50 else 50
+    tick_values = list(range(0, max_pos + 1, step))
+
+    # Define X axis with ticks to ensure proper scaling
+    x_scale = alt.Scale(domain=[min_pos - 0.6, max_pos + 0.6])
+    x_axis_base = alt.X(
+        "pos:Q",
+        scale=x_scale,
+        axis=alt.Axis(
+            values=tick_values, format="d", title=None, labelAngle=0
+        ),
+    )
+
+    # Enable VegaFusion for performance
+    alt.data_transformers.enable("vegafusion")
+
+    # Create heatmap
+    heatmap_tooltip = [
+        alt.Tooltip("base", title="Position"),
+        alt.Tooltip("mut", title="Mutation"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
+    pheat: alt.Chart = (
+        alt
+        .Chart(df_heat)
+        .mark_rect()
+        .encode(
+            x=x_axis_base,
+            x2="pos_end:Q",
+            y=alt.Y("mut:O").title("mutation"),
+            color=alt.Color("score:Q").scale(domain=domain1, range=range1_),
+            **({"tooltip": heatmap_tooltip} if show_score else {}),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create bar chart
+    bar_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("base", title="Max Effect Base"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
+    pbar: alt.Chart = (
+        alt
+        .Chart(df_bar)
+        .mark_bar()
+        .encode(
+            x=x_axis_base,
+            x2="pos_end:Q",
+            y=alt.Y("score:Q").title("max logFC"),
+            y2="score2:Q",
+            color=alt.Color("base:N").scale(
+                domain=unique_bases, range=range2_
+            ),
+            **({"tooltip": bar_tooltip} if show_score else {}),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Create line plot
+    line_tooltip = [
+        alt.Tooltip("x", title="Position"),
+        alt.Tooltip("type", title="Type"),
+        alt.Tooltip("score:Q", title="Score", format=".4f"),
+    ]
+    pline: alt.Chart = (
+        alt
+        .Chart(df_line)
+        .mark_line()
+        .encode(
+            x=x_axis_base,
+            y=alt.Y(
+                "score:Q", scale=alt.Scale(domain=[-0.001, max_score + 0.001])
+            ).title("gain / loss"),
+            color=alt.Color("type:N").scale(
+                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
+            ),
+            **({"tooltip": line_tooltip} if show_score else {}),
+        )
+        .properties(width=width, height=height)
+    )
+
+    # Combine charts
+    combined_chart: alt.Chart | alt.VConcatChart = (
+        pheat & pbar & pline
+    ).configure_axis(grid=False)
+    return combined_chart
+
+
+def plot_muts(
+    data: dict,
+    show_score: bool = False,
+    width: int | None = None,
+    height: int = 100,
+    save_path: str | None = None,
+) -> alt.Chart | alt.VConcatChart:
+    """Visualize mutation effects on model predictions.
+
+    This function creates comprehensive visualizations of how different
+        mutations affect model predictions, including:
+        - Heatmap showing mutation effects at each position
+        - Line plot showing gain/loss of function
+        - Bar chart showing maximum effect mutations
+
+        Args:
+            data: Dictionary containing mutation data with "raw" and mutation
+                keys
+    show_score: Whether to show the score values on the plot (currently not
+            implemented)
+                    width: Width of the plot. If None,
+                automatically calculated based on sequence length
+            height: Height of the plot
+                    save_path: Path to save the plot. If None,
+                plot will be shown interactively
+
+        Returns:
+            Altair chart object showing the combined mutation effects
+                visualization
+    """
+    # Extract basic data
+    _sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)
+
+    # Build visualization datasets
+    dheat, dline, dbar = _build_mutation_datasets(
+        data, raw_bases, mut_list, seqlen, flen
+    )
+
+    # Calculate width if not provided
+    if width is None and dheat["score"]:
+        width = int(height * len(raw_bases) / len(set(dheat["mut"])))
+    elif width is None:
+        width = 400  # Default width
+
+    # Create charts
+    pmerge = _create_mutation_charts(
+        dheat, dbar, dline, width, height, flen, show_score=show_score
+    ).interactive(bind_y=False)
+
+    # Save the plot if requested
+    if save_path and dheat["score"]:
+        pmerge.save(save_path)
+        print(f"Mutation effects visualization saved to {save_path}")
+
+    return pmerge
+
+
+def plot_attributions_token(
+    tokens: list[str],
+    scores: np.ndarray,
+    title: str = "Token-level Attributions",
+    special_tokens: list[str] | None = None,
+) -> alt.Chart:
+    """
+    Visualize token-level attribution scores as colored text using Altair.
+
+    Args:
+        tokens (List[str]): List of tokens from the tokenizer.
+        scores (np.ndarray): Array of attribution scores
+                             corresponding to each token.
+        title (str): The title for the chart.
+        special_tokens (List[str]): Special tokens to filter out
+                                    from the visualization.
+
+    Returns:
+        alt.Chart: An Altair chart object.
+    """
+    # 1. Filter out special tokens
+    if special_tokens is None:
+        special_tokens = [
+            "[CLS]",
+            "[SEP]",
+            "[PAD]",
+            "<s>",
+            "</s>",
+            "<pad>",
+            "<unk>",
+            "[UNK]",
+            "<bos>",
+            "<eos>",
+            "<cls>",
+            "<sep>",
+        ]
+    valid_indices = [
+        i for i, token in enumerate(tokens) if token not in special_tokens
+    ]
+    vis_tokens = [tokens[i] for i in valid_indices]
+    vis_scores = scores[valid_indices]
+
+    if len(vis_tokens) == 0:
+        print("Warning: No valid tokens to plot after filtering.")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
+
+    # 2. Calculate each token"s length and precise position in the sequence
+    token_lengths = [len(t) for t in vis_tokens]
+    end_pos = np.cumsum(token_lengths)
+    start_pos = end_pos - token_lengths
+    center_pos = start_pos + (np.array(token_lengths) / 2.0)
+
+    source = pd.DataFrame({
+        "token": vis_tokens,
+        "score": vis_scores,
+        "token_length": token_lengths,
+        "start_pos": start_pos,
+        "end_pos": end_pos,
+        "center_pos": center_pos,
+    })
+
+    # 3. Calculate color scale domain and range
+    max_abs_score = np.max(np.abs(source["score"])) if not source.empty else 0
+    domain = [-max_abs_score, 0, max_abs_score]
+    color_range = ["#2166ac", "#f7f7f7", "#b2182b"]  # Blue -> White -> Red
+
+    # 4. Create Altair chart
+    # X axis now is quantitative (Quantitative), representing base position
+    base = alt.Chart(source).properties(
+        width=max(600, int(source["end_pos"].max() * 12)),  # dynamic width
+        height=50,
+        title=title,
+    )
+
+    # Background rectangles, using x and x2 to define variable width
+    rects = base.mark_rect().encode(
+        x=alt.X("start_pos:Q", axis=None, title="Base Position"),
+        x2=alt.X2("end_pos:Q"),
+        color=alt.Color(
+            "score:Q",
+            scale=alt.Scale(domain=domain, range=color_range),
+            legend=alt.Legend(title="Attribution Score"),
+        ),
+        tooltip=[
+            alt.Tooltip("token:N", title="Token"),
+            alt.Tooltip("score:Q", title="Score", format=".4f"),
+            alt.Tooltip("token_length:Q", title="Length (bp)"),
+        ],
+    )
+
+    # Text layer, centered
+    text = base.mark_text(baseline="middle", fontSize=12, clip=True).encode(
+        x=alt.X("center_pos:Q", axis=None),
+        text="token:N",
+        color=alt.condition(
+            alt.datum.score > max_abs_score * 0.5,
+            alt.value("white"),
+            alt.value("black"),
+        ),
+    )
+    chart = (rects + text).configure_view(strokeWidth=0)
+
+    return chart
+
+
+def plot_attributions_line(
+    tokens: list[str],
+    scores: np.ndarray,
+    title: str = "Positional Attribution Scores",
+    window_size: int | None = 5,
+    special_tokens: list[str] | None = None,
+) -> alt.Chart:
+    """
+    Plot attribution scores as a line chart to show regional importance.
+
+    Args:
+        tokens (List[str]): List of tokens from the tokenizer.
+        scores (np.ndarray): Array of attribution scores.
+        title (str): The title for the chart.
+        special_tokens (List[str]): Special tokens to filter out.
+
+    Returns:
+        alt.Chart: An Altair chart object.
+    """
+    if special_tokens is None:
+        special_tokens = [
+            "[CLS]",
+            "[SEP]",
+            "[PAD]",
+            "<s>",
+            "</s>",
+            "<pad>",
+            "<unk>",
+            "[UNK]",
+            "<bos>",
+            "<eos>",
+            "<cls>",
+            "<sep>",
+        ]
+    valid_indices = [
+        i for i, token in enumerate(tokens) if token not in special_tokens
+    ]
+    vis_scores = scores[valid_indices]
+
+    if len(vis_scores) == 0:
+        print("Warning: No valid scores to plot after filtering.")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
+
+    source = pd.DataFrame({
+        "position": range(len(vis_scores)),
+        "Raw": vis_scores,
+    })
+
+    # Create base chart (raw scores)
+    area = (
+        alt
+        .Chart(source)
+        .mark_area(opacity=0.2, color="lightblue")
+        .encode(
+            x=alt.X("position:Q", title="Token Position"),
+            y=alt.Y("Raw:Q", title="Attribution Score"),
+        )
+    )
+    # Add base line at y=0 (dashed line)
+    area += (
+        alt
+        .Chart(pd.DataFrame({"y": [0]}))
+        .mark_rule(color="black", strokeDash=[5, 5])
+        .encode(y="y:Q")
+    )
+
+    # if need to smooth the scores
+    if window_size and window_size > 1:
+        source["Smoothed"] = (
+            source["Raw"]
+            .rolling(window=window_size, center=True, min_periods=1)
+            .mean()
+        )
+        # Convert to long format for Altair
+        long_source = source.melt(
+            id_vars=["position"], var_name="type", value_name="value"
+        )
+    else:  # if no smoothing, just use raw scores
+        long_source = source.melt(
+            id_vars=["position"], var_name="type", value_name="value"
+        )
+
+    # Create line chart layer
+    lines = (
+        alt
+        .Chart(long_source)
+        .mark_line()
+        .encode(
+            x=alt.X("position:Q"),
+            y=alt.Y("value:Q"),
+            color=alt.Color("type:N", legend=alt.Legend(title="Score Type")),
+            tooltip=[
+                alt.Tooltip("position:Q"),
+                alt.Tooltip("value:Q", format=".4f", title="Score"),
+                alt.Tooltip("type:N", title="Type"),
+            ],
+        )
+    )
+
+    chart = area + lines
+
+    chart: alt.Chart = (
+        chart
+        .properties(width=800, height=200, title=title)
+        .interactive()
+        .configure_axis(grid=False)
+    )
+    return chart
+
+
+def plot_attributions_multi(
+    all_attributions: list[tuple[list[str], np.ndarray]],
+    title: str = "Aggregated Attribution Heatmap",
+) -> alt.Chart:
+    """
+    Plot an aggregated heatmap of attribution scores from multiple sequences.
+
+    Args:
+        all_attributions (List[Tuple[List[str], np.ndarray]]): List of
+            tuples containing tokens and their corresponding attribution
+            scores for multiple sequences.
+            **Crucially, all arrays must be of the same length.**
+        title (str): The title for the chart.
+
+    Returns:
+        alt.Chart: An Altair chart object.
+
+    Raises:
+        ValueError: If the input score arrays have inconsistent lengths.
+    """
+    if not all_attributions:
+        print("Warning: No scores provided to plot.")
+        chart: alt.Chart = (
+            alt.Chart().mark_text().properties(title="No data to display")
+        )
+        return chart
+
+    # 0. Remove right padding tokens/scores if any
+    trimmed_attributions = []
+    possible_padding_tokens = [
+        "[PAD]",
+        "<pad>",
+        "</s>",
+        "<eos>",
+        "[SEP]",
+        "<sep>",
+        " ",
+        "#",
+        "*",
+    ]
+    pad_token = possible_padding_tokens[0]
+    for tokens, scores in all_attributions:
+        # Identify the last non-padding token index
+        last_valid_index = len(tokens)
+        for i in reversed(range(len(tokens))):
+            if tokens[i] in possible_padding_tokens:
+                pad_token = tokens[i]
+            else:
+                last_valid_index = i + 1
+                break
+        trimmed_attributions.append((
+            tokens[:last_valid_index],
+            scores[:last_valid_index],
+        ))
+
+    # 1. Check for consistent lengths
+    first_len = len(trimmed_attributions[0][1])
+    if not all(len(scores) == first_len for _, scores in trimmed_attributions):
+        # extend to max length with NaN padding
+        max_len = max(len(scores) for _, scores in trimmed_attributions)
+        extended_attributions = []
+        for tokens, scores in trimmed_attributions:
+            if len(scores) < max_len:
+                extended_scores = np.pad(
+                    scores,
+                    (0, max_len - len(scores)),
+                    mode="constant",
+                    constant_values=np.nan,
+                )
+                extended_tokens = tokens + [pad_token] * (
+                    max_len - len(tokens)
+                )
+                extended_attributions.append((
+                    extended_tokens,
+                    extended_scores,
+                ))
+            else:
+                extended_attributions.append((tokens, scores))
+        all_attributions = extended_attributions
+    else:
+        all_attributions = trimmed_attributions
+
+    # 2. Stack into a matrix and convert to long-form DataFrame
+    all_scores = [scores for _, scores in all_attributions]
+    score_matrix = np.stack(all_scores, axis=0)
+
+    source = pd.DataFrame(score_matrix).unstack().reset_index()
+    source.columns = ["position", "sample_index", "score"]
+
+    # 3. Calculate color range
+    max_abs_score = np.max(np.abs(source["score"]))
+    domain = [-max_abs_score, 0, max_abs_score]
+    color_range = ["#2166ac", "#f7f7f7", "#b2182b"]  # Blue -> White -> Red
+
+    # 4. Create heatmap
+    heatmap: alt.Chart = (
+        alt
+        .Chart(source)
+        .mark_rect()
+        .encode(
+            x=alt.X(
+                "position:O",
+                title="Aligned Position",
+                axis=alt.Axis(labels=True, ticks=True),
+            ),
+            y=alt.Y(
+                "sample_index:O",
+                title="Sample Index",
+                axis=alt.Axis(labels=False, ticks=False),
+            ),
+            color=alt.Color(
+                "score:Q",
+                scale=alt.Scale(domain=domain, range=color_range),
+                legend=alt.Legend(title="Attribution"),
+            ),
+        )
+        .properties(
+            width=len(all_attributions[0][1]) * 15,
+            height=len(all_attributions) * 15,
+            title=title,
+        )
+    )
+
+    return heatmap

@@ -1,0 +1,6 @@
+*.gz
+rice_annotation.bed
+*.bed
+*.fxi
+rice_gene_ner.pkl
+rice_gene_ner.token_sizes
