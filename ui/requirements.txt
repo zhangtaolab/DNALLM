@@ -1,0 +1,35 @@
+# DNALLM Gradio Configuration Generator Dependencies
+
+# Core Gradio UI framework
+gradio>=4.0.0
+
+# YAML configuration file support
+pyyaml>=6.0
+
+# Core DNALLM dependencies (if not already installed)
+torch>=1.12.0
+transformers>=4.20.0
+datasets>=2.0.0
+numpy>=1.21.0
+pandas>=1.3.0
+
+# Optional dependencies for enhanced functionality
+# Uncomment if you need these features
+
+# For better YAML handling
+# ruamel.yaml>=0.17.0
+
+# For enhanced UI components
+# gradio-theme-monochrome>=0.0.1
+
+# For file upload/download features
+# python-multipart>=0.0.5
+
+# For advanced validation
+# pydantic>=1.9.0
+
+# For configuration management
+# click>=8.0.0
+
+# For path handling
+# pathlib2>=2.3.0; python_version < "3.4"

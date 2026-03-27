@@ -1,0 +1,7 @@
+*.ipynb filter=nbstripout
+*.ipynb_checkpoints filter=nbstripout
+*.output.txt filter=nbstripout
+*.output.txt_checkpoints filter=nbstripout
+*.output.txt_checkpoints_checkpoints filter=nbstripout
+*.output.txt_checkpoints_checkpoints_checkpoints filter=nbstripout
+*.output.txt_checkpoints_checkpoints_checkpoints_checkpoints filter=nbstripout
