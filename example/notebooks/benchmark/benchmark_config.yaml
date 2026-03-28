@@ -1,0 +1,45 @@
+benchmark:
+  name: My First Benchmark
+  description: Comparing DNA models on promoter prediction
+
+datasets:
+  - format: csv
+    name: promoter_data
+    path: ../inference/test.csv
+    text_column: sequence
+    label_column: label
+    task: binary
+    num_labels: 2
+    label_names:
+      - negative
+      - postive
+    threshold: 0.5
+
+models:
+  - name: Plant DNABERT
+    path: zhangtaolab/plant-dnabert-BPE-promoter
+    source: modelscope
+  - name: Plant DNAGPT
+    path: zhangtaolab/plant-dnagpt-BPE-promoter
+    source: modelscope
+  - name: Nucleotide Transformer
+    path: zhangtaolab/nucleotide-transformer-v2-100m-promoter
+    source: modelscope
+
+evaluation:
+  batch_size: 32
+  deterministic: true
+  device: auto
+  max_length: 512
+  num_workers: 4
+  seed: 42
+
+metrics: []
+
+output:
+  format: pdf
+  generate_plots: true
+  path: benchmark_results
+  save_attention_maps: false
+  save_embeddings: false
+  save_predictions: true

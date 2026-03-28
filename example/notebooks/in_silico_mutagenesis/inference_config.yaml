@@ -1,0 +1,22 @@
+# Config example
+# Note:
+# task configurations are mandatory for both finetune and inference.
+# when performing finetune or inference, leave the other one as it is.
+task:
+    # 'mask' - mask language model; 'generation' - casual language model;
+    # 'binary' - binary classification; 'multiclass' - multi-class classification; 'multilabel' - multi-label classification;
+    # 'regression' - regression; 'token' - token classification, such as NER;
+    # 'embedding' - get embedding, attention map and token probability
+    task_type: "regression"
+    # Labels information
+    num_labels: 1
+    label_names: ["promoter_strength"]
+    # Threshold to distinguish between true and false sample in binary/multi-class classification tasks
+    threshold: 0.5
+inference:
+    batch_size: 16
+    max_length: 512
+    device: "auto"
+    num_workers: 4
+    use_fp16: False
+    output_dir: "./results_mutations"
