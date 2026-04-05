@@ -1,0 +1,11 @@
+inference:
+  batch_size: 16
+  device: auto
+  max_length: 512
+  num_workers: 4
+  output_dir: ./results
+  use_fp16: false
+task:
+  num_labels: 2
+  task_type: binary
+  threshold: 0.5
