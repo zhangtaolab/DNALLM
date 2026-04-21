@@ -113,28 +113,33 @@ DNALLM provides multiple dependency groups for different use cases:
 
 ### Core Dependency Groups
 
-| Dependency Group | Purpose | When to Use |
-|-----------------|---------|-------------|
-| **base** | Development tools + ML libraries | Recommended for most users |
-| **dev** | Complete development environment | For contributors |
-| **test** | Testing environment only | For running tests |
-| **notebook** | Jupyter and Marimo support | For interactive notebooks |
-| **docs** | Documentation building | For building docs |
-| **mcp** | MCP server support | For MCP deployment |
+| Group | Purpose | Includes |
+|-------|---------|----------|
+| **all** | Install all optional dependencies | `base` + `docs` |
+| **base** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
+| **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, flake8, pre-commit, mypy, pandas-stubs) |
+| **test** | Testing environment only | pytest and plugins |
+| **notebook** | Jupyter and Marimo support | Jupyter Lab, Marimo |
+| **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |
+| **mcp** | MCP server support | Included in core dependencies (no extra install needed) |
 
-> **Note:** Core ML libraries (torch, transformers, datasets, peft, accelerate) are installed automatically as main dependencies. The groups above add additional functionality.
+> **Note:** `mcp` is an empty extra because MCP dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`) are already part of the core dependencies. You can still use `.[mcp]` for clarity but it won't install additional packages.
 
-### Hardware-Specific Groups
+### Hardware-Specific Groups (Mutually Exclusive)
 
-| Dependency Group | PyTorch Version | GPU Type | When to Use |
-|-----------------|-----------------|----------|-------------|
+> **Warning:** These groups are mutually exclusive. You MUST choose exactly one. Combining multiple hardware groups will cause conflicts.
+
+| Group | PyTorch Version | GPU Type | When to Use |
+|-------|----------------|----------|-------------|
 | **cpu** | 2.4.0-2.7 | CPU only | Development without GPU |
 | **cuda121** | 2.2.0-2.7 | NVIDIA (older) | Volta/Turing/Ampere early |
 | **cuda124** | 2.4.0-2.7 | NVIDIA (recommended) | Most modern GPUs |
 | **cuda126** | 2.6.0-2.7 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
-| **cuda128** | 2.7.0+ | NVIDIA (cutting-edge) | Latest hardware |
+| **cuda128** | 2.6.0-2.7 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
 | **rocm** | 2.5.0-2.7 | AMD GPUs | AMD GPU users |
-| **mamba** | 2.4.0-2.7 | NVIDIA + Mamba | For Mamba architecture models |
+| **mamba** | 2.6.0-2.7 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
+
+> **Note:** Hardware groups are NOT included in `all` because they conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
 
 ## Installation Scenarios
 
@@ -147,8 +152,8 @@ For development and testing without GPU acceleration:
 conda create -n dnallm-cpu python=3.12 -y
 conda activate dnallm-cpu
 
-# Install base dependencies and CPU version
-uv pip install -e '.[base,cpu]'
+# Install all dependencies and CPU version
+uv pip install -e '.[all,cpu]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -166,8 +171,8 @@ nvidia-smi
 conda create -n dnallm-gpu python=3.12 -y
 conda activate dnallm-gpu
 
-# Install base dependencies and CUDA 12.4 support
-uv pip install -e '.[base,cuda124]'
+# Install all dependencies and CUDA 12.4 support
+uv pip install -e '.[all,cuda124]'
 
 # Verify installation
 python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
@@ -182,7 +187,7 @@ For models with Mamba architecture (Plant DNAMamba, Caduceus, Jamba-DNA):
 conda create -n dnallm-mamba python=3.12 -y
 conda activate dnallm-mamba
 
-# Install base dependencies
+# Install base dependencies first
 uv pip install -e '.[base]'
 
 # Install Mamba support (requires GPU)
@@ -201,8 +206,8 @@ For contributors and developers:
 conda create -n dnallm-dev python=3.12 -y
 conda activate dnallm-dev
 
-# Install complete development dependencies
-uv pip install -e '.[dev,notebook,docs,mcp,cuda124]'
+# Install all dependencies + CUDA support
+uv pip install -e '.[all,cuda124]'
 
 # Verify installation
 python -c "
@@ -223,8 +228,8 @@ For MCP server deployment:
 conda create -n dnallm-mcp python=3.12 -y
 conda activate dnallm-mcp
 
-# Install MCP-related dependencies
-uv pip install -e '.[base,mcp,cuda124]'
+# MCP dependencies are included in core, just install with CUDA support
+uv pip install -e '.[base,cuda124]'
 
 # Verify installation
 python -c 'from dnallm.mcp import server; print("MCP server dependencies installed!")'
