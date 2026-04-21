@@ -115,12 +115,13 @@ DNALLM provides multiple dependency groups for different use cases:
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `base` + `docs` |
+| **all** | Install all optional dependencies | `base` + `docs` + `ui` |
 | **base** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, flake8, pre-commit, mypy, pandas-stubs) |
 | **test** | Testing environment only | pytest and plugins |
 | **notebook** | Jupyter and Marimo support | Jupyter Lab, Marimo |
 | **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |
+| **ui** | Gradio web interface | Gradio |
 | **mcp** | MCP server support | Included in core dependencies (no extra install needed) |
 
 > **Note:** `mcp` is an empty extra because MCP dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`) are already part of the core dependencies. You can still use `.[mcp]` for clarity but it won't install additional packages.
