@@ -77,11 +77,11 @@ pip install --upgrade pip
 # Install uv in virtual environment
 pip install uv
 
-# Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+# Install DNALLM with all optional dependencies
+uv pip install -e '.[all]'
 
-# For MCP server support (optional)
-uv pip install -e '.[mcp]'
+# Or install only base development tools
+# uv pip install -e '.[base]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -103,11 +103,11 @@ conda activate dnallm
 # Install uv in conda environment
 conda install uv -c conda-forge
 
-# Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+# Install DNALLM with all optional dependencies
+uv pip install -e '.[all]'
 
-# For MCP server support (optional)
-uv pip install -e '.[mcp]'
+# Or install only base development tools
+# uv pip install -e '.[base]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -115,7 +115,7 @@ python -c "import dnallm; print('DNALLM installed successfully!')"
 
 ### GPU Support
 
-For GPU acceleration, install the appropriate CUDA version:
+For GPU acceleration, install the appropriate CUDA version **after** installing the base package:
 
 ```bash
 # For venv users: activate virtual environment
@@ -127,11 +127,44 @@ source .venv/bin/activate  # Linux/MacOS
 # conda activate dnallm
 
 # CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[cuda124]'
+uv pip install -e '.[all,cuda124]'
 
 # Other supported versions: cpu, cuda121, cuda126, cuda128
 # Nvidia 5090 Please use cuda128 & torch==2.7
-uv pip install -e '.[cuda128]'
+uv pip install -e '.[all,cuda128]'
+```
+
+> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `rocm`, `mamba`) are mutually exclusive. You must choose exactly one. Do NOT combine multiple CUDA versions.
+
+### Dependency Groups
+
+| Group | Purpose | Includes |
+|-------|---------|----------|
+| `all` | Install everything | `base` + `docs` |
+| `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
+| `dev` | Development | `test` + `notebook` + linting/typing tools |
+| `test` | Testing only | pytest and plugins |
+| `notebook` | Interactive notebooks | Jupyter, Marimo |
+| `docs` | Build documentation | mkdocs and plugins |
+| `mcp` | MCP server | (included in core) |
+
+**Hardware groups (mutually exclusive, NOT included in `all`):**
+
+| Group | PyTorch | Use Case |
+|-------|---------|----------|
+| `cpu` | 2.4.0-2.7 | No GPU |
+| `cuda121` | 2.2.0-2.7 | Older NVIDIA GPUs |
+| `cuda124` | 2.4.0-2.7 | Most modern GPUs (recommended) |
+| `cuda126` | 2.6.0-2.7 | Ada/Hopper with Flash Attention |
+| `cuda128` | 2.6.0-2.7 | RTX 5090 and latest hardware |
+| `rocm` | 2.5.0-2.7 | AMD GPUs |
+| `mamba` | 2.6.0-2.7 | Native Mamba architecture (requires CUDA) |
+
+```bash
+# Examples:
+uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
+uv pip install -e '.[base,mamba]'     # Dev tools + native Mamba
+uv pip install -e '.[test,cpu]'       # Testing only, no GPU
 ```
 
 ### Native Mamba Support

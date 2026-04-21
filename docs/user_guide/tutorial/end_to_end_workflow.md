@@ -998,7 +998,7 @@ COPY README.md ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir uv && \
-    uv pip install -e '.[base,mcp,cuda124]' --system
+    uv pip install -e '.[base,cuda124]' --system
 
 # Copy application code
 COPY dnallm/ ./dnallm/

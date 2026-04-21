@@ -8,7 +8,7 @@
 
 ```bash
 # Install without the [mamba] extra
-uv pip install -e '.[base,mcp,dev,notebook]'
+uv pip install -e '.[base]'
 ```
 
 Then load a Mamba model through `transformers` (cpu only) as usual. Note that this fallback path is significantly slower than the optimized `mamba-ssm` kernels (which require Linux + CUDA).
