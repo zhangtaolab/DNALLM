@@ -59,7 +59,7 @@ source .venv/bin/activate  # Linux/macOS
 .venv\Scripts\activate     # Windows
 
 # Install DNALLM in development mode
-uv pip install -e '.[dev,test]'
+uv pip install -e '.[dev]'
 ```
 
 ### 2. Pre-commit Hooks (Optional)
@@ -627,7 +627,7 @@ We follow [Semantic Versioning](https://semver.org/):
 # Setup development environment
 uv venv
 source .venv/bin/activate
-uv pip install -e '.[dev,test]'
+uv pip install -e '.[dev]'
 
 # Pre-commit validation (run before every commit)
 # Option 1: Use automated script (recommended, code quality only)
@@ -658,7 +658,7 @@ mkdocs serve
 1. **Code check script fails**:
    - Make sure you're in the DNALLM root directory
    - Ensure virtual environment is activated: `source .venv/bin/activate`
-   - Install dependencies: `uv pip install -e '.[dev,test]'`
+   - Install dependencies: `uv pip install -e '.[dev]'`
 
 2. **Ruff formatting errors**:
    - Auto-fix: `python scripts/check_code.py --fix`
