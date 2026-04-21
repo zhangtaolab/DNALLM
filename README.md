@@ -140,12 +140,13 @@ uv pip install -e '.[all,cuda128]'
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `docs` |
+| `all` | Install everything | `base` + `docs` + `ui` |
 | `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
 | `docs` | Build documentation | mkdocs and plugins |
+| `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP server | (included in core) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
