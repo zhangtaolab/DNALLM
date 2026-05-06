@@ -56,11 +56,14 @@ conda activate dnallm
 # Install uv in conda environment
 conda install uv -c conda-forge
 
-# Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+# Install DNALLM with all optional dependencies
+uv pip install -e '.[all]'
 
-# For MCP server support (optional)
-uv pip install -e '.[mcp]'
+# Or install only core + base development tools
+# uv pip install -e '.[base]'
+
+# Add GPU support (choose ONE: cpu, cuda121, cuda124, cuda126, cuda128, rocm)
+# uv pip install -e '.[all,cuda124]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
