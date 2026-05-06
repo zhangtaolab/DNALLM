@@ -46,8 +46,11 @@ Getting DNALLM installed is the first step. We recommend using `uv`, a fast Pyth
     # Install uv, the fast package manager
     pip install uv
 
-    # Install DNALLM and its core dependencies
-    uv pip install -e '.[base]'
+    # Install DNALLM and all optional dependencies
+    uv pip install -e '.[all]'
+
+    # Or install only base development tools
+    # uv pip install -e '.[base]'
     ```
 
 4.  **Verify the Installation**
