@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 325.98 325.98">
+  <!-- Generator: Adobe Illustrator 29.0.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 192)  -->
+  <defs>
+    <style>
+      .st0 {
+        stroke: #ffffff;
+      }
+
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10 {
+        fill: none;
+      }
+
+      .st0, .st2, .st3, .st6 {
+        stroke-miterlimit: 10;
+      }
+
+      .st0, .st6 {
+        stroke-dasharray: 6.8;
+        stroke-width: 6.8px;
+      }
+
+      .st1 {
+        stroke: #ffffff;
+        stroke-width: 9.4px;
+      }
+
+      .st1, .st4, .st5, .st7, .st8, .st9, .st10 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .st2 {
+        stroke: #ffffff;
+        stroke-width: 9.96px;
+      }
+
+      .st3 {
+        stroke: #ffffff;
+        stroke-dasharray: 6.92;
+        stroke-width: 6.92px;
+      }
+
+      .st4 {
+        stroke: #ffffff;
+      }
+
+      .st4, .st5, .st7, .st9, .st10 {
+        stroke-width: 11.29px;
+      }
+
+      .st11 {
+        fill: #ffffff;
+        font-family: Courier-Bold, Courier;
+        font-size: 11.29px;
+      }
+
+      .st11, .st12, .st13 {
+        isolation: isolate;
+      }
+
+      .st11, .st13 {
+        font-weight: 700;
+      }
+
+      .st5 {
+        stroke: #ffffff;
+      }
+
+      .st6 {
+        stroke: #ffffff;
+      }
+
+      .st7 {
+        stroke: #ffffff;
+      }
+
+      .st8 {
+        stroke: #ffffff;
+        stroke-width: 16.93px;
+      }
+
+      .st9 {
+        stroke: #ffffff;
+      }
+
+      .st13 {
+        fill: #ffffff;
+        font-family: Helvetica-BoldOblique, Helvetica;
+        font-size: 53px;
+        font-style: oblique;
+      }
+
+      .st10 {
+        stroke: #ffffff;
+      }
+    </style>
+  </defs>
+  <line class="st10" x1="21.07" y1="44.22" x2="111.71" y2="44.22"/>
+  <line class="st4" x1="21.07" y1="280.72" x2="111.71" y2="280.72"/>
+  <line class="st9" x1="29.06" y1="130.41" x2="103.71" y2="130.41"/>
+  <line class="st5" x1="15.73" y1="162.47" x2="117.04" y2="162.47"/>
+  <line class="st7" x1="29.06" y1="194.53" x2="103.71" y2="194.53"/>
+  <path class="st8" d="M119.34,312.52s9.61-34.52-51.3-79c-45.66-33.35-55.15-54.51-55.15-71.05s9.49-37.71,55.15-71.05C128.95,46.93,119.34,12.42,119.34,12.42"/>
+  <path class="st1" d="M119.34,312.52s9.61-34.52-51.3-79c-45.66-33.35-55.15-54.51-55.15-71.05s9.49-37.71,55.15-71.05C128.95,46.93,119.34,12.42,119.34,12.42"/>
+  <path class="st8" d="M13.44,312.52s-9.61-34.52,51.3-79c45.66-33.35,55.15-54.51,55.15-71.05s-9.49-37.71-55.15-71.05C3.83,46.93,13.44,12.42,13.44,12.42"/>
+  <path class="st1" d="M13.44,312.52s-9.61-34.52,51.3-79c45.66-33.35,55.15-54.51,55.15-71.05s-9.49-37.71-55.15-71.05C3.83,46.93,13.44,12.42,13.44,12.42"/>
+  <g class="st12">
+    <g class="st12">
+      <text class="st11" transform="translate(39.3 48.34)"><tspan x="0" y="0">01011010</tspan></text>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <text class="st11" transform="translate(39.3 134.55)"><tspan x="0" y="0">01010100</tspan></text>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <text class="st11" transform="translate(39.3 166.47)"><tspan x="0" y="0">01001100</tspan></text>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <text class="st11" transform="translate(39.3 197.97)"><tspan x="0" y="0">01000001</tspan></text>
+    </g>
+  </g>
+  <g class="st12">
+    <g class="st12">
+      <text class="st11" transform="translate(39.3 284.18)"><tspan x="0" y="0">01000010</tspan></text>
+    </g>
+  </g>
+  <rect class="st2" x="199.86" y="103.22" width="118.51" height="118.5" rx="9.68" ry="9.68"/>
+  <g class="st12">
+    <g class="st12">
+      <text class="st13" transform="translate(199.86 183.58)"><tspan x="0" y="0">LLM</tspan></text>
+    </g>
+  </g>
+  <polyline class="st6" points="133.38 44.22 259.12 44.22 259.12 95.09"/>
+  <line class="st3" x1="133.38" y1="162.47" x2="187.98" y2="162.47"/>
+  <polyline class="st0" points="133.38 280.72 259.12 280.72 259.12 230.37"/>
+</svg>
