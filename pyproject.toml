@@ -433,6 +433,8 @@ markers = [
     "utils: marks utility function tests",
     "data: marks data handling tests"
 ]
+console_output_style = "progress"
+minversion = "6.0"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
