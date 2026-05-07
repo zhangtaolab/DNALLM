@@ -355,7 +355,6 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
-    "transformers.*",
     "datasets.*",
     "altair.*",
     "umap.*",
@@ -386,7 +385,6 @@ module = [
     "sklearn.*.*",
     "scikit_learn.*",
     "scikit_learn.*.*",
-    "pandas.*",
     "numpy.*",
     "torch.*",
     "torch.*.*",
