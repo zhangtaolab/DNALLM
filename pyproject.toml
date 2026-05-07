@@ -78,7 +78,6 @@ Documentation = "https://zhangtaolab.github.io/DNALLM/"
 dev = [
     "dnallm[test,notebook]",
     "ruff==0.15.8",
-    "flake8>=7.0.0",
     "pre-commit>=3.6.0",
     "mypy>=1.15.0",
     "pandas-stubs>=2.3.0",
@@ -251,7 +250,7 @@ exclude = [
 ]
 
 # Same as Black.
-line-length = 79
+line-length = 100
 indent-width = 4
 
 # Assume Python 3.10+
@@ -319,6 +318,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Allow magic values in default arguments
 "**/migrations/*.py" = ["PLR2004"]
+"dnallm/models/modeling_auto.py" = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["dnallm"]
