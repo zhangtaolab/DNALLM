@@ -39,6 +39,7 @@ from .head import (
     MegaDNAMultiScaleHead,
     EVOForSeqClsHead,
 )
+from .losses import FocalLoss
 
 
 logger = get_logger("dnallm.models.model")
@@ -264,39 +265,6 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             # Allow other loss functions that user selected or provided
             if self.config.head_config.get("loss_function") is not None:
                 loss_fct = self.config.head_config["loss_function"]
-
-                class FocalLoss(nn.Module):
-                    def __init__(
-                        self,
-                        alpha=0.25,
-                        gamma=2.0,
-                        reduction="mean",
-                    ):
-                        super().__init__()
-                        self.alpha = alpha  # controls class imbalance
-                        self.gamma = gamma  # focuses on hard examples
-                        self.reduction = reduction
-
-                    def forward(self, inputs, targets):
-                        # Calculate Binary Cross-Entropy Loss for each sample
-                        bce_loss = (
-                            nn.functional.binary_cross_entropy_with_logits(
-                                inputs, targets, reduction="none"
-                            )
-                        )
-                        # Compute pt (model confidence on true class)
-                        pt = torch.exp(-bce_loss)
-                        # Apply the focal adjustment
-                        focal_loss = (
-                            self.alpha * (1 - pt) ** self.gamma * bce_loss
-                        )
-                        # Apply reduction (mean, sum, or no reduction)
-                        if self.reduction == "mean":
-                            return focal_loss.mean()
-                        elif self.reduction == "sum":
-                            return focal_loss.sum()
-                        else:
-                            return focal_loss
 
                 if isinstance(loss_fct, str):
                     loss_fn_kwargs = self.config.head_config.get(
@@ -1077,3 +1045,14 @@ def load_preset_model(
     return load_model_and_tokenizer(
         model_name, task_config, source, use_mirror
     )
+
+
+# Backward compatibility: FocalLoss was previously defined inside forward()
+# Re-export for existing code that imports from this module
+__all__ = [
+    "DNALLMforSequenceClassification",
+    "download_model",
+    "load_model_and_tokenizer",
+    "load_preset_model",
+    "FocalLoss",
+]
