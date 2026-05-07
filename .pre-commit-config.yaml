@@ -1,0 +1,33 @@
+# Pre-commit hooks for DNALLM
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+
+default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff-format
+        entry: ruff format
+        language: system
+        types: [python]
+        pass_filenames: true
+        require_serial: false
+
+      - id: ruff-check
+        name: ruff-check
+        entry: ruff check
+        language: system
+        types: [python]
+        pass_filenames: true
+        require_serial: false
+
+      - id: mypy
+        name: mypy
+        entry: mypy dnallm/ --show-error-codes --pretty
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
