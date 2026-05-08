@@ -119,7 +119,8 @@ def plot_lr_schedule(
     ax.grid(True, alpha=0.3)
 
     # Use log scale if LR spans multiple orders of magnitude
-    if max(learning_rates) / min(learning_rates) > 100:
+    min_lr = min(learning_rates)
+    if min_lr > 0 and max(learning_rates) / min_lr > 100:
         ax.set_yscale("log")
 
     fig.tight_layout()
