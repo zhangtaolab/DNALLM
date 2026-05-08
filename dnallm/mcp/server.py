@@ -48,6 +48,8 @@ from mcp.server.fastmcp import FastMCP
 
 from .config_manager import MCPConfigManager
 from .model_manager import ModelManager
+from ..inference.mutagenesis import Mutagenesis
+from ..inference.interpret import DNAInterpret
 
 
 class DNALLMMCPServer:
@@ -239,6 +241,10 @@ class DNALLMMCPServer:
         self.app.tool()(self._dna_stream_predict)
         self.app.tool()(self._dna_stream_batch_predict)
         self.app.tool()(self._dna_stream_multi_model_predict)
+
+        # Register mutagenesis and interpretation tools
+        self.app.tool()(self._dna_mutagenesis)
+        self.app.tool()(self._dna_interpret)
 
         logger.info("Registered MCP tools successfully")
 
@@ -959,6 +965,372 @@ class DNALLMMCPServer:
             "results": results,
             "streamed": stream_progress,
         }
+
+    async def _dna_mutagenesis(
+        self,
+        sequence: str | None = None,
+        sequences: list[str] | None = None,
+        mutation_type: str = "single_base_substitution",
+        positions: list[int] | None = None,
+        model_name: str = "",
+    ) -> dict[str, Any]:
+        """Perform in silico mutagenesis on DNA sequences.
+
+        This tool evaluates the impact of sequence mutations on model
+        predictions, supporting single base substitutions, multi-base
+        substitutions, deletions, insertions, and exhaustive combinations.
+
+        Args:
+            sequence (str | None): Single DNA sequence to mutate. If provided,
+                it is processed as a one-element list internally.
+            sequences (list[str] | None): List of DNA sequences to mutate.
+                Either sequence or sequences must be provided.
+            mutation_type (str): Type of mutation to perform. One of:
+                "single_base_substitution", "multi_base_substitution",
+                "deletion", "insertion", "combo". Defaults to
+                "single_base_substitution".
+            positions (list[int] | None): 0-based positions to mutate.
+                Required and must be non-empty.
+            model_name (str): Name of the model to use for prediction.
+
+        Returns:
+            dict[str, Any]: Mutagenesis results in MCP format:
+                - On success: Contains 'content', 'original_prediction',
+                  'mutated_prediction', 'delta', 'affected_positions',
+                  'mutation_type', 'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            # Validate mutation type
+            allowed_types = {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "deletion",
+                "insertion",
+                "combo",
+            }
+            if mutation_type not in allowed_types:
+                return {
+                    "error": (
+                        f"Invalid mutation_type: {mutation_type}. "
+                        f"Must be one of: {allowed_types}"
+                    ),
+                    "isError": True,
+                }
+
+            # Validate positions
+            if positions is None or len(positions) == 0:
+                return {
+                    "error": "positions must be a non-empty list of integers",
+                    "isError": True,
+                }
+
+            # Validate sequence input
+            if sequence is None and sequences is None:
+                return {
+                    "error": "Either sequence or sequences must be provided",
+                    "isError": True,
+                }
+
+            # Wrap single sequence as list
+            if sequences is None:
+                sequences = [sequence]
+
+            # Enforce combo limit: n <= 5 (4^5 = 1024 max combos)
+            if mutation_type == "combo" and len(positions) > 5:
+                return {
+                    "error": (
+                        f"Combo mutation supports at most 5 positions "
+                        f"(got {len(positions)}). "
+                        f"Limit: 4^5 = 1024 combinations."
+                    ),
+                    "isError": True,
+                }
+
+            # Get model inference engine
+            inference_engine = self.model_manager.get_inference_engine(
+                model_name
+            )
+            if inference_engine is None:
+                return {
+                    "error": f"Model {model_name} not loaded",
+                    "isError": True,
+                }
+
+            model = inference_engine.model
+            tokenizer = inference_engine.tokenizer
+            config = inference_engine.config
+
+            # Prepare mutagenesis parameters based on mutation type
+            replace_mut = mutation_type in {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "combo",
+            }
+            delete_size = 1 if mutation_type == "deletion" else 0
+            insert_seq = "N" if mutation_type == "insertion" else None
+
+            results = []
+            for seq in sequences:
+                mutagenesis = Mutagenesis(model, tokenizer, config)
+                mutagenesis.mutate_sequence(
+                    seq,
+                    replace_mut=replace_mut,
+                    delete_size=delete_size,
+                    insert_seq=insert_seq,
+                )
+                eval_result = mutagenesis.evaluate(do_pred=True)
+
+                # Extract original and mutated predictions
+                raw = eval_result.get("raw", {})
+                original_prediction = {
+                    "sequence": raw.get("sequence", seq),
+                    "prediction": raw.get("pred", {}),
+                    "score": raw.get("score", 0.0),
+                }
+
+                # Aggregate mutated predictions
+                mutated_entries = [
+                    v for k, v in eval_result.items() if k != "raw"
+                ]
+                mutated_prediction = {
+                    "count": len(mutated_entries),
+                    "predictions": [
+                        {
+                            "sequence": e.get("sequence", ""),
+                            "prediction": e.get("pred", {}),
+                            "logfc": e.get("logfc", 0.0),
+                            "diff": e.get("diff", 0.0),
+                            "score": e.get("score", 0.0),
+                        }
+                        for e in mutated_entries
+                    ],
+                }
+
+                # Compute delta (average logfc and diff)
+                if mutated_entries:
+                    avg_logfc = float(
+                        np.mean(
+                            [
+                                float(np.mean(e.get("logfc", 0)))
+                                if hasattr(e.get("logfc", 0), "__len__")
+                                else float(e.get("logfc", 0))
+                                for e in mutated_entries
+                            ]
+                        )
+                    )
+                    avg_diff = float(
+                        np.mean(
+                            [
+                                float(np.mean(e.get("diff", 0)))
+                                if hasattr(e.get("diff", 0), "__len__")
+                                else float(e.get("diff", 0))
+                                for e in mutated_entries
+                            ]
+                        )
+                    )
+                else:
+                    avg_logfc = 0.0
+                    avg_diff = 0.0
+
+                delta = {
+                    "average_logfc": avg_logfc,
+                    "average_diff": avg_diff,
+                }
+
+                results.append({
+                    "original_prediction": original_prediction,
+                    "mutated_prediction": mutated_prediction,
+                    "delta": delta,
+                })
+
+            # Format response
+            if len(results) == 1:
+                result_payload = results[0]
+            else:
+                result_payload = {
+                    "batch_results": results,
+                    "sequence_count": len(sequences),
+                }
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Mutagenesis complete: {mutation_type} "
+                            f"at positions {positions} using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                **result_payload,
+                "affected_positions": positions,
+                "mutation_type": mutation_type,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in dna_mutagenesis: {e}")
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Mutagenesis error: {e!s}",
+                    }
+                ],
+                "isError": True,
+            }
+
+    async def _dna_interpret(
+        self,
+        sequence: str,
+        model_name: str,
+        method: str = "lig",
+        target_class: int | None = None,
+        max_length: int | None = None,
+    ) -> dict[str, Any]:
+        """Interpret model predictions using attribution methods.
+
+        This tool provides model interpretability by computing attribution
+        scores for each token in a DNA sequence using various Captum methods.
+
+        Args:
+            sequence (str): DNA sequence to interpret.
+            model_name (str): Name of the model to use.
+            method (str): Attribution method. One of: "lig",
+                "deeplift", "occlusion", "feature_ablation",
+                "layer_conductance", "gradient_shap", "noise_tunnel",
+                "integrated_gradients". Defaults to "lig".
+            target_class (int | None): Target class index for attribution.
+                If None, auto-selects the class with maximum probability.
+            max_length (int | None): Maximum token length for tokenizer.
+
+        Returns:
+            dict[str, Any]: Interpretation results in MCP format:
+                - On success: Contains 'content', 'attributions',
+                  'tokens', 'method', 'target_class', 'model_name',
+                  'sequence'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            # Validate and map method names
+            allowed_methods = {
+                "lig",
+                "deeplift",
+                "occlusion",
+                "feature_ablation",
+                "layer_conductance",
+                "gradient_shap",
+                "noise_tunnel",
+                "integrated_gradients",
+            }
+            if method not in allowed_methods:
+                return {
+                    "error": (
+                        f"Invalid method: {method}. "
+                        f"Must be one of: {allowed_methods}"
+                    ),
+                    "isError": True,
+                }
+
+            # Map external method names to internal dispatch names
+            method_map = {
+                "gradient_shap": "gradshap",
+                "integrated_gradients": "lig",
+            }
+            mapped_method = method_map.get(method, method)
+
+            # Get model inference engine
+            inference_engine = self.model_manager.get_inference_engine(
+                model_name
+            )
+            if inference_engine is None:
+                return {
+                    "error": f"Model {model_name} not loaded",
+                    "isError": True,
+                }
+
+            model = inference_engine.model
+            tokenizer = inference_engine.tokenizer
+            config = inference_engine.config
+
+            # Auto-select target class if not provided
+            if target_class is None:
+                pred_result = await self.model_manager.predict_sequence(
+                    model_name, sequence
+                )
+                if pred_result is not None:
+                    # Try to extract probabilities and find max
+                    probs = pred_result.get("probabilities", [])
+                    if probs:
+                        target_class = int(np.argmax(probs))
+                    else:
+                        # Fallback: use class 0
+                        target_class = 0
+                else:
+                    target_class = 0
+
+            # Instantiate interpreter
+            interpreter = DNAInterpret(model, tokenizer, config)
+
+            # Handle layer_conductance: auto-detect embedding layer
+            kwargs = {}
+            if mapped_method == "layer_conductance":
+                target_layer = interpreter._find_embedding_layer()
+                kwargs["target_layer"] = target_layer
+
+            # Run interpretation
+            tokens, attr_scores = interpreter.interpret(
+                input_seq=sequence,
+                method=mapped_method,
+                target=target_class,
+                max_length=max_length,
+                **kwargs,
+            )
+
+            # Normalize attribution scores
+            attr_min = float(np.min(attr_scores))
+            attr_max = float(np.max(attr_scores))
+            attr_range = attr_max - attr_min
+            if attr_range > 0:
+                normalized = (
+                    (attr_scores - attr_min) / (attr_range + 1e-8)
+                ).tolist()
+            else:
+                normalized = np.zeros_like(attr_scores).tolist()
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Interpretation complete: {method} "
+                            f"for class {target_class} using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                "attributions": {
+                    "raw": attr_scores.tolist(),
+                    "normalized": normalized,
+                },
+                "tokens": tokens,
+                "method": method,
+                "target_class": target_class,
+                "model_name": model_name,
+                "sequence": sequence,
+            }
+        except Exception as e:
+            logger.error(f"Error in dna_interpret: {e}")
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Interpretation error: {e!s}",
+                    }
+                ],
+                "isError": True,
+            }
 
     def _create_server_lifespan(self):
         """Create lifespan context manager for server graceful
