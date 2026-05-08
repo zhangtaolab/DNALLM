@@ -972,6 +972,10 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                 # Properly quantized 4-bit weights have shape [N, 1]
                 # Unpacked weights retain their original 2D shape
                 if len(weight_shape) == 2 and weight_shape[1] != 1:
+                    # Only fix layers that are truly uninitialized (no quant_state)
+                    quant_state = getattr(module, "quant_state", None)
+                    if quant_state is not None:
+                        continue
                     logger.warning(
                         f"Fixing improperly quantized layer {name}: "
                         f"{module_type} with shape {weight_shape}"
@@ -979,10 +983,27 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     device = module.weight.device
                     in_features = weight_shape[1]
                     out_features = weight_shape[0]
-                    # Create replacement in float16 to match bnb compute dtype
-                    replacement = nn.Linear(
-                        in_features, out_features, dtype=torch.float16
-                    ).to(device)
+                    # Try to use bnb.nn.Linear4bit with proper compute_dtype if available
+                    try:
+                        import bitsandbytes as bnb
+                        compute_dtype = getattr(module, "compute_dtype", torch.float16)
+                        replacement = bnb.nn.Linear4bit(
+                            in_features,
+                            out_features,
+                            compute_dtype=compute_dtype,
+                        ).to(device)
+                    except Exception:
+                        # Fallback to standard nn.Linear in float16
+                        replacement = nn.Linear(
+                            in_features, out_features, dtype=torch.float16
+                        ).to(device)
+                    # Copy existing weight data if available
+                    with torch.no_grad():
+                        if hasattr(module, "weight") and module.weight is not None:
+                            try:
+                                replacement.weight.copy_(module.weight)
+                            except Exception:
+                                pass  # weight shapes may be incompatible; leave uninitialized
                     # Navigate to parent and replace
                     parts = name.split(".")
                     parent = model
@@ -990,7 +1011,7 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                         parent = getattr(parent, part)
                     setattr(parent, parts[-1], replacement)
                     logger.info(
-                        f"Replaced {name} with standard nn.Linear "
+                        f"Replaced {name} with {type(replacement).__name__} "
                         f"({out_features}, {in_features})"
                     )
 
