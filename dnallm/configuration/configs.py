@@ -224,7 +224,7 @@ class SearchSpaceDistribution(BaseModel):
 
         # Auto-enable log scale for float ranges spanning >10x
         if self.type == "float" and not self.log:
-            if self.high / self.low > 10:
+            if self.low > 0 and self.high / self.low > 10:
                 self.log = True
 
         # Validate step only for int
