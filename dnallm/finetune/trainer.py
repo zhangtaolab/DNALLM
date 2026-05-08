@@ -40,6 +40,7 @@ Usage Example:
     ```
 """
 
+from pathlib import Path
 from typing import Any
 from collections.abc import Callable
 import torch
@@ -78,6 +79,12 @@ class DNATrainer:
             datasets=datasets
         )
         metrics = trainer.train()
+        ```
+
+    Plotting:
+        After training, generate visualization plots:
+        ```python
+        trainer.plot_history(output_dir="./plots")
         ```
     """
 
@@ -328,3 +335,44 @@ class DNATrainer:
             test_dataset = self.datasets.dataset["test"]
             result = self.trainer.predict(test_dataset)
         return result
+
+    def plot_history(
+        self,
+        output_dir: str | None = None,
+        plot_loss: bool = True,
+        plot_lr: bool = True,
+    ) -> dict[str, Path]:
+        """Generate training visualization plots from trainer state.
+
+        This is a convenience method that delegates to the standalone
+        plotting utilities in dnallm.utils.training_plots.
+
+        Args:
+            output_dir: Directory to save plots. Defaults to training output_dir.
+            plot_loss: Whether to generate loss curve plot.
+            plot_lr: Whether to generate learning rate schedule plot.
+
+        Returns:
+            Dictionary mapping plot names to saved file paths.
+        """
+        from pathlib import Path
+
+        from dnallm.utils.training_plots import plot_loss_curve, plot_lr_schedule
+
+        output_dir = Path(output_dir or self.train_config.output_dir or ".")
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        results: dict[str, Path] = {}
+        log_history = self.trainer.state.log_history
+
+        if plot_loss:
+            loss_path = output_dir / "training_loss.png"
+            plot_loss_curve(log_history, output_path=loss_path)
+            results["loss_curve"] = loss_path
+
+        if plot_lr:
+            lr_path = output_dir / "lr_schedule.png"
+            plot_lr_schedule(log_history, output_path=lr_path)
+            results["lr_schedule"] = lr_path
+
+        return results
