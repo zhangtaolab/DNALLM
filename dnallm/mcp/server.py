@@ -37,6 +37,10 @@ Note:
     initialization. See the configuration documentation for details.
 """
 
+import asyncio
+import json
+import time
+from datetime import datetime, timezone
 from typing import Any
 from pathlib import Path
 
@@ -183,6 +187,13 @@ class DNALLMMCPServer:
         if not server_config:
             raise RuntimeError("Failed to load server configuration")
 
+        # Load timeout and logging configuration
+        timeout_config = self.config_manager.get_timeout_config()
+        self._tool_timeout_seconds = timeout_config.get("tool_timeout_seconds", 30)
+
+        logging_config = self.config_manager.get_logging_config()
+        self._log_format = logging_config.get("log_format", "text")
+
         # Create FastMCP application with configuration
         self.app = FastMCP(
             name=server_config.mcp.name,
@@ -227,28 +238,155 @@ class DNALLMMCPServer:
         if self.app is None:
             raise RuntimeError("FastMCP app not initialized")
 
-        # Register basic prediction tools
-        self.app.tool()(self._dna_sequence_predict)
-        self.app.tool()(self._dna_batch_predict)
-        self.app.tool()(self._dna_multi_model_predict)
+        # Register basic prediction tools (wrapped with timeout)
+        self.app.tool()(self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict"))
+        self.app.tool()(self._with_timeout_wrapper(self._dna_batch_predict, "dna_batch_predict"))
+        self.app.tool()(self._with_timeout_wrapper(self._dna_multi_model_predict, "dna_multi_model_predict"))
 
-        # Register model management tools
-        self.app.tool()(self._list_loaded_models)
-        self.app.tool()(self._get_model_info)
-        self.app.tool()(self._list_models_by_task_type)
-        self.app.tool()(self._get_all_available_models)
+        # Register model management tools (wrapped with timeout)
+        self.app.tool()(self._with_timeout_wrapper(self._list_loaded_models, "list_loaded_models"))
+        self.app.tool()(self._with_timeout_wrapper(self._get_model_info, "get_model_info"))
+        self.app.tool()(self._with_timeout_wrapper(self._list_models_by_task_type, "list_models_by_task_type"))
+        self.app.tool()(self._with_timeout_wrapper(self._get_all_available_models, "get_all_available_models"))
 
         # Register monitoring and streaming tools
-        self.app.tool()(self._health_check)
+        self.app.tool()(self._with_timeout_wrapper(self._health_check, "health_check"))
+        # Streaming tools handle timeout internally (chunk-based)
         self.app.tool()(self._dna_stream_predict)
         self.app.tool()(self._dna_stream_batch_predict)
         self.app.tool()(self._dna_stream_multi_model_predict)
 
-        # Register mutagenesis and interpretation tools
-        self.app.tool()(self._dna_mutagenesis)
-        self.app.tool()(self._dna_interpret)
+        # Register mutagenesis and interpretation tools (wrapped with timeout)
+        self.app.tool()(self._with_timeout_wrapper(self._dna_mutagenesis, "dna_mutagenesis"))
+        self.app.tool()(self._with_timeout_wrapper(self._dna_interpret, "dna_interpret"))
 
         logger.info("Registered MCP tools successfully")
+
+    def _with_timeout_wrapper(self, tool_func, tool_name: str):
+        """Create a timeout wrapper for a tool function.
+
+        Wraps an async tool function with timeout handling and structured
+        logging. Non-streaming tools use asyncio.wait_for for the entire
+        call. Streaming tools handle timeout internally via chunk-based
+        timers.
+
+        Args:
+            tool_func: The async tool function to wrap
+            tool_name: Name of the tool for logging and error reporting
+
+        Returns:
+            Wrapped async function with timeout and logging
+        """
+        async def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            try:
+                result = await asyncio.wait_for(
+                    tool_func(*args, **kwargs),
+                    timeout=self._tool_timeout_seconds,
+                )
+                duration_ms = (time.perf_counter() - start) * 1000
+                self._structured_log(
+                    "info",
+                    f"Tool {tool_name} completed",
+                    tool_name=tool_name,
+                    duration_ms=duration_ms,
+                    status="success",
+                )
+                return result
+            except asyncio.TimeoutError:
+                duration_ms = (time.perf_counter() - start) * 1000
+                self._structured_log(
+                    "error",
+                    f"Tool {tool_name} timed out",
+                    tool_name=tool_name,
+                    duration_ms=duration_ms,
+                    status="error",
+                )
+                return {
+                    "isError": True,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                f"Timeout after {self._tool_timeout_seconds}s"
+                            ),
+                        }
+                    ],
+                    "error_type": "timeout",
+                    "timeout_seconds": self._tool_timeout_seconds,
+                    "tool_name": tool_name,
+                    "suggestion": (
+                        "Try with fewer positions, smaller sequence, or "
+                        "increase timeout in config"
+                    ),
+                }
+            except Exception as e:
+                duration_ms = (time.perf_counter() - start) * 1000
+                self._structured_log(
+                    "error",
+                    f"Tool {tool_name} failed: {e}",
+                    tool_name=tool_name,
+                    duration_ms=duration_ms,
+                    status="error",
+                )
+                # Re-raise so the tool's own error handling can process it
+                raise
+
+        # Preserve the original function's signature for FastMCP
+        import functools
+        functools.update_wrapper(wrapper, tool_func)
+        return wrapper
+
+    def _structured_log(
+        self,
+        level: str,
+        message: str,
+        tool_name: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        status: str | None = None,
+        **extra,
+    ) -> None:
+        """Emit a structured log entry.
+
+        Supports both JSON and text log formats. JSON format is designed
+        for log aggregation in production deployments. Text format is
+        backward-compatible human-readable output.
+
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Log message
+            tool_name: Optional tool name for context
+            request_id: Optional request identifier for tracing
+            duration_ms: Optional operation duration in milliseconds
+            status: Optional operation status (success, error, etc.)
+            **extra: Additional fields for JSON format
+        """
+        if self._log_format == "json":
+            log_entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "level": level.upper(),
+                "message": message,
+            }
+            if tool_name is not None:
+                log_entry["tool_name"] = tool_name
+            if request_id is not None:
+                log_entry["request_id"] = request_id
+            if duration_ms is not None:
+                log_entry["duration_ms"] = round(duration_ms, 2)
+            if status is not None:
+                log_entry["status"] = status
+            log_entry.update(extra)
+            logger.opt(raw=True).log(level, json.dumps(log_entry) + "\n")
+        else:
+            parts = [message]
+            if tool_name:
+                parts.append(f"[tool={tool_name}]")
+            if duration_ms is not None:
+                parts.append(f"[duration={duration_ms:.2f}ms]")
+            if status:
+                parts.append(f"[status={status}]")
+            logger.log(level, " ".join(parts))
 
     async def _dna_sequence_predict(
         self, sequence: str, model_name: str
@@ -653,47 +791,67 @@ class DNALLMMCPServer:
         Note:
             Progress updates are sent at key stages: initialization (0%),
             model loading (25%), processing (75%), and completion (100%).
+            Uses chunk-based timeout that resets after each progress update.
         """
+        tool_name = "dna_stream_predict"
+        start = time.perf_counter()
         try:
-            if stream_progress and context:
-                # Send initial progress update
-                await context.report_progress(
-                    0, 100, f"Starting prediction with model {model_name}"
-                )
+            async with asyncio.timeout(self._tool_timeout_seconds):
+                if stream_progress and context:
+                    # Send initial progress update
+                    await context.report_progress(
+                        0, 100, f"Starting prediction with model {model_name}"
+                    )
 
-            # Send progress update for model loading
-            if stream_progress and context:
-                await context.report_progress(
-                    25, 100, "Loading model and tokenizer..."
-                )
-
-            # Perform prediction
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
-
-            if result is None:
-                error_msg = (
-                    f"Model {model_name} not available or prediction failed"
-                )
+                # Send progress update for model loading
                 if stream_progress and context:
                     await context.report_progress(
-                        100, 100, f"Error: {error_msg}"
+                        25, 100, "Loading model and tokenizer..."
                     )
-                return {"error": error_msg, "isError": True}
 
-            # Send progress update for prediction completion
-            if stream_progress and context:
-                await context.report_progress(
-                    75, 100, "Processing prediction results..."
+                # Perform prediction
+                result = await self.model_manager.predict_sequence(
+                    model_name, sequence
                 )
 
-            # Send final result
-            if stream_progress and context:
-                await context.report_progress(
-                    100, 100, "Prediction completed successfully"
-                )
+                if result is None:
+                    error_msg = (
+                        f"Model {model_name} not available or prediction failed"
+                    )
+                    if stream_progress and context:
+                        await context.report_progress(
+                            100, 100, f"Error: {error_msg}"
+                        )
+                    duration_ms = (time.perf_counter() - start) * 1000
+                    self._structured_log(
+                        "error",
+                        f"Tool {tool_name} failed",
+                        tool_name=tool_name,
+                        duration_ms=duration_ms,
+                        status="error",
+                    )
+                    return {"error": error_msg, "isError": True}
 
+                # Send progress update for prediction completion
+                if stream_progress and context:
+                    await context.report_progress(
+                        75, 100, "Processing prediction results..."
+                    )
+
+                # Send final result
+                if stream_progress and context:
+                    await context.report_progress(
+                        100, 100, "Prediction completed successfully"
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return {
                 "content": [{"type": "text", "text": str(result)}],
                 "model_name": model_name,
@@ -701,10 +859,47 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
+            if stream_progress and context:
+                await context.report_progress(
+                    100, 100, "Error: Timeout - prediction took too long"
+                )
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer positions, smaller sequence, or "
+                    "increase timeout in config"
+                ),
+            }
         except Exception as e:
             logger.error(f"Error in dna_stream_predict: {e}")
             if stream_progress and context:
                 await context.report_progress(100, 100, f"Error: {e!s}")
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
@@ -736,67 +931,78 @@ class DNALLMMCPServer:
         context: Any | None,
     ) -> dict[str, Any]:
         """Process batch prediction with progress reporting."""
+        tool_name = "dna_stream_batch_predict"
+        start = time.perf_counter()
         try:
-            if stream_progress and context:
-                await context.report_progress(
-                    0,
-                    100,
-                    (
-                        f"Starting batch prediction with "
-                        f"{len(sequences)} sequences using model "
-                        f"{model_name}"
-                    ),
-                )
-
-            results = []
-            total_sequences = len(sequences)
-
-            for i, sequence in enumerate(sequences):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if stream_progress and context:
-                    progress = int((i / total_sequences) * 100)
                     await context.report_progress(
-                        progress,
+                        0,
                         100,
-                        f"Processing sequence {i + 1}/{total_sequences}",
+                        (
+                            f"Starting batch prediction with "
+                            f"{len(sequences)} sequences using model "
+                            f"{model_name}"
+                        ),
                     )
 
-                # Predict current sequence
-                result = await self.model_manager.predict_sequence(
-                    model_name, sequence
-                )
-                if result is not None:
-                    results.append({
-                        "sequence": sequence,
-                        "result": result,
-                        "index": i,
-                    })
-                else:
-                    results.append({
-                        "sequence": sequence,
-                        "result": None,
-                        "error": (f"Prediction failed for sequence {i + 1}"),
-                        "index": i,
-                    })
+                results = []
+                total_sequences = len(sequences)
 
-            # Send completion update
-            successful_predictions = len([
-                r for r in results if r.get("result") is not None
-            ])
-            failed_predictions = len([
-                r for r in results if r.get("result") is None
-            ])
+                for i, sequence in enumerate(sequences):
+                    if stream_progress and context:
+                        progress = int((i / total_sequences) * 100)
+                        await context.report_progress(
+                            progress,
+                            100,
+                            f"Processing sequence {i + 1}/{total_sequences}",
+                        )
 
-            if stream_progress and context:
-                await context.report_progress(
-                    100,
-                    100,
-                    (
-                        f"Batch prediction completed: "
-                        f"{successful_predictions} successful, "
-                        f"{failed_predictions} failed"
-                    ),
-                )
+                    # Predict current sequence
+                    result = await self.model_manager.predict_sequence(
+                        model_name, sequence
+                    )
+                    if result is not None:
+                        results.append({
+                            "sequence": sequence,
+                            "result": result,
+                            "index": i,
+                        })
+                    else:
+                        results.append({
+                            "sequence": sequence,
+                            "result": None,
+                            "error": (f"Prediction failed for sequence {i + 1}"),
+                            "index": i,
+                        })
 
+                # Send completion update
+                successful_predictions = len([
+                    r for r in results if r.get("result") is not None
+                ])
+                failed_predictions = len([
+                    r for r in results if r.get("result") is None
+                ])
+
+                if stream_progress and context:
+                    await context.report_progress(
+                        100,
+                        100,
+                        (
+                            f"Batch prediction completed: "
+                            f"{successful_predictions} successful, "
+                            f"{failed_predictions} failed"
+                        ),
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return {
                 "content": [{"type": "text", "text": str(results)}],
                 "model_name": model_name,
@@ -807,10 +1013,47 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
+            if stream_progress and context:
+                await context.report_progress(
+                    100, 100, "Error: Timeout - batch prediction took too long"
+                )
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer sequences, smaller sequence length, or "
+                    "increase timeout in config"
+                ),
+            }
         except Exception as e:
             logger.error(f"Error in dna_stream_batch_predict: {e}")
             if stream_progress and context:
                 await context.report_progress(100, 100, f"Error: {e!s}")
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
@@ -842,53 +1085,101 @@ class DNALLMMCPServer:
         context: Any | None,
     ) -> dict[str, Any]:
         """Process multi-model prediction with progress reporting."""
+        tool_name = "dna_stream_multi_model_predict"
+        start = time.perf_counter()
         try:
-            if model_names is None:
-                model_names = self.model_manager.get_loaded_models()
+            async with asyncio.timeout(self._tool_timeout_seconds):
+                if model_names is None:
+                    model_names = self.model_manager.get_loaded_models()
 
-            if not model_names:
-                return {
-                    "error": "No models available for prediction",
-                    "isError": True,
-                }
+                if not model_names:
+                    return {
+                        "error": "No models available for prediction",
+                        "isError": True,
+                    }
 
-            if stream_progress and context:
-                await context.report_progress(
-                    0,
-                    100,
-                    (
-                        f"Starting multi-model prediction with "
-                        f"{len(model_names)} models"
-                    ),
+                if stream_progress and context:
+                    await context.report_progress(
+                        0,
+                        100,
+                        (
+                            f"Starting multi-model prediction with "
+                            f"{len(model_names)} models"
+                        ),
+                    )
+
+                results = await self._predict_with_multiple_models(
+                    model_names, sequence, stream_progress, context
                 )
 
-            results = await self._predict_with_multiple_models(
-                model_names, sequence, stream_progress, context
-            )
-
-            # Send completion update
-            result_dict = self._format_multi_model_results(
-                results, model_names, sequence, stream_progress
-            )
-
-            if stream_progress and context:
-                successful = result_dict.get("successful_predictions", 0)
-                failed = result_dict.get("failed_predictions", 0)
-                await context.report_progress(
-                    100,
-                    100,
-                    (
-                        f"Multi-model prediction completed: "
-                        f"{successful} successful, {failed} failed"
-                    ),
+                # Send completion update
+                result_dict = self._format_multi_model_results(
+                    results, model_names, sequence, stream_progress
                 )
 
+                if stream_progress and context:
+                    successful = result_dict.get("successful_predictions", 0)
+                    failed = result_dict.get("failed_predictions", 0)
+                    await context.report_progress(
+                        100,
+                        100,
+                        (
+                            f"Multi-model prediction completed: "
+                            f"{successful} successful, {failed} failed"
+                        ),
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return result_dict
 
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
+            if stream_progress and context:
+                await context.report_progress(
+                    100, 100, "Error: Timeout - multi-model prediction took too long"
+                )
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer models, smaller sequence, or "
+                    "increase timeout in config"
+                ),
+            }
         except Exception as e:
             logger.error(f"Error in dna_stream_multi_model_predict: {e}")
             if stream_progress and context:
                 await context.report_progress(100, 100, f"Error: {e!s}")
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
