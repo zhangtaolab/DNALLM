@@ -410,6 +410,165 @@ class TestTrainerRealModel(unittest.TestCase):
             print(f"❌ Prediction failed: {e}")
             self.fail(f"Prediction failed: {e}")
 
+    @pytest.mark.slow
+    def test_early_stopping_stops_before_full_epochs(self):
+        """Test that early stopping stops training before num_train_epochs."""
+        try:
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
+            from dnallm.configuration.configs import (
+                CallbackConfig, EarlyStoppingConfig
+            )
+
+            print("Testing early stopping...")
+
+            # Load model and tokenizer
+            model_name = "zhangtaolab/plant-dnabert-BPE"
+            model, tokenizer = load_model_and_tokenizer(
+                model_name,
+                task_config=self.configs["task"],
+                source="modelscope",
+            )
+
+            # Load and sample datasets
+            data_name = "zhangtaolab/plant-multi-species-core-promoters"
+            datasets = DNADataset.from_modelscope(
+                data_name,
+                seq_col="sequence",
+                label_col="label",
+                tokenizer=tokenizer,
+                max_length=512,
+            )
+            datasets.encode_sequences()
+            sampled_datasets = datasets.sampling(0.05, overwrite=True)
+
+            # Configure training with early stopping
+            # Clone config to avoid modifying class-level config
+            import copy
+            test_config = copy.deepcopy(self.configs)
+            test_config["finetune"].num_train_epochs = 3
+            test_config["finetune"].eval_strategy = "steps"
+            test_config["finetune"].eval_steps = 10
+            test_config["finetune"].logging_steps = 10
+            test_config["finetune"].max_steps = 60  # Limit total steps for speed
+            test_config["finetune"].load_best_model_at_end = True
+            test_config["finetune"].metric_for_best_model = "eval_loss"
+            test_config["finetune"].callbacks = CallbackConfig(
+                early_stopping=EarlyStoppingConfig(patience=1, threshold=0.0)
+            )
+
+            trainer = DNATrainer(
+                model=model, config=test_config, datasets=sampled_datasets
+            )
+
+            metrics = trainer.train()
+
+            # Verify training stopped early.
+            # With patience=1, eval every 10 steps, and max_steps=60,
+            # training should stop after ~20-30 steps (first eval + 1 patience).
+            # We assert it stopped before 50 steps to give margin.
+            actual_steps = trainer.trainer.state.global_step
+            print(f"Training stopped at step: {actual_steps}")
+            self.assertLess(
+                actual_steps,
+                50,
+                f"Early stopping should have stopped before step 50, but stopped at {actual_steps}"
+            )
+
+            # Verify early stopping callback was present
+            callback_names = [type(c).__name__ for c in trainer.trainer.callback_handler.callbacks]
+            self.assertIn("EarlyStoppingCallback", callback_names)
+            print("Early stopping test passed!")
+
+            del trainer
+            del model
+            del tokenizer
+            del datasets
+            del sampled_datasets
+
+        except Exception as e:
+            print(f"Early stopping test failed: {e}")
+            import traceback
+            traceback.print_exc()
+            self.fail(f"Early stopping test failed: {e}")
+
+    @pytest.mark.slow
+    def test_no_early_stopping_runs_full_epochs(self):
+        """Test that training runs full epochs when early stopping is disabled."""
+        try:
+            from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
+            from dnallm.configuration.configs import (
+                CallbackConfig, EarlyStoppingConfig
+            )
+
+            print("Testing no early stopping...")
+
+            # Load model and tokenizer
+            model_name = "zhangtaolab/plant-dnabert-BPE"
+            model, tokenizer = load_model_and_tokenizer(
+                model_name,
+                task_config=self.configs["task"],
+                source="modelscope",
+            )
+
+            # Load and sample datasets
+            data_name = "zhangtaolab/plant-multi-species-core-promoters"
+            datasets = DNADataset.from_modelscope(
+                data_name,
+                seq_col="sequence",
+                label_col="label",
+                tokenizer=tokenizer,
+                max_length=512,
+            )
+            datasets.encode_sequences()
+            sampled_datasets = datasets.sampling(0.05, overwrite=True)
+
+            # Configure training WITHOUT early stopping (patience=None)
+            import copy
+            test_config = copy.deepcopy(self.configs)
+            test_config["finetune"].num_train_epochs = 1
+            test_config["finetune"].eval_strategy = "steps"
+            test_config["finetune"].eval_steps = 10
+            test_config["finetune"].logging_steps = 10
+            test_config["finetune"].max_steps = 30  # Limit total steps for speed
+            test_config["finetune"].load_best_model_at_end = False
+            test_config["finetune"].metric_for_best_model = "eval_loss"
+            test_config["finetune"].callbacks = CallbackConfig(
+                early_stopping=EarlyStoppingConfig(patience=None, threshold=0.0)
+            )
+
+            trainer = DNATrainer(
+                model=model, config=test_config, datasets=sampled_datasets
+            )
+
+            metrics = trainer.train()
+
+            # Verify training ran for the full step count.
+            # With max_steps=30 and no early stopping, should run all 30 steps.
+            actual_steps = trainer.trainer.state.global_step
+            print(f"Training completed at step: {actual_steps}")
+            self.assertEqual(
+                actual_steps,
+                30,
+                f"Without early stopping, training should complete all 30 steps, but stopped at {actual_steps}"
+            )
+
+            # Verify early stopping callback was NOT present
+            callback_names = [type(c).__name__ for c in trainer.trainer.callback_handler.callbacks]
+            self.assertNotIn("EarlyStoppingCallback", callback_names)
+            print("No early stopping test passed!")
+
+            del trainer
+            del model
+            del tokenizer
+            del datasets
+            del sampled_datasets
+
+        except Exception as e:
+            print(f"No early stopping test failed: {e}")
+            import traceback
+            traceback.print_exc()
+            self.fail(f"No early stopping test failed: {e}")
+
     @classmethod
     def tearDownClass(cls):
         """Clean up test environment."""
