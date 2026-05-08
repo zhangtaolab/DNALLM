@@ -13,11 +13,13 @@ Key Components:
 __version__ = "0.1.0"
 __author__ = "Zhangtaolab"
 
+from .client import DNALLMMCPClient
 from .server import DNALLMMCPServer
 from .config_manager import MCPConfigManager
 from .model_manager import ModelManager
 
 __all__ = [
+    "DNALLMMCPClient",
     "DNALLMMCPServer",
     "MCPConfigManager",
     "ModelManager",
