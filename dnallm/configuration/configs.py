@@ -1,7 +1,7 @@
 import os
 import yaml
 from typing import Any
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class HeadConfig(BaseModel):
@@ -197,6 +197,73 @@ class EarlyStoppingConfig(BaseModel):
         return v
 
 
+class SearchSpaceDistribution(BaseModel):
+    """A single hyperparameter distribution for Optuna search.
+
+    Supports both explicit type declaration and concise HF-like format.
+    """
+
+    type: str | None = Field(
+        default=None,
+        pattern="^(float|int)$",
+        description="Distribution type. Auto-inferred from other fields if not set.",
+    )
+    low: float | int
+    high: float | int
+    log: bool = Field(default=False, description="Use log scale for sampling.")
+    step: int | None = Field(default=None, description="Step size for int distributions.")
+
+    @model_validator(mode="after")
+    def infer_and_validate(self):
+        # Infer type if not specified
+        if self.type is None:
+            if isinstance(self.low, float) or isinstance(self.high, float):
+                self.type = "float"
+            else:
+                self.type = "int"
+
+        # Auto-enable log scale for float ranges spanning >10x
+        if self.type == "float" and not self.log:
+            if self.high / self.low > 10:
+                self.log = True
+
+        # Validate step only for int
+        if self.type == "float" and self.step is not None:
+            raise ValueError("'step' is only valid for int distributions")
+
+        if self.low >= self.high:
+            raise ValueError("low must be less than high")
+
+        return self
+
+
+class HyperparameterSearchConfig(BaseModel):
+    """Configuration for Optuna hyperparameter search."""
+
+    search_space: dict[str, SearchSpaceDistribution] = Field(
+        default_factory=dict,
+        description="Mapping from hyperparameter name to its search distribution.",
+    )
+    n_trials: int = Field(
+        default=0,
+        ge=0,
+        description="Number of Optuna trials. 0 disables hyperparameter search.",
+    )
+    direction: str = Field(
+        default="minimize",
+        pattern="^(minimize|maximize)$",
+        description="Optimization direction for the objective metric.",
+    )
+    study_name: str | None = Field(
+        default=None,
+        description="Name for the Optuna study.",
+    )
+    metric: str = Field(
+        default="eval_loss",
+        description="Metric to optimize. Must be returned by compute_metrics.",
+    )
+
+
 class CallbackConfig(BaseModel):
     """Configuration for training callbacks.
 
@@ -251,6 +318,10 @@ class TrainingConfig(BaseModel):
     callbacks: CallbackConfig | None = Field(
         default_factory=CallbackConfig,
         description="Callback configuration for training lifecycle controls.",
+    )
+    hyperparameter_search: HyperparameterSearchConfig | None = Field(
+        default_factory=HyperparameterSearchConfig,
+        description="Hyperparameter search configuration. Disabled when n_trials=0.",
     )
 
     @field_validator("report_to", mode="before")
