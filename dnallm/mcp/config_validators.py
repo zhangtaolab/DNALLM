@@ -150,6 +150,7 @@ class LoggingConfig(BaseModel):
     file: str = Field(..., min_length=1)
     max_size: str = Field("10MB", pattern="^[0-9]+(MB|GB)$")
     backup_count: int = Field(5, ge=1, le=20)
+    log_format: str = Field("text", pattern="^(json|text)$")
 
 
 class MCPServerConfig(BaseModel):
@@ -161,6 +162,7 @@ class MCPServerConfig(BaseModel):
     multi_model: dict[str, MultiModelConfig]
     sse: SSEConfig
     logging: LoggingConfig
+    tool_timeout_seconds: int = Field(30, ge=1, le=300)
 
     @field_validator("models")
     @classmethod

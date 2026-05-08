@@ -203,6 +203,20 @@ class MCPConfigManager:
             "file": logging_config.file,
             "max_size": logging_config.max_size,
             "backup_count": logging_config.backup_count,
+            "log_format": logging_config.log_format,
+        }
+
+    def get_timeout_config(self) -> dict[str, Any]:
+        """Get timeout configuration.
+
+        Returns:
+            Dictionary of timeout configuration parameters
+        """
+        if not self.server_config:
+            return {"tool_timeout_seconds": 30}
+
+        return {
+            "tool_timeout_seconds": self.server_config.tool_timeout_seconds,
         }
 
     def reload_configurations(self) -> None:
