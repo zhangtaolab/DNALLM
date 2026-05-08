@@ -29,6 +29,10 @@ finetune:
   seed: 42
   bf16: false
   fp16: false
+callbacks:
+  early_stopping:
+    patience: null
+    threshold: 0.0
 task:
   label_names:
   - negative
