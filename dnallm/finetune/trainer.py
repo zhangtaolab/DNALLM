@@ -48,6 +48,11 @@ from datasets import DatasetDict
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 from peft import get_peft_model, LoraConfig
 
+try:
+    import optuna
+except ImportError:
+    optuna = None
+
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
 from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
@@ -273,6 +278,39 @@ class DNATrainer:
         """
         return compute_metrics(self.task_config)  # type: ignore[no-any-return]
 
+    def _create_hp_space_fn(self) -> Callable:
+        """Create the hp_space function for Optuna hyperparameter search.
+
+        Returns a callable that takes an Optuna trial and returns
+        a dict of hyperparameter values for TrainingArguments.
+        """
+        search_config = self.train_config.hyperparameter_search
+        if not search_config or not search_config.search_space:
+            return lambda trial: {}
+
+        def hp_space(trial) -> dict[str, Any]:
+            result = {}
+            for param_name, distribution in search_config.search_space.items():
+                if distribution.type == "float":
+                    result[param_name] = trial.suggest_float(
+                        param_name,
+                        distribution.low,
+                        distribution.high,
+                        log=distribution.log,
+                    )
+                elif distribution.type == "int":
+                    kwargs = {
+                        "name": param_name,
+                        "low": int(distribution.low),
+                        "high": int(distribution.high),
+                    }
+                    if distribution.step is not None:
+                        kwargs["step"] = distribution.step
+                    result[param_name] = trial.suggest_int(**kwargs)
+            return result
+
+        return hp_space
+
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
@@ -305,6 +343,64 @@ class DNATrainer:
             )
         return metrics
 
+    def search(self, save_tokenizer: bool = True) -> dict[str, Any]:
+        """Run hyperparameter search using Optuna backend.
+
+        This method runs multiple training trials with different
+        hyperparameters and returns the best run configuration.
+
+        Args:
+            save_tokenizer: Whether to save the tokenizer with the best model.
+
+        Returns:
+            Dictionary containing:
+            - "best_run": The best run object from hyperparameter_search
+            - "best_hyperparameters": Dict of best hyperparameter values
+            - "best_metric": The best objective metric value
+        """
+        if optuna is None:
+            raise ImportError(
+                "Optuna is required for hyperparameter search. "
+                "Install it with: pip install optuna"
+            )
+
+        search_config = self.train_config.hyperparameter_search
+        if not search_config or search_config.n_trials <= 0:
+            raise ValueError(
+                "Hyperparameter search is disabled. Set n_trials > 0 in "
+                "hyperparameter_search configuration."
+            )
+
+        self.model.train()
+
+        best_run = self.trainer.hyperparameter_search(
+            direction=search_config.direction,
+            backend="optuna",
+            n_trials=search_config.n_trials,
+            hp_space=self._create_hp_space_fn(),
+            study_name=search_config.study_name,
+        )
+
+        result = {
+            "best_run": best_run,
+            "best_hyperparameters": best_run.hyperparameters,
+            "best_metric": getattr(best_run, "objective", None),
+        }
+
+        # Save the best model
+        self.trainer.save_model()
+        if hasattr(self.model, "save_pretrained"):
+            self.model.save_pretrained(
+                self.train_config.output_dir,
+                safe_serialization=self.trainer.args.save_safetensors,
+            )
+        if save_tokenizer:
+            self.datasets.tokenizer.save_pretrained(
+                self.train_config.output_dir
+            )
+
+        return result
+
     def evaluate(self) -> dict[str, float]:
         """Evaluate the model on the evaluation dataset.
 
@@ -334,6 +430,64 @@ class DNATrainer:
         if "test" in self.data_split:
             test_dataset = self.datasets.dataset["test"]
             result = self.trainer.predict(test_dataset)
+        return result
+
+    def search(self, save_tokenizer: bool = True) -> dict[str, Any]:
+        """Run hyperparameter search using Optuna backend.
+
+        This method runs multiple training trials with different
+        hyperparameters and returns the best run configuration.
+
+        Args:
+            save_tokenizer: Whether to save the tokenizer with the best model.
+
+        Returns:
+            Dictionary containing:
+            - "best_run": The best run object from hyperparameter_search
+            - "best_hyperparameters": Dict of best hyperparameter values
+            - "best_metric": The best objective metric value
+        """
+        if optuna is None:
+            raise ImportError(
+                "Optuna is required for hyperparameter search. "
+                "Install it with: pip install optuna"
+            )
+
+        search_config = self.train_config.hyperparameter_search
+        if not search_config or search_config.n_trials <= 0:
+            raise ValueError(
+                "Hyperparameter search is disabled. Set n_trials > 0 in "
+                "hyperparameter_search configuration."
+            )
+
+        self.model.train()
+
+        best_run = self.trainer.hyperparameter_search(
+            direction=search_config.direction,
+            backend="optuna",
+            n_trials=search_config.n_trials,
+            hp_space=self._create_hp_space_fn(),
+            study_name=search_config.study_name,
+        )
+
+        result = {
+            "best_run": best_run,
+            "best_hyperparameters": best_run.hyperparameters,
+            "best_metric": getattr(best_run, "objective", None),
+        }
+
+        # Save the best model
+        self.trainer.save_model()
+        if hasattr(self.model, "save_pretrained"):
+            self.model.save_pretrained(
+                self.train_config.output_dir,
+                safe_serialization=self.trainer.args.save_safetensors,
+            )
+        if save_tokenizer:
+            self.datasets.tokenizer.save_pretrained(
+                self.train_config.output_dir
+            )
+
         return result
 
     def plot_history(
