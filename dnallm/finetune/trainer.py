@@ -475,64 +475,6 @@ class DNATrainer:
             result = self.trainer.predict(test_dataset)
         return result
 
-    def search(self, save_tokenizer: bool = True) -> dict[str, Any]:
-        """Run hyperparameter search using Optuna backend.
-
-        This method runs multiple training trials with different
-        hyperparameters and returns the best run configuration.
-
-        Args:
-            save_tokenizer: Whether to save the tokenizer with the best model.
-
-        Returns:
-            Dictionary containing:
-            - "best_run": The best run object from hyperparameter_search
-            - "best_hyperparameters": Dict of best hyperparameter values
-            - "best_metric": The best objective metric value
-        """
-        if optuna is None:
-            raise ImportError(
-                "Optuna is required for hyperparameter search. "
-                "Install it with: pip install optuna"
-            )
-
-        search_config = self.train_config.hyperparameter_search
-        if not search_config or search_config.n_trials <= 0:
-            raise ValueError(
-                "Hyperparameter search is disabled. Set n_trials > 0 in "
-                "hyperparameter_search configuration."
-            )
-
-        self.model.train()
-
-        best_run = self.trainer.hyperparameter_search(
-            direction=search_config.direction,
-            backend="optuna",
-            n_trials=search_config.n_trials,
-            hp_space=self._create_hp_space_fn(),
-            study_name=search_config.study_name,
-        )
-
-        result = {
-            "best_run": best_run,
-            "best_hyperparameters": best_run.hyperparameters,
-            "best_metric": getattr(best_run, "objective", None),
-        }
-
-        # Save the best model
-        self.trainer.save_model()
-        if hasattr(self.model, "save_pretrained"):
-            self.model.save_pretrained(
-                self.train_config.output_dir,
-                safe_serialization=self.trainer.args.save_safetensors,
-            )
-        if save_tokenizer:
-            self.datasets.tokenizer.save_pretrained(
-                self.train_config.output_dir
-            )
-
-        return result
-
     def plot_history(
         self,
         output_dir: str | None = None,
