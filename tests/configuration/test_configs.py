@@ -24,6 +24,8 @@ from dnallm.configuration.configs import (
     OutputConfig,
     TaskConfig,
     TrainingConfig,
+    HyperparameterSearchConfig,
+    SearchSpaceDistribution,
     load_config,
 )
 
@@ -887,6 +889,80 @@ class TestEdgeCases:
             metrics=None,
         )
         assert len(config.datasets) == 0
+
+
+class TestHyperparameterSearchConfig:
+    """Test cases for HyperparameterSearchConfig and SearchSpaceDistribution."""
+
+    def test_search_space_float_inference(self):
+        """Test float type inference from value range."""
+        dist = SearchSpaceDistribution(low=1e-6, high=1e-3)
+        assert dist.type == "float"
+        assert dist.log is True  # Auto-enabled for >10x range
+
+    def test_search_space_int_inference(self):
+        """Test int type inference from integer bounds."""
+        dist = SearchSpaceDistribution(low=4, high=32, step=4)
+        assert dist.type == "int"
+        assert dist.log is False
+        assert dist.step == 4
+
+    def test_search_space_explicit_type(self):
+        """Test explicit type override."""
+        dist = SearchSpaceDistribution(low=1, high=10, type="float")
+        assert dist.type == "float"
+        assert dist.log is False  # 10x range, but explicit int was overridden
+
+    def test_search_space_invalid_step_for_float(self):
+        """Test that step for float raises error."""
+        with pytest.raises(ValidationError):
+            SearchSpaceDistribution(low=0.1, high=1.0, step=0.1)
+
+    def test_search_space_invalid_range(self):
+        """Test that low >= high raises error."""
+        with pytest.raises(ValidationError):
+            SearchSpaceDistribution(low=5, high=5)
+
+    def test_hyperparameter_search_config_defaults(self):
+        """Test default hyperparameter search config."""
+        config = HyperparameterSearchConfig()
+        assert config.n_trials == 0
+        assert config.direction == "minimize"
+        assert config.metric == "eval_loss"
+        assert config.search_space == {}
+
+    def test_hyperparameter_search_config_custom(self):
+        """Test custom hyperparameter search config."""
+        config = HyperparameterSearchConfig(
+            search_space={
+                "learning_rate": SearchSpaceDistribution(low=1e-6, high=1e-3),
+            },
+            n_trials=10,
+            direction="maximize",
+            metric="eval_accuracy",
+        )
+        assert config.n_trials == 10
+        assert config.direction == "maximize"
+        assert config.metric == "eval_accuracy"
+        assert "learning_rate" in config.search_space
+
+    def test_hyperparameter_search_config_invalid_direction(self):
+        """Test invalid direction raises error."""
+        with pytest.raises(ValidationError):
+            HyperparameterSearchConfig(direction="invalid")
+
+    def test_training_config_with_hyperparameter_search(self):
+        """Test TrainingConfig integrates hyperparameter search."""
+        config = TrainingConfig(
+            hyperparameter_search=HyperparameterSearchConfig(
+                search_space={
+                    "learning_rate": SearchSpaceDistribution(low=1e-6, high=1e-3),
+                },
+                n_trials=3,
+            )
+        )
+        assert config.hyperparameter_search.n_trials == 3
+        assert config.hyperparameter_search.search_space["learning_rate"].type == "float"
 
 
 if __name__ == "__main__":
