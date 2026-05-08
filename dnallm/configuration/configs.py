@@ -1,7 +1,7 @@
 import os
 import yaml
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class HeadConfig(BaseModel):
@@ -177,6 +177,39 @@ class TaskConfig(BaseModel):
             self.label_names = None
 
 
+class EarlyStoppingConfig(BaseModel):
+    """Configuration for early stopping callback."""
+
+    patience: int | None = Field(
+        default=None,
+        description="Number of evaluation steps with no improvement before stopping. None disables early stopping.",
+    )
+    threshold: float = Field(
+        default=0.0,
+        description="Improvement threshold. An improvement of less than this is considered no improvement.",
+    )
+
+    @field_validator("patience")
+    @classmethod
+    def validate_patience(cls, v: int | None) -> int | None:
+        if v is not None and v < 0:
+            raise ValueError("patience must be non-negative")
+        return v
+
+
+class CallbackConfig(BaseModel):
+    """Configuration for training callbacks.
+
+    Only predefined callbacks are supported in Phase 2.
+    Custom callbacks are deferred to v2.
+    """
+
+    early_stopping: EarlyStoppingConfig | None = Field(
+        default_factory=EarlyStoppingConfig,
+        description="Early stopping configuration.",
+    )
+
+
 class TrainingConfig(BaseModel):
     """Configuration for training"""
 
@@ -210,6 +243,10 @@ class TrainingConfig(BaseModel):
     metric_for_best_model: str = "eval_loss"
     report_to: str = "all"
     resume_from_checkpoint: str | None = None
+    callbacks: CallbackConfig | None = Field(
+        default_factory=CallbackConfig,
+        description="Callback configuration for training lifecycle controls.",
+    )
 
 
 class LoraConfig(BaseModel):
