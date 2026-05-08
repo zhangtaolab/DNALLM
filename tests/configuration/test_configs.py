@@ -224,6 +224,53 @@ class TestTrainingConfig:
 
         assert config.lr_scheduler_kwargs == lr_kwargs
 
+    def test_training_config_early_stopping_defaults(self):
+        """Test early stopping configuration with defaults."""
+        config = TrainingConfig()
+        assert config.callbacks is not None
+        assert config.callbacks.early_stopping is not None
+        assert config.callbacks.early_stopping.patience is None
+        assert config.callbacks.early_stopping.threshold == 0.0
+
+    def test_training_config_early_stopping_custom(self):
+        """Test early stopping configuration with custom values."""
+        from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
+
+        config = TrainingConfig(
+            callbacks=CallbackConfig(
+                early_stopping=EarlyStoppingConfig(patience=3, threshold=0.01)
+            )
+        )
+        assert config.callbacks.early_stopping.patience == 3
+        assert config.callbacks.early_stopping.threshold == 0.01
+
+    def test_training_config_early_stopping_negative_patience(self):
+        """Test early stopping with negative patience raises error."""
+        from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
+
+        with pytest.raises(ValidationError):
+            TrainingConfig(
+                callbacks=CallbackConfig(
+                    early_stopping=EarlyStoppingConfig(patience=-1)
+                )
+            )
+
+    def test_training_config_max_grad_norm(self):
+        """Test gradient clipping threshold propagation."""
+        config = TrainingConfig(max_grad_norm=0.5)
+        assert config.max_grad_norm == 0.5
+
+    def test_training_config_max_grad_norm_propagates_to_training_arguments(self):
+        """Test that max_grad_norm is passed to TrainingArguments."""
+        from transformers import TrainingArguments
+
+        config = TrainingConfig(max_grad_norm=0.5)
+        args = TrainingArguments(
+            output_dir="/tmp/test",
+            max_grad_norm=config.max_grad_norm,
+        )
+        assert args.max_grad_norm == 0.5
+
 
 class TestInferenceConfig:
     """Test cases for InferenceConfig class."""
