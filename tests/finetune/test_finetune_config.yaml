@@ -43,6 +43,13 @@ finetune:
 #   n_trials: 0
 #   direction: minimize
 #   metric: eval_loss
+# QLoRA configuration (uncomment to enable 4-bit quantization)
+# use_qlora: false
+# quantization_config:
+#   load_in_4bit: true
+#   bnb_4bit_compute_dtype: float16
+#   bnb_4bit_use_double_quant: true
+#   bnb_4bit_quant_type: nf4
 callbacks:
   early_stopping:
     patience: null
