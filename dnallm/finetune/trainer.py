@@ -65,6 +65,7 @@ class DNATrainer:
     and predicting with DNA language models. It supports various task types
     including classification, regression, and masked language modeling.
     Early stopping is supported via the callbacks configuration in TrainingConfig.
+    QLoRA (4-bit quantized LoRA) is supported via use_qlora in TrainingConfig.
 
     Attributes:
         model: The DNA language model to be trained
@@ -77,11 +78,35 @@ class DNATrainer:
         data_split: Available dataset splits
 
     Examples:
+        Standard LoRA training:
         ```python
         trainer = DNATrainer(
             model=model,
             config=config,
-            datasets=datasets
+            datasets=datasets,
+            use_lora=True,
+        )
+        metrics = trainer.train()
+        ```
+
+        QLoRA training (4-bit quantization):
+        ```python
+        # Model must be loaded with quantization_config before passing to trainer
+        model, tokenizer = load_model_and_tokenizer(
+            model_name,
+            task_config=task_config,
+            quantization_config={
+                "load_in_4bit": True,
+                "bnb_4bit_compute_dtype": "float16",
+                "bnb_4bit_use_double_quant": True,
+                "bnb_4bit_quant_type": "nf4",
+            },
+        )
+        trainer = DNATrainer(
+            model=model,
+            config=config,
+            datasets=datasets,
+            use_lora=True,
         )
         metrics = trainer.train()
         ```
@@ -118,11 +143,19 @@ class DNATrainer:
         self.extra_args = extra_args
         self.use_lora = use_lora
 
-        # LoRA
+        # LoRA / QLoRA
         if use_lora:
             from ..models.model import peft_forward_compatiable
 
             print("[Info] Applying LoRA to the model...")
+
+            # QLoRA: prepare 4-bit model for k-bit training
+            if self.train_config.use_qlora:
+                from peft import prepare_model_for_kbit_training
+
+                print("[Info] Preparing model for 4-bit QLoRA training...")
+                model = prepare_model_for_kbit_training(model)
+
             lora_config = LoraConfig(**config["lora"].dict())
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
@@ -165,6 +198,11 @@ class DNATrainer:
             in self.model.__class__.__name__
             else self.training_args.remove_unused_columns
         )
+
+        # Enable gradient checkpointing for QLoRA (required for memory efficiency)
+        if self.train_config.use_qlora and hasattr(self.model, "gradient_checkpointing_enable"):
+            self.model.gradient_checkpointing_enable()
+            print("[Info] Gradient checkpointing enabled for QLoRA.")
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):
             self.data_split = self.datasets.dataset.keys()
