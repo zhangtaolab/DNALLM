@@ -271,6 +271,36 @@ class TestTrainingConfig:
         )
         assert args.max_grad_norm == 0.5
 
+    def test_training_config_report_to_default(self):
+        """Test default report_to is tensorboard."""
+        config = TrainingConfig()
+        assert config.report_to == ["tensorboard"]
+
+    def test_training_config_report_to_string_coercion(self):
+        """Test that string report_to is coerced to list."""
+        config = TrainingConfig(report_to="wandb")
+        assert config.report_to == ["wandb"]
+
+    def test_training_config_report_to_multiple(self):
+        """Test multiple trackers."""
+        config = TrainingConfig(report_to=["tensorboard", "wandb"])
+        assert config.report_to == ["tensorboard", "wandb"]
+
+    def test_training_config_report_to_none(self):
+        """Test disabling all trackers."""
+        config = TrainingConfig(report_to=["none"])
+        assert config.report_to == ["none"]
+
+    def test_training_config_report_to_invalid(self):
+        """Test invalid tracker name raises error."""
+        with pytest.raises(ValidationError):
+            TrainingConfig(report_to=["invalid_tracker"])
+
+    def test_training_config_report_to_none_with_others(self):
+        """Test that 'none' combined with other trackers raises error."""
+        with pytest.raises(ValidationError):
+            TrainingConfig(report_to=["none", "tensorboard"])
+
 
 class TestInferenceConfig:
     """Test cases for InferenceConfig class."""
