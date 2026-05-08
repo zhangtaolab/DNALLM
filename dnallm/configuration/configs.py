@@ -311,7 +311,7 @@ class TrainingConfig(BaseModel):
     adam_beta1: float = 0.9
     adam_beta2: float = 0.999
     adam_epsilon: float = 1e-8
-    max_grad_norm: float = 1.0
+    max_grad_norm: float = Field(default=1.0, ge=0)
     warmup_ratio: float = 0.1
     lr_scheduler_type: str = "linear"
     lr_scheduler_kwargs: dict | None = None
