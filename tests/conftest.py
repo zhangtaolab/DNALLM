@@ -1,12 +1,9 @@
 """Shared pytest fixtures for DNALLM test suite."""
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 import torch
-from transformers import PreTrainedModel, PreTrainedTokenizer
-import numpy as np
 import pandas as pd
-from datasets import Dataset
 
 
 @pytest.fixture(scope="session", autouse=True)
