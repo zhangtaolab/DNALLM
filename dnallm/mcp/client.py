@@ -150,7 +150,7 @@ class DNALLMMCPClient:
             text = result.content[0].text if result.content else "Unknown error"
             try:
                 return json.loads(text)
-            except (json.JSONDecodeError, IndexError):
+            except (json.JSONDecodeError, IndexError, AttributeError):
                 return {"error": text, "isError": True}
         if not result.content:
             return {}

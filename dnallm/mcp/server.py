@@ -38,8 +38,11 @@ Note:
 """
 
 import asyncio
+import functools
 import json
+import re
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 from pathlib import Path
@@ -320,20 +323,7 @@ class DNALLMMCPServer:
                         "increase timeout in config"
                     ),
                 }
-            except Exception as e:
-                duration_ms = (time.perf_counter() - start) * 1000
-                self._structured_log(
-                    "error",
-                    f"Tool {tool_name} failed: {e}",
-                    tool_name=tool_name,
-                    duration_ms=duration_ms,
-                    status="error",
-                )
-                # Re-raise so the tool's own error handling can process it
-                raise
-
         # Preserve the original function's signature for FastMCP
-        import functools
         functools.update_wrapper(wrapper, tool_func)
         return wrapper
 
@@ -362,10 +352,12 @@ class DNALLMMCPServer:
             status: Optional operation status (success, error, etc.)
             **extra: Additional fields for JSON format
         """
+        # Normalize level for loguru (requires uppercase)
+        loguru_level = level.upper()
         if self._log_format == "json":
             log_entry = {
                 "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                "level": level.upper(),
+                "level": loguru_level,
                 "message": message,
             }
             if tool_name is not None:
@@ -377,7 +369,7 @@ class DNALLMMCPServer:
             if status is not None:
                 log_entry["status"] = status
             log_entry.update(extra)
-            logger.opt(raw=True).log(level, json.dumps(log_entry) + "\n")
+            logger.opt(raw=True).log(loguru_level, json.dumps(log_entry))
         else:
             parts = [message]
             if tool_name:
@@ -386,7 +378,7 @@ class DNALLMMCPServer:
                 parts.append(f"[duration={duration_ms:.2f}ms]")
             if status:
                 parts.append(f"[status={status}]")
-            logger.log(level, " ".join(parts))
+            logger.log(loguru_level, " ".join(parts))
 
     async def _dna_sequence_predict(
         self, sequence: str, model_name: str
@@ -443,11 +435,10 @@ class DNALLMMCPServer:
                 "sequence": sequence,
             }
         except Exception as e:
-            # Log error for debugging and return error response
-            logger.error(f"Error in dna_sequence_predict: {e}")
+            logger.error(f"Error in dna_sequence_predict: {e}", exc_info=True)
             return {
                 "content": [
-                    {"type": "text", "text": f"Prediction error: {e!s}"}
+                    {"type": "text", "text": "Prediction failed. See server logs for details."}
                 ],
                 "isError": True,
             }
@@ -508,12 +499,12 @@ class DNALLMMCPServer:
                 "sequence_count": len(sequences),
             }
         except Exception as e:
-            logger.error(f"Error in dna_batch_predict: {e}")
+            logger.error(f"Error in dna_batch_predict: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Batch prediction error: {e!s}",
+                        "text": "Batch prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -585,13 +576,12 @@ class DNALLMMCPServer:
                 "sequence": sequence,
             }
         except Exception as e:
-            # Log error and return error response
-            logger.error(f"Error in dna_multi_model_predict: {e}")
+            logger.error(f"Error in dna_multi_model_predict: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Multi-model prediction error: {e!s}",
+                        "text": "Multi-model prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -614,12 +604,12 @@ class DNALLMMCPServer:
                 "models": models_info,
             }
         except Exception as e:
-            logger.error(f"Error in list_loaded_models: {e}")
+            logger.error(f"Error in list_loaded_models: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error listing models: {e!s}",
+                        "text": "Failed to list models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -641,12 +631,12 @@ class DNALLMMCPServer:
                 "info": info,
             }
         except Exception as e:
-            logger.error(f"Error in get_model_info: {e}")
+            logger.error(f"Error in get_model_info: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error getting model info: {e!s}",
+                        "text": "Failed to get model info. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -671,12 +661,12 @@ class DNALLMMCPServer:
                 "models": filtered_models,
             }
         except Exception as e:
-            logger.error(f"Error in list_models_by_task_type: {e}")
+            logger.error(f"Error in list_models_by_task_type: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error filtering models: {e!s}",
+                        "text": "Failed to filter models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -695,12 +685,12 @@ class DNALLMMCPServer:
                 "models": all_models,
             }
         except Exception as e:
-            logger.error(f"Error in get_all_available_models: {e}")
+            logger.error(f"Error in get_all_available_models: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error getting available models: {e!s}",
+                        "text": "Failed to get available models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -731,12 +721,12 @@ class DNALLMMCPServer:
                 "health": health_status,
             }
         except Exception as e:
-            logger.error(f"Error in health_check: {e}")
+            logger.error(f"Error in health_check: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Health check error: {e!s}",
+                        "text": "Health check failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -889,9 +879,10 @@ class DNALLMMCPServer:
                 ),
             }
         except Exception as e:
-            logger.error(f"Error in dna_stream_predict: {e}")
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(
+                    100, 100, "Error: Streaming prediction failed"
+                )
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -904,7 +895,7 @@ class DNALLMMCPServer:
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Streaming prediction error: {e!s}",
+                        "text": "Streaming prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -1043,9 +1034,10 @@ class DNALLMMCPServer:
                 ),
             }
         except Exception as e:
-            logger.error(f"Error in dna_stream_batch_predict: {e}")
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(
+                    100, 100, "Error: Streaming batch prediction failed"
+                )
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -1058,7 +1050,7 @@ class DNALLMMCPServer:
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Streaming batch prediction error: {e!s}",
+                        "text": "Streaming batch prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -1169,9 +1161,10 @@ class DNALLMMCPServer:
                 ),
             }
         except Exception as e:
-            logger.error(f"Error in dna_stream_multi_model_predict: {e}")
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(
+                    100, 100, "Error: Streaming multi-model prediction failed"
+                )
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -1184,9 +1177,7 @@ class DNALLMMCPServer:
                 "content": [
                     {
                         "type": "text",
-                        "text": (
-                            f"Streaming multi-model prediction error: {e!s}"
-                        ),
+                        "text": "Streaming multi-model prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -1261,11 +1252,11 @@ class DNALLMMCPServer:
 
     async def _dna_mutagenesis(
         self,
+        model_name: str,
         sequence: str | None = None,
         sequences: list[str] | None = None,
         mutation_type: str = "single_base_substitution",
         positions: list[int] | None = None,
-        model_name: str = "",
     ) -> dict[str, Any]:
         """Perform in silico mutagenesis on DNA sequences.
 
@@ -1294,6 +1285,13 @@ class DNALLMMCPServer:
                 - On error: Contains 'error', 'isError' fields
         """
         try:
+            # Validate model_name is non-empty
+            if not model_name:
+                return {
+                    "error": "model_name is required",
+                    "isError": True,
+                }
+
             # Validate mutation type
             allowed_types = {
                 "single_base_substitution",
@@ -1328,6 +1326,19 @@ class DNALLMMCPServer:
             # Wrap single sequence as list
             if sequences is None:
                 sequences = [sequence]
+
+            # Validate DNA sequence content
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            for i, seq in enumerate(sequences):
+                if not dna_pattern.match(seq):
+                    return {
+                        "error": (
+                            f"Sequence at index {i} contains invalid "
+                            f"characters. Only A, C, G, T, N "
+                            f"(case-insensitive) are allowed."
+                        ),
+                        "isError": True,
+                    }
 
             # Enforce combo limit: n <= 5 (4^5 = 1024 max combos)
             if mutation_type == "combo" and len(positions) > 5:
@@ -1463,12 +1474,12 @@ class DNALLMMCPServer:
                 "model_name": model_name,
             }
         except Exception as e:
-            logger.error(f"Error in dna_mutagenesis: {e}")
+            logger.error(f"Error in dna_mutagenesis: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Mutagenesis error: {e!s}",
+                        "text": "Mutagenesis failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -1506,6 +1517,17 @@ class DNALLMMCPServer:
                 - On error: Contains 'error', 'isError' fields
         """
         try:
+            # Validate DNA sequence content
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            if not dna_pattern.match(sequence):
+                return {
+                    "error": (
+                        "Sequence contains invalid characters. "
+                        "Only A, C, G, T, N (case-insensitive) are allowed."
+                    ),
+                    "isError": True,
+                }
+
             # Validate and map method names
             allowed_methods = {
                 "lig",
@@ -1585,7 +1607,7 @@ class DNALLMMCPServer:
             attr_min = float(np.min(attr_scores))
             attr_max = float(np.max(attr_scores))
             attr_range = attr_max - attr_min
-            if attr_range > 0:
+            if attr_range > 1e-12:
                 normalized = (
                     (attr_scores - attr_min) / (attr_range + 1e-8)
                 ).tolist()
@@ -1614,12 +1636,12 @@ class DNALLMMCPServer:
                 "sequence": sequence,
             }
         except Exception as e:
-            logger.error(f"Error in dna_interpret: {e}")
+            logger.error(f"Error in dna_interpret: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Interpretation error: {e!s}",
+                        "text": "Interpretation failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -1644,8 +1666,6 @@ class DNALLMMCPServer:
             This follows modern async application lifecycle patterns and
             ensures proper cleanup of models and resources during shutdown.
         """
-        from contextlib import asynccontextmanager
-
         @asynccontextmanager
         async def lifespan(app):
             # Startup phase: log successful initialization
