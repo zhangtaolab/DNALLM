@@ -196,6 +196,13 @@ class EarlyStoppingConfig(BaseModel):
             raise ValueError("patience must be non-negative")
         return v
 
+    @field_validator("threshold")
+    @classmethod
+    def validate_threshold(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError("threshold must be non-negative")
+        return v
+
 
 class SearchSpaceDistribution(BaseModel):
     """A single hyperparameter distribution for Optuna search.
