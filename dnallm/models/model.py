@@ -12,7 +12,7 @@ from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, AutoConfig, BitsAndBytesConfig
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -793,7 +793,7 @@ def load_model_and_tokenizer(
     revision: str | None = None,
     custom_tokenizer: Any = None,
     quantization_config: dict | None = None,
-) -> tuple[Any, Any]:
+) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
     This function handles loading of various model types based on the task

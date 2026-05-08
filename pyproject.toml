@@ -1,6 +1,6 @@
 [project]
 name = "dnallm"
-version = "0.4.0"
+version = "0.5.0"
 description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -44,7 +44,7 @@ dependencies = [
     "oss2>=2.18.0",
     "nbstripout>=0.8.1",
     "ninja>1",
-    "numpy<2",
+    "numpy>=1.26.0",
     "optuna>=3.6.0",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
@@ -62,7 +62,7 @@ dependencies = [
     "tokenizers>=0.21.0",
     "torch>=2.4.0,<2.12",
     "tqdm>=4.67.1",
-    "transformers>=4.49.0,<4.56.0",
+    "transformers>=4.49.0",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -220,6 +220,7 @@ dnallm-train = "dnallm.cli.train:main"
 dnallm-inference = "dnallm.cli.inference:main"
 dnallm-model-config-generator = "dnallm.cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
+dnallm-mutagenesis = "dnallm.cli.mutagenesis:main"
 
 # Ruff configuration
 [tool.ruff]
