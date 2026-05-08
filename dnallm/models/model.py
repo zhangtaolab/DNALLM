@@ -12,7 +12,7 @@ from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, AutoConfig
+from transformers import PreTrainedModel, AutoConfig, BitsAndBytesConfig
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -561,6 +561,7 @@ def _load_model_by_task_type(
     modules: dict[str, Any],
     head_config: dict | None = None,
     custom_tokenizer: Any = None,
+    bnb_config: Any = None,
 ) -> tuple[Any, Any]:
     """Load model and tokenizer based on task type.
 
@@ -572,6 +573,7 @@ def _load_model_by_task_type(
         label2id: Label to ID mapping
         modules: Dictionary of imported model classes
         head_config: Additional head configuration (if any)
+        bnb_config: BitsAndBytesConfig for 4-bit quantization (if any)
 
     Returns:
         Tuple of (model, tokenizer)
@@ -600,6 +602,15 @@ def _load_model_by_task_type(
     else:
         tokenizer = custom_tokenizer()
 
+    # Build common kwargs for model loading
+    model_load_kwargs = {
+        "trust_remote_code": True,
+        "attn_implementation": "eager",
+    }
+    if bnb_config is not None:
+        model_load_kwargs["quantization_config"] = bnb_config
+        model_load_kwargs["device_map"] = "auto"
+
     # Custom model with specific head
     if head_config is not None:
         head_config = head_config.__dict__
@@ -613,18 +624,18 @@ def _load_model_by_task_type(
         if hasattr(tokenizer, "cls_idx"):
             model_config.cls_idx = tokenizer.cls_idx
         model = DNALLMforSequenceClassification.from_base_model(
-            model_name, config=model_config
+            model_name, config=model_config, module=modules["AutoModel"]
         )
         return model, tokenizer
 
     # Model loading based on task type
     if task_type == "mask":
         model = modules["AutoModelForMaskedLM"].from_pretrained(
-            model_name, trust_remote_code=True, attn_implementation="eager"
+            model_name, **model_load_kwargs
         )
     elif task_type == "generation":
         model = modules["AutoModelForCausalLM"].from_pretrained(
-            model_name, trust_remote_code=True, attn_implementation="eager"
+            model_name, **model_load_kwargs
         )
     elif task_type in ["binary", "multiclass"]:
         model = modules["AutoModelForSequenceClassification"].from_pretrained(
@@ -633,24 +644,21 @@ def _load_model_by_task_type(
             id2label=id2label,
             label2id=label2id,
             problem_type="single_label_classification",
-            trust_remote_code=True,
-            attn_implementation="eager",
+            **model_load_kwargs,
         )
     elif task_type == "multilabel":
         model = modules["AutoModelForSequenceClassification"].from_pretrained(
             model_name,
             num_labels=num_labels,
             problem_type="multi_label_classification",
-            trust_remote_code=True,
-            attn_implementation="eager",
+            **model_load_kwargs,
         )
     elif task_type == "regression":
         model = modules["AutoModelForSequenceClassification"].from_pretrained(
             model_name,
             num_labels=num_labels,
             problem_type="regression",
-            trust_remote_code=True,
-            attn_implementation="eager",
+            **model_load_kwargs,
         )
     elif task_type == "token":
         model = modules["AutoModelForTokenClassification"].from_pretrained(
@@ -658,22 +666,19 @@ def _load_model_by_task_type(
             num_labels=num_labels,
             id2label=id2label,
             label2id=label2id,
-            trust_remote_code=True,
-            attn_implementation="eager",
+            **model_load_kwargs,
         )
     else:
         try:
             model = modules["AutoModel"].from_pretrained(
                 model_name,
-                trust_remote_code=True,
-                attn_implementation="eager",
+                **model_load_kwargs,
             )
         except Exception:
             model = modules["AutoModel"].from_pretrained(
                 model_name,
-                trust_remote_code=True,
-                attn_implementation="eager",
                 ignore_mismatched_sizes=True,
+                **model_load_kwargs,
             )
 
     return model, tokenizer
@@ -782,6 +787,7 @@ def load_model_and_tokenizer(
     use_mirror: bool = False,
     revision: str | None = None,
     custom_tokenizer: Any = None,
+    quantization_config: dict | None = None,
 ) -> tuple[Any, Any]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
@@ -812,6 +818,11 @@ def load_model_and_tokenizer(
     """
     # Setup HuggingFace mirror if needed
     _setup_huggingface_mirror(use_mirror)
+
+    # Prepare quantization config if provided
+    bnb_config = None
+    if quantization_config is not None:
+        bnb_config = BitsAndBytesConfig(**quantization_config)
 
     # Extract task configuration
     task_type = task_config.task_type
@@ -904,6 +915,7 @@ def load_model_and_tokenizer(
             modules,
             head_config,
             custom_tokenizer,
+            bnb_config,
         ]
         model, tokenizer = _handle_dnabert2_models(
             downloaded_model_path, load_args
@@ -923,7 +935,9 @@ def load_model_and_tokenizer(
 
     # Configure model padding
     _configure_model_padding(model, tokenizer)
-    model = model.to(_get_device())
+    # Skip device placement for 4-bit models (device_map="auto" handles it)
+    if bnb_config is None:
+        model = model.to(_get_device())
 
     return model, tokenizer
 
