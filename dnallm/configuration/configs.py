@@ -213,6 +213,8 @@ class CallbackConfig(BaseModel):
 class TrainingConfig(BaseModel):
     """Configuration for training"""
 
+    _VALID_REPORT_TO: set[str] = {"tensorboard", "wandb", "none", "all"}
+
     output_dir: str | None = None
     num_train_epochs: int = 3
     per_device_train_batch_size: int = 8
@@ -241,12 +243,37 @@ class TrainingConfig(BaseModel):
     fp16: bool = False
     load_best_model_at_end: bool = False
     metric_for_best_model: str = "eval_loss"
-    report_to: str = "all"
+    report_to: list[str] = Field(
+        default_factory=lambda: ["tensorboard"],
+        description="List of experiment trackers to report to. Options: 'tensorboard', 'wandb', 'none', 'all'.",
+    )
     resume_from_checkpoint: str | None = None
     callbacks: CallbackConfig | None = Field(
         default_factory=CallbackConfig,
         description="Callback configuration for training lifecycle controls.",
     )
+
+    @field_validator("report_to", mode="before")
+    @classmethod
+    def coerce_report_to(cls, v):
+        if isinstance(v, str):
+            return [v]
+        return v
+
+    @field_validator("report_to")
+    @classmethod
+    def validate_report_to(cls, v: list[str]) -> list[str]:
+        valid = {"tensorboard", "wandb", "none", "all"}
+        invalid = set(v) - valid
+        if invalid:
+            raise ValueError(
+                f"Invalid report_to values: {invalid}. Valid: {valid}"
+            )
+        if "none" in v and len(v) > 1:
+            raise ValueError("'none' cannot be combined with other trackers")
+        if "all" in v and len(v) > 1:
+            raise ValueError("'all' cannot be combined with other trackers")
+        return v
 
 
 class LoraConfig(BaseModel):
