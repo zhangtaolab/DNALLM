@@ -323,6 +323,14 @@ class TrainingConfig(BaseModel):
         default_factory=HyperparameterSearchConfig,
         description="Hyperparameter search configuration. Disabled when n_trials=0.",
     )
+    use_qlora: bool = Field(
+        default=False,
+        description="Whether to use 4-bit quantized LoRA (QLoRA). Requires bitsandbytes.",
+    )
+    quantization_config: dict | None = Field(
+        default=None,
+        description="Custom BitsAndBytesConfig parameters. If None, uses QLoRA defaults.",
+    )
 
     @field_validator("report_to", mode="before")
     @classmethod
@@ -348,7 +356,12 @@ class TrainingConfig(BaseModel):
 
 
 class LoraConfig(BaseModel):
-    """Configuration for LoRA (Low-Rank Adaptation)"""
+    """Configuration for LoRA (Low-Rank Adaptation).
+
+    Compatible with both standard LoRA and QLoRA (4-bit quantization).
+    When use_qlora=True, the base model is loaded in 4-bit and LoRA
+    adapters are applied via prepare_model_for_kbit_training().
+    """
 
     r: int = Field(default=8, description="LoRA attention dimension (rank).")
     lora_alpha: int = Field(

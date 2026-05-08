@@ -26,6 +26,7 @@ dependencies = [
     "accelerate>=1.4.0",
     "addict>=2.4.0",
     "altair[all]>=5.5.0",
+    "bitsandbytes>=0.43.0",
     "captum>=0.7.0",
     "colorama>=0.4.6",
     "datasets<=3.2.0",
