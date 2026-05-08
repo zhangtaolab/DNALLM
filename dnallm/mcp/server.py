@@ -39,6 +39,8 @@ Note:
 
 from typing import Any
 from pathlib import Path
+
+import numpy as np
 from loguru import logger
 
 # MCP SDK imports
