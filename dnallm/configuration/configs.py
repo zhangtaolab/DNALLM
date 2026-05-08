@@ -238,6 +238,9 @@ class SearchSpaceDistribution(BaseModel):
         if self.type == "float" and self.step is not None:
             raise ValueError("'step' is only valid for int distributions")
 
+        if self.log and self.low <= 0:
+            raise ValueError("low must be positive when log=True")
+
         if self.low >= self.high:
             raise ValueError("low must be less than high")
 
