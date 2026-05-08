@@ -44,7 +44,7 @@ from typing import Any
 from collections.abc import Callable
 import torch
 from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
 from peft import get_peft_model, LoraConfig
 
 from ..datahandling.data import DNADataset
@@ -57,9 +57,8 @@ class DNATrainer:
 
     This trainer class provides a unified interface for training, evaluating,
     and predicting with DNA language models. It supports various task types
-    including
-    classification,
-    regression, and masked language modeling.
+    including classification, regression, and masked language modeling.
+    Early stopping is supported via the callbacks configuration in TrainingConfig.
 
     Attributes:
         model: The DNA language model to be trained
@@ -203,6 +202,27 @@ class DNATrainer:
             )
         else:
             data_collator = None
+
+        # Assemble callbacks
+        callbacks = []
+        if (
+            self.train_config.callbacks
+            and self.train_config.callbacks.early_stopping
+            and self.train_config.callbacks.early_stopping.patience is not None
+        ):
+            callbacks.append(
+                EarlyStoppingCallback(
+                    early_stopping_patience=self.train_config.callbacks.early_stopping.patience,
+                    early_stopping_threshold=self.train_config.callbacks.early_stopping.threshold,
+                )
+            )
+            if not self.training_args.load_best_model_at_end:
+                print(
+                    "[Warning] Early stopping enabled but load_best_model_at_end=False. "
+                    "Enabling load_best_model_at_end."
+                )
+                self.training_args.load_best_model_at_end = True
+
         # Initialize trainer
         self.trainer = Trainer(
             model=self.model,
@@ -212,6 +232,7 @@ class DNATrainer:
             compute_metrics=compute_metrics,
             data_collator=data_collator,
             preprocess_logits_for_metrics=preprocess_logits,
+            callbacks=callbacks,
         )
 
     def customize_trainer(self, trainer_cls: Trainer):
