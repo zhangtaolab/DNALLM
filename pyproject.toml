@@ -104,7 +104,9 @@ docs = [
 ui = [
     "gradio>=4.0.0",
 ]
-mcp = []
+mcp = [
+    "mcp>=1.0.0",
+]
 base = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
