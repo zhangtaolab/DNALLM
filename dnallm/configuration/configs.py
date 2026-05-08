@@ -539,9 +539,6 @@ def load_config(config_path: str) -> dict[str, BaseModel]:
 
     configs: dict[str, BaseModel] = {}
 
-    # Initialize empty dictionary to hold configurations
-    configs = {}
-
     # Configurations for tasks
     if "task" in config_dict:
         configs["task"] = TaskConfig(**config_dict["task"])
