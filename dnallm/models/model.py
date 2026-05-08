@@ -111,7 +111,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         self.post_init()
 
     @classmethod
-    def from_base_model(cls, model_name_or_path: str, config, module=None):
+    def from_base_model(cls, model_name_or_path: str, config, module=None, quantization_config=None):
         """
         Handles weights diffusion when loading a model from
         a pre-trained base model.
@@ -121,13 +121,17 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
         # 2. Load the base pre-trained model separately.
+        load_kwargs = {"trust_remote_code": True}
+        if quantization_config is not None:
+            load_kwargs["quantization_config"] = quantization_config
+            load_kwargs["device_map"] = "auto"
         if module is not None:
             base_model = module.from_pretrained(
-                model_name_or_path, trust_remote_code=True
+                model_name_or_path, **load_kwargs
             )
         else:
             base_model = AutoModel.from_pretrained(
-                model_name_or_path, trust_remote_code=True
+                model_name_or_path, **load_kwargs
             )
         # 3. Assign the loaded weights to our backbone.
         model.backbone.load_state_dict(base_model.state_dict())
@@ -624,7 +628,8 @@ def _load_model_by_task_type(
         if hasattr(tokenizer, "cls_idx"):
             model_config.cls_idx = tokenizer.cls_idx
         model = DNALLMforSequenceClassification.from_base_model(
-            model_name, config=model_config, module=modules["AutoModel"]
+            model_name, config=model_config, module=modules["AutoModel"],
+            quantization_config=bnb_config,
         )
         return model, tokenizer
 
@@ -939,7 +944,55 @@ def load_model_and_tokenizer(
     if bnb_config is None:
         model = model.to(_get_device())
 
+    # Fix improperly quantized layers (e.g., pooler.dense in BERT)
+    # that were newly initialized and not properly packed by bitsandbytes
+    if bnb_config is not None:
+        _fix_bnb_quantized_layers(model)
+
     return model, tokenizer
+
+
+def _fix_bnb_quantized_layers(model: Any) -> None:
+    """Fix bitsandbytes quantization issues on newly initialized layers.
+
+    When a model is loaded with 4-bit quantization, some layers that are
+    newly initialized (not present in the checkpoint) may be wrapped as
+    Linear4bit but with unpacked weights. This causes an AssertionError
+    during forward pass. This function detects and replaces such layers
+    with standard nn.Linear in float16.
+
+    Args:
+        model: The loaded model to fix.
+    """
+    for name, module in model.named_modules():
+        module_type = type(module).__name__
+        if "Linear4bit" in module_type or "Linear8bitLt" in module_type:
+            if hasattr(module, "weight") and module.weight is not None:
+                weight_shape = module.weight.shape
+                # Properly quantized 4-bit weights have shape [N, 1]
+                # Unpacked weights retain their original 2D shape
+                if len(weight_shape) == 2 and weight_shape[1] != 1:
+                    logger.warning(
+                        f"Fixing improperly quantized layer {name}: "
+                        f"{module_type} with shape {weight_shape}"
+                    )
+                    device = module.weight.device
+                    in_features = weight_shape[1]
+                    out_features = weight_shape[0]
+                    # Create replacement in float16 to match bnb compute dtype
+                    replacement = nn.Linear(
+                        in_features, out_features, dtype=torch.float16
+                    ).to(device)
+                    # Navigate to parent and replace
+                    parts = name.split(".")
+                    parent = model
+                    for part in parts[:-1]:
+                        parent = getattr(parent, part)
+                    setattr(parent, parts[-1], replacement)
+                    logger.info(
+                        f"Replaced {name} with standard nn.Linear "
+                        f"({out_features}, {in_features})"
+                    )
 
 
 def peft_forward_compatiable(model: Any) -> Any:

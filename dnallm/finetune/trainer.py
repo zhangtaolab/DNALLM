@@ -188,6 +188,11 @@ class DNATrainer:
         training_args = self.train_config.model_dump()
         if self.extra_args:
             training_args.update(self.extra_args)
+        # Remove non-TrainingArguments fields
+        training_args.pop("callbacks", None)
+        training_args.pop("hyperparameter_search", None)
+        training_args.pop("use_qlora", None)
+        training_args.pop("quantization_config", None)
         self.training_args = TrainingArguments(
             **training_args,
         )
