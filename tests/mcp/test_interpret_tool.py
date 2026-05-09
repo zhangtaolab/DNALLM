@@ -91,7 +91,7 @@ class TestDNAInterpretTool:
         """Setup mock predict_sequence for auto target_class selection."""
         import asyncio
 
-        async def mock_predict(*args, **kwargs):
+        async def mock_predict(*args, **kwargs):  # noqa: RUF029
             return {"probabilities": [0.3, 0.7]}
 
         mock_server.model_manager.predict_sequence = mock_predict
@@ -295,7 +295,7 @@ class TestDNAInterpretTool:
 
     async def test_auto_target_class(self, mock_server):
         """Test auto-selection of target_class when None."""
-        async def mock_predict(*args, **kwargs):
+        async def mock_predict(*args, **kwargs):  # noqa: RUF029
             return {"probabilities": [0.2, 0.8]}
 
         mock_server.model_manager.predict_sequence = mock_predict

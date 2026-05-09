@@ -6,7 +6,7 @@ classification and regression tasks.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from torch.nn import functional
 
 
 class FocalLoss(nn.Module):
@@ -47,7 +47,7 @@ class FocalLoss(nn.Module):
         Returns:
             Scalar loss value (or unreduced tensor if reduction='none').
         """
-        bce_loss: torch.Tensor = F.binary_cross_entropy_with_logits(
+        bce_loss: torch.Tensor = functional.binary_cross_entropy_with_logits(
             inputs, targets, reduction="none"
         )
         pt: torch.Tensor = torch.exp(-bce_loss)

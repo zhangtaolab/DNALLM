@@ -1003,7 +1003,9 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                             try:
                                 replacement.weight.copy_(module.weight)
                             except Exception:
-                                pass  # weight shapes may be incompatible; leave uninitialized
+                                logger.warning(
+                                    f"Could not copy weight for {name}: shapes may be incompatible"
+                                )
                     # Navigate to parent and replace
                     parts = name.split(".")
                     parent = model
@@ -1139,8 +1141,8 @@ def load_preset_model(
 # Re-export for existing code that imports from this module
 __all__ = [
     "DNALLMforSequenceClassification",
+    "FocalLoss",
     "download_model",
     "load_model_and_tokenizer",
     "load_preset_model",
-    "FocalLoss",
 ]

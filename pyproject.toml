@@ -252,6 +252,8 @@ exclude = [
     "htmlcov",
     "*.egg-info",
     "dnallm/tasks/metrics/",
+    ".claude",
+    ".planning",
 ]
 
 # Same as Black.
@@ -324,6 +326,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # Allow magic values in default arguments
 "**/migrations/*.py" = ["PLR2004"]
 "dnallm/models/modeling_auto.py" = ["E501"]
+"tests/conftest.py" = ["S105"]  # mock tokenizer special tokens are not passwords
 
 [tool.ruff.lint.isort]
 known-first-party = ["dnallm"]

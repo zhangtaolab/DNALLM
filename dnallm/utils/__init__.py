@@ -42,10 +42,10 @@ __all__ = [
     "log_progress",
     "log_success",
     "log_warning",
-    "random_generate_sequences",
-    "reverse_complement",
     "plot_loss_curve",
     "plot_lr_schedule",
+    "random_generate_sequences",
+    "reverse_complement",
     "seq2kmer",
     "setup_logging",
 ]

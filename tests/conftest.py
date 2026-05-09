@@ -9,11 +9,11 @@ import pandas as pd
 @pytest.fixture(scope="session", autouse=True)
 def global_cleanup():
     """Session-scoped cleanup fixture."""
-    yield
+    return
     # Cleanup after all tests complete
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_model(request):
     """Return a Mock configured as a transformers PreTrainedModel.
 
@@ -59,7 +59,7 @@ def mock_model(request):
     return mock_model
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_tokenizer():
     """Return a Mock configured as a PreTrainedTokenizer.
 
@@ -102,7 +102,7 @@ def mock_tokenizer():
     return mock_tokenizer
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_config():
     """Return a Mock configured as a task configuration.
 
@@ -125,7 +125,7 @@ def mock_config():
     return mock_cfg
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sample_dna_sequence():
     """Return a valid DNA sequence string.
 
@@ -135,7 +135,7 @@ def sample_dna_sequence():
     return "ATGCGTACGTTAGCTAGCTAGCTAGCTAGCTAGC"
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_inference_engine(mock_model, mock_tokenizer):
     """Return a Mock configured as DNAInference.
 
@@ -163,7 +163,7 @@ def mock_inference_engine(mock_model, mock_tokenizer):
     return mock_engine
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_dataset():
     """Return a Mock configured as a HuggingFace Dataset.
 

@@ -142,6 +142,14 @@ class SSEConfig(BaseModel):
     enable_compression: bool = Field(True)
 
 
+class StreamableHTTPConfig(BaseModel):
+    """Streamable HTTP configuration."""
+
+    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
+    port: int = Field(8000, ge=1024, le=65535)
+    path: str = Field("/mcp", min_length=1)
+
+
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
@@ -161,6 +169,7 @@ class MCPServerConfig(BaseModel):
     models: dict[str, ModelEntryConfig]
     multi_model: dict[str, MultiModelConfig]
     sse: SSEConfig
+    streamable_http: StreamableHTTPConfig | None = Field(None)
     logging: LoggingConfig
     tool_timeout_seconds: int = Field(30, ge=1, le=300)
 
