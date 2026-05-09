@@ -187,6 +187,29 @@ class MCPConfigManager:
             "enable_compression": sse_config.enable_compression,
         }
 
+    def get_streamable_http_config(self) -> dict[str, Any]:
+        """Get Streamable HTTP configuration.
+
+        Returns:
+            Dictionary of Streamable HTTP configuration parameters
+        """
+        if not self.server_config:
+            return {}
+
+        streamable_http_config = self.server_config.streamable_http
+        if streamable_http_config is None:
+            return {
+                "host": self.server_config.server.host,
+                "port": self.server_config.server.port,
+                "path": "/mcp",
+            }
+
+        return {
+            "host": streamable_http_config.host,
+            "port": streamable_http_config.port,
+            "path": streamable_http_config.path,
+        }
+
     def get_logging_config(self) -> dict[str, Any]:
         """Get logging configuration.
 

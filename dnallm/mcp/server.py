@@ -20,8 +20,11 @@ Architecture:
 
 Transport Protocols:
     - stdio: Standard input/output for CLI tools
-    - sse: Server-Sent Events for real-time web applications
-    - streamable-http: HTTP-based streaming protocol
+    - streamable-http: HTTP-based streaming protocol (recommended for
+      remote connections, per MCP spec 2025-11-25)
+    - sse: Server-Sent Events for real-time web applications (legacy,
+      deprecated in MCP spec 2025-11-25 but retained for backward
+      compatibility)
 
 Example:
     Basic server initialization:
@@ -29,7 +32,8 @@ Example:
     ```python
     server = DNALLMMCPServer("config/server_config.yaml")
     await server.initialize()
-    server.start_server(host="127.0.0.1", port=8000, transport="sse")
+    server.start_server(host="127.0.0.1", port=8000,
+                        transport="streamable-http")
     ```
 
 Note:
@@ -73,7 +77,7 @@ class DNALLMMCPServer:
     The server manages multiple DNA language models and provides various
     prediction modes including single sequence prediction, batch processing,
     and multi-model comparison. All operations support progress reporting
-    through SSE for real-time user feedback.
+    through streaming transports for real-time user feedback.
 
     Attributes:
         config_path (str): Path to the main server configuration file
@@ -94,7 +98,11 @@ class DNALLMMCPServer:
         # Initialize asynchronously
         await server.initialize()
 
-        # Start with SSE transport
+        # Start with Streamable HTTP transport (recommended)
+        server.start_server(host="0.0.0.0", port=8000,
+                           transport="streamable-http")
+
+        # Start with SSE transport (legacy, backward compatible)
         server.start_server(host="0.0.0.0", port=8000,
                            transport="sse")
         ```
@@ -1693,8 +1701,10 @@ class DNALLMMCPServer:
         protocol determines how the server communicates with clients:
 
         - stdio: Standard input/output for CLI tools and automation
-        - sse: Server-Sent Events for real-time web applications
         - streamable-http: HTTP-based streaming for REST API integration
+          (recommended per MCP spec 2025-11-25)
+        - sse: Server-Sent Events (legacy, deprecated in MCP spec 2025-11-25
+          but retained for backward compatibility)
 
         Args:
             host (str, optional): Host address to bind the server to.
@@ -1702,7 +1712,7 @@ class DNALLMMCPServer:
             port (int, optional): Port number to bind the server to.
                 Defaults to 8000. Only used for HTTP-based transports.
             transport (str, optional): Transport protocol to use.
-                Choices: "stdio", "sse", "streamable-http".
+                Choices: "stdio", "streamable-http", "sse".
                 Defaults to "stdio".
 
         Raises:
@@ -1712,7 +1722,14 @@ class DNALLMMCPServer:
 
         Example:
             ```python
-            # Start with SSE for real-time web apps
+            # Start with Streamable HTTP (recommended)
+            server.start_server(
+                host="0.0.0.0",
+                port=8000,
+                transport="streamable-http"
+            )
+
+            # Start with SSE (legacy, backward compatible)
             server.start_server(
                 host="0.0.0.0",
                 port=8000,

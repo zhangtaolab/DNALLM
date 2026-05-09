@@ -57,6 +57,14 @@ def mock_connect(mock_session):
 
 
 @pytest.fixture
+def streamable_http_client():
+    """Return a DNALLMMCPClient configured for Streamable HTTP transport."""
+    return DNALLMMCPClient(
+        transport="streamable-http", url="http://localhost:8000"
+    )
+
+
+@pytest.fixture
 def sse_client():
     """Return a DNALLMMCPClient configured for SSE transport."""
     return DNALLMMCPClient(transport="sse", url="http://localhost:8000")
@@ -75,6 +83,22 @@ def stdio_client():
 # ---------------------------------------------------------------------------
 
 
+def test_client_init_streamable_http(streamable_http_client):
+    """Initialize with transport='streamable-http', verify url stored."""
+    assert streamable_http_client.transport == "streamable-http"
+    assert streamable_http_client.url == "http://localhost:8000"
+    assert streamable_http_client.command is None
+
+
+def test_client_init_streamable_http_custom_url():
+    """Initialize with custom URL for streamable-http transport."""
+    client = DNALLMMCPClient(
+        transport="streamable-http", url="http://example.com:9000"
+    )
+    assert client.transport == "streamable-http"
+    assert client.url == "http://example.com:9000"
+
+
 def test_client_init_sse(sse_client):
     """Initialize with transport='sse', verify url stored."""
     assert sse_client.transport == "sse"
@@ -90,8 +114,10 @@ def test_client_init_stdio(stdio_client):
 
 
 def test_client_init_invalid_transport():
-    """Raise ValueError for invalid transport."""
-    with pytest.raises(ValueError, match="Invalid transport"):
+    """Raise ValueError for invalid transport with all options listed."""
+    with pytest.raises(
+        ValueError, match='"streamable-http", "sse", or "stdio"'
+    ):
         DNALLMMCPClient(transport="http")
 
 
@@ -121,6 +147,41 @@ def test_client_call_generic(sse_client, mock_session, mock_connect):
 
     mock_session.call_tool.assert_awaited_once_with(
         "test_tool", {"arg": 1}
+    )
+    assert result == {"result": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Streamable HTTP connection tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_client_streamable_http_connection(
+    streamable_http_client, mock_session, mock_connect
+):
+    """Mock session, verify streamable-http acall() works."""
+    streamable_http_client._connect = lambda: mock_connect
+
+    result = await streamable_http_client.acall("test_tool", {"arg": 1})
+
+    mock_session.call_tool.assert_awaited_once_with(
+        "test_tool", {"arg": 1}
+    )
+    assert result == {"result": "ok"}
+
+
+def test_client_streamable_http_dna_sequence_predict_mocked(
+    streamable_http_client, mock_session, mock_connect
+):
+    """Mock session, verify dna_sequence_predict with streamable-http."""
+    streamable_http_client._connect = lambda: mock_connect
+
+    result = streamable_http_client.dna_sequence_predict("ATCG", "dnabert-2")
+
+    mock_session.call_tool.assert_awaited_once_with(
+        "dna_sequence_predict",
+        {"sequence": "ATCG", "model_name": "dnabert-2"},
     )
     assert result == {"result": "ok"}
 

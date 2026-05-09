@@ -1,11 +1,18 @@
 """DNALLM MCP Client SDK.
 
 This module provides a Python client SDK for interacting with the DNALLM MCP
-server. It supports both SSE and stdio transports, and provides typed methods
-for all server tools with both sync and async variants.
+server. It supports Streamable HTTP, SSE (legacy), and stdio transports, and
+provides typed methods for all server tools with both sync and async variants.
 
 Example:
-    Sync usage::
+    Sync usage with Streamable HTTP (recommended)::
+
+        client = DNALLMMCPClient(
+            transport="streamable-http", url="http://localhost:8000"
+        )
+        result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
+
+    Legacy SSE usage::
 
         client = DNALLMMCPClient(transport="sse", url="http://localhost:8000")
         result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
@@ -38,20 +45,22 @@ class DNALLMMCPClient:
     """Client for the DNALLM MCP server.
 
     Provides typed methods for all DNA prediction and analysis tools,
-    with both synchronous and asynchronous APIs. Supports SSE and stdio
-    transports.
+    with both synchronous and asynchronous APIs. Supports Streamable HTTP,
+    SSE (legacy), and stdio transports.
 
     Args:
-        transport: Transport protocol to use. Either "sse" or "stdio".
-        url: SSE endpoint URL. Defaults to "http://localhost:8000".
-            Only used when transport is "sse".
+        transport: Transport protocol to use. One of "streamable-http",
+            "sse", or "stdio". "streamable-http" is recommended for
+            remote connections per MCP spec 2025-11-25.
+        url: HTTP endpoint URL. Defaults to "http://localhost:8000".
+            Used when transport is "streamable-http" or "sse".
         command: Command to spawn the stdio server. Defaults to
             "dnallm-mcp-server". Only used when transport is "stdio".
         args: Additional arguments to pass to the stdio command.
         env: Environment variables for the stdio server process.
 
     Raises:
-        ValueError: If transport is not "sse" or "stdio".
+        ValueError: If transport is not "streamable-http", "sse", or "stdio".
         ConnectionError: If the server connection fails.
         RuntimeError: If called from an async context without using
             the async variant.
@@ -59,21 +68,26 @@ class DNALLMMCPClient:
 
     def __init__(
         self,
-        transport: Literal["sse", "stdio"] = "stdio",
+        transport: Literal["streamable-http", "sse", "stdio"] = "stdio",
         url: str | None = None,
         command: str | None = None,
         args: list[str] | None = None,
         env: dict[str, str] | None = None,
     ) -> None:
-        if transport not in ("sse", "stdio"):
+        if transport not in ("streamable-http", "sse", "stdio"):
             raise ValueError(
                 f"Invalid transport: {transport!r}. "
-                'Must be "sse" or "stdio".'
+                'Must be "streamable-http", "sse", or "stdio".'
             )
         self.transport = transport
-        self.url = url or (
-            "http://localhost:8000" if transport == "sse" else None
-        )
+        if url is not None:
+            self.url = url
+        elif transport == "streamable-http":
+            self.url = "http://localhost:8000/mcp"
+        elif transport == "sse":
+            self.url = "http://localhost:8000/sse"
+        else:
+            self.url = None
         self.command = command or (
             "dnallm-mcp-server" if transport == "stdio" else None
         )
@@ -89,7 +103,23 @@ class DNALLMMCPClient:
         Yields:
             ClientSession: An initialized MCP client session.
         """
-        if self.transport == "sse":
+        if self.transport == "streamable-http":
+            from mcp.client.streamable_http import streamable_http_client
+
+            async with streamable_http_client(self.url) as (
+                read_stream,
+                write_stream,
+                _get_session_id,
+            ):
+                from mcp import ClientSession
+
+                async with ClientSession(
+                    read_stream,
+                    write_stream,
+                ) as session:
+                    await session.initialize()
+                    yield session
+        elif self.transport == "sse":
             from mcp.client.sse import sse_client
 
             async with sse_client(self.url) as (read_stream, write_stream):

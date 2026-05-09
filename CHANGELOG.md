@@ -44,3 +44,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `.flake8` configuration file (Phase 1)
+
+## [0.5.1] - 2026-05-09
+
+### Added
+
+- MCP: `transport="streamable-http"` support in `DNALLMMCPClient` using `mcp.client.streamable_http.streamablehttp_client()` (Phase 5)
+- MCP: `StreamableHTTPConfig` configuration block with `host`, `port`, and `path` fields (Phase 5)
+- MCP: Streamable HTTP integration tests in `test_streamable_http_client.py` (Phase 5)
+- MCP: Client SDK unit tests for `transport="streamable-http"` initialization and connection (Phase 5)
+
+### Changed
+
+- MCP: `DNALLMMCPClient` transport type expanded from `Literal["sse", "stdio"]` to `Literal["streamable-http", "sse", "stdio"]` (Phase 5)
+- MCP: Server docstrings and CLI help text now recommend `streamable-http` as the primary remote transport (Phase 5)
+- README: MCP Server section now shows `streamable-http` as the primary example with SSE noted as legacy (Phase 5)
+
+### Deprecated
+
+- MCP: `transport="sse"` is now deprecated per MCP spec 2025-11-25 but retained for backward compatibility (Phase 5)

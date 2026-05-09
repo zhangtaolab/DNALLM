@@ -437,7 +437,8 @@ markers = [
     "unit: marks unit tests",
     "inference: marks inference-related tests",
     "utils: marks utility function tests",
-    "data: marks data handling tests"
+    "data: marks data handling tests",
+    "legacy: marks tests for legacy/deprecated features"
 ]
 console_output_style = "progress"
 minversion = "6.0"
