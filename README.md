@@ -299,13 +299,34 @@ from dnallm.mcp import DNALLMMCPServer
 server = DNALLMMCPServer("config/mcp_server_config.yaml")
 await server.initialize()
 
-# Start server with SSE transport for real-time streaming
-server.start_server(host="0.0.0.0", port=8000, transport="sse")
+# Start server with Streamable HTTP transport (recommended, MCP spec 2025-11-25)
+server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
+
+# Legacy SSE transport is still supported for backward compatibility
+# server.start_server(host="0.0.0.0", port=8000, transport="sse")
 ```
 
 #### MCP Server Features
-- **Real-time Streaming**: Server-Sent Events (SSE) for live prediction updates
-- **Multiple Transport Protocols**: STDIO, SSE, and Streamable HTTP
+- **Real-time Streaming**: Streamable HTTP for live prediction updates (MCP spec 2025-11-25)
+- **Multiple Transport Protocols**: STDIO, Streamable HTTP (recommended), and SSE (legacy)
+- **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
+- **Model Management**: Dynamic model loading and switching
+- **Batch Processing**: Efficient handling of multiple sequences
+- **Health Monitoring**: Built-in server diagnostics and status checks
+
+#### MCP Client SDK
+
+```python
+from dnallm.mcp.client import DNALLMMCPClient
+
+# Connect via Streamable HTTP (recommended)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000")
+result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
+
+# Connect via stdio for local CLI usage
+client = DNALLMMCPClient(transport="stdio")
+result = client.health_check()
+```
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
 - **Batch Processing**: Efficient handling of multiple sequences

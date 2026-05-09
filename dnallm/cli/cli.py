@@ -320,7 +320,11 @@ def model_config_generator(output, preview, non_interactive):
     "--transport",
     type=click.Choice(["stdio", "sse", "streamable-http"]),
     default="stdio",
-    help="Transport protocol to use",
+    help=(
+        "Transport protocol to use. "
+        "streamable-http is recommended for remote connections (MCP spec 2025-11-25). "
+        "sse is legacy/deprecated but retained for backward compatibility."
+    ),
 )
 def mcp_server(config, host, port, log_level, transport):
     """Start MCP (Model Context Protocol) server"""
