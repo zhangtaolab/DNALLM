@@ -91,7 +91,7 @@ def test_client_init_stdio(stdio_client):
 
 def test_client_init_invalid_transport():
     """Raise ValueError for invalid transport."""
-    with pytest.raises(ValueError, match='Invalid transport'):
+    with pytest.raises(ValueError, match="Invalid transport"):
         DNALLMMCPClient(transport="http")
 
 
@@ -196,7 +196,7 @@ TYPED_METHODS = [
 ]
 
 
-@pytest.mark.parametrize("method_name,expected_params", TYPED_METHODS)
+@pytest.mark.parametrize(("method_name", "expected_params"), TYPED_METHODS)
 def test_client_typed_method_signature(method_name, expected_params):
     """Verify each typed method exists and has correct signature."""
     client = DNALLMMCPClient(transport="sse")
@@ -346,7 +346,7 @@ def test_client_parse_result_empty_content():
 
 
 @pytest.mark.asyncio
-async def test_client_sync_from_async_raises(sse_client):
+async def test_client_sync_from_async_raises(sse_client):  # noqa: RUF029
     """Verify sync method raises RuntimeError when called from async."""
     with pytest.raises(RuntimeError, match="async context"):
         sse_client.dna_sequence_predict("ATCG", "dnabert-2")

@@ -23,7 +23,7 @@ def parse_positions(positions_str: str | None) -> list[int] | None:
 
 def load_sequences_from_file(path: str) -> list[str]:
     """Load sequences from a text file (one per line)."""
-    with open(path, "r") as f:
+    with open(path) as f:
         return [line.strip() for line in f if line.strip()]
 
 

@@ -31,7 +31,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from mcp import ClientSession
+    pass
 
 
 class DNALLMMCPClient:
@@ -212,7 +212,7 @@ class DNALLMMCPClient:
             RuntimeError: If called from an async context.
         """
         try:
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
         except RuntimeError:
             return asyncio.run(coro)
         raise RuntimeError(
