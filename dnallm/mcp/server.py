@@ -1766,6 +1766,14 @@ class DNALLMMCPServer:
             f"{transport} transport"
         )
 
+        # Validate transport before dispatching
+        valid_transports = ("stdio", "sse", "streamable-http")
+        if transport not in valid_transports:
+            raise ValueError(
+                f"Invalid transport: {transport!r}. "
+                f"Must be one of: {valid_transports}"
+            )
+
         # Dispatch to appropriate transport handler
         if transport == "sse":
             self._start_sse_server(host, port)
