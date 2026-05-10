@@ -99,22 +99,26 @@ class DNALLMMCPClient:
         self.args = args or []
         self.env = env or {}
         self._session: Any = None
+        self._connect_cm: Any = None
 
     async def __aenter__(self) -> DNALLMMCPClient:
         """Enter async context — open a persistent session."""
-        self._session = await self._connect().__aenter__()
+        self._connect_cm = self._connect()
+        self._session = await self._connect_cm.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         """Exit async context — close the persistent session."""
-        if self._session is not None:
-            await self._session.__aexit__(exc_type, exc, tb)
+        if self._connect_cm is not None:
+            await self._connect_cm.__aexit__(exc_type, exc, tb)
+            self._connect_cm = None
             self._session = None
 
     async def close(self) -> None:
         """Close any open persistent session."""
-        if self._session is not None:
-            await self._session.__aexit__(None, None, None)
+        if self._connect_cm is not None:
+            await self._connect_cm.__aexit__(None, None, None)
+            self._connect_cm = None
             self._session = None
 
     @asynccontextmanager
@@ -194,6 +198,9 @@ class DNALLMMCPClient:
         Returns:
             Parsed tool result as a dictionary.
         """
+        if self._session is not None:
+            result = await self._session.call_tool(tool_name, arguments)
+            return self._parse_result(result)
         async with self._connect() as session:
             result = await session.call_tool(tool_name, arguments)
             return self._parse_result(result)
