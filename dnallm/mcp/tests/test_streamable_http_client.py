@@ -18,7 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 try:
-    from mcp.client.streamable_http import streamablehttp_client
+    from mcp.client.streamable_http import streamable_http_client
     from mcp.client.session import ClientSession
 except ImportError as e:
     pytest.skip(
@@ -36,7 +36,7 @@ class TestStreamableHTTPClient:
         server_url = "http://localhost:8000/mcp"
 
         try:
-            async with streamablehttp_client(server_url) as (
+            async with streamable_http_client(server_url) as (
                 read_stream,
                 write_stream,
                 _get_session_id,
@@ -63,7 +63,7 @@ class TestStreamableHTTPClient:
         server_url = "http://localhost:8000/mcp"
 
         try:
-            async with streamablehttp_client(server_url) as (
+            async with streamable_http_client(server_url) as (
                 read_stream,
                 write_stream,
                 _get_session_id,
@@ -95,7 +95,7 @@ class TestStreamableHTTPClient:
         server_url = "http://localhost:8000/mcp"
 
         try:
-            async with streamablehttp_client(server_url) as (
+            async with streamable_http_client(server_url) as (
                 read_stream,
                 write_stream,
                 _get_session_id,
