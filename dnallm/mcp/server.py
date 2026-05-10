@@ -1802,6 +1802,13 @@ class DNALLMMCPServer:
         )
         logger.info(f"Using SSE transport with mount path: {mount_path}")
 
+        # Read configured log level from server config
+        log_level = (
+            server_config.server.log_level.lower()
+            if server_config and hasattr(server_config.server, "log_level")
+            else "info"
+        )
+
         # Get the Starlette app from FastMCP
         if self.app is None:
             raise RuntimeError("FastMCP app not initialized")
@@ -1830,7 +1837,7 @@ class DNALLMMCPServer:
             app=main_app,
             host=host,
             port=port,
-            log_level="info",
+            log_level=log_level,
             access_log=False,  # Reduce log noise
             loop="asyncio",
             timeout_keep_alive=5,  # Keep-alive timeout
@@ -1888,6 +1895,13 @@ class DNALLMMCPServer:
             f"Streamable HTTP endpoint: http://{host}:{port}{http_path}"
         )
 
+        # Read configured log level from server config
+        log_level = (
+            server_config.server.log_level.lower()
+            if server_config and hasattr(server_config.server, "log_level")
+            else "info"
+        )
+
         # Wrap HTTP app in Starlette with lifespan to ensure shutdown cleanup
         main_app = Starlette(
             routes=[Mount("", http_app)],
@@ -1899,7 +1913,7 @@ class DNALLMMCPServer:
             app=main_app,
             host=host,
             port=port,
-            log_level="info",
+            log_level=log_level,
             access_log=False,  # Reduce log noise
             loop="asyncio",
             timeout_keep_alive=5,  # Keep-alive timeout
