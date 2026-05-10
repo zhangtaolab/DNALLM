@@ -256,8 +256,10 @@ class TestDNALLMMCPServer:
                 assert server._initialized is True
                 assert server.app is not None
 
-    def test_server_config_with_streamable_http(self):
+    def test_server_config_with_streamable_http(self, caplog):
         """Test MCPServerConfig validates with both sse and streamable_http blocks."""
+        import logging
+
         config = {
             "server": {
                 "host": "0.0.0.0",  # noqa: S104
@@ -293,12 +295,14 @@ class TestDNALLMMCPServer:
             },
             "tool_timeout_seconds": 30,
         }
-        validated = MCPServerConfig(**config)
+        with caplog.at_level(logging.WARNING):
+            validated = MCPServerConfig(**config)
         assert validated.streamable_http is not None
         assert validated.streamable_http.host == "0.0.0.0"  # noqa: S104
         assert validated.streamable_http.port == 8000
         assert validated.streamable_http.path == "/mcp"
         assert validated.sse is not None
+        assert "Both 'sse' and 'streamable_http'" in caplog.text
 
 
 class TestMCPTools:
