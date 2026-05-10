@@ -1847,8 +1847,29 @@ class DNALLMMCPServer:
         timeouts enabled.
         """
         import uvicorn
+        from starlette.applications import Starlette
+        from starlette.routing import Mount
 
         logger.info("Using Streamable HTTP transport")
+
+        # Read streamable_http config if available
+        server_config = self.config_manager.get_server_config()
+        streamable_http_config = (
+            server_config.streamable_http
+            if server_config and hasattr(server_config, "streamable_http")
+            else None
+        )
+
+        # Use streamable_http host/port only if server config doesn't specify
+        # them (to avoid overriding CLI args which are passed as parameters)
+        if streamable_http_config:
+            if server_config and server_config.server.host == host:
+                host = streamable_http_config.host
+            if server_config and server_config.server.port == port:
+                port = streamable_http_config.port
+            http_path = streamable_http_config.path
+        else:
+            http_path = "/mcp"
 
         # Get the Streamable HTTP app from FastMCP
         if self.app is None:
@@ -1856,12 +1877,18 @@ class DNALLMMCPServer:
         http_app = self.app.streamable_http_app()
 
         logger.info(
-            f"Streamable HTTP endpoint: http://{host}:{port}/mcp"
+            f"Streamable HTTP endpoint: http://{host}:{port}{http_path}"
+        )
+
+        # Wrap HTTP app in Starlette with lifespan to ensure shutdown cleanup
+        main_app = Starlette(
+            routes=[Mount("", http_app)],
+            lifespan=self._create_server_lifespan(),
         )
 
         # Run the Starlette app with uvicorn with proper signal handling
         config = uvicorn.Config(
-            app=http_app,
+            app=main_app,
             host=host,
             port=port,
             log_level="info",
