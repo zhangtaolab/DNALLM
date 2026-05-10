@@ -1695,16 +1695,20 @@ class DNALLMMCPServer:
         """Start the MCP server with the specified transport protocol.
 
         This method starts the server using one of the supported transport
-        protocols.
-        The server must be initialized before calling this method. The
-        transport
-        protocol determines how the server communicates with clients:
+        protocols. The server must be initialized before calling this method.
+        The transport protocol determines how the server communicates with
+        clients:
 
         - stdio: Standard input/output for CLI tools and automation
         - streamable-http: HTTP-based streaming for REST API integration
           (recommended per MCP spec 2025-11-25)
         - sse: Server-Sent Events (legacy, deprecated in MCP spec 2025-11-25
           but retained for backward compatibility)
+
+        Session management for the ``streamable-http`` transport is handled
+        entirely by the FastMCP SDK via ``StreamableHTTPSessionManager``.
+        Callers do not need to create, track, or clean up ``MCP-Session-Id``
+        headers manually.
 
         Args:
             host (str, optional): Host address to bind the server to.
@@ -1829,7 +1833,19 @@ class DNALLMMCPServer:
         uvicorn_server.run()
 
     def _start_http_server(self, host: str, port: int) -> None:
-        """Start Streamable HTTP server."""
+        """Start Streamable HTTP server.
+
+        This method creates and runs a uvicorn server using the Streamable
+        HTTP application provided by FastMCP's ``streamable_http_app()``.
+        Session management (including ``MCP-Session-Id`` header handling)
+        is performed entirely by the FastMCP SDK via
+        ``StreamableHTTPSessionManager`` — callers do not need to manage
+        session state manually.
+
+        The uvicorn configuration mirrors the SSE server for consistency:
+        asyncio loop, no access logs, keep-alive and graceful-shutdown
+        timeouts enabled.
+        """
         import uvicorn
 
         logger.info("Using Streamable HTTP transport")
@@ -1840,8 +1856,7 @@ class DNALLMMCPServer:
         http_app = self.app.streamable_http_app()
 
         logger.info(
-            f"Streamable HTTP app created, starting uvicorn server "
-            f"on {host}:{port}"
+            f"Streamable HTTP endpoint: http://{host}:{port}/mcp"
         )
 
         # Run the Starlette app with uvicorn with proper signal handling
