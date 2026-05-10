@@ -143,7 +143,17 @@ class SSEConfig(BaseModel):
 
 
 class StreamableHTTPConfig(BaseModel):
-    """Streamable HTTP configuration."""
+    """Streamable HTTP configuration.
+
+    Configuration for the Streamable HTTP transport protocol as defined
+    in the MCP specification 2025-11-25. The default path of ``/mcp``
+    follows the standard MCP endpoint convention.
+
+    Attributes:
+        host: Host address to bind the HTTP server to.
+        port: Port number to bind the HTTP server to.
+        path: URL path for the MCP endpoint (defaults to ``/mcp``).
+    """
 
     host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
     port: int = Field(8000, ge=1024, le=65535)
@@ -196,6 +206,25 @@ class MCPServerConfig(BaseModel):
                             f"Model '{model_name}' referenced in multi-model "
                             f"config but not defined in models"
                         )
+        return v
+
+    @field_validator("streamable_http")
+    @classmethod
+    def warn_both_transports(cls, v, info):
+        """Warn when both SSE and Streamable HTTP blocks are present.
+
+        Having both ``sse`` and ``streamable_http`` configured is a valid
+        transitional state, but it is unusual in production. A warning is
+        logged so operators are aware that two transports are active.
+        """
+        import logging
+
+        if v is not None and info.data and "sse" in info.data:
+            logging.getLogger(__name__).warning(
+                "Both 'sse' and 'streamable_http' blocks are present in the "
+                "server configuration. This is valid for transitional "
+                "deployments but unusual in production."
+            )
         return v
 
 
