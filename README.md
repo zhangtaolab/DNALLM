@@ -291,6 +291,24 @@ trainer.train()
 
 ### 4. MCP Server Deployment
 
+Start the MCP server via the CLI:
+
+```bash
+# Start with Streamable HTTP (recommended, per MCP spec 2025-11-25)
+dnallm-mcp-server --transport streamable-http --host 127.0.0.1 --port 8000
+```
+
+The server exposes a single `/mcp` endpoint (POST/GET/DELETE) per MCP spec 2025-11-25.
+
+Legacy SSE transport is still supported for backward compatibility:
+
+```bash
+# Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
+dnallm-mcp-server --transport sse --host 127.0.0.1 --port 8000
+```
+
+You can also start the server programmatically:
+
 ```python
 # Start MCP server for real-time DNA sequence prediction
 from dnallm.mcp import DNALLMMCPServer
@@ -320,12 +338,17 @@ server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 from dnallm.mcp.client import DNALLMMCPClient
 
 # Connect via Streamable HTTP (recommended)
-client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000")
+client = DNALLMMCPClient(
+    transport="streamable-http", url="http://localhost:8000/mcp"
+)
 result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
 
 # Connect via stdio for local CLI usage
 client = DNALLMMCPClient(transport="stdio")
 result = client.health_check()
+
+# Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
+# client = DNALLMMCPClient(transport="sse", url="http://localhost:8000/sse")
 ```
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
