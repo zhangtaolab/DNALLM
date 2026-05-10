@@ -121,6 +121,21 @@ def test_client_init_invalid_transport():
         DNALLMMCPClient(transport="http")
 
 
+def test_client_init_streamable_http_custom_url_with_path():
+    """Initialize with explicit /mcp path — verify stored as-is (no double-append)."""
+    client = DNALLMMCPClient(
+        transport="streamable-http", url="http://localhost:8000/mcp"
+    )
+    assert client.url == "http://localhost:8000/mcp"
+
+
+def test_client_streamable_http_lifecycle(streamable_http_client):
+    """Verify client has async context manager and close methods."""
+    assert hasattr(streamable_http_client, "close")
+    assert hasattr(streamable_http_client, "__aenter__")
+    assert hasattr(streamable_http_client, "__aexit__")
+
+
 # ---------------------------------------------------------------------------
 # Generic call tests
 # ---------------------------------------------------------------------------
