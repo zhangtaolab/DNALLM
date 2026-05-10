@@ -2005,7 +2005,10 @@ Examples:
         type=str,
         choices=["stdio", "sse", "streamable-http"],
         default="stdio",
-        help="Transport protocol to use (default: %(default)s)",
+        help=(
+            "Transport protocol (streamable-http=recommended per MCP "
+            "2025-11-25, sse=legacy, stdio=default) (default: %(default)s)"
+        ),
     )
 
     parser.add_argument(
