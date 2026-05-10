@@ -1,20 +1,23 @@
 """DNALLM MCP Client SDK.
 
 This module provides a Python client SDK for interacting with the DNALLM MCP
-server. It supports Streamable HTTP, SSE (legacy), and stdio transports, and
-provides typed methods for all server tools with both sync and async variants.
+server. It supports Streamable HTTP (recommended), SSE (legacy), and stdio
+transports, and provides typed methods for all server tools with both sync and
+async variants.
 
 Example:
     Sync usage with Streamable HTTP (recommended)::
 
         client = DNALLMMCPClient(
-            transport="streamable-http", url="http://localhost:8000"
+            transport="streamable-http", url="http://localhost:8000/mcp"
         )
         result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
 
     Legacy SSE usage::
 
-        client = DNALLMMCPClient(transport="sse", url="http://localhost:8000")
+        client = DNALLMMCPClient(
+            transport="sse", url="http://localhost:8000/sse"
+        )
         result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
 
     Async usage::
@@ -81,6 +84,8 @@ class DNALLMMCPClient:
             )
         self.transport = transport
         if url is not None:
+            # streamablehttp_client expects the full URL including the /mcp path.
+            # The SDK does NOT automatically append /mcp -- the caller must provide it.
             self.url = url
         elif transport == "streamable-http":
             self.url = "http://localhost:8000/mcp"
@@ -100,6 +105,12 @@ class DNALLMMCPClient:
 
         Yields an initialized ClientSession ready for tool calls.
 
+        Session management for the streamable-http transport is handled
+        entirely by the MCP SDK (StreamableHTTPTransport extracts and
+        forwards MCP-Session-Id automatically). The ``_get_session_id``
+        callback unpacked below is available for debugging but is not
+        required for normal operation.
+
         Yields:
             ClientSession: An initialized MCP client session.
         """
@@ -109,8 +120,11 @@ class DNALLMMCPClient:
             async with streamable_http_client(self.url) as (
                 read_stream,
                 write_stream,
-                _get_session_id,
+                get_session_id,
             ):
+                # Session ID is managed internally by the SDK; callback is
+                # available for debugging only.
+                _ = get_session_id
                 from mcp import ClientSession
 
                 async with ClientSession(
