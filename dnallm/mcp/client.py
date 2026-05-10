@@ -98,6 +98,24 @@ class DNALLMMCPClient:
         )
         self.args = args or []
         self.env = env or {}
+        self._session: Any = None
+
+    async def __aenter__(self) -> DNALLMMCPClient:
+        """Enter async context — open a persistent session."""
+        self._session = await self._connect().__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        """Exit async context — close the persistent session."""
+        if self._session is not None:
+            await self._session.__aexit__(exc_type, exc, tb)
+            self._session = None
+
+    async def close(self) -> None:
+        """Close any open persistent session."""
+        if self._session is not None:
+            await self._session.__aexit__(None, None, None)
+            self._session = None
 
     @asynccontextmanager
     async def _connect(self):
