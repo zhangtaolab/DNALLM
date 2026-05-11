@@ -151,8 +151,7 @@ print(f"Inference result: {inference_result}")
 ### 2. *In-silico* Mutagenesis Analysis
 
 ```python
-from dnallm import load_config
-from dnallm.inference import Mutagenesis
+from dnallm import load_config, Mutagenesis
 
 # Load configuration
 configs = load_config(

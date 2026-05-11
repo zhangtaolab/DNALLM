@@ -155,6 +155,28 @@ dnallm-mcp-server --config mcp_config.yaml
 dnallm-mcp-server --port 9000
 ```
 
+### `dnallm-mutagenesis`
+
+Run in-silico mutagenesis analysis on DNA sequences.
+
+**Options:**
+- `--sequence, -s`: Single DNA sequence for analysis
+- `--sequences`: Path to file with multiple sequences (one per line)
+- `--positions, -p`: Comma-separated positions to mutate (e.g., '0,1,2')
+- `--mutation-type, -t`: Mutation type (single_base_substitution, multi_base_substitution, deletion, insertion, combo)
+- `--task-type`: Task type (binary, multiclass, multilabel, regression, token)
+- `--model-name, -m`: Model name or path (required)
+- `--output, -o`: Output JSON file path
+
+**Examples:**
+```bash
+# Single sequence analysis
+dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCGATCG
+
+# Batch analysis from file
+dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
+```
+
 ## Configuration Examples
 
 ### Training Configuration (config.yaml)

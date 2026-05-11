@@ -223,6 +223,23 @@ Perform health check on the MCP server.
 
 ## Client Examples
 
+### Python with DNALLM Client SDK (Recommended)
+
+The DNALLM package provides a built-in `DNALLMMCPClient` that supports multiple transport protocols including the recommended `streamable-http`.
+
+```python
+from dnallm.mcp import DNALLMMCPClient
+
+# Connect using streamable-http transport (recommended)
+client = DNALLMMCPClient(
+    transport="streamable-http", url="http://localhost:8000/mcp"
+)
+
+# Single sequence prediction
+result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
+print(result)
+```
+
 ### Python with Pydantic AI
 
 ```python
@@ -283,7 +300,7 @@ from mcp.client.stdio import stdio_client
 async def main():
     # Connect to MCP server via STDIO
     server_params = StdioServerParameters(
-        command="python", args=["-m", "dnallm.mcp.start_server"]
+        command="dnallm-mcp-server"
     )
 
     async with stdio_client(server_params) as (read, write):
