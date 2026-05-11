@@ -32,10 +32,10 @@ from dnallm.utils import get_logger
 
 try:
     import nbformat
-    from nbconvert.preprocessors import ExecutePreprocessor
-    HAS_NBCONVERT = True
+    HAS_NBFORMAT = True
 except ImportError:
-    HAS_NBCONVERT = False
+    HAS_NBFORMAT = False
+# Notebook execution uses subprocess (jupyter nbconvert CLI) to avoid ZMQ issues
 
 logger = get_logger("dnallm.verify_docs")
 
@@ -201,7 +201,7 @@ class DocVerifier:
         blocks: list[tuple[str, str, int, str | None]] = []
 
         if not file_path.exists():
-            logger.warning("File not found: %s", file_path)
+            logger.warning(f"File not found: {file_path}")
             return blocks
 
         content = file_path.read_text(encoding="utf-8")
@@ -232,10 +232,7 @@ class DocVerifier:
                             reason = m.group(1).strip()
                             if len(reason) < 10:
                                 logger.warning(
-                                    "Skip-verify reason too short (%d chars) at %s:%d",
-                                    len(reason),
-                                    file_path,
-                                    i - 1,
+                                    f"Skip-verify reason too short ({len(reason)} chars) at {file_path}:{i - 1}"
                                 )
                             skip_reason = reason
                 else:
@@ -596,7 +593,7 @@ class DocVerifier:
         rel_path = str(nb_path.relative_to(self.project_root))
         result = NotebookResult(file=rel_path)
 
-        if not HAS_NBCONVERT:
+        if not HAS_NBFORMAT:
             result.overall_status = "SKIP"
             result.cell_results.append({
                 "index": 0,
@@ -629,9 +626,6 @@ class DocVerifier:
                 "error": reason,
             })
             return result
-
-        # Execute via nbconvert
-        ep = ExecutePreprocessor(timeout=120, kernel_name="python3")
 
         # Filter out magic-only cells before execution
         code_cells = []
@@ -670,53 +664,81 @@ class DocVerifier:
             result.overall_status = "SKIP"
             return result
 
-        # Make a copy for execution
-        import copy
-        nb_exec = copy.deepcopy(nb)
+        # Execute via nbconvert CLI in subprocess (avoids ZMQ issues in nested contexts)
+        import tempfile
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".ipynb", delete=False, dir=str(self.project_root)
+        ) as f:
+            nbformat.write(nb, f)
+            temp_nb = f.name
 
         try:
-            ep.preprocess(nb_exec, {"metadata": {"path": str(nb_path.parent)}})
-            for idx, _ in code_cells:
-                result.cell_results.append({
-                    "index": idx,
-                    "source": nb_exec.cells[idx].source[:200],
-                    "status": "PASS",
-                    "error": "",
-                })
-            result.overall_status = "PASS"
-        except Exception as e:
-            # Identify which cell failed
-            error_str = str(e)
-            failed_idx = None
-            for idx, cell in code_cells:
-                # Try to match error to cell
-                if failed_idx is None:
-                    failed_idx = idx
-            for idx, _ in code_cells:
-                if idx == failed_idx:
+            proc = subprocess.run(
+                [
+                    sys.executable, "-m", "jupyter", "nbconvert",
+                    "--to", "notebook",
+                    "--execute",
+                    "--ExecutePreprocessor.timeout=120",
+                    "--ExecutePreprocessor.kernel_name=python3",
+                    "--output", temp_nb + ".out.ipynb",
+                    temp_nb,
+                ],
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            if proc.returncode == 0:
+                for idx, _ in code_cells:
                     result.cell_results.append({
                         "index": idx,
-                        "source": nb_exec.cells[idx].source[:200] if idx < len(nb_exec.cells) else "",
-                        "status": "FAIL",
-                        "error": error_str[:500],
+                        "source": nb.cells[idx].source[:200],
+                        "status": "PASS",
+                        "error": "",
                     })
-                else:
-                    # Earlier cells passed, later ones may not have run
-                    if idx < (failed_idx or 0):
+                result.overall_status = "PASS"
+            else:
+                error_str = proc.stderr[:500] if proc.stderr else proc.stdout[:500]
+                failed_idx = code_cells[0][0] if code_cells else None
+                for idx, _ in code_cells:
+                    if idx == failed_idx:
                         result.cell_results.append({
                             "index": idx,
-                            "source": nb_exec.cells[idx].source[:200] if idx < len(nb_exec.cells) else "",
+                            "source": nb.cells[idx].source[:200],
+                            "status": "FAIL",
+                            "error": error_str,
+                        })
+                    elif idx < (failed_idx or 0):
+                        result.cell_results.append({
+                            "index": idx,
+                            "source": nb.cells[idx].source[:200],
                             "status": "PASS",
                             "error": "",
                         })
                     else:
                         result.cell_results.append({
                             "index": idx,
-                            "source": nb_exec.cells[idx].source[:200] if idx < len(nb_exec.cells) else "",
+                            "source": nb.cells[idx].source[:200],
                             "status": "FAIL",
                             "error": "Execution halted due to earlier cell failure",
                         })
-            result.overall_status = "FAIL"
+                result.overall_status = "FAIL"
+        except subprocess.TimeoutExpired:
+            for idx, _ in code_cells:
+                result.cell_results.append({
+                    "index": idx,
+                    "source": nb.cells[idx].source[:200],
+                    "status": "TIMEOUT",
+                    "error": "Notebook execution timed out after 180s",
+                })
+            result.overall_status = "TIMEOUT"
+        finally:
+            try:
+                os.unlink(temp_nb)
+                if os.path.exists(temp_nb + ".out.ipynb"):
+                    os.unlink(temp_nb + ".out.ipynb")
+            except OSError:
+                pass
 
         return result
 
