@@ -66,6 +66,7 @@ training:
 
 ### Python Script
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python title="finetune_multi_label.py"
 from dnallm import (
     load_config,

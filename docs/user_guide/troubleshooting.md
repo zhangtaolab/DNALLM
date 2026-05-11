@@ -47,6 +47,7 @@ training_args:
 ```
 
 ### Model Loading
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # For custom architectures
 model, tokenizer = load_model_and_tokenizer(

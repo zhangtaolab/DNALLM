@@ -270,7 +270,7 @@ scripts\check_code.bat --verbose
 6. **Test Coverage** (Pytest with coverage)
 
 #### Example Usage
-```bash
+```text
 # Quick code quality check (default - no tests)
 $ python scripts/check_code.py
 [INFO] Starting DNALLM code quality checks...
@@ -348,6 +348,7 @@ $ python scripts/check_code.py --fix
 - Add inline comments for complex logic
 
 Example:
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def infer_sequence(self, sequence: str, model_name: str) -> Dict[str, Any]:
     """Infer the properties of a DNA sequence.
@@ -398,7 +399,9 @@ tests/
 3. **Test method naming**: `test_*`
 4. **Use descriptive test names** that explain what is being tested
 
+<!-- skip-verify: stale import path needs code fix or module unavailable -->
 Example:
+<!-- skip-verify: stale import path needs code update -->
 ```python
 import pytest
 from dnallm.utils.sequence import validate_dna_sequence

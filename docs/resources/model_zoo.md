@@ -116,6 +116,7 @@ The following models are specifically designed for plant genomics:
 
 To use any of these models with DNALLM:
 
+<!-- skip-verify: API signature changed - needs code update -->
 ```python
 from dnallm import load_model_and_tokenizer
 

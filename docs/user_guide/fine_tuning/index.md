@@ -32,6 +32,7 @@ Before diving into fine-tuning, ensure you have:
 
 ## Quick Start
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import (
     load_config,

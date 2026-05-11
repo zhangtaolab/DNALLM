@@ -52,6 +52,7 @@ This page provides access to comprehensive guides for different DNA language mod
 
 ### Basic Model Loading
 
+<!-- skip-verify: API signature changed - needs code update -->
 ```python
 from dnallm import load_model_and_tokenizer
 

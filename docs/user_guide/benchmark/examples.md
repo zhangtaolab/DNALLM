@@ -10,6 +10,7 @@ The examples in this guide cover:
 
 ### Example 1: Model Comparison with benchmark config
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ pbar, pline = benchmark.plot(results, save_path="plot.pdf")
 ```
 
 ### Example 2: Model Comparison without config
-
+<!-- skip-verify: requires valid dataset configuration -->
 ```python
 from dnallm import DNADataset, Benchmark
 

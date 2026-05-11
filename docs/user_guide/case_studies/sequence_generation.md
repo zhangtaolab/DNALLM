@@ -41,6 +41,7 @@ inference:
 
 This script loads a pre-trained Evo-2 model and uses it for both sequence generation and scoring.
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 

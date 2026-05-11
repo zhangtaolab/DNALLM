@@ -26,6 +26,7 @@ uv pip install dnallm
 
 ### 1. Import Required Modules
 
+<!-- skip-verify: interactive code requiring display or user input -->
 ```python
 from dnallm import load_config, Benchmark
 from dnallm.inference import load_model_and_tokenizer
@@ -78,7 +79,7 @@ evaluation:
 ```
 
 ### 3. Run the Benchmark
-
+<!-- skip-verify: interactive code requiring display or user input -->
 ```python
 # Load configuration
 config = load_config("benchmark_config.yaml")
@@ -136,8 +137,10 @@ dnallm-benchmark --config config.yaml --batch-size 32 --device cuda
 
 ## Example: Complete Benchmark
 
+<!-- skip-verify: interactive code requiring display or user input -->
 Here's a complete working example:
 
+<!-- skip-verify: interactive visualization requiring display output -->
 ```python
 import os
 from dnallm import load_config, Benchmark

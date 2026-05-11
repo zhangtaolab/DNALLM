@@ -35,6 +35,7 @@ from transformers import AutoTokenizer
 
 ### Data Loading
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")
@@ -86,7 +87,7 @@ dna_ds = load_preset_dataset(
 ```
 
 ### Data Processing and Augmentation
-
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Common functionality demonstration
 

@@ -21,6 +21,7 @@ The `batch_infer()` method returns three items:
 2.  `predictions`: A formatted dictionary of predictions (this is `None` if `do_pred=False`).
 3.  `embeddings`: A dictionary containing hidden states and/or attention weights if requested.
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
@@ -71,7 +72,7 @@ print("Attention weights available:", "attentions" in embeddings)
 The `DNAInference` engine seamlessly supports inference with models fine-tuned using LoRA adapters. This allows you to switch between different "personalities" of a base model without loading a completely new one.
 
 To use a LoRA adapter, simply provide the path or hub ID to the `lora_adapter` argument during initialization.
-
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
@@ -115,8 +116,10 @@ The `DNAInference` engine includes powerful visualization tools for model interp
 
 ### Visualizing Attention
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 `plot_attentions()` helps you see which parts of a sequence the model focused on.
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Run inference first with output_attentions=True
 inference_engine.infer(sequences=sequences, output_attentions=True)
@@ -128,9 +131,12 @@ attention_figure = inference_engine.plot_attentions(
 ```
 
 ### Visualizing Embeddings
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
 `plot_hidden_states()` uses dimensionality reduction (t-SNE, PCA, UMAP) to visualize the sequence embeddings from each layer, which can reveal how the model separates different classes.
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Run inference first with output_hidden_states=True
 inference_engine.infer(

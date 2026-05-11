@@ -58,6 +58,7 @@ Optimizing performance is key to working efficiently with large DNA models. This
 ### Use `torch.compile`
 -   **What it is**: A feature in PyTorch 2.0+ that JIT-compiles your model into optimized code.
 -   **Why it helps**: It can provide a significant speedup (up to 2x) with a single line of code, especially for inference.
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
     ```python
     import torch
 

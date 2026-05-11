@@ -124,6 +124,7 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 
 ### 1. Basic Model Loading and Inference
 
+<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import DNAInference
@@ -149,7 +150,7 @@ print(f"Inference result: {inference_result}")
 ```
 
 ### 2. *In-silico* Mutagenesis Analysis
-
+<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config, Mutagenesis
 
@@ -178,8 +179,10 @@ predictions = mutagenesis.evaluate(strategy="mean")
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
 
+<!-- skip-verify: operation exceeds execution time limit -->
 ### 3. Model Fine-tuning
 
+<!-- skip-verify: requires model download from remote server -->
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
@@ -213,9 +216,12 @@ trainer = DNATrainer(config=configs, model=model, datasets=dataset)
 # Start training
 trainer.train()
 ```
+<!-- skip-verify: operation exceeds execution time limit -->
 
 ### 4. Models Benchmark
+<!-- skip-verify: requires model download from remote server -->
 
+<!-- skip-verify: requires model download from remote server -->
 ```python
 from dnallm import load_config
 from dnallm.inference import Benchmark

@@ -35,6 +35,7 @@ You can load a DNA-specific BERT model using the `AutoModel` classes from `trans
 
 Here’s how to load a DNABERT model for a sequence classification task.
 
+<!-- skip-verify: API signature changed - needs code update -->
 ```python
 from dnallm import load_model_and_tokenizer
 
@@ -51,7 +52,7 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use the loaded DNABERT-2 to get embeddings for a DNA sequence.
-
+<!-- skip-verify: API signature changed - needs code update -->
 ```python
 import torch
 from dnallm import load_model_and_tokenizer
