@@ -885,7 +885,7 @@ async def main():
 
     # Start server
     print("🚀 MCP server starting...")
-    await server.start_server(host="0.0.0.0", port=8000, transport="sse")
+    server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
     print("✅ MCP server started: http://0.0.0.0:8000/mcp")
 
 
