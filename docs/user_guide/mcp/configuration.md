@@ -391,7 +391,7 @@ export DNALLM_MODEL_BATCH_SIZE="32"
 export DNALLM_MODEL_PRECISION="float16"
 
 # Start server
-python -m dnallm.mcp.start_server
+dnallm-mcp-server
 ```
 
 ## Configuration Validation
@@ -442,7 +442,7 @@ The server validates configuration files on startup. Common validation errors:
 1. **Configuration File Not Found**
    ```bash
    # Use absolute paths
-   python -m dnallm.mcp.start_server --config /absolute/path/to/config.yaml
+   dnallm-mcp-server --config /absolute/path/to/config.yaml
    ```
 
 2. **Model Loading Failed**

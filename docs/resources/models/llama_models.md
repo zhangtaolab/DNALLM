@@ -36,7 +36,7 @@ You can load a Llama-based DNA model using the `AutoModelForCausalLM` class from
 Here’s how to load a Llama-based model for a causal language modeling task.
 
 ```python
-from dnallm.utils.load import load_model_and_tokenizer
+from dnallm import load_model_and_tokenizer
 
 # Use a specific Llama-based DNA model
 model_name = "GenerTeam/GENERator-eukaryote-1.2b-base"

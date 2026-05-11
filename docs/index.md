@@ -144,7 +144,7 @@ server = DNALLMMCPServer("config/mcp_server_config.yaml")
 await server.initialize()
 
 # Start server with SSE transport for real-time streaming
-server.start_server(host="0.0.0.0", port=8000, transport="sse")
+server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 ```
 
 6. **Launch Jupyter Lab, Marimo or Gradio App for interactive development:**
