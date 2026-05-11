@@ -106,6 +106,7 @@ uv pip install evo-model
 
 **Solution**: You **must** pass `trust_remote_code=True` when loading the model. This allows `transformers` to download and run the model's defining Python code from the Hugging Face Hub.
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 model, tokenizer = load_model_and_tokenizer(
     "togethercomputer/evo-1-131k-base", trust_remote_code=True
@@ -141,7 +142,9 @@ This is a general error that can have several causes.
    ```
 
 3. **Network Issues**: The model download failed due to an unstable connection.
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
    - **Fix**: Use a mirror by setting `use_mirror=True`.
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
    ```python
    model, tokenizer = load_model_and_tokenizer(
        "zhihan1996/DNABERT-2-117M",

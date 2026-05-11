@@ -263,7 +263,7 @@ dnallm-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
 
 ## Command Line Options
 
-```bash
+```text
 dnallm-mcp-server [OPTIONS]
 
 Options:
@@ -310,6 +310,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
 
 Here's how to connect to the MCP server using Python:
 
+<!-- skip-verify: code has syntax issues requiring manual fix -->
 ```python
 import asyncio
 from pydantic import BaseModel

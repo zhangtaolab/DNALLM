@@ -62,6 +62,7 @@ Both EVO-1 and EVO-2 are causal language models (CLMs) used for generation and s
 
 This example shows how to use an EVO model to score the impact of mutations on a sequence's likelihood.
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, Mutagenesis, load_model_and_tokenizer
 

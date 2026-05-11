@@ -10,6 +10,7 @@ Functional analysis aims to understand what a DNA sequence *does*. This is often
 - **How it's done in DNALLM**: This is the primary goal of the `DNAInference` and `Benchmark` classes. You provide a sequence, and the model predicts its function based on what it learned during training.
 
 **Example**:
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Using DNAInference to predict promoter strength (a regression task)
 inference_result = inference_engine.infer(sequence="GATTACA...")
@@ -23,7 +24,9 @@ This is one of the most powerful analysis methods. It helps identify which speci
 - **What it is**: Systematically mutating each position in a sequence and measuring the impact of that mutation on the model's prediction. A large change in the prediction score indicates a functionally important site. This is a computational proxy for saturation mutagenesis experiments.
 - **How it's done in DNALLM**: The `dnallm.Mutagenesis` class is designed specifically for this purpose. It automates the process of creating mutations, running inference, and calculating the effect of each mutation.
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 **Example**:
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import Mutagenesis
 

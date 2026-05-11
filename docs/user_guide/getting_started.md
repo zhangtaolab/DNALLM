@@ -76,6 +76,7 @@ For more detailed instructions, please see the full Installation Guide.
 
 Let's run a simple inference to see the toolkit in action. This example loads a pre-trained model and uses it to make a prediction on a DNA sequence.
 
+<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import DNAInference

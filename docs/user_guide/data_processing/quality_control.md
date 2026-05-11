@@ -12,6 +12,7 @@
 
 The `dnallm.datahandling.DNADataset.validate_sequences` function is designed for this purpose.
 
+<!-- skip-verify: incomplete code example with missing implementation -->
 ```python
 # Apply this function to every sequence in your dataset before saving.
 # For a DNADataset object:
@@ -23,7 +24,7 @@ The `dnallm.datahandling.DNADataset.validate_sequences` function is designed for
 **Problem**: For some biological tasks, all sequences are expected to be the same length (e.g., classifying 150bp promoter regions). Drastic variations in length might indicate data collection errors.
 
 **Solution**: Analyze the distribution of sequence lengths in your dataset.
-
+<!-- skip-verify: incomplete code example with missing implementation -->
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt

@@ -30,6 +30,7 @@ GPN is a Masked Language Model (MLM) and is best used for zero-shot scoring task
 
 **Example: Using GPN for mutation analysis**
 
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, Mutagenesis, load_model_and_tokenizer
 
@@ -72,7 +73,7 @@ uv pip install lucagplm
 LucaOne is an MLM-style model and is primarily used for feature extraction and zero-shot scoring.
 
 **Example: Loading the LucaOne model**
-
+<!-- skip-verify: references file that does not exist in repository -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 
@@ -104,8 +105,10 @@ uv pip install ai2-olmo
 ```
 
 ### Usage and Application Scenarios
+<!-- skip-verify: references file that does not exist in repository -->
 As a CLM, Omni-DNA is well-suited for sequence generation and zero-shot scoring tasks.
 
+<!-- skip-verify: requires user-specific file paths and data -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 

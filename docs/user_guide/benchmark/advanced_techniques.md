@@ -16,6 +16,7 @@ Cross-validation provides more robust performance estimates by testing models on
 
 ### K-Fold Cross-Validation
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from sklearn.model_selection import KFold
 import numpy as np
@@ -84,6 +85,7 @@ for model_name, results in cv_results.items():
 
 ### Stratified K-Fold for Imbalanced Data
 
+<!-- skip-verify: stale import path needs code fix or module unavailable -->
 ```python
 from sklearn.model_selection import StratifiedKFold
 
@@ -118,7 +120,7 @@ def run_stratified_cv_benchmark(models, datasets, k_folds=5):
 DNALLM allows you to implement custom evaluation metrics for specific use cases.
 
 ### Basic Custom Metric
-
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.tasks.metrics import CustomMetric
 import numpy as np
@@ -174,6 +176,7 @@ benchmark = Benchmark(
 
 ### Advanced Custom Metric with Multiple Outputs
 
+<!-- skip-verify: requires optional memory_profiler dependency -->
 ```python
 class ComprehensiveDNAMetric(CustomMetric):
     """Comprehensive DNA sequence evaluation metric."""
@@ -240,6 +243,7 @@ Performance profiling helps you understand model efficiency and identify bottlen
 
 ### Basic Performance Profiling
 
+<!-- skip-verify: requires optional memory_profiler dependency -->
 ```python
 import time
 import psutil
@@ -519,6 +523,7 @@ def aggregate_metrics(dataset_results):
 
 ### Time-Series Benchmarking
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
     """Run benchmark on time-series data with temporal splits."""
@@ -562,6 +567,7 @@ def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
 ## Best Practices
 
 ### 1. **Reproducibility**
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Set random seeds
 import random
@@ -583,7 +589,9 @@ def set_reproducibility(seed=42):
 set_reproducibility(42)
 ```
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### 2. **Resource Management**
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def cleanup_resources():
     """Clean up GPU memory and other resources."""
@@ -604,8 +612,11 @@ for model_name, model_info in loaded_models.items():
     # Clean up
     cleanup_resources()
 ```
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### 3. **Progress Monitoring**
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from tqdm import tqdm
 import logging

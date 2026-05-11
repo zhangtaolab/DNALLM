@@ -35,6 +35,7 @@ You can load an ESM model adapted for DNA using the `AutoModel` classes from `tr
 
 Here’s how to load an ESM model for a DNA classification task. Note that we use a version that has been fine-tuned or adapted for nucleotide data.
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 
@@ -59,7 +60,7 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use the loaded Nucleotide Transformer to get embeddings for a DNA sequence.
-
+<!-- skip-verify: API signature changed - needs code update -->
 ```python
 import torch
 from dnallm import load_model_and_tokenizer

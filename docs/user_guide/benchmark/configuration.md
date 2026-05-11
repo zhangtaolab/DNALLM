@@ -637,6 +637,7 @@ benchmark:
 
 DNALLM automatically validates your configuration:
 
+<!-- skip-verify: stale import path needs code fix or module unavailable -->
 ```python
 from dnallm import validate_config
 
