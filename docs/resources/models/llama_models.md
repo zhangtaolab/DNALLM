@@ -34,8 +34,6 @@ You can load a Llama-based DNA model using the `AutoModelForCausalLM` class from
 ### Loading a Model
 
 Here’s how to load a Llama-based model for a causal language modeling task.
-
-<!-- skip-verify: API signature changed - needs code update -->
 ```python
 from dnallm import load_model_and_tokenizer
 
@@ -52,7 +50,6 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use a Llama-based model to get embeddings for a DNA sequence.
-<!-- skip-verify: API signature changed - needs code update -->
 ```python
 import torch
 from dnallm import load_model_and_tokenizer

@@ -17,9 +17,7 @@ Advanced fine-tuning techniques help you:
 DNALLM allows you to implement custom loss functions for specific use cases.
 
 #### Weighted Loss for Imbalanced Data
-
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import torch
 import torch.nn as nn
@@ -84,7 +82,7 @@ trainer.trainer = CustomTrainer
 ```
 
 #### Focal Loss for Hard Examples
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class FocalLoss(nn.Module):
     """Focal loss for handling hard examples."""
@@ -120,9 +118,7 @@ trainer.trainer.criterion = FocalLoss(alpha=1, gamma=2)
 Implement custom training loops for advanced control over the training process.
 
 #### Custom Training with Gradient Accumulation
-
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class CustomTrainer:
     """Custom trainer with advanced features."""
@@ -285,7 +281,7 @@ scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=1000, T_mult=2)
 
 #### One Cycle Policy
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class OneCycleScheduler:
     """One cycle learning rate scheduler."""
@@ -326,8 +322,7 @@ scheduler = OneCycleScheduler(optimizer, max_lr=1e-3, total_steps=10000)
 
 Implement gradient checkpointing to reduce memory usage.
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-```python
+```yaml
 # Enable gradient checkpointing in configuration
 finetune:
   gradient_checkpointing: true
@@ -342,8 +337,7 @@ Enable it in the model `config.json` file.
 
 Implement dynamic batching for variable-length sequences.
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class DynamicBatchSampler:
     """Dynamic batch sampler for variable-length sequences."""
@@ -396,7 +390,7 @@ dataloader = torch.utils.data.DataLoader(
 
 Implement custom callbacks for advanced monitoring.
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class CustomCallback:
     """Custom callback for advanced monitoring."""
@@ -473,7 +467,7 @@ callback = CustomCallback(model, tokenizer, dataset)
 
 Implement comprehensive logging for debugging.
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import logging
 import json

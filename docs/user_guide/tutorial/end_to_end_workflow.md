@@ -773,7 +773,7 @@ print(f"Top 10 most important positions: {important_positions}")
 <!-- skip-verify: stale import path needs code update -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
-from dnallm.inference import DNAInterpreter
+from dnallm.inference import DNAInterpret
 
 # Load configuration and model
 configs = load_config("./configs/inference_config.yaml")
