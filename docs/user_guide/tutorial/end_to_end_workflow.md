@@ -84,7 +84,6 @@ This task will train a binary classification model to predict whether a DNA sequ
 
 #### 2.2.1 Download and View Data
 
-<!-- skip-verify: requires downloading data from ModelScope -->
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
@@ -130,7 +129,6 @@ GCTAGC...	0
 
 #### 2.2.3 Data Quality Check
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -212,7 +210,6 @@ finetune:
 ```
 
 ### 2.4 Execute Training
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -255,7 +252,6 @@ print(f"Training complete! Final metrics: {metrics}")
 
 ### 2.5 Model Validation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import json
 
@@ -275,7 +271,6 @@ with open("./evaluation_report.json", "w") as f:
 
 Save the above code as `train_promoter.py`:
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
@@ -392,7 +387,6 @@ finetune:
 
 ### 3.4 Multi-label Training Code
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -478,7 +472,6 @@ finetune:
 
 ### 4.4 NER Training Code
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -1080,7 +1073,6 @@ finetune:
 
 ### 8.3 Data Augmentation Strategies
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -1119,7 +1111,6 @@ trainer = DNATrainer(
 
 ### 8.5 Model Saving and Loading
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Save full model
 trainer.save_model("./models/full_model")
@@ -1189,7 +1180,6 @@ Task type selection:
 ```
 
 ### Q4: How to resume training from checkpoint?
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 trainer = DNATrainer(
     model=model,
