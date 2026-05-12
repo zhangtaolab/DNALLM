@@ -399,12 +399,9 @@ tests/
 3. **Test method naming**: `test_*`
 4. **Use descriptive test names** that explain what is being tested
 
-<!-- skip-verify: stale import path needs code fix or module unavailable -->
-Example:
-<!-- skip-verify: stale import path needs code update -->
 ```python
 import pytest
-from dnallm.utils.sequence import validate_dna_sequence
+from dnallm.utils.sequence import check_sequence
 
 
 class TestSequenceValidation:
@@ -412,19 +409,18 @@ class TestSequenceValidation:
 
     def test_valid_sequence(self):
         """Test validation of valid DNA sequences."""
-        assert validate_dna_sequence("ATCG") == True
-        assert validate_dna_sequence("ATCGATCG") == True
+        assert check_sequence("ATCG") == True
+        assert check_sequence("ATCGATCG") == True
 
     def test_invalid_characters(self):
         """Test validation rejects invalid characters."""
-        with pytest.raises(ValueError):
-            validate_dna_sequence("ATCGX")
+        assert check_sequence("ATCGX") == False
 
     @pytest.mark.slow
     def test_large_sequence(self):
         """Test validation of large sequences."""
         large_seq = "ATCG" * 1000
-        assert validate_dna_sequence(large_seq) == True
+        assert check_sequence(large_seq) == True
 ```
 
 ### Test Markers

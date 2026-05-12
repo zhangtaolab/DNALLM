@@ -1,16 +1,16 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-11T11:45:41.153367+00:00Z
-**Total code blocks:** 530
+**Generated:** 2026-05-11T17:54:16.891625+00:00Z
+**Total code blocks:** 528
 **Files scanned:** 120 Markdown + 19 notebooks
 
 ## Summary
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 193 |
+| PASS    | 207 |
 | FAIL    | 0 |
-| SKIP    | 337 |
+| SKIP    | 321 |
 | TIMEOUT | 0 |
 
 ## Details
@@ -20,7 +20,7 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 352 | python | SKIP | depends on variables defined in preceding code blocks |
-| 405 | python | SKIP | stale import path needs code update |
+| 402 | python | PASS |  |
 | 35 | bash | PASS |  |
 | 41 | bash | PASS |  |
 | 49 | bash | PASS |  |
@@ -38,39 +38,39 @@
 | 205 | bash | PASS |  |
 | 220 | bash | PASS |  |
 | 238 | bash | PASS |  |
-| 441 | bash | PASS |  |
-| 483 | bash | PASS |  |
-| 499 | bash | PASS |  |
-| 505 | bash | PASS |  |
-| 629 | bash | PASS |  |
+| 437 | bash | PASS |  |
+| 479 | bash | PASS |  |
+| 495 | bash | PASS |  |
+| 501 | bash | PASS |  |
+| 625 | bash | PASS |  |
 | 253 | cmd | SKIP | unsupported language: cmd |
 | 273 | text | SKIP | unsupported language: text |
 | 384 |  | SKIP | unsupported language:  |
-| 463 |  | SKIP | unsupported language:  |
-| 519 | markdown | SKIP | unsupported language: markdown |
+| 459 |  | SKIP | unsupported language:  |
+| 515 | markdown | SKIP | unsupported language: markdown |
 ### README.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 231 | python | SKIP | code has syntax issues requiring manual fix |
-| 256 | python | SKIP | code has syntax issues requiring manual fix |
-| 276 | python | SKIP | code has syntax issues requiring manual fix |
-| 318 | python | SKIP | requires async event loop context |
-| 346 | python | SKIP | requires async event loop and running server |
+| 254 | python | SKIP | depends on variables defined in preceding code blocks |
+| 270 | python | SKIP | depends on variables defined in preceding code blocks |
+| 307 | python | SKIP | requires async event loop context |
+| 329 | python | SKIP | requires async event loop and running server |
+| 229 | python | PASS |  |
 | 15 | bash | PASS |  |
 | 69 | bash | PASS |  |
 | 100 | bash | PASS |  |
 | 128 | bash | PASS |  |
 | 172 | bash | PASS |  |
 | 185 | bash | PASS |  |
-| 299 | bash | PASS |  |
-| 308 | bash | PASS |  |
-| 378 | bash | PASS |  |
-| 393 | bash | PASS |  |
-| 405 | bash | PASS |  |
-| 459 | bash | PASS |  |
-| 497 | bash | PASS |  |
-| 430 |  | SKIP | unsupported language:  |
+| 293 | bash | PASS |  |
+| 302 | bash | PASS |  |
+| 361 | bash | PASS |  |
+| 376 | bash | PASS |  |
+| 388 | bash | PASS |  |
+| 442 | bash | PASS |  |
+| 480 | bash | PASS |  |
+| 413 |  | SKIP | unsupported language:  |
 ### docs/concepts/biology/dna_sequences.md
 
 | Line | Lang | Status | Error |
@@ -162,29 +162,29 @@
 |------|------|--------|-------|
 | 128 | python | SKIP | operation exceeds execution time limit |
 | 154 | python | SKIP | operation exceeds execution time limit |
-| 186 | python | SKIP | requires model download from remote server |
-| 225 | python | SKIP | requires model download from remote server |
+| 184 | python | SKIP | operation exceeds execution time limit |
+| 220 | python | SKIP | operation exceeds execution time limit |
 | 24 | bash | PASS |  |
 | 52 | bash | PASS |  |
 | 74 | bash | PASS |  |
 | 86 | bash | PASS |  |
 | 108 | bash | PASS |  |
-| 255 | bash | PASS |  |
-| 267 | bash | PASS |  |
-| 286 | bash | PASS |  |
+| 250 | bash | PASS |  |
+| 262 | bash | PASS |  |
+| 281 | bash | PASS |  |
 ### docs/index.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 75 | python | SKIP | code has syntax issues requiring manual fix |
-| 100 | python | SKIP | code has syntax issues requiring manual fix |
-| 120 | python | SKIP | code has syntax issues requiring manual fix |
-| 144 | python | SKIP | requires async event loop context |
+| 98 | python | SKIP | depends on variables defined in preceding code blocks |
+| 114 | python | SKIP | depends on variables defined in preceding code blocks |
+| 133 | python | SKIP | requires async event loop context |
+| 73 | python | PASS |  |
 | 45 | bash | PASS |  |
-| 159 | bash | PASS |  |
-| 171 | bash | PASS |  |
-| 195 | bash | PASS |  |
-| 221 |  | SKIP | unsupported language:  |
+| 148 | bash | PASS |  |
+| 160 | bash | PASS |  |
+| 184 | bash | PASS |  |
+| 210 |  | SKIP | unsupported language:  |
 ### docs/resources/datahandling.md
 
 | Line | Lang | Status | Error |
@@ -203,27 +203,27 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 120 | python | SKIP | API signature changed - needs code update |
+| 118 | python | PASS |  |
 ### docs/resources/models/bert_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 39 | python | SKIP | API signature changed - needs code update |
-| 56 | python | SKIP | API signature changed - needs code update |
+| 37 | python | PASS |  |
+| 53 | python | PASS |  |
 | 25 | bash | PASS |  |
 ### docs/resources/models/caduceus_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 39 | python | SKIP | API signature changed - needs code update |
-| 56 | python | SKIP | API signature changed - needs code update |
+| 37 | python | PASS |  |
+| 53 | python | PASS |  |
 | 25 | bash | PASS |  |
 ### docs/resources/models/esm_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 39 | python | SKIP | depends on variables defined in preceding code blocks |
-| 64 | python | SKIP | API signature changed - needs code update |
+| 63 | python | PASS |  |
 | 25 | bash | PASS |  |
 ### docs/resources/models/evo_models.md
 
@@ -244,15 +244,15 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 42 | python | SKIP | API signature changed - needs code update |
-| 59 | python | SKIP | API signature changed - needs code update |
+| 40 | python | PASS |  |
+| 56 | python | PASS |  |
 | 25 | bash | PASS |  |
 ### docs/resources/models/llama_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 39 | python | SKIP | API signature changed - needs code update |
-| 56 | python | SKIP | API signature changed - needs code update |
+| 37 | python | PASS |  |
+| 53 | python | PASS |  |
 | 25 | bash | PASS |  |
 ### docs/resources/models/mamba_models.md
 
@@ -305,7 +305,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 641 | python | SKIP | stale import path needs code fix or module unavailable |
+| 640 | python | PASS |  |
 | 17 | yaml | SKIP | unsupported language: yaml |
 | 40 | yaml | SKIP | unsupported language: yaml |
 | 50 | yaml | SKIP | unsupported language: yaml |
@@ -330,9 +330,9 @@
 | 496 | yaml | SKIP | unsupported language: yaml |
 | 527 | yaml | SKIP | unsupported language: yaml |
 | 604 | yaml | SKIP | unsupported language: yaml |
-| 665 | yaml | SKIP | unsupported language: yaml |
-| 682 | yaml | SKIP | unsupported language: yaml |
-| 696 | yaml | SKIP | unsupported language: yaml |
+| 664 | yaml | SKIP | unsupported language: yaml |
+| 681 | yaml | SKIP | unsupported language: yaml |
+| 695 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/benchmark/examples.md
 
 | Line | Lang | Status | Error |
@@ -476,12 +476,12 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 24 | python | SKIP | code has syntax issues requiring manual fix |
-| 60 | python | SKIP | code has syntax issues requiring manual fix |
-| 92 | python | SKIP | code has syntax issues requiring manual fix |
-| 113 | python | SKIP | non-executable example code |
-| 37 | json | SKIP | unsupported language: json |
-| 48 | text | SKIP | unsupported language: text |
+| 59 | python | SKIP | references function that does not exist in current codebase |
+| 108 | python | SKIP | non-executable example code |
+| 23 | python | PASS |  |
+| 87 | python | PASS |  |
+| 36 | json | SKIP | unsupported language: json |
+| 47 | text | SKIP | unsupported language: text |
 ### docs/user_guide/data_processing/quality_control.md
 
 | Line | Lang | Status | Error |
@@ -492,17 +492,17 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 23 | python | SKIP | code has syntax issues requiring manual fix |
-| 88 | python | SKIP | code has syntax issues requiring manual fix |
-| 126 | python | SKIP | code has syntax issues requiring manual fix |
-| 252 | python | SKIP | depends on variables defined in preceding code blocks |
-| 289 | python | SKIP | code has syntax issues requiring manual fix |
-| 330 | python | SKIP | code has syntax issues requiring manual fix |
-| 347 | python | SKIP | code has syntax issues requiring manual fix |
-| 400 | python | SKIP | code has syntax issues requiring manual fix |
-| 477 | python | SKIP | code has syntax issues requiring manual fix |
-| 610 | python | SKIP | requires optional scikit-optimize dependency |
-| 550 | python | PASS |  |
+| 21 | python | SKIP | depends on variables defined in preceding code blocks |
+| 86 | python | SKIP | depends on variables defined in preceding code blocks |
+| 122 | python | SKIP | depends on variables defined in preceding code blocks |
+| 248 | python | SKIP | depends on variables defined in preceding code blocks |
+| 285 | python | SKIP | depends on variables defined in preceding code blocks |
+| 341 | python | SKIP | depends on variables defined in preceding code blocks |
+| 394 | python | SKIP | depends on variables defined in preceding code blocks |
+| 471 | python | SKIP | depends on variables defined in preceding code blocks |
+| 604 | python | SKIP | requires optional scikit-optimize dependency |
+| 544 | python | PASS |  |
+| 325 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/fine_tuning/configuration.md
 
 | Line | Lang | Status | Error |
@@ -612,9 +612,9 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 18 | python | PASS |  |
-| 93 | bash | PASS |  |
-| 103 | json | SKIP | unsupported language: json |
+| 17 | python | PASS |  |
+| 92 | bash | PASS |  |
+| 102 | json | SKIP | unsupported language: json |
 ### docs/user_guide/inference/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -671,7 +671,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 314 | python | SKIP | code has syntax issues requiring manual fix |
+| 314 | python | SKIP | requires async event loop and running server |
 | 20 | bash | PASS |  |
 | 30 | bash | PASS |  |
 | 36 | bash | PASS |  |
@@ -695,34 +695,32 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 232 | python | SKIP | code has syntax issues requiring manual fix |
-| 247 | python | SKIP | code has syntax issues requiring manual fix |
-| 297 | python | SKIP | code has syntax issues requiring manual fix |
-| 343 | python | SKIP | requires async event loop and running server |
-| 462 | python | SKIP | code has syntax issues requiring manual fix |
-| 488 | python | SKIP | code has syntax issues requiring manual fix |
-| 514 | python | PASS |  |
-| 536 | python | PASS |  |
-| 592 | python | PASS |  |
-| 421 | bash | PASS |  |
-| 428 | bash | PASS |  |
-| 435 | bash | PASS |  |
-| 442 | bash | PASS |  |
-| 451 | bash | SKIP | code has syntax issues requiring manual fix |
+| 214 | python | SKIP | requires async event loop and running server |
+| 229 | python | SKIP | requires async event loop and running server |
+| 279 | python | SKIP | requires async event loop and running server |
+| 325 | python | SKIP | requires async event loop and running server |
+| 432 | python | SKIP | requires async event loop and running server |
+| 458 | python | SKIP | requires async event loop and running server |
+| 485 | python | SKIP | requires async event loop and running server |
+| 508 | python | SKIP | requires async event loop and running server |
+| 565 | python | SKIP | requires async event loop and running server |
+| 403 | bash | PASS |  |
+| 410 | bash | PASS |  |
+| 417 | bash | PASS |  |
+| 424 | bash | PASS |  |
 | 24 | json | SKIP | unsupported language: json |
 | 50 | json | SKIP | unsupported language: json |
 | 85 | json | SKIP | unsupported language: json |
 | 159 | json | SKIP | unsupported language: json |
-| 214 | json | SKIP | code has syntax issues requiring manual fix |
-| 373 | javascript | SKIP | unsupported language: javascript |
-| 568 | json | SKIP | unsupported language: json |
-| 576 | json | SKIP | code has syntax issues requiring manual fix |
-| 583 | json | SKIP | unsupported language: json |
+| 355 | javascript | SKIP | unsupported language: javascript |
+| 540 | json | SKIP | unsupported language: json |
+| 548 | json | SKIP | code has syntax issues requiring manual fix |
+| 555 | json | SKIP | unsupported language: json |
 ### docs/user_guide/models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 56 | python | SKIP | API signature changed - needs code update |
+| 54 | python | PASS |  |
 ### docs/user_guide/performance/gpu_optimization.md
 
 | Line | Lang | Status | Error |
@@ -820,7 +818,7 @@
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpkcxmxg7n.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp9um_qzaq.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -840,35 +838,27 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpek5h1r1g.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 10 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
-| 17 | FAIL | Execution halted due to earlier cell failure |
-| 18 | FAIL | Execution halted due to earlier cell failure |
-| 19 | FAIL | Execution halted due to earlier cell failure |
-| 20 | FAIL | Execution halted due to earlier cell failure |
-| 21 | FAIL | Execution halted due to earlier cell failure |
-| 22 | FAIL | Execution halted due to earlier cell failure |
-| 23 | FAIL | Execution halted due to earlier cell failure |
-| 24 | FAIL | Execution halted due to earlier cell failure |
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
+| 7 | TIMEOUT | Notebook execution timed out after 180s |
+| 8 | TIMEOUT | Notebook execution timed out after 180s |
+| 10 | TIMEOUT | Notebook execution timed out after 180s |
+| 11 | TIMEOUT | Notebook execution timed out after 180s |
+| 12 | TIMEOUT | Notebook execution timed out after 180s |
+| 14 | TIMEOUT | Notebook execution timed out after 180s |
+| 15 | TIMEOUT | Notebook execution timed out after 180s |
+| 17 | TIMEOUT | Notebook execution timed out after 180s |
+| 18 | TIMEOUT | Notebook execution timed out after 180s |
+| 19 | TIMEOUT | Notebook execution timed out after 180s |
+| 20 | TIMEOUT | Notebook execution timed out after 180s |
+| 21 | TIMEOUT | Notebook execution timed out after 180s |
+| 22 | TIMEOUT | Notebook execution timed out after 180s |
+| 23 | TIMEOUT | Notebook execution timed out after 180s |
+| 24 | TIMEOUT | Notebook execution timed out after 180s |
 
 ### example/notebooks/data_prepare/predict/predict_data.ipynb
 
@@ -879,25 +869,32 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 1 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-| 8 | TIMEOUT | Notebook execution timed out after 180s |
-| 9 | TIMEOUT | Notebook execution timed out after 180s |
-| 11 | TIMEOUT | Notebook execution timed out after 180s |
-| 12 | TIMEOUT | Notebook execution timed out after 180s |
-| 14 | TIMEOUT | Notebook execution timed out after 180s |
-| 15 | TIMEOUT | Notebook execution timed out after 180s |
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpmki4gd2u.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+Cancellation requested; stopping current tasks.
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-pac |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
 
 ### example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpnudi27oj.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8lbhyk4i.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -930,7 +927,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpxy6fuzqv.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpz8p41f1e.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -950,15 +947,13 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp6ejpglft.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpqgg8_ul5.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
 | 1 | FAIL | Execution halted due to earlier cell failure |
 | 2 | FAIL | Execution halted due to earlier cell failure |
 | 3 | FAIL | Execution halted due to earlier cell failure |
@@ -970,15 +965,13 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpzfmgvkjw.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmps3pvruod.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
 | 2 | FAIL | Execution halted due to earlier cell failure |
 | 3 | FAIL | Execution halted due to earlier cell failure |
 | 4 | FAIL | Execution halted due to earlier cell failure |
@@ -996,7 +989,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpui9jkizq.ipynb to notebook
+| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpvyol5ehb.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1031,7 +1024,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp19l99h5f.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpo7p02mf0.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1051,7 +1044,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0xrhqdk1.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpjdeho38e.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1070,7 +1063,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp89sew2fd.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1r9l0hby.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1097,7 +1090,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpy7i17uwe.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpxs60dlcd.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1118,7 +1111,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpc0orq6du.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpg_iho3bn.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1139,7 +1132,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3ly0lkq_.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0vuwy01a.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1159,7 +1152,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp38qjrc_f.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp4o3qdcol.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1179,7 +1172,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1s1anom2.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8lv0une4.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1209,15 +1202,13 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp91b_ib0g.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3p98gdrp.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/nbclient/client.py", line 782, in _async_poll_for_reply
+    msg = await ensure_async(self.kc.shell_channel.get_msg(timeout=new_timeout))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/forr |
 | 1 | FAIL | Execution halted due to earlier cell failure |
 | 2 | FAIL | Execution halted due to earlier cell failure |
 | 3 | FAIL | Execution halted due to earlier cell failure |
@@ -1229,15 +1220,13 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpjc36qxxt.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0kec4see.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
 | 1 | FAIL | Execution halted due to earlier cell failure |
 | 2 | FAIL | Execution halted due to earlier cell failure |
 | 3 | FAIL | Execution halted due to earlier cell failure |

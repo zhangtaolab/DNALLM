@@ -60,7 +60,6 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use the loaded Nucleotide Transformer to get embeddings for a DNA sequence.
-<!-- skip-verify: API signature changed - needs code update -->
 ```python
 import torch
 from dnallm import load_model_and_tokenizer

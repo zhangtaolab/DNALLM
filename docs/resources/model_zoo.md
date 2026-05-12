@@ -115,8 +115,6 @@ The following models are specifically designed for plant genomics:
 ## Getting Started
 
 To use any of these models with DNALLM:
-
-<!-- skip-verify: API signature changed - needs code update -->
 ```python
 from dnallm import load_model_and_tokenizer
 
@@ -128,7 +126,8 @@ model, tokenizer = load_model_and_tokenizer(
 # For fine-tuning
 from dnallm.finetune import DNATrainer
 
-trainer = DNATrainer(model=model, tokenizer=tokenizer)
+# trainer = DNATrainer(model=model, config=config, datasets=datasets)
+# trainer.train()
 ```
 
 ## Contributing New Models

@@ -310,7 +310,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
 
 Here's how to connect to the MCP server using Python:
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from pydantic import BaseModel

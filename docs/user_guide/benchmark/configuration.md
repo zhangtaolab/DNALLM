@@ -637,15 +637,14 @@ benchmark:
 
 DNALLM automatically validates your configuration:
 
-<!-- skip-verify: stale import path needs code fix or module unavailable -->
 ```python
-from dnallm import validate_config
+from dnallm import load_config
 
-# Validate configuration
+# Validate configuration by loading it
 try:
-    validate_config("benchmark_config.yaml")
+    config = load_config("example/notebooks/benchmark/benchmark_config.yaml")
     print("Configuration is valid!")
-except ValidationError as e:
+except Exception as e:
     print(f"Configuration error: {e}")
 ```
 

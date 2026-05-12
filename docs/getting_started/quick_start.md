@@ -179,10 +179,8 @@ predictions = mutagenesis.evaluate(strategy="mean")
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
 
-<!-- skip-verify: operation exceeds execution time limit -->
 ### 3. Model Fine-tuning
-
-<!-- skip-verify: requires model download from remote server -->
+<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
@@ -216,12 +214,9 @@ trainer = DNATrainer(config=configs, model=model, datasets=dataset)
 # Start training
 trainer.train()
 ```
-<!-- skip-verify: operation exceeds execution time limit -->
 
 ### 4. Models Benchmark
-<!-- skip-verify: requires model download from remote server -->
-
-<!-- skip-verify: requires model download from remote server -->
+<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config
 from dnallm.inference import Benchmark

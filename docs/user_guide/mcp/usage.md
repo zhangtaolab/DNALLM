@@ -210,25 +210,7 @@ Perform health check on the MCP server.
 - Server health status and statistics
 
 **Example:**
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-```json
-{
-  "status": "healthy",
-  "loaded_models": 3,
-  "total_configured_models": 3,
-  "server_name": "DNALLM MCP Server",
-  "server_version": "0.1.0",
-  "uptime": "2h 15m 30s"
-}
-```
-
-## Client Examples
-
-### Python with DNALLM Client SDK (Recommended)
-
-The DNALLM package provides a built-in `DNALLMMCPClient` that supports multiple transport protocols including the recommended `streamable-http`.
-
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 from dnallm.mcp import DNALLMMCPClient
 
@@ -243,7 +225,7 @@ print(result)
 ```
 
 ### Python with Pydantic AI
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from pydantic import BaseModel
@@ -293,7 +275,7 @@ print(result.output)
 
 ### Python with MCP Client
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from mcp import ClientSession, StdioServerParameters
@@ -446,19 +428,7 @@ curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
 ```
 
 #### Multi-Model Prediction
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-<!-- skip-verify: code has syntax issues requiring manual fix -->
-```bash
-curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_multi_model_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_names": ["promoter_model", "conservation_model"]}}}'
-```
-
-## Usage Patterns
-
-### 1. Basic DNA Analysis Workflow
-
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def basic_dna_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -484,7 +454,7 @@ async def basic_dna_analysis(sequence):
 
 ### 2. Batch Processing Workflow
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def batch_dna_analysis(sequences):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -511,6 +481,7 @@ async def batch_dna_analysis(sequences):
 
 ### 3. Real-time Analysis with Progress
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def real_time_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -533,6 +504,7 @@ async def real_time_analysis(sequence):
 
 ### 4. Model Comparison Workflow
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def model_comparison(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -589,6 +561,7 @@ async def model_comparison(sequence):
 
 ### Error Handling in Python
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def safe_prediction(sequence, model_name):
     try:
