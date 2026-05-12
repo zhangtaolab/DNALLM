@@ -84,6 +84,7 @@ This task will train a binary classification model to predict whether a DNA sequ
 
 #### 2.2.1 Download and View Data
 
+<!-- skip-verify: requires downloading data from ModelScope -->
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
@@ -129,6 +130,7 @@ GCTAGC...	0
 
 #### 2.2.3 Data Quality Check
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -750,6 +752,7 @@ print(f"Top 10 most important positions: {important_positions}")
 
 ### 6.5 Model Interpretability
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import DNAInterpret
@@ -1077,6 +1080,7 @@ finetune:
 
 ### 8.3 Data Augmentation Strategies
 
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -1186,7 +1190,6 @@ Task type selection:
 
 ### Q4: How to resume training from checkpoint?
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
-
 ```python
 trainer = DNATrainer(
     model=model,

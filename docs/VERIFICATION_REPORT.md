@@ -1,17 +1,17 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-12T03:08:13.816628+00:00Z
+**Generated:** 2026-05-12T13:49:52.520269+00:00Z
 **Total code blocks:** 528
-**Files scanned:** 120 Markdown + 19 notebooks
+**Files scanned:** 121 Markdown + 19 notebooks
 
 ## Summary
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 211 |
-| FAIL    | 7 |
-| SKIP    | 307 |
-| TIMEOUT | 3 |
+| PASS    | 208 |
+| FAIL    | 0 |
+| SKIP    | 320 |
+| TIMEOUT | 0 |
 
 ## Details
 
@@ -189,9 +189,9 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 30 | python | TIMEOUT | Execution exceeded 40s timeout |
-| 37 | python | TIMEOUT | Execution exceeded 40s timeout |
-| 88 | python | TIMEOUT | Execution exceeded 40s timeout |
+| 31 | python | SKIP | requires downloading model from HuggingFace Hub |
+| 39 | python | SKIP | requires downloading model and data from HuggingFace Hub |
+| 92 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/resources/model_selection.md
 
 | Line | Lang | Status | Error |
@@ -338,7 +338,7 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 14 | python | SKIP | depends on variables defined in preceding code blocks |
-| 45 | python | SKIP | requires valid dataset configuration |
+| 45 | python | SKIP | k-fold cross-validation requires n_splits >= 2 |
 ### docs/user_guide/benchmark/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -574,8 +574,8 @@
 | 542 | python | SKIP | depends on variables defined in preceding code blocks |
 | 593 | python | SKIP | depends on variables defined in preceding code blocks |
 | 617 | python | SKIP | depends on variables defined in preceding code blocks |
-| 635 | python | FAIL | name 'trainer' is not defined |
-| 649 | python | FAIL | name 'dataset' is not defined |
+| 636 | python | SKIP | depends on variables defined in preceding code blocks |
+| 651 | python | SKIP | depends on variables defined in preceding code blocks |
 | 25 | yaml | SKIP | unsupported language: yaml |
 | 42 | csv | SKIP | unsupported language: csv |
 | 117 | yaml | SKIP | unsupported language: yaml |
@@ -766,51 +766,51 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 214 | python | SKIP | depends on variables defined in preceding code blocks |
-| 257 | python | SKIP | depends on variables defined in preceding code blocks |
-| 277 | python | SKIP | depends on variables defined in preceding code blocks |
-| 394 | python | SKIP | depends on variables defined in preceding code blocks |
-| 480 | python | SKIP | depends on variables defined in preceding code blocks |
-| 564 | python | SKIP | depends on variables defined in preceding code blocks |
-| 613 | python | SKIP | depends on variables defined in preceding code blocks |
-| 668 | python | SKIP | depends on variables defined in preceding code blocks |
-| 699 | python | SKIP | depends on variables defined in preceding code blocks |
-| 884 | python | SKIP | requires running server instance to connect to |
-| 928 | python | SKIP | requires running server instance to connect to |
-| 87 | python | PASS |  |
-| 132 | python | PASS |  |
-| 720 | python | FAIL | name 'path' is not defined |
-| 752 | python | FAIL | name 'path' is not defined |
-| 1079 | python | PASS |  |
-| 1094 | python | FAIL | name 'model' is not defined |
-| 1116 | python | FAIL | name 'trainer' is not defined |
-| 1186 | python | FAIL | name 'model' is not defined |
+| 88 | python | SKIP | requires downloading data from ModelScope |
+| 134 | python | SKIP | depends on variables defined in preceding code blocks |
+| 216 | python | SKIP | depends on variables defined in preceding code blocks |
+| 259 | python | SKIP | depends on variables defined in preceding code blocks |
+| 279 | python | SKIP | depends on variables defined in preceding code blocks |
+| 396 | python | SKIP | depends on variables defined in preceding code blocks |
+| 482 | python | SKIP | depends on variables defined in preceding code blocks |
+| 566 | python | SKIP | depends on variables defined in preceding code blocks |
+| 615 | python | SKIP | depends on variables defined in preceding code blocks |
+| 670 | python | SKIP | depends on variables defined in preceding code blocks |
+| 701 | python | SKIP | depends on variables defined in preceding code blocks |
+| 723 | python | SKIP | depends on variables defined in preceding code blocks |
+| 756 | python | SKIP | depends on variables defined in preceding code blocks |
+| 888 | python | SKIP | requires running server instance to connect to |
+| 932 | python | SKIP | requires running server instance to connect to |
+| 1084 | python | SKIP | depends on variables defined in preceding code blocks |
+| 1100 | python | SKIP | depends on variables defined in preceding code blocks |
+| 1123 | python | SKIP | depends on variables defined in preceding code blocks |
+| 1193 | python | SKIP | depends on variables defined in preceding code blocks |
 | 34 | bash | PASS |  |
 | 56 | bash | PASS |  |
-| 347 | bash | PASS |  |
-| 873 | bash | PASS |  |
-| 907 | bash | SKIP | requires running server instance to connect to |
-| 1025 | bash | PASS |  |
-| 114 | csv | SKIP | unsupported language: csv |
-| 123 | tsv | SKIP | unsupported language: tsv |
-| 158 | yaml | SKIP | unsupported language: yaml |
-| 365 | csv | SKIP | unsupported language: csv |
-| 375 | yaml | SKIP | unsupported language: yaml |
-| 447 | txt | SKIP | unsupported language: txt |
-| 455 | csv | SKIP | unsupported language: csv |
-| 462 | yaml | SKIP | unsupported language: yaml |
-| 531 | yaml | SKIP | unsupported language: yaml |
-| 648 | yaml | SKIP | unsupported language: yaml |
-| 789 | yaml | SKIP | unsupported language: yaml |
-| 852 | yaml | SKIP | requires server configuration file and runtime environment |
-| 993 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1041 | yaml | SKIP | unsupported language: yaml |
-| 1051 | yaml | SKIP | unsupported language: yaml |
-| 1059 | yaml | SKIP | unsupported language: yaml |
-| 1146 | yaml | SKIP | unsupported language: yaml |
-| 1162 | yaml | SKIP | unsupported language: yaml |
-| 1172 |  | SKIP | unsupported language:  |
-| 1197 | yaml | SKIP | unsupported language: yaml |
+| 349 | bash | PASS |  |
+| 877 | bash | PASS |  |
+| 911 | bash | SKIP | requires running server instance to connect to |
+| 1029 | bash | PASS |  |
+| 115 | csv | SKIP | unsupported language: csv |
+| 124 | tsv | SKIP | unsupported language: tsv |
+| 160 | yaml | SKIP | unsupported language: yaml |
+| 367 | csv | SKIP | unsupported language: csv |
+| 377 | yaml | SKIP | unsupported language: yaml |
+| 449 | txt | SKIP | unsupported language: txt |
+| 457 | csv | SKIP | unsupported language: csv |
+| 464 | yaml | SKIP | unsupported language: yaml |
+| 533 | yaml | SKIP | unsupported language: yaml |
+| 650 | yaml | SKIP | unsupported language: yaml |
+| 793 | yaml | SKIP | unsupported language: yaml |
+| 856 | yaml | SKIP | requires server configuration file and runtime environment |
+| 997 | dockerfile | SKIP | unsupported language: dockerfile |
+| 1045 | yaml | SKIP | unsupported language: yaml |
+| 1055 | yaml | SKIP | unsupported language: yaml |
+| 1063 | yaml | SKIP | unsupported language: yaml |
+| 1153 | yaml | SKIP | unsupported language: yaml |
+| 1169 | yaml | SKIP | unsupported language: yaml |
+| 1179 |  | SKIP | unsupported language:  |
+| 1204 | yaml | SKIP | unsupported language: yaml |
 
 ## Notebooks
 
@@ -818,7 +818,7 @@
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpoz_tehhl.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpawpwtkim.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -869,32 +869,25 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpf5nds6_e.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-Cancellation requested; stopping current tasks.
-[IPKernelApp] ERROR \| Exception in message handler:
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
-    await result
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-pac |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 1 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
+| 8 | TIMEOUT | Notebook execution timed out after 180s |
+| 9 | TIMEOUT | Notebook execution timed out after 180s |
+| 11 | TIMEOUT | Notebook execution timed out after 180s |
+| 12 | TIMEOUT | Notebook execution timed out after 180s |
+| 14 | TIMEOUT | Notebook execution timed out after 180s |
+| 15 | TIMEOUT | Notebook execution timed out after 180s |
 
 ### example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0ffaqfr_.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpmd6q6n61.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -927,7 +920,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0cdo_zew.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmptz8osmx3.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -977,7 +970,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp_aeltchg.ipynb to notebook
+| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn_m1mij_.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1012,7 +1005,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpalntyxfh.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn4cinttg.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1032,7 +1025,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpw6buwukm.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1ruca23m.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1051,7 +1044,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp_xyxpjr3.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpog3xum0t.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1078,7 +1071,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpuv5jtwpm.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp4a8zlcdp.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1099,7 +1092,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp6z0q_rlw.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpj2pxgpki.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1132,7 +1125,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpamgwtqp7.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmppn3t3u93.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1152,7 +1145,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpyvh3r16w.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpt9sdkbpd.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1182,7 +1175,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpctlieh47.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpvyb4aj7i.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/nbclient/client.py", line 782, in _async_poll_for_reply
@@ -1200,7 +1193,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpfms3xijy.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3hbls2ni.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 [IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):

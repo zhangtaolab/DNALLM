@@ -27,6 +27,7 @@ The `DNADataset` class provides comprehensive functionality for DNA sequence dat
 
 ### Basic Setup
 
+<!-- skip-verify: requires downloading model from HuggingFace Hub -->
 ```python
 from dnallm import DNADataset
 from transformers import AutoTokenizer
@@ -34,6 +35,7 @@ from transformers import AutoTokenizer
 
 ### Data Loading
 
+<!-- skip-verify: requires downloading model and data from HuggingFace Hub -->
 ```python
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")
@@ -85,6 +87,8 @@ dna_ds = load_preset_dataset(
 ```
 
 ### Data Processing and Augmentation
+
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Common functionality demonstration
 
