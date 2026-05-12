@@ -12,7 +12,6 @@ To get the most out of DNALLM, follow these best practices for data handling, mo
 
 -   **Use Efficient Formats**: For large datasets, prefer high-performance formats like **Parquet** or **Arrow** over CSV. They are significantly faster to load and process.
 
-<!-- skip-verify: operation exceeds execution time limit -->
     ```python
     # Load it quickly
     from dnallm.datahandling import DNADataset

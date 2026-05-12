@@ -97,7 +97,6 @@ print(f"Test samples: {len(dataset.test_data)}")
 ```
 
 ### 4. Load Pre-trained Model
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load configuration
 config = load_config("finetune_config.yaml")
@@ -119,7 +118,6 @@ print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
 ### 5. Initialize Trainer and Start Training
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Initialize trainer
 trainer = DNATrainer(
@@ -240,7 +238,6 @@ GCTAGCTAGCTA
 
 Here's a complete working example:
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import os
 from dnallm import (

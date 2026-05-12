@@ -48,7 +48,6 @@ TATATATATATA,1
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import (
     load_config,
@@ -140,7 +139,6 @@ CGCGCGCGCGCG,3
 ```
 
 ### Example Implementation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load multi-class model
 model, tokenizer = load_model_and_tokenizer(
@@ -218,7 +216,6 @@ TATATATATATA,"1,1,0,0,1"
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load multi-label model
 model, tokenizer = load_model_and_tokenizer(
@@ -296,7 +293,6 @@ TATATATATATA,0.67
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load regression model
 model, tokenizer = load_model_and_tokenizer(

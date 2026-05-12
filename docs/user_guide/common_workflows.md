@@ -18,7 +18,6 @@ Fine-tuning adapts a pre-trained language model to a specific downstream task, s
 
 This example fine-tunes `plant-dnabert-BPE` for a binary classification task.
 
-<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -64,7 +63,6 @@ This workflow systematically introduces mutations into a sequence and evaluates 
 5.  **Visualize Results**: Plot the mutation effects to create a saliency map.
 
 ### Example
-<!-- skip-verify: operation exceeds execution time limit -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import Mutagenesis
