@@ -107,7 +107,6 @@ print(memory_estimate)
 This error occurs because the default high-performance attention implementation (`scaled_dot_product_attention`) is not compatible with outputting attention weights.
 
 - **Solution**: The `DNAInference` engine attempts to handle this automatically by switching to a compatible implementation (`eager`).
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 - **Manual Fix**: You can force this change yourself for debugging:
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
   ```python

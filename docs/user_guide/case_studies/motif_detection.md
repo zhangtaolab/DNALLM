@@ -39,7 +39,7 @@ inference:
 
 This script performs saturation mutagenesis on a single DNA sequence, evaluates the effect of each mutation, and visualizes the results.
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 

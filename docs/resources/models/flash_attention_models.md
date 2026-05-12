@@ -61,7 +61,7 @@ Usage is largely automatic. If Flash Attention is correctly installed, DNALLM an
 
 You can verify its usage by checking the model's configuration after loading it.
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 

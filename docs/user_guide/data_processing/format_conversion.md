@@ -99,10 +99,8 @@ print(dna_ds_from_parquet)
 ### Converting from Pickle to a Supported Format
 
 While `DNADataset` doesn't load Pickle files directly for security and compatibility reasons, you can easily convert them using `pandas`.
-<!-- skip-verify: code has syntax issues requiring manual fix -->
 
 Let's say you have a `data.pkl` file containing a list of dictionaries or a pandas DataFrame.
-<!-- skip-verify: code has syntax issues requiring manual fix -->
 
 <!-- skip-verify: non-executable example code -->
 ```python

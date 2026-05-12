@@ -39,7 +39,6 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```csv
 sequence,label
 ATCGATCGATCG,1
@@ -49,7 +48,7 @@ TATATATATATA,1
 
 ### Example Implementation
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import (
     load_config,
@@ -132,7 +131,6 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```csv
 sequence,label
 ATCGATCGATCG,0
@@ -141,7 +139,6 @@ TATATATATATA,2
 CGCGCGCGCGCG,3
 ```
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### Example Implementation
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
@@ -212,7 +209,6 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```csv
 sequence,label
 ATCGATCGATCG,"1,0,1,0,0"
@@ -220,9 +216,7 @@ GCTAGCTAGCTA,"0,1,0,1,0"
 TATATATATATA,"1,1,0,0,1"
 ```
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### Example Implementation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
@@ -293,18 +287,14 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```csv
 sequence,label
 ATCGATCGATCG,0.85
 GCTAGCTAGCTA,0.23
 TATATATATATA,0.67
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### Example Implementation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
@@ -359,7 +349,6 @@ print(f"Test R²: {test_results['eval_r2']:.4f}")
 
 ### Configuration
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 task:
   task_type: "generation"
@@ -377,18 +366,14 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```csv
 sequence,label
 ATCGATCGATCG,ATCGATCGATCG
 GCTAGCTAGCTA,GCTAGCTAGCTA
 TATATATATATA,TATATATATATA
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### Example Implementation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
@@ -447,7 +432,6 @@ for seq in test_sequences:
 
 ### Configuration
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 task:
   task_type: "mask"
@@ -464,17 +448,13 @@ finetune:
 
 ### Data Format
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```csv
 sequence,label
 ATCGATCGATCG,ATCGATCGATCG
 GCTAGCTAGCTA,GCTAGCTAGCTA
 TATATATATATA,TATATATATATA
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### Example Implementation
 
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
@@ -532,7 +512,6 @@ print(f"Input: {test_sequence} -> Predicted: {predicted_token}")
 
 ### Configuration
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 task:
   task_type: "token"
@@ -559,7 +538,6 @@ TATATATATATA,"O O O O O O O O O O O O"
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load token classification model
@@ -635,7 +613,6 @@ for item in dataset.train_data:
 
 ### Generation Tasks
 
-<!-- skip-verify: requires optional nltk dependency -->
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Apply sequence truncation for generation
@@ -655,7 +632,7 @@ for item in dataset.train_data:
 
 ### Classification Metrics
 
-<!-- skip-verify: requires optional nltk dependency -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Binary classification
 from sklearn.metrics import classification_report, roc_auc_score
@@ -665,15 +642,12 @@ y_true = [item["label"] for item in dataset.test_data]
 y_pred = predictions.predictions.argmax(-1)
 
 print(classification_report(y_true, y_pred))
-<!-- skip-verify: requires optional nltk dependency -->
 print(f"ROC AUC: {roc_auc_score(y_true, y_pred):.4f}")
-<!-- skip-verify: requires optional nltk dependency -->
 ```
-<!-- skip-verify: requires optional nltk dependency -->
 
 ### Generation Metrics
 
-<!-- skip-verify: requires optional nltk dependency -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Generation quality metrics
 from nltk.translate.bleu_score import sentence_bleu

@@ -1,6 +1,6 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-11T17:54:16.891625+00:00Z
+**Generated:** 2026-05-12T03:08:13.816628+00:00Z
 **Total code blocks:** 528
 **Files scanned:** 120 Markdown + 19 notebooks
 
@@ -8,10 +8,10 @@
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 207 |
-| FAIL    | 0 |
-| SKIP    | 321 |
-| TIMEOUT | 0 |
+| PASS    | 211 |
+| FAIL    | 7 |
+| SKIP    | 307 |
+| TIMEOUT | 3 |
 
 ## Details
 
@@ -38,39 +38,39 @@
 | 205 | bash | PASS |  |
 | 220 | bash | PASS |  |
 | 238 | bash | PASS |  |
-| 437 | bash | PASS |  |
-| 479 | bash | PASS |  |
-| 495 | bash | PASS |  |
-| 501 | bash | PASS |  |
-| 625 | bash | PASS |  |
+| 436 | bash | PASS |  |
+| 478 | bash | PASS |  |
+| 494 | bash | PASS |  |
+| 500 | bash | PASS |  |
+| 624 | bash | PASS |  |
 | 253 | cmd | SKIP | unsupported language: cmd |
 | 273 | text | SKIP | unsupported language: text |
 | 384 |  | SKIP | unsupported language:  |
-| 459 |  | SKIP | unsupported language:  |
-| 515 | markdown | SKIP | unsupported language: markdown |
+| 458 |  | SKIP | unsupported language:  |
+| 514 | markdown | SKIP | unsupported language: markdown |
 ### README.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 254 | python | SKIP | depends on variables defined in preceding code blocks |
-| 270 | python | SKIP | depends on variables defined in preceding code blocks |
-| 307 | python | SKIP | requires async event loop context |
-| 329 | python | SKIP | requires async event loop and running server |
-| 229 | python | PASS |  |
+| 230 | python | SKIP | depends on variables defined in preceding code blocks |
+| 255 | python | SKIP | depends on variables defined in preceding code blocks |
+| 271 | python | SKIP | depends on variables defined in preceding code blocks |
+| 308 | python | SKIP | requires async event loop context |
+| 330 | python | SKIP | requires async event loop and running server |
 | 15 | bash | PASS |  |
 | 69 | bash | PASS |  |
 | 100 | bash | PASS |  |
 | 128 | bash | PASS |  |
 | 172 | bash | PASS |  |
 | 185 | bash | PASS |  |
-| 293 | bash | PASS |  |
-| 302 | bash | PASS |  |
-| 361 | bash | PASS |  |
-| 376 | bash | PASS |  |
-| 388 | bash | PASS |  |
-| 442 | bash | PASS |  |
-| 480 | bash | PASS |  |
-| 413 |  | SKIP | unsupported language:  |
+| 294 | bash | PASS |  |
+| 303 | bash | PASS |  |
+| 362 | bash | PASS |  |
+| 377 | bash | PASS |  |
+| 389 | bash | PASS |  |
+| 443 | bash | PASS |  |
+| 481 | bash | PASS |  |
+| 414 |  | SKIP | unsupported language:  |
 ### docs/concepts/biology/dna_sequences.md
 
 | Line | Lang | Status | Error |
@@ -86,7 +86,7 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 14 | python | SKIP | depends on variables defined in preceding code blocks |
-| 30 | python | SKIP | depends on variables defined in preceding code blocks |
+| 29 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/concepts/mcp.md
 
 | Line | Lang | Status | Error |
@@ -106,15 +106,15 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 110 | python | SKIP | depends on variables defined in preceding code blocks |
-| 148 | python | SKIP | depends on variables defined in preceding code blocks |
+| 147 | python | SKIP | depends on variables defined in preceding code blocks |
 | 134 | python | PASS |  |
 | 35 | bash | PASS |  |
 | 51 | bash | PASS |  |
 | 56 | bash | PASS |  |
 | 69 | bash | PASS |  |
-| 174 | bash | PASS |  |
-| 179 | bash | PASS |  |
-| 273 | bash | PASS |  |
+| 173 | bash | PASS |  |
+| 178 | bash | PASS |  |
+| 272 | bash | PASS |  |
 ### docs/faq/install_troubleshooting.md
 
 | Line | Lang | Status | Error |
@@ -176,34 +176,34 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 98 | python | SKIP | depends on variables defined in preceding code blocks |
-| 114 | python | SKIP | depends on variables defined in preceding code blocks |
-| 133 | python | SKIP | requires async event loop context |
-| 73 | python | PASS |  |
+| 74 | python | SKIP | depends on variables defined in preceding code blocks |
+| 99 | python | SKIP | depends on variables defined in preceding code blocks |
+| 115 | python | SKIP | depends on variables defined in preceding code blocks |
+| 134 | python | SKIP | requires async event loop context |
 | 45 | bash | PASS |  |
-| 148 | bash | PASS |  |
-| 160 | bash | PASS |  |
-| 184 | bash | PASS |  |
-| 210 |  | SKIP | unsupported language:  |
+| 149 | bash | PASS |  |
+| 161 | bash | PASS |  |
+| 185 | bash | PASS |  |
+| 211 |  | SKIP | unsupported language:  |
 ### docs/resources/datahandling.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 39 | python | SKIP | references file that does not exist in repository |
-| 91 | python | SKIP | depends on variables defined in preceding code blocks |
-| 31 | python | PASS |  |
+| 30 | python | TIMEOUT | Execution exceeded 40s timeout |
+| 37 | python | TIMEOUT | Execution exceeded 40s timeout |
+| 88 | python | TIMEOUT | Execution exceeded 40s timeout |
 ### docs/resources/model_selection.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 67 | python | SKIP | references file that does not exist in repository |
-| 101 | python | SKIP | references file that does not exist in repository |
+| 67 | python | SKIP | depends on variables defined in preceding code blocks |
+| 101 | python | SKIP | depends on variables defined in preceding code blocks |
 | 92 | yaml | SKIP | unsupported language: yaml |
 ### docs/resources/model_zoo.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 118 | python | PASS |  |
+| 117 | python | PASS |  |
 ### docs/resources/models/bert_models.md
 
 | Line | Lang | Status | Error |
@@ -229,7 +229,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 66 | python | SKIP | references file that does not exist in repository |
+| 66 | python | SKIP | depends on variables defined in preceding code blocks |
 | 31 | bash | PASS |  |
 | 40 | bash | PASS |  |
 | 52 | bash | PASS |  |
@@ -237,7 +237,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 65 | python | SKIP | references file that does not exist in repository |
+| 65 | python | SKIP | depends on variables defined in preceding code blocks |
 | 40 | bash | PASS |  |
 | 53 | bash | PASS |  |
 ### docs/resources/models/hyena_models.md
@@ -258,22 +258,22 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 57 | python | SKIP | references file that does not exist in repository |
-| 87 | python | SKIP | references file that does not exist in repository |
+| 57 | python | SKIP | depends on variables defined in preceding code blocks |
+| 87 | python | SKIP | depends on variables defined in preceding code blocks |
 | 29 | bash | PASS |  |
 | 38 | bash | PASS |  |
 ### docs/resources/models/special_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 34 | python | SKIP | references file that does not exist in repository |
-| 77 | python | SKIP | references file that does not exist in repository |
-| 112 | python | SKIP | requires user-specific file paths and data |
+| 34 | python | SKIP | depends on variables defined in preceding code blocks |
+| 77 | python | SKIP | depends on variables defined in preceding code blocks |
+| 111 | python | SKIP | depends on variables defined in preceding code blocks |
 | 23 | bash | PASS |  |
 | 67 | bash | PASS |  |
 | 102 | bash | PASS |  |
-| 134 | bash | PASS |  |
-| 151 | bash | PASS |  |
+| 133 | bash | PASS |  |
+| 150 | bash | PASS |  |
 ### docs/resources/troubleshooting_models.md
 
 | Line | Lang | Status | Error |
@@ -289,18 +289,18 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 20 | python | SKIP | depends on variables defined in preceding code blocks |
-| 89 | python | SKIP | stale import path needs code fix or module unavailable |
-| 124 | python | SKIP | depends on variables defined in preceding code blocks |
-| 180 | python | SKIP | requires optional memory_profiler dependency |
-| 247 | python | SKIP | requires optional memory_profiler dependency |
-| 527 | python | SKIP | depends on variables defined in preceding code blocks |
-| 571 | python | SKIP | depends on variables defined in preceding code blocks |
-| 595 | python | SKIP | depends on variables defined in preceding code blocks |
-| 620 | python | SKIP | depends on variables defined in preceding code blocks |
-| 337 | python | PASS |  |
-| 376 | python | PASS |  |
-| 416 | python | PASS |  |
-| 477 | python | PASS |  |
+| 120 | python | SKIP | depends on variables defined in preceding code blocks |
+| 174 | python | SKIP | depends on variables defined in preceding code blocks |
+| 241 | python | SKIP | depends on variables defined in preceding code blocks |
+| 578 | python | SKIP | depends on variables defined in preceding code blocks |
+| 600 | python | SKIP | depends on variables defined in preceding code blocks |
+| 86 | python | PASS |  |
+| 329 | python | PASS |  |
+| 366 | python | PASS |  |
+| 405 | python | PASS |  |
+| 466 | python | PASS |  |
+| 514 | python | PASS |  |
+| 557 | python | PASS |  |
 ### docs/user_guide/benchmark/configuration.md
 
 | Line | Lang | Status | Error |
@@ -362,7 +362,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 34 | python | SKIP | references file that does not exist in repository |
+| 34 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/best_practices.md
 
 | Line | Lang | Status | Error |
@@ -374,7 +374,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 43 | python | SKIP | references file that does not exist in repository |
+| 43 | python | SKIP | depends on variables defined in preceding code blocks |
 | 111 | bash | PASS |  |
 | 118 | bash | PASS |  |
 | 26 | yaml | SKIP | unsupported language: yaml |
@@ -382,21 +382,21 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 70 | python | SKIP | references file that does not exist in repository |
+| 70 | python | SKIP | depends on variables defined in preceding code blocks |
 | 28 |  | SKIP | unsupported language:  |
 | 38 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/case_studies/promoter_prediction.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 56 | python | SKIP | references file that does not exist in repository |
+| 56 | python | SKIP | depends on variables defined in preceding code blocks |
 | 23 | yaml | SKIP | unsupported language: yaml |
 | 135 |  | SKIP | unsupported language:  |
 ### docs/user_guide/case_studies/sequence_generation.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 45 | python | SKIP | references file that does not exist in repository |
+| 45 | python | SKIP | depends on variables defined in preceding code blocks |
 | 26 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/cli/config_generator.md
 
@@ -465,7 +465,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 26 | python | SKIP | incomplete code example with missing implementation |
+| 26 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/data_processing/data_preparation.md
 
 | Line | Lang | Status | Error |
@@ -477,7 +477,7 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 59 | python | SKIP | references function that does not exist in current codebase |
-| 108 | python | SKIP | non-executable example code |
+| 106 | python | SKIP | non-executable example code |
 | 23 | python | PASS |  |
 | 87 | python | PASS |  |
 | 36 | json | SKIP | unsupported language: json |
@@ -486,23 +486,23 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 16 | python | SKIP | incomplete code example with missing implementation |
-| 28 | python | SKIP | incomplete code example with missing implementation |
+| 16 | python | SKIP | depends on variables defined in preceding code blocks |
+| 28 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/fine_tuning/advanced_techniques.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 21 | python | SKIP | depends on variables defined in preceding code blocks |
-| 86 | python | SKIP | depends on variables defined in preceding code blocks |
-| 122 | python | SKIP | depends on variables defined in preceding code blocks |
-| 248 | python | SKIP | depends on variables defined in preceding code blocks |
-| 285 | python | SKIP | depends on variables defined in preceding code blocks |
-| 341 | python | SKIP | depends on variables defined in preceding code blocks |
-| 394 | python | SKIP | depends on variables defined in preceding code blocks |
-| 471 | python | SKIP | depends on variables defined in preceding code blocks |
-| 604 | python | SKIP | requires optional scikit-optimize dependency |
-| 544 | python | PASS |  |
-| 325 | yaml | SKIP | unsupported language: yaml |
+| 83 | python | SKIP | depends on variables defined in preceding code blocks |
+| 118 | python | SKIP | depends on variables defined in preceding code blocks |
+| 243 | python | SKIP | depends on variables defined in preceding code blocks |
+| 279 | python | SKIP | depends on variables defined in preceding code blocks |
+| 334 | python | SKIP | depends on variables defined in preceding code blocks |
+| 386 | python | SKIP | depends on variables defined in preceding code blocks |
+| 462 | python | SKIP | depends on variables defined in preceding code blocks |
+| 533 | python | PASS |  |
+| 590 | python | PASS |  |
+| 318 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/fine_tuning/configuration.md
 
 | Line | Lang | Status | Error |
@@ -538,58 +538,58 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 82 | python | SKIP | references file that does not exist in repository |
-| 102 | python | SKIP | references file that does not exist in repository |
-| 125 | python | SKIP | depends on variables defined in preceding code blocks |
-| 248 | python | SKIP | requires user-specific file paths and data |
+| 101 | python | SKIP | depends on variables defined in preceding code blocks |
+| 123 | python | SKIP | depends on variables defined in preceding code blocks |
+| 244 | python | SKIP | depends on variables defined in preceding code blocks |
 | 32 | python | PASS |  |
+| 81 | python | PASS |  |
 | 17 | bash | PASS |  |
-| 149 | bash | PASS |  |
-| 316 | bash | PASS |  |
+| 147 | bash | PASS |  |
+| 310 | bash | PASS |  |
 | 47 | yaml | SKIP | unsupported language: yaml |
-| 166 | yaml | SKIP | unsupported language: yaml |
-| 188 | yaml | SKIP | unsupported language: yaml |
-| 218 | csv | SKIP | unsupported language: csv |
-| 226 | json | SKIP | unsupported language: json |
-| 234 | fasta | SKIP | unsupported language: fasta |
-| 335 | yaml | SKIP | unsupported language: yaml |
-| 375 | yaml | SKIP | unsupported language: yaml |
-| 383 | yaml | SKIP | unsupported language: yaml |
-| 391 | yaml | SKIP | unsupported language: yaml |
+| 164 | yaml | SKIP | unsupported language: yaml |
+| 186 | yaml | SKIP | unsupported language: yaml |
+| 216 | csv | SKIP | unsupported language: csv |
+| 224 | json | SKIP | unsupported language: json |
+| 232 | fasta | SKIP | unsupported language: fasta |
+| 329 | yaml | SKIP | unsupported language: yaml |
+| 369 | yaml | SKIP | unsupported language: yaml |
+| 377 | yaml | SKIP | unsupported language: yaml |
+| 385 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/fine_tuning/index.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 36 | python | SKIP | references file that does not exist in repository |
+| 36 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/fine_tuning/task_guides.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 53 | python | SKIP | requires user-specific file paths and data |
-| 147 | python | SKIP | depends on variables defined in preceding code blocks |
-| 228 | python | SKIP | depends on variables defined in preceding code blocks |
-| 310 | python | SKIP | depends on variables defined in preceding code blocks |
-| 394 | python | SKIP | depends on variables defined in preceding code blocks |
-| 481 | python | SKIP | depends on variables defined in preceding code blocks |
-| 564 | python | SKIP | depends on variables defined in preceding code blocks |
-| 615 | python | SKIP | depends on variables defined in preceding code blocks |
-| 640 | python | SKIP | depends on variables defined in preceding code blocks |
-| 659 | python | SKIP | requires optional nltk dependency |
-| 677 | python | SKIP | requires optional nltk dependency |
+| 52 | python | SKIP | depends on variables defined in preceding code blocks |
+| 144 | python | SKIP | depends on variables defined in preceding code blocks |
+| 222 | python | SKIP | depends on variables defined in preceding code blocks |
+| 300 | python | SKIP | depends on variables defined in preceding code blocks |
+| 379 | python | SKIP | depends on variables defined in preceding code blocks |
+| 461 | python | SKIP | depends on variables defined in preceding code blocks |
+| 542 | python | SKIP | depends on variables defined in preceding code blocks |
+| 593 | python | SKIP | depends on variables defined in preceding code blocks |
+| 617 | python | SKIP | depends on variables defined in preceding code blocks |
+| 635 | python | FAIL | name 'trainer' is not defined |
+| 649 | python | FAIL | name 'dataset' is not defined |
 | 25 | yaml | SKIP | unsupported language: yaml |
-| 43 | csv | SKIP | references file that does not exist in repository |
-| 118 | yaml | SKIP | unsupported language: yaml |
-| 136 | csv | SKIP | depends on variables defined in preceding code blocks |
-| 198 | yaml | SKIP | unsupported language: yaml |
-| 216 | csv | SKIP | depends on variables defined in preceding code blocks |
-| 280 | yaml | SKIP | unsupported language: yaml |
-| 297 | csv | SKIP | depends on variables defined in preceding code blocks |
-| 363 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 381 | csv | SKIP | depends on variables defined in preceding code blocks |
-| 451 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 468 | csv | SKIP | depends on variables defined in preceding code blocks |
-| 536 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 553 | csv | SKIP | unsupported language: csv |
+| 42 | csv | SKIP | unsupported language: csv |
+| 117 | yaml | SKIP | unsupported language: yaml |
+| 134 | csv | SKIP | unsupported language: csv |
+| 195 | yaml | SKIP | unsupported language: yaml |
+| 212 | csv | SKIP | unsupported language: csv |
+| 274 | yaml | SKIP | unsupported language: yaml |
+| 290 | csv | SKIP | unsupported language: csv |
+| 352 | yaml | SKIP | unsupported language: yaml |
+| 369 | csv | SKIP | unsupported language: csv |
+| 435 | yaml | SKIP | unsupported language: yaml |
+| 451 | csv | SKIP | unsupported language: csv |
+| 515 | yaml | SKIP | unsupported language: yaml |
+| 532 | csv | SKIP | unsupported language: csv |
 ### docs/user_guide/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -604,17 +604,17 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 25 | python | SKIP | references file that does not exist in repository |
-| 76 | python | SKIP | references file that does not exist in repository |
-| 123 | python | SKIP | depends on variables defined in preceding code blocks |
-| 140 | python | SKIP | depends on variables defined in preceding code blocks |
+| 25 | python | SKIP | depends on variables defined in preceding code blocks |
+| 75 | python | SKIP | depends on variables defined in preceding code blocks |
+| 121 | python | SKIP | depends on variables defined in preceding code blocks |
+| 136 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/inference/basic_inference.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 17 | python | PASS |  |
-| 92 | bash | PASS |  |
-| 102 | json | SKIP | unsupported language: json |
+| 18 | python | SKIP | depends on variables defined in preceding code blocks |
+| 91 | bash | PASS |  |
+| 101 | json | SKIP | unsupported language: json |
 ### docs/user_guide/inference/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -625,28 +625,28 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 49 | python | SKIP | references file that does not exist in repository |
-| 83 | python | SKIP | references file that does not exist in repository |
-| 125 | python | SKIP | requires user-specific file paths and data |
-| 157 | python | SKIP | requires user-specific file paths and data |
+| 49 | python | SKIP | depends on variables defined in preceding code blocks |
+| 83 | python | SKIP | depends on variables defined in preceding code blocks |
+| 124 | python | SKIP | depends on variables defined in preceding code blocks |
+| 154 | python | SKIP | depends on variables defined in preceding code blocks |
 ### docs/user_guide/inference/performance_optimization.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 74 | python | SKIP | depends on variables defined in preceding code blocks |
-| 113 | python | SKIP | depends on variables defined in preceding code blocks |
+| 112 | python | SKIP | depends on variables defined in preceding code blocks |
 | 16 | yaml | SKIP | unsupported language: yaml |
 | 30 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/inference/visualization.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 40 | python | SKIP | references file that does not exist in repository |
+| 40 | python | SKIP | depends on variables defined in preceding code blocks |
 | 66 | python | SKIP | depends on variables defined in preceding code blocks |
-| 93 | python | SKIP | depends on variables defined in preceding code blocks |
-| 121 | python | SKIP | depends on variables defined in preceding code blocks |
-| 157 | python | SKIP | depends on variables defined in preceding code blocks |
-| 183 | bash | PASS |  |
+| 92 | python | SKIP | depends on variables defined in preceding code blocks |
+| 118 | python | SKIP | depends on variables defined in preceding code blocks |
+| 151 | python | SKIP | depends on variables defined in preceding code blocks |
+| 177 | bash | PASS |  |
 ### docs/user_guide/mcp/configuration.md
 
 | Line | Lang | Status | Error |
@@ -681,41 +681,41 @@
 | 283 | bash | PASS |  |
 | 295 | bash | PASS |  |
 | 303 | bash | PASS |  |
-| 366 | bash | PASS |  |
-| 381 | bash | PASS |  |
-| 398 | bash | PASS |  |
-| 433 | bash | PASS |  |
+| 364 | bash | PASS |  |
+| 379 | bash | PASS |  |
+| 396 | bash | PASS |  |
+| 431 | bash | PASS |  |
 | 53 | yaml | SKIP | unsupported language: yaml |
 | 113 | yaml | SKIP | unsupported language: yaml |
 | 195 | yaml | SKIP | unsupported language: yaml |
 | 266 | text | SKIP | unsupported language: text |
-| 412 | yaml | SKIP | unsupported language: yaml |
-| 421 | yaml | SKIP | unsupported language: yaml |
+| 410 | yaml | SKIP | unsupported language: yaml |
+| 419 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/mcp/usage.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 214 | python | SKIP | requires async event loop and running server |
 | 229 | python | SKIP | requires async event loop and running server |
-| 279 | python | SKIP | requires async event loop and running server |
-| 325 | python | SKIP | requires async event loop and running server |
-| 432 | python | SKIP | requires async event loop and running server |
-| 458 | python | SKIP | requires async event loop and running server |
-| 485 | python | SKIP | requires async event loop and running server |
-| 508 | python | SKIP | requires async event loop and running server |
-| 565 | python | SKIP | requires async event loop and running server |
-| 403 | bash | PASS |  |
-| 410 | bash | PASS |  |
-| 417 | bash | PASS |  |
-| 424 | bash | PASS |  |
+| 277 | python | SKIP | requires async event loop and running server |
+| 321 | python | SKIP | requires async event loop and running server |
+| 426 | python | SKIP | requires async event loop and running server |
+| 452 | python | SKIP | requires async event loop and running server |
+| 479 | python | SKIP | requires async event loop and running server |
+| 502 | python | SKIP | requires async event loop and running server |
+| 558 | python | SKIP | requires async event loop and running server |
+| 397 | bash | PASS |  |
+| 404 | bash | PASS |  |
+| 411 | bash | PASS |  |
+| 418 | bash | PASS |  |
 | 24 | json | SKIP | unsupported language: json |
 | 50 | json | SKIP | unsupported language: json |
 | 85 | json | SKIP | unsupported language: json |
 | 159 | json | SKIP | unsupported language: json |
-| 355 | javascript | SKIP | unsupported language: javascript |
-| 540 | json | SKIP | unsupported language: json |
-| 548 | json | SKIP | code has syntax issues requiring manual fix |
-| 555 | json | SKIP | unsupported language: json |
+| 349 | javascript | SKIP | unsupported language: javascript |
+| 534 | json | SKIP | unsupported language: json |
+| 541 | json | SKIP | unsupported language: json |
+| 548 | json | SKIP | unsupported language: json |
 ### docs/user_guide/models.md
 
 | Line | Lang | Status | Error |
@@ -766,51 +766,51 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 88 | python | SKIP | depends on variables defined in preceding code blocks |
-| 135 | python | SKIP | requires user-specific file paths and data |
-| 218 | python | SKIP | depends on variables defined in preceding code blocks |
-| 261 | python | SKIP | references file that does not exist in repository |
-| 282 | python | SKIP | requires user-specific file paths and data |
-| 404 | python | SKIP | requires user-specific file paths and data |
-| 491 | python | SKIP | references file that does not exist in repository |
-| 579 | python | SKIP | requires user-specific file paths and data |
-| 628 | python | SKIP | references file that does not exist in repository |
-| 684 | python | SKIP | references file that does not exist in repository |
-| 715 | python | SKIP | stale import path needs code fix or module unavailable |
-| 738 | python | SKIP | stale import path needs code update |
-| 774 | python | SKIP | stale import path needs code update |
-| 906 | python | SKIP | requires running server instance to connect to |
-| 952 | python | SKIP | requires running server instance to connect to |
-| 1110 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1126 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1152 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1228 | python | SKIP | depends on variables defined in preceding code blocks |
+| 214 | python | SKIP | depends on variables defined in preceding code blocks |
+| 257 | python | SKIP | depends on variables defined in preceding code blocks |
+| 277 | python | SKIP | depends on variables defined in preceding code blocks |
+| 394 | python | SKIP | depends on variables defined in preceding code blocks |
+| 480 | python | SKIP | depends on variables defined in preceding code blocks |
+| 564 | python | SKIP | depends on variables defined in preceding code blocks |
+| 613 | python | SKIP | depends on variables defined in preceding code blocks |
+| 668 | python | SKIP | depends on variables defined in preceding code blocks |
+| 699 | python | SKIP | depends on variables defined in preceding code blocks |
+| 884 | python | SKIP | requires running server instance to connect to |
+| 928 | python | SKIP | requires running server instance to connect to |
+| 87 | python | PASS |  |
+| 132 | python | PASS |  |
+| 720 | python | FAIL | name 'path' is not defined |
+| 752 | python | FAIL | name 'path' is not defined |
+| 1079 | python | PASS |  |
+| 1094 | python | FAIL | name 'model' is not defined |
+| 1116 | python | FAIL | name 'trainer' is not defined |
+| 1186 | python | FAIL | name 'model' is not defined |
 | 34 | bash | PASS |  |
 | 56 | bash | PASS |  |
-| 354 | bash | PASS |  |
-| 895 | bash | PASS |  |
-| 931 | bash | SKIP | requires running server instance to connect to |
-| 1052 | bash | PASS |  |
-| 115 | csv | SKIP | unsupported language: csv |
-| 125 | tsv | SKIP | references file that does not exist in repository |
-| 162 | yaml | SKIP | references file that does not exist in repository |
-| 373 | csv | SKIP | references file that does not exist in repository |
-| 383 | yaml | SKIP | unsupported language: yaml |
-| 457 | txt | SKIP | unsupported language: txt |
-| 466 | csv | SKIP | references file that does not exist in repository |
-| 473 | yaml | SKIP | unsupported language: yaml |
-| 543 | yaml | SKIP | references file that does not exist in repository |
-| 664 | yaml | SKIP | references file that does not exist in repository |
-| 811 | yaml | SKIP | unsupported language: yaml |
-| 874 | yaml | SKIP | requires server configuration file and runtime environment |
-| 1020 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1068 | yaml | SKIP | unsupported language: yaml |
-| 1079 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 1088 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 1182 | yaml | SKIP | unsupported language: yaml |
-| 1199 | yaml | SKIP | depends on variables defined in preceding code blocks |
-| 1210 |  | SKIP | depends on variables defined in preceding code blocks |
-| 1239 | yaml | SKIP | unsupported language: yaml |
+| 347 | bash | PASS |  |
+| 873 | bash | PASS |  |
+| 907 | bash | SKIP | requires running server instance to connect to |
+| 1025 | bash | PASS |  |
+| 114 | csv | SKIP | unsupported language: csv |
+| 123 | tsv | SKIP | unsupported language: tsv |
+| 158 | yaml | SKIP | unsupported language: yaml |
+| 365 | csv | SKIP | unsupported language: csv |
+| 375 | yaml | SKIP | unsupported language: yaml |
+| 447 | txt | SKIP | unsupported language: txt |
+| 455 | csv | SKIP | unsupported language: csv |
+| 462 | yaml | SKIP | unsupported language: yaml |
+| 531 | yaml | SKIP | unsupported language: yaml |
+| 648 | yaml | SKIP | unsupported language: yaml |
+| 789 | yaml | SKIP | unsupported language: yaml |
+| 852 | yaml | SKIP | requires server configuration file and runtime environment |
+| 993 | dockerfile | SKIP | unsupported language: dockerfile |
+| 1041 | yaml | SKIP | unsupported language: yaml |
+| 1051 | yaml | SKIP | unsupported language: yaml |
+| 1059 | yaml | SKIP | unsupported language: yaml |
+| 1146 | yaml | SKIP | unsupported language: yaml |
+| 1162 | yaml | SKIP | unsupported language: yaml |
+| 1172 |  | SKIP | unsupported language:  |
+| 1197 | yaml | SKIP | unsupported language: yaml |
 
 ## Notebooks
 
@@ -818,7 +818,7 @@
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp9um_qzaq.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpoz_tehhl.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -869,7 +869,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpmki4gd2u.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpf5nds6_e.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 Cancellation requested; stopping current tasks.
 [IPKernelApp] ERROR \| Exception in message handler:
@@ -894,7 +894,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8lbhyk4i.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0ffaqfr_.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -927,7 +927,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpz8p41f1e.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0cdo_zew.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -947,49 +947,37 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpqgg8_ul5.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-[IPKernelApp] ERROR \| Exception in message handler:
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
-    await result
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 1 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
 
 ### example/notebooks/finetune_custom_head/finetune.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmps3pvruod.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-[IPKernelApp] ERROR \| Exception in message handler:
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
-    await result
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-| 10 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 13 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
+| 7 | TIMEOUT | Notebook execution timed out after 180s |
+| 9 | TIMEOUT | Notebook execution timed out after 180s |
+| 10 | TIMEOUT | Notebook execution timed out after 180s |
+| 11 | TIMEOUT | Notebook execution timed out after 180s |
+| 12 | TIMEOUT | Notebook execution timed out after 180s |
+| 13 | TIMEOUT | Notebook execution timed out after 180s |
+| 14 | TIMEOUT | Notebook execution timed out after 180s |
 
 ### example/notebooks/finetune_generation/finetune_generation.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpvyol5ehb.ipynb to notebook
+| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp_aeltchg.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1024,7 +1012,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpo7p02mf0.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpalntyxfh.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1044,7 +1032,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpjdeho38e.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpw6buwukm.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1063,7 +1051,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1r9l0hby.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp_xyxpjr3.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1090,7 +1078,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpxs60dlcd.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpuv5jtwpm.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1111,7 +1099,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpg_iho3bn.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp6z0q_rlw.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1132,27 +1120,19 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0vuwy01a.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
+| 0 | PASS |  |
+| 1 | PASS |  |
+| 3 | PASS |  |
+| 4 | PASS |  |
+| 5 | PASS |  |
+| 6 | PASS |  |
+| 7 | PASS |  |
 
 ### example/notebooks/inference_for_tRNA/inference.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp4o3qdcol.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpamgwtqp7.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1172,7 +1152,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8lv0une4.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpyvh3r16w.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1202,7 +1182,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3p98gdrp.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpctlieh47.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/nbclient/client.py", line 782, in _async_poll_for_reply
@@ -1220,7 +1200,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp0kec4see.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpfms3xijy.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 [IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):

@@ -63,7 +63,7 @@ Loading any supported model in DNALLM is straightforward using the `load_model_a
 
 You need to provide the model's name/ID, a `task_config`, and the `source`.
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 
@@ -97,7 +97,7 @@ task:
 ```
 
 **Loading the base model with the new head:**
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 

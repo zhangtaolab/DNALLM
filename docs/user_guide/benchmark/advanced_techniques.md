@@ -22,7 +22,6 @@ from sklearn.model_selection import KFold
 import numpy as np
 from dnallm import Benchmark
 
-
 def run_cross_validation_benchmark(models, datasets, k_folds=5):
     """Run k-fold cross-validation benchmark."""
 
@@ -66,7 +65,6 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
 
     return cv_results
 
-
 # Usage
 cv_results = run_cross_validation_benchmark(loaded_models, datasets, k_folds=5)
 
@@ -85,10 +83,8 @@ for model_name, results in cv_results.items():
 
 ### Stratified K-Fold for Imbalanced Data
 
-<!-- skip-verify: stale import path needs code fix or module unavailable -->
 ```python
 from sklearn.model_selection import StratifiedKFold
-
 
 def run_stratified_cv_benchmark(models, datasets, k_folds=5):
     """Run stratified k-fold cross-validation for imbalanced datasets."""
@@ -124,7 +120,6 @@ DNALLM allows you to implement custom evaluation metrics for specific use cases.
 ```python
 from dnallm.tasks.metrics import CustomMetric
 import numpy as np
-
 
 class GCContentMetric(CustomMetric):
     """Custom metric to evaluate GC content prediction accuracy."""
@@ -164,7 +159,6 @@ class GCContentMetric(CustomMetric):
 
         return gc_count / max(total_count, 1)
 
-
 # Usage in benchmark
 benchmark = Benchmark(
     models=loaded_models,
@@ -176,7 +170,7 @@ benchmark = Benchmark(
 
 ### Advanced Custom Metric with Multiple Outputs
 
-<!-- skip-verify: requires optional memory_profiler dependency -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class ComprehensiveDNAMetric(CustomMetric):
     """Comprehensive DNA sequence evaluation metric."""
@@ -243,13 +237,12 @@ Performance profiling helps you understand model efficiency and identify bottlen
 
 ### Basic Performance Profiling
 
-<!-- skip-verify: requires optional memory_profiler dependency -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import time
 import psutil
 import torch
 from memory_profiler import profile
-
 
 def profile_model_performance(model, tokenizer, dataset, num_samples=100):
     """Profile model performance including time and memory usage."""
@@ -319,7 +312,6 @@ def profile_model_performance(model, tokenizer, dataset, num_samples=100):
         "throughput": num_samples / total_time,
     }
 
-
 # Profile all models
 performance_profiles = {}
 for model_name, model_info in loaded_models.items():
@@ -338,7 +330,6 @@ for model_name, model_info in loaded_models.items():
 import tracemalloc
 from contextlib import contextmanager
 
-
 @contextmanager
 def memory_profiler():
     """Context manager for detailed memory profiling."""
@@ -350,7 +341,6 @@ def memory_profiler():
         print(f"Current memory usage: {current / 1024 / 1024:.2f} MB")
         print(f"Peak memory usage: {peak / 1024 / 1024:.2f} MB")
         tracemalloc.stop()
-
 
 def detailed_memory_profile(model, dataset, batch_size=32):
     """Detailed memory profiling with tracemalloc."""
@@ -375,7 +365,6 @@ def detailed_memory_profile(model, dataset, batch_size=32):
 
 ```python
 from torch.cuda.amp import autocast, GradScaler
-
 
 def benchmark_with_mixed_precision(model, tokenizer, dataset):
     """Benchmark model with mixed precision for improved performance."""
@@ -506,7 +495,6 @@ def run_multi_dataset_benchmark(models, datasets, metrics):
 
     return all_results
 
-
 def aggregate_metrics(dataset_results):
     """Aggregate metrics across multiple datasets."""
     aggregated = {}
@@ -523,7 +511,6 @@ def aggregate_metrics(dataset_results):
 
 ### Time-Series Benchmarking
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
     """Run benchmark on time-series data with temporal splits."""
@@ -567,13 +554,11 @@ def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
 ## Best Practices
 
 ### 1. **Reproducibility**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Set random seeds
 import random
 import numpy as np
 import torch
-
 
 def set_reproducibility(seed=42):
     """Set all random seeds for reproducibility."""
@@ -584,12 +569,10 @@ def set_reproducibility(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-
 # Use in benchmark
 set_reproducibility(42)
 ```
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### 2. **Resource Management**
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
@@ -603,7 +586,6 @@ def cleanup_resources():
 
     gc.collect()
 
-
 # Call between model evaluations
 for model_name, model_info in loaded_models.items():
     # Run benchmark
@@ -612,15 +594,12 @@ for model_name, model_info in loaded_models.items():
     # Clean up
     cleanup_resources()
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### 3. **Progress Monitoring**
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from tqdm import tqdm
 import logging
-
 
 def setup_logging():
     """Setup logging for benchmark progress."""
@@ -632,7 +611,6 @@ def setup_logging():
             logging.StreamHandler(),
         ],
     )
-
 
 # Use in benchmark
 setup_logging()

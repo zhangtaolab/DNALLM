@@ -24,7 +24,6 @@ This is one of the most powerful analysis methods. It helps identify which speci
 - **What it is**: Systematically mutating each position in a sequence and measuring the impact of that mutation on the model's prediction. A large change in the prediction score indicates a functionally important site. This is a computational proxy for saturation mutagenesis experiments.
 - **How it's done in DNALLM**: The `dnallm.Mutagenesis` class is designed specifically for this purpose. It automates the process of creating mutations, running inference, and calculating the effect of each mutation.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 **Example**:
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python

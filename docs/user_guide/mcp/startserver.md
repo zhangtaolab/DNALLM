@@ -343,7 +343,6 @@ Available tools should include:
 Always use the tools to provide accurate analysis.""",
 )
 
-
 # Analyze DNA sequence
 async def analyze_dna_sequence():
     async with agent:
@@ -351,7 +350,6 @@ async def analyze_dna_sequence():
             "What is the function of following DNA sequence? Please analyze it thoroughly using all available models: AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"
         )
         return result
-
 
 # Run the analysis
 result = await analyze_dna_sequence()
