@@ -1,16 +1,16 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-12T13:49:52.520269+00:00Z
+**Generated:** 2026-05-12T23:32:02.474942+00:00Z
 **Total code blocks:** 528
-**Files scanned:** 121 Markdown + 19 notebooks
+**Files scanned:** 121 Markdown + 0 notebooks
 
 ## Summary
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 208 |
+| PASS    | 234 |
 | FAIL    | 0 |
-| SKIP    | 320 |
+| SKIP    | 294 |
 | TIMEOUT | 0 |
 
 ## Details
@@ -160,18 +160,18 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 128 | python | SKIP | operation exceeds execution time limit |
-| 154 | python | SKIP | operation exceeds execution time limit |
-| 184 | python | SKIP | operation exceeds execution time limit |
-| 220 | python | SKIP | operation exceeds execution time limit |
+| 127 | python | PASS |  |
+| 152 | python | PASS |  |
+| 181 | python | PASS |  |
+| 216 | python | PASS |  |
 | 24 | bash | PASS |  |
 | 52 | bash | PASS |  |
 | 74 | bash | PASS |  |
 | 86 | bash | PASS |  |
 | 108 | bash | PASS |  |
-| 250 | bash | PASS |  |
-| 262 | bash | PASS |  |
-| 281 | bash | PASS |  |
+| 246 | bash | PASS |  |
+| 258 | bash | PASS |  |
+| 277 | bash | PASS |  |
 ### docs/index.md
 
 | Line | Lang | Status | Error |
@@ -189,9 +189,9 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 31 | python | SKIP | requires downloading model from HuggingFace Hub |
-| 39 | python | SKIP | requires downloading model and data from HuggingFace Hub |
-| 92 | python | SKIP | depends on variables defined in preceding code blocks |
+| 38 | python | SKIP | depends on variables defined in preceding code blocks |
+| 91 | python | SKIP | depends on variables defined in preceding code blocks |
+| 30 | python | PASS |  |
 ### docs/resources/model_selection.md
 
 | Line | Lang | Status | Error |
@@ -367,9 +367,9 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 16 | python | SKIP | operation exceeds execution time limit |
-| 44 | yaml | SKIP | unsupported language: yaml |
-| 56 | yaml | SKIP | unsupported language: yaml |
+| 15 | python | PASS |  |
+| 43 | yaml | SKIP | unsupported language: yaml |
+| 55 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/case_studies/motif_detection.md
 
 | Line | Lang | Status | Error |
@@ -459,8 +459,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 22 | python | SKIP | operation exceeds execution time limit |
-| 68 | python | SKIP | operation exceeds execution time limit |
+| 21 | python | PASS |  |
+| 66 | python | PASS |  |
 ### docs/user_guide/data_processing/data_augmentation.md
 
 | Line | Lang | Status | Error |
@@ -538,24 +538,24 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 101 | python | SKIP | depends on variables defined in preceding code blocks |
-| 123 | python | SKIP | depends on variables defined in preceding code blocks |
-| 244 | python | SKIP | depends on variables defined in preceding code blocks |
 | 32 | python | PASS |  |
 | 81 | python | PASS |  |
+| 100 | python | PASS |  |
+| 121 | python | PASS |  |
+| 241 | python | PASS |  |
 | 17 | bash | PASS |  |
-| 147 | bash | PASS |  |
-| 310 | bash | PASS |  |
+| 145 | bash | PASS |  |
+| 307 | bash | PASS |  |
 | 47 | yaml | SKIP | unsupported language: yaml |
-| 164 | yaml | SKIP | unsupported language: yaml |
-| 186 | yaml | SKIP | unsupported language: yaml |
-| 216 | csv | SKIP | unsupported language: csv |
-| 224 | json | SKIP | unsupported language: json |
-| 232 | fasta | SKIP | unsupported language: fasta |
-| 329 | yaml | SKIP | unsupported language: yaml |
-| 369 | yaml | SKIP | unsupported language: yaml |
-| 377 | yaml | SKIP | unsupported language: yaml |
-| 385 | yaml | SKIP | unsupported language: yaml |
+| 162 | yaml | SKIP | unsupported language: yaml |
+| 184 | yaml | SKIP | unsupported language: yaml |
+| 214 | csv | SKIP | unsupported language: csv |
+| 222 | json | SKIP | unsupported language: json |
+| 230 | fasta | SKIP | unsupported language: fasta |
+| 326 | yaml | SKIP | unsupported language: yaml |
+| 366 | yaml | SKIP | unsupported language: yaml |
+| 374 | yaml | SKIP | unsupported language: yaml |
+| 382 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/fine_tuning/index.md
 
 | Line | Lang | Status | Error |
@@ -565,36 +565,36 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 52 | python | SKIP | depends on variables defined in preceding code blocks |
-| 144 | python | SKIP | depends on variables defined in preceding code blocks |
-| 222 | python | SKIP | depends on variables defined in preceding code blocks |
-| 300 | python | SKIP | depends on variables defined in preceding code blocks |
-| 379 | python | SKIP | depends on variables defined in preceding code blocks |
-| 461 | python | SKIP | depends on variables defined in preceding code blocks |
-| 542 | python | SKIP | depends on variables defined in preceding code blocks |
-| 593 | python | SKIP | depends on variables defined in preceding code blocks |
-| 617 | python | SKIP | depends on variables defined in preceding code blocks |
-| 636 | python | SKIP | depends on variables defined in preceding code blocks |
-| 651 | python | SKIP | depends on variables defined in preceding code blocks |
+| 375 | python | SKIP | depends on variables defined in preceding code blocks |
+| 457 | python | SKIP | depends on variables defined in preceding code blocks |
+| 538 | python | SKIP | depends on variables defined in preceding code blocks |
+| 589 | python | SKIP | depends on variables defined in preceding code blocks |
+| 613 | python | SKIP | depends on variables defined in preceding code blocks |
+| 632 | python | SKIP | depends on variables defined in preceding code blocks |
+| 647 | python | SKIP | depends on variables defined in preceding code blocks |
+| 51 | python | PASS |  |
+| 142 | python | PASS |  |
+| 219 | python | PASS |  |
+| 296 | python | PASS |  |
 | 25 | yaml | SKIP | unsupported language: yaml |
 | 42 | csv | SKIP | unsupported language: csv |
-| 117 | yaml | SKIP | unsupported language: yaml |
-| 134 | csv | SKIP | unsupported language: csv |
-| 195 | yaml | SKIP | unsupported language: yaml |
-| 212 | csv | SKIP | unsupported language: csv |
-| 274 | yaml | SKIP | unsupported language: yaml |
-| 290 | csv | SKIP | unsupported language: csv |
-| 352 | yaml | SKIP | unsupported language: yaml |
-| 369 | csv | SKIP | unsupported language: csv |
-| 435 | yaml | SKIP | unsupported language: yaml |
-| 451 | csv | SKIP | unsupported language: csv |
-| 515 | yaml | SKIP | unsupported language: yaml |
-| 532 | csv | SKIP | unsupported language: csv |
+| 116 | yaml | SKIP | unsupported language: yaml |
+| 133 | csv | SKIP | unsupported language: csv |
+| 193 | yaml | SKIP | unsupported language: yaml |
+| 210 | csv | SKIP | unsupported language: csv |
+| 271 | yaml | SKIP | unsupported language: yaml |
+| 287 | csv | SKIP | unsupported language: csv |
+| 348 | yaml | SKIP | unsupported language: yaml |
+| 365 | csv | SKIP | unsupported language: csv |
+| 431 | yaml | SKIP | unsupported language: yaml |
+| 447 | csv | SKIP | unsupported language: csv |
+| 511 | yaml | SKIP | unsupported language: yaml |
+| 528 | csv | SKIP | unsupported language: csv |
 ### docs/user_guide/getting_started.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 80 | python | SKIP | operation exceeds execution time limit |
+| 79 | python | PASS |  |
 | 28 | bash | PASS |  |
 | 35 | bash | PASS |  |
 | 45 | bash | PASS |  |
@@ -766,444 +766,48 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 88 | python | SKIP | requires downloading data from ModelScope |
-| 134 | python | SKIP | depends on variables defined in preceding code blocks |
-| 216 | python | SKIP | depends on variables defined in preceding code blocks |
-| 259 | python | SKIP | depends on variables defined in preceding code blocks |
-| 279 | python | SKIP | depends on variables defined in preceding code blocks |
-| 396 | python | SKIP | depends on variables defined in preceding code blocks |
-| 482 | python | SKIP | depends on variables defined in preceding code blocks |
-| 566 | python | SKIP | depends on variables defined in preceding code blocks |
-| 615 | python | SKIP | depends on variables defined in preceding code blocks |
-| 670 | python | SKIP | depends on variables defined in preceding code blocks |
-| 701 | python | SKIP | depends on variables defined in preceding code blocks |
-| 723 | python | SKIP | depends on variables defined in preceding code blocks |
-| 756 | python | SKIP | depends on variables defined in preceding code blocks |
-| 888 | python | SKIP | requires running server instance to connect to |
-| 932 | python | SKIP | requires running server instance to connect to |
-| 1084 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1100 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1123 | python | SKIP | depends on variables defined in preceding code blocks |
-| 1193 | python | SKIP | depends on variables defined in preceding code blocks |
+| 559 | python | SKIP | depends on variables defined in preceding code blocks |
+| 608 | python | SKIP | depends on variables defined in preceding code blocks |
+| 663 | python | SKIP | depends on variables defined in preceding code blocks |
+| 694 | python | SKIP | depends on variables defined in preceding code blocks |
+| 716 | python | SKIP | depends on variables defined in preceding code blocks |
+| 749 | python | SKIP | depends on variables defined in preceding code blocks |
+| 881 | python | SKIP | requires running server instance to connect to |
+| 925 | python | SKIP | requires running server instance to connect to |
+| 1092 | python | SKIP | depends on variables defined in preceding code blocks |
+| 87 | python | PASS |  |
+| 132 | python | PASS |  |
+| 213 | python | PASS |  |
+| 255 | python | PASS |  |
+| 274 | python | PASS |  |
+| 390 | python | PASS |  |
+| 475 | python | PASS |  |
+| 1076 | python | PASS |  |
+| 1114 | python | PASS |  |
+| 1183 | python | PASS |  |
 | 34 | bash | PASS |  |
 | 56 | bash | PASS |  |
-| 349 | bash | PASS |  |
-| 877 | bash | PASS |  |
-| 911 | bash | SKIP | requires running server instance to connect to |
-| 1029 | bash | PASS |  |
-| 115 | csv | SKIP | unsupported language: csv |
-| 124 | tsv | SKIP | unsupported language: tsv |
-| 160 | yaml | SKIP | unsupported language: yaml |
-| 367 | csv | SKIP | unsupported language: csv |
-| 377 | yaml | SKIP | unsupported language: yaml |
-| 449 | txt | SKIP | unsupported language: txt |
-| 457 | csv | SKIP | unsupported language: csv |
-| 464 | yaml | SKIP | unsupported language: yaml |
-| 533 | yaml | SKIP | unsupported language: yaml |
-| 650 | yaml | SKIP | unsupported language: yaml |
-| 793 | yaml | SKIP | unsupported language: yaml |
-| 856 | yaml | SKIP | requires server configuration file and runtime environment |
-| 997 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1045 | yaml | SKIP | unsupported language: yaml |
-| 1055 | yaml | SKIP | unsupported language: yaml |
-| 1063 | yaml | SKIP | unsupported language: yaml |
-| 1153 | yaml | SKIP | unsupported language: yaml |
-| 1169 | yaml | SKIP | unsupported language: yaml |
-| 1179 |  | SKIP | unsupported language:  |
-| 1204 | yaml | SKIP | unsupported language: yaml |
-
-## Notebooks
-
-### example/notebooks/benchmark/benchmark.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpawpwtkim.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/data_prepare/finetune/finetune_data.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-| 7 | TIMEOUT | Notebook execution timed out after 180s |
-| 8 | TIMEOUT | Notebook execution timed out after 180s |
-| 10 | TIMEOUT | Notebook execution timed out after 180s |
-| 11 | TIMEOUT | Notebook execution timed out after 180s |
-| 12 | TIMEOUT | Notebook execution timed out after 180s |
-| 14 | TIMEOUT | Notebook execution timed out after 180s |
-| 15 | TIMEOUT | Notebook execution timed out after 180s |
-| 17 | TIMEOUT | Notebook execution timed out after 180s |
-| 18 | TIMEOUT | Notebook execution timed out after 180s |
-| 19 | TIMEOUT | Notebook execution timed out after 180s |
-| 20 | TIMEOUT | Notebook execution timed out after 180s |
-| 21 | TIMEOUT | Notebook execution timed out after 180s |
-| 22 | TIMEOUT | Notebook execution timed out after 180s |
-| 23 | TIMEOUT | Notebook execution timed out after 180s |
-| 24 | TIMEOUT | Notebook execution timed out after 180s |
-
-### example/notebooks/data_prepare/predict/predict_data.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-
-### example/notebooks/embedding_attention.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 1 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-| 8 | TIMEOUT | Notebook execution timed out after 180s |
-| 9 | TIMEOUT | Notebook execution timed out after 180s |
-| 11 | TIMEOUT | Notebook execution timed out after 180s |
-| 12 | TIMEOUT | Notebook execution timed out after 180s |
-| 14 | TIMEOUT | Notebook execution timed out after 180s |
-| 15 | TIMEOUT | Notebook execution timed out after 180s |
-
-### example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpmd6q6n61.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-| 10 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 13 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
-| 16 | FAIL | Execution halted due to earlier cell failure |
-| 17 | FAIL | Execution halted due to earlier cell failure |
-| 18 | FAIL | Execution halted due to earlier cell failure |
-| 19 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmptz8osmx3.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/finetune_binary/finetune_binary.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 1 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-
-### example/notebooks/finetune_custom_head/finetune.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-| 7 | TIMEOUT | Notebook execution timed out after 180s |
-| 9 | TIMEOUT | Notebook execution timed out after 180s |
-| 10 | TIMEOUT | Notebook execution timed out after 180s |
-| 11 | TIMEOUT | Notebook execution timed out after 180s |
-| 12 | TIMEOUT | Notebook execution timed out after 180s |
-| 13 | TIMEOUT | Notebook execution timed out after 180s |
-| 14 | TIMEOUT | Notebook execution timed out after 180s |
-
-### example/notebooks/finetune_generation/finetune_generation.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn_m1mij_.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-| 10 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 13 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
-| 16 | FAIL | Execution halted due to earlier cell failure |
-| 17 | FAIL | Execution halted due to earlier cell failure |
-| 18 | FAIL | Execution halted due to earlier cell failure |
-| 19 | FAIL | Execution halted due to earlier cell failure |
-| 20 | FAIL | Execution halted due to earlier cell failure |
-| 21 | FAIL | Execution halted due to earlier cell failure |
-| 22 | FAIL | Execution halted due to earlier cell failure |
-| 23 | FAIL | Execution halted due to earlier cell failure |
-| 24 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn4cinttg.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/generation/inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1ruca23m.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/generation_evo_models/inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpog3xum0t.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 10 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 13 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/generation_megaDNA/inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp4a8zlcdp.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpj2pxgpki.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/inference/inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | PASS |  |
-| 1 | PASS |  |
-| 3 | PASS |  |
-| 4 | PASS |  |
-| 5 | PASS |  |
-| 6 | PASS |  |
-| 7 | PASS |  |
-
-### example/notebooks/inference_for_tRNA/inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmppn3t3u93.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/interpretation/interpretation.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpt9sdkbpd.ipynb to notebook
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
-    super().launch_instance(argv=argv, **kwargs)
-    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
-  File "/home/for |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
-| 8 | FAIL | Execution halted due to earlier cell failure |
-| 9 | FAIL | Execution halted due to earlier cell failure |
-| 11 | FAIL | Execution halted due to earlier cell failure |
-| 12 | FAIL | Execution halted due to earlier cell failure |
-| 13 | FAIL | Execution halted due to earlier cell failure |
-| 14 | FAIL | Execution halted due to earlier cell failure |
-| 15 | FAIL | Execution halted due to earlier cell failure |
-| 16 | FAIL | Execution halted due to earlier cell failure |
-| 17 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/lora_finetune_inference/lora_finetune.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpvyb4aj7i.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/nbclient/client.py", line 782, in _async_poll_for_reply
-    msg = await ensure_async(self.kc.shell_channel.get_msg(timeout=new_timeout))
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/forr |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-
-### example/notebooks/lora_finetune_inference/lora_inference.ipynb
-
-| Cell | Status | Error |
-|------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3hbls2ni.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-[IPKernelApp] ERROR \| Exception in message handler:
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
-    await result
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
-| 7 | FAIL | Execution halted due to earlier cell failure |
+| 344 | bash | PASS |  |
+| 870 | bash | PASS |  |
+| 904 | bash | SKIP | requires running server instance to connect to |
+| 1022 | bash | PASS |  |
+| 114 | csv | SKIP | unsupported language: csv |
+| 123 | tsv | SKIP | unsupported language: tsv |
+| 158 | yaml | SKIP | unsupported language: yaml |
+| 362 | csv | SKIP | unsupported language: csv |
+| 372 | yaml | SKIP | unsupported language: yaml |
+| 443 | txt | SKIP | unsupported language: txt |
+| 451 | csv | SKIP | unsupported language: csv |
+| 458 | yaml | SKIP | unsupported language: yaml |
+| 526 | yaml | SKIP | unsupported language: yaml |
+| 643 | yaml | SKIP | unsupported language: yaml |
+| 786 | yaml | SKIP | unsupported language: yaml |
+| 849 | yaml | SKIP | requires server configuration file and runtime environment |
+| 990 | dockerfile | SKIP | unsupported language: dockerfile |
+| 1038 | yaml | SKIP | unsupported language: yaml |
+| 1048 | yaml | SKIP | unsupported language: yaml |
+| 1056 | yaml | SKIP | unsupported language: yaml |
+| 1144 | yaml | SKIP | unsupported language: yaml |
+| 1160 | yaml | SKIP | unsupported language: yaml |
+| 1170 |  | SKIP | unsupported language:  |
+| 1194 | yaml | SKIP | unsupported language: yaml |
