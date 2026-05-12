@@ -78,7 +78,6 @@ finetune:
 
 ### 3. Load Your Data
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```python
 # Load your dataset
 dataset = DNADataset.load_local_data(
@@ -98,7 +97,7 @@ print(f"Test samples: {len(dataset.test_data)}")
 ```
 
 ### 4. Load Pre-trained Model
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load configuration
 config = load_config("finetune_config.yaml")
@@ -118,7 +117,6 @@ print(f"Model loaded on device: {device}")
 print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 ```
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ### 5. Initialize Trainer and Start Training
 
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
@@ -239,12 +237,10 @@ GCTAGCTAGCTA
 ```
 
 ## Example: Complete Fine-tuning Workflow
-<!-- skip-verify: references file that does not exist in repository -->
 
 Here's a complete working example:
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import os
 from dnallm import (
@@ -253,7 +249,6 @@ from dnallm import (
     DNADataset,
     DNATrainer,
 )
-
 
 def run_finetuning():
     # 1. Load configuration
@@ -300,7 +295,6 @@ def run_finetuning():
 
     print(f"Fine-tuning completed!")
     return model
-
 
 # Run the complete workflow
 if __name__ == "__main__":

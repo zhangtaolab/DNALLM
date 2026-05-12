@@ -258,7 +258,6 @@ Available tools should include:
 Always use the tools to provide accurate analysis.""",
 )
 
-
 # Analyze DNA sequence
 async def analyze_dna_sequence():
     async with agent:
@@ -266,7 +265,6 @@ async def analyze_dna_sequence():
             "What is the function of following DNA sequence? Please analyze it thoroughly using all available models: AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"
         )
         return result
-
 
 # Run the analysis
 result = await analyze_dna_sequence()
@@ -280,7 +278,6 @@ print(result.output)
 import asyncio
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
 
 async def main():
     # Connect to MCP server via STDIO
@@ -314,7 +311,6 @@ async def main():
             )
             print(f"Multi-model result: {multi_result}")
 
-
 if __name__ == "__main__":
     asyncio.run(main())
 ```
@@ -325,7 +321,6 @@ if __name__ == "__main__":
 ```python
 import asyncio
 from mcp.client.sse import sse_client
-
 
 async def main():
     # Connect to SSE server
@@ -344,7 +339,6 @@ async def main():
             },
         )
         print(f"Streaming prediction result: {result}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -544,7 +538,6 @@ async def model_comparison(sequence):
 }
 ```
 
-<!-- skip-verify: code has syntax issues requiring manual fix -->
 ```json
 {
   "error": "Invalid DNA sequence: contains invalid characters",

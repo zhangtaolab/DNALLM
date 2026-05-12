@@ -25,7 +25,6 @@ import torch.nn.functional as F
 from transformers import Trainer
 from dnallm import DNATrainer
 
-
 class WeightedCrossEntropyLoss(nn.Module):
     """Weighted cross-entropy loss for imbalanced datasets."""
 
@@ -48,7 +47,6 @@ class WeightedCrossEntropyLoss(nn.Module):
             )
 
         return loss
-
 
 # Usage in trainer
 class CustomTrainer(Trainer):
@@ -74,7 +72,6 @@ class CustomTrainer(Trainer):
         if return_outputs:
             return loss, outputs
         return loss
-
 
 # Initialize the trainer
 trainer = DNATrainer(model=model, config=configs, datasets=sampled_datasets)
@@ -104,7 +101,6 @@ class FocalLoss(nn.Module):
             return focal_loss.sum()
         else:
             return focal_loss
-
 
 # Usage
 trainer = DNATrainer(
@@ -230,7 +226,6 @@ class CustomTrainer:
             loss = self.train_epoch(epoch)
             print(f"Epoch {epoch + 1} completed. Average loss: {loss:.4f}")
 
-
 # Usage
 custom_trainer = CustomTrainer(model, tokenizer, dataset, config)
 custom_trainer.train(num_epochs=config["finetune"].num_train_epochs)
@@ -274,7 +269,6 @@ class CosineAnnealingWarmRestarts:
 
         self.T_cur += 1
 
-
 # Usage
 scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=1000, T_mult=2)
 ```
@@ -310,7 +304,6 @@ class OneCycleScheduler:
             param_group["lr"] = lr
 
         self.step_count += 1
-
 
 # Usage
 scheduler = OneCycleScheduler(optimizer, max_lr=1e-3, total_steps=10000)
@@ -375,7 +368,6 @@ class DynamicBatchSampler:
 
         if batch:
             yield batch
-
 
 # Usage
 sampler = DynamicBatchSampler(dataset.train_data, max_tokens_per_batch=4096)
@@ -458,7 +450,6 @@ class CustomCallback:
 
         return False
 
-
 # Usage
 callback = CustomCallback(model, tokenizer, dataset)
 ```
@@ -472,7 +463,6 @@ Implement comprehensive logging for debugging.
 import logging
 import json
 from datetime import datetime
-
 
 class AdvancedLogger:
     """Advanced logging for fine-tuning experiments."""
@@ -528,7 +518,6 @@ class AdvancedLogger:
         self.logger.info(
             f"Model size: {total_params * 4 / 1024 / 1024:.2f} MB"
         )
-
 
 # Usage
 logger = AdvancedLogger("./logs", "promoter_classification")
@@ -587,7 +576,6 @@ def grid_search_hyperparameters():
 
     return best_config
 
-
 def train_and_evaluate(config):
     """Train model and return validation score."""
     # Implementation of training and evaluation
@@ -598,13 +586,10 @@ def train_and_evaluate(config):
 ### Bayesian Optimization
 
 Use Bayesian optimization for more efficient hyperparameter search.
-<!-- skip-verify: requires optional scikit-optimize dependency -->
 
-<!-- skip-verify: requires optional scikit-optimize dependency -->
 ```python
 from skopt import gp_minimize
 from skopt.space import Real, Integer
-
 
 def objective(params):
     """Objective function for Bayesian optimization."""
@@ -619,7 +604,6 @@ def objective(params):
     # Train and evaluate
     score = train_and_evaluate(config)
     return score
-
 
 def bayesian_optimization():
     """Bayesian optimization for hyperparameters."""

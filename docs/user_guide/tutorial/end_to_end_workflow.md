@@ -84,7 +84,6 @@ This task will train a binary classification model to predict whether a DNA sequ
 
 #### 2.2.1 Download and View Data
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
@@ -121,7 +120,6 @@ GCTAGC...,0
 ```
 
 **TSV Format** (`data.tsv`):
-<!-- skip-verify: references file that does not exist in repository -->
 ```tsv
 sequence	label
 ATGCGT...	0
@@ -131,7 +129,6 @@ GCTAGC...	0
 
 #### 2.2.3 Data Quality Check
 
-<!-- skip-verify: requires user-specific file paths and data -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -158,7 +155,6 @@ print(f"Size after augmentation: {len(dataset)}")
 
 Create `finetune_config.yaml` configuration file:
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```yaml
 # File: configs/finetune_config.yaml
 
@@ -257,7 +253,7 @@ print(f"Training complete! Final metrics: {metrics}")
 
 ### 2.5 Model Validation
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import json
 
@@ -276,9 +272,8 @@ with open("./evaluation_report.json", "w") as f:
 ### 2.6 Complete Training Script
 
 Save the above code as `train_promoter.py`:
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
@@ -291,7 +286,6 @@ import argparse
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -344,7 +338,6 @@ def main():
     trainer.save_model("./models/final_model")
     print(f"✅ Model saved to ./models/final_model")
 
-
 if __name__ == "__main__":
     main()
 ```
@@ -369,7 +362,6 @@ This task will train a multi-label classification model to predict multiple func
 
 ### 3.2 Multi-label Data Format
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```csv
 sequence,promoter,enhancer,repressor,silencer
 ATGCGT...,1,0,1,0
@@ -396,11 +388,9 @@ finetune:
   learning_rate: 2e-5
 ```
 
-<!-- skip-verify: requires user-specific file paths and data -->
 ### 3.4 Multi-label Training Code
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -462,7 +452,6 @@ CTA I-GENE
 ```
 
 **CSV Format**:
-<!-- skip-verify: references file that does not exist in repository -->
 ```csv
 sequence,tags
 ATGCGT...,["O","O","O","B-GENE","I-GENE","I-GENE","O",...]
@@ -487,7 +476,7 @@ finetune:
 
 ### 4.4 NER Training Code
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -539,7 +528,6 @@ LoRA (Low-Rank Adaptation) is a parameter-efficient fine-tuning method that requ
 
 Add LoRA configuration in `finetune_config.yaml`:
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```yaml
 # File: configs/lora_config.yaml
 
@@ -569,13 +557,10 @@ lora:
   task_type: "SEQ_CLS"                  # Task type
   bias: "none"                          # Bias handling
 ```
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
 ### 5.3 LoRA Training Code
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -624,7 +609,7 @@ trainer.save_lora_adapter("./models/lora_adapter")
 
 ### 5.4 Loading LoRA Model for Inference
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm import DNAInference
@@ -660,7 +645,6 @@ result = inference_engine.infer("ATGCGT...")
 
 Create `inference_config.yaml`:
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```yaml
 # File: configs/inference_config.yaml
 
@@ -680,7 +664,7 @@ task:
 
 ### 6.2 Single Sequence Inference
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm import DNAInference
@@ -711,7 +695,7 @@ print(f"Predicted label: {result['predicted_label']}")
 
 ### 6.3 Batch Inference
 
-<!-- skip-verify: stale import path needs code fix or module unavailable -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import DNAInference
 import pandas as pd
@@ -729,12 +713,11 @@ results_df.to_csv("./results/predictions.csv", index=False)
 print(f"Batch inference complete! Processed {len(sequences)} sequences")
 ```
 
-<!-- skip-verify: requires user-specific file paths and data -->
 ### 6.4 Mutagenesis Analysis (In-silico Mutagenesis)
 
 Mutagenesis analysis is used to identify the contribution of each position in the sequence to the prediction.
 
-<!-- skip-verify: stale import path needs code update -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import Mutagenesis
@@ -764,13 +747,9 @@ plot = mutagenesis.plot(
 important_positions = mutagenesis.get_important_positions(top_k=10)
 print(f"Top 10 most important positions: {important_positions}")
 ```
-<!-- skip-verify: stale import path needs code update -->
 
-<!-- skip-verify: stale import path needs code update -->
 ### 6.5 Model Interpretability
-<!-- skip-verify: stale import path needs code update -->
 
-<!-- skip-verify: stale import path needs code update -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import DNAInterpret
@@ -907,7 +886,6 @@ nohup dnallm-mcp-server --config ./mcp_server/mcp_server_config.yaml > ./logs/mc
 import asyncio
 from dnallm.mcp import DNALLMMCPServer
 
-
 async def main():
     # Initialize server
     server = DNALLMMCPServer("./mcp_server/mcp_server_config.yaml")
@@ -917,7 +895,6 @@ async def main():
     print("🚀 MCP server starting...")
     server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
     print("✅ MCP server started: http://0.0.0.0:8000/mcp")
-
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -953,7 +930,6 @@ curl -N http://localhost:8000/mcp/stream \
 import asyncio
 import aiohttp
 
-
 class DNALLMClient:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
@@ -988,7 +964,6 @@ class DNALLMClient:
             async with session.get(f"{self.base_url}/models") as response:
                 return await response.json()
 
-
 # Usage example
 async def main():
     client = DNALLMClient()
@@ -1008,7 +983,6 @@ async def main():
     ]
     results = await client.batch_predict(sequences)
     print(f"Batch prediction results: {results}")
-
 
 asyncio.run(main())
 ```
@@ -1075,7 +1049,6 @@ finetune:
 
 #### 8.1.2 Gradient Accumulation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 finetune:
   per_device_train_batch_size: 4
@@ -1084,7 +1057,6 @@ finetune:
 
 #### 8.1.3 Learning Rate Scheduling
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 finetune:
   learning_rate: 2e-5
@@ -1105,8 +1077,6 @@ finetune:
 
 ### 8.3 Data Augmentation Strategies
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 
@@ -1140,11 +1110,8 @@ model, optimizer, dataloader = accelerator.prepare(
 # Train
 trainer = DNATrainer(
     model=model, config=configs, datasets=datasets, accelerator=accelerator
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 )
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 
 ### 8.5 Model Saving and Loading
 
@@ -1195,7 +1162,6 @@ finetune:
 3. Increase training data
 4. Use learning rate warmup
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```yaml
 finetune:
   learning_rate: 5e-5
@@ -1206,7 +1172,6 @@ finetune:
 
 **Decision Tree**:
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```
 Task type selection:
 ├── Binary classification → task_type: "binary"
@@ -1215,16 +1180,13 @@ Task type selection:
 ├── Predict continuous values → task_type: "regression"
 ├── Sequence labeling → task_type: "token"
 ├── Feature extraction → task_type: "embedding"
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ├── Mask prediction → task_type: "mask"
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 └── Text generation → task_type: "generation"
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```
 
 ### Q4: How to resume training from checkpoint?
-
 <!-- skip-verify: depends on variables defined in preceding code blocks -->
+
 ```python
 trainer = DNATrainer(
     model=model,

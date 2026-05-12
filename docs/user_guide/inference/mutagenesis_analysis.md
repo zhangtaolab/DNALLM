@@ -45,7 +45,7 @@ A higher PLL score indicates the sequence is more "expected" by the model. A mut
 **Usage**:
 Set `task_type: "mask"` in your configuration.
 
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
@@ -79,7 +79,7 @@ This score represents how likely the model thinks the sequence is, from start to
 
 **Usage**:
 Set `task_type: "generation"` in your configuration.
-<!-- skip-verify: references file that does not exist in repository -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Use a config with task_type: "generation"
 configs = load_config("config_clm.yaml")
@@ -118,10 +118,9 @@ The effect of a mutation is measured as the log2 fold change (`logfc`) between t
 
 **Example: Regression Model**
 
-<!-- skip-verify: references file that does not exist in repository -->
 Let's analyze a model that predicts promoter strength (a regression task).
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
@@ -148,12 +147,10 @@ mut_analyzer.plot(predictions, save_path="./results/finetuned_mut_effects.pdf")
 ## 5. Special Models (e.g., EVO)
 
 The `Mutagenesis` class has built-in support for specialized generative models like **Evo-1** and **Evo-2**. These models have their own optimized `scoring` methods.
-<!-- skip-verify: references file that does not exist in repository -->
 
 When an Evo model is detected, `mutagenesis.evaluate()` automatically calls `inference_engine.scoring()` instead of the standard `batch_infer()`. The `strategy` parameter is passed to the `reduce_method` of the scoring function, typically with `"mean"` or `"sum"` being the most relevant options.
-<!-- skip-verify: requires user-specific file paths and data -->
 
-<!-- skip-verify: requires user-specific file paths and data -->
+<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 

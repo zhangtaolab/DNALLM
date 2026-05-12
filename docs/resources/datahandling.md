@@ -23,7 +23,6 @@ The `DNADataset` class provides comprehensive functionality for DNA sequence dat
 
 - **Sequence Tokenization**: Convert DNA sequences to model-compatible tokens
 
-
 ## Examples
 
 ### Basic Setup
@@ -35,7 +34,6 @@ from transformers import AutoTokenizer
 
 ### Data Loading
 
-<!-- skip-verify: references file that does not exist in repository -->
 ```python
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")
@@ -44,7 +42,7 @@ tokenizer = AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")
 # 1. Load local data (specify sequence and label column headers)
 # 1.1 Single file
 dna_ds = DNADataset.load_local_data(
-    "/path_to_your_datasets/data.csv",
+    "./data/test.csv",
     seq_col="sequence",
     label_col="labels",
     tokenizer=tokenizer,
@@ -87,7 +85,6 @@ dna_ds = load_preset_dataset(
 ```
 
 ### Data Processing and Augmentation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Common functionality demonstration
 
