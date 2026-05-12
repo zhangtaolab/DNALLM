@@ -41,7 +41,7 @@ pbar, pline = benchmark.plot(results, save_path="plot.pdf")
 ```
 
 ### Example 2: Model Comparison without config
-<!-- skip-verify: requires valid dataset configuration -->
+<!-- skip-verify: k-fold cross-validation requires n_splits >= 2 -->
 ```python
 from dnallm import DNADataset, Benchmark
 
