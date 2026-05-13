@@ -14,7 +14,6 @@ The inference process in DNALLM follows these steps:
 ## 2. A Complete Example
 
 Let's put everything together in a Python script. This example demonstrates loading a promoter prediction model and using it to classify DNA sequences.
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import os
 from dnallm import load_config, load_model_and_tokenizer, DNAInference

@@ -61,7 +61,6 @@ This will produce a grid of bar charts for all scalar metrics and a combined plo
 To understand which parts of a sequence a model focuses on, you can visualize its attention weights. This requires running inference with `output_attentions=True`.
 
 **Basic Usage:**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Assume 'inference_engine' is an initialized DNAInference instance
 
@@ -87,7 +86,6 @@ Visualize how a model represents sequences in its hidden layers. This can reveal
 
 **Basic Usage:**
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Assume 'inference_engine' is initialized
 
@@ -113,7 +111,6 @@ After performing an *in silico* mutagenesis experiment, you can visualize the im
 
 **Basic Usage:**
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Assume 'mut_analyzer' is an initialized Mutagenesis instance
 # and you have already run mutate_sequence() and evaluate()
@@ -146,7 +143,6 @@ All plotting functions in `dnallm.inference.plot` share a set of common paramete
 
 Let's customize the output of our benchmark plot. We want larger, separate plots for each metric, saved in SVG format for high quality.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Assume 'benchmark' and 'results' are available
 

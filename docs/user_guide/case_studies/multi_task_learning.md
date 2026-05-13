@@ -66,7 +66,6 @@ training:
 
 ### Python Script
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python title="finetune_multi_label.py"
 from dnallm import (
     load_config,

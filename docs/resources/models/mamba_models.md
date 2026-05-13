@@ -82,7 +82,6 @@ mut_analyzer.plot(predictions, save_path="./results/dnamamba_mut_effects.pdf")
 Caduceus models are bi-directional (MLM-style) and excel at classification tasks, especially on long sequences where standard BERT models might struggle.
 
 **Example: Fine-tuning PlantCAD2 for classification**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import (
     load_config,

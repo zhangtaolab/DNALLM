@@ -329,8 +329,12 @@ class DocVerifier:
                 )
                 continue
 
-            # Skip empty blocks
-            if not stripped:
+            # Skip empty or comment-only blocks
+            code_without_comments = "\n".join(
+                line for line in code.split("\n")
+                if line.strip() and not line.strip().startswith("#")
+            )
+            if not stripped or not code_without_comments.strip():
                 results.append(
                     BlockResult(
                         file=str(file_path.relative_to(self.project_root)),

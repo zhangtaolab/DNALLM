@@ -52,7 +52,6 @@ The model expects a dataset (e.g., from Hugging Face, ModelScope, or a local CSV
 
 ### Python Script
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python title="finetune_binary.py"
 import os
 from dnallm import (

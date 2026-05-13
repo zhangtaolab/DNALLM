@@ -78,7 +78,6 @@ This score represents how likely the model thinks the sequence is, from start to
 
 **Usage**:
 Set `task_type: "generation"` in your configuration.
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Use a config with task_type: "generation"
 configs = load_config("config_clm.yaml")
@@ -119,7 +118,6 @@ The effect of a mutation is measured as the log2 fold change (`logfc`) between t
 
 Let's analyze a model that predicts promoter strength (a regression task).
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
@@ -149,7 +147,6 @@ The `Mutagenesis` class has built-in support for specialized generative models l
 
 When an Evo model is detected, `mutagenesis.evaluate()` automatically calls `inference_engine.scoring()` instead of the standard `batch_infer()`. The `strategy` parameter is passed to the `reduce_method` of the scoring function, typically with `"mean"` or `"sum"` being the most relevant options.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
