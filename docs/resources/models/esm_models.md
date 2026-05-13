@@ -35,7 +35,6 @@ You can load an ESM model adapted for DNA using the `AutoModel` classes from `tr
 
 Here’s how to load an ESM model for a DNA classification task. Note that we use a version that has been fine-tuned or adapted for nucleotide data.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 

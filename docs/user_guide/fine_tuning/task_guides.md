@@ -371,7 +371,6 @@ TATATATATATA,TATATATATATA
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load generation model (GPT-style)
 model, tokenizer = load_model_and_tokenizer(
@@ -453,7 +452,6 @@ TATATATATATA,TATATATATATA
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load MLM model (BERT-style)
 model, tokenizer = load_model_and_tokenizer(
@@ -534,7 +532,6 @@ TATATATATATA,"O O O O O O O O O O O O"
 
 ### Example Implementation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Load token classification model
 model, tokenizer = load_model_and_tokenizer(
@@ -585,7 +582,6 @@ print(f"Labels: {labels}")
 
 ### Classification Tasks
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Apply reverse complement augmentation
 augmented_data = []
@@ -609,7 +605,6 @@ for item in dataset.train_data:
 
 ### Generation Tasks
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Apply sequence truncation for generation
 augmented_data = []
@@ -628,7 +623,6 @@ for item in dataset.train_data:
 
 ### Classification Metrics
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Binary classification
 from sklearn.metrics import classification_report, roc_auc_score

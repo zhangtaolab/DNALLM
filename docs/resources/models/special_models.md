@@ -30,7 +30,6 @@ GPN is a Masked Language Model (MLM) and is best used for zero-shot scoring task
 
 **Example: Using GPN for mutation analysis**
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, Mutagenesis, load_model_and_tokenizer
 

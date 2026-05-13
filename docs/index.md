@@ -70,7 +70,6 @@ python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
 
 2. **Basic Model Loading and Inference**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 

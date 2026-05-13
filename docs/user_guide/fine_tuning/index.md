@@ -32,7 +32,6 @@ Before diving into fine-tuning, ensure you have:
 
 ## Quick Start
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import (
     load_config,

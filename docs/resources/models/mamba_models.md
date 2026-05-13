@@ -53,7 +53,6 @@ Plant DNAMamba is a causal language model (CLM), making it ideal for sequence sc
 
 This example demonstrates how to perform zero-shot mutation analysis by scoring sequence likelihood.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, Mutagenesis, load_model_and_tokenizer
 

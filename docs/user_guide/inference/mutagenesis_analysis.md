@@ -45,7 +45,6 @@ A higher PLL score indicates the sequence is more "expected" by the model. A mut
 **Usage**:
 Set `task_type: "mask"` in your configuration.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
