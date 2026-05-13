@@ -36,7 +36,6 @@ When you run a benchmark using the `Benchmark` class, you can easily plot the re
 
 **Basic Usage:**
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, Benchmark
 

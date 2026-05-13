@@ -10,7 +10,6 @@ The examples in this guide cover:
 
 ### Example 1: Model Comparison with benchmark config
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt

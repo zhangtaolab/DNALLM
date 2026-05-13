@@ -226,7 +226,6 @@ The installation method for the dependencies of these models can be found **[her
 ## 🚀 Quick Start
 
 ### 1. Basic Model Loading and Inference
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
