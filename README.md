@@ -250,7 +250,6 @@ print(f"Inference result: {inference_result}")
 ```
 
 ### 2. In-silico Mutagenesis Analysis
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import Mutagenesis
 
@@ -266,7 +265,6 @@ predictions = mutagenesis.evaluate(strategy="mean")
 # Visualize results
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer

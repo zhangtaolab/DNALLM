@@ -637,7 +637,7 @@ print(f"ROC AUC: {roc_auc_score(y_true, y_pred):.4f}")
 
 ### Generation Metrics
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
+<!-- skip-verify: BLEU metric requires string labels, mock dataset uses int labels -->
 ```python
 # Generation quality metrics
 from nltk.translate.bleu_score import sentence_bleu

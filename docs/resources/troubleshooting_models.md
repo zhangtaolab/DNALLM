@@ -87,7 +87,6 @@ This is a general error that can have several causes.
 
 3.  **Network Issues**: The model download failed due to an unstable connection.
     - **Fix**: The `load_model_and_tokenizer` function has a built-in retry mechanism. If it consistently fails, check your network connection. For users in regions with restricted access to Hugging Face, consider using a mirror by setting `use_mirror=True`.
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
     ```python
     model, tokenizer = load_model_and_tokenizer(
         "zhihan1996/DNABERT-2-117M",

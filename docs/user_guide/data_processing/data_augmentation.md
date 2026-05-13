@@ -22,7 +22,6 @@ This is the most common and biologically sound augmentation method. The model sh
 
 The `dnallm.datahandling.DNADataset` module provides efficient `reverse_complement` functions.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # raw reverse_complement
 # dna_ds.raw_reverse_complement()

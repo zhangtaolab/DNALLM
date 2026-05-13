@@ -348,7 +348,6 @@ $ python scripts/check_code.py --fix
 - Add inline comments for complex logic
 
 Example:
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def infer_sequence(self, sequence: str, model_name: str) -> Dict[str, Any]:
     """Infer the properties of a DNA sequence.

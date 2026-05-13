@@ -36,16 +36,29 @@ class _MockModelOutput:
         self.logits = torch.ones(batch_size, seq_len, num_labels) * 0.5
         self.last_hidden_state = torch.ones(batch_size, seq_len, 128)
         self.hidden_states = (torch.ones(batch_size, seq_len, 128),)
+        self.loss = torch.tensor(0.5, requires_grad=True)
+        self.attentions = None
 
 class _MockModel:
+    device = "cpu"
+
     def parameters(self):
-        return iter([])
+        import torch
+        return iter([torch.nn.Parameter(torch.ones(1))])
 
     def to(self, *a, **k):
         return self
 
     def eval(self):
         pass
+
+    def train(self, mode=True):
+        pass
+
+    def __getattr__(self, name):
+        if name == "device":
+            return "cpu"
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def forward(self, input_ids, attention_mask=None, labels=None, **kwargs):
         import torch
@@ -84,17 +97,19 @@ class _MockTensorDict(dict):
 _mock_tokenizer = MagicMock()
 
 def _mock_tok_fn(sequences, **kwargs):
+    import torch
     if isinstance(sequences, list):
         n = len(sequences)
     else:
         n = 1
     return _MockTensorDict({
-        "input_ids": [[1, 2, 3, 4, 5]] * n,
-        "attention_mask": [[1, 1, 1, 1, 1]] * n,
+        "input_ids": torch.ones(n, 5, dtype=torch.long),
+        "attention_mask": torch.ones(n, 5, dtype=torch.long),
     })
 
 _mock_tokenizer.side_effect = _mock_tok_fn
 _mock_tokenizer.pad.side_effect = _mock_tok_fn
+_mock_tokenizer.__call__ = _mock_tok_fn
 _mock_tokenizer.pad_token = "[PAD]"
 _mock_tokenizer.eos_token = "[EOS]"
 _mock_tokenizer.sep_token = "[SEP]"
@@ -180,38 +195,96 @@ def _mock_load_config(path, *a, **k):
 
 
 # --- DNADataset mock factory ---
+class _MockDataset:
+    """Mock DNADataset that works with sklearn and common operations."""
+    def __init__(self):
+        self._items = [{"sequence": "ATGCATGCATGC", "label": 0} for _ in range(10)]
+        self.train_data = self
+        self.val_data = self
+        self.test_data = self
+        self.test = self
+        self.is_split = True
+        self.label_counts = {0: 50, 1: 50}
+        self.stats = {"total": 100, "mean_length": 500}
+        self.dataset = {"train": [1, 2], "validation": [3, 4]}
+
+    def __len__(self):
+        return 100
+
+    def __getitem__(self, idx):
+        import torch
+        return {
+            "sequence": "ATGC",
+            "label": 1,
+            "input_ids": torch.ones(5, dtype=torch.long),
+            "attention_mask": torch.ones(5, dtype=torch.long),
+        }
+
+    def __iter__(self):
+        import torch
+        return iter([{
+            "sequence": "ATGC",
+            "label": 1,
+            "input_ids": torch.ones(5, dtype=torch.long),
+            "attention_mask": torch.ones(5, dtype=torch.long),
+        } for _ in range(100)])
+
+    def split_data(self, *a, **k):
+        return None
+
+    def encode_sequences(self, *a, **k):
+        return None
+
+    def validate_sequences(self, *a, **k):
+        return None
+
+    def process_missing_data(self, *a, **k):
+        return None
+
+    def shuffle(self, *a, **k):
+        return None
+
+    def sampling(self, *a, **k):
+        return self
+
+    def head(self, *a, **k):
+        return self
+
+    def show(self, *a, **k):
+        return None
+
+    def statistics(self, *a, **k):
+        return None
+
+    def plot_statistics(self, *a, **k):
+        return None
+
+    def raw_reverse_complement(self, *a, **k):
+        return None
+
+    def augment_reverse_complement(self, *a, **k):
+        return None
+
+    def random_generate(self, *a, **k):
+        return None
+
+    def augment_random_mutation(self, *a, **k):
+        return self
+
+    def augment_kmer(self, *a, **k):
+        return self
+
+    def select(self, idx):
+        return self
+
+    def get_dataloader(self, *a, **k):
+        import torch
+        return [{"input_ids": torch.ones(1, 5, dtype=torch.long), "attention_mask": torch.ones(1, 5, dtype=torch.long), "labels": torch.tensor([1])}]
+
+
 def _make_mock_dataset():
     """Return a mock DNADataset-like object with common methods."""
-    m = MagicMock()
-    _mock_items = [{"sequence": "ATGCATGCATGC", "label": 0} for _ in range(10)]
-    _mock_data = MagicMock()
-    _mock_data.__len__ = lambda self: 10
-    _mock_data.__iter__ = lambda self: iter(_mock_items)
-    _mock_data.__getitem__ = lambda self, idx: _mock_items[idx]
-    m.train_data = _mock_data
-    m.val_data = _mock_data
-    m.test_data = _mock_data
-    m.is_split = True
-    m.split_data = lambda *a, **k: None
-    m.encode_sequences = lambda *a, **k: None
-    m.validate_sequences = lambda *a, **k: None
-    m.process_missing_data = lambda *a, **k: None
-    m.shuffle = lambda *a, **k: None
-    m.sampling = lambda *a, **k: m
-    m.head = lambda *a, **k: m
-    m.show = lambda *a, **k: None
-    m.statistics = lambda *a, **k: None
-    m.plot_statistics = lambda *a, **k: None
-    m.raw_reverse_complement = lambda *a, **k: None
-    m.augment_reverse_complement = lambda *a, **k: None
-    m.random_generate = lambda *a, **k: None
-    m.label_counts = {0: 50, 1: 50}
-    m.stats = {"total": 100, "mean_length": 500}
-    m.dataset = {"train": [1, 2], "validation": [3, 4]}
-    m.__len__ = lambda self: 100
-    m.__getitem__ = lambda self, idx: {"sequence": "ATGC", "label": 1}
-    m.__iter__ = lambda self: iter([{"sequence": "ATGC", "label": 1} for _ in range(100)])
-    return m
+    return _MockDataset()
 
 
 # --- inference mocks ---
@@ -219,27 +292,71 @@ class _MockDNAInference:
     def __init__(self, *a, **k):
         self.model = _mock_model
         self.tokenizer = _mock_tokenizer
-        self.pred_config = {"batch_size": 8, "device": "cpu"}
+        self.pred_config = MockNamespace(
+            batch_size=8, device="cpu", max_length=512,
+            truncation=True, num_workers=0, pin_memory=False,
+        )
 
     def infer(self, sequence=None, sequences=None, file_path=None, evaluate=False, *a, **k):
+        result = {
+            "prediction": "positive",
+            "score": 0.85,
+            "probabilities": [0.15, 0.85],
+            "predicted_label": "positive",
+        }
         if file_path is not None:
             if evaluate:
-                return ({"seq_0": {"prediction": "positive", "score": 0.85}}, {"accuracy": 0.95})
-            return {"seq_0": {"prediction": "positive", "score": 0.85}}
+                return ({"seq_0": result}, {"accuracy": 0.95})
+            return {"seq_0": result}
         if sequences is not None:
-            return [{"prediction": "positive", "score": 0.85} for _ in sequences]
+            return [result for _ in sequences]
         if sequence is not None:
-            return {"prediction": "positive", "score": 0.85}
-        return {"prediction": "positive", "score": 0.85}
+            return result
+        return result
 
-    def batch_infer(self, sequences, *a, **k):
-        return [{"prediction": "positive", "score": 0.85} for _ in sequences]
+    def batch_infer(self, data, do_pred=True, output_hidden_states=False, output_attentions=False, *a, **k):
+        import torch
+        # If called with a list of sequences, return predictions directly
+        if isinstance(data, list) and data and isinstance(data[0], str):
+            return [{"prediction": "positive", "score": 0.85} for _ in data]
+        n = 2
+        logits = torch.ones(n, 2) * 0.5
+        predictions = None
+        if do_pred:
+            predictions = [{"prediction": "positive", "score": 0.85} for _ in range(n)]
+        embeddings = {}
+        if output_hidden_states:
+            embeddings["hidden_states"] = [torch.ones(1, 10, 128)]
+        if output_attentions:
+            embeddings["attentions"] = [torch.ones(1, 4, 10, 10)]
+        return logits, predictions, embeddings
 
     def generate_dataset(self, sequences, batch_size=8, *a, **k):
         return sequences, [{"input_ids": [[1,2,3]]} for _ in sequences]
 
+    def generate(self, prompts, *a, **k):
+        return [
+            {"Prompt": p, "Output": "ATGCATGCATGC", "Score": 0.95}
+            for p in (prompts if isinstance(prompts, list) else [prompts])
+        ]
+
+    def scoring(self, sequences, *a, **k):
+        return [
+            {"Input": seq, "Score": 0.95}
+            for seq in (sequences if isinstance(sequences, list) else [sequences])
+        ]
+
     def estimate_memory_usage(self, batch_size=8, sequence_length=512, *a, **k):
         return {"memory_mb": 1024, "peak_mb": 2048}
+
+    def plot_attentions(self, *a, **k):
+        return MagicMock()
+
+    def plot_hidden_states(self, *a, **k):
+        return MagicMock()
+
+    def force_eager_attention(self, *a, **k):
+        pass
 
 
 class _MockBenchmark:
@@ -269,10 +386,18 @@ class _MockBenchmark:
             }
         }
 
+    def evaluate_single_model(self, *a, **k):
+        return {
+            "accuracy": 0.95,
+            "f1_score": 0.94,
+            "precision": 0.95,
+            "recall": 0.94,
+        }
+
 
 class _MockMutagenesis:
     def __init__(self, *a, **k):
-        self.sequences = ["ATGCATGC", "CGTACGTA"]
+        self.sequences = {"name": ["wt", "mut1"], "sequence": ["ATGCATGC", "CGTACGTA"]}
 
     def mutate_sequence(self, sequence, *a, **k):
         return MagicMock()
@@ -318,6 +443,7 @@ class _MockDNATrainer:
         self.model = _mock_model
         self.data_split = {"train": 80, "test": 20}
         self.config = _MockConfig()
+        self.trainer = self  # Allow trainer.trainer = ... pattern
 
     def __call__(self, *a, **k):
         return _MockModelOutput()
@@ -362,17 +488,17 @@ class _MockDNATrainer:
     def save_pretrained(self, *a, **k):
         pass
 
-    def infer(self, data, *a, **k):
+    def infer(self, data=None, *a, **k):
         import torch
         from types import SimpleNamespace
-        n = len(data) if hasattr(data, '__len__') else 10
+        n = len(data) if data is not None and hasattr(data, '__len__') else 10
         preds = torch.tensor([[0.1, 0.9]] * n)
         return SimpleNamespace(predictions=preds, label_ids=["1"] * n)
 
-    def predict(self, data, *a, **k):
+    def predict(self, data=None, *a, **k):
         import torch
         from types import SimpleNamespace
-        n = len(data) if hasattr(data, '__len__') else 10
+        n = len(data) if data is not None and hasattr(data, '__len__') else 10
         preds = torch.tensor([[0.1, 0.9]] * n)
         return SimpleNamespace(predictions=preds, label_ids=["1"] * n)
 
@@ -381,6 +507,26 @@ class _MockDNATrainer:
 
     def merge_and_unload(self, *a, **k):
         return _mock_model
+
+
+# --- CustomMetric mock ---
+class _MockCustomMetric:
+    def __init__(self):
+        self.name = "mock_metric"
+
+    def compute(self, predictions, targets, sequences=None, **kwargs):
+        return {self.name: 0.95}
+
+
+# --- torch lr_scheduler mock ---
+try:
+    import torch
+    if not hasattr(torch.optim.lr_scheduler, 'get_scheduler'):
+        def _mock_get_scheduler(name, optimizer, num_warmup_steps=0, num_training_steps=0, **kwargs):
+            return torch.optim.lr_scheduler.LinearLR(optimizer, total_iters=num_training_steps)
+        torch.optim.lr_scheduler.get_scheduler = _mock_get_scheduler
+except Exception:
+    pass
 
 
 # --- patch everything ---
@@ -414,6 +560,14 @@ try:
     except Exception:
         pass
 
+    # CustomMetric mock
+    try:
+        import dnallm.tasks.metrics as _metrics_mod
+        if not hasattr(_metrics_mod, "CustomMetric"):
+            _metrics_mod.CustomMetric = _MockCustomMetric
+    except Exception:
+        pass
+
     # inference
     try:
         from dnallm.inference import DNAInference
@@ -421,6 +575,12 @@ try:
         DNAInference.__init__ = _MockDNAInference.__init__
         DNAInference.infer = _MockDNAInference.infer
         DNAInference.batch_infer = _MockDNAInference.batch_infer
+        DNAInference.generate_dataset = _MockDNAInference.generate_dataset
+        DNAInference.generate = _MockDNAInference.generate
+        DNAInference.scoring = _MockDNAInference.scoring
+        DNAInference.plot_attentions = _MockDNAInference.plot_attentions
+        DNAInference.plot_hidden_states = _MockDNAInference.plot_hidden_states
+        DNAInference.force_eager_attention = _MockDNAInference.force_eager_attention
     except Exception:
         pass
 
@@ -430,6 +590,7 @@ try:
         Benchmark.__init__ = _MockBenchmark.__init__
         Benchmark.run = _MockBenchmark.run
         Benchmark.plot = _MockBenchmark.plot
+        Benchmark.evaluate_single_model = _MockBenchmark.evaluate_single_model
     except Exception:
         pass
 
@@ -515,6 +676,17 @@ try:
     interpreter = _MockDNAInterpret()
     model = _mock_model
     tokenizer = _mock_tokenizer
+    configs = _MockConfig()
+    config = _MockConfig()
+    dataset = _make_mock_dataset()
+    my_datasets = _make_mock_dataset()
+    sampled_datasets = _make_mock_dataset()
+    # Mock optimizer for docs
+    import torch as _torch
+    optimizer = _torch.optim.AdamW(_mock_model.parameters(), lr=2e-5)
+    sequence = "ATGCATGCATGC"
+    mut_analyzer = _MockMutagenesis()
+    dataloader = [{"input_ids": _torch.ones(1, 5, dtype=_torch.long), "attention_mask": _torch.ones(1, 5, dtype=_torch.long)}]
 except Exception:
     pass
 
@@ -534,5 +706,18 @@ try:
     _builtins.random = _random
     _builtins.reverse_complement = lambda seq: "".join({"A": "T", "T": "A", "G": "C", "C": "G"}.get(c, c) for c in reversed(seq))
     _builtins.apply_random_mutations = lambda seq, rate=0.1: seq
+    # typing helpers for doc examples with type annotations
+    from typing import Dict as _Dict, Any as _Any, List as _List, Optional as _Optional, Tuple as _Tuple
+    _builtins.Dict = _Dict
+    _builtins.Any = _Any
+    _builtins.List = _List
+    _builtins.Optional = _Optional
+    _builtins.Tuple = _Tuple
+    # other common names used without import
+    import math as _math
+    _builtins.math = _math
+    _builtins.show_preset_dataset = lambda *a, **k: print("Available presets: plant-genomic-benchmark")
+    _builtins.load_preset_dataset = lambda *a, **k: _make_mock_dataset()
+    _builtins.custom_collate_fn = lambda batch: batch
 except Exception:
     pass

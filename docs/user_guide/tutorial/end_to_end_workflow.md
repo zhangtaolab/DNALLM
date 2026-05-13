@@ -555,7 +555,6 @@ lora:
 
 ### 5.3 LoRA Training Code
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
@@ -604,7 +603,7 @@ trainer.save_lora_adapter("./models/lora_adapter")
 
 ### 5.4 Loading LoRA Model for Inference
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
+<!-- skip-verify: requires local model files -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm import DNAInference
@@ -659,7 +658,6 @@ task:
 
 ### 6.2 Single Sequence Inference
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm import DNAInference
@@ -690,7 +688,7 @@ print(f"Predicted label: {result['predicted_label']}")
 
 ### 6.3 Batch Inference
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
+<!-- skip-verify: requires local data files -->
 ```python
 from dnallm import DNAInference
 import pandas as pd
@@ -712,7 +710,6 @@ print(f"Batch inference complete! Processed {len(sequences)} sequences")
 
 Mutagenesis analysis is used to identify the contribution of each position in the sequence to the prediction.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import Mutagenesis
@@ -745,7 +742,6 @@ print(f"Top 10 most important positions: {important_positions}")
 
 ### 6.5 Model Interpretability
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm.inference import DNAInterpret
@@ -1088,7 +1084,6 @@ dataset.augment_kmer(k=3)
 
 ### 8.4 Distributed Training
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.finetune import DNATrainer
 from accelerate import Accelerator

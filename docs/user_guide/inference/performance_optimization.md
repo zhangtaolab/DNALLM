@@ -70,7 +70,6 @@ Extracting hidden states or attention weights is extremely memory-intensive.
 
 Use the `estimate_memory_usage()` method to get a rough idea of how much VRAM a model will require for a given batch size and sequence length. This can help you anticipate and prevent OOM errors.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 # Assume inference_engine is initialized
 memory_estimate = inference_engine.estimate_memory_usage(
@@ -108,7 +107,6 @@ This error occurs because the default high-performance attention implementation 
 
 - **Solution**: The `DNAInference` engine attempts to handle this automatically by switching to a compatible implementation (`eager`).
 - **Manual Fix**: You can force this change yourself for debugging:
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
   ```python
   inference_engine.force_eager_attention()
   ```

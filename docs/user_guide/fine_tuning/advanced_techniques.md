@@ -17,7 +17,6 @@ Advanced fine-tuning techniques help you:
 DNALLM allows you to implement custom loss functions for specific use cases.
 
 #### Weighted Loss for Imbalanced Data
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import torch
 import torch.nn as nn
@@ -79,7 +78,6 @@ trainer.trainer = CustomTrainer
 ```
 
 #### Focal Loss for Hard Examples
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class FocalLoss(nn.Module):
     """Focal loss for handling hard examples."""
@@ -114,7 +112,6 @@ trainer.trainer.criterion = FocalLoss(alpha=1, gamma=2)
 Implement custom training loops for advanced control over the training process.
 
 #### Custom Training with Gradient Accumulation
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class CustomTrainer:
     """Custom trainer with advanced features."""
@@ -153,6 +150,14 @@ class CustomTrainer:
             num_warmup_steps=num_warmup_steps,
             num_training_steps=num_training_steps,
         )
+
+    def _collate_fn(self, batch):
+        """Collate a batch of samples into a single dict."""
+        return {
+            "input_ids": torch.stack([torch.tensor(item["input_ids"]) for item in batch]),
+            "attention_mask": torch.stack([torch.tensor(item["attention_mask"]) for item in batch]),
+            "labels": torch.tensor([item["label"] for item in batch]),
+        }
 
     def train_epoch(self, epoch):
         """Train for one epoch."""
@@ -239,7 +244,6 @@ Implement advanced learning rate scheduling strategies.
 
 #### Cosine Annealing with Warm Restarts
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class CosineAnnealingWarmRestarts:
     """Cosine annealing with warm restarts."""
@@ -275,7 +279,6 @@ scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=1000, T_mult=2)
 
 #### One Cycle Policy
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class OneCycleScheduler:
     """One cycle learning rate scheduler."""
@@ -330,7 +333,6 @@ Enable it in the model `config.json` file.
 
 Implement dynamic batching for variable-length sequences.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class DynamicBatchSampler:
     """Dynamic batch sampler for variable-length sequences."""
@@ -382,7 +384,6 @@ dataloader = torch.utils.data.DataLoader(
 
 Implement custom callbacks for advanced monitoring.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class CustomCallback:
     """Custom callback for advanced monitoring."""
@@ -458,7 +459,6 @@ callback = CustomCallback(model, tokenizer, dataset)
 
 Implement comprehensive logging for debugging.
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import logging
 import json

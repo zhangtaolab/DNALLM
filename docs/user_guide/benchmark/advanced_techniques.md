@@ -16,7 +16,6 @@ Cross-validation provides more robust performance estimates by testing models on
 
 ### K-Fold Cross-Validation
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from sklearn.model_selection import KFold
 import numpy as np
@@ -116,7 +115,6 @@ def run_stratified_cv_benchmark(models, datasets, k_folds=5):
 DNALLM allows you to implement custom evaluation metrics for specific use cases.
 
 ### Basic Custom Metric
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from dnallm.tasks.metrics import CustomMetric
 import numpy as np
@@ -170,7 +168,6 @@ benchmark = Benchmark(
 
 ### Advanced Custom Metric with Multiple Outputs
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 class ComprehensiveDNAMetric(CustomMetric):
     """Comprehensive DNA sequence evaluation metric."""
@@ -237,7 +234,6 @@ Performance profiling helps you understand model efficiency and identify bottlen
 
 ### Basic Performance Profiling
 
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 import time
 import psutil
@@ -574,7 +570,6 @@ set_reproducibility(42)
 ```
 
 ### 2. **Resource Management**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 def cleanup_resources():
     """Clean up GPU memory and other resources."""
@@ -596,7 +591,6 @@ for model_name, model_info in loaded_models.items():
 ```
 
 ### 3. **Progress Monitoring**
-<!-- skip-verify: depends on variables defined in preceding code blocks -->
 ```python
 from tqdm import tqdm
 import logging
