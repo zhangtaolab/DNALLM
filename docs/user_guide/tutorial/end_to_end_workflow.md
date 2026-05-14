@@ -603,7 +603,6 @@ trainer.save_lora_adapter("./models/lora_adapter")
 
 ### 5.4 Loading LoRA Model for Inference
 
-<!-- skip-verify: requires local model files -->
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 from dnallm import DNAInference
@@ -688,7 +687,6 @@ print(f"Predicted label: {result['predicted_label']}")
 
 ### 6.3 Batch Inference
 
-<!-- skip-verify: requires local data files -->
 ```python
 from dnallm import DNAInference
 import pandas as pd

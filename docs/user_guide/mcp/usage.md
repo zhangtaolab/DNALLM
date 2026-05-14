@@ -421,7 +421,6 @@ curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
 ```
 
 #### Multi-Model Prediction
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def basic_dna_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -447,7 +446,6 @@ async def basic_dna_analysis(sequence):
 
 ### 2. Batch Processing Workflow
 
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def batch_dna_analysis(sequences):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -474,7 +472,6 @@ async def batch_dna_analysis(sequences):
 
 ### 3. Real-time Analysis with Progress
 
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def real_time_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -497,7 +494,6 @@ async def real_time_analysis(sequence):
 
 ### 4. Model Comparison Workflow
 
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def model_comparison(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -553,7 +549,6 @@ async def model_comparison(sequence):
 
 ### Error Handling in Python
 
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 async def safe_prediction(sequence, model_name):
     try:
