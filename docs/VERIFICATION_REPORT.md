@@ -1,16 +1,16 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-13T23:55:54.307989+00:00Z
+**Generated:** 2026-05-14T02:05:59.740561+00:00Z
 **Total code blocks:** 528
-**Files scanned:** 120 Markdown + 0 notebooks
+**Files scanned:** 120 Markdown + 19 notebooks
 
 ## Summary
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 315 |
+| PASS    | 326 |
 | FAIL    | 0 |
-| SKIP    | 213 |
+| SKIP    | 202 |
 | TIMEOUT | 0 |
 
 ## Details
@@ -343,21 +343,21 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 30 | python | SKIP | interactive code requiring display or user input |
-| 83 | python | SKIP | interactive code requiring display or user input |
-| 144 | python | SKIP | interactive visualization requiring display output |
+| 29 | python | PASS |  |
+| 81 | python | PASS |  |
+| 140 | python | PASS |  |
 | 17 | bash | PASS |  |
-| 108 | bash | PASS |  |
-| 260 | bash | PASS |  |
-| 40 | yaml | SKIP | unsupported language: yaml |
-| 200 | csv | SKIP | unsupported language: csv |
-| 208 | json | SKIP | unsupported language: json |
-| 216 | fasta | SKIP | unsupported language: fasta |
-| 226 | yaml | SKIP | unsupported language: yaml |
-| 234 | yaml | SKIP | unsupported language: yaml |
-| 241 | yaml | SKIP | unsupported language: yaml |
-| 266 | yaml | SKIP | unsupported language: yaml |
-| 273 | yaml | SKIP | unsupported language: yaml |
+| 106 | bash | PASS |  |
+| 256 | bash | PASS |  |
+| 39 | yaml | SKIP | unsupported language: yaml |
+| 196 | csv | SKIP | unsupported language: csv |
+| 204 | json | SKIP | unsupported language: json |
+| 212 | fasta | SKIP | unsupported language: fasta |
+| 222 | yaml | SKIP | unsupported language: yaml |
+| 230 | yaml | SKIP | unsupported language: yaml |
+| 237 | yaml | SKIP | unsupported language: yaml |
+| 262 | yaml | SKIP | unsupported language: yaml |
+| 269 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/benchmark/index.md
 
 | Line | Lang | Status | Error |
@@ -487,7 +487,7 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 15 | python | SKIP | empty code block |
-| 27 | python | SKIP | requires local data files |
+| 26 | python | PASS |  |
 ### docs/user_guide/fine_tuning/advanced_techniques.md
 
 | Line | Lang | Status | Error |
@@ -698,12 +698,12 @@
 | 228 | python | SKIP | requires async event loop and running server |
 | 276 | python | SKIP | requires async event loop and running server |
 | 320 | python | SKIP | requires async event loop and running server |
-| 425 | python | SKIP | requires async event loop and running server |
-| 451 | python | SKIP | requires async event loop and running server |
-| 478 | python | SKIP | requires async event loop and running server |
-| 501 | python | SKIP | requires async event loop and running server |
-| 557 | python | SKIP | requires async event loop and running server |
 | 213 | python | PASS |  |
+| 424 | python | PASS |  |
+| 449 | python | PASS |  |
+| 475 | python | PASS |  |
+| 497 | python | PASS |  |
+| 552 | python | PASS |  |
 | 396 | bash | PASS |  |
 | 403 | bash | PASS |  |
 | 410 | bash | PASS |  |
@@ -713,9 +713,9 @@
 | 85 | json | SKIP | unsupported language: json |
 | 159 | json | SKIP | unsupported language: json |
 | 348 | javascript | SKIP | unsupported language: javascript |
-| 533 | json | SKIP | unsupported language: json |
-| 540 | json | SKIP | unsupported language: json |
-| 547 | json | SKIP | unsupported language: json |
+| 529 | json | SKIP | unsupported language: json |
+| 536 | json | SKIP | unsupported language: json |
+| 543 | json | SKIP | unsupported language: json |
 ### docs/user_guide/models.md
 
 | Line | Lang | Status | Error |
@@ -766,10 +766,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 607 | python | SKIP | requires local model files |
-| 692 | python | SKIP | requires local data files |
-| 877 | python | SKIP | requires running server instance to connect to |
-| 921 | python | SKIP | requires running server instance to connect to |
+| 875 | python | SKIP | requires running server instance to connect to |
+| 919 | python | SKIP | requires running server instance to connect to |
 | 87 | python | PASS |  |
 | 132 | python | PASS |  |
 | 213 | python | PASS |  |
@@ -778,19 +776,21 @@
 | 390 | python | PASS |  |
 | 475 | python | PASS |  |
 | 558 | python | PASS |  |
-| 661 | python | PASS |  |
-| 713 | python | PASS |  |
-| 745 | python | PASS |  |
-| 1072 | python | PASS |  |
-| 1087 | python | PASS |  |
-| 1109 | python | PASS |  |
-| 1178 | python | PASS |  |
+| 606 | python | PASS |  |
+| 660 | python | PASS |  |
+| 690 | python | PASS |  |
+| 711 | python | PASS |  |
+| 743 | python | PASS |  |
+| 1070 | python | PASS |  |
+| 1085 | python | PASS |  |
+| 1107 | python | PASS |  |
+| 1176 | python | PASS |  |
 | 34 | bash | PASS |  |
 | 56 | bash | PASS |  |
 | 344 | bash | PASS |  |
-| 866 | bash | PASS |  |
-| 900 | bash | SKIP | requires running server instance to connect to |
-| 1018 | bash | PASS |  |
+| 864 | bash | PASS |  |
+| 898 | bash | SKIP | requires running server instance to connect to |
+| 1016 | bash | PASS |  |
 | 114 | csv | SKIP | unsupported language: csv |
 | 123 | tsv | SKIP | unsupported language: tsv |
 | 158 | yaml | SKIP | unsupported language: yaml |
@@ -800,14 +800,429 @@
 | 451 | csv | SKIP | unsupported language: csv |
 | 458 | yaml | SKIP | unsupported language: yaml |
 | 526 | yaml | SKIP | unsupported language: yaml |
-| 642 | yaml | SKIP | unsupported language: yaml |
-| 782 | yaml | SKIP | unsupported language: yaml |
-| 845 | yaml | SKIP | requires server configuration file and runtime environment |
-| 986 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1034 | yaml | SKIP | unsupported language: yaml |
-| 1044 | yaml | SKIP | unsupported language: yaml |
-| 1052 | yaml | SKIP | unsupported language: yaml |
-| 1139 | yaml | SKIP | unsupported language: yaml |
-| 1155 | yaml | SKIP | unsupported language: yaml |
-| 1165 |  | SKIP | unsupported language:  |
-| 1189 | yaml | SKIP | unsupported language: yaml |
+| 641 | yaml | SKIP | unsupported language: yaml |
+| 780 | yaml | SKIP | unsupported language: yaml |
+| 843 | yaml | SKIP | requires server configuration file and runtime environment |
+| 984 | dockerfile | SKIP | unsupported language: dockerfile |
+| 1032 | yaml | SKIP | unsupported language: yaml |
+| 1042 | yaml | SKIP | unsupported language: yaml |
+| 1050 | yaml | SKIP | unsupported language: yaml |
+| 1137 | yaml | SKIP | unsupported language: yaml |
+| 1153 | yaml | SKIP | unsupported language: yaml |
+| 1163 |  | SKIP | unsupported language:  |
+| 1187 | yaml | SKIP | unsupported language: yaml |
+
+## Notebooks
+
+### example/notebooks/benchmark/benchmark.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp6tkvz9ts.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/data_prepare/finetune/finetune_data.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
+| 7 | TIMEOUT | Notebook execution timed out after 180s |
+| 8 | TIMEOUT | Notebook execution timed out after 180s |
+| 10 | TIMEOUT | Notebook execution timed out after 180s |
+| 11 | TIMEOUT | Notebook execution timed out after 180s |
+| 12 | TIMEOUT | Notebook execution timed out after 180s |
+| 14 | TIMEOUT | Notebook execution timed out after 180s |
+| 15 | TIMEOUT | Notebook execution timed out after 180s |
+| 17 | TIMEOUT | Notebook execution timed out after 180s |
+| 18 | TIMEOUT | Notebook execution timed out after 180s |
+| 19 | TIMEOUT | Notebook execution timed out after 180s |
+| 20 | TIMEOUT | Notebook execution timed out after 180s |
+| 21 | TIMEOUT | Notebook execution timed out after 180s |
+| 22 | TIMEOUT | Notebook execution timed out after 180s |
+| 23 | TIMEOUT | Notebook execution timed out after 180s |
+| 24 | TIMEOUT | Notebook execution timed out after 180s |
+
+### example/notebooks/data_prepare/predict/predict_data.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+
+### example/notebooks/embedding_attention.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpuef8lk3s.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+Cancellation requested; stopping current tasks.
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-pac |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpehx65ej5.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 10 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 13 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+| 16 | FAIL | Execution halted due to earlier cell failure |
+| 17 | FAIL | Execution halted due to earlier cell failure |
+| 18 | FAIL | Execution halted due to earlier cell failure |
+| 19 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmppclj3apv.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_binary/finetune_binary.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpu82zq61e.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_custom_head/finetune.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmps3qffnq0.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 10 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 13 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_generation/finetune_generation.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8kj6wayo.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 10 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 13 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+| 16 | FAIL | Execution halted due to earlier cell failure |
+| 17 | FAIL | Execution halted due to earlier cell failure |
+| 18 | FAIL | Execution halted due to earlier cell failure |
+| 19 | FAIL | Execution halted due to earlier cell failure |
+| 20 | FAIL | Execution halted due to earlier cell failure |
+| 21 | FAIL | Execution halted due to earlier cell failure |
+| 22 | FAIL | Execution halted due to earlier cell failure |
+| 23 | FAIL | Execution halted due to earlier cell failure |
+| 24 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpa3q0jgay.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/generation/inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp08vgmwqv.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/generation_evo_models/inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn_v7qo0y.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 10 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 13 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/generation_megaDNA/inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3mfy1obk.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpcr_clb1n.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/inference/inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | PASS |  |
+| 1 | PASS |  |
+| 3 | PASS |  |
+| 4 | PASS |  |
+| 5 | PASS |  |
+| 6 | PASS |  |
+| 7 | PASS |  |
+
+### example/notebooks/inference_for_tRNA/inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpe8k0jwy4.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/interpretation/interpretation.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpm8x161u6.ipynb to notebook
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/jupyter_core/application.py", line 284, in launch_instance
+    super().launch_instance(argv=argv, **kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/for |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 9 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 13 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+| 16 | FAIL | Execution halted due to earlier cell failure |
+| 17 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/lora_finetune_inference/lora_finetune.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpl46xnnxz.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+
+### example/notebooks/lora_finetune_inference/lora_inference.ipynb
+
+| Cell | Status | Error |
+|------|--------|-------|
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpb29cpht7.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
+| 1 | FAIL | Execution halted due to earlier cell failure |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |

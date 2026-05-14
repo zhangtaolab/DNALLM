@@ -88,6 +88,9 @@ class _MockModel:
     def resize_token_embeddings(self, new_num_tokens, *a, **k):
         return None
 
+    def merge_and_unload(self, *a, **k):
+        return self
+
 _mock_model = _MockModel()
 
 class _MockTensorDict(dict):
@@ -589,6 +592,13 @@ try:
 
     dnallm.load_model_and_tokenizer = lambda *a, **k: (_mock_model, _mock_tokenizer)
     dnallm.load_config = _mock_load_config
+    # Also expose on inference subpackage for docs that import from there
+    try:
+        import dnallm.inference as _inf_mod
+        if not hasattr(_inf_mod, "load_model_and_tokenizer"):
+            _inf_mod.load_model_and_tokenizer = lambda *a, **k: (_mock_model, _mock_tokenizer)
+    except Exception:
+        pass
 
     # DNADataset
     try:
@@ -750,11 +760,24 @@ try:
             "name": ["seq1", "seq2"],
             "label": [0, 1],
         })
+        _your_dataset_df = pd.DataFrame({
+            "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"],
+            "label": [0, 1],
+        })
+        _test_csv_df = pd.DataFrame({
+            "sequence": ["ATGCATGCATGC", "CGTACGTACGTA", "TATATATATATA"],
+            "label": [0, 1, 0],
+        })
 
         _orig_read_csv = pd.read_csv
         def _mock_read_csv(filepath_or_buffer, *args, **kwargs):
-            if isinstance(filepath_or_buffer, str) and filepath_or_buffer in ("labels.csv", "train_dataset.csv"):
-                return _labels_df.copy()
+            if isinstance(filepath_or_buffer, str):
+                if filepath_or_buffer in ("labels.csv", "train_dataset.csv"):
+                    return _labels_df.copy()
+                if filepath_or_buffer == "your_dataset.csv":
+                    return _your_dataset_df.copy()
+                if filepath_or_buffer == "./data/test.csv":
+                    return _test_csv_df.copy()
             return _orig_read_csv(filepath_or_buffer, *args, **kwargs)
         pd.read_csv = _mock_read_csv
 
@@ -764,6 +787,60 @@ try:
                 return _sample_df.copy()
             return _orig_read_pickle(filepath_or_buffer, *args, **kwargs)
         pd.read_pickle = _mock_read_pickle
+except Exception:
+    pass
+
+
+# --- matplotlib mock ---
+try:
+    import matplotlib.pyplot as _plt
+    _plt.show = lambda *a, **k: None
+except Exception:
+    pass
+
+
+# --- peft mock ---
+try:
+    import peft as _peft_mod
+    if hasattr(_peft_mod, "PeftModel"):
+        _orig_PeftModel = _peft_mod.PeftModel
+        class _MockPeftModel:
+            @classmethod
+            def from_pretrained(cls, model, model_id, *a, **k):
+                return model
+            def merge_and_unload(self, *a, **k):
+                return _mock_model
+        _peft_mod.PeftModel = _MockPeftModel
+except Exception:
+    pass
+
+
+# --- nltk mock ---
+try:
+    import nltk.translate.bleu_score as _bleu_mod
+    _bleu_mod.sentence_bleu = lambda *a, **k: 0.5
+except Exception:
+    pass
+
+
+# --- os.path.exists mock for doc example paths ---
+try:
+    import os as _os_mod
+    _orig_exists = _os_mod.path.exists
+    def _mock_exists(path):
+        if isinstance(path, str) and path in ("path/to/your/dna_sequences.csv",):
+            return True
+        return _orig_exists(path)
+    _os_mod.path.exists = _mock_exists
+except Exception:
+    pass
+
+
+# --- builtins exit mock (prevents subprocess termination) ---
+try:
+    import builtins as _builtins_mod
+    _builtins_mod.exit = lambda *a, **k: None
+    _builtins_mod.quit = lambda *a, **k: None
 except Exception:
     pass
 
