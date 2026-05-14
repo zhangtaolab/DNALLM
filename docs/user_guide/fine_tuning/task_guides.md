@@ -637,7 +637,6 @@ print(f"ROC AUC: {roc_auc_score(y_true, y_pred):.4f}")
 
 ### Generation Metrics
 
-<!-- skip-verify: BLEU metric requires string labels, mock dataset uses int labels -->
 ```python
 # Generation quality metrics
 from nltk.translate.bleu_score import sentence_bleu
@@ -652,7 +651,7 @@ for item in dataset.test_data:
 # Calculate BLEU score
 bleu_scores = []
 for pred, ref in zip(
-    generated_sequences, [item["label"] for item in dataset.test_data]
+    generated_sequences, [str(item["label"]) for item in dataset.test_data]
 ):
     score = sentence_bleu([ref.split()], pred.split())
     bleu_scores.append(score)

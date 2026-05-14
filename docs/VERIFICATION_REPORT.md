@@ -1,16 +1,16 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-14T02:05:59.740561+00:00Z
-**Total code blocks:** 528
+**Generated:** 2026-05-14T03:21:20.042772+00:00Z
+**Total code blocks:** 529
 **Files scanned:** 120 Markdown + 19 notebooks
 
 ## Summary
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 326 |
+| PASS    | 491 |
 | FAIL    | 0 |
-| SKIP    | 202 |
+| SKIP    | 38 |
 | TIMEOUT | 0 |
 
 ## Details
@@ -198,7 +198,7 @@
 |------|------|--------|-------|
 | 66 | python | PASS |  |
 | 99 | python | PASS |  |
-| 91 | yaml | SKIP | unsupported language: yaml |
+| 91 | yaml | PASS |  |
 ### docs/resources/model_zoo.md
 
 | Line | Lang | Status | Error |
@@ -283,7 +283,7 @@
 | 26 | bash | PASS |  |
 | 32 | bash | PASS |  |
 | 45 | bash | PASS |  |
-| 69 | yaml | SKIP | unsupported language: yaml |
+| 69 | yaml | PASS |  |
 ### docs/user_guide/benchmark/advanced_techniques.md
 
 | Line | Lang | Status | Error |
@@ -306,33 +306,33 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 640 | python | PASS |  |
-| 17 | yaml | SKIP | unsupported language: yaml |
-| 40 | yaml | SKIP | unsupported language: yaml |
-| 50 | yaml | SKIP | unsupported language: yaml |
-| 93 | yaml | SKIP | unsupported language: yaml |
-| 104 | yaml | SKIP | unsupported language: yaml |
-| 142 | yaml | SKIP | unsupported language: yaml |
-| 155 | yaml | SKIP | unsupported language: yaml |
-| 166 | yaml | SKIP | unsupported language: yaml |
-| 176 | yaml | SKIP | unsupported language: yaml |
-| 187 | yaml | SKIP | unsupported language: yaml |
-| 219 | yaml | SKIP | unsupported language: yaml |
-| 229 | yaml | SKIP | unsupported language: yaml |
-| 266 | yaml | SKIP | unsupported language: yaml |
-| 293 | yaml | SKIP | unsupported language: yaml |
-| 306 | yaml | SKIP | unsupported language: yaml |
-| 340 | yaml | SKIP | unsupported language: yaml |
-| 357 | yaml | SKIP | unsupported language: yaml |
-| 367 | yaml | SKIP | unsupported language: yaml |
-| 406 | yaml | SKIP | unsupported language: yaml |
-| 443 | yaml | SKIP | unsupported language: yaml |
-| 467 | yaml | SKIP | unsupported language: yaml |
-| 496 | yaml | SKIP | unsupported language: yaml |
-| 527 | yaml | SKIP | unsupported language: yaml |
-| 604 | yaml | SKIP | unsupported language: yaml |
-| 664 | yaml | SKIP | unsupported language: yaml |
-| 681 | yaml | SKIP | unsupported language: yaml |
-| 695 | yaml | SKIP | unsupported language: yaml |
+| 17 | yaml | PASS |  |
+| 40 | yaml | PASS |  |
+| 50 | yaml | PASS |  |
+| 93 | yaml | PASS |  |
+| 104 | yaml | PASS |  |
+| 142 | yaml | PASS |  |
+| 155 | yaml | PASS |  |
+| 166 | yaml | PASS |  |
+| 176 | yaml | PASS |  |
+| 187 | yaml | PASS |  |
+| 219 | yaml | PASS |  |
+| 229 | yaml | PASS |  |
+| 266 | yaml | PASS |  |
+| 293 | yaml | PASS |  |
+| 306 | yaml | PASS |  |
+| 340 | yaml | PASS |  |
+| 357 | yaml | PASS |  |
+| 367 | yaml | PASS |  |
+| 406 | yaml | PASS |  |
+| 443 | yaml | PASS |  |
+| 467 | yaml | PASS |  |
+| 496 | yaml | PASS |  |
+| 527 | yaml | PASS |  |
+| 604 | yaml | PASS |  |
+| 664 | yaml | PASS |  |
+| 681 | yaml | PASS |  |
+| 695 | yaml | PASS |  |
 ### docs/user_guide/benchmark/examples.md
 
 | Line | Lang | Status | Error |
@@ -349,15 +349,15 @@
 | 17 | bash | PASS |  |
 | 106 | bash | PASS |  |
 | 256 | bash | PASS |  |
-| 39 | yaml | SKIP | unsupported language: yaml |
-| 196 | csv | SKIP | unsupported language: csv |
-| 204 | json | SKIP | unsupported language: json |
-| 212 | fasta | SKIP | unsupported language: fasta |
-| 222 | yaml | SKIP | unsupported language: yaml |
-| 230 | yaml | SKIP | unsupported language: yaml |
-| 237 | yaml | SKIP | unsupported language: yaml |
-| 262 | yaml | SKIP | unsupported language: yaml |
-| 269 | yaml | SKIP | unsupported language: yaml |
+| 39 | yaml | PASS |  |
+| 222 | yaml | PASS |  |
+| 230 | yaml | PASS |  |
+| 237 | yaml | PASS |  |
+| 262 | yaml | PASS |  |
+| 269 | yaml | PASS |  |
+| 204 | json | PASS |  |
+| 196 | csv | PASS |  |
+| 212 | fasta | PASS |  |
 ### docs/user_guide/benchmark/index.md
 
 | Line | Lang | Status | Error |
@@ -368,8 +368,8 @@
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 15 | python | PASS |  |
-| 43 | yaml | SKIP | unsupported language: yaml |
-| 55 | yaml | SKIP | unsupported language: yaml |
+| 43 | yaml | PASS |  |
+| 55 | yaml | PASS |  |
 ### docs/user_guide/case_studies/motif_detection.md
 
 | Line | Lang | Status | Error |
@@ -377,27 +377,27 @@
 | 42 | python | PASS |  |
 | 110 | bash | PASS |  |
 | 117 | bash | PASS |  |
-| 26 | yaml | SKIP | unsupported language: yaml |
+| 26 | yaml | PASS |  |
 ### docs/user_guide/case_studies/multi_task_learning.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 69 | python | PASS |  |
+| 38 | yaml | PASS |  |
 | 28 |  | SKIP | unsupported language:  |
-| 38 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/case_studies/promoter_prediction.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 55 | python | PASS |  |
-| 23 | yaml | SKIP | unsupported language: yaml |
+| 23 | yaml | PASS |  |
 | 134 |  | SKIP | unsupported language:  |
 ### docs/user_guide/case_studies/sequence_generation.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 44 | python | PASS |  |
-| 26 | yaml | SKIP | unsupported language: yaml |
+| 26 | yaml | PASS |  |
 ### docs/user_guide/cli/config_generator.md
 
 | Line | Lang | Status | Error |
@@ -407,12 +407,12 @@
 | 208 | bash | PASS |  |
 | 218 | bash | PASS |  |
 | 229 | bash | PASS |  |
-| 50 | yaml | SKIP | unsupported language: yaml |
-| 86 | yaml | SKIP | unsupported language: yaml |
-| 114 | yaml | SKIP | unsupported language: yaml |
-| 269 | yaml | SKIP | unsupported language: yaml |
-| 280 | yaml | SKIP | unsupported language: yaml |
-| 295 | yaml | SKIP | unsupported language: yaml |
+| 50 | yaml | PASS |  |
+| 86 | yaml | PASS |  |
+| 114 | yaml | PASS |  |
+| 269 | yaml | PASS |  |
+| 280 | yaml | PASS |  |
+| 295 | yaml | PASS |  |
 ### docs/user_guide/cli/index.md
 
 | Line | Lang | Status | Error |
@@ -433,9 +433,9 @@
 | 320 | bash | PASS |  |
 | 340 | bash | PASS |  |
 | 350 | bash | PASS |  |
-| 80 | yaml | SKIP | unsupported language: yaml |
-| 214 | yaml | SKIP | unsupported language: yaml |
-| 276 | json | SKIP | unsupported language: json |
+| 80 | yaml | PASS |  |
+| 214 | yaml | PASS |  |
+| 276 | json | PASS |  |
 | 293 | javascript | SKIP | unsupported language: javascript |
 ### docs/user_guide/cli/usage.md
 
@@ -451,9 +451,9 @@
 | 150 | bash | PASS |  |
 | 172 | bash | PASS |  |
 | 301 | bash | PASS |  |
-| 184 | yaml | SKIP | unsupported language: yaml |
-| 210 | yaml | SKIP | unsupported language: yaml |
-| 226 | yaml | SKIP | unsupported language: yaml |
+| 184 | yaml | PASS |  |
+| 210 | yaml | PASS |  |
+| 226 | yaml | PASS |  |
 | 255 |  | SKIP | unsupported language:  |
 ### docs/user_guide/common_workflows.md
 
@@ -470,7 +470,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 56 | csv | SKIP | unsupported language: csv |
+| 56 | csv | PASS |  |
 | 66 | text | SKIP | unsupported language: text |
 ### docs/user_guide/data_processing/format_conversion.md
 
@@ -480,7 +480,7 @@
 | 58 | python | PASS |  |
 | 86 | python | PASS |  |
 | 104 | python | PASS |  |
-| 36 | json | SKIP | unsupported language: json |
+| 36 | json | PASS |  |
 | 47 | text | SKIP | unsupported language: text |
 ### docs/user_guide/data_processing/quality_control.md
 
@@ -502,38 +502,38 @@
 | 462 | python | PASS |  |
 | 533 | python | PASS |  |
 | 590 | python | PASS |  |
-| 321 | yaml | SKIP | unsupported language: yaml |
+| 321 | yaml | PASS |  |
 ### docs/user_guide/fine_tuning/configuration.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 16 | yaml | SKIP | unsupported language: yaml |
-| 52 | yaml | SKIP | unsupported language: yaml |
-| 75 | yaml | SKIP | unsupported language: yaml |
-| 84 | yaml | SKIP | unsupported language: yaml |
-| 92 | yaml | SKIP | unsupported language: yaml |
-| 101 | yaml | SKIP | unsupported language: yaml |
-| 108 | yaml | SKIP | unsupported language: yaml |
-| 118 | yaml | SKIP | unsupported language: yaml |
-| 136 | yaml | SKIP | unsupported language: yaml |
-| 158 | yaml | SKIP | unsupported language: yaml |
-| 166 | yaml | SKIP | unsupported language: yaml |
-| 174 | yaml | SKIP | unsupported language: yaml |
-| 183 | yaml | SKIP | unsupported language: yaml |
-| 193 | yaml | SKIP | unsupported language: yaml |
-| 214 | yaml | SKIP | unsupported language: yaml |
-| 235 | yaml | SKIP | unsupported language: yaml |
-| 252 | yaml | SKIP | unsupported language: yaml |
-| 267 | yaml | SKIP | unsupported language: yaml |
-| 278 | yaml | SKIP | unsupported language: yaml |
-| 325 | yaml | SKIP | unsupported language: yaml |
-| 368 | yaml | SKIP | unsupported language: yaml |
-| 414 | yaml | SKIP | unsupported language: yaml |
-| 458 | yaml | SKIP | unsupported language: yaml |
-| 474 | yaml | SKIP | unsupported language: yaml |
-| 493 | yaml | SKIP | unsupported language: yaml |
-| 512 | yaml | SKIP | unsupported language: yaml |
-| 529 | yaml | SKIP | unsupported language: yaml |
+| 16 | yaml | PASS |  |
+| 52 | yaml | PASS |  |
+| 75 | yaml | PASS |  |
+| 84 | yaml | PASS |  |
+| 92 | yaml | PASS |  |
+| 101 | yaml | PASS |  |
+| 108 | yaml | PASS |  |
+| 118 | yaml | PASS |  |
+| 136 | yaml | PASS |  |
+| 158 | yaml | PASS |  |
+| 166 | yaml | PASS |  |
+| 174 | yaml | PASS |  |
+| 183 | yaml | PASS |  |
+| 193 | yaml | PASS |  |
+| 214 | yaml | PASS |  |
+| 235 | yaml | PASS |  |
+| 252 | yaml | PASS |  |
+| 267 | yaml | PASS |  |
+| 278 | yaml | PASS |  |
+| 325 | yaml | PASS |  |
+| 368 | yaml | PASS |  |
+| 414 | yaml | PASS |  |
+| 458 | yaml | PASS |  |
+| 474 | yaml | PASS |  |
+| 493 | yaml | PASS |  |
+| 512 | yaml | PASS |  |
+| 529 | yaml | PASS |  |
 ### docs/user_guide/fine_tuning/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -546,16 +546,16 @@
 | 17 | bash | PASS |  |
 | 145 | bash | PASS |  |
 | 307 | bash | PASS |  |
-| 47 | yaml | SKIP | unsupported language: yaml |
-| 162 | yaml | SKIP | unsupported language: yaml |
-| 184 | yaml | SKIP | unsupported language: yaml |
-| 214 | csv | SKIP | unsupported language: csv |
-| 222 | json | SKIP | unsupported language: json |
-| 230 | fasta | SKIP | unsupported language: fasta |
-| 326 | yaml | SKIP | unsupported language: yaml |
-| 366 | yaml | SKIP | unsupported language: yaml |
-| 374 | yaml | SKIP | unsupported language: yaml |
-| 382 | yaml | SKIP | unsupported language: yaml |
+| 47 | yaml | PASS |  |
+| 162 | yaml | PASS |  |
+| 184 | yaml | PASS |  |
+| 326 | yaml | PASS |  |
+| 366 | yaml | PASS |  |
+| 374 | yaml | PASS |  |
+| 382 | yaml | PASS |  |
+| 222 | json | PASS |  |
+| 214 | csv | PASS |  |
+| 230 | fasta | PASS |  |
 ### docs/user_guide/fine_tuning/index.md
 
 | Line | Lang | Status | Error |
@@ -565,7 +565,6 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 641 | python | SKIP | BLEU metric requires string labels, mock dataset uses int labels |
 | 51 | python | PASS |  |
 | 142 | python | PASS |  |
 | 219 | python | PASS |  |
@@ -576,20 +575,21 @@
 | 585 | python | PASS |  |
 | 608 | python | PASS |  |
 | 626 | python | PASS |  |
-| 25 | yaml | SKIP | unsupported language: yaml |
-| 42 | csv | SKIP | unsupported language: csv |
-| 116 | yaml | SKIP | unsupported language: yaml |
-| 133 | csv | SKIP | unsupported language: csv |
-| 193 | yaml | SKIP | unsupported language: yaml |
-| 210 | csv | SKIP | unsupported language: csv |
-| 271 | yaml | SKIP | unsupported language: yaml |
-| 287 | csv | SKIP | unsupported language: csv |
-| 348 | yaml | SKIP | unsupported language: yaml |
-| 365 | csv | SKIP | unsupported language: csv |
-| 430 | yaml | SKIP | unsupported language: yaml |
-| 446 | csv | SKIP | unsupported language: csv |
-| 509 | yaml | SKIP | unsupported language: yaml |
-| 526 | csv | SKIP | unsupported language: csv |
+| 640 | python | PASS |  |
+| 25 | yaml | PASS |  |
+| 116 | yaml | PASS |  |
+| 193 | yaml | PASS |  |
+| 271 | yaml | PASS |  |
+| 348 | yaml | PASS |  |
+| 430 | yaml | PASS |  |
+| 509 | yaml | PASS |  |
+| 42 | csv | PASS |  |
+| 133 | csv | PASS |  |
+| 210 | csv | PASS |  |
+| 287 | csv | PASS |  |
+| 365 | csv | PASS |  |
+| 446 | csv | PASS |  |
+| 526 | csv | PASS |  |
 ### docs/user_guide/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -614,13 +614,13 @@
 |------|------|--------|-------|
 | 17 | python | PASS |  |
 | 90 | bash | PASS |  |
-| 100 | json | SKIP | unsupported language: json |
+| 100 | json | PASS |  |
 ### docs/user_guide/inference/getting_started.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 28 | bash | PASS |  |
-| 51 | yaml | SKIP | unsupported language: yaml |
+| 51 | yaml | PASS |  |
 ### docs/user_guide/inference/mutagenesis_analysis.md
 
 | Line | Lang | Status | Error |
@@ -635,8 +635,8 @@
 |------|------|--------|-------|
 | 73 | python | PASS |  |
 | 110 | python | PASS |  |
-| 16 | yaml | SKIP | unsupported language: yaml |
-| 30 | yaml | SKIP | unsupported language: yaml |
+| 16 | yaml | PASS |  |
+| 30 | yaml | PASS |  |
 ### docs/user_guide/inference/visualization.md
 
 | Line | Lang | Status | Error |
@@ -654,19 +654,19 @@
 | 382 | bash | PASS |  |
 | 443 | bash | PASS |  |
 | 468 | bash | PASS |  |
-| 16 | yaml | SKIP | unsupported language: yaml |
-| 34 | yaml | SKIP | unsupported language: yaml |
-| 48 | yaml | SKIP | unsupported language: yaml |
-| 67 | yaml | SKIP | unsupported language: yaml |
-| 84 | yaml | SKIP | unsupported language: yaml |
-| 106 | yaml | SKIP | unsupported language: yaml |
-| 128 | yaml | SKIP | unsupported language: yaml |
-| 145 | yaml | SKIP | unsupported language: yaml |
-| 171 | yaml | SKIP | unsupported language: yaml |
-| 199 | yaml | SKIP | unsupported language: yaml |
-| 267 | yaml | SKIP | unsupported language: yaml |
-| 305 | yaml | SKIP | unsupported language: yaml |
-| 343 | yaml | SKIP | unsupported language: yaml |
+| 16 | yaml | PASS |  |
+| 34 | yaml | PASS |  |
+| 48 | yaml | PASS |  |
+| 67 | yaml | PASS |  |
+| 84 | yaml | PASS |  |
+| 106 | yaml | PASS |  |
+| 128 | yaml | PASS |  |
+| 145 | yaml | PASS |  |
+| 171 | yaml | PASS |  |
+| 199 | yaml | PASS |  |
+| 267 | yaml | PASS |  |
+| 305 | yaml | PASS |  |
+| 343 | yaml | PASS |  |
 ### docs/user_guide/mcp/startserver.md
 
 | Line | Lang | Status | Error |
@@ -685,12 +685,12 @@
 | 379 | bash | PASS |  |
 | 396 | bash | PASS |  |
 | 431 | bash | PASS |  |
-| 53 | yaml | SKIP | unsupported language: yaml |
-| 113 | yaml | SKIP | unsupported language: yaml |
-| 195 | yaml | SKIP | unsupported language: yaml |
+| 53 | yaml | PASS |  |
+| 113 | yaml | PASS |  |
+| 195 | yaml | PASS |  |
+| 410 | yaml | PASS |  |
+| 419 | yaml | PASS |  |
 | 266 | text | SKIP | unsupported language: text |
-| 410 | yaml | SKIP | unsupported language: yaml |
-| 419 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/mcp/usage.md
 
 | Line | Lang | Status | Error |
@@ -708,14 +708,14 @@
 | 403 | bash | PASS |  |
 | 410 | bash | PASS |  |
 | 417 | bash | PASS |  |
-| 24 | json | SKIP | unsupported language: json |
-| 50 | json | SKIP | unsupported language: json |
-| 85 | json | SKIP | unsupported language: json |
-| 159 | json | SKIP | unsupported language: json |
+| 24 | json | PASS |  |
+| 50 | json | PASS |  |
+| 85 | json | PASS |  |
+| 159 | json | PASS |  |
+| 529 | json | PASS |  |
+| 536 | json | PASS |  |
+| 543 | json | PASS |  |
 | 348 | javascript | SKIP | unsupported language: javascript |
-| 529 | json | SKIP | unsupported language: json |
-| 536 | json | SKIP | unsupported language: json |
-| 543 | json | SKIP | unsupported language: json |
 ### docs/user_guide/models.md
 
 | Line | Lang | Status | Error |
@@ -728,23 +728,23 @@
 | 31 | bash | PASS |  |
 | 52 | bash | PASS |  |
 | 74 | bash | PASS |  |
-| 23 | yaml | SKIP | unsupported language: yaml |
-| 80 | yaml | SKIP | unsupported language: yaml |
+| 23 | yaml | PASS |  |
+| 80 | yaml | PASS |  |
 ### docs/user_guide/performance/inference_speed.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 38 | python | PASS |  |
 | 68 | python | PASS |  |
-| 20 | yaml | SKIP | unsupported language: yaml |
+| 20 | yaml | PASS |  |
 ### docs/user_guide/performance/memory_optimization.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 26 | bash | PASS |  |
 | 49 | bash | PASS |  |
-| 18 | yaml | SKIP | unsupported language: yaml |
-| 43 | yaml | SKIP | unsupported language: yaml |
+| 18 | yaml | PASS |  |
+| 43 | yaml | PASS |  |
 ### docs/user_guide/performance_guide.md
 
 | Line | Lang | Status | Error |
@@ -752,16 +752,16 @@
 | 61 | python | PASS |  |
 | 21 | bash | PASS |  |
 | 30 | bash | PASS |  |
-| 11 | yaml | SKIP | unsupported language: yaml |
-| 33 | yaml | SKIP | unsupported language: yaml |
-| 46 | yaml | SKIP | unsupported language: yaml |
+| 11 | yaml | PASS |  |
+| 33 | yaml | PASS |  |
+| 46 | yaml | PASS |  |
 ### docs/user_guide/troubleshooting.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
 | 50 | python | PASS |  |
 | 26 | bash | PASS |  |
-| 40 | yaml | SKIP | unsupported language: yaml |
+| 40 | yaml | PASS |  |
 ### docs/user_guide/tutorial/end_to_end_workflow.md
 
 | Line | Lang | Status | Error |
@@ -791,26 +791,27 @@
 | 864 | bash | PASS |  |
 | 898 | bash | SKIP | requires running server instance to connect to |
 | 1016 | bash | PASS |  |
-| 114 | csv | SKIP | unsupported language: csv |
-| 123 | tsv | SKIP | unsupported language: tsv |
-| 158 | yaml | SKIP | unsupported language: yaml |
-| 362 | csv | SKIP | unsupported language: csv |
-| 372 | yaml | SKIP | unsupported language: yaml |
-| 443 | txt | SKIP | unsupported language: txt |
-| 451 | csv | SKIP | unsupported language: csv |
-| 458 | yaml | SKIP | unsupported language: yaml |
-| 526 | yaml | SKIP | unsupported language: yaml |
-| 641 | yaml | SKIP | unsupported language: yaml |
-| 780 | yaml | SKIP | unsupported language: yaml |
 | 843 | yaml | SKIP | requires server configuration file and runtime environment |
-| 984 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1032 | yaml | SKIP | unsupported language: yaml |
-| 1042 | yaml | SKIP | unsupported language: yaml |
-| 1050 | yaml | SKIP | unsupported language: yaml |
-| 1137 | yaml | SKIP | unsupported language: yaml |
-| 1153 | yaml | SKIP | unsupported language: yaml |
+| 158 | yaml | PASS |  |
+| 372 | yaml | PASS |  |
+| 458 | yaml | PASS |  |
+| 526 | yaml | PASS |  |
+| 641 | yaml | PASS |  |
+| 780 | yaml | PASS |  |
+| 843 | yaml | SKIP | requires server configuration file and runtime environment |
+| 1032 | yaml | PASS |  |
+| 1042 | yaml | PASS |  |
+| 1050 | yaml | PASS |  |
+| 1137 | yaml | PASS |  |
+| 1153 | yaml | PASS |  |
+| 1187 | yaml | PASS |  |
+| 114 | csv | PASS |  |
+| 362 | csv | PASS |  |
+| 451 | csv | PASS |  |
+| 984 | dockerfile | PASS |  |
+| 123 | tsv | SKIP | unsupported language: tsv |
+| 443 | txt | SKIP | unsupported language: txt |
 | 1163 |  | SKIP | unsupported language:  |
-| 1187 | yaml | SKIP | unsupported language: yaml |
 
 ## Notebooks
 
@@ -818,7 +819,7 @@
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp6tkvz9ts.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp1ydfucui.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -838,27 +839,33 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | TIMEOUT | Notebook execution timed out after 180s |
-| 2 | TIMEOUT | Notebook execution timed out after 180s |
-| 3 | TIMEOUT | Notebook execution timed out after 180s |
-| 4 | TIMEOUT | Notebook execution timed out after 180s |
-| 5 | TIMEOUT | Notebook execution timed out after 180s |
-| 6 | TIMEOUT | Notebook execution timed out after 180s |
-| 7 | TIMEOUT | Notebook execution timed out after 180s |
-| 8 | TIMEOUT | Notebook execution timed out after 180s |
-| 10 | TIMEOUT | Notebook execution timed out after 180s |
-| 11 | TIMEOUT | Notebook execution timed out after 180s |
-| 12 | TIMEOUT | Notebook execution timed out after 180s |
-| 14 | TIMEOUT | Notebook execution timed out after 180s |
-| 15 | TIMEOUT | Notebook execution timed out after 180s |
-| 17 | TIMEOUT | Notebook execution timed out after 180s |
-| 18 | TIMEOUT | Notebook execution timed out after 180s |
-| 19 | TIMEOUT | Notebook execution timed out after 180s |
-| 20 | TIMEOUT | Notebook execution timed out after 180s |
-| 21 | TIMEOUT | Notebook execution timed out after 180s |
-| 22 | TIMEOUT | Notebook execution timed out after 180s |
-| 23 | TIMEOUT | Notebook execution timed out after 180s |
-| 24 | TIMEOUT | Notebook execution timed out after 180s |
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp87_cdtgp.ipynb to notebook
+[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
+[IPKernelApp] ERROR \| Exception in message handler:
+Traceback (most recent call last):
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
+    await result
+  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
+| 2 | FAIL | Execution halted due to earlier cell failure |
+| 3 | FAIL | Execution halted due to earlier cell failure |
+| 4 | FAIL | Execution halted due to earlier cell failure |
+| 5 | FAIL | Execution halted due to earlier cell failure |
+| 6 | FAIL | Execution halted due to earlier cell failure |
+| 7 | FAIL | Execution halted due to earlier cell failure |
+| 8 | FAIL | Execution halted due to earlier cell failure |
+| 10 | FAIL | Execution halted due to earlier cell failure |
+| 11 | FAIL | Execution halted due to earlier cell failure |
+| 12 | FAIL | Execution halted due to earlier cell failure |
+| 14 | FAIL | Execution halted due to earlier cell failure |
+| 15 | FAIL | Execution halted due to earlier cell failure |
+| 17 | FAIL | Execution halted due to earlier cell failure |
+| 18 | FAIL | Execution halted due to earlier cell failure |
+| 19 | FAIL | Execution halted due to earlier cell failure |
+| 20 | FAIL | Execution halted due to earlier cell failure |
+| 21 | FAIL | Execution halted due to earlier cell failure |
+| 22 | FAIL | Execution halted due to earlier cell failure |
+| 23 | FAIL | Execution halted due to earlier cell failure |
+| 24 | FAIL | Execution halted due to earlier cell failure |
 
 ### example/notebooks/data_prepare/predict/predict_data.ipynb
 
@@ -869,7 +876,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpuef8lk3s.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp_pt18ite.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 Cancellation requested; stopping current tasks.
 [IPKernelApp] ERROR \| Exception in message handler:
@@ -894,7 +901,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpehx65ej5.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpgym4wx_a.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -927,7 +934,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmppclj3apv.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8ucvh3eg.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -947,25 +954,19 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpu82zq61e.ipynb to notebook
-[NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
-[IPKernelApp] ERROR \| Exception in message handler:
-Traceback (most recent call last):
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/kernelbase.py", line 478, in dispatch_shell
-    await result
-  File "/home/forrest/Github/DNALLM/.venv/lib/python3.13/site-packages/ipykernel/ipkernel.py", line 372, in execu |
-| 1 | FAIL | Execution halted due to earlier cell failure |
-| 2 | FAIL | Execution halted due to earlier cell failure |
-| 3 | FAIL | Execution halted due to earlier cell failure |
-| 4 | FAIL | Execution halted due to earlier cell failure |
-| 5 | FAIL | Execution halted due to earlier cell failure |
-| 6 | FAIL | Execution halted due to earlier cell failure |
+| 0 | TIMEOUT | Notebook execution timed out after 180s |
+| 1 | TIMEOUT | Notebook execution timed out after 180s |
+| 2 | TIMEOUT | Notebook execution timed out after 180s |
+| 3 | TIMEOUT | Notebook execution timed out after 180s |
+| 4 | TIMEOUT | Notebook execution timed out after 180s |
+| 5 | TIMEOUT | Notebook execution timed out after 180s |
+| 6 | TIMEOUT | Notebook execution timed out after 180s |
 
 ### example/notebooks/finetune_custom_head/finetune.ipynb
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmps3qffnq0.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmprx2pgq44.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 [IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
@@ -989,7 +990,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp8kj6wayo.ipynb to notebook
+| 1 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp88um7_41.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1024,7 +1025,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpa3q0jgay.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpnc9mx4fd.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1044,7 +1045,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp08vgmwqv.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpfjiosi7s.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1063,7 +1064,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpn_v7qo0y.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp062ozdwh.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1090,7 +1091,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmp3mfy1obk.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpsiu1t_qu.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1111,7 +1112,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpcr_clb1n.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpwh2uesc7.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1144,7 +1145,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpe8k0jwy4.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmprwbl0viy.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1164,7 +1165,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpm8x161u6.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpndel0jmz.ipynb to notebook
 Traceback (most recent call last):
   File "/home/forrest/Github/DNALLM/.venv/bin/jupyter-nbconvert", line 6, in <module>
     sys.exit(main())
@@ -1194,7 +1195,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpl46xnnxz.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpu1nkm6tu.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 [IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
@@ -1212,7 +1213,7 @@ Traceback (most recent call last):
 
 | Cell | Status | Error |
 |------|--------|-------|
-| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpb29cpht7.ipynb to notebook
+| 0 | FAIL | [NbConvertApp] Converting notebook /home/forrest/Github/DNALLM/tmpa9tmk2ty.ipynb to notebook
 [NbConvertApp] ERROR \| Timeout waiting for execute reply (120s).
 [IPKernelApp] ERROR \| Exception in message handler:
 Traceback (most recent call last):
