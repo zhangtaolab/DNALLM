@@ -159,33 +159,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check for GPU
+        id: gpu-check
+        run: |
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run mamba tests"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            echo "No GPU detected, skipping mamba tests"
+          fi
+
       - name: Set up Python ${{ matrix.python-version }}
+        if: steps.gpu-check.outputs.has_gpu == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install CUDA dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y nvidia-cuda-toolkit
-
       - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Create virtual environment and install mamba dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
         run: |
           uv venv
           uv pip install -e ".[test,dev]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
       - name: Run mamba-specific tests
+        if: steps.gpu-check.outputs.has_gpu == 'true'
         continue-on-error: true
         run: |
           source .venv/bin/activate
           pytest tests/ -v -m "not slow" --tb=short
 
       - name: Upload mamba test logs on failure
-        if: failure()
+        if: steps.gpu-check.outputs.has_gpu == 'true' && failure()
         uses: actions/upload-artifact@v4
         with:
           name: mamba-test-logs-${{ matrix.python-version }}
