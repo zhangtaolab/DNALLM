@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import csv
 import json
 import os
 import re
@@ -25,6 +26,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -594,6 +596,362 @@ class DocVerifier:
         return results
 
     # ------------------------------------------------------------------
+    # YAML block validation
+    # ------------------------------------------------------------------
+    def _validate_yaml_blocks(
+        self, file_path: Path, blocks: list[tuple[str, str, int, str | None]]
+    ) -> list[BlockResult]:
+        """Validate YAML blocks with yaml.safe_load."""
+        results: list[BlockResult] = []
+        rel_path = str(file_path.relative_to(self.project_root))
+
+        for lang, code, line, skip in blocks:
+            if lang != "yaml":
+                continue
+
+            if skip is not None:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason=skip,
+                    )
+                )
+                continue
+
+            stripped = code.strip()
+            if not stripped:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason="empty code block",
+                    )
+                )
+                continue
+
+            try:
+                import yaml
+                yaml.safe_load(code)
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="PASS",
+                    )
+                )
+            except Exception as e:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="FAIL",
+                        error=str(e)[:500],
+                    )
+                )
+
+        return results
+
+    # ------------------------------------------------------------------
+    # JSON block validation
+    # ------------------------------------------------------------------
+    def _validate_json_blocks(
+        self, file_path: Path, blocks: list[tuple[str, str, int, str | None]]
+    ) -> list[BlockResult]:
+        """Validate JSON blocks with json.loads."""
+        results: list[BlockResult] = []
+        rel_path = str(file_path.relative_to(self.project_root))
+
+        for lang, code, line, skip in blocks:
+            if lang != "json":
+                continue
+
+            if skip is not None:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason=skip,
+                    )
+                )
+                continue
+
+            stripped = code.strip()
+            if not stripped:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason="empty code block",
+                    )
+                )
+                continue
+
+            try:
+                # Support both single JSON object and JSONL (one object per line)
+                # Strip JSON comments (lines starting with //) before parsing
+                lines = [l for l in code.split("\n") if l.strip() and not l.strip().startswith("//")]
+                if not lines:
+                    raise ValueError("Empty JSON block after removing comments")
+                for l in lines:
+                    json.loads(l.strip())
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="PASS",
+                    )
+                )
+            except Exception as e:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="FAIL",
+                        error=str(e)[:500],
+                    )
+                )
+
+        return results
+
+    # ------------------------------------------------------------------
+    # CSV block validation
+    # ------------------------------------------------------------------
+    def _validate_csv_blocks(
+        self, file_path: Path, blocks: list[tuple[str, str, int, str | None]]
+    ) -> list[BlockResult]:
+        """Validate CSV blocks with csv.reader."""
+        results: list[BlockResult] = []
+        rel_path = str(file_path.relative_to(self.project_root))
+
+        for lang, code, line, skip in blocks:
+            if lang != "csv":
+                continue
+
+            if skip is not None:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason=skip,
+                    )
+                )
+                continue
+
+            stripped = code.strip()
+            if not stripped:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason="empty code block",
+                    )
+                )
+                continue
+
+            try:
+                list(csv.reader(StringIO(code)))
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="PASS",
+                    )
+                )
+            except Exception as e:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="FAIL",
+                        error=str(e)[:500],
+                    )
+                )
+
+        return results
+
+    # ------------------------------------------------------------------
+    # FASTA block validation
+    # ------------------------------------------------------------------
+    def _validate_fasta_blocks(
+        self, file_path: Path, blocks: list[tuple[str, str, int, str | None]]
+    ) -> list[BlockResult]:
+        """Validate FASTA format blocks."""
+        results: list[BlockResult] = []
+        rel_path = str(file_path.relative_to(self.project_root))
+
+        for lang, code, line, skip in blocks:
+            if lang != "fasta":
+                continue
+
+            if skip is not None:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason=skip,
+                    )
+                )
+                continue
+
+            stripped = code.strip()
+            if not stripped:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason="empty code block",
+                    )
+                )
+                continue
+
+            try:
+                lines = stripped.split("\n")
+                in_sequence = False
+                for l in lines:
+                    l = l.strip()
+                    if not l:
+                        continue
+                    if l.startswith(">"):
+                        in_sequence = True
+                        continue
+                    if in_sequence:
+                        valid_chars = set("ACGTNacgtn")
+                        if not all(c in valid_chars for c in l):
+                            raise ValueError(f"Invalid FASTA character in line: {l[:50]}")
+                if not any(l.startswith(">") for l in lines if l.strip()):
+                    raise ValueError("FASTA must have at least one header line starting with >")
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="PASS",
+                    )
+                )
+            except Exception as e:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="FAIL",
+                        error=str(e)[:500],
+                    )
+                )
+
+        return results
+
+    # ------------------------------------------------------------------
+    # Dockerfile block validation
+    # ------------------------------------------------------------------
+    def _validate_dockerfile_blocks(
+        self, file_path: Path, blocks: list[tuple[str, str, int, str | None]]
+    ) -> list[BlockResult]:
+        """Validate Dockerfile blocks with basic syntax checks."""
+        results: list[BlockResult] = []
+        rel_path = str(file_path.relative_to(self.project_root))
+
+        for lang, code, line, skip in blocks:
+            if lang != "dockerfile":
+                continue
+
+            if skip is not None:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason=skip,
+                    )
+                )
+                continue
+
+            stripped = code.strip()
+            if not stripped:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="SKIP",
+                        skip_reason="empty code block",
+                    )
+                )
+                continue
+
+            try:
+                lines = stripped.split("\n")
+                has_from = False
+                i = 0
+                while i < len(lines):
+                    l = lines[i].strip()
+                    # Handle line continuations (backslash at end)
+                    while l.endswith("\\") and i + 1 < len(lines):
+                        i += 1
+                        l = l[:-1] + " " + lines[i].strip()
+                    if not l or l.startswith("#"):
+                        i += 1
+                        continue
+                    upper = l.upper()
+                    valid_directives = (
+                        "FROM", "RUN", "CMD", "LABEL", "MAINTAINER", "EXPOSE",
+                        "ENV", "ADD", "COPY", "ENTRYPOINT", "VOLUME", "USER",
+                        "WORKDIR", "ARG", "ONBUILD", "STOPSIGNAL", "HEALTHCHECK",
+                        "SHELL",
+                    )
+                    if not any(upper.startswith(d) for d in valid_directives):
+                        raise ValueError(f"Invalid Dockerfile instruction: {l[:50]}")
+                    if upper.startswith("FROM"):
+                        has_from = True
+                    i += 1
+                if not has_from:
+                    raise ValueError("Dockerfile must have a FROM instruction")
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="PASS",
+                    )
+                )
+            except Exception as e:
+                results.append(
+                    BlockResult(
+                        file=rel_path,
+                        line=line,
+                        language=lang,
+                        status="FAIL",
+                        error=str(e)[:500],
+                    )
+                )
+
+        return results
+
+    # ------------------------------------------------------------------
     # Notebook execution
     # ------------------------------------------------------------------
     def _execute_notebook(self, nb_path: Path) -> NotebookResult:
@@ -777,9 +1135,41 @@ class DocVerifier:
             bash_results = self._validate_bash_blocks(md_file, blocks)
             self.block_results.extend(bash_results)
 
-            # Other language blocks — record as SKIP
+            # Other language blocks — validate supported formats, SKIP the rest
             for lang, code, line, skip in blocks:
                 if lang not in ("python", "py", "bash"):
+                    # If it has an explicit skip marker, honour it
+                    if skip is not None:
+                        self.block_results.append(
+                            BlockResult(
+                                file=rel_path,
+                                line=line,
+                                language=lang,
+                                status="SKIP",
+                                skip_reason=skip,
+                            )
+                        )
+                        continue
+
+            yaml_results = self._validate_yaml_blocks(md_file, blocks)
+            self.block_results.extend(yaml_results)
+
+            json_results = self._validate_json_blocks(md_file, blocks)
+            self.block_results.extend(json_results)
+
+            csv_results = self._validate_csv_blocks(md_file, blocks)
+            self.block_results.extend(csv_results)
+
+            fasta_results = self._validate_fasta_blocks(md_file, blocks)
+            self.block_results.extend(fasta_results)
+
+            dockerfile_results = self._validate_dockerfile_blocks(md_file, blocks)
+            self.block_results.extend(dockerfile_results)
+
+            # Remaining unsupported languages
+            validated_langs = {"python", "py", "bash", "yaml", "json", "csv", "fasta", "dockerfile"}
+            for lang, code, line, skip in blocks:
+                if lang not in validated_langs:
                     reason = skip or f"unsupported language: {lang}"
                     self.block_results.append(
                         BlockResult(
