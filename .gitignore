@@ -101,6 +101,10 @@ dnallm/models/downloads/
 dnallm/data/cache/
 dnallm/ui/tmp/
 
+# Planning artifacts (dev branch only, never merged)
+.planning/
+.claude/
+
 # Jupyter Notebook tmp files
 .ipynb_checkpoints/
 *.output.txt
