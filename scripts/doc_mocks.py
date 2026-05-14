@@ -7,6 +7,7 @@ benchmarking, etc.) so that code examples can be syntax-checked and run
 without downloading multi-GB models or requiring GPUs.
 """
 
+import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -518,6 +519,59 @@ class _MockCustomMetric:
         return {self.name: 0.95}
 
 
+# --- MCP client mock (must be defined before patch block) ---
+class _MockMCPClient:
+    """Mock DNALLMMCPClient that returns results without connecting."""
+    def __init__(self, transport="stdio", url=None, command=None, args=None, env=None):
+        self.transport = transport
+        self.url = url
+        self.command = command or "dnallm-mcp-server"
+        self.args = args or []
+        self.env = env or {}
+
+    def dna_sequence_predict(self, sequence, model_name):
+        return {"prediction": "positive", "score": 0.85, "model": model_name}
+
+    def dna_batch_predict(self, sequences, model_name):
+        return [{"prediction": "positive", "score": 0.85} for _ in sequences]
+
+    def dna_multi_model_predict(self, sequence, model_names=None):
+        return {"predictions": {"model1": {"prediction": "positive", "score": 0.85}}}
+
+    def dna_stream_predict(self, sequence, model_name, stream_progress=True):
+        return {"prediction": "positive", "score": 0.85, "streamed": True}
+
+    def dna_stream_batch_predict(self, sequences, model_name, stream_progress=True):
+        return {"results": [{"prediction": "positive", "score": 0.85} for _ in sequences]}
+
+    def dna_stream_multi_model_predict(self, sequence, model_names=None, stream_progress=True):
+        return {"predictions": {"model1": {"prediction": "positive", "score": 0.85}}}
+
+    def dna_mutagenesis(self, sequence=None, sequences=None, mutation_type="single_base_substitution", positions=None, model_name=""):
+        return {"mutations": [{"position": 1, "score": 0.5}]}
+
+    def dna_interpret(self, sequence, model_name, method="lig", target_class=None, max_length=None):
+        return {"attribution": [0.1] * len(sequence)}
+
+    def list_loaded_models(self):
+        return {"models": ["dnabert-2", "plant-dnabert"]}
+
+    def get_model_info(self, model_name):
+        return {"name": model_name, "task_type": "binary"}
+
+    def list_models_by_task_type(self, task_type):
+        return {"models": ["dnabert-2"]}
+
+    def get_all_available_models(self):
+        return {"models": ["dnabert-2", "plant-dnabert"]}
+
+    def health_check(self):
+        return {"status": "healthy"}
+
+    def call(self, tool_name, arguments):
+        return {"tool": tool_name, "arguments": arguments}
+
+
 # --- torch lr_scheduler mock ---
 try:
     import torch
@@ -589,6 +643,7 @@ try:
 
         Benchmark.__init__ = _MockBenchmark.__init__
         Benchmark.run = _MockBenchmark.run
+        Benchmark.run_without_config = _MockBenchmark.run_without_config
         Benchmark.plot = _MockBenchmark.plot
         Benchmark.evaluate_single_model = _MockBenchmark.evaluate_single_model
     except Exception:
@@ -638,6 +693,28 @@ try:
     except Exception:
         pass
 
+    # MCP client
+    try:
+        from dnallm.mcp.client import DNALLMMCPClient
+
+        DNALLMMCPClient.__init__ = _MockMCPClient.__init__
+        DNALLMMCPClient.dna_sequence_predict = _MockMCPClient.dna_sequence_predict
+        DNALLMMCPClient.dna_batch_predict = _MockMCPClient.dna_batch_predict
+        DNALLMMCPClient.dna_multi_model_predict = _MockMCPClient.dna_multi_model_predict
+        DNALLMMCPClient.dna_stream_predict = _MockMCPClient.dna_stream_predict
+        DNALLMMCPClient.dna_stream_batch_predict = _MockMCPClient.dna_stream_batch_predict
+        DNALLMMCPClient.dna_stream_multi_model_predict = _MockMCPClient.dna_stream_multi_model_predict
+        DNALLMMCPClient.dna_mutagenesis = _MockMCPClient.dna_mutagenesis
+        DNALLMMCPClient.dna_interpret = _MockMCPClient.dna_interpret
+        DNALLMMCPClient.list_loaded_models = _MockMCPClient.list_loaded_models
+        DNALLMMCPClient.get_model_info = _MockMCPClient.get_model_info
+        DNALLMMCPClient.list_models_by_task_type = _MockMCPClient.list_models_by_task_type
+        DNALLMMCPClient.get_all_available_models = _MockMCPClient.get_all_available_models
+        DNALLMMCPClient.health_check = _MockMCPClient.health_check
+        DNALLMMCPClient.call = _MockMCPClient.call
+    except Exception:
+        pass
+
 except Exception:
     pass
 
@@ -658,6 +735,38 @@ try:
         _orig_AutoTok.from_pretrained = classmethod(lambda cls, *a, **k: _mock_tokenizer)
 except Exception:
     pass
+
+# --- create temp files for doc examples ---
+# Monkey-patch pandas to serve mock data for specific filenames used in docs.
+_sample_df = None
+_labels_df = None
+try:
+    if pd is not None:
+        _sample_df = pd.DataFrame({
+            "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"],
+            "label": [0, 1],
+        })
+        _labels_df = pd.DataFrame({
+            "name": ["seq1", "seq2"],
+            "label": [0, 1],
+        })
+
+        _orig_read_csv = pd.read_csv
+        def _mock_read_csv(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and filepath_or_buffer in ("labels.csv", "train_dataset.csv"):
+                return _labels_df.copy()
+            return _orig_read_csv(filepath_or_buffer, *args, **kwargs)
+        pd.read_csv = _mock_read_csv
+
+        _orig_read_pickle = pd.read_pickle
+        def _mock_read_pickle(filepath_or_buffer, *args, **kwargs):
+            if isinstance(filepath_or_buffer, str) and filepath_or_buffer == "my_dataset.pkl":
+                return _sample_df.copy()
+            return _orig_read_pickle(filepath_or_buffer, *args, **kwargs)
+        pd.read_pickle = _mock_read_pickle
+except Exception:
+    pass
+
 
 # --- common variables for doc blocks ---
 try:
@@ -719,5 +828,17 @@ try:
     _builtins.show_preset_dataset = lambda *a, **k: print("Available presets: plant-genomic-benchmark")
     _builtins.load_preset_dataset = lambda *a, **k: _make_mock_dataset()
     _builtins.custom_collate_fn = lambda batch: batch
+    _builtins.DNALLMMCPClient = _MockMCPClient
+    # fasta_to_df mock for format_conversion.md
+    def _mock_fasta_to_df(path):
+        if pd is not None:
+            return pd.DataFrame({"name": ["seq1", "seq2"], "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"]})
+        return {"name": ["seq1", "seq2"], "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"]}
+    _builtins.fasta_to_df = _mock_fasta_to_df
+    try:
+        import dnallm.datahandling.data as _dna_data_mod
+        _dna_data_mod.fasta_to_df = _mock_fasta_to_df
+    except Exception:
+        pass
 except Exception:
     pass

@@ -323,7 +323,6 @@ server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
 - **Batch Processing**: Efficient handling of multiple sequences
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 from dnallm.mcp.client import DNALLMMCPClient
 
