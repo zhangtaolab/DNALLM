@@ -139,10 +139,10 @@ class TestMarimoExamples:
         for cell in import_cells:
             try:
                 compiled = compile(cell, str(py_file), "exec")
-                exec(compiled, {"__file__": str(py_file)})
+                exec(compiled, {"__file__": str(py_file)})  # noqa: S102
             except (ImportError, ModuleNotFoundError) as e:
                 pytest.fail(f"Import error in {py_file.name}: {e}")
-            except Exception:
+            except Exception:  # noqa: S110
                 # Non-import errors (e.g., missing data files, UI calls) are acceptable
                 pass
 
@@ -264,7 +264,7 @@ class TestNotebookExamples:
         failed = []
         for stmt in import_statements:
             try:
-                exec(compile(stmt, str(nb_file), "exec"), {})
+                exec(compile(stmt, str(nb_file), "exec"), {})  # noqa: S102
             except (ImportError, ModuleNotFoundError) as e:
                 failed.append(f"{stmt}: {e}")
 
