@@ -15,9 +15,7 @@ os.environ["GRADIO_TEMP_DIR"] = "tmp/gradio"
 
 def main():
     """Main function to launch the app"""
-    parser = argparse.ArgumentParser(
-        description="Launch DNALLM Configuration Generator Gradio App"
-    )
+    parser = argparse.ArgumentParser(description="Launch DNALLM Configuration Generator Gradio App")
 
     parser.add_argument(
         "--host",
@@ -48,9 +46,7 @@ def main():
     args = parser.parse_args()
 
     print("🚀 Launching DNALLM Configuration Generator...")
-    print(
-        f"📱 Web interface will be available at: http://{args.host}:{args.port}"
-    )
+    print(f"📱 Web interface will be available at: http://{args.host}:{args.port}")
 
     if args.share:
         print("🌐 Public link will be generated for sharing")

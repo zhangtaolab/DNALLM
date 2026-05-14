@@ -146,12 +146,8 @@ def assert_pdf_created(file_path: str) -> None:
     Args:
         file_path: Path to the PDF file to validate
     """
-    assert os.path.exists(file_path), (
-        f"PDF file should be created at {file_path}"
-    )
-    assert os.path.getsize(file_path) > 0, (
-        f"PDF file should not be empty: {file_path}"
-    )
+    assert os.path.exists(file_path), f"PDF file should be created at {file_path}"
+    assert os.path.getsize(file_path) > 0, f"PDF file should not be empty: {file_path}"
 
 
 class TestPrepareData:
@@ -169,27 +165,19 @@ class TestPrepareData:
         data preparation including ROC and PR curves.
         """
         # Use pre-defined test data instead of creating new data in each test
-        bars_data, curves_data = prepare_data(
-            BINARY_CLASSIFICATION_METRICS, "binary"
-        )
+        bars_data, curves_data = prepare_data(BINARY_CLASSIFICATION_METRICS, "binary")
 
         # Comprehensive assertions with clear error messages
         assert "models" in bars_data, "Models key must be present in bars_data"
-        assert "accuracy" in bars_data, (
-            "Accuracy key must be present in bars_data"
-        )
+        assert "accuracy" in bars_data, "Accuracy key must be present in bars_data"
         assert "f1" in bars_data, "F1 key must be present in bars_data"
 
         # Use constants for better maintainability
-        assert bars_data["models"] == TEST_MODELS, (
-            "Models should match expected values"
-        )
+        assert bars_data["models"] == TEST_MODELS, "Models should match expected values"
         assert bars_data["accuracy"] == TEST_ACCURACY_VALUES, (
             "Accuracy should match expected values"
         )
-        assert bars_data["f1"] == TEST_F1_VALUES, (
-            "F1 should match expected values"
-        )
+        assert bars_data["f1"] == TEST_F1_VALUES, "F1 should match expected values"
 
         # Test curve data structure comprehensively
         assert "ROC" in curves_data, "ROC curves must be present"
@@ -208,9 +196,7 @@ class TestPrepareData:
         of regression data preparation including scatter plot data.
         """
         # Use pre-defined test data for consistency and performance
-        bars_data, scatter_data = prepare_data(
-            REGRESSION_METRICS, "regression"
-        )
+        bars_data, scatter_data = prepare_data(REGRESSION_METRICS, "regression")
 
         # Comprehensive validation of bars_data structure
         assert "models" in bars_data, "Models key must be present in bars_data"
@@ -218,23 +204,13 @@ class TestPrepareData:
         assert "r2" in bars_data, "R2 key must be present in bars_data"
 
         # Use constants for better maintainability
-        assert bars_data["models"] == TEST_MODELS, (
-            "Models should match expected values"
-        )
-        assert bars_data["mse"] == TEST_MSE_VALUES, (
-            "MSE should match expected values"
-        )
-        assert bars_data["r2"] == TEST_R2_VALUES, (
-            "R2 should match expected values"
-        )
+        assert bars_data["models"] == TEST_MODELS, "Models should match expected values"
+        assert bars_data["mse"] == TEST_MSE_VALUES, "MSE should match expected values"
+        assert bars_data["r2"] == TEST_R2_VALUES, "R2 should match expected values"
 
         # Validate scatter data structure for each model
-        assert "model1" in scatter_data, (
-            "Model1 must be present in scatter_data"
-        )
-        assert "model2" in scatter_data, (
-            "Model2 must be present in scatter_data"
-        )
+        assert "model1" in scatter_data, "Model1 must be present in scatter_data"
+        assert "model2" in scatter_data, "Model2 must be present in scatter_data"
         assert len(scatter_data["model1"]["predicted"]) == 4, (
             "Model1 should have 4 predicted values"
         )
@@ -320,9 +296,7 @@ class TestPlotBars:
         charts = plot_bars(data, separate=True)
 
         # Validate chart structure comprehensively
-        assert isinstance(charts, dict), (
-            "Separate mode should return a dictionary"
-        )
+        assert isinstance(charts, dict), "Separate mode should return a dictionary"
         assert "accuracy" in charts, "Accuracy chart should be present"
         assert "f1" in charts, "F1 chart should be present"
 
@@ -429,9 +403,7 @@ class TestPlotBars:
             # Check file size is reasonable (not too small,
             # indicating empty file)
             file_size = os.path.getsize(pdf_file_path)
-            assert file_size > 1000, (
-                f"PDF file too small ({file_size} bytes), may be corrupted"
-            )
+            assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
             # Validate chart object
             assert_chart_valid(chart)
@@ -495,9 +467,7 @@ class TestPlotCurve:
         charts = plot_curve(data, separate=True)
 
         # Validate chart structure comprehensively
-        assert isinstance(charts, dict), (
-            "Separate mode should return a dictionary"
-        )
+        assert isinstance(charts, dict), "Separate mode should return a dictionary"
         assert "ROC" in charts, "ROC chart should be present"
         assert "PR" in charts, "PR chart should be present"
 
@@ -608,9 +578,7 @@ class TestPlotCurve:
 
             # Check file size is reasonable
             file_size = os.path.getsize(pdf_file_path)
-            assert file_size > 1000, (
-                f"PDF file too small ({file_size} bytes), may be corrupted"
-            )
+            assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
             # Validate chart object
             assert_chart_valid(chart)
@@ -669,9 +637,7 @@ class TestPlotScatter:
         charts = plot_scatter(data, separate=True)
 
         # Validate chart structure comprehensively
-        assert isinstance(charts, dict), (
-            "Separate mode should return a dictionary"
-        )
+        assert isinstance(charts, dict), "Separate mode should return a dictionary"
         assert "model1" in charts, "Model1 chart should be present"
 
         # Validate the individual chart
@@ -748,9 +714,7 @@ class TestPlotScatter:
         and validates chart creation behavior with limited data.
         """
         # Test with single data point for edge case coverage
-        data: dict[str, Any] = {
-            "model1": {"predicted": [1.1], "experiment": [1.0], "r2": 0.85}
-        }
+        data: dict[str, Any] = {"model1": {"predicted": [1.1], "experiment": [1.0], "r2": 0.85}}
 
         # Test single point visualization
         chart = plot_scatter(data)
@@ -781,9 +745,7 @@ class TestPlotScatter:
 
             # Check file size is reasonable
             file_size = os.path.getsize(pdf_file_path)
-            assert file_size > 1000, (
-                f"PDF file too small ({file_size} bytes), may be corrupted"
-            )
+            assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
             # Validate chart object
             assert_chart_valid(chart)
@@ -962,9 +924,7 @@ class TestPlotAttentionMap:
 
             # Check file size is reasonable
             file_size = os.path.getsize(pdf_file_path)
-            assert file_size > 1000, (
-                f"PDF file too small ({file_size} bytes), may be corrupted"
-            )
+            assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
             # Validate chart object
             assert_chart_valid(chart)
@@ -991,16 +951,12 @@ class TestPlotEmbeddings:
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             # Create realistic mock TSNE instance
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             # Create realistic test data with proper dimensions
             # Shape: (batch_size, seq_len, hidden_dim) for hidden states
-            hidden_states = [
-                np.random.rand(10, 5, 128)
-            ]  # (batch, seq_len, hidden_dim)
+            hidden_states = [np.random.rand(10, 5, 128)]  # (batch, seq_len, hidden_dim)
             attention_mask = [np.ones((10, 5))]  # (batch, seq_len)
             labels = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
             label_names = ["class0", "class1"]
@@ -1025,9 +981,7 @@ class TestPlotEmbeddings:
         with patch("sklearn.decomposition.PCA") as mock_pca:
             # Create realistic mock PCA instance
             mock_pca_instance = Mock()
-            mock_pca_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_pca_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_pca.return_value = mock_pca_instance
 
             # Create realistic test data for PCA testing
@@ -1062,9 +1016,7 @@ class TestPlotEmbeddings:
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             # Create realistic mock TSNE instance
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             # Create test data for multiple layers
@@ -1075,14 +1027,10 @@ class TestPlotEmbeddings:
             attention_mask = [np.ones((10, 5)), np.ones((10, 5))]
 
             # Test separate mode for individual layer access
-            charts = plot_embeddings(
-                hidden_states, attention_mask, "t-SNE", separate=True
-            )
+            charts = plot_embeddings(hidden_states, attention_mask, "t-SNE", separate=True)
 
             # Validate chart structure comprehensively
-            assert isinstance(charts, dict), (
-                "Separate mode should return a dictionary"
-            )
+            assert isinstance(charts, dict), "Separate mode should return a dictionary"
             assert "Layer1" in charts, "Layer1 chart should be present"
             assert "Layer2" in charts, "Layer2 chart should be present"
 
@@ -1100,9 +1048,7 @@ class TestPlotEmbeddings:
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             # Create realistic mock TSNE instance
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             # Create realistic test data for save testing
@@ -1141,9 +1087,7 @@ class TestPlotEmbeddings:
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             # Create realistic mock TSNE instance
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             # Create realistic test data with empty labels
@@ -1151,9 +1095,7 @@ class TestPlotEmbeddings:
             attention_mask = [np.ones((10, 5))]
 
             # Test embedding visualization with empty labels
-            chart = plot_embeddings(
-                hidden_states, attention_mask, "t-SNE", labels=[]
-            )
+            chart = plot_embeddings(hidden_states, attention_mask, "t-SNE", labels=[])
             assert_chart_valid(chart)
 
     def test_plot_embeddings_umap(self):
@@ -1166,9 +1108,7 @@ class TestPlotEmbeddings:
         with patch("umap.UMAP") as mock_umap:
             # Create realistic mock UMAP instance
             mock_umap_instance = Mock()
-            mock_umap_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_umap_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_umap.return_value = mock_umap_instance
 
             # Create realistic test data for UMAP testing
@@ -1187,14 +1127,10 @@ class TestPlotEmbeddings:
         """
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                15, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(15, 2)
             mock_tsne.return_value = mock_tsne_instance
 
-            hidden_states = [
-                np.random.rand(15, 8, 256)
-            ]  # Larger embedding data
+            hidden_states = [np.random.rand(15, 8, 256)]  # Larger embedding data
             attention_mask = [np.ones((15, 8))]
             labels = [i % 3 for i in range(15)]  # 3 classes
             label_names = ["class0", "class1", "class2"]
@@ -1217,9 +1153,7 @@ class TestPlotEmbeddings:
 
                 # Check file size is reasonable
                 file_size = os.path.getsize(pdf_file_path)
-                assert file_size > 1000, (
-                    f"PDF file too small ({file_size} bytes), may be corrupted"
-                )
+                assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
                 # Validate chart object
                 assert_chart_valid(chart)
@@ -1413,9 +1347,7 @@ class TestPlotMuts:
 
             # Check file size is reasonable
             file_size = os.path.getsize(pdf_file_path)
-            assert file_size > 1000, (
-                f"PDF file too small ({file_size} bytes), may be corrupted"
-            )
+            assert file_size > 1000, f"PDF file too small ({file_size} bytes), may be corrupted"
 
             # Validate chart object
             assert_chart_valid(chart)
@@ -1483,9 +1415,7 @@ class TestEdgeCases:
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             # Create realistic mock TSNE instance
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                10, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(10, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             # Create realistic test data with empty labels
@@ -1493,9 +1423,7 @@ class TestEdgeCases:
             attention_mask = [np.ones((10, 5))]
 
             # Test embedding visualization with empty labels
-            chart = plot_embeddings(
-                hidden_states, attention_mask, "t-SNE", labels=[]
-            )
+            chart = plot_embeddings(hidden_states, attention_mask, "t-SNE", labels=[])
             assert_chart_valid(chart)
 
     def test_plot_attention_map_empty_sequences(self):
@@ -1618,9 +1546,7 @@ class TestPerformance:
             should be under 1.0s"
         )
         assert len(bars_data["models"]) == 10, "Should process 10 models"
-        assert len(curves_data["ROC"]["models"]) == 1000, (
-            "Should process 1000 ROC data points"
-        )
+        assert len(curves_data["ROC"]["models"]) == 1000, "Should process 1000 ROC data points"
 
     def test_memory_efficiency(self):
         """Test memory efficiency with optimized data structures.
@@ -1639,9 +1565,7 @@ class TestPerformance:
         chart = plot_bars(test_data, separate=True)
 
         # Validate memory-efficient structure
-        assert isinstance(chart, dict), (
-            "Separate mode should return dictionary"
-        )
+        assert isinstance(chart, dict), "Separate mode should return dictionary"
         assert len(chart) == 2, "Should have 2 separate charts"
 
         # Validate each chart individually
@@ -1758,9 +1682,7 @@ class TestPDFOutputQuality:
 
             # Validate consistency (file sizes should be similar)
             size_variance = np.var(file_sizes)
-            assert size_variance < 10000, (
-                f"File sizes too inconsistent: variance = {size_variance}"
-            )
+            assert size_variance < 10000, f"File sizes too inconsistent: variance = {size_variance}"
 
         finally:
             # Clean up all files except the first one (keep for demonstration)
@@ -1835,9 +1757,7 @@ class TestPDFOutputQuality:
         assert file_size > 1000, f"PDF file too small: {file_size} bytes"
 
         # Check file extension
-        assert pdf_path.endswith(".pdf"), (
-            f"File should have .pdf extension: {pdf_path}"
-        )
+        assert pdf_path.endswith(".pdf"), f"File should have .pdf extension: {pdf_path}"
 
         # Validate chart object
         assert_chart_valid(chart)
@@ -1900,17 +1820,13 @@ class TestPDFOutputQuality:
         ] * 2
 
         attention_pdf = create_pdf_file("demo_attention")
-        plot_attention_map(
-            attentions, sequences, mock_tokenizer, save_path=attention_pdf
-        )
+        plot_attention_map(attentions, sequences, mock_tokenizer, save_path=attention_pdf)
         assert_pdf_created(attention_pdf)
 
         # Generate embeddings PDF (with mocked TSNE)
         with patch("sklearn.manifold.TSNE") as mock_tsne:
             mock_tsne_instance = Mock()
-            mock_tsne_instance.fit_transform.return_value = np.random.rand(
-                15, 2
-            )
+            mock_tsne_instance.fit_transform.return_value = np.random.rand(15, 2)
             mock_tsne.return_value = mock_tsne_instance
 
             hidden_states = [np.random.rand(15, 8, 256)]

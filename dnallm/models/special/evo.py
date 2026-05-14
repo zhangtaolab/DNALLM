@@ -74,18 +74,12 @@ class EvoTokenizerWrapper:
         input_ids_list = [self.raw_tokenizer.tokenize(seq) for seq in text]
 
         if truncation:
-            limit = (
-                max_length if max_length is not None else self.model_max_length
-            )
+            limit = max_length if max_length is not None else self.model_max_length
             input_ids_list = [ids[:limit] for ids in input_ids_list]
 
         if padding:
             if padding == "max_length":
-                target_len = (
-                    max_length
-                    if max_length is not None
-                    else self.model_max_length
-                )
+                target_len = max_length if max_length is not None else self.model_max_length
             elif padding is True or padding == "longest":
                 target_len = max(len(ids) for ids in input_ids_list)
             else:
@@ -115,9 +109,7 @@ class EvoTokenizerWrapper:
         if return_tensors == "pt":
             return BatchEncoding({
                 "input_ids": torch.tensor(padded_input_ids, dtype=torch.long),
-                "attention_mask": torch.tensor(
-                    attention_masks, dtype=torch.long
-                ),
+                "attention_mask": torch.tensor(attention_masks, dtype=torch.long),
             })
 
         result = {
@@ -132,10 +124,7 @@ class EvoTokenizerWrapper:
 
     def save_pretrained(self, save_directory):
         if os.path.isfile(save_directory):
-            raise ValueError(
-                f"Provided path ({save_directory}) should be a directory, "
-                "not a file."
-            )
+            raise ValueError(f"Provided path ({save_directory}) should be a directory, not a file.")
 
         os.makedirs(save_directory, exist_ok=True)
 
@@ -226,18 +215,12 @@ def _handle_evo2_models(
                     for key, value in kwargs.items():
                         setattr(self, key, value)
 
-            model_path = (
-                glob(model_name + "/*.pt")[0]
-                if os.path.isdir(model_name)
-                else model_name
-            )
+            model_path = glob(model_name + "/*.pt")[0] if os.path.isdir(model_name) else model_name
             # Check the dependencies and find the correct config file
             is_fp8 = is_fp8_capable()
             has_flash_attention = is_flash_attention_capable()
             config_dir = os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__), "..", "..", "configuration/evo"
-                )
+                os.path.join(os.path.dirname(__file__), "..", "..", "configuration/evo")
             )
             if has_flash_attention:
                 suffix1 = ""
@@ -261,12 +244,8 @@ def _handle_evo2_models(
             else:
                 from ..model import _get_model_path_and_imports
 
-                downloaded_model_path, _ = _get_model_path_and_imports(
-                    model_name, source
-                )
-                downloaded_model_path = os.path.join(
-                    downloaded_model_path, m + ".pt"
-                )
+                downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
+                downloaded_model_path = os.path.join(downloaded_model_path, m + ".pt")
                 evo2_model.model = evo2_model.load_evo2_model(
                     None,
                     local_path=downloaded_model_path,
@@ -288,7 +267,7 @@ def _handle_evo2_models(
                 model_config.head_config = head_config
                 evo2_model.config = model_config
                 evo2_model.config.pad_token_id = evo2_model.tokenizer.pad_id
-                evo2_model = DNALLMforSequenceClassification(
+                evo2_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
                     config=model_config,
                     custom_model=evo2_model,
                 )
@@ -334,8 +313,8 @@ def _handle_evo1_models(
                         config_path: str | None = None,
                         modules: dict | None = None,
                     ) -> StripedHyena:
-                        autoconfig = modules["AutoConfig"]
-                        automodelforcausallm = modules["AutoModelForCausalLM"]
+                        autoconfig = modules["AutoConfig"]  # type: ignore[index]
+                        automodelforcausallm = modules["AutoModelForCausalLM"]  # type: ignore[index]
                         # Load the model configuration and weights
                         model_config = autoconfig.from_pretrained(
                             model_name,
@@ -352,9 +331,7 @@ def _handle_evo1_models(
                         state_dict = model.backbone.state_dict()
                         del model
                         del model_config
-                        global_config = dotdict(
-                            yaml.safe_load(open(config_path))
-                        )
+                        global_config = dotdict(yaml.safe_load(open(config_path)))  # type: ignore
                         model = StripedHyena(global_config)
                         model.load_state_dict(state_dict, strict=True)
                         model.to_bfloat16_except_poles_residues()
@@ -379,9 +356,7 @@ def _handle_evo1_models(
 
             has_flash_attention = is_flash_attention_capable()
             config_dir = os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__), "..", "..", "configuration/evo"
-                )
+                os.path.join(os.path.dirname(__file__), "..", "..", "configuration/evo")
             )
             if has_flash_attention:
                 suffix1 = ""
@@ -393,14 +368,8 @@ def _handle_evo1_models(
             from ..model import _get_model_path_and_imports
 
             evo_model = CustomEvo1()
-            revision = (
-                "1.1_fix"
-                if "." in model_name and source == "huggingface"
-                else "main"
-            )
-            _, modules = _get_model_path_and_imports(
-                model_name, source, revision=revision
-            )
+            revision = "1.1_fix" if "." in model_name and source == "huggingface" else "main"
+            _, modules = _get_model_path_and_imports(model_name, source, revision=revision)
             evo_model.model = evo_model.load_checkpoint(
                 model_name=model_name,
                 revision=revision,
@@ -422,7 +391,7 @@ def _handle_evo1_models(
                 model_config.head_config = head_config
                 evo_model.config = model_config
                 evo_model.config.pad_token_id = evo_model.tokenizer.pad_id
-                evo_model = DNALLMforSequenceClassification(
+                evo_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
                     config=model_config,
                     custom_model=evo_model,
                 )

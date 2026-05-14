@@ -31,9 +31,7 @@ def _handle_enformer_models(
                 EnformerForSequenceClassification,
             )
 
-            downloaded_model_path, _ = _get_model_path_and_imports(
-                model_name, source
-            )
+            downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
             config_path = os.path.join(downloaded_model_path, "config.json")
             config = EnformerConfig.from_pretrained(config_path)
             config.num_labels = num_labels

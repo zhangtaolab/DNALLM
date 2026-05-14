@@ -45,9 +45,7 @@ class TestMCPFunctionality:
             # Create server instance
             logger.info("Creating DNALLM MCP Server...")
             # Use absolute path to config file in tests directory
-            config_path = (
-                Path(__file__).parent / "configs" / "mcp_server_config.yaml"
-            )
+            config_path = Path(__file__).parent / "configs" / "mcp_server_config.yaml"
             server = DNALLMMCPServer(str(config_path))
 
             # Initialize server
@@ -56,9 +54,7 @@ class TestMCPFunctionality:
 
             # Get server info
             info = server.get_server_info()
-            logger.info(
-                f"Server initialized: {info['name']} v{info['version']}"
-            )
+            logger.info(f"Server initialized: {info['name']} v{info['version']}")
             logger.info(f"Loaded models: {info['loaded_models']}")
             logger.info(f"Enabled models: {info['enabled_models']}")
 
@@ -80,11 +76,7 @@ class TestMCPFunctionality:
                 # Get confidence (max score)
                 scores = result.get("scores", {})
                 if scores:
-                    max_score = (
-                        max(scores.values())
-                        if isinstance(scores, dict)
-                        else max(scores)
-                    )
+                    max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
                     logger.info(f"  Confidence: {max_score:.4f}")
             else:
                 logger.error("Promoter prediction failed")
@@ -103,11 +95,7 @@ class TestMCPFunctionality:
                 # Get confidence (max score)
                 scores = result.get("scores", {})
                 if scores:
-                    max_score = (
-                        max(scores.values())
-                        if isinstance(scores, dict)
-                        else max(scores)
-                    )
+                    max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
                     logger.info(f"  Confidence: {max_score:.4f}")
             else:
                 logger.error("Conservation prediction failed")
@@ -126,11 +114,7 @@ class TestMCPFunctionality:
                 # Get confidence (max score)
                 scores = result.get("scores", {})
                 if scores:
-                    max_score = (
-                        max(scores.values())
-                        if isinstance(scores, dict)
-                        else max(scores)
-                    )
+                    max_score = max(scores.values()) if isinstance(scores, dict) else max(scores)
                     logger.info(f"  Confidence: {max_score:.4f}")
             else:
                 logger.error("Open chromatin prediction failed")

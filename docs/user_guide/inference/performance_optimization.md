@@ -72,9 +72,7 @@ Use the `estimate_memory_usage()` method to get a rough idea of how much VRAM a 
 
 ```python
 # Assume inference_engine is initialized
-memory_estimate = inference_engine.estimate_memory_usage(
-    batch_size=32, sequence_length=1024
-)
+memory_estimate = inference_engine.estimate_memory_usage(batch_size=32, sequence_length=1024)
 print(memory_estimate)
 
 # Output might look like:

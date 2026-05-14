@@ -91,9 +91,7 @@ class TestDNADatasetLoadLocalData:
 
     def test_load_csv_file(self):
         """Test loading CSV file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("sequence,label\n")
             f.write("ATCG,0\n")
             f.write("GCTA,1\n")
@@ -101,9 +99,7 @@ class TestDNADatasetLoadLocalData:
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
             assert "sequence" in dna_ds.dataset.column_names
             assert "labels" in dna_ds.dataset.column_names
@@ -112,9 +108,7 @@ class TestDNADatasetLoadLocalData:
 
     def test_load_tsv_file(self):
         """Test loading TSV file with custom separator."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".tsv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".tsv", delete=False) as f:
             f.write("sequence\tlabel\n")
             f.write("ATCG\t0\n")
             f.write("GCTA\t1\n")
@@ -139,16 +133,12 @@ class TestDNADatasetLoadLocalData:
             {"sequence": "TAGC", "label": 0},
         ]
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(test_data, f)
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
         finally:
             os.unlink(temp_file)
@@ -166,9 +156,7 @@ class TestDNADatasetLoadLocalData:
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
         finally:
             os.unlink(temp_file)
@@ -182,18 +170,14 @@ class TestDNADatasetLoadLocalData:
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
         finally:
             os.unlink(temp_file)
 
     def test_load_fasta_file(self):
         """Test loading FASTA file."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".fa", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".fa", delete=False) as f:
             f.write(">seq1|0\n")
             f.write("ATCG\n")
             f.write(">seq2|1\n")
@@ -214,27 +198,21 @@ class TestDNADatasetLoadLocalData:
 
     def test_load_txt_file_without_header(self):
         """Test loading TXT file without header."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("ATCG 0\n")
             f.write("GCTA 1\n")
             f.write("TAGC 0\n")
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
         finally:
             os.unlink(temp_file)
 
     def test_load_file_with_custom_separator(self):
         """Test loading file with custom separator."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("ATCG,0\n")
             f.write("GCTA,1\n")
             f.write("TAGC,0\n")
@@ -250,9 +228,7 @@ class TestDNADatasetLoadLocalData:
 
     def test_load_file_with_multi_label_sep(self):
         """Test loading file with multi-label separator."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("sequence,label\n")
             f.write("ATCG,0;1\n")
             f.write("GCTA,1;0\n")
@@ -274,9 +250,7 @@ class TestDNADatasetLoadLocalData:
 
     def test_load_file_with_float_labels(self):
         """Test loading file with float labels."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("sequence,label\n")
             f.write("ATCG,0.5\n")
             f.write("GCTA,1.0\n")
@@ -284,9 +258,7 @@ class TestDNADatasetLoadLocalData:
             temp_file = f.name
 
         try:
-            dna_ds = DNADataset.load_local_data(
-                temp_file, seq_col="sequence", label_col="label"
-            )
+            dna_ds = DNADataset.load_local_data(temp_file, seq_col="sequence", label_col="label")
             assert len(dna_ds) == 3
             # Check that labels are converted to floats
             assert isinstance(dna_ds[0]["labels"], float)
@@ -312,12 +284,8 @@ class TestDNADatasetLoadLocalData:
             "test_data",
         )
         file_paths = {
-            "train": os.path.join(
-                base_path, "binary_classification", "train.csv"
-            ),
-            "test": os.path.join(
-                base_path, "binary_classification", "test.csv"
-            ),
+            "train": os.path.join(base_path, "binary_classification", "train.csv"),
+            "test": os.path.join(base_path, "binary_classification", "test.csv"),
             "dev": os.path.join(base_path, "binary_classification", "dev.csv"),
         }
         dna_ds = DNADataset.load_local_data(file_paths, label_col="label")
@@ -339,9 +307,7 @@ class TestDNADatasetOnlineLoading:
         mock_dataset = Dataset.from_dict(test_data)
         mock_load_dataset.return_value = mock_dataset
 
-        dna_ds = DNADataset.from_huggingface(
-            "test-dataset", seq_col="sequence", label_col="labels"
-        )
+        dna_ds = DNADataset.from_huggingface("test-dataset", seq_col="sequence", label_col="labels")
 
         assert isinstance(dna_ds, DNADataset)
         assert len(dna_ds) == 3
@@ -362,9 +328,7 @@ class TestDNADatasetOnlineLoading:
         )
 
         assert isinstance(dna_ds, DNADataset)
-        mock_load_dataset.assert_called_once_with(
-            "test-dataset", data_dir="test_dir"
-        )
+        mock_load_dataset.assert_called_once_with("test-dataset", data_dir="test_dir")
 
 
 class TestDNADatasetDataTypes:
@@ -434,9 +398,7 @@ class TestDNADatasetSequenceProcessing:
         dna_ds = DNADataset(ds)
 
         # Filter sequences with GC content between 0.4 and 0.6
-        dna_ds.validate_sequences(
-            minl=3, maxl=5, gc=(0.4, 0.6), valid_chars="ACGT"
-        )
+        dna_ds.validate_sequences(minl=3, maxl=5, gc=(0.4, 0.6), valid_chars="ACGT")
 
         # Should filter out sequences with N and extreme GC content
         assert len(dna_ds.dataset) < 5
@@ -663,9 +625,7 @@ class TestDNADatasetUtilityMethods:
         ds_dict = DatasetDict({"train": ds})
         dna_ds = DNADataset(ds_dict)
 
-        with pytest.raises(
-            ValueError, match="Dataset is a DatasetDict Object"
-        ):
+        with pytest.raises(ValueError, match="Dataset is a DatasetDict Object"):
             dna_ds[0]
 
     def test_iter_batches_with_dataset_dict(self):
@@ -675,9 +635,7 @@ class TestDNADatasetUtilityMethods:
         ds_dict = DatasetDict({"train": ds})
         dna_ds = DNADataset(ds_dict)
 
-        with pytest.raises(
-            ValueError, match="Dataset is a DatasetDict Object"
-        ):
+        with pytest.raises(ValueError, match="Dataset is a DatasetDict Object"):
             list(dna_ds.iter_batches(1))
 
     def test_iter_batches_with_single_dataset(self):
@@ -781,9 +739,7 @@ class TestDNADatasetIntegration:
             "multilabel_classification",
             "train.csv",
         )
-        dna_ds = DNADataset.load_local_data(
-            file_path, label_col="label", multi_label_sep=";"
-        )
+        dna_ds = DNADataset.load_local_data(file_path, label_col="label", multi_label_sep=";")
 
         # Manually set the data type since the detection logic has issues
         dna_ds.data_type = "multi_label"

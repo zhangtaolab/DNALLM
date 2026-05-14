@@ -247,6 +247,7 @@ from dnallm import (
     DNATrainer,
 )
 
+
 def run_finetuning():
     # 1. Load configuration
     config = load_config("finetune_config.yaml")
@@ -292,6 +293,7 @@ def run_finetuning():
 
     print(f"Fine-tuning completed!")
     return model
+
 
 # Run the complete workflow
 if __name__ == "__main__":

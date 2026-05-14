@@ -118,9 +118,7 @@ After performing an *in silico* mutagenesis experiment, you can visualize the im
 predictions = mut_analyzer.evaluate(strategy="mean")
 
 # Generate and save the plot
-mutation_plot = mut_analyzer.plot(
-    predictions, save_path="./results/mutation_effects.pdf"
-)
+mutation_plot = mut_analyzer.plot(predictions, save_path="./results/mutation_effects.pdf")
 
 # To display in a notebook
 mutation_plot

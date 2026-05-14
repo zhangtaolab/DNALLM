@@ -59,9 +59,7 @@ def mock_connect(mock_session):
 @pytest.fixture
 def streamable_http_client():
     """Return a DNALLMMCPClient configured for Streamable HTTP transport."""
-    return DNALLMMCPClient(
-        transport="streamable-http", url="http://localhost:8000"
-    )
+    return DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000")
 
 
 @pytest.fixture
@@ -73,9 +71,7 @@ def sse_client():
 @pytest.fixture
 def stdio_client():
     """Return a DNALLMMCPClient configured for stdio transport."""
-    return DNALLMMCPClient(
-        transport="stdio", command="dnallm-mcp-server"
-    )
+    return DNALLMMCPClient(transport="stdio", command="dnallm-mcp-server")
 
 
 # ---------------------------------------------------------------------------
@@ -92,9 +88,7 @@ def test_client_init_streamable_http(streamable_http_client):
 
 def test_client_init_streamable_http_custom_url():
     """Initialize with custom URL for streamable-http transport."""
-    client = DNALLMMCPClient(
-        transport="streamable-http", url="http://example.com:9000"
-    )
+    client = DNALLMMCPClient(transport="streamable-http", url="http://example.com:9000")
     assert client.transport == "streamable-http"
     assert client.url == "http://example.com:9000"
 
@@ -115,17 +109,13 @@ def test_client_init_stdio(stdio_client):
 
 def test_client_init_invalid_transport():
     """Raise ValueError for invalid transport with all options listed."""
-    with pytest.raises(
-        ValueError, match='"streamable-http", "sse", or "stdio"'
-    ):
+    with pytest.raises(ValueError, match='"streamable-http", "sse", or "stdio"'):
         DNALLMMCPClient(transport="http")
 
 
 def test_client_init_streamable_http_custom_url_with_path():
     """Initialize with explicit /mcp path — verify stored as-is (no double-append)."""
-    client = DNALLMMCPClient(
-        transport="streamable-http", url="http://localhost:8000/mcp"
-    )
+    client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
     assert client.url == "http://localhost:8000/mcp"
 
 
@@ -148,9 +138,7 @@ async def test_client_acall_generic(sse_client, mock_session, mock_connect):
 
     result = await sse_client.acall("test_tool", {"arg": 1})
 
-    mock_session.call_tool.assert_awaited_once_with(
-        "test_tool", {"arg": 1}
-    )
+    mock_session.call_tool.assert_awaited_once_with("test_tool", {"arg": 1})
     assert result == {"result": "ok"}
 
 
@@ -160,9 +148,7 @@ def test_client_call_generic(sse_client, mock_session, mock_connect):
 
     result = sse_client.call("test_tool", {"arg": 1})
 
-    mock_session.call_tool.assert_awaited_once_with(
-        "test_tool", {"arg": 1}
-    )
+    mock_session.call_tool.assert_awaited_once_with("test_tool", {"arg": 1})
     assert result == {"result": "ok"}
 
 
@@ -180,9 +166,7 @@ async def test_client_streamable_http_connection(
 
     result = await streamable_http_client.acall("test_tool", {"arg": 1})
 
-    mock_session.call_tool.assert_awaited_once_with(
-        "test_tool", {"arg": 1}
-    )
+    mock_session.call_tool.assert_awaited_once_with("test_tool", {"arg": 1})
     assert result == {"result": "ok"}
 
 
@@ -315,9 +299,7 @@ def test_client_sync_wraps_async(sse_client):
 # ---------------------------------------------------------------------------
 
 
-def test_client_dna_sequence_predict_mocked(
-    sse_client, mock_session, mock_connect
-):
+def test_client_dna_sequence_predict_mocked(sse_client, mock_session, mock_connect):
     """Mock session, verify dna_sequence_predict calls correct tool."""
     sse_client._connect = lambda: mock_connect
 
@@ -330,9 +312,7 @@ def test_client_dna_sequence_predict_mocked(
     assert result == {"result": "ok"}
 
 
-def test_client_dna_mutagenesis_mocked(
-    sse_client, mock_session, mock_connect
-):
+def test_client_dna_mutagenesis_mocked(sse_client, mock_session, mock_connect):
     """Mock session, verify dna_mutagenesis calls correct tool."""
     sse_client._connect = lambda: mock_connect
 
@@ -355,9 +335,7 @@ def test_client_dna_mutagenesis_mocked(
     assert result == {"result": "ok"}
 
 
-def test_client_dna_interpret_mocked(
-    sse_client, mock_session, mock_connect
-):
+def test_client_dna_interpret_mocked(sse_client, mock_session, mock_connect):
     """Mock session, verify dna_interpret calls correct tool."""
     sse_client._connect = lambda: mock_connect
 

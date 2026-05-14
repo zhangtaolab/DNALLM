@@ -51,7 +51,7 @@ from peft import get_peft_model, LoraConfig
 try:
     import optuna
 except ImportError:
-    optuna = None
+    optuna = None  # type: ignore[assignment]
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
@@ -198,9 +198,7 @@ class DNATrainer:
         )
         self.training_args.remove_unused_columns = (
             False
-            if self.use_lora
-            or "DNALLMforSequenceClassification"
-            in self.model.__class__.__name__
+            if self.use_lora or "DNALLMforSequenceClassification" in self.model.__class__.__name__
             else self.training_args.remove_unused_columns
         )
 
@@ -208,6 +206,8 @@ class DNATrainer:
         if self.train_config.use_qlora and hasattr(self.model, "gradient_checkpointing_enable"):
             self.model.gradient_checkpointing_enable()
             print("[Info] Gradient checkpointing enabled for QLoRA.")
+        if self.datasets is None:
+            raise ValueError("Datasets are required for training")
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):
             self.data_split = self.datasets.dataset.keys()
@@ -245,7 +245,7 @@ class DNATrainer:
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
+                tokenizer=self.datasets.tokenizer,  # type: ignore
                 mlm=True,
                 mlm_probability=mlm_probability,
             )
@@ -253,7 +253,8 @@ class DNATrainer:
             from transformers import DataCollatorForLanguageModeling
 
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer, mlm=False
+                tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]
+                mlm=False,
             )
         else:
             data_collator = None
@@ -381,9 +382,7 @@ class DNATrainer:
                 safe_serialization=self.trainer.args.save_safetensors,
             )
         if save_tokenizer:
-            self.datasets.tokenizer.save_pretrained(
-                self.train_config.output_dir
-            )
+            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
         return metrics
 
     def search(self, save_tokenizer: bool = True) -> dict[str, Any]:
@@ -403,8 +402,7 @@ class DNATrainer:
         """
         if optuna is None:
             raise ImportError(
-                "Optuna is required for hyperparameter search. "
-                "Install it with: pip install optuna"
+                "Optuna is required for hyperparameter search. Install it with: pip install optuna"
             )
 
         search_config = self.train_config.hyperparameter_search
@@ -438,9 +436,7 @@ class DNATrainer:
                 safe_serialization=self.trainer.args.save_safetensors,
             )
         if save_tokenizer:
-            self.datasets.tokenizer.save_pretrained(
-                self.train_config.output_dir
-            )
+            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
 
         return result
 
@@ -471,7 +467,7 @@ class DNATrainer:
         self.model.eval()
         result = {}
         if "test" in self.data_split:
-            test_dataset = self.datasets.dataset["test"]
+            test_dataset = self.datasets.dataset["test"]  # type: ignore
             result = self.trainer.predict(test_dataset)
         return result
 
@@ -498,19 +494,20 @@ class DNATrainer:
 
         from dnallm.utils.training_plots import plot_loss_curve, plot_lr_schedule
 
-        output_dir = Path(output_dir or self.train_config.output_dir or ".")
-        output_dir.mkdir(parents=True, exist_ok=True)
+        plot_dir = output_dir or self.train_config.output_dir or "."
+        plot_path = Path(plot_dir)
+        plot_path.mkdir(parents=True, exist_ok=True)
 
         results: dict[str, Path] = {}
         log_history = self.trainer.state.log_history
 
         if plot_loss:
-            loss_path = output_dir / "training_loss.png"
+            loss_path = plot_path / "training_loss.png"
             plot_loss_curve(log_history, output_path=loss_path)
             results["loss_curve"] = loss_path
 
         if plot_lr:
-            lr_path = output_dir / "lr_schedule.png"
+            lr_path = plot_path / "lr_schedule.png"
             plot_lr_schedule(log_history, output_path=lr_path)
             results["lr_schedule"] = lr_path
 

@@ -25,9 +25,7 @@ def mock_inference_engine_for_interpret():
             "attention_mask": torch.tensor([[1, 1, 1, 1]]),
         }
     )
-    mock_tokenizer.convert_ids_to_tokens = Mock(
-        return_value=["A", "T", "G", "C"]
-    )
+    mock_tokenizer.convert_ids_to_tokens = Mock(return_value=["A", "T", "G", "C"])
 
     mock_task_config = Mock()
     mock_task_config.task_type = "binary"
@@ -57,11 +55,10 @@ def mock_server(mock_inference_engine_for_interpret):
     """Return a mock-configured DNALLMMCPServer."""
     from dnallm.mcp.server import DNALLMMCPServer
 
-    with patch(
-        "dnallm.mcp.server.MCPConfigManager"
-    ) as mock_cfg_mgr, patch(
-        "dnallm.mcp.server.ModelManager"
-    ) as mock_model_mgr:
+    with (
+        patch("dnallm.mcp.server.MCPConfigManager") as mock_cfg_mgr,
+        patch("dnallm.mcp.server.ModelManager") as mock_model_mgr,
+    ):
         mock_cfg = Mock()
         mock_cfg.get_server_config.return_value = Mock(
             mcp=Mock(name="test", description="test", version="1.0"),
@@ -71,9 +68,7 @@ def mock_server(mock_inference_engine_for_interpret):
         mock_cfg_mgr.return_value = mock_cfg
 
         mock_mgr = Mock()
-        mock_mgr.get_inference_engine.return_value = (
-            mock_inference_engine_for_interpret
-        )
+        mock_mgr.get_inference_engine.return_value = mock_inference_engine_for_interpret
         mock_model_mgr.return_value = mock_mgr
 
         server = DNALLMMCPServer("config.yaml")
@@ -98,9 +93,7 @@ class TestDNAInterpretTool:
 
     async def test_lig_method(self, mock_server):
         """Test LIG (Layer Integrated Gradients) method."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -127,9 +120,7 @@ class TestDNAInterpretTool:
 
     async def test_deeplift_method(self, mock_server):
         """Test DeepLIFT method."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -150,9 +141,7 @@ class TestDNAInterpretTool:
 
     async def test_occlusion_method(self, mock_server):
         """Test Occlusion method."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -172,9 +161,7 @@ class TestDNAInterpretTool:
 
     async def test_feature_ablation_method(self, mock_server):
         """Test Feature Ablation method."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -194,15 +181,11 @@ class TestDNAInterpretTool:
 
     async def test_layer_conductance_method(self, mock_server):
         """Test Layer Conductance method with auto-detected embedding layer."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_embedding_layer = Mock()
-            mock_interp._find_embedding_layer.return_value = (
-                mock_embedding_layer
-            )
+            mock_interp._find_embedding_layer.return_value = mock_embedding_layer
             mock_interp.interpret.return_value = (
                 ["A", "T", "G", "C"],
                 np.array([0.1, -0.2, 0.3, -0.1]),
@@ -223,9 +206,7 @@ class TestDNAInterpretTool:
 
     async def test_gradient_shap_method(self, mock_server):
         """Test Gradient SHAP method (mapped from gradient_shap to gradshap)."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -248,9 +229,7 @@ class TestDNAInterpretTool:
 
     async def test_noise_tunnel_method(self, mock_server):
         """Test Noise Tunnel method."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -270,9 +249,7 @@ class TestDNAInterpretTool:
 
     async def test_integrated_gradients_method(self, mock_server):
         """Test Integrated Gradients method (mapped to lig)."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -295,14 +272,13 @@ class TestDNAInterpretTool:
 
     async def test_auto_target_class(self, mock_server):
         """Test auto-selection of target_class when None."""
+
         async def mock_predict(*args, **kwargs):  # noqa: RUF029
             return {"probabilities": [0.2, 0.8]}
 
         mock_server.model_manager.predict_sequence = mock_predict
 
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -349,9 +325,7 @@ class TestDNAInterpretTool:
 
     async def test_normalization_with_zero_range(self, mock_server):
         """Test normalization when all attribution scores are equal."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             # All zeros - should produce normalized zeros
@@ -372,9 +346,7 @@ class TestDNAInterpretTool:
 
     async def test_normalization_with_nonzero_range(self, mock_server):
         """Test normalization when attribution scores have range."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (
@@ -399,9 +371,7 @@ class TestDNAInterpretTool:
 
     async def test_max_length_parameter(self, mock_server):
         """Test that max_length is passed through to interpret."""
-        with patch(
-            "dnallm.mcp.server.DNAInterpret"
-        ) as mock_interp_cls:
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
             mock_interp = Mock()
             mock_interp_cls.return_value = mock_interp
             mock_interp.interpret.return_value = (

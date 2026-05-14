@@ -71,14 +71,10 @@ class Benchmark:
         """
         self.all_models = {
             "huggingface": set(
-                np.concatenate([
-                    MODEL_INFO[m]["huggingface"] for m in MODEL_INFO
-                ]).tolist()
+                np.concatenate([MODEL_INFO[m]["huggingface"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
             ),
             "modelscope": set(
-                np.concatenate([
-                    MODEL_INFO[m]["modelscope"] for m in MODEL_INFO
-                ]).tolist()
+                np.concatenate([MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
             ),
         }
         self.datasets: list[str] = []
@@ -99,17 +95,11 @@ class Benchmark:
                 setattr(self.config["inference"], k, v)
             self.config["inference"].batch_size = batch_size
             self.config["inference"].device = (
-                device
-                if device
-                else "cuda"
-                if torch.cuda.is_available()
-                else "cpu"
+                device if device else "cuda" if torch.cuda.is_available() else "cpu"
             )
             self.config["inference"].max_length = kwargs.get("max_length", 512)
             self.config["inference"].num_workers = kwargs.get("num_workers", 4)
-            self.config["inference"].output_dir = kwargs.get(
-                "output_dir", None
-            )
+            self.config["inference"].output_dir = kwargs.get("output_dir", None)
 
             self.config["task"] = TaskConfig
 
@@ -195,9 +185,7 @@ class Benchmark:
                 model and tokenizer
         """
 
-        inference_engine = DNAInference(
-            model=model, tokenizer=tokenizer, config=self.config
-        )
+        inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=self.config)
         return inference_engine
 
     def get_dataset(
@@ -216,9 +204,7 @@ class Benchmark:
         Returns:
             DNADataset: Dataset object containing the sequences and labels
         """
-        inference_engine = DNAInference(
-            model=None, tokenizer=None, config=self.config
-        )
+        inference_engine = DNAInference(model=None, tokenizer=None, config=self.config)
         ds, _ = inference_engine.generate_dataset(
             seq_or_path=seq_or_path,
             seq_col=seq_col,
@@ -244,7 +230,7 @@ class Benchmark:
         if show_all:
             return MODEL_INFO
         else:
-            models_list = {m: MODEL_INFO[m]["model_tags"] for m in MODEL_INFO}
+            models_list = {m: MODEL_INFO[m]["model_tags"] for m in MODEL_INFO}  # type: ignore[index]
             return models_list
 
     def run(
@@ -293,7 +279,7 @@ class Benchmark:
             pred_config = self.config["inference"]
             # Get dataset and model names manually
             dataset_names = ["custom"]
-            sources = [source] * len(model_names)
+            sources = [source] * len(model_names)  # type: ignore
             selected_metrics = []
             # Load the dataset
         for di, dname in enumerate(dataset_names):
@@ -301,11 +287,9 @@ class Benchmark:
             all_results[dname] = {}
             selected_results[dname] = {}
             metrics_save[dname] = {}
-            labels = self.datasets[di]["labels"]
-            task_config = (
-                task_configs[di] if di < len(task_configs) else task_configs[0]
-            )
-            for mi, model_name in enumerate(model_names):
+            labels = self.datasets[di]["labels"]  # type: ignore[index]
+            task_config = task_configs[di] if di < len(task_configs) else task_configs[0]
+            for mi, model_name in enumerate(model_names):  # type: ignore
                 print("Model name:", model_name)
                 # Check if the model name is provided as a string or a
                 # dictionary
@@ -318,9 +302,7 @@ class Benchmark:
                 source = sources[mi]
                 # Load the model and tokenizer
                 if source == "local":
-                    model, tokenizer = load_model_and_tokenizer(
-                        model_path, task_config=task_config
-                    )
+                    model, tokenizer = load_model_and_tokenizer(model_path, task_config=task_config)
                 else:
                     # Check if the model is available in the model library
                     # if model_path not in self.all_models[source]:
@@ -344,9 +326,7 @@ class Benchmark:
                     # "Cannot find model in either the given source or local."
                     #         ) from None
                 if hasattr(tokenizer, "model_max_length"):
-                    max_length = min(
-                        tokenizer.model_max_length, pred_config.max_length
-                    )
+                    max_length = min(tokenizer.model_max_length, pred_config.max_length)
                 else:
                     max_length = pred_config.max_length
                 dataset = DNADataset(
@@ -356,19 +336,15 @@ class Benchmark:
                 )
                 dataset.encode_sequences(remove_unused_columns=True)
                 dataloader: DataLoader = DataLoader(
-                    dataset,
+                    dataset,  # type: ignore
                     batch_size=pred_config.batch_size,
                     num_workers=pred_config.num_workers,
                 )
                 inference_engine = self.get_inference_engine(model, tokenizer)
                 # Perform the prediction
-                logits, _, _ = inference_engine.batch_infer(
-                    dataloader, do_pred=False
-                )
+                logits, _, _ = inference_engine.batch_infer(dataloader, do_pred=False)
                 if len(labels) == len(logits):
-                    metrics = inference_engine.calculate_metrics(
-                        logits, labels, plot=True
-                    )
+                    metrics = inference_engine.calculate_metrics(logits, labels, plot=True)  # type: ignore
                     all_results[dname][model_name] = metrics
                     # keep selected metrics
                     if selected_metrics:
@@ -377,9 +353,9 @@ class Benchmark:
                             selected_results[dname][model_name] = metrics
                         else:
                             for metric in selected_metrics:
-                                selected_results[dname][model_name][metric] = (
-                                    all_results[dname][model_name][metric]
-                                )
+                                selected_results[dname][model_name][metric] = all_results[dname][
+                                    model_name
+                                ][metric]
                     else:
                         selected_results[dname][model_name] = metrics
                     # keep all metrics if save_scores is True
@@ -439,7 +415,7 @@ class Benchmark:
             dataset = val_data
 
         dataloader = DataLoader(
-            dataset,
+            dataset,  # type: ignore
             batch_size=getattr(pred_config, "batch_size", 32),
             num_workers=getattr(pred_config, "num_workers", 4),
         )
@@ -452,35 +428,22 @@ class Benchmark:
             labels = dataset.labels
         elif hasattr(val_data, "labels"):
             labels = val_data.labels
-        elif isinstance(val_data, Subset) and hasattr(
-            val_data.dataset, "labels"
-        ):
+        elif isinstance(val_data, Subset) and hasattr(val_data.dataset, "labels"):
             labels = [val_data.dataset.labels[i] for i in val_data.indices]
         else:
-            labels = [
-                item.get("labels", item.get("label")) for item in dataset
-            ]
+            labels = [item.get("labels", item.get("label")) for item in dataset]  # type: ignore
 
         if len(labels) == len(logits):
-            calculated_metrics = inference_engine.calculate_metrics(
-                logits, labels, plot=False
-            )
+            calculated_metrics = inference_engine.calculate_metrics(logits, labels, plot=False)
             if metrics_list:
-                return {
-                    k: v
-                    for k, v in calculated_metrics.items()
-                    if k in metrics_list
-                }
+                return {k: v for k, v in calculated_metrics.items() if k in metrics_list}
             return calculated_metrics
         else:
             raise ValueError(
-                f"Label count ({len(labels)}) does not match "
-                f"logit count ({len(logits)})."
+                f"Label count ({len(labels)}) does not match logit count ({len(logits)})."
             )
 
-    def run_without_config(
-        self, k_folds: int = 1, stratified: bool = False
-    ) -> dict[str, Any]:
+    def run_without_config(self, k_folds: int = 1, stratified: bool = False) -> dict[str, Any]:
         """
         Run k-fold cross-validation benchmark.
 
@@ -494,18 +457,13 @@ class Benchmark:
         from sklearn.model_selection import KFold, StratifiedKFold
 
         if stratified:
-            kfold = StratifiedKFold(
-                n_splits=k_folds, shuffle=True, random_state=42
-            )
+            kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
         else:
             kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
-        cv_results = {}
+        cv_results: dict[str, Any] = {}
 
         if not self.prepared:
-            raise ValueError(
-                "Benchmark is not properly initialized "
-                "with models and datasets."
-            )
+            raise ValueError("Benchmark is not properly initialized with models and datasets.")
 
         model_names = self.prepared["models"]
         sources = self.prepared["sources"]
@@ -532,10 +490,7 @@ class Benchmark:
                 else:
                     kfold_split = [(indices, indices)]
                 for fold, (_, val_idx) in enumerate(kfold_split):
-                    print(
-                        f"Running fold {fold + 1}/{k_folds} for "
-                        f"{model_name} on {dataset_name}"
-                    )
+                    print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 
                     val_indices = val_idx.tolist()
 
@@ -554,20 +509,14 @@ class Benchmark:
                     fold_scores.append(fold_result)
 
                 # Aggregate metrics logic
-                cv_results[model_name][dataset_name] = {
-                    "fold_results": fold_scores
-                }
+                cv_results[model_name][dataset_name] = {"fold_results": fold_scores}
 
                 if fold_scores:
                     for k in fold_scores[0].keys():
                         try:
                             vals = [s[k] for s in fold_scores if k in s]
-                            cv_results[model_name][dataset_name][
-                                f"mean_{k}"
-                            ] = float(np.mean(vals))
-                            cv_results[model_name][dataset_name][
-                                f"std_{k}"
-                            ] = float(np.std(vals))
+                            cv_results[model_name][dataset_name][f"mean_{k}"] = float(np.mean(vals))
+                            cv_results[model_name][dataset_name][f"std_{k}"] = float(np.std(vals))
                         except (TypeError, ValueError):
                             continue
 
@@ -609,11 +558,9 @@ class Benchmark:
             if dataset in metrics:
                 metrics = metrics[dataset]
             else:
-                raise ValueError(
-                    f"Dataset name '{dataset}' not found in metrics."
-                )
+                raise ValueError(f"Dataset name '{dataset}' not found in metrics.")
         else:
-            metrics = metrics[next(iter(metrics.keys()))]
+            metrics = metrics[next(iter(metrics.keys()))]  # type: ignore[unreachable]
         if task_type in ["binary", "multiclass", "multilabel", "token"]:
             # Prepare data for plotting
             bars_data, curves_data = prepare_data(metrics, task_type=task_type)
@@ -645,19 +592,15 @@ class Benchmark:
                     save_path=line_chart,
                     separate=separate,
                 )
-            return pbar, pline
+            return pbar, pline  # type: ignore
         elif task_type == "regression":
             # Prepare data for plotting
-            bars_data, scatter_data = prepare_data(
-                metrics, task_type=task_type
-            )
+            bars_data, scatter_data = prepare_data(metrics, task_type=task_type)
             if save_path:
                 suffix = os.path.splitext(save_path)[-1]
                 if suffix:
                     bar_chart = save_path.replace(suffix, "_metrics" + suffix)
-                    scatter_plot = save_path.replace(
-                        suffix, "_scatter" + suffix
-                    )
+                    scatter_plot = save_path.replace(suffix, "_scatter" + suffix)
                 else:
                     bar_chart = os.path.join(save_path, "metrics.pdf")
                     scatter_plot = os.path.join(save_path, "scatter.pdf")
@@ -678,4 +621,4 @@ class Benchmark:
                 save_path=scatter_plot,
                 separate=separate,
             )
-            return pbar, pdot
+            return pbar, pdot  # type: ignore

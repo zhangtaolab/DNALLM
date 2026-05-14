@@ -147,9 +147,7 @@ def mock_inference_engine(mock_model, mock_tokenizer):
         Mock object configured as a DNAInference engine.
     """
     mock_engine = Mock()
-    mock_engine.predict = Mock(
-        return_value=[{"label": "positive", "score": 0.95}]
-    )
+    mock_engine.predict = Mock(return_value=[{"label": "positive", "score": 0.95}])
     mock_engine.predict_batch = Mock(
         return_value=[
             [{"label": "positive", "score": 0.95}],
@@ -181,9 +179,7 @@ def mock_dataset():
 
     mock_ds.__getitem__ = mock_getitem
     mock_ds.to_pandas = Mock(
-        return_value=pd.DataFrame(
-            {"sequence": ["ATGC" * 10] * 10, "label": [0, 1] * 5}
-        )
+        return_value=pd.DataFrame({"sequence": ["ATGC" * 10] * 10, "label": [0, 1] * 5})
     )
     mock_ds.features = {
         "sequence": {"dtype": "string"},

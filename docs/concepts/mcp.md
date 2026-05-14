@@ -255,6 +255,7 @@ Using DNA prediction in Python scripts:
 import asyncio
 from mcp.client.session import ClientSession
 
+
 async def predict_dna_sequence(sequence):
     async with ClientSession("http://localhost:8000/sse") as session:
         await session.initialize()

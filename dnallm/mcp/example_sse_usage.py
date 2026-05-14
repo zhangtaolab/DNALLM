@@ -36,9 +36,7 @@ async def test_streaming_predictions(server_url: str):
             print(f"可用工具数量: {len(tools.tools)}")
 
             # 显示流式工具
-            streaming_tools = [
-                tool for tool in tools.tools if "stream" in tool.name
-            ]
+            streaming_tools = [tool for tool in tools.tools if "stream" in tool.name]
             print(f"流式工具: {[tool.name for tool in streaming_tools]}")
 
             # 测试健康检查
@@ -122,18 +120,14 @@ async def test_model_management(server_url: str):
                 "open_chromatin_model",
             ]:
                 try:
-                    info = await read.call_tool(
-                        "get_model_info", {"model_name": model_name}
-                    )
+                    info = await read.call_tool("get_model_info", {"model_name": model_name})
                     print(f"{model_name}: {info}")
                 except Exception as e:
                     print(f"获取 {model_name} 信息失败: {e}")
 
             # 按任务类型列出模型
             print("\n🏷️ 按任务类型列出模型:")
-            task_types = await read.call_tool(
-                "list_models_by_task_type", {"task_type": "binary"}
-            )
+            task_types = await read.call_tool("list_models_by_task_type", {"task_type": "binary"})
             print(f"二分类模型: {task_types}")
 
     except Exception as e:

@@ -27,34 +27,22 @@ def _handle_lucaone_models(
                 )
                 from ..model import _get_model_path_and_imports
 
-                downloaded_model_path, _ = _get_model_path_and_imports(
-                    model_name, source
-                )
-                lucaone_tokenizer = LucaGPLMTokenizer.from_pretrained(
-                    downloaded_model_path
-                )
-                lucaone_model = LucaGPLMModel.from_pretrained(
-                    downloaded_model_path
-                )
+                downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
+                lucaone_tokenizer = LucaGPLMTokenizer.from_pretrained(downloaded_model_path)
+                lucaone_model = LucaGPLMModel.from_pretrained(downloaded_model_path)
                 if head_config is not None:
                     from ..model import DNALLMforSequenceClassification
 
                     head_config = head_config.__dict__
                     head_config["pooling_strategy"] = "cls"
-                    model_config = LucaGPLMConfig.from_pretrained(
-                        downloaded_model_path
-                    )
+                    model_config = LucaGPLMConfig.from_pretrained(downloaded_model_path)
                     model_config.head_config = head_config
                     lucaone_model.config = model_config
-                    lucaone_model.config.pad_token_id = (
-                        lucaone_tokenizer.pad_token_id
-                    )
-                    lucaone_model = (
-                        DNALLMforSequenceClassification.from_base_model(
-                            downloaded_model_path,
-                            config=model_config,
-                            module=LucaGPLMModel,
-                        )
+                    lucaone_model.config.pad_token_id = lucaone_tokenizer.pad_token_id
+                    lucaone_model = DNALLMforSequenceClassification.from_base_model(
+                        downloaded_model_path,
+                        config=model_config,
+                        module=LucaGPLMModel,
                     )
             except ImportError as e:
                 raise ImportError(

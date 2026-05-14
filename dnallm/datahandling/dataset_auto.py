@@ -1,8 +1,7 @@
 PRESET_DATASETS = {
     "nucleotide_transformer_downstream_tasks": {
         "name": "lgq12697/nucleotide_transformer_downstream_tasks",
-        "description": "A collection of nucleotide"
-        "transformer downstream tasks datasets from NT.",
+        "description": "A collection of nucleotidetransformer downstream tasks datasets from NT.",
         "reference": "https://doi.org/10.1038/s41592-024-02523-z",
         "tasks": [
             "enhancers",
@@ -33,8 +32,7 @@ PRESET_DATASETS = {
     },
     "GUE": {
         "name": "lgq12697/GUE",
-        "description": "A dataset for Genome"
-        "Understanding Evaluation (GUE) tasks from DNABERT-2.",
+        "description": "A dataset for GenomeUnderstanding Evaluation (GUE) tasks from DNABERT-2.",
         "reference": "https://doi.org/10.48550/arXiv.2306.15006",
         "tasks": [
             "emp_H3",
@@ -84,8 +82,7 @@ PRESET_DATASETS = {
     },
     "plant-genomic-benchmark": {
         "name": "lgq12697/plant-genomic-benchmark",
-        "description": "A benchmark dataset for"
-        "plant genomic tasks from AgroNT.",
+        "description": "A benchmark dataset forplant genomic tasks from AgroNT.",
         "reference": "https://doi.org/10.1038/s42003-024-06465-2",
         "tasks": [
             "poly_a.arabidopsis_thaliana",

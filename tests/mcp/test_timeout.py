@@ -51,6 +51,7 @@ class TestToolTimeout:
     @pytest.mark.asyncio
     async def test_tool_timeout_returns_error(self, mock_server):
         """Verify that a slow coroutine returns a timeout error dict."""
+
         async def slow_tool():
             await asyncio.sleep(100)  # Will definitely timeout
             return {"result": "ok"}
@@ -68,6 +69,7 @@ class TestToolTimeout:
     @pytest.mark.asyncio
     async def test_tool_completes_within_timeout(self, mock_server):
         """Verify that a fast coroutine returns its normal result."""
+
         async def fast_tool():
             await asyncio.sleep(0.01)
             return {"result": "success", "data": "test", "isError": False}
@@ -124,6 +126,7 @@ class TestToolTimeout:
 
     def test_timeout_error_structure(self, mock_server):
         """Verify timeout error response contains all required fields."""
+
         # Create a mock coroutine that will timeout
         async def never_completes():
             await asyncio.sleep(1000)
@@ -192,6 +195,7 @@ class TestStreamingTimeout:
     @pytest.mark.asyncio
     async def test_stream_batch_timeout(self, mock_server):
         """Verify stream batch prediction times out on slow chunks."""
+
         async def slow_predict(*args, **kwargs):
             await asyncio.sleep(1)
             return {"probabilities": [0.5, 0.5]}
@@ -215,6 +219,7 @@ class TestStreamingTimeout:
     @pytest.mark.asyncio
     async def test_stream_multi_model_timeout(self, mock_server):
         """Verify stream multi-model prediction times out on slow chunks."""
+
         async def slow_predict(*args, **kwargs):
             await asyncio.sleep(1)
             return {"probabilities": [0.5, 0.5]}

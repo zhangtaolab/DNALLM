@@ -45,17 +45,16 @@ def main(config, model, data, output):
     else:
         if not all([model, data, output]):
             click.echo(
-                "Error: --model, --data, and --output are required "
-                "when not using --config",
+                "Error: --model, --data, and --output are required when not using --config",
                 err=True,
             )
             sys.exit(1)
 
-        config_dict = {
+        minimal_config = {
             "model_name_or_path": model,
             "data_path": data,
             "output_dir": output,
-            "training_args": {
+            "finetune": {
                 "num_train_epochs": 3,
                 "per_device_train_batch_size": 4,
                 "learning_rate": 5e-5,
@@ -63,7 +62,7 @@ def main(config, model, data, output):
                 "eval_steps": 1000,
             },
         }
-        trainer = DNATrainer(model=None, config=config_dict)
+        trainer = DNATrainer(model=None, config=minimal_config)  # type: ignore[arg-type]
         trainer.train()
 
 

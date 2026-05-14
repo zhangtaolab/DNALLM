@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 import numpy as np
@@ -132,9 +133,7 @@ def main(sequence, sequences, positions, mutation_type, task_type, model_name, o
         from ..configuration import InferenceConfig, TaskConfig
 
         task_config = TaskConfig(task_type=task_type)
-        model, tokenizer = load_model_and_tokenizer(
-            model_name=model_name, task_config=task_config
-        )
+        model, tokenizer = load_model_and_tokenizer(model_name=model_name, task_config=task_config)
         inference_config = InferenceConfig()
         config = {"task": task_config, "inference": inference_config}
     except Exception as e:
@@ -171,9 +170,7 @@ def main(sequence, sequences, positions, mutation_type, task_type, model_name, o
             }
 
             # Aggregate mutated predictions
-            mutated_entries = [
-                v for k, v in eval_result.items() if k != "raw"
-            ]
+            mutated_entries = [v for k, v in eval_result.items() if k != "raw"]
             mutated_prediction = {
                 "count": len(mutated_entries),
                 "predictions": [
@@ -191,24 +188,20 @@ def main(sequence, sequences, positions, mutation_type, task_type, model_name, o
             # Compute delta (average logfc and diff)
             if mutated_entries:
                 avg_logfc = float(
-                    np.mean(
-                        [
-                            float(np.mean(e.get("logfc", 0)))
-                            if hasattr(e.get("logfc", 0), "__len__")
-                            else float(e.get("logfc", 0))
-                            for e in mutated_entries
-                        ]
-                    )
+                    np.mean([
+                        float(np.mean(e.get("logfc", 0)))
+                        if hasattr(e.get("logfc", 0), "__len__")
+                        else float(e.get("logfc", 0))
+                        for e in mutated_entries
+                    ])
                 )
                 avg_diff = float(
-                    np.mean(
-                        [
-                            float(np.mean(e.get("diff", 0)))
-                            if hasattr(e.get("diff", 0), "__len__")
-                            else float(e.get("diff", 0))
-                            for e in mutated_entries
-                        ]
-                    )
+                    np.mean([
+                        float(np.mean(e.get("diff", 0)))
+                        if hasattr(e.get("diff", 0), "__len__")
+                        else float(e.get("diff", 0))
+                        for e in mutated_entries
+                    ])
                 )
             else:
                 avg_logfc = 0.0
@@ -226,6 +219,7 @@ def main(sequence, sequences, positions, mutation_type, task_type, model_name, o
             })
 
         # Format response
+        result_payload: dict[str, Any]
         if len(results) == 1:
             result_payload = results[0]
         else:

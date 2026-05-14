@@ -31,9 +31,7 @@ model, tokenizer = load_model_and_tokenizer(
     source="modelscope",
 )
 
-inference_engine = DNAInference(
-    model=model, tokenizer=tokenizer, config=configs
-)
+inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs)
 
 # 1. Generate a dataset and dataloader
 sequences = ["GATTACA...", "CGCGCGC..."]
@@ -83,9 +81,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # 2. Specify the LoRA adapter
-lora_adapter_id = (
-    "lgq12697/cross_species_acr_train_on_arabidopsis_plantcad2_small"
-)
+lora_adapter_id = "lgq12697/cross_species_acr_train_on_arabidopsis_plantcad2_small"
 
 # 3. Initialize the engine with the adapter
 # The engine will automatically download and apply the LoRA weights
@@ -98,9 +94,7 @@ lora_inference_engine = DNAInference(
 
 # Now, all inference calls will use the LoRA-adapted model
 results = lora_inference_engine.infer(
-    sequences=[
-        "CTCTGCAATCATTGTCCAGAGTCGAGAAACCACCTCTTCTTCTCTTGTTCTTTCTCCAAATCGATTTGGT"
-    ]
+    sequences=["CTCTGCAATCATTGTCCAGAGTCGAGAAACCACCTCTTCTTCTCTTGTTCTTTCTCCAAATCGATTTGGT"]
 )
 print(results)
 ```
@@ -131,9 +125,7 @@ attention_figure = inference_engine.plot_attentions(
 
 ```python
 # Run inference first with output_hidden_states=True
-inference_engine.infer(
-    file_path="data/labeled_data.csv", output_hidden_states=True, evaluate=True
-)
+inference_engine.infer(file_path="data/labeled_data.csv", output_hidden_states=True, evaluate=True)
 
 # Plot the embeddings using t-SNE
 embedding_figure = inference_engine.plot_hidden_states(

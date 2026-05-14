@@ -90,9 +90,7 @@ from dnallm.datahandling import DNADataset
 
 # Download dataset from ModelScope
 data_name = "zhangtaolab/plant-multi-species-core-promoters"
-datasets = DNADataset.from_modelscope(
-    data_name, seq_col="sequence", label_col="label"
-)
+datasets = DNADataset.from_modelscope(data_name, seq_col="sequence", label_col="label")
 
 # Generate statistics
 datasets.statistics()
@@ -138,9 +136,7 @@ dataset = DNADataset.load_local_data(
 )
 
 # Validate data quality
-dataset.validate_sequences(
-    min_length=50, max_length=1000, valid_chars=["A", "T", "G", "C"]
-)
+dataset.validate_sequences(min_length=50, max_length=1000, valid_chars=["A", "T", "G", "C"])
 
 # Check label distribution
 print(f"Positive samples: {dataset.label_counts.get(1, 0)}")
@@ -260,9 +256,7 @@ test_metrics = trainer.evaluate(test_dataset=sampled_datasets.test)
 print(f"Test set metrics: {test_metrics}")
 
 # Save evaluation report
-trainer.save_evaluation_report(
-    test_metrics, save_path="./evaluation_report.json"
-)
+trainer.save_evaluation_report(test_metrics, save_path="./evaluation_report.json")
 with open("./evaluation_report.json", "w") as f:
     json.dump(test_metrics, f, indent=4)
 ```
@@ -284,16 +278,11 @@ from dnallm import load_config, load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Train promoter prediction model"
-    )
-    parser.add_argument(
-        "--config", type=str, default="./configs/finetune_config.yaml"
-    )
-    parser.add_argument(
-        "--model", type=str, default="zhangtaolab/plant-dnabert-BPE"
-    )
+    parser = argparse.ArgumentParser(description="Train promoter prediction model")
+    parser.add_argument("--config", type=str, default="./configs/finetune_config.yaml")
+    parser.add_argument("--model", type=str, default="zhangtaolab/plant-dnabert-BPE")
     parser.add_argument(
         "--data",
         type=str,
@@ -334,6 +323,7 @@ def main():
     # Save model
     trainer.save_model("./models/final_model")
     print(f"✅ Model saved to ./models/final_model")
+
 
 if __name__ == "__main__":
     main()
@@ -593,9 +583,7 @@ trainer = DNATrainer(
 # Train
 metrics = trainer.train()
 print(f"LoRA training complete!")
-print(
-    f"Trainable parameters ratio: {trainer.get_trainable_parameters_ratio():.2%}"
-)
+print(f"Trainable parameters ratio: {trainer.get_trainable_parameters_ratio():.2%}")
 
 # Save LoRA adapter
 trainer.save_lora_adapter("./models/lora_adapter")
@@ -624,9 +612,7 @@ model = PeftModel.from_pretrained(model, "./models/lora_adapter")
 model = model.merge_and_unload()  # Merge LoRA weights
 
 # Inference
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 result = inference_engine.infer("ATGCGT...")
 ```
 
@@ -670,9 +656,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Single sequence inference
 sequence = "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC"
@@ -714,9 +698,7 @@ from dnallm.inference import Mutagenesis
 
 # Load configuration and model
 configs = load_config("./configs/inference_config.yaml")
-model, tokenizer = load_model_and_tokenizer(
-    "./models/final_model", task_config=configs["task"]
-)
+model, tokenizer = load_model_and_tokenizer("./models/final_model", task_config=configs["task"])
 
 # Initialize mutagenesis analyzer
 mutagenesis = Mutagenesis(config=configs, model=model, tokenizer=tokenizer)
@@ -729,9 +711,7 @@ mutagenesis.mutate_sequence(sequence, replace_mut=True)
 predictions = mutagenesis.evaluate(strategy="mean")
 
 # Visualization
-plot = mutagenesis.plot(
-    predictions, save_path="./results/mutation_effects.pdf"
-)
+plot = mutagenesis.plot(predictions, save_path="./results/mutation_effects.pdf")
 
 # Get important positions
 important_positions = mutagenesis.get_important_positions(top_k=10)
@@ -746,9 +726,7 @@ from dnallm.inference import DNAInterpret
 
 # Load configuration and model
 configs = load_config("./configs/inference_config.yaml")
-model, tokenizer = load_model_and_tokenizer(
-    "./models/final_model", task_config=configs["task"]
-)
+model, tokenizer = load_model_and_tokenizer("./models/final_model", task_config=configs["task"])
 
 # Initialize interpreter
 interpreter = DNAInterpreter(config=configs, model=model, tokenizer=tokenizer)
@@ -876,6 +854,7 @@ nohup dnallm-mcp-server --config ./mcp_server/mcp_server_config.yaml > ./logs/mc
 import asyncio
 from dnallm.mcp import DNALLMMCPServer
 
+
 async def main():
     # Initialize server
     server = DNALLMMCPServer("./mcp_server/mcp_server_config.yaml")
@@ -885,6 +864,7 @@ async def main():
     print("🚀 MCP server starting...")
     server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
     print("✅ MCP server started: http://0.0.0.0:8000/mcp")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -920,6 +900,7 @@ curl -N http://localhost:8000/mcp/stream \
 import asyncio
 import aiohttp
 
+
 class DNALLMClient:
     def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
@@ -954,6 +935,7 @@ class DNALLMClient:
             async with session.get(f"{self.base_url}/models") as response:
                 return await response.json()
 
+
 # Usage example
 async def main():
     client = DNALLMClient()
@@ -973,6 +955,7 @@ async def main():
     ]
     results = await client.batch_predict(sequences)
     print(f"Batch prediction results: {results}")
+
 
 asyncio.run(main())
 ```
@@ -1087,19 +1070,13 @@ from dnallm.finetune import DNATrainer
 from accelerate import Accelerator
 
 # Initialize accelerator
-accelerator = Accelerator(
-    mixed_precision="fp16", gradient_accumulation_steps=4
-)
+accelerator = Accelerator(mixed_precision="fp16", gradient_accumulation_steps=4)
 
 # Prepare data and model
-model, optimizer, dataloader = accelerator.prepare(
-    model, optimizer, dataloader
-)
+model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
 
 # Train
-trainer = DNATrainer(
-    model=model, config=configs, datasets=datasets, accelerator=accelerator
-)
+trainer = DNATrainer(model=model, config=configs, datasets=datasets, accelerator=accelerator)
 ```
 
 ### 8.5 Model Saving and Loading
@@ -1117,9 +1094,7 @@ trainer.save_model("./models/safetensors_model", safe_serialization=True)
 # Load model
 from dnallm import load_model_and_tokenizer
 
-model, tokenizer = load_model_and_tokenizer(
-    "./models/final_model", task_config=configs["task"]
-)
+model, tokenizer = load_model_and_tokenizer("./models/final_model", task_config=configs["task"])
 ```
 
 ---

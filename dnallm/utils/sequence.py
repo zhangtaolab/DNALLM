@@ -34,9 +34,7 @@ def calc_gc_content(seq: str) -> float:
     return gc
 
 
-def reverse_complement(
-    seq: str, reverse: bool = True, complement: bool = True
-) -> str:
+def reverse_complement(seq: str, reverse: bool = True, complement: bool = True) -> str:
     """Compute the reverse complement of a DNA sequence.
 
     Args:
@@ -157,9 +155,7 @@ def random_generate_sequences(
         weights = [(100 - n_ratio) / 4] * 4 + [n_ratio]
     else:
         weights = None
-    calc_gc = (
-        False if gc == (0, 1) else True
-    )  # Guanqing Please check this line!
+    calc_gc = False if gc == (0, 1) else True  # Guanqing Please check this line!
     if seed:
         random.seed(seed)
     # progress bar
@@ -173,9 +169,7 @@ def random_generate_sequences(
             length = random.randint(minl, maxl)  # noqa: S311
             if padding_size:
                 length = (
-                    (length // padding_size + 1) * padding_size
-                    if length % padding_size
-                    else length
+                    (length // padding_size + 1) * padding_size if length % padding_size else length
                 )
                 if length > maxl:
                     length -= padding_size

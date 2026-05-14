@@ -18,6 +18,7 @@ Let's put everything together in a Python script. This example demonstrates load
 import os
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
+
 def main():
     # 1. Load Configuration
     # Assumes 'inference_config.yaml' is in the same directory
@@ -37,9 +38,7 @@ def main():
 
     # 3. Initialize DNAInference Engine
     print("Initializing inference engine...")
-    inference_engine = DNAInference(
-        model=model, tokenizer=tokenizer, config=configs
-    )
+    inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs)
 
     # --- 4. Run Inference ---
 
@@ -81,6 +80,7 @@ def main():
         # Clean up the dummy file
         if os.path.exists(seq_file):
             os.remove(seq_file)
+
 
 if __name__ == "__main__":
     main()

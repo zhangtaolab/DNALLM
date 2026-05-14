@@ -21,9 +21,7 @@ try:
     from mcp.client.streamable_http import streamable_http_client
     from mcp.client.session import ClientSession
 except ImportError as e:
-    pytest.skip(
-        f"MCP client modules not available: {e}", allow_module_level=True
-    )
+    pytest.skip(f"MCP client modules not available: {e}", allow_module_level=True)
 
 
 class TestStreamableHTTPClient:

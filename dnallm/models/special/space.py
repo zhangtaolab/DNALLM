@@ -28,9 +28,7 @@ def _handle_space_models(
                 SpaceForSequenceClassification,
             )
 
-            downloaded_model_path, _ = _get_model_path_and_imports(
-                model_name, source
-            )
+            downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
             config_path = os.path.join(downloaded_model_path, "config.json")
             config = SpaceConfig.from_pretrained(config_path)
             config.num_labels = num_labels
@@ -44,9 +42,7 @@ def _handle_space_models(
                     downloaded_model_path, config=config
                 )
             else:
-                model = Space.from_pretrained(
-                    downloaded_model_path, config=config
-                )
+                model = Space.from_pretrained(downloaded_model_path, config=config)
             tokenizer = DNAOneHotTokenizer()
             return model, tokenizer
 

@@ -239,9 +239,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
@@ -327,9 +325,7 @@ server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 from dnallm.mcp.client import DNALLMMCPClient
 
 # Connect via Streamable HTTP (recommended)
-client = DNALLMMCPClient(
-    transport="streamable-http", url="http://localhost:8000/mcp"
-)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
 result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
 
 # Connect via stdio for local CLI usage

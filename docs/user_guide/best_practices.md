@@ -16,9 +16,7 @@ To get the most out of DNALLM, follow these best practices for data handling, mo
     # Load it quickly
     from dnallm.datahandling import DNADataset
 
-    dna_ds = DNADataset.from_huggingface(
-        "plantcad/maize-allele-frequency-raw-data"
-    )
+    dna_ds = DNADataset.from_huggingface("plantcad/maize-allele-frequency-raw-data")
     ```
 
 -   **Leverage Data Augmentation**: Increase the diversity of your training data to improve model generalization.

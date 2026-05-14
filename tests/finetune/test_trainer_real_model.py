@@ -37,9 +37,7 @@ class TestTrainerRealModel(unittest.TestCase):
         try:
             from dnallm import load_config
 
-            cls.configs = load_config(
-                os.path.join(cls.test_dir, "test_finetune_config.yaml")
-            )
+            cls.configs = load_config(os.path.join(cls.test_dir, "test_finetune_config.yaml"))
             print("✅ Configuration loaded")
         except Exception as e:
             print(f"❌ Failed to load config: {e}")
@@ -101,9 +99,7 @@ class TestTrainerRealModel(unittest.TestCase):
             print("5️⃣ Initializing trainer...")
             from dnallm import DNATrainer
 
-            trainer = DNATrainer(
-                model=model, config=self.configs, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=self.configs, datasets=sampled_datasets)
 
             print("✅ Trainer initialized")
 
@@ -298,9 +294,7 @@ class TestTrainerRealModel(unittest.TestCase):
             sampled_datasets = datasets.sampling(0.05, overwrite=True)
 
             # Initialize the trainer
-            trainer = DNATrainer(
-                model=model, config=self.configs, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=self.configs, datasets=sampled_datasets)
 
             print("✅ Trainer initialized")
 
@@ -342,9 +336,7 @@ class TestTrainerRealModel(unittest.TestCase):
             datasets.encode_sequences()
             sampled_datasets = datasets.sampling(0.05, overwrite=True)
 
-            trainer = DNATrainer(
-                model=model, config=self.configs, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=self.configs, datasets=sampled_datasets)
 
             # Start training
             metrics = trainer.train()
@@ -390,9 +382,7 @@ class TestTrainerRealModel(unittest.TestCase):
             datasets.encode_sequences()
             sampled_datasets = datasets.sampling(0.05, overwrite=True)
 
-            trainer = DNATrainer(
-                model=model, config=self.configs, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=self.configs, datasets=sampled_datasets)
 
             # Do prediction on the test set
             trainer.infer()
@@ -415,9 +405,7 @@ class TestTrainerRealModel(unittest.TestCase):
         """Test that early stopping stops training before num_train_epochs."""
         try:
             from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
-            from dnallm.configuration.configs import (
-                CallbackConfig, EarlyStoppingConfig
-            )
+            from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
 
             print("Testing early stopping...")
 
@@ -444,6 +432,7 @@ class TestTrainerRealModel(unittest.TestCase):
             # Configure training with early stopping
             # Clone config to avoid modifying class-level config
             import copy
+
             test_config = copy.deepcopy(self.configs)
             test_config["finetune"].num_train_epochs = 3
             test_config["finetune"].eval_strategy = "steps"
@@ -456,9 +445,7 @@ class TestTrainerRealModel(unittest.TestCase):
                 early_stopping=EarlyStoppingConfig(patience=1, threshold=0.0)
             )
 
-            trainer = DNATrainer(
-                model=model, config=test_config, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=test_config, datasets=sampled_datasets)
 
             metrics = trainer.train()
 
@@ -487,6 +474,7 @@ class TestTrainerRealModel(unittest.TestCase):
         except Exception as e:
             print(f"Early stopping test failed: {e}")
             import traceback
+
             traceback.print_exc()
             self.fail(f"Early stopping test failed: {e}")
 
@@ -495,9 +483,7 @@ class TestTrainerRealModel(unittest.TestCase):
         """Test that training runs full epochs when early stopping is disabled."""
         try:
             from dnallm import DNADataset, DNATrainer, load_model_and_tokenizer
-            from dnallm.configuration.configs import (
-                CallbackConfig, EarlyStoppingConfig
-            )
+            from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
 
             print("Testing no early stopping...")
 
@@ -523,6 +509,7 @@ class TestTrainerRealModel(unittest.TestCase):
 
             # Configure training WITHOUT early stopping (patience=None)
             import copy
+
             test_config = copy.deepcopy(self.configs)
             test_config["finetune"].num_train_epochs = 1
             test_config["finetune"].eval_strategy = "steps"
@@ -535,9 +522,7 @@ class TestTrainerRealModel(unittest.TestCase):
                 early_stopping=EarlyStoppingConfig(patience=None, threshold=0.0)
             )
 
-            trainer = DNATrainer(
-                model=model, config=test_config, datasets=sampled_datasets
-            )
+            trainer = DNATrainer(model=model, config=test_config, datasets=sampled_datasets)
 
             metrics = trainer.train()
 
@@ -563,6 +548,7 @@ class TestTrainerRealModel(unittest.TestCase):
         except Exception as e:
             print(f"No early stopping test failed: {e}")
             import traceback
+
             traceback.print_exc()
             self.fail(f"No early stopping test failed: {e}")
 
@@ -761,9 +747,7 @@ def test_with_config_file():
         sampled_datasets = datasets.sampling(0.05, overwrite=True)
 
         # Initialize the trainer
-        trainer = DNATrainer(
-            model=model, config=configs, datasets=sampled_datasets
-        )
+        trainer = DNATrainer(model=model, config=configs, datasets=sampled_datasets)
 
         # Start training
         metrics = trainer.train()

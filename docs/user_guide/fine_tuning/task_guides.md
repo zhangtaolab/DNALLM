@@ -403,9 +403,7 @@ trainer.train()
 test_sequences = ["ATCG", "GCTA", "TATA"]
 for seq in test_sequences:
     inputs = tokenizer(seq, return_tensors="pt")
-    outputs = model.generate(
-        inputs["input_ids"], max_length=512, num_beams=4, early_stopping=True
-    )
+    outputs = model.generate(inputs["input_ids"], max_length=512, num_beams=4, early_stopping=True)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
     print(f"Input: {seq} -> Generated: {generated}")
 ```
@@ -650,9 +648,7 @@ for item in dataset.test_data:
 
 # Calculate BLEU score
 bleu_scores = []
-for pred, ref in zip(
-    generated_sequences, [str(item["label"]) for item in dataset.test_data]
-):
+for pred, ref in zip(generated_sequences, [str(item["label"]) for item in dataset.test_data]):
     score = sentence_bleu([ref.split()], pred.split())
     bleu_scores.append(score)
 

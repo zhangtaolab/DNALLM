@@ -70,8 +70,6 @@ inputs = tokenizer(dna_sequence, return_tensors="pt")
 with torch.no_grad():
     outputs = model(**inputs)
 
-embeddings = outputs.hidden_states[
-    -1
-]  # Hyena outputs hidden states differently
+embeddings = outputs.hidden_states[-1]  # Hyena outputs hidden states differently
 print("Shape of embeddings:", embeddings.shape)
 ```

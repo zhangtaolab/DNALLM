@@ -24,9 +24,7 @@ def _handle_mutbert_tokenizer(tokenizer: Any) -> Any:
             input_ids = encoding["input_ids"]
             # input_ids are (Batch, Seq_Len)
             # convert to (Batch, Seq_Len, Vocab_Size) after one-hot encoding
-            one_hot_inputs = nn.functional.one_hot(
-                input_ids, num_classes=self.vocab_size
-            ).float()
+            one_hot_inputs = nn.functional.one_hot(input_ids, num_classes=self.vocab_size).float()
             encoding["input_ids"] = one_hot_inputs
 
             return encoding

@@ -73,9 +73,7 @@ class Mutagenesis:
                 model and tokenizer
         """
 
-        inference_engine = DNAInference(
-            model=model, tokenizer=tokenizer, config=self.config
-        )
+        inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=self.config)
 
         return inference_engine
 
@@ -129,9 +127,7 @@ class Mutagenesis:
                 for mut_base in base_map:
                     if base != mut_base:
                         name = f"mut_{i}_{base}_{mut_base}"
-                        mutated_sequence = (
-                            sequence[:i] + mut_base + sequence[i + 1 :]
-                        )
+                        mutated_sequence = sequence[:i] + mut_base + sequence[i + 1 :]
                         sequences["name"].append(name)
                         sequences["sequence"].append(mutated_sequence)
         # Delete mutations
@@ -140,14 +136,10 @@ class Mutagenesis:
                 name = f"del_{i}_{delete_size}"
                 if fill_gap:
                     mutated_sequence = (
-                        sequence[:i]
-                        + "N" * delete_size
-                        + sequence[i + delete_size :]
+                        sequence[:i] + "N" * delete_size + sequence[i + delete_size :]
                     )
                 else:
-                    mutated_sequence = (
-                        sequence[:i] + sequence[i + delete_size :]
-                    )
+                    mutated_sequence = sequence[:i] + sequence[i + delete_size :]
                 sequences["name"].append(name)
                 sequences["sequence"].append(mutated_sequence)
         # Insert mutations
@@ -170,16 +162,12 @@ class Mutagenesis:
                 sequences["sequence"].append(mutated_sequence)
         # Lowercase sequences
         if lowercase:
-            sequences["sequence"] = [
-                seq.lower() for seq in sequences["sequence"]
-            ]
+            sequences["sequence"] = [seq.lower() for seq in sequences["sequence"]]
         # Create dataset
         if len(sequences["sequence"]) > 0:
             ds = Dataset.from_dict(sequences)
-            dataset = DNADataset(
-                ds, self.tokenizer, max_length=pred_config.max_length
-            )
-            self.sequences = sequences
+            dataset = DNADataset(ds, self.tokenizer, max_length=pred_config.max_length)
+            self.sequences = sequences  # type: ignore
         # Encode sequences
         if do_encode:
             dataset.encode_sequences(remove_unused_columns=True)
@@ -187,7 +175,9 @@ class Mutagenesis:
         if batch_size <= 1:
             batch_size = pred_config.batch_size
         self.dataloader: DataLoader = DataLoader(
-            dataset, batch_size=batch_size, num_workers=pred_config.num_workers
+            dataset,  # type: ignore[arg-type]
+            batch_size=batch_size,
+            num_workers=pred_config.num_workers,  # type: ignore[arg-type]
         )
 
     def pred_comparison(self, raw_pred, mut_pred):
@@ -279,14 +269,12 @@ class Mutagenesis:
         model = self.model
         tokenizer = self.tokenizer
         device = self.get_model_device(model)
-        if len(self.sequences["sequence"]) > 1:
-            input_data = tqdm(self.sequences["sequence"], desc="Inferring")
+        if len(self.sequences["sequence"]) > 1:  # type: ignore[index]
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # type: ignore[index]
         else:
-            input_data = self.sequences["sequence"]
+            input_data = self.sequences["sequence"]  # type: ignore[index]
         for seq in input_data:
-            toks = tokenizer(
-                seq, return_tensors="pt", add_special_tokens=True
-            ).to(device)
+            toks = tokenizer(seq, return_tensors="pt", add_special_tokens=True).to(device)
             input_ids = toks["input_ids"].clone()
             seq_len = input_ids.size(1)
             total = 0.0
@@ -316,7 +304,7 @@ class Mutagenesis:
             if return_sum:
                 all_logprobs.append(total)
             else:
-                all_logprobs.append(p_values)
+                all_logprobs.append(p_values)  # type: ignore
         return all_logprobs
 
     @torch.no_grad()
@@ -334,14 +322,12 @@ class Mutagenesis:
         model = self.model
         tokenizer = self.tokenizer
         device = self.get_model_device(model)
-        if len(self.sequences["sequence"]) > 1:
-            input_data = tqdm(self.sequences["sequence"], desc="Inferring")
+        if len(self.sequences["sequence"]) > 1:  # type: ignore[index]
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # type: ignore[index]
         else:
-            input_data = self.sequences["sequence"]
+            input_data = self.sequences["sequence"]  # type: ignore[index]
         for seq in input_data:
-            toks = tokenizer(
-                seq, return_tensors="pt", add_special_tokens=True
-            ).to(device)
+            toks = tokenizer(seq, return_tensors="pt", add_special_tokens=True).to(device)
             input_ids = toks["input_ids"]
             outputs = model(**toks)
             logits = outputs.logits  # (1, L, V)
@@ -350,17 +336,12 @@ class Mutagenesis:
             shift_logits = logits[:, :-1, :].contiguous()
             shift_labels = input_ids[:, 1:].contiguous()
             log_probs = torch.nn.functional.log_softmax(shift_logits, dim=-1)
-            token_logps = log_probs.gather(
-                -1, shift_labels.unsqueeze(-1)
-            ).squeeze(-1)  # (1, L-1)
+            token_logps = log_probs.gather(-1, shift_labels.unsqueeze(-1)).squeeze(-1)  # (1, L-1)
             if return_sum:
                 seq_logp = float(token_logps.sum().item())
             else:
                 # Get all token logp
-                seq_logp = [
-                    float(token_logps[0, i].item())
-                    for i in range(len(token_logps[0]))
-                ]
+                seq_logp = [float(token_logps[0, i].item()) for i in range(len(token_logps[0]))]  # type: ignore
             all_logprobs.append(seq_logp)
         return all_logprobs
 
@@ -370,7 +351,7 @@ class Mutagenesis:
         strategy: str | int = "last",
         do_pred: bool = False,
         reduce_hidden_states: bool = True,
-    ) -> list[dict]:
+    ) -> dict[str, Any]:
         """Evaluate the impact of mutations on model predictions.
 
         This method runs predictions on all mutated sequences and compares them
@@ -402,9 +383,7 @@ class Mutagenesis:
                 fold changes
         """
         # Load predictor
-        inference_engine = self.get_inference_engine(
-            self.model, self.tokenizer
-        )
+        inference_engine = self.get_inference_engine(self.model, self.tokenizer)
         task_type = self.config["task"].task_type
         # Do prediction
         all_predictions = {}
@@ -413,38 +392,30 @@ class Mutagenesis:
                 self.dataloader,
                 score_type=score_type,
                 reduce_hidden_states=reduce_hidden_states,
-                reduce_method=strategy,
+                reduce_method=strategy,  # type: ignore
             )
             raw_pred = scores[0]["Score"]
             mut_preds = [score["Score"] for score in scores[1:]]
         else:
             if self.config["task"].task_type == "mask":
-                scores = self.mlm_evaluate()
+                scores = self.mlm_evaluate()  # type: ignore
             elif self.config["task"].task_type == "generation":
-                scores = self.clm_evaluate()
+                scores = self.clm_evaluate()  # type: ignore
             else:
                 outputs = inference_engine.batch_infer(
                     self.dataloader,
                     do_pred=do_pred,
                     return_dict=False,
                 )
-                scores = outputs[1] if do_pred else outputs[0]
-            scores = scores[0] if isinstance(scores, tuple) else scores
+                scores = outputs[1] if do_pred else outputs[0]  # type: ignore[assignment]
+            scores = scores[0] if isinstance(scores, tuple) else scores  # type: ignore[unreachable]
             # Get the raw predictions
-            raw_pred = (
-                scores[0].numpy()
-                if isinstance(scores, torch.Tensor)
-                else scores[0]
-            )
+            raw_pred = scores[0].numpy() if isinstance(scores, torch.Tensor) else scores[0]  # type: ignore[unreachable]
             # Get the mutated predictions
-            mut_preds = (
-                scores[1:].numpy()
-                if isinstance(scores, torch.Tensor)
-                else scores[1:]
-            )
+            mut_preds = scores[1:].numpy() if isinstance(scores, torch.Tensor) else scores[1:]  # type: ignore[unreachable]
 
         # Calculate scores
-        def get_score(values: np.ndarray, raw_score: np.ndarray = None):
+        def get_score(values: np.ndarray, raw_score: np.ndarray = None):  # type: ignore[assignment]
             # Get final score
             if strategy == "first":
                 score = values[0]
@@ -455,7 +426,7 @@ class Mutagenesis:
             elif strategy == "mean":
                 score = np.mean(values)
             elif strategy == "max":
-                idx = raw_score.index(max(raw_score))
+                idx = raw_score.index(max(raw_score))  # type: ignore
                 score = values[idx]
             elif isinstance(strategy, int):
                 score = values[strategy]
@@ -465,21 +436,17 @@ class Mutagenesis:
                 score = 0.0
             return score
 
-        for i, mut_pred in tqdm(
-            enumerate(mut_preds), desc="Evaluating mutations"
-        ):
+        for i, mut_pred in tqdm(enumerate(mut_preds), desc="Evaluating mutations"):
             # Get the mutated name
-            mut_name = self.sequences["name"][i + 1]
+            mut_name = self.sequences["name"][i + 1]  # type: ignore[index]
             # Get the mutated sequence
-            mut_seq = self.sequences["sequence"][i + 1]
+            mut_seq = self.sequences["sequence"][i + 1]  # type: ignore[index]
             # Compare the predictions
-            raw_score, mut_score, logfc, diff = self.pred_comparison(
-                raw_pred, mut_pred
-            )
+            raw_score, mut_score, logfc, diff = self.pred_comparison(raw_pred, mut_pred)
             # Store the results
             if "raw" not in all_predictions:
                 all_predictions["raw"] = {
-                    "sequence": self.sequences["sequence"][0],
+                    "sequence": self.sequences["sequence"][0],  # type: ignore[index]
                     "pred": raw_score,
                     "logfc": np.zeros(len(raw_score)),
                     "diff": np.zeros(len(raw_score)),
@@ -494,9 +461,7 @@ class Mutagenesis:
             }
             all_predictions[mut_name]["score"] = get_score(logfc, raw_score)
             all_predictions[mut_name]["score2"] = get_score(diff, raw_score)
-            all_predictions[mut_name]["logits"] = get_score(
-                mut_score, raw_score
-            )
+            all_predictions[mut_name]["logits"] = get_score(mut_score, raw_score)
 
         return all_predictions
 
@@ -525,7 +490,7 @@ class Mutagenesis:
         base_scores = np.zeros(seq_len)
 
         # Group mutations by position
-        pos_muts = {}
+        pos_muts: dict[int, list[float]] = {}
         for key, value in ism_results.items():
             if key.startswith("mut_"):
                 parts = key.split("_")
@@ -577,9 +542,7 @@ class Mutagenesis:
         abs_scores = pd.Series(np.abs(base_scores))
 
         # Calculate rolling average of scores
-        rolling_mean = abs_scores.rolling(
-            window=window_size, center=True, min_periods=1
-        ).mean()
+        rolling_mean = abs_scores.rolling(window=window_size, center=True, min_periods=1).mean()
 
         # Determine the score threshold for a hotspot
         threshold = np.percentile(rolling_mean, percentile_threshold)
@@ -600,13 +563,11 @@ class Mutagenesis:
             hotspots.append((start, len(hotspot_mask)))
 
         # Return list of hotspot regions with window size
-        hotspots_regioned = []
+        hotspots_regioned: list[tuple[int, int]] = []
         for i, (start, end) in enumerate(hotspots):
             mid = (start + end) // 2
             window_start = min(max(0, mid - window_size // 2), start)
-            window_end = max(
-                min(mid + window_size // 2, len(base_scores)), end
-            )
+            window_end = max(min(mid + window_size // 2, len(base_scores)), end)
             # if the window is within last detected hotspot,
             # skip the current one
             if i > 0:
@@ -697,4 +658,4 @@ class Mutagenesis:
             show_score=show_score,
             save_path=outfile,
         )
-        return pmut
+        return pmut  # type: ignore

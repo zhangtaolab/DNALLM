@@ -66,9 +66,7 @@ wt_sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGA
 # This creates a list of mutated sequences in the `mutagenesis.sequences` attribute.
 mutagenesis.mutate_sequence(wt_sequence, replace_mut=True)
 
-print(
-    f"Generated {len(mutagenesis.sequences['name'])} sequences (1 wild-type + mutations)."
-)
+print(f"Generated {len(mutagenesis.sequences['name'])} sequences (1 wild-type + mutations).")
 
 # --- 3. Predict and Evaluate Mutation Effects ---
 

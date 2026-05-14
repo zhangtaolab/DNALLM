@@ -8,9 +8,7 @@ omnidna_models = [
 ]
 
 
-def _handle_omnidna_models(
-    model_name: str, extra: str | None = None
-) -> str | None:
+def _handle_omnidna_models(model_name: str, extra: str | None = None) -> str | None:
     """Handle special case for Omni-DNA models."""
 
     if extra:

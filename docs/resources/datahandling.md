@@ -79,9 +79,7 @@ dna_ds = DNADataset.from_modelscope(
 
 # 2.3 From preset dataset
 show_preset_dataset()  # Show available preset dataset
-dna_ds = load_preset_dataset(
-    dataset_name="plant-genomic-benchmark", task="promoter_strength.leaf"
-)
+dna_ds = load_preset_dataset(dataset_name="plant-genomic-benchmark", task="promoter_strength.leaf")
 ```
 
 ### Data Processing and Augmentation
@@ -103,9 +101,7 @@ dna_ds.shuffle(seed=42)
 
 # 5. Data augmentation
 # 5.1 Random reverse complement
-dna_ds.raw_reverse_complement(
-    ratio=0.5
-)  # Apply reverse complement to 50% of sequences
+dna_ds.raw_reverse_complement(ratio=0.5)  # Apply reverse complement to 50% of sequences
 
 # 5.2 Add reverse complement sequences (doubles the original dataset size)
 dna_ds.augment_reverse_complement()

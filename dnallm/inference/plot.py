@@ -44,15 +44,9 @@ def _prepare_classification_data(
             for metric, metric_data in model_metrics.items():
                 if metric == "curve":
                     for label in metric_data:
-                        _process_curve_data(
-                            metric_data[label], curves_data, label
-                        )
-                        curves_data["AUROC"][label] = metric_data[label][
-                            "AUROC"
-                        ]
-                        curves_data["AUPRC"][label] = metric_data[label][
-                            "AUPRC"
-                        ]
+                        _process_curve_data(metric_data[label], curves_data, label)
+                        curves_data["AUROC"][label] = metric_data[label]["AUROC"]
+                        curves_data["AUPRC"][label] = metric_data[label]["AUPRC"]
                 else:
                     _add_bar_metric(bars_data, metric, metric_data)
         else:
@@ -97,9 +91,7 @@ def _prepare_regression_data(metrics: dict[str, dict]) -> tuple[dict, dict]:
     return dict(bars_data), scatter_data
 
 
-def _process_curve_data(
-    metric_data: dict, curves_data: dict, model: str
-) -> None:
+def _process_curve_data(metric_data: dict, curves_data: dict, model: str) -> None:
     """Process curve data for ROC and PR curves."""
     for score, values in metric_data.items():
         if score.endswith("pr"):
@@ -112,9 +104,7 @@ def _process_curve_data(
             curves_data["PR"][score].extend(values)
 
 
-def _process_scatter_data(
-    metric_data: dict, scatter_data: dict, model: str
-) -> None:
+def _process_scatter_data(metric_data: dict, scatter_data: dict, model: str) -> None:
     """Process scatter plot data for regression tasks."""
     for score, values in metric_data.items():
         # convert tensor to list if needed
@@ -135,16 +125,14 @@ def _prepare_annotations(data: list | dict) -> dict:
     if isinstance(data, list):
         label_names = set(data)
         # label_dict = {name: i for i, name in enumerate(label_names)}
-        annotations = {"model": {name: set() for name in label_names}}
+        annotations = {"model": {name: set() for name in label_names}}  # type: ignore
         for i, name in enumerate(data):
             annotations["model"][name].add(i)
         return annotations
     elif isinstance(data, dict):
         models = data.keys()
-        label_names = set(data[models[0]])
-        annotations = {
-            model: {name: set() for name in label_names} for model in models
-        }
+        label_names = set(data[models[0]])  # type: ignore[index]
+        annotations = {model: {name: set() for name in label_names} for model in models}
         for model in models:
             for i, name in enumerate(data[model]):
                 annotations[model][name].add(i)
@@ -153,9 +141,7 @@ def _prepare_annotations(data: list | dict) -> dict:
         raise TypeError("Data must be a list or a dictionary")
 
 
-def prepare_data(
-    metrics: dict[str, dict], task_type: str = "binary"
-) -> tuple[dict, dict | dict]:
+def prepare_data(metrics: dict[str, dict], task_type: str = "binary") -> tuple[dict, dict | dict]:
     """Prepare data for plotting various types of visualizations.
 
     This function organizes model metrics data into formats suitable for
@@ -243,7 +229,7 @@ def plot_bars(
         if metric in ["mae", "mse"]:
             domain_use = [0, dbar[metric].max() * 1.1]
         else:
-            domain_use = domain
+            domain_use = domain  # type: ignore
 
         # Create bar chart with optimized encoding
         if height is None:
@@ -388,7 +374,7 @@ def plot_polar_bar(
         chart.save(save_path)
         print(f"Polar bar chart saved to {save_path}")
 
-    return chart
+    return chart  # type: ignore
 
 
 def plot_radar(
@@ -436,7 +422,7 @@ def plot_radar(
                     selected_models.add(default_model)
                 else:
                     for model, score in item.items():
-                        if model in models or models is None:
+                        if model in models or models is None:  # type: ignore
                             selected_models.add(model)
                             metrics.append({
                                 "labels": label,
@@ -448,9 +434,7 @@ def plot_radar(
     # Convert to DataFrame
     source = pd.DataFrame(metrics)
     labels = source["labels"].unique()
-    angles = np.linspace(
-        np.pi / 2, np.pi / 2 - 2 * np.pi, len(labels), endpoint=False
-    )
+    angles = np.linspace(np.pi / 2, np.pi / 2 - 2 * np.pi, len(labels), endpoint=False)
     cat_angle_map = dict(zip(labels, angles, strict=True))
 
     source["angle"] = source["labels"].map(cat_angle_map)
@@ -470,13 +454,11 @@ def plot_radar(
         alt
         .Chart(rings)
         .mark_arc(stroke="lightgrey", fill=None)
-        .encode(
-            theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False)
-        )
+        .encode(theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False))
     )
-    base_rings_labels = base_rings.mark_text(
-        color="black", radiusOffset=5, align="center"
-    ).encode(text="ring", theta=alt.value(np.pi / len(labels)))
+    base_rings_labels = base_rings.mark_text(color="black", radiusOffset=5, align="center").encode(
+        text="ring", theta=alt.value(np.pi / len(labels))
+    )
     out_rings = (
         alt
         .Chart(rings)
@@ -632,9 +614,7 @@ def plot_curve(
                 "tpr": y_start + i * y_offset,
             })
 
-        auroc_text_df = pd.DataFrame(
-            text_data, columns=["models", "label", "fpr", "tpr"]
-        )
+        auroc_text_df = pd.DataFrame(text_data, columns=["models", "label", "fpr", "tpr"])
         auroc_text_layer = (
             alt
             .Chart(auroc_text_df)
@@ -709,9 +689,7 @@ def plot_curve(
                 "precision": y_start + i * y_offset,
             })
 
-        auprc_text_df = pd.DataFrame(
-            text_data, columns=["models", "label", "recall", "precision"]
-        )
+        auprc_text_df = pd.DataFrame(text_data, columns=["models", "label", "recall", "precision"])
         auprc_text_layer = (
             alt
             .Chart(auprc_text_df)
@@ -822,9 +800,7 @@ def plot_scatter(
         #     )
         #     .properties(width=width, height=height)
         # )
-        base = alt.Chart(ddot, title=model).properties(
-            width=width, height=height
-        )
+        base = alt.Chart(ddot, title=model).properties(width=width, height=height)
         dot = base.mark_point(filled=True, size=15, opacity=1).encode(
             x=alt.X("experiment:Q", title="Observed"),
             y=alt.Y("predicted:Q", title="Predicted"),
@@ -918,9 +894,7 @@ def plot_token_scatter(
     """
 
     try:
-        df = pd.DataFrame(
-            [(x[0], -x[1]) for x in scores], columns=["Token", "Value"]
-        )
+        df = pd.DataFrame([(x[0], -x[1]) for x in scores], columns=["Token", "Value"])
     except Exception as e:
         print(f"Format Error: {e}")
         return alt.Chart()
@@ -972,13 +946,9 @@ def plot_token_scatter(
                 legend=alt.Legend(title="Importance"),
             ),
             # Point size encoding
-            size=alt.condition(
-                alt.datum.is_outlier, alt.value(40), alt.value(20)
-            ),
+            size=alt.condition(alt.datum.is_outlier, alt.value(40), alt.value(20)),
             # Alpha encoding
-            opacity=alt.condition(
-                alt.datum.is_outlier, alt.value(1.0), alt.value(0.6)
-            ),
+            opacity=alt.condition(alt.datum.is_outlier, alt.value(1.0), alt.value(0.6)),
             tooltip=["index", "Token", "Value", "zscore"],
         )
     )
@@ -1033,17 +1003,17 @@ def plot_token_scatter(
         # Convert to zero started index if necessary
         start_pos = extra_data[0][1]
         if len(extra_data[0]) == 4:
-            color_map = {item[0]: item[3] for item in extra_data}
+            color_map = {item[0]: item[3] for item in extra_data}  # type: ignore[unreachable]
         else:
-            color_map = {}
+            color_map: dict[str, str] = {}  # type: ignore
         for i, item in enumerate(extra_data):
             region_type, start, end = item[:3]
             extra_data[i] = (region_type, start - start_pos, end - start_pos)
         extra_df = pd.DataFrame(extra_data, columns=["Type", "Start", "End"])
         # assign colors if provided
-        if color_map:
-            domain = list(color_map.keys())
-            range_colors = [color_map[k] for k in domain]
+        if color_map:  # type: ignore
+            domain = list(color_map.keys())  # type: ignore
+            range_colors = [color_map[k] for k in domain]  # type: ignore
         else:
             # assign default colors based on region type
             # Use Set3 color palette (12 colors)
@@ -1061,9 +1031,7 @@ def plot_token_scatter(
                 "#ccebc5",
                 "#ffed6f",
             ]
-            unique_types = list(
-                dict.fromkeys([x[0] for x in extra_data])
-            )  # Preserve order
+            unique_types = list(dict.fromkeys([x[0] for x in extra_data]))  # Preserve order
             domain = unique_types
             range_colors = colors[: len(unique_types)]
         band_chart = (
@@ -1083,19 +1051,12 @@ def plot_token_scatter(
         )
 
     # Combine Layers
-    chart: alt.Chart = (base_scatter + rule_lines).resolve_scale(
-        color="independent"
-    )
+    chart: alt.Chart = (base_scatter + rule_lines).resolve_scale(color="independent")
     if show_labels:
         chart += text_labels
     if extra_data:
         chart = band_chart + chart
-    chart = (
-        chart
-        .properties(width=width, height=height)
-        .configure_axis(grid=False)
-        .interactive()
-    )
+    chart = chart.properties(width=width, height=height).configure_axis(grid=False).interactive()
 
     if save_path:
         chart.save(save_path)
@@ -1134,9 +1095,7 @@ def plot_line(
         .mark_line(interpolate="monotone")
         .encode(
             x=alt.X("position:Q", title="Position"),
-            y=alt.Y(
-                "score:Q", title="Likelihood", scale=alt.Scale(zero=False)
-            ),
+            y=alt.Y("score:Q", title="Likelihood", scale=alt.Scale(zero=False)),
             color=alt.Color("type:N", title="Types"),
             tooltip=["type", "position", "score"],
         )
@@ -1216,7 +1175,7 @@ def plot_annotations(
     df = pd.DataFrame(records)
     if df.empty:
         print("Warning: No annotations to plot.")
-        return None
+        return None  # type: ignore
 
     # Assign Set1 color to each types
     type_list = sorted(all_types)
@@ -1234,7 +1193,7 @@ def plot_annotations(
             "#f781bf",
             "#999999",
         ]
-        color_map = {}
+        color_map: dict[str, str] = {}  # type: ignore
         for i, t in enumerate(type_list):
             if custom_colors and t in custom_colors:
                 color_map[t] = custom_colors[t]
@@ -1334,17 +1293,11 @@ def plot_attention_map(
         exp_attn = np.exp(attn_head - np.max(attn_head))
         attn_head = exp_attn / exp_attn.sum(axis=-1, keepdims=True)
     elif norm_method == "minmax":
-        attn_head = (attn_head - np.min(attn_head)) / (
-            np.max(attn_head) - np.min(attn_head)
-        )
+        attn_head = (attn_head - np.min(attn_head)) / (np.max(attn_head) - np.min(attn_head))
     elif norm_method == "l1":
-        attn_head = attn_head / np.sum(
-            np.abs(attn_head), axis=-1, keepdims=True
-        )
+        attn_head = attn_head / np.sum(np.abs(attn_head), axis=-1, keepdims=True)
     elif norm_method == "l2":
-        attn_head = attn_head / np.sqrt(
-            np.sum(attn_head**2, axis=-1, keepdims=True)
-        )
+        attn_head = attn_head / np.sqrt(np.sum(attn_head**2, axis=-1, keepdims=True))
     elif norm_method == "log1p":
         attn_head = np.log1p(attn_head) / attn_head.max()
     elif norm_method == "zscore":
@@ -1385,20 +1338,14 @@ def plot_attention_map(
             num_tokens -= 1
     df_data = {
         "token1": [
-            f"{str(i).zfill(flen)}{t1}"
-            for i, t1 in enumerate(tokens)
-            for _ in range(num_tokens)
+            f"{str(i).zfill(flen)}{t1}" for i, t1 in enumerate(tokens) for _ in range(num_tokens)
         ],
         "token2": [
             f"{str(num_tokens - j).zfill(flen)}{t2}"
             for _ in range(num_tokens)
             for j, t2 in enumerate(tokens)
         ],
-        "attn": [
-            attn_head[i][j]
-            for i in range(num_tokens)
-            for j in range(num_tokens)
-        ],
+        "attn": [attn_head[i][j] for i in range(num_tokens) for j in range(num_tokens)],
     }
 
     # More efficient DataFrame creation
@@ -1498,10 +1445,7 @@ def _get_dimensionality_reducer(
                 "high": {"perplexity": 50, "max_iter": 2000},
             }
         else:
-            raise ValueError(
-                "t-SNE is unsupported for samples > 50k, "
-                "please use UMAP/PaCMAP."
-            )
+            raise ValueError("t-SNE is unsupported for samples > 50k, please use UMAP/PaCMAP.")
         base = {"n_components": 2, "init": "pca"}
         if isinstance(quality, dict):
             base.update(quality)
@@ -1562,7 +1506,7 @@ def _get_dimensionality_reducer(
         if isinstance(quality, dict):
             base.update(quality)
         else:
-            base.update(presets[quality])
+            base.update(presets[quality])  # type: ignore
         return base
 
     # -----------------------
@@ -1622,37 +1566,27 @@ def _compute_mean_embeddings(
     embeddings = np.array(hidden_states)
     if attention_mask is None:
         if strategy == "last":
-            attention_mask_array = np.zeros(
-                (embeddings.shape[0], embeddings.shape[1]), dtype=int
-            )
+            attention_mask_array = np.zeros((embeddings.shape[0], embeddings.shape[1]), dtype=int)
             attention_mask_array[:, -1] = 1
         elif strategy == "first":
-            attention_mask_array = np.zeros(
-                (embeddings.shape[0], embeddings.shape[1]), dtype=int
-            )
+            attention_mask_array = np.zeros((embeddings.shape[0], embeddings.shape[1]), dtype=int)
             attention_mask_array[:, 0] = 1
         else:  # mean pooling without mask
-            attention_mask_array = np.ones(
-                (embeddings.shape[0], embeddings.shape[1]), dtype=int
-            )
+            attention_mask_array = np.ones((embeddings.shape[0], embeddings.shape[1]), dtype=int)
     else:
         attention_mask_array = np.array(attention_mask)
 
     # use center (middle of window) embeddings within window size
     if isinstance(strategy, int):
         seq_len = np.sum(attention_mask_array, axis=1).max().astype(int)
-        attention_mask_array = np.zeros(
-            (embeddings.shape[0], embeddings.shape[1]), dtype=int
-        )
+        attention_mask_array = np.zeros((embeddings.shape[0], embeddings.shape[1]), dtype=int)
         center_idx = seq_len // 2
         start_idx = max(0, center_idx - strategy // 2)
         end_idx = min(embeddings.shape[1], center_idx + strategy // 2)
         attention_mask_array[:, start_idx:end_idx] = 1
 
     mask_sum = np.sum(attention_mask_array, axis=1, keepdims=True)
-    mean_embeddings = (
-        np.sum(attention_mask_array[..., None] * embeddings, axis=1) / mask_sum
-    )
+    mean_embeddings = np.sum(attention_mask_array[..., None] * embeddings, axis=1) / mask_sum
 
     return mean_embeddings
 
@@ -1676,9 +1610,7 @@ def _prepare_embedding_dataframe(dim_reduced_vectors, labels, label_names):
         labels = [0] * dim_reduced_vectors.shape[0]
 
     processed_labels = [
-        label_names[int(i)]
-        if (label_names is not None and i < len(label_names))
-        else str(i)
+        label_names[int(i)] if (label_names is not None and i < len(label_names)) else str(i)
         for i in labels
     ]
 
@@ -1709,9 +1641,7 @@ def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
         .encode(
             x=alt.X("Dimension 1:Q"),
             y=alt.Y("Dimension 2:Q"),
-            color=alt.Color(
-                "labels:N", legend=alt.Legend(title="Labels")
-            ).scale(scheme="set1"),
+            color=alt.Color("labels:N", legend=alt.Legend(title="Labels")).scale(scheme="set1"),
         )
         .properties(width=width, height=height)
     )
@@ -1804,9 +1734,7 @@ def plot_embeddings(
     # Type assertion: dim_reducer is guaranteed to be non-None from helper
     # function
     if dim_reducer is None:
-        raise ValueError(
-            "Dimensionality reducer is None - this should not happen"
-        )
+        raise ValueError("Dimensionality reducer is None - this should not happen")
 
     # Process each layer and create plots
     plots = []
@@ -1820,21 +1748,15 @@ def plot_embeddings(
             if attention_mask is None:
                 mean_embeddings = _compute_mean_embeddings(hidden)
             else:
-                mean_embeddings = _compute_mean_embeddings(
-                    hidden, attention_mask[i]
-                )
+                mean_embeddings = _compute_mean_embeddings(hidden, attention_mask[i])
         # Apply dimensionality reduction
         if norm:
             # embeddings_normalized = normalize(mean_embeddings)
             mean_embeddings = StandardScaler().fit_transform(mean_embeddings)
-        layer_dim_reduced_vectors = np.array(
-            dim_reducer.fit_transform(mean_embeddings)
-        )
+        layer_dim_reduced_vectors = np.array(dim_reducer.fit_transform(mean_embeddings))
 
         # Prepare data for plotting
-        source_df = _prepare_embedding_dataframe(
-            layer_dim_reduced_vectors, labels, label_names
-        )
+        source_df = _prepare_embedding_dataframe(layer_dim_reduced_vectors, labels, label_names)
 
         # Create individual plot
         plot = _create_embedding_plot(source_df, i, width, height, point_size)
@@ -1999,13 +1921,13 @@ def _build_mutation_datasets(
         # Update line plot data
         for score in dheat_pos["score"]:
             if score >= 0:
-                dline["score"][i] += score
+                dline["score"][i] += score  # type: ignore[index]
             else:
-                dline["score"][i + seqlen] -= score
+                dline["score"][i + seqlen] -= score  # type: ignore[index]
 
         # Update bar chart data
         dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
-        dbar["score"].append(maxscore)
+        dbar["score"].append(maxscore)  # type: ignore
         dbar["base"].append(maxabs_index)
 
         # Process indel mutations
@@ -2060,9 +1982,7 @@ def _create_mutation_charts(
     range1_ = ["#2166ac", "#f7f7f7", "#b2182b"]
 
     unique_bases = sorted(set(dbar["base"]))
-    range2_ = ["#33a02c", "#1f78b4", "#ff7f00", "#e31a1c", "#cab2d6"][
-        : len(unique_bases)
-    ]
+    range2_ = ["#33a02c", "#1f78b4", "#ff7f00", "#e31a1c", "#cab2d6"][: len(unique_bases)]
 
     # Define X axis ticks based on position
     min_pos = df_line["pos"].min()
@@ -2081,9 +2001,7 @@ def _create_mutation_charts(
     x_axis_base = alt.X(
         "pos:Q",
         scale=x_scale,
-        axis=alt.Axis(
-            values=tick_values, format="d", title=None, labelAngle=0
-        ),
+        axis=alt.Axis(values=tick_values, format="d", title=None, labelAngle=0),
     )
 
     # Enable VegaFusion for performance
@@ -2124,9 +2042,7 @@ def _create_mutation_charts(
             x2="pos_end:Q",
             y=alt.Y("score:Q").title("max logFC"),
             y2="score2:Q",
-            color=alt.Color("base:N").scale(
-                domain=unique_bases, range=range2_
-            ),
+            color=alt.Color("base:N").scale(domain=unique_bases, range=range2_),
             **({"tooltip": bar_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
@@ -2144,21 +2060,17 @@ def _create_mutation_charts(
         .mark_line()
         .encode(
             x=x_axis_base,
-            y=alt.Y(
-                "score:Q", scale=alt.Scale(domain=[-0.001, max_score + 0.001])
-            ).title("gain / loss"),
-            color=alt.Color("type:N").scale(
-                domain=["gain", "loss"], range=["#b2182b", "#2166ac"]
+            y=alt.Y("score:Q", scale=alt.Scale(domain=[-0.001, max_score + 0.001])).title(
+                "gain / loss"
             ),
+            color=alt.Color("type:N").scale(domain=["gain", "loss"], range=["#b2182b", "#2166ac"]),
             **({"tooltip": line_tooltip} if show_score else {}),
         )
         .properties(width=width, height=height)
     )
 
     # Combine charts
-    combined_chart: alt.Chart | alt.VConcatChart = (
-        pheat & pbar & pline
-    ).configure_axis(grid=False)
+    combined_chart: alt.Chart | alt.VConcatChart = (pheat & pbar & pline).configure_axis(grid=False)
     return combined_chart
 
 
@@ -2196,9 +2108,7 @@ def plot_muts(
     _sequence, raw_bases, seqlen, flen, mut_list = _extract_mutation_data(data)
 
     # Build visualization datasets
-    dheat, dline, dbar = _build_mutation_datasets(
-        data, raw_bases, mut_list, seqlen, flen
-    )
+    dheat, dline, dbar = _build_mutation_datasets(data, raw_bases, mut_list, seqlen, flen)
 
     # Calculate width if not provided
     if width is None and dheat["score"]:
@@ -2255,17 +2165,13 @@ def plot_attributions_token(
             "<cls>",
             "<sep>",
         ]
-    valid_indices = [
-        i for i, token in enumerate(tokens) if token not in special_tokens
-    ]
+    valid_indices = [i for i, token in enumerate(tokens) if token not in special_tokens]
     vis_tokens = [tokens[i] for i in valid_indices]
     vis_scores = scores[valid_indices]
 
     if len(vis_tokens) == 0:
         print("Warning: No valid tokens to plot after filtering.")
-        chart: alt.Chart = (
-            alt.Chart().mark_text().properties(title="No data to display")
-        )
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
         return chart
 
     # 2. Calculate each token"s length and precise position in the sequence
@@ -2361,16 +2267,12 @@ def plot_attributions_line(
             "<cls>",
             "<sep>",
         ]
-    valid_indices = [
-        i for i, token in enumerate(tokens) if token not in special_tokens
-    ]
+    valid_indices = [i for i, token in enumerate(tokens) if token not in special_tokens]
     vis_scores = scores[valid_indices]
 
     if len(vis_scores) == 0:
         print("Warning: No valid scores to plot after filtering.")
-        chart: alt.Chart = (
-            alt.Chart().mark_text().properties(title="No data to display")
-        )
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
         return chart
 
     source = pd.DataFrame({
@@ -2399,18 +2301,12 @@ def plot_attributions_line(
     # if need to smooth the scores
     if window_size and window_size > 1:
         source["Smoothed"] = (
-            source["Raw"]
-            .rolling(window=window_size, center=True, min_periods=1)
-            .mean()
+            source["Raw"].rolling(window=window_size, center=True, min_periods=1).mean()
         )
         # Convert to long format for Altair
-        long_source = source.melt(
-            id_vars=["position"], var_name="type", value_name="value"
-        )
+        long_source = source.melt(id_vars=["position"], var_name="type", value_name="value")
     else:  # if no smoothing, just use raw scores
-        long_source = source.melt(
-            id_vars=["position"], var_name="type", value_name="value"
-        )
+        long_source = source.melt(id_vars=["position"], var_name="type", value_name="value")
 
     # Create line chart layer
     lines = (
@@ -2431,7 +2327,7 @@ def plot_attributions_line(
 
     chart = area + lines
 
-    chart: alt.Chart = (
+    chart = (
         chart
         .properties(width=800, height=200, title=title)
         .interactive()
@@ -2462,9 +2358,7 @@ def plot_attributions_multi(
     """
     if not all_attributions:
         print("Warning: No scores provided to plot.")
-        chart: alt.Chart = (
-            alt.Chart().mark_text().properties(title="No data to display")
-        )
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
         return chart
 
     # 0. Remove right padding tokens/scores if any
@@ -2509,9 +2403,7 @@ def plot_attributions_multi(
                     mode="constant",
                     constant_values=np.nan,
                 )
-                extended_tokens = tokens + [pad_token] * (
-                    max_len - len(tokens)
-                )
+                extended_tokens = tokens + [pad_token] * (max_len - len(tokens))
                 extended_attributions.append((
                     extended_tokens,
                     extended_scores,

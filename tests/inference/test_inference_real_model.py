@@ -46,9 +46,7 @@ class TestRealModelInference(unittest.TestCase):
 
             # Load real model and tokenizer
             model_name = "zhangtaolab/plant-dnagpt-BPE-promoter"
-            cls.model = AutoModelForSequenceClassification.from_pretrained(
-                model_name
-            )
+            cls.model = AutoModelForSequenceClassification.from_pretrained(model_name)
             cls.tokenizer = AutoTokenizer.from_pretrained(model_name)
 
             print(f"✅ Model loaded: {model_name}")
@@ -62,9 +60,7 @@ class TestRealModelInference(unittest.TestCase):
             print("✅ Configuration loaded")
 
             # Create inference engine
-            cls.inference_engine = DNAInference(
-                cls.model, cls.tokenizer, cls.config
-            )
+            cls.inference_engine = DNAInference(cls.model, cls.tokenizer, cls.config)
             # Keep backward compatibility for tests
             cls.predictor = cls.inference_engine
 
@@ -72,13 +68,8 @@ class TestRealModelInference(unittest.TestCase):
 
         except ImportError as e:
             print(f"❌ Import error: {e}")
-            print(
-                "Please install required packages:"
-                "pip install transformers torch"
-            )
-            raise unittest.SkipTest(
-                f"Required packages not available: {e}"
-            ) from e
+            print("Please install required packages:pip install transformers torch")
+            raise unittest.SkipTest(f"Required packages not available: {e}") from e
 
         except Exception as e:
             print(f"❌ Error during setup: {e}")
@@ -162,9 +153,7 @@ class TestRealModelInference(unittest.TestCase):
 
         df = pd.DataFrame(test_data)
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             df.to_csv(f.name, index=False)
             test_file_path = f.name
 
@@ -250,9 +239,7 @@ def run_tests():
         print("=" * 50)
 
         # Create test suite
-        suite = unittest.TestLoader().loadTestsFromTestCase(
-            TestRealModelInference
-        )
+        suite = unittest.TestLoader().loadTestsFromTestCase(TestRealModelInference)
 
         # Run tests
         runner = unittest.TextTestRunner(verbosity=2)

@@ -78,12 +78,7 @@ class ConfigGenerator:
         try:
             # Try to find model_info.yaml in the models directory
             current_file = Path(__file__).resolve()
-            yaml_path = (
-                current_file.parent.parent
-                / "dnallm"
-                / "models"
-                / "model_info.yaml"
-            )
+            yaml_path = current_file.parent.parent / "dnallm" / "models" / "model_info.yaml"
 
             if yaml_path.exists():
                 with open(yaml_path, encoding="utf-8") as f:
@@ -92,8 +87,7 @@ class ConfigGenerator:
                 # Extract available models and templates
                 self._extract_model_templates()
                 click.echo(
-                    f"✅ Loaded {len(self.available_models)} "
-                    f"model templates from {yaml_path}"
+                    f"✅ Loaded {len(self.available_models)} model templates from {yaml_path}"
                 )
             else:
                 click.echo(f"⚠️  Model info file not found at {yaml_path}")
@@ -181,9 +175,7 @@ class ConfigGenerator:
 
         return results[:20]  # Limit results
 
-    def _select_model_from_templates(
-        self, config_type: str | None = None
-    ) -> dict[str, Any] | None:
+    def _select_model_from_templates(self, config_type: str | None = None) -> dict[str, Any] | None:
         """Let user select a model from"
         "available templates based on configuration type"""
         if not self.available_models:
@@ -211,18 +203,14 @@ class ConfigGenerator:
                 # result is either dict[str, Any] or None (custom model path)
                 return result
 
-    def _filter_models_by_config_type(
-        self, config_type: str | None
-    ) -> list[str] | None:
+    def _filter_models_by_config_type(self, config_type: str | None) -> list[str] | None:
         """Filter available models based on configuration type"""
         if config_type == "finetune":
             return self._filter_pretrained_models()
         elif config_type == "inference":
             return self._filter_finetuned_models()
         elif config_type == "benchmark":
-            click.echo(
-                "   Showing all model types (suitable for benchmarking)"
-            )
+            click.echo("   Showing all model types (suitable for benchmarking)")
             return self.available_models
         else:
             click.echo("   Showing all available models")
@@ -233,17 +221,14 @@ class ConfigGenerator:
         filtered_models = [
             model_name
             for model_name in self.available_models
-            if self.model_templates.get(model_name, {}).get("type")
-            == "pretrained"
+            if self.model_templates.get(model_name, {}).get("type") == "pretrained"
         ]
 
         if not filtered_models:
             click.echo("❌ No pretrained models found for fine-tuning")
             return None
 
-        click.echo(
-            "   Showing pretrained models only (base models for fine-tuning)"
-        )
+        click.echo("   Showing pretrained models only (base models for fine-tuning)")
         return filtered_models
 
     def _filter_finetuned_models(self) -> list[str] | None:
@@ -251,8 +236,7 @@ class ConfigGenerator:
         filtered_models = [
             model_name
             for model_name in self.available_models
-            if self.model_templates.get(model_name, {}).get("type")
-            == "finetuned"
+            if self.model_templates.get(model_name, {}).get("type") == "finetuned"
         ]
 
         if not filtered_models:
@@ -264,9 +248,7 @@ class ConfigGenerator:
 
     def _display_model_overview(self, models_to_show: list[str]) -> None:
         """Display model overview and options"""
-        click.echo(
-            f"\n🔍 Available model templates ({len(models_to_show)} models):"
-        )
+        click.echo(f"\n🔍 Available model templates ({len(models_to_show)} models):")
 
         # Show first 10 models
         click.echo("\n📋 First 10 models (zhangtaolab models prioritized):")
@@ -318,14 +300,10 @@ class ConfigGenerator:
             click.echo("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
             return "continue"  # Special value to continue loop
 
-    def _handle_list_selection(
-        self, models_to_show: list[str]
-    ) -> dict[str, Any] | str:
+    def _handle_list_selection(self, models_to_show: list[str]) -> dict[str, Any] | str:
         """Handle selection from the displayed list"""
         max_choice = min(10, len(models_to_show))
-        model_choice = click.prompt(
-            f"Enter model number (1-{max_choice})", type=int
-        )
+        model_choice = click.prompt(f"Enter model number (1-{max_choice})", type=int)
 
         if 1 <= model_choice <= max_choice:
             selected_model = models_to_show[model_choice - 1]
@@ -353,9 +331,7 @@ class ConfigGenerator:
             result = self.model_templates.get(selected_model, {})
             return result if isinstance(result, dict) else {}
 
-        model_choice = click.prompt(
-            f"Enter model number (1-{len(search_results)})", type=int
-        )
+        model_choice = click.prompt(f"Enter model number (1-{len(search_results)})", type=int)
         if 1 <= model_choice <= len(search_results):
             selected_model = search_results[model_choice - 1]
             result = self.model_templates.get(selected_model, {})
@@ -364,19 +340,12 @@ class ConfigGenerator:
             click.echo("❌ Invalid choice. Please try again.")
             return "continue"
 
-    def _handle_show_all_selection(
-        self, models_to_show: list[str]
-    ) -> dict[str, Any] | str:
+    def _handle_show_all_selection(self, models_to_show: list[str]) -> dict[str, Any] | str:
         """Handle showing all models and selection"""
-        click.echo(
-            f"\n📋 All {len(models_to_show)}"
-            "models (zhangtaolab models prioritized):"
-        )
+        click.echo(f"\n📋 All {len(models_to_show)}models (zhangtaolab models prioritized):")
         self._display_model_list(models_to_show)
 
-        model_choice = click.prompt(
-            f"Enter model number (1-{len(models_to_show)})", type=int
-        )
+        model_choice = click.prompt(f"Enter model number (1-{len(models_to_show)})", type=int)
         if 1 <= model_choice <= len(models_to_show):
             selected_model = models_to_show[model_choice - 1]
             result = self.model_templates.get(selected_model, {})
@@ -385,9 +354,7 @@ class ConfigGenerator:
             click.echo("❌ Invalid choice. Please try again.")
             return "continue"
 
-    def _auto_fill_from_template(
-        self, model_template: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _auto_fill_from_template(self, model_template: dict[str, Any]) -> dict[str, Any]:
         """Auto-fill configuration from model"
         "template with comprehensive defaults"""
         auto_config = {}
@@ -509,12 +476,8 @@ class ConfigGenerator:
         if "description" in auto_config:
             click.echo(f"📝 Description: {auto_config['description']}")
 
-        click.echo(
-            f"🔧 Task Type: {auto_config.get('mapped_task_type', 'Unknown')}"
-        )
-        click.echo(
-            f"🏷️  Number of Labels: {auto_config.get('num_labels', 'Unknown')}"
-        )
+        click.echo(f"🔧 Task Type: {auto_config.get('mapped_task_type', 'Unknown')}")
+        click.echo(f"🏷️  Number of Labels: {auto_config.get('num_labels', 'Unknown')}")
 
         if auto_config.get("label_names"):
             if isinstance(auto_config["label_names"], list):
@@ -526,28 +489,16 @@ class ConfigGenerator:
         if "threshold" in auto_config:
             click.echo(f"⚖️  Threshold: {auto_config['threshold']}")
 
-        click.echo(
-            f"🤖 Model Path: {auto_config.get('model_path', 'Unknown')}"
-        )
-        click.echo(
-            f"📚 Model Type: {auto_config.get('model_type', 'Unknown')}"
-        )
+        click.echo(f"🤖 Model Path: {auto_config.get('model_path', 'Unknown')}")
+        click.echo(f"📚 Model Type: {auto_config.get('model_type', 'Unknown')}")
 
         # Show available default parameters
         if "defaults" in auto_config:
             click.echo("\n📋 Available default parameters:")
             click.echo("-" * 30)
-            click.echo(
-                "🔧 Task defaults:"
-                "task_type, num_labels, label_names, threshold"
-            )
-            click.echo(
-                "🎯 Fine-tuning defaults:"
-                "learning_rate, batch_size, epochs, etc."
-            )
-            click.echo(
-                "🔮 Inference defaults: batch_size, max_length, device, etc."
-            )
+            click.echo("🔧 Task defaults:task_type, num_labels, label_names, threshold")
+            click.echo("🎯 Fine-tuning defaults:learning_rate, batch_size, epochs, etc.")
+            click.echo("🔮 Inference defaults: batch_size, max_length, device, etc.")
             click.echo("📊 Benchmark defaults: metrics, plot format, etc.")
 
         return click.confirm("\n✅ Use this auto-filled configuration?")
@@ -610,13 +561,9 @@ class ConfigGenerator:
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
                 if auto_config and self._confirm_auto_fill(auto_config):
-                    click.echo(
-                        "✅ Using auto-filled configuration from template"
-                    )
+                    click.echo("✅ Using auto-filled configuration from template")
                 else:
-                    click.echo(
-                        "❌ Auto-fill cancelled, proceeding with manual input"
-                    )
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
                     auto_config = None
 
         # Task configuration (use auto-filled if available)
@@ -653,13 +600,9 @@ class ConfigGenerator:
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
                 if auto_config and self._confirm_auto_fill(auto_config):
-                    click.echo(
-                        "✅ Using auto-filled configuration from template"
-                    )
+                    click.echo("✅ Using auto-filled configuration from template")
                 else:
-                    click.echo(
-                        "❌ Auto-fill cancelled, proceeding with manual input"
-                    )
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
                     auto_config = None
 
         # Task configuration (use auto-filled if available)
@@ -698,13 +641,9 @@ class ConfigGenerator:
             if model_template:
                 auto_config = self._auto_fill_from_template(model_template)
                 if auto_config and self._confirm_auto_fill(auto_config):
-                    click.echo(
-                        "✅ Using auto-filled configuration from template"
-                    )
+                    click.echo("✅ Using auto-filled configuration from template")
                 else:
-                    click.echo(
-                        "❌ Auto-fill cancelled, proceeding with manual input"
-                    )
+                    click.echo("❌ Auto-fill cancelled, proceeding with manual input")
                     auto_config = None
 
         # Models configuration (use auto-filled if available)
@@ -771,16 +710,12 @@ class ConfigGenerator:
 
         # Threshold for binary/multilabel
         if "binary" in task_type or "multilabel" in task_type:
-            threshold = click.prompt(
-                "Classification threshold", type=float, default=0.5
-            )
+            threshold = click.prompt("Classification threshold", type=float, default=0.5)
             task_config["threshold"] = threshold
 
         return task_config
 
-    def _configure_task_with_template(
-        self, auto_config: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _configure_task_with_template(self, auto_config: dict[str, Any]) -> dict[str, Any]:
         """Configure task settings using"
         "template information with smart defaults"""
         click.echo("\n📝 Task Configuration (from template):")
@@ -793,16 +728,12 @@ class ConfigGenerator:
             "mapped_task_type",
             defaults.get("task_type", "binary_classification"),
         )
-        num_labels = auto_config.get(
-            "num_labels", defaults.get("num_labels", 2)
-        )
+        num_labels = auto_config.get("num_labels", defaults.get("num_labels", 2))
         label_names = auto_config.get(
             "label_names",
             defaults.get("label_names", ["negative", "positive"]),
         )
-        threshold = auto_config.get(
-            "threshold", defaults.get("threshold", 0.5)
-        )
+        threshold = auto_config.get("threshold", defaults.get("threshold", 0.5))
 
         click.echo(f"✅ Task Type: {task_type}")
         click.echo(f"✅ Number of Labels: {num_labels}")
@@ -824,9 +755,7 @@ class ConfigGenerator:
             "with {defaults.get('num_labels', 2)} labels"
         )
         click.echo(f"   • Threshold: {defaults.get('threshold', 0.5)}")
-        label_names_str = ",".join(
-            defaults.get("label_names", ["negative", "positive"])
-        )
+        label_names_str = ",".join(defaults.get("label_names", ["negative", "positive"]))
         click.echo(f"• Labels: {label_names_str}")
 
         # Ask if user wants to modify any values
@@ -834,9 +763,7 @@ class ConfigGenerator:
             return self._configure_task()  # Fall back to manual configuration
         else:
             # Create task config from template
-            task_config: dict[str, Any] = {
-                "task_type": self.TASK_ALIAS.get(task_type, task_type)
-            }
+            task_config: dict[str, Any] = {"task_type": self.TASK_ALIAS.get(task_type, task_type)}
 
             if "classification" in task_type:
                 task_config["num_labels"] = num_labels
@@ -845,8 +772,7 @@ class ConfigGenerator:
                         task_config["label_names"] = label_names
                     else:
                         task_config["label_names"] = [
-                            name.strip()
-                            for name in str(label_names).split(",")
+                            name.strip() for name in str(label_names).split(",")
                         ]
 
                 if "binary" in task_type or "multilabel" in task_type:
@@ -854,9 +780,7 @@ class ConfigGenerator:
 
             return task_config
 
-    def _configure_finetune(
-        self, auto_config: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def _configure_finetune(self, auto_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """Configure fine-tuning settings with smart defaults
 
         For detailed arguments, please refer to:
@@ -958,9 +882,7 @@ class ConfigGenerator:
         while True:
             choice = click.prompt("Choose scheduler type", type=int)
             if 1 <= choice <= len(scheduler_types):
-                finetune_config["lr_scheduler_type"] = scheduler_types[
-                    choice - 1
-                ]
+                finetune_config["lr_scheduler_type"] = scheduler_types[choice - 1]
                 break
             click.echo("❌ Invalid choice. Please try again.")
 
@@ -970,49 +892,31 @@ class ConfigGenerator:
         # Configure scheduler-specific parameters
         if click.confirm("Configure scheduler-specific parameters?"):
             scheduler = finetune_config["lr_scheduler_type"]
-            click.echo(
-                f"\n🔧 Configuring parameters for {scheduler} scheduler:"
-            )
+            click.echo(f"\n🔧 Configuring parameters for {scheduler} scheduler:")
 
             if scheduler in ["cosine", "cosine_with_restarts"]:
-                if click.confirm(
-                    "Set number of restarts for cosine_with_restarts?"
-                ):
-                    restarts = click.prompt(
-                        "Number of restarts", type=int, default=1
-                    )
-                    finetune_config["lr_scheduler_kwargs"]["num_restarts"] = (
-                        restarts
-                    )
+                if click.confirm("Set number of restarts for cosine_with_restarts?"):
+                    restarts = click.prompt("Number of restarts", type=int, default=1)
+                    finetune_config["lr_scheduler_kwargs"]["num_restarts"] = restarts
 
             if scheduler == "polynomial":
                 if click.confirm("Set power for polynomial decay?"):
-                    power = click.prompt(
-                        "Power value", type=float, default=1.0
-                    )
+                    power = click.prompt("Power value", type=float, default=1.0)
                     finetune_config["lr_scheduler_kwargs"]["power"] = power
 
             if scheduler == "reduce_lr_on_plateau":
                 if click.confirm("Set patience for reduce_lr_on_plateau?"):
-                    patience = click.prompt(
-                        "Patience value", type=int, default=10
-                    )
-                    finetune_config["lr_scheduler_kwargs"]["patience"] = (
-                        patience
-                    )
+                    patience = click.prompt("Patience value", type=int, default=10)
+                    finetune_config["lr_scheduler_kwargs"]["patience"] = patience
 
                 if click.confirm("Set factor for reduce_lr_on_plateau?"):
-                    factor = click.prompt(
-                        "Factor value", type=float, default=0.1
-                    )
+                    factor = click.prompt("Factor value", type=float, default=0.1)
                     finetune_config["lr_scheduler_kwargs"]["factor"] = factor
 
             # Generic scheduler parameters
             if click.confirm("Add custom scheduler parameters?"):
                 while True:
-                    key = click.prompt(
-                        "Enter parameter name (or 'done' to finish)", type=str
-                    )
+                    key = click.prompt("Enter parameter name (or 'done' to finish)", type=str)
                     if key.lower() == "done":
                         break
                     value = click.prompt(f"Enter value for {key}", type=str)
@@ -1021,15 +925,9 @@ class ConfigGenerator:
         # Show available defaults
         if defaults:
             click.echo("\n📋 Smart defaults available for:")
-            click.echo(
-                f"   • Logging: {defaults.get('logging_steps', 2000)} steps"
-            )
-            click.echo(
-                f"   • Evaluation: {defaults.get('eval_steps', 2000)} steps"
-            )
-            click.echo(
-                f"   • Saving: {defaults.get('save_steps', 2000)} steps"
-            )
+            click.echo(f"   • Logging: {defaults.get('logging_steps', 2000)} steps")
+            click.echo(f"   • Evaluation: {defaults.get('eval_steps', 2000)} steps")
+            click.echo(f"   • Saving: {defaults.get('save_steps', 2000)} steps")
             click.echo(f"   • Seed: {defaults.get('seed', 42)}")
 
         # Advanced settings
@@ -1044,16 +942,10 @@ class ConfigGenerator:
                 "Max gradient norm", type=float, default=1.0
             )
 
-            finetune_config["seed"] = click.prompt(
-                "Random seed", type=int, default=42
-            )
+            finetune_config["seed"] = click.prompt("Random seed", type=int, default=42)
 
-            finetune_config["bf16"] = click.confirm(
-                "Use bfloat16?", default=False
-            )
-            finetune_config["fp16"] = click.confirm(
-                "Use float16?", default=False
-            )
+            finetune_config["bf16"] = click.confirm("Use bfloat16?", default=False)
+            finetune_config["fp16"] = click.confirm("Use float16?", default=False)
 
         # Logging and saving (Let user judge whether to use epoch or steps)
         if click.confirm("Use epoch-based logging and saving?", default=False):
@@ -1062,21 +954,13 @@ class ConfigGenerator:
             finetune_config["save_strategy"] = "epoch"
         else:
             finetune_config["logging_strategy"] = "steps"
-            finetune_config["logging_steps"] = click.prompt(
-                "Logging steps", type=int, default=1000
-            )
+            finetune_config["logging_steps"] = click.prompt("Logging steps", type=int, default=1000)
             finetune_config["eval_strategy"] = "steps"
-            finetune_config["eval_steps"] = click.prompt(
-                "Evaluation steps", type=int, default=1000
-            )
+            finetune_config["eval_steps"] = click.prompt("Evaluation steps", type=int, default=1000)
             finetune_config["save_strategy"] = "steps"
-            finetune_config["save_steps"] = click.prompt(
-                "Save steps", type=int, default=1000
-            )
+            finetune_config["save_steps"] = click.prompt("Save steps", type=int, default=1000)
 
-        finetune_config["save_total_limit"] = click.prompt(
-            "Save total limit", type=int, default=20
-        )
+        finetune_config["save_total_limit"] = click.prompt("Save total limit", type=int, default=20)
 
         # Model saving and evaluation options
         finetune_config["save_safetensors"] = click.confirm(
@@ -1134,9 +1018,7 @@ class ConfigGenerator:
                 return devices[choice - 1]  # type: ignore
             click.echo("❌ Invalid choice. Please try again.")
 
-    def _configure_inference(
-        self, auto_config: dict[str, Any] | None = None
-    ) -> dict[str, Any]:
+    def _configure_inference(self, auto_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """Configure inference settings with smart defaults"""
         click.echo("\n🔮 Inference Configuration:")
 
@@ -1247,12 +1129,8 @@ class ConfigGenerator:
 
             # Advanced model settings
             if click.confirm("Configure advanced model settings?"):
-                model["revision"] = click.prompt(
-                    "Git revision", type=str, default="main"
-                )
-                model["trust_remote_code"] = click.confirm(
-                    "Trust remote code?", default=True
-                )
+                model["revision"] = click.prompt("Git revision", type=str, default="main")
+                model["trust_remote_code"] = click.confirm("Trust remote code?", default=True)
 
                 dtypes = ["float32", "float16", "bfloat16"]
                 click.echo("Available data types:")
@@ -1273,9 +1151,7 @@ class ConfigGenerator:
 
         return models
 
-    def _configure_models_with_template(
-        self, auto_config: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _configure_models_with_template(self, auto_config: dict[str, Any]) -> list[dict[str, Any]]:
         """Configure models for benchmarking using template information"""
         click.echo("\n🤖 Model Configuration (from template):")
 
@@ -1294,9 +1170,7 @@ class ConfigGenerator:
 
         # Ask if user wants to modify any values
         if click.confirm("\n🔧 Modify any of these values?"):
-            return (
-                self._configure_models()
-            )  # Fall back to manual configuration
+            return self._configure_models()  # Fall back to manual configuration
         else:
             # Create model config from template
             model = {
@@ -1357,31 +1231,23 @@ class ConfigGenerator:
             dataset["text_column"] = click.prompt(
                 "Text/sequence column name", type=str, default="sequence"
             )
-            dataset["label_column"] = click.prompt(
-                "Label column name", type=str, default="label"
-            )
+            dataset["label_column"] = click.prompt("Label column name", type=str, default="label")
 
             # Preprocessing options
             if click.confirm("Configure preprocessing options?"):
                 dataset["max_length"] = click.prompt(
                     "Maximum sequence length", type=int, default=512
                 )
-                dataset["truncation"] = click.confirm(
-                    "Enable truncation?", default=True
-                )
+                dataset["truncation"] = click.confirm("Enable truncation?", default=True)
                 dataset["padding"] = click.prompt(
                     "Padding strategy", type=str, default="max_length"
                 )
 
-                dataset["test_size"] = click.prompt(
-                    "Test set size ratio", type=float, default=0.2
-                )
+                dataset["test_size"] = click.prompt("Test set size ratio", type=float, default=0.2)
                 dataset["val_size"] = click.prompt(
                     "Validation set size ratio", type=float, default=0.1
                 )
-                dataset["random_state"] = click.prompt(
-                    "Random seed", type=int, default=42
-                )
+                dataset["random_state"] = click.prompt("Random seed", type=int, default=42)
 
             datasets.append(dataset)
 
@@ -1428,9 +1294,7 @@ class ConfigGenerator:
             "General": ["perplexity"],
         }
 
-    def _display_metric_categories(
-        self, metric_categories: dict[str, list[str]]
-    ) -> None:
+    def _display_metric_categories(self, metric_categories: dict[str, list[str]]) -> None:
         """Display available metrics organized by category"""
         click.echo("Available metrics by category:")
         for category, metrics in metric_categories.items():
@@ -1438,9 +1302,7 @@ class ConfigGenerator:
             for i, metric in enumerate(metrics, 1):
                 click.echo(f"  {i}. {metric}")
 
-    def _should_finish_metric_selection(
-        self, selected_metrics: list[str]
-    ) -> bool:
+    def _should_finish_metric_selection(self, selected_metrics: list[str]) -> bool:
         """Handle metric selection menu and return True if finished"""
         click.echo(f"\nSelected metrics: {selected_metrics}")
         click.echo("Options:")
@@ -1473,9 +1335,7 @@ class ConfigGenerator:
         if selected_metric:
             self._add_metric_if_not_exists(selected_metrics, selected_metric)
 
-    def _get_all_metrics(
-        self, metric_categories: dict[str, list[str]]
-    ) -> list[str]:
+    def _get_all_metrics(self, metric_categories: dict[str, list[str]]) -> list[str]:
         """Get flattened list of all available metrics"""
         all_metrics = []
         for metrics in metric_categories.values():
@@ -1499,9 +1359,7 @@ class ConfigGenerator:
     def _add_custom_metric(self, selected_metrics: list[str]) -> None:
         """Add a custom metric name"""
         custom_metric = click.prompt("Enter custom metric name", type=str)
-        self._add_metric_if_not_exists(
-            selected_metrics, custom_metric, is_custom=True
-        )
+        self._add_metric_if_not_exists(selected_metrics, custom_metric, is_custom=True)
 
     def _add_metric_if_not_exists(
         self, selected_metrics: list[str], metric: str, is_custom: bool = False
@@ -1520,9 +1378,7 @@ class ConfigGenerator:
 
         evaluation_config = {}
 
-        evaluation_config["batch_size"] = click.prompt(
-            "Batch size", type=int, default=32
-        )
+        evaluation_config["batch_size"] = click.prompt("Batch size", type=int, default=32)
 
         evaluation_config["max_length"] = click.prompt(
             "Maximum sequence length", type=int, default=512
@@ -1531,33 +1387,23 @@ class ConfigGenerator:
         # Device selection using common method
         evaluation_config["device"] = self._configure_device_selection()
 
-        evaluation_config["num_workers"] = click.prompt(
-            "Number of workers", type=int, default=4
-        )
+        evaluation_config["num_workers"] = click.prompt("Number of workers", type=int, default=4)
 
         # Performance optimization
         if click.confirm("Configure performance optimization?"):
-            evaluation_config["use_fp16"] = click.confirm(
-                "Use float16?", default=True
-            )
-            evaluation_config["use_bf16"] = click.confirm(
-                "Use bfloat16?", default=False
-            )
+            evaluation_config["use_fp16"] = click.confirm("Use float16?", default=True)
+            evaluation_config["use_bf16"] = click.confirm("Use bfloat16?", default=False)
             evaluation_config["mixed_precision"] = click.confirm(
                 "Enable mixed precision?", default=True
             )
 
-            evaluation_config["pin_memory"] = click.confirm(
-                "Pin memory?", default=True
-            )
+            evaluation_config["pin_memory"] = click.confirm("Pin memory?", default=True)
             evaluation_config["memory_efficient_attention"] = click.confirm(
                 "Use memory efficient attention?", default=False
             )
 
         # Reproducibility
-        evaluation_config["seed"] = click.prompt(
-            "Random seed", type=int, default=42
-        )
+        evaluation_config["seed"] = click.prompt("Random seed", type=int, default=42)
 
         evaluation_config["deterministic"] = click.confirm(
             "Enable deterministic mode?", default=True
@@ -1589,18 +1435,10 @@ class ConfigGenerator:
         )
 
         # Content options
-        output_config["save_predictions"] = click.confirm(
-            "Save predictions?", default=True
-        )
-        output_config["save_embeddings"] = click.confirm(
-            "Save embeddings?", default=False
-        )
-        output_config["save_attention_maps"] = click.confirm(
-            "Save attention maps?", default=False
-        )
-        output_config["generate_plots"] = click.confirm(
-            "Generate plots?", default=True
-        )
+        output_config["save_predictions"] = click.confirm("Save predictions?", default=True)
+        output_config["save_embeddings"] = click.confirm("Save embeddings?", default=False)
+        output_config["save_attention_maps"] = click.confirm("Save attention maps?", default=False)
+        output_config["generate_plots"] = click.confirm("Generate plots?", default=True)
 
         # Report customization
         if click.confirm("Customize report?"):
@@ -1608,9 +1446,7 @@ class ConfigGenerator:
                 "Report title", type=str, default="DNA Model Benchmark Report"
             )
 
-            output_config["include_summary"] = click.confirm(
-                "Include summary?", default=True
-            )
+            output_config["include_summary"] = click.confirm("Include summary?", default=True)
             output_config["include_details"] = click.confirm(
                 "Include detailed results?", default=True
             )
@@ -1634,9 +1470,7 @@ class ConfigGenerator:
 
         # Ensure filepath is not None at this point
         if filepath is None:
-            raise ValueError(
-                "filepath should not be None after initialization"
-            )
+            raise ValueError("filepath should not be None after initialization")
 
         # Ensure .yaml extension
         if not filepath.endswith((".yaml", ".yml")):
@@ -1680,9 +1514,7 @@ class ConfigGenerator:
     type=click.Path(),
     help="Output file path for the configuration",
 )
-@click.option(
-    "--preview", "-p", is_flag=True, help="Preview configuration before saving"
-)
+@click.option("--preview", "-p", is_flag=True, help="Preview configuration before saving")
 @click.option(
     "--non-interactive",
     "-n",
@@ -1693,9 +1525,7 @@ def main(output, preview, non_interactive):
     """Generate DNALLM configuration files interactively"""
 
     if non_interactive:
-        click.echo(
-            "Non-interactive mode not yet implemented. Using interactive mode."
-        )
+        click.echo("Non-interactive mode not yet implemented. Using interactive mode.")
 
     # Initialize generator
     generator = ConfigGenerator()
@@ -1722,21 +1552,15 @@ def main(output, preview, non_interactive):
         if generator.config_type == "finetune":
             click.echo("1. Review the generated configuration file")
             click.echo("2. Adjust parameters if needed")
-            click.echo(
-                "3. Run training with: dnallm-train --config " + filepath
-            )
+            click.echo("3. Run training with: dnallm-train --config " + filepath)
         elif generator.config_type == "inference":
             click.echo("1. Review the generated configuration file")
             click.echo("2. Adjust parameters if needed")
-            click.echo(
-                "3. Run inference with: dnallm-inference --config " + filepath
-            )
+            click.echo("3. Run inference with: dnallm-inference --config " + filepath)
         elif generator.config_type == "benchmark":
             click.echo("1. Review the generated configuration file")
             click.echo("2. Adjust parameters if needed")
-            click.echo(
-                "3. Run benchmark with: dnallm-benchmark --config " + filepath
-            )
+            click.echo("3. Run benchmark with: dnallm-benchmark --config " + filepath)
 
     except KeyboardInterrupt:
         click.echo("\n\n❌ Configuration generation cancelled by user.")

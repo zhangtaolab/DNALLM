@@ -7,9 +7,7 @@ gpn_models = [
 ]
 
 
-def _handle_gpn_models(
-    model_name: str, extra: str | None = None
-) -> str | None:
+def _handle_gpn_models(model_name: str, extra: str | None = None) -> str | None:
     """Handle special case for GPN models."""
 
     if extra:

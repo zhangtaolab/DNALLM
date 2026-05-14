@@ -52,16 +52,12 @@ class TaskType(Enum):
     # probability for downstream analysis
     MASK = "mask"  # Mask task, for Masked Language Model
     GENERATION = "generation"  # Generation task, for Causal Language Model
-    BINARY = (
-        "binary_classification"  # Binary classification task with two labels
-    )
+    BINARY = "binary_classification"  # Binary classification task with two labels
     MULTICLASS = "multi_class_classification"  # Multi-class classification
     # task that specific the input belongs to which class (more than two)
     MULTILABEL = "multi_label_classification"  # Multi-label classification
     # task with multiple binary labels
-    REGRESSION = (
-        "regression"  # Regression task which return a score for the input
-    )
+    REGRESSION = "regression"  # Regression task which return a score for the input
     NER = "token_classification"  # Token classification task which is usually
     # for Named Entity Recognition
 
@@ -82,16 +78,11 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern=(
-            "^(embedding|mask|generation|binary|multiclass|multilabel|"
-            "regression|token)$"
-        ),
+        pattern=("^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$"),
     )
     num_labels: int = 2
     label_names: list | None = None
-    threshold: float = (
-        0.5  # For binary classification and multi label classification
-    )
+    threshold: float = 0.5  # For binary classification and multi label classification
 
     def model_post_init(self, __context):
         """Initialize task configuration after model validation.

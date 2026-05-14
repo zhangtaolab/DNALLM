@@ -64,9 +64,7 @@ def log(t, eps=1e-20):
 
 
 def MaybeSyncBatchnorm(is_distributed=None):  # noqa: N802
-    is_distributed = default(
-        is_distributed, dist.is_initialized() and dist.get_world_size() > 1
-    )
+    is_distributed = default(is_distributed, dist.is_initialized() and dist.get_world_size() > 1)
     return nn.SyncBatchNorm if is_distributed else nn.BatchNorm1d
 
 
@@ -80,9 +78,7 @@ def poisson_loss(pred, target):
 def pearson_corr_coef(x, y, dim=1, reduce_dims=(-1,)):
     x_centered = x - x.mean(dim=dim, keepdim=True)
     y_centered = y - y.mean(dim=dim, keepdim=True)
-    return F.cosine_similarity(x_centered, y_centered, dim=dim).mean(
-        dim=reduce_dims
-    )
+    return F.cosine_similarity(x_centered, y_centered, dim=dim).mean(dim=reduce_dims)
 
 
 # relative positional encoding functions
@@ -92,29 +88,21 @@ def get_positional_features_exponential(
     positions, features, seq_len, min_half_life=3.0, dtype=torch.float
 ):
     max_range = math.log(seq_len) / math.log(2.0)
-    half_life = 2 ** torch.linspace(
-        min_half_life, max_range, features, device=positions.device
-    )
+    half_life = 2 ** torch.linspace(min_half_life, max_range, features, device=positions.device)
     half_life = half_life[None, ...]
     positions = positions.abs()[..., None]
     return torch.exp(-math.log(2.0) / half_life * positions)
 
 
-def get_positional_features_central_mask(
-    positions, features, seq_len, dtype=torch.float
-):
-    center_widths = 2 ** torch.arange(
-        1, features + 1, device=positions.device
-    ).to(dtype)
+def get_positional_features_central_mask(positions, features, seq_len, dtype=torch.float):
+    center_widths = 2 ** torch.arange(1, features + 1, device=positions.device).to(dtype)
     center_widths = center_widths - 1
     return (center_widths[None, ...] > positions.abs()[..., None]).to(dtype)
 
 
 def gamma_pdf(x, concentration, rate):
     log_unnormalized_prob = torch.xlogy(concentration - 1.0, x) - rate * x
-    log_normalization = torch.lgamma(
-        concentration
-    ) - concentration * torch.log(rate)
+    log_normalization = torch.lgamma(concentration) - concentration * torch.log(rate)
     return torch.exp(log_unnormalized_prob - log_normalization)
 
 
@@ -133,63 +121,46 @@ def get_positional_features_gamma(
     if not exists(start_mean):
         start_mean = seq_len / features
 
-    mean = torch.linspace(
-        start_mean, seq_len, features, device=positions.device
-    )
+    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)
 
     mean = mean[None, ...]
     concentration = (mean / stddev) ** 2
     rate = mean / stddev**2
 
-    probabilities = gamma_pdf(
-        positions.to(dtype).abs()[..., None], concentration, rate
-    )
+    probabilities = gamma_pdf(positions.to(dtype).abs()[..., None], concentration, rate)
     probabilities = probabilities + eps
     outputs = probabilities / torch.amax(probabilities, dim=-1, keepdim=True)
     return outputs
 
 
-def get_positional_embed(
-    seq_len, feature_size, device, use_tf_gamma, dtype=torch.float
-):
+def get_positional_embed(seq_len, feature_size, device, use_tf_gamma, dtype=torch.float):
     distances = torch.arange(-seq_len + 1, seq_len, device=device)
 
     if use_tf_gamma and seq_len != 1536:
-        raise ValueError(
-            "if using tf gamma, only sequence length of 1536 allowed for now"
-        )
+        raise ValueError("if using tf gamma, only sequence length of 1536 allowed for now")
 
     feature_functions = [
         get_positional_features_exponential,
         get_positional_features_central_mask,
-        (
-            get_positional_features_gamma
-            if not use_tf_gamma
-            else always(TF_GAMMAS.to(device))
-        ),
+        (get_positional_features_gamma if not use_tf_gamma else always(TF_GAMMAS.to(device))),  # type: ignore
     ]
 
     num_components = len(feature_functions) * 2
 
     if (feature_size % num_components) != 0:
         raise ValueError(
-            "feature size is not divisible by "
-            f"number of components ({num_components})"
+            f"feature size is not divisible by number of components ({num_components})"
         )
 
     num_basis_per_class = feature_size // num_components
 
     embeddings = []
     for fn in feature_functions:
-        embeddings.append(
-            fn(distances, num_basis_per_class, seq_len, dtype=dtype)
-        )
+        embeddings.append(fn(distances, num_basis_per_class, seq_len, dtype=dtype))
 
-    embeddings = torch.cat(embeddings, dim=-1)
-    embeddings = torch.cat(
-        (embeddings, torch.sign(distances)[..., None] * embeddings), dim=-1
-    )
-    return embeddings.to(dtype)
+    concatenated = torch.cat(embeddings, dim=-1)  # type: ignore
+    concatenated = torch.cat((concatenated, torch.sign(distances)[..., None] * embeddings), dim=-1)  # type: ignore
+    return concatenated.to(dtype)  # type: ignore
 
 
 def relative_shift(x):
@@ -266,10 +237,7 @@ class TargetLengthCrop(nn.Module):
             return x
 
         if seq_len < target_len:
-            raise ValueError(
-                f"sequence length {seq_len} is "
-                f"less than target length {target_len}"
-            )
+            raise ValueError(f"sequence length {seq_len} is less than target length {target_len}")
 
         trim = (target_len - seq_len) // 2
 
@@ -287,9 +255,7 @@ def ConvBlock(  # noqa: N802
     return nn.Sequential(
         batchnorm_klass(dim),
         GELU(),
-        nn.Conv1d(
-            dim, default(dim_out, dim), kernel_size, padding=kernel_size // 2
-        ),
+        nn.Conv1d(dim, default(dim_out, dim), kernel_size, padding=kernel_size // 2),
     )
 
 
@@ -325,9 +291,7 @@ class Attention(nn.Module):
 
         self.num_rel_pos_features = num_rel_pos_features
 
-        self.to_rel_k = nn.Linear(
-            num_rel_pos_features, dim_key * heads, bias=False
-        )
+        self.to_rel_k = nn.Linear(num_rel_pos_features, dim_key * heads, bias=False)
         self.rel_content_bias = nn.Parameter(torch.randn(1, heads, 1, dim_key))
         self.rel_pos_bias = nn.Parameter(torch.randn(1, heads, 1, dim_key))
 
@@ -353,9 +317,7 @@ class Attention(nn.Module):
 
         q = q * self.scale
 
-        content_logits = einsum(
-            "b h i d, b h j d -> b h i j", q + self.rel_content_bias, k
-        )
+        content_logits = einsum("b h i d, b h j d -> b h i j", q + self.rel_content_bias, k)
 
         positions = get_positional_embed(
             n,
@@ -368,9 +330,7 @@ class Attention(nn.Module):
         rel_k = self.to_rel_k(positions)
 
         rel_k = rearrange(rel_k, "n (h d) -> h n d", h=h)
-        rel_logits = einsum(
-            "b h i d, h j d -> b h i j", q + self.rel_pos_bias, rel_k
-        )
+        rel_logits = einsum("b h i d, h j d -> b h i j", q + self.rel_pos_bias, rel_k)
         rel_logits = relative_shift(rel_logits)
 
         logits = content_logits + rel_logits
@@ -384,7 +344,7 @@ class Attention(nn.Module):
 
 # main class
 class Enformer(PreTrainedModel):
-    config_class = EnformerConfig
+    config_class = EnformerConfig  # type: ignore
     base_model_prefix = "enformer"
 
     @staticmethod
@@ -400,9 +360,7 @@ class Enformer(PreTrainedModel):
         # load gamma positions if needed
         global TF_GAMMAS
         if config.use_tf_gamma:
-            TF_GAMMAS = torch.load(
-                os.path.join(os.path.dirname(__file__), "tf_gammas.pt")
-            )
+            TF_GAMMAS = torch.load(os.path.join(os.path.dirname(__file__), "tf_gammas.pt"))
 
         # create stem
         self.stem = nn.Sequential(
@@ -455,8 +413,7 @@ class Enformer(PreTrainedModel):
                                 dim_value=config.dim // config.heads,
                                 dropout=config.attn_dropout,
                                 pos_dropout=config.pos_dropout,
-                                num_rel_pos_features=config.dim
-                                // config.heads,
+                                num_rel_pos_features=config.dim // config.heads,
                                 use_tf_gamma=use_tf_gamma,
                             ),
                             nn.Dropout(config.dropout_rate),
@@ -517,9 +474,7 @@ class Enformer(PreTrainedModel):
 
         self._heads = nn.ModuleDict(
             map_values(
-                lambda features: nn.Sequential(
-                    nn.Linear(self.dim * 2, features), nn.Softplus()
-                ),
+                lambda features: nn.Sequential(nn.Linear(self.dim * 2, features), nn.Softplus()),
                 kwargs,
             )
         )
@@ -572,9 +527,7 @@ class Enformer(PreTrainedModel):
         if exists(target_length):
             self.set_target_length(target_length)
 
-        trunk_fn = (
-            self.trunk_checkpointed if self.use_checkpointing else self._trunk
-        )
+        trunk_fn = self.trunk_checkpointed if self.use_checkpointing else self._trunk
         x = trunk_fn(x)
 
         if no_batch:
@@ -593,8 +546,7 @@ class Enformer(PreTrainedModel):
         if exists(labels):
             if not exists(head):
                 raise ValueError(
-                    "head must be passed in if one were to "
-                    "calculate loss directly with targets"
+                    "head must be passed in if one were to calculate loss directly with targets"
                 )
 
             if return_corr_coef:
@@ -623,7 +575,7 @@ def from_pretrained(name, use_tf_gamma=None, **kwargs):
 
 
 class EnformerForSequenceClassification(PreTrainedModel):
-    config_class = EnformerConfig
+    config_class = EnformerConfig  # type: ignore
     base_model_prefix = "model"
 
     def __init__(self, config, **kwargs):
@@ -651,11 +603,7 @@ class EnformerForSequenceClassification(PreTrainedModel):
         return_dict: bool | None = None,
         **kwargs,
     ):
-        return_dict = (
-            return_dict
-            if return_dict is not None
-            else self.config.use_return_dict
-        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         outputs = self.model(
             input_ids,
             return_only_embeddings=return_only_embeddings,
@@ -685,12 +633,10 @@ class EnformerForSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()
-                loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1)
-                )
+                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()
+                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
                 loss = loss_fct(logits, labels)
             else:
                 raise NotImplementedError(self.config.problem_type)

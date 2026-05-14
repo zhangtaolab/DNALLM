@@ -40,9 +40,7 @@ def main(config, model, input, output):
 
     if config:
         config_dict = load_config(config)
-        inference_engine = DNAInference(
-            model=None, tokenizer=None, config=config_dict
-        )
+        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
         results = inference_engine.infer()
         if output:
             click.echo(f"Results saved to: {output}")
@@ -51,8 +49,7 @@ def main(config, model, input, output):
     else:
         if not all([model, input]):
             click.echo(
-                "Error: --model and --input are required when "
-                "not using --config",
+                "Error: --model and --input are required when not using --config",
                 err=True,
             )
             sys.exit(1)
@@ -61,9 +58,7 @@ def main(config, model, input, output):
             "model_name_or_path": model,
             "data_path": input,
         }
-        inference_engine = DNAInference(
-            model=None, tokenizer=None, config=config_dict
-        )
+        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
         results = inference_engine.infer()
         if output:
             click.echo(f"Results saved to: {output}")

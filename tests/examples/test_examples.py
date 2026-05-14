@@ -41,9 +41,7 @@ def _strip_magic_lines(source: str) -> str:
     return "\n".join(
         line
         for line in lines
-        if line.strip()
-        and not line.strip().startswith("!")
-        and not line.strip().startswith("%")
+        if line.strip() and not line.strip().startswith("!") and not line.strip().startswith("%")
     )
 
 
@@ -127,8 +125,7 @@ class TestMarimoExamples:
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 is_app_cell = any(
-                    isinstance(d, ast.Attribute) and d.attr == "cell"
-                    for d in node.decorator_list
+                    isinstance(d, ast.Attribute) and d.attr == "cell" for d in node.decorator_list
                 )
                 if is_app_cell and "import " in ast.unparse(node):
                     import_cells.append(ast.unparse(node))
@@ -197,11 +194,7 @@ class TestNotebookExamples:
             if cell["cell_type"] != "code":
                 continue
 
-            source = (
-                "".join(cell["source"])
-                if isinstance(cell["source"], list)
-                else cell["source"]
-            )
+            source = "".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"]
             if not source.strip():
                 continue
 
@@ -218,9 +211,7 @@ class TestNotebookExamples:
                 errors.append(f"Cell {i}: {e}")
 
         if errors:
-            pytest.fail(
-                f"Syntax errors in {nb_file.name}: {', '.join(errors[:3])}"
-            )
+            pytest.fail(f"Syntax errors in {nb_file.name}: {', '.join(errors[:3])}")
 
     @pytest.mark.skipif(not NOTEBOOK_FILES, reason="No notebook files found")
     @pytest.mark.parametrize(
@@ -238,11 +229,7 @@ class TestNotebookExamples:
             if cell["cell_type"] != "code":
                 continue
 
-            source = (
-                "".join(cell["source"])
-                if isinstance(cell["source"], list)
-                else cell["source"]
-            )
+            source = "".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"]
             if _is_magic_or_comment_only(source):
                 continue
 
@@ -269,9 +256,7 @@ class TestNotebookExamples:
                 failed.append(f"{stmt}: {e}")
 
         if failed:
-            pytest.fail(
-                f"Failed imports in {nb_file.name}: {', '.join(failed[:3])}"
-            )
+            pytest.fail(f"Failed imports in {nb_file.name}: {', '.join(failed[:3])}")
 
 
 # ──────────────────────────────────────────────────────────────────────────────

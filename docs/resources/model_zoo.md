@@ -118,9 +118,7 @@ To use any of these models with DNALLM:
 from dnallm import load_model_and_tokenizer
 
 # Load a supported model
-model, tokenizer = load_model_and_tokenizer(
-    "zhangtaolab/plant-dnabert-BPE", source="huggingface"
-)
+model, tokenizer = load_model_and_tokenizer("zhangtaolab/plant-dnabert-BPE", source="huggingface")
 
 # For fine-tuning
 from dnallm.finetune import DNATrainer

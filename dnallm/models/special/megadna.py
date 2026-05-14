@@ -58,9 +58,7 @@ def _handle_megadna_models(
                 ):
                     # 1. Initialize your vocabulary and mappings
                     self.vocab = [pad_token, "A", "T", "C", "G", eos_token]
-                    self.token_to_id = {
-                        tok: idx for idx, tok in enumerate(self.vocab)
-                    }
+                    self.token_to_id = {tok: idx for idx, tok in enumerate(self.vocab)}
                     self.id_to_token = dict(enumerate(self.vocab))
 
                     # 2. Initialize the parent class
@@ -101,9 +99,7 @@ def _handle_megadna_models(
                         save_directory, self.vocab_files_names["vocab_file"]
                     )
 
-                    with open(
-                        vocab_file_path, "w", encoding="utf-8"
-                    ) as writer:
+                    with open(vocab_file_path, "w", encoding="utf-8") as writer:
                         writer.write("\n".join(self.vocab))
 
                     return (vocab_file_path,)
@@ -111,9 +107,7 @@ def _handle_megadna_models(
             try:
                 from ..model import _get_model_path_and_imports
 
-                downloaded_model_path, _ = _get_model_path_and_imports(
-                    model_name, source
-                )
+                downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
                 if m in "megaDNA_updated":
                     full_model_name = "megaDNA_phage_145M.pt"
                 elif m in "megaDNA_variants":
@@ -122,12 +116,8 @@ def _handle_megadna_models(
                     full_model_name = "megaDNA_phage_ecoli_finetuned.pt"
                 else:
                     full_model_name = "megaDNA_phage_145M.pt"
-                downloaded_model_path = os.path.join(
-                    downloaded_model_path, full_model_name
-                )
-                megadna_model = torch.load(
-                    downloaded_model_path, weights_only=False
-                )
+                downloaded_model_path = os.path.join(downloaded_model_path, full_model_name)
+                megadna_model = torch.load(downloaded_model_path, weights_only=False)
                 megadna_tokenizer = DNATokenizer()
                 if head_config is not None:
                     from ..model import DNALLMforSequenceClassification
