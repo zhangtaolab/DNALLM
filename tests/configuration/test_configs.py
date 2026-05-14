@@ -70,9 +70,7 @@ class TestTaskConfig:
 
     def test_multiclass_task_config_custom_labels(self):
         """Test multiclass task configuration with custom labels."""
-        config = TaskConfig(
-            task_type="multiclass", num_labels=3, label_names=["A", "B", "C"]
-        )
+        config = TaskConfig(task_type="multiclass", num_labels=3, label_names=["A", "B", "C"])
 
         assert config.task_type == "multiclass"
         assert config.num_labels == 3
@@ -80,9 +78,7 @@ class TestTaskConfig:
 
     def test_multiclass_task_config_invalid_num_labels(self):
         """Test multiclass task configuration with invalid num_labels."""
-        with pytest.raises(
-            ValidationError, match="num_labels must be at least 2"
-        ):
+        with pytest.raises(ValidationError, match="num_labels must be at least 2"):
             TaskConfig(task_type="multiclass", num_labels=1)
 
     def test_multilabel_task_config_default(self):
@@ -100,9 +96,7 @@ class TestTaskConfig:
 
     def test_multilabel_task_config_custom_labels(self):
         """Test multilabel task configuration with custom labels."""
-        config = TaskConfig(
-            task_type="multilabel", num_labels=2, label_names=["tag1", "tag2"]
-        )
+        config = TaskConfig(task_type="multilabel", num_labels=2, label_names=["tag1", "tag2"])
 
         assert config.task_type == "multilabel"
         assert config.num_labels == 2
@@ -239,9 +233,7 @@ class TestTrainingConfig:
         from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
 
         config = TrainingConfig(
-            callbacks=CallbackConfig(
-                early_stopping=EarlyStoppingConfig(patience=3, threshold=0.01)
-            )
+            callbacks=CallbackConfig(early_stopping=EarlyStoppingConfig(patience=3, threshold=0.01))
         )
         assert config.callbacks.early_stopping.patience == 3
         assert config.callbacks.early_stopping.threshold == 0.01
@@ -252,9 +244,7 @@ class TestTrainingConfig:
 
         with pytest.raises(ValidationError):
             TrainingConfig(
-                callbacks=CallbackConfig(
-                    early_stopping=EarlyStoppingConfig(patience=-1)
-                )
+                callbacks=CallbackConfig(early_stopping=EarlyStoppingConfig(patience=-1))
             )
 
     def test_training_config_max_grad_norm(self):
@@ -341,9 +331,7 @@ class TestBenchmarkInfoConfig:
 
     def test_benchmark_info_config_required_fields(self):
         """Test benchmark info configuration with required fields."""
-        config = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        config = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
 
         assert config.name == "Test Benchmark"
         assert config.description == "Test description"
@@ -545,15 +533,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_minimal(self):
         """Test benchmark configuration with minimal required fields."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
 
         config = BenchmarkConfig(
@@ -572,15 +554,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_with_metrics(self):
         """Test benchmark configuration with metrics."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
         metrics = ["accuracy", "f1", "precision", "recall"]
 
@@ -596,15 +572,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_with_evaluation(self):
         """Test benchmark configuration with custom evaluation settings."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
         evaluation = EvaluationConfig(batch_size=64, device="cuda")
 
@@ -634,9 +604,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -663,9 +631,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -690,9 +656,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -725,9 +689,7 @@ class TestLoadConfig:
             "output": {"path": "/tmp/results", "format": "html"},
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -754,9 +716,7 @@ class TestLoadConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -783,9 +743,7 @@ class TestLoadConfig:
 
     def test_load_config_invalid_yaml(self):
         """Test loading configuration with invalid YAML."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content: [")
             config_path = f.name
 
@@ -799,9 +757,7 @@ class TestLoadConfig:
         """Test loading configuration with invalid task type."""
         config_data = {"task": {"task_type": "invalid_type"}}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -850,14 +806,8 @@ class TestEdgeCases:
 
     def test_benchmark_config_empty_models(self):
         """Test benchmark config with empty models list."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
 
         # Pydantic doesn't validate empty lists by default
@@ -873,9 +823,7 @@ class TestEdgeCases:
 
     def test_benchmark_config_empty_datasets(self):
         """Test benchmark config with empty datasets list."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
         output = OutputConfig()
 

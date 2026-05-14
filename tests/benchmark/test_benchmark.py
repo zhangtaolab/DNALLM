@@ -124,9 +124,7 @@ output:
         assert benchmark.prepared is not None
 
         # Check that the dataset from the config was loaded
-        assert len(benchmark.datasets) == 1, (
-            "Should have loaded one dataset during initialization."
-        )
+        assert len(benchmark.datasets) == 1, "Should have loaded one dataset during initialization."
 
         assert isinstance(benchmark.datasets[0], Dataset)
 
@@ -192,9 +190,7 @@ output:
         benchmark = Benchmark(self.config)
         mock_model = Mock()
         mock_tokenizer = Mock()
-        inference_engine = benchmark.get_inference_engine(
-            mock_model, mock_tokenizer
-        )
+        inference_engine = benchmark.get_inference_engine(mock_model, mock_tokenizer)
         assert isinstance(inference_engine, DNAInference)
         # The get_inference_engine method creates a new DNAInference instance
         # so we need to check that it was called with the right arguments
@@ -256,12 +252,8 @@ output:
             # Return tokenized data for each sequence in the batch
             batch_size = len(sequences) if isinstance(sequences, list) else 1
             return {
-                "input_ids": [
-                    [1, 2, 3, 4, 5, 0, 0, 0] for _ in range(batch_size)
-                ],
-                "attention_mask": [
-                    [1, 1, 1, 1, 1, 0, 0, 0] for _ in range(batch_size)
-                ],
+                "input_ids": [[1, 2, 3, 4, 5, 0, 0, 0] for _ in range(batch_size)],
+                "attention_mask": [[1, 1, 1, 1, 1, 0, 0, 0] for _ in range(batch_size)],
             }
 
         mock_tokenizer.side_effect = mock_tokenizer_call
@@ -308,16 +300,12 @@ output:
             "f1": 0.92,
             "curve": ([0, 1], [0, 1]),
         }
-        benchmark.get_inference_engine = Mock(
-            return_value=mock_inference_engine
-        )
+        benchmark.get_inference_engine = Mock(return_value=mock_inference_engine)
 
         # Debug: Check the dataset structure
         print(f"Number of datasets: {len(benchmark.datasets)}")
         if benchmark.datasets:
-            print(
-                f"First dataset columns: {benchmark.datasets[0].column_names}"
-            )
+            print(f"First dataset columns: {benchmark.datasets[0].column_names}")
             print(f"First dataset labels: {benchmark.datasets[0]['labels']}")
 
         results = benchmark.run(save_scores=True)
@@ -351,9 +339,7 @@ output:
     @patch("dnallm.inference.plot.plot_bars")
     @patch("dnallm.inference.plot.plot_curve")
     @patch("dnallm.inference.benchmark.DNAInference")
-    def test_plot_for_classification(
-        self, mock_dna_inference, mock_plot_curve, mock_plot_bars
-    ):
+    def test_plot_for_classification(self, mock_dna_inference, mock_plot_curve, mock_plot_bars):
         """Test the plotting function for classification tasks."""
         # Mock the DNAInference to avoid model loading issues
         mock_inference_instance = Mock()
@@ -375,12 +361,8 @@ output:
         task_config = self.config["task"]
         # Check if task_config has the expected attributes instead of
         # isinstance check
-        assert hasattr(task_config, "task_type"), (
-            "task_config should have task_type attribute"
-        )
-        assert hasattr(task_config, "num_labels"), (
-            "task_config should have num_labels attribute"
-        )
+        assert hasattr(task_config, "task_type"), "task_config should have task_type attribute"
+        assert hasattr(task_config, "num_labels"), "task_config should have num_labels attribute"
         task_config.task_type = "binary"
         metrics_data = {
             "test_dataset": {
@@ -414,9 +396,7 @@ output:
     @patch("dnallm.inference.plot.plot_bars")
     @patch("dnallm.inference.plot.plot_scatter")
     @patch("dnallm.inference.benchmark.DNAInference")
-    def test_plot_for_regression(
-        self, mock_dna_inference, mock_plot_scatter, mock_plot_bars
-    ):
+    def test_plot_for_regression(self, mock_dna_inference, mock_plot_scatter, mock_plot_bars):
         """Test the plotting function for regression tasks."""
         # Mock the DNAInference to avoid model loading issues
         mock_inference_instance = Mock()
@@ -439,12 +419,8 @@ output:
         task_config = self.config["task"]
         # Check if task_config has the expected attributes instead of
         # isinstance check
-        assert hasattr(task_config, "task_type"), (
-            "task_config should have task_type attribute"
-        )
-        assert hasattr(task_config, "num_labels"), (
-            "task_config should have num_labels attribute"
-        )
+        assert hasattr(task_config, "task_type"), "task_config should have task_type attribute"
+        assert hasattr(task_config, "num_labels"), "task_config should have num_labels attribute"
         task_config.task_type = "regression"
 
         metrics_data = {

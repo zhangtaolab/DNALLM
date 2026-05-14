@@ -11,9 +11,7 @@ try:
     from mcp.client.sse import sse_client
     from mcp.client.session import ClientSession
 except ImportError as e:
-    pytest.skip(
-        f"MCP client modules not available: {e}", allow_module_level=True
-    )
+    pytest.skip(f"MCP client modules not available: {e}", allow_module_level=True)
 
 
 class TestSSEClient:

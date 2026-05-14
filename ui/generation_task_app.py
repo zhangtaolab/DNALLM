@@ -24,10 +24,7 @@ def load_user_model(model_name, model_source, config_path):
     try:
         # load configuration
         if not os.path.exists(config_path):
-            print(
-                f"Warning: Config file {config_path} not found, "
-                f"use void config"
-            )
+            print(f"Warning: Config file {config_path} not found, use void config")
             configs = {"task": {}}
         else:
             configs = load_config(config_path)
@@ -110,9 +107,7 @@ css = """
 
 def main():
     """Main function to launch the app"""
-    parser = argparse.ArgumentParser(
-        description="Launch DNALLM DNA Generation Task Gradio App"
-    )
+    parser = argparse.ArgumentParser(description="Launch DNALLM DNA Generation Task Gradio App")
 
     parser.add_argument(
         "--host",
@@ -202,9 +197,7 @@ def main():
                         n_tokens_slider = gr.Slider(
                             10, 131072, value=1024, step=10, label="Max Tokens"
                         )
-                        n_samples_slider = gr.Slider(
-                            1, 10, value=1, step=1, label="Num Samples"
-                        )
+                        n_samples_slider = gr.Slider(1, 10, value=1, step=1, label="Num Samples")
                     with gr.Row():
                         top_k_num = gr.Number(value=4, label="Top-K")
                         top_p_num = gr.Number(value=0.1, label="Top-P")

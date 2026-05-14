@@ -60,9 +60,7 @@ class TestMCPConfigManager:
             },
             "logging": {
                 "level": "INFO",
-                "format": (
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                ),
+                "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                 "file": "./logs/test.log",
                 "max_size": "10MB",
                 "backup_count": 5,
@@ -111,7 +109,7 @@ class TestMCPConfigManager:
 
         # Create second model config
         model_config2 = model_config.copy()
-        model_config2["model"]["name"] = "test_model2"
+        model_config2["model"]["name"] = "test_model2"  # type: ignore[index]
         model_config2_path = temp_dir / "test_model2_config.yaml"
         with open(model_config2_path, "w") as f:
             yaml.dump(model_config2, f)

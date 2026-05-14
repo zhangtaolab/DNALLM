@@ -52,7 +52,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
     MLP head for sequence classification or regression tasks.
     """
 
-    config_class = AutoConfig
+    config_class = AutoConfig  # type: ignore[assignment]
 
     def __init__(self, config, custom_model=None):
         super().__init__(config)
@@ -63,7 +63,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             self.score = MegaDNAMultiScaleHead(**self.config.head_config)
         elif self.config.head_config.get("head", "").lower().startswith("evo"):
             self.backbone = custom_model
-            self.score = EVOForSeqClsHead(
+            self.score = EVOForSeqClsHead(  # type: ignore[assignment]
                 **self.config.head_config,
                 base_model=custom_model,
             )
@@ -73,19 +73,13 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             self.backbone = LucaGPLMModel(config)
             transformer_output_dim = self.config.hidden_size
             classifier = self._determine_classifier()
-            self.score = classifier(
-                input_dim=transformer_output_dim, **self.config.head_config
-            )
+            self.score = classifier(input_dim=transformer_output_dim, **self.config.head_config)
         else:
             import inspect
 
-            self.backbone = AutoModel.from_config(
-                config, trust_remote_code=True
-            )
+            self.backbone = AutoModel.from_config(config, trust_remote_code=True)
             forward_signature = inspect.signature(self.backbone.forward)
-            self._backbone_supported_args = set(
-                forward_signature.parameters.keys()
-            )
+            self._backbone_supported_args = set(forward_signature.parameters.keys())
             if hasattr(self.backbone.config, "hidden_size"):
                 transformer_output_dim = self.backbone.config.hidden_size
             elif hasattr(self.backbone.config, "d_model"):
@@ -96,9 +90,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                     "Please specify 'input_dim' in head_config."
                 )
             classifier = self._determine_classifier()
-            self.score = classifier(
-                input_dim=transformer_output_dim, **self.config.head_config
-            )
+            self.score = classifier(input_dim=transformer_output_dim, **self.config.head_config)
         self.num_labels = self.config.num_labels
         # determine pooling strategy if not set
         self.pooling_strategy = self._determine_pooling_strategy()
@@ -111,7 +103,9 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         self.post_init()
 
     @classmethod
-    def from_base_model(cls, model_name_or_path: str, config, module=None, quantization_config=None):
+    def from_base_model(
+        cls, model_name_or_path: str, config, module=None, quantization_config=None
+    ):
         """
         Handles weights diffusion when loading a model from
         a pre-trained base model.
@@ -124,15 +118,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         load_kwargs = {"trust_remote_code": True}
         if quantization_config is not None:
             load_kwargs["quantization_config"] = quantization_config
-            load_kwargs["device_map"] = "auto"
+            load_kwargs["device_map"] = "auto"  # type: ignore[assignment]
         if module is not None:
-            base_model = module.from_pretrained(
-                model_name_or_path, **load_kwargs
-            )
+            base_model = module.from_pretrained(model_name_or_path, **load_kwargs)
         else:
-            base_model = AutoModel.from_pretrained(
-                model_name_or_path, **load_kwargs
-            )
+            base_model = AutoModel.from_pretrained(model_name_or_path, **load_kwargs)
         # 3. Assign the loaded weights to our backbone.
         model.backbone.load_state_dict(base_model.state_dict())
 
@@ -166,19 +156,14 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         if hasattr(self.config, "cls_idx"):
             if self.config.cls_idx is not None:
                 return "cls"
-        logger.warning(
-            "Warning: Could not determine model type, "
-            "falling back to 'mean' pooling."
-        )
+        logger.warning("Warning: Could not determine model type, falling back to 'mean' pooling.")
         return "mean"
 
     def _get_sentence_embedding(self, last_hidden_state, attention_mask):
         if self.pooling_strategy == "cls":
             return last_hidden_state[:, 0, :]
         elif self.pooling_strategy == "mean":
-            expanded_mask = attention_mask.unsqueeze(-1).expand(
-                last_hidden_state.size()
-            )
+            expanded_mask = attention_mask.unsqueeze(-1).expand(last_hidden_state.size())
             masked_sum = torch.sum(last_hidden_state * expanded_mask, 1)
             actual_lengths = torch.clamp(expanded_mask.sum(1), min=1e-9)
             return masked_sum / actual_lengths
@@ -190,16 +175,13 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         elif self.pooling_strategy == "last":
             batch_size = last_hidden_state.shape[0]
             sequence_lengths = attention_mask.sum(dim=1) - 1
-            batch_indices = torch.arange(
-                batch_size, device=last_hidden_state.device
-            )
+            batch_indices = torch.arange(batch_size, device=last_hidden_state.device)
             return last_hidden_state[batch_indices, sequence_lengths, :]
         elif self.pooling_strategy == "first":
             return last_hidden_state[:, 0, :]
         else:
             raise ValueError(
-                "Internal error: "
-                f"Unsupported pooling strategy '{self.pooling_strategy}'"
+                f"Internal error: Unsupported pooling strategy '{self.pooling_strategy}'"
             )
 
     def forward(
@@ -217,11 +199,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 pad_token_id = self.backbone.config.pad_token_id
                 attention_mask = (input_ids != pad_token_id).long()
             else:
-                attention_mask = torch.ones_like(input_ids)
+                attention_mask = torch.ones_like(input_ids)  # type: ignore
         if self.config.head_config.get("head", "").lower() == "megadna":
             # convert input_ids to torch.longtensor if not already
             if not isinstance(input_ids, torch.LongTensor):
-                input_ids = input_ids.long()
+                input_ids = input_ids.long()  # type: ignore
             outputs = self.backbone(input_ids, return_value="embedding")
             last_hidden_state = outputs
         elif self.config.head_config.get("head", "").lower().startswith("evo"):
@@ -234,17 +216,13 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             # Keep kwargs in the backbone's forward method
             backbone_kwargs = {
-                k: v
-                for k, v in kwargs.items()
-                if k in self._backbone_supported_args
+                k: v for k, v in kwargs.items() if k in self._backbone_supported_args
             }
             outputs = self.backbone(
                 input_ids=input_ids,
                 **backbone_kwargs,
             )
-            if isinstance(outputs, dict) or hasattr(
-                outputs, "last_hidden_state"
-            ):
+            if isinstance(outputs, dict) or hasattr(outputs, "last_hidden_state"):
                 last_hidden_state = outputs.last_hidden_state
             elif "last_hidden_state" in outputs:
                 last_hidden_state = outputs["last_hidden_state"]
@@ -254,9 +232,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                     last_hidden_state = last_hidden_state[-1]
         # Get sentence embedding if needed
         if self.config.head_config.get("head", "").lower().endswith("mlp"):
-            sentence_embedding = self._get_sentence_embedding(
-                last_hidden_state, attention_mask
-            )
+            sentence_embedding = self._get_sentence_embedding(last_hidden_state, attention_mask)
         else:
             sentence_embedding = last_hidden_state
         logits = self.score(sentence_embedding)
@@ -271,9 +247,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 loss_fct = self.config.head_config["loss_function"]
 
                 if isinstance(loss_fct, str):
-                    loss_fn_kwargs = self.config.head_config.get(
-                        "loss_function_kwargs", {}
-                    )
+                    loss_fn_kwargs = self.config.head_config.get("loss_function_kwargs", {})
                     if loss_fct.lower() == "mse":
                         loss_fct = nn.MSELoss()
                     elif loss_fct.lower() == "crossentropy":
@@ -290,16 +264,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                         # Cosine Similarity Loss
                         loss_fct = nn.CosineEmbeddingLoss(**loss_fn_kwargs)
                     else:
-                        raise ValueError(
-                            f"Unsupported loss function: {loss_fct}"
-                        )
+                        raise ValueError(f"Unsupported loss function: {loss_fct}")
                 elif isinstance(loss_fct, nn.Module):
                     pass
                 else:
-                    raise ValueError(
-                        "Loss function must be a string or "
-                        "an nn.Module instance."
-                    )
+                    raise ValueError("Loss function must be a string or an nn.Module instance.")
             if self.score.task_type == "regression":
                 loss_fct = nn.MSELoss() if loss_fct is None else loss_fct
                 if self.num_labels == 1:
@@ -307,16 +276,10 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.score.task_type in ["binary", "multiclass"]:
-                loss_fct = (
-                    nn.CrossEntropyLoss() if loss_fct is None else loss_fct
-                )
-                loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1)
-                )
+                loss_fct = nn.CrossEntropyLoss() if loss_fct is None else loss_fct
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.score.task_type == "multilabel":
-                loss_fct = (
-                    nn.BCEWithLogitsLoss() if loss_fct is None else loss_fct
-                )
+                loss_fct = nn.BCEWithLogitsLoss() if loss_fct is None else loss_fct
                 loss = loss_fct(logits, labels)
 
         # Expected output format for Trainer
@@ -393,12 +356,12 @@ def download_model(
             # model not found in HuggingFace
             elif "not found" in str(e).lower():
                 reason = "repo is not found."
-                logger.debug(e)
+                logger.debug(e)  # type: ignore
                 break
             # model not exist in ModelScope
             elif "response [404]" in str(e).lower():
                 reason = "repo is not existed."
-                logger.debug(e)
+                logger.debug(e)  # type: ignore
                 break
             else:
                 reason = str(e)
@@ -457,18 +420,14 @@ def _get_model_path_and_imports(
     elif source_lower == "huggingface":
         from huggingface_hub import snapshot_download as hf_snapshot_download
 
-        model_path = download_model(
-            model_name, downloader=hf_snapshot_download, revision=revision
-        )
+        model_path = download_model(model_name, downloader=hf_snapshot_download, revision=revision)
 
     elif source_lower == "modelscope":
         from modelscope.hub.snapshot_download import (
             snapshot_download as ms_snapshot_download,
         )
 
-        model_path = download_model(
-            model_name, downloader=ms_snapshot_download, revision=revision
-        )
+        model_path = download_model(model_name, downloader=ms_snapshot_download, revision=revision)
 
         # Import ModelScope modules
         try:
@@ -492,9 +451,7 @@ def _get_model_path_and_imports(
             "AutoModel": AutoModel,
             "AutoModelForMaskedLM": AutoModelForMaskedLM,
             "AutoModelForCausalLM": AutoModelForCausalLM,
-            "AutoModelForSequenceClassification": (
-                AutoModelForSequenceClassification
-            ),
+            "AutoModelForSequenceClassification": (AutoModelForSequenceClassification),
             "AutoModelForTokenClassification": AutoModelForTokenClassification,
             "AutoTokenizer": AutoTokenizer,
         }
@@ -526,9 +483,7 @@ def _get_model_path_and_imports(
         "AutoModel": AutoModel,
         "AutoModelForMaskedLM": AutoModelForMaskedLM,
         "AutoModelForCausalLM": AutoModelForCausalLM,
-        "AutoModelForSequenceClassification": (
-            AutoModelForSequenceClassification
-        ),
+        "AutoModelForSequenceClassification": (AutoModelForSequenceClassification),
         "AutoModelForTokenClassification": AutoModelForTokenClassification,
         "AutoTokenizer": AutoTokenizer,
     }
@@ -592,9 +547,7 @@ def _load_model_by_task_type(
                     model_name, trust_remote_code=True, add_prefix_space=True
                 )
             else:
-                tokenizer = auto_tokenizer.from_pretrained(
-                    model_name, trust_remote_code=True
-                )
+                tokenizer = auto_tokenizer.from_pretrained(model_name, trust_remote_code=True)
         except Exception:
             logger.warning(
                 "Failed to load tokenizer from pretrained model. "
@@ -618,9 +571,7 @@ def _load_model_by_task_type(
     # Custom model with specific head
     if head_config is not None:
         head_config = head_config.__dict__
-        base_config = modules["AutoConfig"].from_pretrained(
-            model_name, trust_remote_code=True
-        )
+        base_config = modules["AutoConfig"].from_pretrained(model_name, trust_remote_code=True)
         model_config = base_config
         model_config.head_config = head_config
         if hasattr(tokenizer, "cls_token_id"):
@@ -628,20 +579,18 @@ def _load_model_by_task_type(
         if hasattr(tokenizer, "cls_idx"):
             model_config.cls_idx = tokenizer.cls_idx
         model = DNALLMforSequenceClassification.from_base_model(
-            model_name, config=model_config, module=modules["AutoModel"],
+            model_name,
+            config=model_config,
+            module=modules["AutoModel"],
             quantization_config=bnb_config,
         )
         return model, tokenizer
 
     # Model loading based on task type
     if task_type == "mask":
-        model = modules["AutoModelForMaskedLM"].from_pretrained(
-            model_name, **model_load_kwargs
-        )
+        model = modules["AutoModelForMaskedLM"].from_pretrained(model_name, **model_load_kwargs)
     elif task_type == "generation":
-        model = modules["AutoModelForCausalLM"].from_pretrained(
-            model_name, **model_load_kwargs
-        )
+        model = modules["AutoModelForCausalLM"].from_pretrained(model_name, **model_load_kwargs)
     elif task_type in ["binary", "multiclass"]:
         model = modules["AutoModelForSequenceClassification"].from_pretrained(
             model_name,
@@ -697,15 +646,9 @@ def _configure_model_padding(model, tokenizer) -> None:
         tokenizer: The loaded tokenizer
     """
     if model.config.pad_token_id is None:
-        if (
-            hasattr(tokenizer, "pad_token_id")
-            and tokenizer.pad_token_id is not None
-        ):
+        if hasattr(tokenizer, "pad_token_id") and tokenizer.pad_token_id is not None:
             model.config.pad_token_id = tokenizer.pad_token_id
-        elif (
-            hasattr(tokenizer, "pad_token_type_id")
-            and tokenizer.pad_token_type_id is not None
-        ):
+        elif hasattr(tokenizer, "pad_token_type_id") and tokenizer.pad_token_type_id is not None:
             model.config.pad_token_id = tokenizer.pad_token_type_id
         else:
             model.config.pad_token_id = tokenizer.eos_token_id
@@ -739,9 +682,7 @@ def _safe_num_labels(num_labels: int | None, task_type: str) -> int:
         "regression",
         "token",
     ]:
-        raise ValueError(
-            f"num_labels is required for task type '{task_type}' but is None"
-        )
+        raise ValueError(f"num_labels is required for task type '{task_type}' but is None")
 
     # Use default value if num_labels is None for other tasks
     safe_num_labels = num_labels if num_labels is not None else 1
@@ -753,20 +694,17 @@ def _safe_num_labels(num_labels: int | None, task_type: str) -> int:
         )
     elif task_type == "generation" and safe_num_labels != 0:
         logger.warning(
-            f"Generation task does not require num_labels, "
-            f"but got {safe_num_labels}. Setting to 0."
+            f"Generation task does not require num_labels, but got {safe_num_labels}. Setting to 0."
         )
         safe_num_labels = 0
     elif task_type == "mask" and safe_num_labels != 0:
         logger.warning(
-            f"Mask task does not require num_labels, "
-            f"but got {safe_num_labels}. Setting to 0."
+            f"Mask task does not require num_labels, but got {safe_num_labels}. Setting to 0."
         )
         safe_num_labels = 0
     elif task_type == "embedding" and safe_num_labels != 0:
         logger.warning(
-            f"Embedding task does not require num_labels, "
-            f"but got {safe_num_labels}. Setting to 0."
+            f"Embedding task does not require num_labels, but got {safe_num_labels}. Setting to 0."
         )
         safe_num_labels = 0
     if task_type not in [
@@ -839,12 +777,12 @@ def load_model_and_tokenizer(
     safe_num_labels = _safe_num_labels(num_labels, task_type)
 
     # Handle special case for EVO2 models
-    evo2_result = _handle_evo2_models(model_name, source, head_config)
+    evo2_result = _handle_evo2_models(model_name, source, head_config)  # type: ignore
     if evo2_result is not None:
         return evo2_result
 
     # Handle special case for EVO1 models
-    evo1_result = _handle_evo1_models(model_name, source, head_config)
+    evo1_result = _handle_evo1_models(model_name, source, head_config)  # type: ignore
     if evo1_result is not None:
         return evo1_result
 
@@ -852,7 +790,7 @@ def load_model_and_tokenizer(
     _ = _handle_gpn_models(model_name)
 
     # Handle special case for megaDNA models
-    megadna_result = _handle_megadna_models(model_name, source, head_config)
+    megadna_result = _handle_megadna_models(model_name, source, head_config)  # type: ignore
     if megadna_result is not None:
         return megadna_result
 
@@ -895,7 +833,7 @@ def load_model_and_tokenizer(
         extra=model_name if "borzoi" in model_name.lower() else None,
     )
     if borzoi_result is not None:
-        return borzoi_result
+        return borzoi_result  # type: ignore
 
     # TODO: Add more special cases if needed
 
@@ -922,9 +860,7 @@ def load_model_and_tokenizer(
             custom_tokenizer,
             bnb_config,
         ]
-        model, tokenizer = _handle_dnabert2_models(
-            downloaded_model_path, load_args
-        )
+        model, tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
         if model is None or tokenizer is None:
             model, tokenizer = _load_model_by_task_type(*load_args)
         # Process model with custom tokenizer if needed
@@ -986,6 +922,7 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     # Try to use bnb.nn.Linear4bit with proper compute_dtype if available
                     try:
                         import bitsandbytes as bnb
+
                         compute_dtype = getattr(module, "compute_dtype", torch.float16)
                         replacement = bnb.nn.Linear4bit(
                             in_features,
@@ -994,9 +931,9 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                         ).to(device)
                     except Exception:
                         # Fallback to standard nn.Linear in float16
-                        replacement = nn.Linear(
-                            in_features, out_features, dtype=torch.float16
-                        ).to(device)
+                        replacement = nn.Linear(in_features, out_features, dtype=torch.float16).to(  # type: ignore[assignment]
+                            device
+                        )
                     # Copy existing weight data if available
                     with torch.no_grad():
                         if hasattr(module, "weight") and module.weight is not None:
@@ -1034,9 +971,7 @@ def peft_forward_compatiable(model: Any) -> Any:
     original_forward = model.forward
 
     def forward_hf(*args, **kwargs):
-        return original_forward(**{
-            k: v for k, v in kwargs.items() if k in accepted_forward_args
-        })
+        return original_forward(**{k: v for k, v in kwargs.items() if k in accepted_forward_args})
 
     model.forward = forward_hf
     return model
@@ -1053,13 +988,9 @@ def clear_model_cache(source: str = "huggingface"):
     """
     source_lower = source.lower()
     if source_lower == "huggingface":
-        cache_dir = os.path.join(
-            os.path.expanduser("~"), ".cache/huggingface/hub"
-        )
+        cache_dir = os.path.join(os.path.expanduser("~"), ".cache/huggingface/hub")
     elif source_lower == "modelscope":
-        cache_dir = os.path.join(
-            os.path.expanduser("~"), ".cache/modelscope/hub"
-        )
+        cache_dir = os.path.join(os.path.expanduser("~"), ".cache/modelscope/hub")
     else:
         logger.warning(f"Unsupported source: {source}. No action taken.")
         return
@@ -1078,14 +1009,10 @@ def clear_model_cache(source: str = "huggingface"):
             except Exception as e:
                 logger.warning(f"Failed to remove {f}: {e}")
     else:
-        logger.info(
-            f"No cache directory found at {cache_dir}. Nothing to clear."
-        )
+        logger.info(f"No cache directory found at {cache_dir}. Nothing to clear.")
 
 
-def load_preset_model(
-    model_name: str, task_config: TaskConfig
-) -> tuple[Any, Any] | int:
+def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, Any] | int:
     """Load a preset model and tokenizer based on the task configuration.
 
     This function loads models from the preset model registry, which contains
@@ -1116,13 +1043,13 @@ def load_preset_model(
         preset_models = [
             preset
             for model in MODEL_INFO
-            for preset in MODEL_INFO[model].get("preset", [])
+            for preset in MODEL_INFO[model].get("preset", [])  # type: ignore
         ]
     except (KeyError, TypeError):
         preset_models = []
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info["default"]
+        model_name = model_info["default"]  # type: ignore[index]
     elif model_name in preset_models:
         pass
     else:
@@ -1132,9 +1059,7 @@ def load_preset_model(
             "`load_model_and_tokenizer` function."
         )
         return 0
-    return load_model_and_tokenizer(
-        model_name, task_config, source, use_mirror
-    )
+    return load_model_and_tokenizer(model_name, task_config, source, use_mirror)
 
 
 # Backward compatibility: FocalLoss was previously defined inside forward()

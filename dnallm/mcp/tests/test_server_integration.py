@@ -62,9 +62,7 @@ class TestDNALLMMCPServer:
             },
             "logging": {
                 "level": "INFO",
-                "format": (
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                ),
+                "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                 "file": "./logs/test.log",
                 "max_size": "10MB",
                 "backup_count": 5,
@@ -113,7 +111,7 @@ class TestDNALLMMCPServer:
 
         # Create second model config
         model_config2 = model_config.copy()
-        model_config2["model"]["name"] = "test_model2"
+        model_config2["model"]["name"] = "test_model2"  # type: ignore[index]
         model_config2_path = temp_dir / "test_model2_config.yaml"
         with open(model_config2_path, "w") as f:
             yaml.dump(model_config2, f)
@@ -128,9 +126,7 @@ class TestDNALLMMCPServer:
             config_path = self.create_test_configs(temp_path)
 
             # Mock the model loading to avoid actual model loading
-            with patch(
-                "dnallm.mcp.model_manager.load_model_and_tokenizer"
-            ) as mock_load:
+            with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
                 mock_model = Mock()
                 mock_tokenizer = Mock()
                 mock_load.return_value = (mock_model, mock_tokenizer)
@@ -243,9 +239,7 @@ class TestDNALLMMCPServer:
             with open(model_config_path, "w") as f:
                 yaml.dump(model_config, f)
 
-            with patch(
-                "dnallm.mcp.model_manager.load_model_and_tokenizer"
-            ) as mock_load:
+            with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
                 mock_model = Mock()
                 mock_tokenizer = Mock()
                 mock_load.return_value = (mock_model, mock_tokenizer)
@@ -296,7 +290,7 @@ class TestDNALLMMCPServer:
             "tool_timeout_seconds": 30,
         }
         with caplog.at_level(logging.WARNING):
-            validated = MCPServerConfig(**config)
+            validated = MCPServerConfig(**config)  # type: ignore
         assert validated.streamable_http is not None
         assert validated.streamable_http.host == "0.0.0.0"  # noqa: S104
         assert validated.streamable_http.port == 8000
@@ -338,9 +332,7 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": (
-                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                    ),
+                    "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,
@@ -388,9 +380,7 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": (
-                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                    ),
+                    "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,

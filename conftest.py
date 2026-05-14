@@ -65,10 +65,7 @@ def cleanup_multiprocessing():
         active_children = multiprocessing.active_children()
 
         if active_children:
-            print(
-                f"🧹 Cleaning up {len(active_children)} "
-                f"multiprocessing processes..."
-            )
+            print(f"🧹 Cleaning up {len(active_children)} multiprocessing processes...")
 
             # Terminate all processes
             for process in active_children:
@@ -76,10 +73,7 @@ def cleanup_multiprocessing():
                     if process.is_alive():
                         process.terminate()
                 except Exception as e:
-                    print(
-                        f"Warning: Failed to terminate process "
-                        f"{process.pid}: {e}"
-                    )
+                    print(f"Warning: Failed to terminate process {process.pid}: {e}")
 
             # Wait briefly for termination
             time.sleep(0.1)
@@ -90,9 +84,7 @@ def cleanup_multiprocessing():
                     if process.is_alive():
                         process.kill()
                 except Exception as e:
-                    print(
-                        f"Warning: Failed to kill process {process.pid}: {e}"
-                    )
+                    print(f"Warning: Failed to kill process {process.pid}: {e}")
 
     except Exception as e:
         print(f"Warning: Error during multiprocessing cleanup: {e}")

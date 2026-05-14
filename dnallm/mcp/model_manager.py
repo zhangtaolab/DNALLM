@@ -30,9 +30,7 @@ class ModelManager:
         """
         self.config_manager = config_manager
         self.loaded_models: dict[str, DNAInference] = {}
-        self.model_loading_status: dict[
-            str, str
-        ] = {}  # "loading", "loaded", "error"
+        self.model_loading_status: dict[str, str] = {}  # "loading", "loaded", "error"
         self._loading_lock = asyncio.Lock()
 
     async def load_model(self, model_name: str) -> bool:
@@ -54,9 +52,7 @@ class ModelManager:
                     logger.info(f"Model {model_name} is already being loaded")
                     return False
                 elif self.model_loading_status[model_name] == "error":
-                    logger.warning(
-                        f"Model {model_name} previously failed to load"
-                    )
+                    logger.warning(f"Model {model_name} previously failed to load")
                     return False
 
             self.model_loading_status[model_name] = "loading"
@@ -66,19 +62,14 @@ class ModelManager:
                 # Get model configuration
                 model_config = self.config_manager.get_model_config(model_name)
                 if not model_config:
-                    raise ValueError(
-                        f"Configuration not found for model: {model_name}"
-                    )
+                    raise ValueError(f"Configuration not found for model: {model_name}")
 
                 # Display loading progress
                 logger.progress(f"Loading model: {model_name}")
                 logger.info(f"   Model path: {model_config.model.path}")
                 logger.info(f"   Source: {model_config.model.source}")
                 logger.info(f"   Task type: {model_config.task.task_type}")
-                logger.info(
-                    f"   Architecture: "
-                    f"{model_config.model.task_info.architecture}"
-                )
+                logger.info(f"   Architecture: {model_config.model.task_info.architecture}")
                 logger.info("   📥 Downloading/loading model and tokenizer...")
 
                 # Create task config for model loading
@@ -101,9 +92,7 @@ class ModelManager:
                 )
 
                 load_time = time.time() - start_time
-                logger.success(
-                    f"Model and tokenizer loaded in {load_time:.2f} seconds"
-                )
+                logger.success(f"Model and tokenizer loaded in {load_time:.2f} seconds")
 
                 # Create predictor
                 logger.info("   🔧 Creating DNA inference engine...")
@@ -112,16 +101,13 @@ class ModelManager:
                     "inference": model_config.inference,
                 }
 
-                inference_engine = DNAInference(
-                    model, tokenizer, predictor_config
-                )
+                inference_engine = DNAInference(model, tokenizer, predictor_config)
                 self.loaded_models[model_name] = inference_engine
                 self.model_loading_status[model_name] = "loaded"
 
                 total_time = time.time() - start_time
                 logger.success(
-                    f"Successfully loaded model: {model_name} "
-                    f"(total: {total_time:.2f}s)"
+                    f"Successfully loaded model: {model_name} (total: {total_time:.2f}s)"
                 )
                 loguru_logger.info(f"Successfully loaded model: {model_name}")
                 return True
@@ -156,16 +142,12 @@ class ModelManager:
             Dictionary mapping model names to loading success status
         """
         enabled_models = self.config_manager.get_enabled_models()
-        logger.info(
-            f"\n🚀 Starting to load {len(enabled_models)} enabled models:"
-        )
+        logger.info(f"\n🚀 Starting to load {len(enabled_models)} enabled models:")
         for i, model_name in enumerate(enabled_models, 1):
             logger.info(f"   {i}. {model_name}")
         logger.info("")
 
-        logger.info(
-            f"Loading {len(enabled_models)} enabled models: {enabled_models}"
-        )
+        logger.info(f"Loading {len(enabled_models)} enabled models: {enabled_models}")
 
         # Load models concurrently
         tasks = [self.load_model(model_name) for model_name in enabled_models]
@@ -179,14 +161,11 @@ class ModelManager:
                 logger.error(f"Exception loading model {model_name}: {result}")
                 loading_results[model_name] = False
             else:
-                loading_results[model_name] = result
+                loading_results[model_name] = result  # type: ignore[assignment]
 
         successful_loads = sum(loading_results.values())
         logger.info("\n📊 Loading Summary:")
-        logger.info(
-            f"   ✅ Successfully loaded: {successful_loads}/"
-            f"{len(enabled_models)} models"
-        )
+        logger.info(f"   ✅ Successfully loaded: {successful_loads}/{len(enabled_models)} models")
         logger.info(
             f"   ❌ Failed to load: {len(enabled_models) - successful_loads}/"
             f"{len(enabled_models)} models"
@@ -204,10 +183,7 @@ class ModelManager:
                 if not success:
                     logger.failure(f"   {model_name}")
 
-        logger.info(
-            f"Successfully loaded {successful_loads}/{len(enabled_models)} "
-            f"models"
-        )
+        logger.info(f"Successfully loaded {successful_loads}/{len(enabled_models)} models")
 
         return loading_results
 
@@ -265,7 +241,7 @@ class ModelManager:
             result = await loop.run_in_executor(
                 None, inference_engine.infer_seqs, sequence, **kwargs
             )
-            return result
+            return result  # type: ignore
         except Exception as e:
             logger.error(f"Prediction failed for model {model_name}: {e}")
             return None
@@ -294,11 +270,9 @@ class ModelManager:
             result = await loop.run_in_executor(
                 None, inference_engine.infer_seqs, sequences, **kwargs
             )
-            return result
+            return result  # type: ignore
         except Exception as e:
-            logger.error(
-                f"Batch prediction failed for model {model_name}: {e}"
-            )
+            logger.error(f"Batch prediction failed for model {model_name}: {e}")
             return None
 
     async def predict_multi_model(
@@ -314,14 +288,11 @@ class ModelManager:
         Returns:
             Dictionary mapping model names to prediction results
         """
-        logger.info(
-            f"Running multi-model prediction with {len(model_names)} models"
-        )
+        logger.info(f"Running multi-model prediction with {len(model_names)} models")
 
         # Create prediction tasks
         tasks = [
-            self.predict_sequence(model_name, sequence, **kwargs)
-            for model_name in model_names
+            self.predict_sequence(model_name, sequence, **kwargs) for model_name in model_names
         ]
 
         # Run predictions concurrently
@@ -332,13 +303,10 @@ class ModelManager:
         for i, model_name in enumerate(model_names):
             result = results[i]
             if isinstance(result, Exception):
-                logger.error(
-                    f"Exception in multi-model prediction for {model_name}: "
-                    f"{result}"
-                )
+                logger.error(f"Exception in multi-model prediction for {model_name}: {result}")
                 multi_results[model_name] = {"error": str(result)}
             else:
-                multi_results[model_name] = result
+                multi_results[model_name] = result  # type: ignore[assignment]
 
         return multi_results
 
@@ -368,9 +336,7 @@ class ModelManager:
             "tokenizer": model_config.model.task_info.tokenizer,
             "species": model_config.model.task_info.species,
             "task_category": model_config.model.task_info.task_category,
-            "performance_metrics": (
-                model_config.model.task_info.performance_metrics
-            ),
+            "performance_metrics": (model_config.model.task_info.performance_metrics),
             "status": self.get_model_status(model_name),
             "loaded": model_name in self.loaded_models,
         }
@@ -380,9 +346,7 @@ class ModelManager:
                 memory_usage = inference_engine.estimate_memory_usage()
                 info["memory_usage"] = memory_usage
             except Exception as e:
-                logger.warning(
-                    f"Could not estimate memory usage for {model_name}: {e}"
-                )
+                logger.warning(f"Could not estimate memory usage for {model_name}: {e}")
 
         return info
 

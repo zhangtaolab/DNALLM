@@ -10,9 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 class TaskConfig(BaseModel):
     """Task configuration for DNA prediction models."""
 
-    task_type: str = Field(
-        ..., pattern="^(binary|multiclass|multilabel|regression)$"
-    )
+    task_type: str = Field(..., pattern="^(binary|multiclass|multilabel|regression)$")
     num_labels: int = Field(..., ge=1)
     label_names: list[str] = Field(..., min_length=1)
     threshold: float = Field(0.5, ge=0.0, le=1.0)
@@ -92,9 +90,7 @@ class ServerConfig(BaseModel):
     host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
     port: int = Field(8000, ge=1024, le=65535)
     workers: int = Field(1, ge=1, le=16)
-    log_level: str = Field(
-        "INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"
-    )
+    log_level: str = Field("INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     debug: bool = Field(False)
 
 

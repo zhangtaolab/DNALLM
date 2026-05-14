@@ -7,16 +7,12 @@ benchmarking, etc.) so that code examples can be syntax-checked and run
 without downloading multi-GB models or requiring GPUs.
 """
 
-import os
-import sys
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 # --- torch / numpy / pandas stubs ---
 try:
     import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
 except Exception:
     torch = None
 
@@ -30,21 +26,25 @@ try:
 except Exception:
     np = None
 
+
 # --- model / tokenizer mocks ---
 class _MockModelOutput:
     def __init__(self, batch_size=2, seq_len=10, num_labels=2):
         import torch
+
         self.logits = torch.ones(batch_size, seq_len, num_labels) * 0.5
         self.last_hidden_state = torch.ones(batch_size, seq_len, 128)
         self.hidden_states = (torch.ones(batch_size, seq_len, 128),)
         self.loss = torch.tensor(0.5, requires_grad=True)
         self.attentions = None
 
+
 class _MockModel:
     device = "cpu"
 
     def parameters(self):
         import torch
+
         return iter([torch.nn.Parameter(torch.ones(1))])
 
     def to(self, *a, **k):
@@ -62,7 +62,7 @@ class _MockModel:
         raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
     def forward(self, input_ids, attention_mask=None, labels=None, **kwargs):
-        import torch
+
         if hasattr(input_ids, "shape"):
             batch_size = input_ids.shape[0]
             if len(input_ids.shape) >= 2:
@@ -79,7 +79,8 @@ class _MockModel:
 
     def generate(self, input_ids, max_length=512, num_beams=1, early_stopping=False, *a, **k):
         import torch
-        if hasattr(input_ids, 'shape'):
+
+        if hasattr(input_ids, "shape"):
             batch_size = input_ids.shape[0]
         else:
             batch_size = 1
@@ -91,17 +92,23 @@ class _MockModel:
     def merge_and_unload(self, *a, **k):
         return self
 
+
 _mock_model = _MockModel()
+
 
 class _MockTensorDict(dict):
     """Dict that supports .to() like PyTorch tensors."""
+
     def to(self, *a, **k):
         return self
 
+
 _mock_tokenizer = MagicMock()
+
 
 def _mock_tok_fn(sequences, **kwargs):
     import torch
+
     if isinstance(sequences, list):
         n = len(sequences)
     else:
@@ -111,21 +118,25 @@ def _mock_tok_fn(sequences, **kwargs):
         "attention_mask": torch.ones(n, 5, dtype=torch.long),
     })
 
+
 _mock_tokenizer.side_effect = _mock_tok_fn
 _mock_tokenizer.pad.side_effect = _mock_tok_fn
 _mock_tokenizer.__call__ = _mock_tok_fn
-_mock_tokenizer.pad_token = "[PAD]"
-_mock_tokenizer.eos_token = "[EOS]"
-_mock_tokenizer.sep_token = "[SEP]"
+_mock_tokenizer.pad_token = "[PAD]"  # noqa: S105
+_mock_tokenizer.eos_token = "[EOS]"  # noqa: S105
+_mock_tokenizer.sep_token = "[SEP]"  # noqa: S105
 _mock_tokenizer.pad_token_id = 0
 _mock_tokenizer.eos_token_id = 1
 _mock_tokenizer.special_tokens_map = {"pad_token": "[PAD]", "eos_token": "[EOS]"}
 
+
 # --- config mock ---
 class MockNamespace(SimpleNamespace):
     """SimpleNamespace that also supports dict-style access."""
+
     def __getitem__(self, key):
         return getattr(self, key)
+
 
 class _MockConfig(dict):
     def __init__(self, config_path="config.yaml"):
@@ -171,7 +182,9 @@ class _MockConfig(dict):
                         name="test", path="test", source="huggingface", task_type="classification"
                     )
                 ],
-                config_path=config_path if isinstance(config_path, str) else "benchmark_config.yaml",
+                config_path=config_path
+                if isinstance(config_path, str)
+                else "benchmark_config.yaml",
                 evaluation=MockNamespace(metrics=["accuracy", "f1"]),
             ),
             "config_path": config_path if isinstance(config_path, str) else "config.yaml",
@@ -201,6 +214,7 @@ def _mock_load_config(path, *a, **k):
 # --- DNADataset mock factory ---
 class _MockDataset:
     """Mock DNADataset that works with sklearn and common operations."""
+
     def __init__(self):
         self._items = [{"sequence": "ATGCATGCATGC", "label": 0} for _ in range(10)]
         self.train_data = self
@@ -217,6 +231,7 @@ class _MockDataset:
 
     def __getitem__(self, idx):
         import torch
+
         return {
             "sequence": "ATGC",
             "label": 1,
@@ -226,12 +241,16 @@ class _MockDataset:
 
     def __iter__(self):
         import torch
-        return iter([{
-            "sequence": "ATGC",
-            "label": 1,
-            "input_ids": torch.ones(5, dtype=torch.long),
-            "attention_mask": torch.ones(5, dtype=torch.long),
-        } for _ in range(100)])
+
+        return iter([
+            {
+                "sequence": "ATGC",
+                "label": 1,
+                "input_ids": torch.ones(5, dtype=torch.long),
+                "attention_mask": torch.ones(5, dtype=torch.long),
+            }
+            for _ in range(100)
+        ])
 
     def split_data(self, *a, **k):
         return None
@@ -283,7 +302,14 @@ class _MockDataset:
 
     def get_dataloader(self, *a, **k):
         import torch
-        return [{"input_ids": torch.ones(1, 5, dtype=torch.long), "attention_mask": torch.ones(1, 5, dtype=torch.long), "labels": torch.tensor([1])}]
+
+        return [
+            {
+                "input_ids": torch.ones(1, 5, dtype=torch.long),
+                "attention_mask": torch.ones(1, 5, dtype=torch.long),
+                "labels": torch.tensor([1]),
+            }
+        ]
 
 
 def _make_mock_dataset():
@@ -297,8 +323,12 @@ class _MockDNAInference:
         self.model = _mock_model
         self.tokenizer = _mock_tokenizer
         self.pred_config = MockNamespace(
-            batch_size=8, device="cpu", max_length=512,
-            truncation=True, num_workers=0, pin_memory=False,
+            batch_size=8,
+            device="cpu",
+            max_length=512,
+            truncation=True,
+            num_workers=0,
+            pin_memory=False,
         )
 
     def infer(self, sequence=None, sequences=None, file_path=None, evaluate=False, *a, **k):
@@ -318,8 +348,11 @@ class _MockDNAInference:
             return result
         return result
 
-    def batch_infer(self, data, do_pred=True, output_hidden_states=False, output_attentions=False, *a, **k):
+    def batch_infer(
+        self, data, do_pred=True, output_hidden_states=False, output_attentions=False, *a, **k
+    ):
         import torch
+
         # If called with a list of sequences, return predictions directly
         if isinstance(data, list) and data and isinstance(data[0], str):
             return [{"prediction": "positive", "score": 0.85} for _ in data]
@@ -336,7 +369,7 @@ class _MockDNAInference:
         return logits, predictions, embeddings
 
     def generate_dataset(self, sequences, batch_size=8, *a, **k):
-        return sequences, [{"input_ids": [[1,2,3]]} for _ in sequences]
+        return sequences, [{"input_ids": [[1, 2, 3]]} for _ in sequences]
 
     def generate(self, prompts, *a, **k):
         return [
@@ -495,14 +528,16 @@ class _MockDNATrainer:
     def infer(self, data=None, *a, **k):
         import torch
         from types import SimpleNamespace
-        n = len(data) if data is not None and hasattr(data, '__len__') else 10
+
+        n = len(data) if data is not None and hasattr(data, "__len__") else 10
         preds = torch.tensor([[0.1, 0.9]] * n)
         return SimpleNamespace(predictions=preds, label_ids=["1"] * n)
 
     def predict(self, data=None, *a, **k):
         import torch
         from types import SimpleNamespace
-        n = len(data) if data is not None and hasattr(data, '__len__') else 10
+
+        n = len(data) if data is not None and hasattr(data, "__len__") else 10
         preds = torch.tensor([[0.1, 0.9]] * n)
         return SimpleNamespace(predictions=preds, label_ids=["1"] * n)
 
@@ -525,6 +560,7 @@ class _MockCustomMetric:
 # --- MCP client mock (must be defined before patch block) ---
 class _MockMCPClient:
     """Mock DNALLMMCPClient that returns results without connecting."""
+
     def __init__(self, transport="stdio", url=None, command=None, args=None, env=None):
         self.transport = transport
         self.url = url
@@ -550,7 +586,14 @@ class _MockMCPClient:
     def dna_stream_multi_model_predict(self, sequence, model_names=None, stream_progress=True):
         return {"predictions": {"model1": {"prediction": "positive", "score": 0.85}}}
 
-    def dna_mutagenesis(self, sequence=None, sequences=None, mutation_type="single_base_substitution", positions=None, model_name=""):
+    def dna_mutagenesis(
+        self,
+        sequence=None,
+        sequences=None,
+        mutation_type="single_base_substitution",
+        positions=None,
+        model_name="",
+    ):
         return {"mutations": [{"position": 1, "score": 0.5}]}
 
     def dna_interpret(self, sequence, model_name, method="lig", target_class=None, max_length=None):
@@ -578,11 +621,16 @@ class _MockMCPClient:
 # --- torch lr_scheduler mock ---
 try:
     import torch
-    if not hasattr(torch.optim.lr_scheduler, 'get_scheduler'):
-        def _mock_get_scheduler(name, optimizer, num_warmup_steps=0, num_training_steps=0, **kwargs):
+
+    if not hasattr(torch.optim.lr_scheduler, "get_scheduler"):
+
+        def _mock_get_scheduler(
+            name, optimizer, num_warmup_steps=0, num_training_steps=0, **kwargs
+        ):
             return torch.optim.lr_scheduler.LinearLR(optimizer, total_iters=num_training_steps)
+
         torch.optim.lr_scheduler.get_scheduler = _mock_get_scheduler
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
@@ -595,9 +643,10 @@ try:
     # Also expose on inference subpackage for docs that import from there
     try:
         import dnallm.inference as _inf_mod
+
         if not hasattr(_inf_mod, "load_model_and_tokenizer"):
             _inf_mod.load_model_and_tokenizer = lambda *a, **k: (_mock_model, _mock_tokenizer)
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # DNADataset
@@ -607,7 +656,7 @@ try:
         DNADataset.from_huggingface = classmethod(lambda cls, *a, **k: _make_mock_dataset())
         DNADataset.from_modelscope = classmethod(lambda cls, *a, **k: _make_mock_dataset())
         DNADataset.load_local_data = classmethod(lambda cls, *a, **k: _make_mock_dataset())
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # preset datasets
@@ -616,20 +665,23 @@ try:
 
         _orig_show = getattr(_dna_data, "show_preset_dataset", None)
         if _orig_show is not None:
-            _dna_data.show_preset_dataset = lambda *a, **k: print("Available presets: plant-genomic-benchmark")
+            _dna_data.show_preset_dataset = lambda *a, **k: print(
+                "Available presets: plant-genomic-benchmark"
+            )
 
         _orig_load_preset = getattr(_dna_data, "load_preset_dataset", None)
         if _orig_load_preset is not None:
             _dna_data.load_preset_dataset = lambda *a, **k: _make_mock_dataset()
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # CustomMetric mock
     try:
         import dnallm.tasks.metrics as _metrics_mod
+
         if not hasattr(_metrics_mod, "CustomMetric"):
             _metrics_mod.CustomMetric = _MockCustomMetric
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # inference
@@ -645,7 +697,7 @@ try:
         DNAInference.plot_attentions = _MockDNAInference.plot_attentions
         DNAInference.plot_hidden_states = _MockDNAInference.plot_hidden_states
         DNAInference.force_eager_attention = _MockDNAInference.force_eager_attention
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     try:
@@ -656,7 +708,7 @@ try:
         Benchmark.run_without_config = _MockBenchmark.run_without_config
         Benchmark.plot = _MockBenchmark.plot
         Benchmark.evaluate_single_model = _MockBenchmark.evaluate_single_model
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     try:
@@ -667,7 +719,7 @@ try:
         Mutagenesis.evaluate = _MockMutagenesis.evaluate
         Mutagenesis.plot = _MockMutagenesis.plot
         Mutagenesis.get_important_positions = _MockMutagenesis.get_important_positions
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     try:
@@ -677,13 +729,14 @@ try:
         DNAInterpret.interpret = _MockDNAInterpret.interpret
         DNAInterpret.batch_interpret = _MockDNAInterpret.batch_interpret
         DNAInterpret.plot_attributions = _MockDNAInterpret.plot_attributions
-    except Exception:
+    except Exception:  # noqa: S110
         pass
     try:
         import dnallm.inference
-        if not hasattr(dnallm.inference, 'DNAInterpreter'):
+
+        if not hasattr(dnallm.inference, "DNAInterpreter"):
             dnallm.inference.DNAInterpreter = DNAInterpret
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # trainer
@@ -700,7 +753,7 @@ try:
         DNATrainer.save_lora_adapter = _MockDNATrainer.save_lora_adapter
         DNATrainer.infer = _MockDNATrainer.infer
         DNATrainer.predict = _MockDNATrainer.predict
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     # MCP client
@@ -713,7 +766,9 @@ try:
         DNALLMMCPClient.dna_multi_model_predict = _MockMCPClient.dna_multi_model_predict
         DNALLMMCPClient.dna_stream_predict = _MockMCPClient.dna_stream_predict
         DNALLMMCPClient.dna_stream_batch_predict = _MockMCPClient.dna_stream_batch_predict
-        DNALLMMCPClient.dna_stream_multi_model_predict = _MockMCPClient.dna_stream_multi_model_predict
+        DNALLMMCPClient.dna_stream_multi_model_predict = (
+            _MockMCPClient.dna_stream_multi_model_predict
+        )
         DNALLMMCPClient.dna_mutagenesis = _MockMCPClient.dna_mutagenesis
         DNALLMMCPClient.dna_interpret = _MockMCPClient.dna_interpret
         DNALLMMCPClient.list_loaded_models = _MockMCPClient.list_loaded_models
@@ -722,28 +777,28 @@ try:
         DNALLMMCPClient.get_all_available_models = _MockMCPClient.get_all_available_models
         DNALLMMCPClient.health_check = _MockMCPClient.health_check
         DNALLMMCPClient.call = _MockMCPClient.call
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 # --- transformers mocks ---
 try:
     import transformers
 
-    _orig_AutoModel = getattr(transformers, "AutoModel", None)
-    if _orig_AutoModel is not None:
-        _orig_AutoModel.from_pretrained = classmethod(lambda cls, *a, **k: _mock_model)
+    _orig_auto_model = getattr(transformers, "AutoModel", None)
+    if _orig_auto_model is not None:
+        _orig_auto_model.from_pretrained = classmethod(lambda cls, *a, **k: _mock_model)
 
-    _orig_AutoModelSC = getattr(transformers, "AutoModelForSequenceClassification", None)
-    if _orig_AutoModelSC is not None:
-        _orig_AutoModelSC.from_pretrained = classmethod(lambda cls, *a, **k: _mock_model)
+    _orig_auto_model_sc = getattr(transformers, "AutoModelForSequenceClassification", None)
+    if _orig_auto_model_sc is not None:
+        _orig_auto_model_sc.from_pretrained = classmethod(lambda cls, *a, **k: _mock_model)
 
-    _orig_AutoTok = getattr(transformers, "AutoTokenizer", None)
-    if _orig_AutoTok is not None:
-        _orig_AutoTok.from_pretrained = classmethod(lambda cls, *a, **k: _mock_tokenizer)
-except Exception:
+    _orig_auto_tok = getattr(transformers, "AutoTokenizer", None)
+    if _orig_auto_tok is not None:
+        _orig_auto_tok.from_pretrained = classmethod(lambda cls, *a, **k: _mock_tokenizer)
+except Exception:  # noqa: S110
     pass
 
 # --- create temp files for doc examples ---
@@ -770,6 +825,7 @@ try:
         })
 
         _orig_read_csv = pd.read_csv
+
         def _mock_read_csv(filepath_or_buffer, *args, **kwargs):
             if isinstance(filepath_or_buffer, str):
                 if filepath_or_buffer in ("labels.csv", "train_dataset.csv"):
@@ -779,69 +835,82 @@ try:
                 if filepath_or_buffer == "./data/test.csv":
                     return _test_csv_df.copy()
             return _orig_read_csv(filepath_or_buffer, *args, **kwargs)
+
         pd.read_csv = _mock_read_csv
 
         _orig_read_pickle = pd.read_pickle
+
         def _mock_read_pickle(filepath_or_buffer, *args, **kwargs):
             if isinstance(filepath_or_buffer, str) and filepath_or_buffer == "my_dataset.pkl":
                 return _sample_df.copy()
             return _orig_read_pickle(filepath_or_buffer, *args, **kwargs)
+
         pd.read_pickle = _mock_read_pickle
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
 # --- matplotlib mock ---
 try:
     import matplotlib.pyplot as _plt
+
     _plt.show = lambda *a, **k: None
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
 # --- peft mock ---
 try:
     import peft as _peft_mod
+
     if hasattr(_peft_mod, "PeftModel"):
-        _orig_PeftModel = _peft_mod.PeftModel
+        _orig_peft_model = _peft_mod.PeftModel
+
         class _MockPeftModel:
             @classmethod
             def from_pretrained(cls, model, model_id, *a, **k):
                 return model
+
             def merge_and_unload(self, *a, **k):
                 return _mock_model
+
         _peft_mod.PeftModel = _MockPeftModel
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
 # --- nltk mock ---
 try:
     import nltk.translate.bleu_score as _bleu_mod
+
     _bleu_mod.sentence_bleu = lambda *a, **k: 0.5
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
 # --- os.path.exists mock for doc example paths ---
 try:
     import os as _os_mod
+
     _orig_exists = _os_mod.path.exists
+
     def _mock_exists(path):
         if isinstance(path, str) and path in ("path/to/your/dna_sequences.csv",):
             return True
         return _orig_exists(path)
+
     _os_mod.path.exists = _mock_exists
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
 # --- builtins exit mock (prevents subprocess termination) ---
 try:
     import builtins as _builtins_mod
+
     _builtins_mod.exit = lambda *a, **k: None
     _builtins_mod.quit = lambda *a, **k: None
-except Exception:
+except Exception:  # noqa: S110
     pass
 
 
@@ -869,16 +938,23 @@ try:
     sampled_datasets = _make_mock_dataset()
     # Mock optimizer for docs
     import torch as _torch
+
     optimizer = _torch.optim.AdamW(_mock_model.parameters(), lr=2e-5)
     sequence = "ATGCATGCATGC"
     mut_analyzer = _MockMutagenesis()
-    dataloader = [{"input_ids": _torch.ones(1, 5, dtype=_torch.long), "attention_mask": _torch.ones(1, 5, dtype=_torch.long)}]
-except Exception:
+    dataloader = [
+        {
+            "input_ids": _torch.ones(1, 5, dtype=_torch.long),
+            "attention_mask": _torch.ones(1, 5, dtype=_torch.long),
+        }
+    ]
+except Exception:  # noqa: S110
     pass
 
 # --- inject common names into builtins for blocks that omit imports ---
 try:
     import builtins as _builtins
+
     _builtins.load_model_and_tokenizer = lambda *a, **k: (_mock_model, _mock_tokenizer)
     _builtins.load_config = _mock_load_config
     _builtins.DNADataset = _make_mock_dataset()
@@ -889,33 +965,49 @@ try:
     _builtins.DNAInterpret = _MockDNAInterpret
     _builtins.DNAInterpreter = _MockDNAInterpret
     import random as _random
+
     _builtins.random = _random
-    _builtins.reverse_complement = lambda seq: "".join({"A": "T", "T": "A", "G": "C", "C": "G"}.get(c, c) for c in reversed(seq))
+    _builtins.reverse_complement = lambda seq: "".join(
+        {"A": "T", "T": "A", "G": "C", "C": "G"}.get(c, c) for c in reversed(seq)
+    )
     _builtins.apply_random_mutations = lambda seq, rate=0.1: seq
     # typing helpers for doc examples with type annotations
-    from typing import Dict as _Dict, Any as _Any, List as _List, Optional as _Optional, Tuple as _Tuple
-    _builtins.Dict = _Dict
+    from typing import (
+        Any as _Any,
+        Optional as _Optional,
+    )
+
+    _builtins.Dict = dict
     _builtins.Any = _Any
-    _builtins.List = _List
+    _builtins.List = list
     _builtins.Optional = _Optional
-    _builtins.Tuple = _Tuple
+    _builtins.Tuple = tuple
     # other common names used without import
     import math as _math
+
     _builtins.math = _math
-    _builtins.show_preset_dataset = lambda *a, **k: print("Available presets: plant-genomic-benchmark")
+    _builtins.show_preset_dataset = lambda *a, **k: print(
+        "Available presets: plant-genomic-benchmark"
+    )
     _builtins.load_preset_dataset = lambda *a, **k: _make_mock_dataset()
     _builtins.custom_collate_fn = lambda batch: batch
     _builtins.DNALLMMCPClient = _MockMCPClient
+
     # fasta_to_df mock for format_conversion.md
     def _mock_fasta_to_df(path):
         if pd is not None:
-            return pd.DataFrame({"name": ["seq1", "seq2"], "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"]})
+            return pd.DataFrame({
+                "name": ["seq1", "seq2"],
+                "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"],
+            })
         return {"name": ["seq1", "seq2"], "sequence": ["ATGCATGCATGC", "CGTACGTACGTA"]}
+
     _builtins.fasta_to_df = _mock_fasta_to_df
     try:
         import dnallm.datahandling.data as _dna_data_mod
+
         _dna_data_mod.fasta_to_df = _mock_fasta_to_df
-    except Exception:
+    except Exception:  # noqa: S110
         pass
-except Exception:
+except Exception:  # noqa: S110
     pass

@@ -24,6 +24,7 @@ import torch.nn.functional as F
 from transformers import Trainer
 from dnallm import DNATrainer
 
+
 class WeightedCrossEntropyLoss(nn.Module):
     """Weighted cross-entropy loss for imbalanced datasets."""
 
@@ -41,11 +42,10 @@ class WeightedCrossEntropyLoss(nn.Module):
                 label_smoothing=self.label_smoothing,
             )
         else:
-            loss = F.cross_entropy(
-                logits, targets, label_smoothing=self.label_smoothing
-            )
+            loss = F.cross_entropy(logits, targets, label_smoothing=self.label_smoothing)
 
         return loss
+
 
 # Usage in trainer
 class CustomTrainer(Trainer):
@@ -71,6 +71,7 @@ class CustomTrainer(Trainer):
         if return_outputs:
             return loss, outputs
         return loss
+
 
 # Initialize the trainer
 trainer = DNATrainer(model=model, config=configs, datasets=sampled_datasets)
@@ -100,10 +101,9 @@ class FocalLoss(nn.Module):
         else:
             return focal_loss
 
+
 # Usage
-trainer = DNATrainer(
-    model=model, tokenizer=tokenizer, datasets=dataset, config=config
-)
+trainer = DNATrainer(model=model, tokenizer=tokenizer, datasets=dataset, config=config)
 trainer.trainer.criterion = FocalLoss(alpha=1, gamma=2)
 ```
 
@@ -130,19 +130,14 @@ class CustomTrainer:
         )
 
         self.scheduler = self._get_scheduler()
-        self.scaler = (
-            torch.cuda.amp.GradScaler() if config["finetune"].bf16 else None
-        )
+        self.scaler = torch.cuda.amp.GradScaler() if config["finetune"].bf16 else None
 
     def _get_scheduler(self):
         """Get learning rate scheduler."""
         num_training_steps = (
-            len(self.train_dataset)
-            // self.config["finetune"].per_device_train_batch_size
+            len(self.train_dataset) // self.config["finetune"].per_device_train_batch_size
         )
-        num_warmup_steps = int(
-            num_training_steps * self.config["finetune"].warmup_ratio
-        )
+        num_warmup_steps = int(num_training_steps * self.config["finetune"].warmup_ratio)
 
         return torch.optim.lr_scheduler.get_scheduler(
             name=self.config["finetune"].lr_scheduler_type,
@@ -195,9 +190,7 @@ class CustomTrainer:
                 loss.backward()
 
             # Gradient accumulation
-            if (step + 1) % self.config[
-                "finetune"
-            ].gradient_accumulation_steps == 0:
+            if (step + 1) % self.config["finetune"].gradient_accumulation_steps == 0:
                 if self.scaler:
                     self.scaler.unscale_(self.optimizer)
                     torch.nn.utils.clip_grad_norm_(
@@ -231,6 +224,7 @@ class CustomTrainer:
             loss = self.train_epoch(epoch)
             print(f"Epoch {epoch + 1} completed. Average loss: {loss:.4f}")
 
+
 # Usage
 custom_trainer = CustomTrainer(model, tokenizer, dataset, config)
 custom_trainer.train(num_epochs=config["finetune"].num_train_epochs)
@@ -263,15 +257,14 @@ class CosineAnnealingWarmRestarts:
 
         lr = (
             self.eta_min
-            + (self.base_lr - self.eta_min)
-            * (1 + math.cos(math.pi * self.T_cur / self.T_0))
-            / 2
+            + (self.base_lr - self.eta_min) * (1 + math.cos(math.pi * self.T_cur / self.T_0)) / 2
         )
 
         for param_group in self.optimizer.param_groups:
             param_group["lr"] = lr
 
         self.T_cur += 1
+
 
 # Usage
 scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=1000, T_mult=2)
@@ -307,6 +300,7 @@ class OneCycleScheduler:
             param_group["lr"] = lr
 
         self.step_count += 1
+
 
 # Usage
 scheduler = OneCycleScheduler(optimizer, max_lr=1e-3, total_steps=10000)
@@ -344,9 +338,7 @@ class DynamicBatchSampler:
 
         # Sort by length for efficient batching
         self.lengths = [len(item["sequence"]) for item in dataset]
-        self.indices = sorted(
-            range(len(dataset)), key=lambda i: self.lengths[i]
-        )
+        self.indices = sorted(range(len(dataset)), key=lambda i: self.lengths[i])
 
     def __iter__(self):
         batch = []
@@ -370,6 +362,7 @@ class DynamicBatchSampler:
 
         if batch:
             yield batch
+
 
 # Usage
 sampler = DynamicBatchSampler(dataset.train_data, max_tokens_per_batch=4096)
@@ -433,9 +426,7 @@ class CustomCallback:
         avg_loss = total_loss / len(self.eval_dataset)
         accuracy = correct / total
 
-        print(
-            f"Epoch {epoch}, Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}"
-        )
+        print(f"Epoch {epoch}, Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}")
 
         # Early stopping logic
         if avg_loss < self.best_metric:
@@ -451,6 +442,7 @@ class CustomCallback:
 
         return False
 
+
 # Usage
 callback = CustomCallback(model, tokenizer, dataset)
 ```
@@ -463,6 +455,7 @@ Implement comprehensive logging for debugging.
 import logging
 import json
 from datetime import datetime
+
 
 class AdvancedLogger:
     """Advanced logging for fine-tuning experiments."""
@@ -483,7 +476,9 @@ class AdvancedLogger:
 
     def setup_logging(self):
         """Setup logging configuration."""
-        log_file = f"{self.log_dir}/{self.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        log_file = (
+            f"{self.log_dir}/{self.experiment_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        )
 
         logging.basicConfig(
             level=logging.INFO,
@@ -509,15 +504,12 @@ class AdvancedLogger:
     def log_model_info(self, model):
         """Log model architecture information."""
         total_params = sum(p.numel() for p in model.parameters())
-        trainable_params = sum(
-            p.numel() for p in model.parameters() if p.requires_grad
-        )
+        trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
         self.logger.info(f"Total parameters: {total_params:,}")
         self.logger.info(f"Trainable parameters: {trainable_params:,}")
-        self.logger.info(
-            f"Model size: {total_params * 4 / 1024 / 1024:.2f} MB"
-        )
+        self.logger.info(f"Model size: {total_params * 4 / 1024 / 1024:.2f} MB")
+
 
 # Usage
 logger = AdvancedLogger("./logs", "promoter_classification")
@@ -556,9 +548,7 @@ def grid_search_hyperparameters():
 
         # Update configuration
         config["finetune"].learning_rate = config_dict["learning_rate"]
-        config["finetune"].per_device_train_batch_size = config_dict[
-            "batch_size"
-        ]
+        config["finetune"].per_device_train_batch_size = config_dict["batch_size"]
         config["finetune"].weight_decay = config_dict["weight_decay"]
         config["finetune"].warmup_ratio = config_dict["warmup_ratio"]
 
@@ -576,6 +566,7 @@ def grid_search_hyperparameters():
 
     return best_config
 
+
 def train_and_evaluate(config):
     """Train model and return validation score."""
     # Implementation of training and evaluation
@@ -591,6 +582,7 @@ Use Bayesian optimization for more efficient hyperparameter search.
 from skopt import gp_minimize
 from skopt.space import Real, Integer
 
+
 def objective(params):
     """Objective function for Bayesian optimization."""
     lr, batch_size, weight_decay, warmup_ratio = params
@@ -605,6 +597,7 @@ def objective(params):
     score = train_and_evaluate(config)
     return score
 
+
 def bayesian_optimization():
     """Bayesian optimization for hyperparameters."""
 
@@ -617,9 +610,7 @@ def bayesian_optimization():
     ]
 
     # Run optimization
-    result = gp_minimize(
-        objective, space, n_calls=20, random_state=42, n_initial_points=5
-    )
+    result = gp_minimize(objective, space, n_calls=20, random_state=42, n_initial_points=5)
 
     print(f"Best parameters: {result.x}")
     print(f"Best score: {result.fun}")

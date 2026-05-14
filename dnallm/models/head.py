@@ -60,16 +60,14 @@ class BasicMLPHead(nn.Module):
         activation_layer = activations.get(activation_fn.lower())
         if activation_layer is None:
             raise ValueError(f"Unsupported activation_fn: {activation_fn}")
-        layers = []
+        layers: list[tuple[str, nn.Module]] = []
         current_dim = input_dim
         for i, h_dim in enumerate(hidden_dims):
             layers.append((f"linear_{i}", nn.Linear(current_dim, h_dim)))
             if use_normalization:
                 layers.append((
                     f"norm_{i}",
-                    nn.LayerNorm(h_dim)
-                    if norm_type == "layernorm"
-                    else nn.BatchNorm1d(h_dim),
+                    nn.LayerNorm(h_dim) if norm_type == "layernorm" else nn.BatchNorm1d(h_dim),
                 ))
             layers.append((f"activation_{i}", activation_layer))
             layers.append((f"dropout_{i}", nn.Dropout(p=dropout)))
@@ -132,9 +130,7 @@ class BasicCNNHead(nn.Module):
 
         # Define multiple parallel 1D convolutional layers
         self.convs = nn.ModuleList([
-            nn.Conv1d(
-                in_channels=input_dim, out_channels=num_filters, kernel_size=k
-            )
+            nn.Conv1d(in_channels=input_dim, out_channels=num_filters, kernel_size=k)
             for k in kernel_sizes
         ])
 
@@ -157,9 +153,9 @@ class BasicCNNHead(nn.Module):
         for conv in self.convs:
             conv_out = nn.functional.relu(conv(x))
             # Apply max pooling to reduce the sequence dimension to 1
-            pooled_out = nn.functional.max_pool1d(
-                conv_out, kernel_size=conv_out.shape[2]
-            ).squeeze(2)
+            pooled_out = nn.functional.max_pool1d(conv_out, kernel_size=conv_out.shape[2]).squeeze(
+                2
+            )
             conv_outputs.append(pooled_out)
 
         # Concatenate all convolution outputs
@@ -315,9 +311,7 @@ class BasicUNet1DHead(nn.Module):
         in_c = out_c
         out_c //= 2
         for _ in range(num_layers):
-            self.ups.append(
-                nn.ConvTranspose1d(in_c, out_c, kernel_size=2, stride=2)
-            )
+            self.ups.append(nn.ConvTranspose1d(in_c, out_c, kernel_size=2, stride=2))
             self.ups.append(DoubleConv(in_c, out_c))
             in_c = out_c
             out_c //= 2
@@ -394,14 +388,16 @@ class MegaDNAMultiScaleHead(nn.Module):
 
     def __init__(
         self,
-        embedding_dims: list | None = None,
+        embedding_dims: list[int] | None = None,
         num_classes: int = 2,
         task_type: str = "binary",
-        hidden_dims: list | None = None,
+        hidden_dims: list[int] | None = None,
         dropout: float = 0.2,
         **kwargs: Any,
     ):
         super().__init__()
+        if embedding_dims is None:
+            embedding_dims = [512, 256, 128]
         self.embedding_dims = embedding_dims
         self.num_classes = num_classes
         self.task_type = task_type
@@ -418,7 +414,7 @@ class MegaDNAMultiScaleHead(nn.Module):
         concatenated_dim = sum(embedding_dims)
 
         # --- Create MLP layers ---
-        mlp_layers = []
+        mlp_layers: list[tuple[str, nn.Module]] = []
         current_dim = concatenated_dim
         for i, h_dim in enumerate(hidden_dims):
             mlp_layers.append((f"linear_{i}", nn.Linear(current_dim, h_dim)))
@@ -439,8 +435,7 @@ class MegaDNAMultiScaleHead(nn.Module):
 
         if len(embedding_list) != 3:
             raise ValueError(
-                "Expected input list to contain 3 embeddings, "
-                f"but got {len(embedding_list)}."
+                f"Expected input list to contain 3 embeddings, but got {len(embedding_list)}."
             )
 
         # 1. Average pooling on the first scale's embedding
@@ -484,9 +479,7 @@ class MegaDNAMultiScaleHead(nn.Module):
         #     pooled_emb3 = pooled_emb3.repeat(pooled_emb1.shape[0], 1)
 
         # 4. Concatenate the three pooled vectors
-        concatenated_vector = torch.cat(
-            [pooled_emb1, pooled_emb2, pooled_emb3], dim=1
-        )
+        concatenated_vector = torch.cat([pooled_emb1, pooled_emb2, pooled_emb3], dim=1)
 
         # 5. Pass through MLP and output layer to get logits
         hidden_output = self.mlp(concatenated_vector)
@@ -514,7 +507,7 @@ class EVOForSeqClsHead(nn.Module):
 
     def __init__(
         self,
-        base_model: any,
+        base_model: Any,
         num_classes: int = 2,
         task_type: str = "binary",
         target_layer: str | list[str] | None = None,
@@ -528,7 +521,7 @@ class EVOForSeqClsHead(nn.Module):
         self.pooling_method = pooling_method
 
         if target_layer == "all" or target_layer is None:
-            self.target_layers = []
+            self.target_layers: list[str] = []
             for name, _ in base_model.model.named_parameters():
                 if name.startswith("blocks"):
                     layer = "blocks." + name.split(".")[1]
@@ -559,7 +552,7 @@ class EVOForSeqClsHead(nn.Module):
 
     def forward(
         self,
-        embeddings: tuple,
+        embeddings: dict[str, torch.Tensor],
         attention_mask: torch.Tensor | None = None,
         **kwargs,
     ):
@@ -576,12 +569,7 @@ class EVOForSeqClsHead(nn.Module):
 
         elif self.pooling_method == "mean":
             if attention_mask is not None:
-                mask_expanded = (
-                    attention_mask
-                    .unsqueeze(-1)
-                    .expand(sequence_output.size())
-                    .float()
-                )
+                mask_expanded = attention_mask.unsqueeze(-1).expand(sequence_output.size()).float()
                 sum_embeddings = torch.sum(sequence_output * mask_expanded, 1)
                 sum_mask = torch.clamp(mask_expanded.sum(1), min=1e-9)
                 pooled_output = sum_embeddings / sum_mask
@@ -592,9 +580,7 @@ class EVOForSeqClsHead(nn.Module):
             pooled_output, _ = torch.max(sequence_output, dim=1)
 
         else:
-            raise ValueError(
-                f"Unsupported pooling method: {self.pooling_method}"
-            )
+            raise ValueError(f"Unsupported pooling method: {self.pooling_method}")
 
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)

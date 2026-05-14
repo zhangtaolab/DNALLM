@@ -13,13 +13,9 @@ class HeadConfig(BaseModel):
     )
     frozen: bool = Field(
         default=False,
-        description=(
-            "Whether to freeze the model except the head during training."
-        ),
+        description=("Whether to freeze the model except the head during training."),
     )
-    task_type: str = Field(
-        default="binary", description="Task type (default is binary)"
-    )
+    task_type: str = Field(default="binary", description="Task type (default is binary)")
     hidden_dims: list[int] | None = Field(
         default=None,
         description=(
@@ -41,8 +37,7 @@ class HeadConfig(BaseModel):
     norm_type: str = Field(
         default="layernorm",
         pattern="^(layernorm|batchnorm)$",
-        description="Type of normalization to use: "
-        "'layernorm' or 'batchnorm'.",
+        description="Type of normalization to use: 'layernorm' or 'batchnorm'.",
     )
     num_filters: int = Field(
         default=128,
@@ -59,21 +54,13 @@ class HeadConfig(BaseModel):
             "layers are used."
         ),
     )
-    hidden_size: int = Field(
-        default=256, description="Hidden size for RNN heads."
-    )
-    num_layers: int = Field(
-        default=2, description="Number of layers for RNN heads."
-    )
-    bidirectional: bool = Field(
-        default=True, description="Whether to use bidirectional RNNs."
-    )
+    hidden_size: int = Field(default=256, description="Hidden size for RNN heads.")
+    num_layers: int = Field(default=2, description="Number of layers for RNN heads.")
+    bidirectional: bool = Field(default=True, description="Whether to use bidirectional RNNs.")
     initial_filters: int | None = Field(
         default=None, description="Initial number of filters for U-Net."
     )
-    dropout: float = Field(
-        default=0.1, description="Dropout probability for the head."
-    )
+    dropout: float = Field(default=0.1, description="Dropout probability for the head.")
     pooling_strategy: str | None = Field(
         default=None,
         description=(
@@ -83,9 +70,7 @@ class HeadConfig(BaseModel):
     )
     embedding_dims: list[int] | None = Field(
         default=None,
-        description=(
-            "List of embedding dimensions for model with multi-scale features."
-        ),
+        description=("List of embedding dimensions for model with multi-scale features."),
     )
     custom_head: Any | None = (
         Field(
@@ -105,9 +90,7 @@ class HeadConfig(BaseModel):
     )
     loss_fn_kwargs: dict | None = Field(
         default=None,
-        description=(
-            "Additional keyword arguments for the custom loss function."
-        ),
+        description=("Additional keyword arguments for the custom loss function."),
     )
 
 
@@ -116,16 +99,11 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern="^(embedding|mask|generation|binary|multiclass|"
-        "multilabel|regression|token)$",
+        pattern="^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$",
     )
-    num_labels: int | None = Field(
-        default=2, description="Number of labels (default 2)"
-    )
+    num_labels: int | None = Field(default=2, description="Number of labels (default 2)")
     label_names: list[str] | None = None
-    threshold: float = Field(
-        default=0.5, description="Threshold for binary/multilabel tasks"
-    )
+    threshold: float = Field(default=0.5, description="Threshold for binary/multilabel tasks")
     mlm_probability: float | None = Field(
         default=0.15, description="Masking probability for MLM tasks"
     )
@@ -142,31 +120,15 @@ class TaskConfig(BaseModel):
 
         elif self.task_type == "multiclass":
             if not self.num_labels or self.num_labels < 2:
-                raise ValueError(
-                    "num_labels must be at least 2 for multiclass "
-                    "classification"
-                )
-            if (
-                not self.label_names
-                or len(self.label_names) != self.num_labels
-            ):
-                self.label_names = [
-                    f"class_{i}" for i in range(self.num_labels)
-                ]
+                raise ValueError("num_labels must be at least 2 for multiclass classification")
+            if not self.label_names or len(self.label_names) != self.num_labels:
+                self.label_names = [f"class_{i}" for i in range(self.num_labels)]
 
         elif self.task_type == "multilabel":
             if not self.num_labels or self.num_labels < 2:
-                raise ValueError(
-                    "num_labels must be at least 2 for multilabel "
-                    "classification"
-                )
-            if (
-                not self.label_names
-                or len(self.label_names) != self.num_labels
-            ):
-                self.label_names = [
-                    f"label_{i}" for i in range(self.num_labels)
-                ]
+                raise ValueError("num_labels must be at least 2 for multilabel classification")
+            if not self.label_names or len(self.label_names) != self.num_labels:
+                self.label_names = [f"label_{i}" for i in range(self.num_labels)]
 
         elif self.task_type == "regression":
             self.num_labels = 1
@@ -355,9 +317,7 @@ class TrainingConfig(BaseModel):
         valid = {"tensorboard", "wandb", "none", "all"}
         invalid = set(v) - valid
         if invalid:
-            raise ValueError(
-                f"Invalid report_to values: {invalid}. Valid: {valid}"
-            )
+            raise ValueError(f"Invalid report_to values: {invalid}. Valid: {valid}")
         if "none" in v and len(v) > 1:
             raise ValueError("'none' cannot be combined with other trackers")
         if "all" in v and len(v) > 1:
@@ -374,27 +334,21 @@ class LoraConfig(BaseModel):
     """
 
     r: int = Field(default=8, description="LoRA attention dimension (rank).")
-    lora_alpha: int = Field(
-        default=16, description="The alpha parameter for LoRA scaling."
-    )
-    target_modules: list[str] | None = Field(
+    lora_alpha: int = Field(default=16, description="The alpha parameter for LoRA scaling.")
+    target_modules: list[str] | None = Field(  # type: ignore
         default=None,
         description=(
             "The names of the modules to apply LoRA to.",
             "E.g., ['query', 'value'] or ['q_proj', 'v_proj'].",
         ),
     )
-    lora_dropout: float = Field(
-        default=0.1, description="The dropout probability for LoRA layers."
-    )
+    lora_dropout: float = Field(default=0.1, description="The dropout probability for LoRA layers.")
     bias: str = Field(
         default="none",
         pattern="^(none|all|lora_only)$",
         description="Bias type for LoRA. Can be 'none', 'all' or 'lora_only'.",
     )
-    lora_bias: bool = Field(
-        default=False, description="Whether to use bias in LoRA layers."
-    )
+    lora_bias: bool = Field(default=False, description="Whether to use bias in LoRA layers.")
     inference_mode: bool = Field(
         default=False,
         description="Whether to set the model in inference mode.",
@@ -429,13 +383,10 @@ class BenchmarkInfoConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Configuration for a single model to be benchmarked."""
 
-    name: str = Field(
-        ..., description="A unique name for the model in the benchmark."
-    )
+    name: str = Field(..., description="A unique name for the model in the benchmark.")
     path: str = Field(
         ...,
-        description="Path to the model, can be a local path or a Hugging "
-        "Face model identifier.",
+        description="Path to the model, can be a local path or a Hugging Face model identifier.",
     )
     lora_adapter_path: str | None = Field(
         default=None,
@@ -452,13 +403,10 @@ class DatasetConfig(BaseModel):
     """Configuration for a single dataset used in the benchmark."""
 
     name: str = Field(..., description="A unique name for the dataset.")
-    path: str = Field(
-        ..., description="Path to the dataset file (e.g., .csv, .json)."
-    )
+    path: str = Field(..., description="Path to the dataset file (e.g., .csv, .json).")
     task: str = Field(
         ...,
-        description="The primary task associated with this dataset "
-        "(e.g., binary_classification).",
+        description="The primary task associated with this dataset (e.g., binary_classification).",
     )
     format: str | None = "csv"
     text_column: str = "sequence"
@@ -517,15 +465,11 @@ class BenchmarkConfig(BaseModel):
         ...,
         description="General metadata and information about the benchmark.",
     )
-    models: list[ModelConfig] = Field(
-        ..., description="A list of models to be evaluated."
-    )
+    models: list[ModelConfig] = Field(..., description="A list of models to be evaluated.")
     datasets: list[DatasetConfig] = Field(
         ..., description="A list of datasets to run the benchmark on."
     )
-    metrics: list[str] | None = Field(
-        None, description="A list of evaluation metrics to compute."
-    )
+    metrics: list[str] | None = Field(None, description="A list of evaluation metrics to compute.")
     evaluation: EvaluationConfig = Field(
         default_factory=EvaluationConfig,
         description="Configuration for the evaluation phase.",

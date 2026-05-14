@@ -35,9 +35,7 @@ class FocalLoss(nn.Module):
         self.gamma: float = gamma
         self.reduction: str = reduction
 
-    def forward(
-        self, inputs: torch.Tensor, targets: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Compute focal loss between inputs and targets.
 
         Args:
@@ -51,9 +49,7 @@ class FocalLoss(nn.Module):
             inputs, targets, reduction="none"
         )
         pt: torch.Tensor = torch.exp(-bce_loss)
-        focal_loss: torch.Tensor = (
-            self.alpha * (1 - pt) ** self.gamma * bce_loss
-        )
+        focal_loss: torch.Tensor = self.alpha * (1 - pt) ** self.gamma * bce_loss
         if self.reduction == "mean":
             return focal_loss.mean()
         elif self.reduction == "sum":

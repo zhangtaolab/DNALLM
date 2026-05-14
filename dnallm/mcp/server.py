@@ -146,9 +146,7 @@ class DNALLMMCPServer:
         config_dir = config_path_obj.parent
         config_filename = config_path_obj.name
         # Initialize core components
-        self.config_manager = MCPConfigManager(
-            str(config_dir), config_filename
-        )
+        self.config_manager = MCPConfigManager(str(config_dir), config_filename)
         self.model_manager = ModelManager(self.config_manager)
 
         # FastMCP application instances
@@ -250,15 +248,23 @@ class DNALLMMCPServer:
             raise RuntimeError("FastMCP app not initialized")
 
         # Register basic prediction tools (wrapped with timeout)
-        self.app.tool()(self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict"))
+        self.app.tool()(
+            self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict")
+        )
         self.app.tool()(self._with_timeout_wrapper(self._dna_batch_predict, "dna_batch_predict"))
-        self.app.tool()(self._with_timeout_wrapper(self._dna_multi_model_predict, "dna_multi_model_predict"))
+        self.app.tool()(
+            self._with_timeout_wrapper(self._dna_multi_model_predict, "dna_multi_model_predict")
+        )
 
         # Register model management tools (wrapped with timeout)
         self.app.tool()(self._with_timeout_wrapper(self._list_loaded_models, "list_loaded_models"))
         self.app.tool()(self._with_timeout_wrapper(self._get_model_info, "get_model_info"))
-        self.app.tool()(self._with_timeout_wrapper(self._list_models_by_task_type, "list_models_by_task_type"))
-        self.app.tool()(self._with_timeout_wrapper(self._get_all_available_models, "get_all_available_models"))
+        self.app.tool()(
+            self._with_timeout_wrapper(self._list_models_by_task_type, "list_models_by_task_type")
+        )
+        self.app.tool()(
+            self._with_timeout_wrapper(self._get_all_available_models, "get_all_available_models")
+        )
 
         # Register monitoring and streaming tools
         self.app.tool()(self._with_timeout_wrapper(self._health_check, "health_check"))
@@ -288,6 +294,7 @@ class DNALLMMCPServer:
         Returns:
             Wrapped async function with timeout and logging
         """
+
         async def wrapper(*args, **kwargs):
             start = time.perf_counter()
             try:
@@ -318,19 +325,17 @@ class DNALLMMCPServer:
                     "content": [
                         {
                             "type": "text",
-                            "text": (
-                                f"Timeout after {self._tool_timeout_seconds}s"
-                            ),
+                            "text": (f"Timeout after {self._tool_timeout_seconds}s"),
                         }
                     ],
                     "error_type": "timeout",
                     "timeout_seconds": self._tool_timeout_seconds,
                     "tool_name": tool_name,
                     "suggestion": (
-                        "Try with fewer positions, smaller sequence, or "
-                        "increase timeout in config"
+                        "Try with fewer positions, smaller sequence, or increase timeout in config"
                     ),
                 }
+
         # Preserve the original function's signature for FastMCP
         functools.update_wrapper(wrapper, tool_func)
         return wrapper
@@ -373,7 +378,7 @@ class DNALLMMCPServer:
             if request_id is not None:
                 log_entry["request_id"] = request_id
             if duration_ms is not None:
-                log_entry["duration_ms"] = round(duration_ms, 2)
+                log_entry["duration_ms"] = round(duration_ms, 2)  # type: ignore[assignment]
             if status is not None:
                 log_entry["status"] = status
             log_entry.update(extra)
@@ -388,9 +393,7 @@ class DNALLMMCPServer:
                 parts.append(f"[status={status}]")
             logger.log(loguru_level, " ".join(parts))
 
-    async def _dna_sequence_predict(
-        self, sequence: str, model_name: str
-    ) -> dict[str, Any]:
+    async def _dna_sequence_predict(self, sequence: str, model_name: str) -> dict[str, Any]:
         """Predict DNA sequence using a specific model.
 
         This tool performs single DNA sequence prediction using a specified
@@ -422,17 +425,12 @@ class DNALLMMCPServer:
         """
         try:
             # Perform prediction through model manager
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
+            result = await self.model_manager.predict_sequence(model_name, sequence)
 
             # Check if prediction was successful
             if result is None:
                 return {
-                    "error": (
-                        f"Model {model_name} not available or prediction "
-                        "failed"
-                    ),
+                    "error": (f"Model {model_name} not available or prediction failed"),
                     "isError": True,
                 }
 
@@ -451,9 +449,7 @@ class DNALLMMCPServer:
                 "isError": True,
             }
 
-    async def _dna_batch_predict(
-        self, sequences: list[str], model_name: str
-    ) -> dict[str, Any]:
+    async def _dna_batch_predict(self, sequences: list[str], model_name: str) -> dict[str, Any]:
         """Predict multiple DNA sequences using a specific model.
 
         This tool performs batch prediction on multiple DNA sequences using
@@ -489,15 +485,10 @@ class DNALLMMCPServer:
             acceleration.
         """
         try:
-            result = await self.model_manager.predict_batch(
-                model_name, sequences
-            )
+            result = await self.model_manager.predict_batch(model_name, sequences)
             if result is None:
                 return {
-                    "error": (
-                        f"Model {model_name} not available or prediction "
-                        "failed"
-                    ),
+                    "error": (f"Model {model_name} not available or prediction failed"),
                     "isError": True,
                 }
 
@@ -573,9 +564,7 @@ class DNALLMMCPServer:
                 }
 
             # Perform multi-model prediction through model manager
-            result = await self.model_manager.predict_multi_model(
-                model_names, sequence
-            )
+            result = await self.model_manager.predict_multi_model(model_names, sequence)
 
             # Return successful results in MCP format
             return {
@@ -650,9 +639,7 @@ class DNALLMMCPServer:
                 "isError": True,
             }
 
-    async def _list_models_by_task_type(
-        self, task_type: str
-    ) -> dict[str, Any]:
+    async def _list_models_by_task_type(self, task_type: str) -> dict[str, Any]:
         """List all available models filtered by task type."""
         try:
             all_models = self.model_manager.get_all_models_info()
@@ -713,15 +700,9 @@ class DNALLMMCPServer:
             health_status = {
                 "status": "healthy",
                 "loaded_models": len(loaded_models),
-                "total_configured_models": len(
-                    self.config_manager.get_enabled_models()
-                ),
-                "server_name": (
-                    server_config.mcp.name if server_config else "Unknown"
-                ),
-                "server_version": (
-                    server_config.mcp.version if server_config else "Unknown"
-                ),
+                "total_configured_models": len(self.config_manager.get_enabled_models()),
+                "server_name": (server_config.mcp.name if server_config else "Unknown"),
+                "server_version": (server_config.mcp.version if server_config else "Unknown"),
             }
 
             return {
@@ -794,7 +775,9 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(self._tool_timeout_seconds):
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
                 if stream_progress and context:
                     # Send initial progress update
                     await context.report_progress(
@@ -803,23 +786,15 @@ class DNALLMMCPServer:
 
                 # Send progress update for model loading
                 if stream_progress and context:
-                    await context.report_progress(
-                        25, 100, "Loading model and tokenizer..."
-                    )
+                    await context.report_progress(25, 100, "Loading model and tokenizer...")
 
                 # Perform prediction
-                result = await self.model_manager.predict_sequence(
-                    model_name, sequence
-                )
+                result = await self.model_manager.predict_sequence(model_name, sequence)
 
                 if result is None:
-                    error_msg = (
-                        f"Model {model_name} not available or prediction failed"
-                    )
+                    error_msg = f"Model {model_name} not available or prediction failed"
                     if stream_progress and context:
-                        await context.report_progress(
-                            100, 100, f"Error: {error_msg}"
-                        )
+                        await context.report_progress(100, 100, f"Error: {error_msg}")
                     duration_ms = (time.perf_counter() - start) * 1000
                     self._structured_log(
                         "error",
@@ -832,15 +807,11 @@ class DNALLMMCPServer:
 
                 # Send progress update for prediction completion
                 if stream_progress and context:
-                    await context.report_progress(
-                        75, 100, "Processing prediction results..."
-                    )
+                    await context.report_progress(75, 100, "Processing prediction results...")
 
                 # Send final result
                 if stream_progress and context:
-                    await context.report_progress(
-                        100, 100, "Prediction completed successfully"
-                    )
+                    await context.report_progress(100, 100, "Prediction completed successfully")
 
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
@@ -867,9 +838,7 @@ class DNALLMMCPServer:
                 status="error",
             )
             if stream_progress and context:
-                await context.report_progress(
-                    100, 100, "Error: Timeout - prediction took too long"
-                )
+                await context.report_progress(100, 100, "Error: Timeout - prediction took too long")
             return {
                 "isError": True,
                 "content": [
@@ -882,15 +851,12 @@ class DNALLMMCPServer:
                 "timeout_seconds": self._tool_timeout_seconds,
                 "tool_name": tool_name,
                 "suggestion": (
-                    "Try with fewer positions, smaller sequence, or "
-                    "increase timeout in config"
+                    "Try with fewer positions, smaller sequence, or increase timeout in config"
                 ),
             }
         except Exception as e:
             if stream_progress and context:
-                await context.report_progress(
-                    100, 100, "Error: Streaming prediction failed"
-                )
+                await context.report_progress(100, 100, "Error: Streaming prediction failed")
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -918,9 +884,7 @@ class DNALLMMCPServer:
     ) -> dict[str, Any]:
         """Stream batch DNA sequence prediction with real-time progress
         updates."""
-        return await self._process_batch_prediction(
-            sequences, model_name, stream_progress, context
-        )
+        return await self._process_batch_prediction(sequences, model_name, stream_progress, context)
 
     async def _process_batch_prediction(
         self,
@@ -933,7 +897,9 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_batch_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(self._tool_timeout_seconds):
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
                 if stream_progress and context:
                     await context.report_progress(
                         0,
@@ -958,9 +924,7 @@ class DNALLMMCPServer:
                         )
 
                     # Predict current sequence
-                    result = await self.model_manager.predict_sequence(
-                        model_name, sequence
-                    )
+                    result = await self.model_manager.predict_sequence(model_name, sequence)
                     if result is not None:
                         results.append({
                             "sequence": sequence,
@@ -976,12 +940,8 @@ class DNALLMMCPServer:
                         })
 
                 # Send completion update
-                successful_predictions = len([
-                    r for r in results if r.get("result") is not None
-                ])
-                failed_predictions = len([
-                    r for r in results if r.get("result") is None
-                ])
+                successful_predictions = len([r for r in results if r.get("result") is not None])
+                failed_predictions = len([r for r in results if r.get("result") is None])
 
                 if stream_progress and context:
                     await context.report_progress(
@@ -1043,9 +1003,7 @@ class DNALLMMCPServer:
             }
         except Exception as e:
             if stream_progress and context:
-                await context.report_progress(
-                    100, 100, "Error: Streaming batch prediction failed"
-                )
+                await context.report_progress(100, 100, "Error: Streaming batch prediction failed")
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -1088,7 +1046,9 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_multi_model_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(self._tool_timeout_seconds):
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
                 if model_names is None:
                     model_names = self.model_manager.get_loaded_models()
 
@@ -1102,10 +1062,7 @@ class DNALLMMCPServer:
                     await context.report_progress(
                         0,
                         100,
-                        (
-                            f"Starting multi-model prediction with "
-                            f"{len(model_names)} models"
-                        ),
+                        (f"Starting multi-model prediction with {len(model_names)} models"),
                     )
 
                 results = await self._predict_with_multiple_models(
@@ -1164,8 +1121,7 @@ class DNALLMMCPServer:
                 "timeout_seconds": self._tool_timeout_seconds,
                 "tool_name": tool_name,
                 "suggestion": (
-                    "Try with fewer models, smaller sequence, or "
-                    "increase timeout in config"
+                    "Try with fewer models, smaller sequence, or increase timeout in config"
                 ),
             }
         except Exception as e:
@@ -1208,16 +1164,11 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     progress,
                     100,
-                    (
-                        f"Processing with model {i + 1}/{total_models}: "
-                        f"{model_name}"
-                    ),
+                    (f"Processing with model {i + 1}/{total_models}: {model_name}"),
                 )
 
             # Predict with current model
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
+            result = await self.model_manager.predict_sequence(model_name, sequence)
             if result is not None:
                 results[model_name] = result
             else:
@@ -1238,14 +1189,10 @@ class DNALLMMCPServer:
         """Format multi-model prediction results."""
         # Count successful and failed predictions
         successful_predictions = len([
-            r
-            for r in results.values()
-            if not isinstance(r, dict) or r.get("result") is not None
+            r for r in results.values() if not isinstance(r, dict) or r.get("result") is not None
         ])
         failed_predictions = len([
-            r
-            for r in results.values()
-            if isinstance(r, dict) and r.get("result") is None
+            r for r in results.values() if isinstance(r, dict) and r.get("result") is None
         ])
 
         return {
@@ -1311,8 +1258,7 @@ class DNALLMMCPServer:
             if mutation_type not in allowed_types:
                 return {
                     "error": (
-                        f"Invalid mutation_type: {mutation_type}. "
-                        f"Must be one of: {allowed_types}"
+                        f"Invalid mutation_type: {mutation_type}. Must be one of: {allowed_types}"
                     ),
                     "isError": True,
                 }
@@ -1333,6 +1279,8 @@ class DNALLMMCPServer:
 
             # Wrap single sequence as list
             if sequences is None:
+                if sequence is None:
+                    raise ValueError("Either sequence or sequences must be provided")
                 sequences = [sequence]
 
             # Validate DNA sequence content
@@ -1360,9 +1308,7 @@ class DNALLMMCPServer:
                 }
 
             # Get model inference engine
-            inference_engine = self.model_manager.get_inference_engine(
-                model_name
-            )
+            inference_engine = self.model_manager.get_inference_engine(model_name)
             if inference_engine is None:
                 return {
                     "error": f"Model {model_name} not loaded",
@@ -1402,9 +1348,7 @@ class DNALLMMCPServer:
                 }
 
                 # Aggregate mutated predictions
-                mutated_entries = [
-                    v for k, v in eval_result.items() if k != "raw"
-                ]
+                mutated_entries = [v for k, v in eval_result.items() if k != "raw"]
                 mutated_prediction = {
                     "count": len(mutated_entries),
                     "predictions": [
@@ -1422,24 +1366,20 @@ class DNALLMMCPServer:
                 # Compute delta (average logfc and diff)
                 if mutated_entries:
                     avg_logfc = float(
-                        np.mean(
-                            [
-                                float(np.mean(e.get("logfc", 0)))
-                                if hasattr(e.get("logfc", 0), "__len__")
-                                else float(e.get("logfc", 0))
-                                for e in mutated_entries
-                            ]
-                        )
+                        np.mean([
+                            float(np.mean(e.get("logfc", 0)))
+                            if hasattr(e.get("logfc", 0), "__len__")
+                            else float(e.get("logfc", 0))
+                            for e in mutated_entries
+                        ])
                     )
                     avg_diff = float(
-                        np.mean(
-                            [
-                                float(np.mean(e.get("diff", 0)))
-                                if hasattr(e.get("diff", 0), "__len__")
-                                else float(e.get("diff", 0))
-                                for e in mutated_entries
-                            ]
-                        )
+                        np.mean([
+                            float(np.mean(e.get("diff", 0)))
+                            if hasattr(e.get("diff", 0), "__len__")
+                            else float(e.get("diff", 0))
+                            for e in mutated_entries
+                        ])
                     )
                 else:
                     avg_logfc = 0.0
@@ -1457,6 +1397,7 @@ class DNALLMMCPServer:
                 })
 
             # Format response
+            result_payload: dict[str, Any]
             if len(results) == 1:
                 result_payload = results[0]
             else:
@@ -1549,10 +1490,7 @@ class DNALLMMCPServer:
             }
             if method not in allowed_methods:
                 return {
-                    "error": (
-                        f"Invalid method: {method}. "
-                        f"Must be one of: {allowed_methods}"
-                    ),
+                    "error": (f"Invalid method: {method}. Must be one of: {allowed_methods}"),
                     "isError": True,
                 }
 
@@ -1564,9 +1502,7 @@ class DNALLMMCPServer:
             mapped_method = method_map.get(method, method)
 
             # Get model inference engine
-            inference_engine = self.model_manager.get_inference_engine(
-                model_name
-            )
+            inference_engine = self.model_manager.get_inference_engine(model_name)
             if inference_engine is None:
                 return {
                     "error": f"Model {model_name} not loaded",
@@ -1579,9 +1515,7 @@ class DNALLMMCPServer:
 
             # Auto-select target class if not provided
             if target_class is None:
-                pred_result = await self.model_manager.predict_sequence(
-                    model_name, sequence
-                )
+                pred_result = await self.model_manager.predict_sequence(model_name, sequence)
                 if pred_result is not None:
                     # Try to extract probabilities and find max
                     probs = pred_result.get("probabilities", [])
@@ -1594,10 +1528,10 @@ class DNALLMMCPServer:
                     target_class = 0
 
             # Instantiate interpreter
-            interpreter = DNAInterpret(model, tokenizer, config)
+            interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
 
             # Handle layer_conductance: auto-detect embedding layer
-            kwargs = {}
+            kwargs: dict[str, Any] = {}
             if mapped_method == "layer_conductance":
                 target_layer = interpreter._find_embedding_layer()
                 kwargs["target_layer"] = target_layer
@@ -1608,7 +1542,7 @@ class DNALLMMCPServer:
                 method=mapped_method,
                 target=target_class,
                 max_length=max_length,
-                **kwargs,
+                **kwargs,  # type: ignore[arg-type]
             )
 
             # Normalize attribution scores
@@ -1616,9 +1550,7 @@ class DNALLMMCPServer:
             attr_max = float(np.max(attr_scores))
             attr_range = attr_max - attr_min
             if attr_range > 1e-12:
-                normalized = (
-                    (attr_scores - attr_min) / (attr_range + 1e-8)
-                ).tolist()
+                normalized = ((attr_scores - attr_min) / (attr_range + 1e-8)).tolist()
             else:
                 normalized = np.zeros_like(attr_scores).tolist()
 
@@ -1674,6 +1606,7 @@ class DNALLMMCPServer:
             This follows modern async application lifecycle patterns and
             ensures proper cleanup of models and resources during shutdown.
         """
+
         @asynccontextmanager
         async def lifespan(app):
             # Startup phase: log successful initialization
@@ -1751,9 +1684,7 @@ class DNALLMMCPServer:
         """
         # Validate server initialization state
         if not self._initialized:
-            raise RuntimeError(
-                "Server not initialized. Call initialize() first."
-            )
+            raise RuntimeError("Server not initialized. Call initialize() first.")
 
         # Override host/port from configuration if available
         server_config = self.config_manager.get_server_config()
@@ -1761,17 +1692,13 @@ class DNALLMMCPServer:
             host = server_config.server.host
             port = server_config.server.port
 
-        logger.info(
-            f"Starting DNALLM MCP Server on {host}:{port} with "
-            f"{transport} transport"
-        )
+        logger.info(f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport")
 
         # Validate transport before dispatching
         valid_transports = ("stdio", "sse", "streamable-http")
         if transport not in valid_transports:
             raise ValueError(
-                f"Invalid transport: {transport!r}. "
-                f"Must be one of: {valid_transports}"
+                f"Invalid transport: {transport!r}. Must be one of: {valid_transports}"
             )
 
         # Dispatch to appropriate transport handler
@@ -1790,15 +1717,9 @@ class DNALLMMCPServer:
         from starlette.routing import Mount
 
         server_config = self.config_manager.get_server_config()
-        sse_config = (
-            server_config.sse
-            if server_config and hasattr(server_config, "sse")
-            else None
-        )
+        sse_config = server_config.sse if server_config and hasattr(server_config, "sse") else None
         mount_path = (
-            sse_config.mount_path
-            if sse_config and hasattr(sse_config, "mount_path")
-            else "/mcp"
+            sse_config.mount_path if sse_config and hasattr(sse_config, "mount_path") else "/mcp"
         )
         logger.info(f"Using SSE transport with mount path: {mount_path}")
 
@@ -1891,9 +1812,7 @@ class DNALLMMCPServer:
             raise RuntimeError("FastMCP app not initialized")
         http_app = self.app.streamable_http_app()
 
-        logger.info(
-            f"Streamable HTTP endpoint: http://{host}:{port}{http_path}"
-        )
+        logger.info(f"Streamable HTTP endpoint: http://{host}:{port}{http_path}")
 
         # Read configured log level from server config
         log_level = (
@@ -2060,9 +1979,7 @@ Examples:
         ),
     )
 
-    parser.add_argument(
-        "--version", action="version", version="DNALLM MCP Server 1.0.0"
-    )
+    parser.add_argument("--version", action="version", version="DNALLM MCP Server 1.0.0")
 
     args = parser.parse_args()
 
@@ -2070,10 +1987,7 @@ Examples:
     config_path = Path(args.config)
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
-        logger.error(
-            "Please create a configuration file or specify the "
-            "correct path with --config"
-        )
+        logger.error("Please create a configuration file or specify the correct path with --config")
         sys.exit(1)
 
     try:
@@ -2096,16 +2010,11 @@ Examples:
         logger.info("-" * 50)
 
         # Start server - let uvicorn handle signals for HTTP/SSE transports
-        logger.info(
-            f"Starting server on {args.host}:{args.port} with "
-            f"{args.transport} transport"
-        )
+        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
         logger.info("Press Ctrl+C to stop the server")
 
         # Start server (uvicorn will handle signals properly)
-        server.start_server(
-            host=args.host, port=args.port, transport=args.transport
-        )
+        server.start_server(host=args.host, port=args.port, transport=args.transport)
 
     except KeyboardInterrupt:
         logger.info("\nReceived interrupt signal, shutting down...")

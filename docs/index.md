@@ -83,9 +83,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"

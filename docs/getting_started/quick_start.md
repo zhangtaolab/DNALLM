@@ -138,9 +138,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "TCACATCCGGGTGAAACCTCGAGTTCCTATAACCTGCCGACAGGTGGCGGGTCTTATAAAACTGATCACTACAATTCCCAATGGAAAAAAAAAAAAAAAAACCCTTATTTGACTCTCATTATAGATCAACGATGGATCTAGCTCTTCTTTTGTAATTACCTGACTTTTGACCTGACGAACCAAGTTATCGGTTGGGGCCCTGTCAAACGACAGGTCGCTTAGAGGGCATATGTGAGAAAAAGGGTCCTGTTTTTTATCCACGGAGAAAGAAAGCAAGAAGAGGAGAGGTTTTAAAAAAAA"
@@ -153,9 +151,7 @@ print(f"Inference result: {inference_result}")
 from dnallm import load_config, Mutagenesis
 
 # Load configuration
-configs = load_config(
-    "./example/notebooks/in_silico_mutagenesis/inference_config.yaml"
-)
+configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_config.yaml")
 
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
@@ -184,9 +180,7 @@ from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
 # Load configuration
-configs = load_config(
-    "./example/notebooks/finetune_binary/finetune_config.yaml"
-)
+configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml")
 
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnabert-BPE"

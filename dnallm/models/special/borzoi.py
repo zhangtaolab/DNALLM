@@ -38,9 +38,7 @@ def _handle_borzoi_models(
             from ..tokenizer import DNAOneHotTokenizer
             from ..model import _get_model_path_and_imports
 
-            downloaded_model_path, _ = _get_model_path_and_imports(
-                model_name, source
-            )
+            downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
             config_path = os.path.join(downloaded_model_path, "config.json")
             config = BorzoiConfig.from_pretrained(config_path)
             config.num_labels = num_labels
@@ -59,9 +57,7 @@ def _handle_borzoi_models(
                 class BorzoiForSequenceClassification(Borzoi):
                     def __init__(self, config, **kwargs):
                         super().__init__(config)
-                        self.num_labels = kwargs.get(
-                            "num_labels", config.num_labels
-                        )
+                        self.num_labels = kwargs.get("num_labels", config.num_labels)
                         self.config = config
                         self._target_length = self.config.bins_to_return
                         self.resolution = 32
@@ -91,9 +87,7 @@ def _handle_borzoi_models(
                         **kwargs,
                     ):
                         return_dict = (
-                            return_dict
-                            if return_dict is not None
-                            else self.config.use_return_dict
+                            return_dict if return_dict is not None else self.config.use_return_dict
                         )
                         embeddings = self.get_embs_after_crop(inputs_embeds)
                         embeddings = self.final_joined_convs(embeddings)
@@ -108,44 +102,29 @@ def _handle_borzoi_models(
                                 if self.num_labels == 1:
                                     self.config.problem_type = "regression"
                                 elif self.num_labels > 1 and (
-                                    labels.dtype == torch.long
-                                    or labels.dtype == torch.int
+                                    labels.dtype == torch.long or labels.dtype == torch.int
                                 ):
-                                    self.config.problem_type = (
-                                        "single_label_classification"
-                                    )
+                                    self.config.problem_type = "single_label_classification"
                                 else:
-                                    self.config.problem_type = (
-                                        "multi_label_classification"
-                                    )
+                                    self.config.problem_type = "multi_label_classification"
 
                             if self.config.problem_type == "regression":
                                 loss_fct = nn.MSELoss()
                                 if self.num_labels == 1:
-                                    loss = loss_fct(
-                                        logits.squeeze(), labels.squeeze()
-                                    )
+                                    loss = loss_fct(logits.squeeze(), labels.squeeze())
                                 else:
                                     loss = loss_fct(logits, labels)
-                            elif (
-                                self.config.problem_type
-                                == "single_label_classification"
-                            ):
-                                loss_fct = nn.CrossEntropyLoss()
+                            elif self.config.problem_type == "single_label_classification":
+                                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
                                 loss = loss_fct(
                                     logits.view(-1, self.num_labels),
                                     labels.view(-1),
                                 )
-                            elif (
-                                self.config.problem_type
-                                == "multi_label_classification"
-                            ):
-                                loss_fct = nn.BCEWithLogitsLoss()
+                            elif self.config.problem_type == "multi_label_classification":
+                                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
                                 loss = loss_fct(logits, labels)
                             else:
-                                raise NotImplementedError(
-                                    self.config.problem_type
-                                )
+                                raise NotImplementedError(self.config.problem_type)
 
                         if not return_dict:
                             output = (
@@ -156,18 +135,12 @@ def _handle_borzoi_models(
                                 if output_hidden_states
                                 else (logits,)
                             )
-                            return (
-                                ((loss, *output))
-                                if loss is not None
-                                else output
-                            )
+                            return ((loss, *output)) if loss is not None else output
 
                         return SequenceClassifierOutput(
                             loss=loss,
                             logits=logits,
-                            hidden_states=(
-                                embeddings if output_hidden_states else None
-                            ),
+                            hidden_states=(embeddings if output_hidden_states else None),
                             attentions=None,
                         )
 
@@ -175,12 +148,8 @@ def _handle_borzoi_models(
                     downloaded_model_path, config=config
                 )
             else:
-                model = Borzoi.from_pretrained(
-                    downloaded_model_path, config=config
-                )
-            tokenizer = DNAOneHotTokenizer(
-                return_embeds=True, embeds_transpose=True
-            )
+                model = Borzoi.from_pretrained(downloaded_model_path, config=config)
+            tokenizer = DNAOneHotTokenizer(return_embeds=True, embeds_transpose=True)
 
         except ImportError as e:
             raise ImportError(
@@ -190,6 +159,6 @@ def _handle_borzoi_models(
                 "https://github.com/johahi/borzoi-pytorch"
             ) from e
 
-        return model, tokenizer
+        return model, tokenizer  # type: ignore
 
     return None

@@ -112,9 +112,7 @@ task:
         mock_model.parameters.return_value = iter([torch.randn(100, 100)])
 
         # Mock model forward method with proper signature
-        def mock_forward(
-            input_ids, attention_mask=None, labels=None, **kwargs
-        ):
+        def mock_forward(input_ids, attention_mask=None, labels=None, **kwargs):
             batch_size = input_ids.shape[0]
             mock_output = Mock()
             mock_output.logits = torch.randn(batch_size, 2)
@@ -262,9 +260,7 @@ task:
             # Create a mock dataloader
             mock_dataloader = Mock()
 
-            logits, predictions, embeddings = self.predictor.batch_infer(
-                mock_dataloader
-            )
+            logits, predictions, embeddings = self.predictor.batch_infer(mock_dataloader)
 
             assert isinstance(logits, torch.Tensor)
             assert isinstance(predictions, dict)
@@ -286,9 +282,7 @@ task:
             )
 
             # Mock generate_dataset to avoid encoding issues
-            with patch.object(
-                self.predictor, "generate_dataset"
-            ) as mock_generate:
+            with patch.object(self.predictor, "generate_dataset") as mock_generate:
                 mock_generate.return_value = (None, None)
                 result = self.predictor.infer_seqs(sequences)
 
@@ -311,9 +305,7 @@ task:
             )
 
             # Mock generate_dataset to avoid encoding issues
-            with patch.object(
-                self.predictor, "generate_dataset"
-            ) as mock_generate:
+            with patch.object(self.predictor, "generate_dataset") as mock_generate:
                 mock_generate.return_value = (None, None)
                 result = self.predictor.infer_file(
                     self.test_csv_path, seq_col="sequence", label_col="label"
@@ -479,9 +471,7 @@ task:
 
             model_dir = snapshot_download(model_name)
 
-            model = AutoModelForSequenceClassification.from_pretrained(
-                model_dir
-            )
+            model = AutoModelForSequenceClassification.from_pretrained(model_dir)
             tokenizer = AutoTokenizer.from_pretrained(model_dir)
             print("✅ Model and tokenizer loaded successfully")
 

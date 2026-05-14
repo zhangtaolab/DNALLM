@@ -214,9 +214,7 @@ Perform health check on the MCP server.
 from dnallm.mcp import DNALLMMCPClient
 
 # Connect using streamable-http transport (recommended)
-client = DNALLMMCPClient(
-    transport="streamable-http", url="http://localhost:8000/mcp"
-)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
 
 # Single sequence prediction
 result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
@@ -257,6 +255,7 @@ Available tools should include:
 Always use the tools to provide accurate analysis.""",
 )
 
+
 # Analyze DNA sequence
 async def analyze_dna_sequence():
     async with agent:
@@ -264,6 +263,7 @@ async def analyze_dna_sequence():
             "What is the function of following DNA sequence? Please analyze it thoroughly using all available models: AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"
         )
         return result
+
 
 # Run the analysis
 result = await analyze_dna_sequence()
@@ -278,11 +278,10 @@ import asyncio
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+
 async def main():
     # Connect to MCP server via STDIO
-    server_params = StdioServerParameters(
-        command="dnallm-mcp-server"
-    )
+    server_params = StdioServerParameters(command="dnallm-mcp-server")
 
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -310,6 +309,7 @@ async def main():
             )
             print(f"Multi-model result: {multi_result}")
 
+
 if __name__ == "__main__":
     asyncio.run(main())
 ```
@@ -320,6 +320,7 @@ if __name__ == "__main__":
 ```python
 import asyncio
 from mcp.client.sse import sse_client
+
 
 async def main():
     # Connect to SSE server
@@ -338,6 +339,7 @@ async def main():
             },
         )
         print(f"Streaming prediction result: {result}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -436,9 +438,7 @@ async def basic_dna_analysis(sequence):
         print(f"Promoter prediction: {result}")
 
         # 3. Multi-model analysis
-        multi_result = await read.call_tool(
-            "dna_multi_model_predict", {"sequence": sequence}
-        )
+        multi_result = await read.call_tool("dna_multi_model_predict", {"sequence": sequence})
         print(f"Multi-model analysis: {multi_result}")
 
         return multi_result
@@ -513,9 +513,7 @@ async def model_comparison(sequence):
 
         print(f"Model comparison for sequence: {sequence}")
         for model_name, result in results.items():
-            print(
-                f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})"
-            )
+            print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
 
         print(f"Consensus: {consensus}")
 

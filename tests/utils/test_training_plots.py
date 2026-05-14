@@ -61,9 +61,7 @@ class TestPlotLossCurve:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "custom.png"
-            result = plot_loss_curve(
-                log_history, output_path=output_path, title="Custom Title"
-            )
+            result = plot_loss_curve(log_history, output_path=output_path, title="Custom Title")
 
             assert result.exists()
 

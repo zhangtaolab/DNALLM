@@ -114,17 +114,11 @@ class DNAInference:
             if os.path.isdir(lora_adapter):
                 source = "local"
             else:
-                source = (
-                    model.source if hasattr(model, "source") else "huggingface"
-                )
+                source = model.source if hasattr(model, "source") else "huggingface"
             try:
-                lora_adapter_path, _ = _get_model_path_and_imports(
-                    lora_adapter, source
-                )
+                lora_adapter_path, _ = _get_model_path_and_imports(lora_adapter, source)
             except Exception as e:
-                raise ValueError(
-                    f"Failed to load LoRA adapter from {lora_adapter}: {e}"
-                ) from e
+                raise ValueError(f"Failed to load LoRA adapter from {lora_adapter}: {e}") from e
 
             if model is not None:
                 self.accepted_args = self._get_accepted_forward_args(model)
@@ -138,14 +132,13 @@ class DNAInference:
             self.model = model
             if model is not None:
                 if "CustomEvo" in str(type(self.model)):
-                    self.accepted_args = self._get_accepted_forward_args(
-                        model.model
-                    )
+                    self.accepted_args = self._get_accepted_forward_args(model.model)
                 else:
                     self.accepted_args = self._get_accepted_forward_args(model)
             else:
                 self.accepted_args = set(default_forward_args)
         self.tokenizer = tokenizer
+        self.config = config
         self.pad_id = self._get_pad_id()
         self.task_config = config["task"]
         self.pred_config = config["inference"]
@@ -233,10 +226,9 @@ class DNAInference:
                 )
                 return torch.device("cpu")
 
-        if not is_available():
+        if not is_available():  # type: ignore[operator]
             warnings.warn(
-                f"{device_name} is not available. Please check your "
-                "installation. Use CPU instead.",
+                f"{device_name} is not available. Please check your installation. Use CPU instead.",
                 stacklevel=2,
             )
             return torch.device("cpu")
@@ -266,9 +258,7 @@ class DNAInference:
         Returns:
             bool: True if model has the config attribute
         """
-        return hasattr(self.model, "config") and hasattr(
-            self.model.config, attr_name
-        )
+        return hasattr(self.model, "config") and hasattr(self.model.config, attr_name)
 
     def _try_set_attention_output(self) -> bool:
         """Try to temporarily set output_attentions to test support.
@@ -352,9 +342,7 @@ class DNAInference:
             bool: True if successful, False otherwise
         """
         try:
-            if hasattr(self.model, "config") and hasattr(
-                self.model.config, "attn_implementation"
-            ):
+            if hasattr(self.model, "config") and hasattr(self.model.config, "attn_implementation"):
                 self.model.config.attn_implementation = "eager"
                 logger.success("Switched to eager attention implementation")
                 return True
@@ -373,18 +361,14 @@ class DNAInference:
         """
         try:
             # Check if the model supports output_hidden_states
-            if hasattr(self.model, "config") and hasattr(
-                self.model.config, "output_hidden_states"
-            ):
+            if hasattr(self.model, "config") and hasattr(self.model.config, "output_hidden_states"):
                 # Try to set it temporarily to see if it works
                 original_value = self.model.config.output_hidden_states
                 self.model.config.output_hidden_states = True
                 self.model.config.output_hidden_states = original_value
                 return True
         except (ValueError, AttributeError) as e:
-            warnings.warn(
-                f"Cannot enable output_hidden_states: {e}", stacklevel=2
-            )
+            warnings.warn(f"Cannot enable output_hidden_states: {e}", stacklevel=2)
         return False
 
     def _get_accepted_forward_args(self, model) -> set:
@@ -397,10 +381,7 @@ class DNAInference:
 
         sig = inspect.signature(model.forward)
         accepted = set(sig.parameters.keys())
-        if any(
-            p.kind == inspect.Parameter.VAR_KEYWORD
-            for p in sig.parameters.values()
-        ):
+        if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
             accepted.add("**kwargs")
 
         return accepted
@@ -473,9 +454,7 @@ class DNAInference:
         elif isinstance(seq_or_path, list):
             sequences = seq_or_path
         else:
-            raise ValueError(
-                "Input should be a file path or a list of sequences."
-            )
+            raise ValueError("Input should be a file path or a list of sequences.")
 
         # If sampling is specified, randomly sample the sequences
         if sampling:
@@ -485,15 +464,11 @@ class DNAInference:
         # loaded from file
         if len(sequences) > 0 and dataset is None:
             ds = Dataset.from_dict({"sequence": sequences})
-            dataset = DNADataset(
-                ds, self.tokenizer, max_length=self.pred_config.max_length
-            )
+            dataset = DNADataset(ds, self.tokenizer, max_length=self.pred_config.max_length)
 
         # Ensure dataset is not None before proceeding
         if not dataset:
-            raise ValueError(
-                "No valid dataset could be created from the input."
-            )
+            raise ValueError("No valid dataset could be created from the input.")
         # If labels are provided, keep labels
         if keep_seqs:
             self.sequences = dataset.dataset["sequence"]
@@ -501,7 +476,7 @@ class DNAInference:
         if do_encode:
             task_type = self.task_config.task_type
             dataset.encode_sequences(
-                padding=padding,
+                padding=padding,  # type: ignore
                 remove_unused_columns=True,
                 task=task_type,
                 uppercase=uppercase,
@@ -518,22 +493,12 @@ class DNAInference:
                 if isinstance(check_seq, torch.Tensor):
                     # already encoded
                     if "input_ids" not in all_cols:
-                        dataset.dataset = dataset.dataset.rename_column(
-                            "sequence", "input_ids"
-                        )
+                        dataset.dataset = dataset.dataset.rename_column("sequence", "input_ids")
                     dataset.dataset.set_format(type="torch")
-                    cols_drop = [
-                        c
-                        for c in dataset.dataset.features
-                        if c not in self.accepted_args
-                    ]
+                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]
                     dataset.dataset = dataset.dataset.remove_columns(cols_drop)
                 else:
-                    cols_drop = [
-                        c
-                        for c in dataset.dataset.features
-                        if c not in self.accepted_args
-                    ]
+                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]
         # Check for labels in dataset - handle both Dataset and
         # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
@@ -547,16 +512,14 @@ class DNAInference:
                 self.labels = dataset.dataset["labels"]
         # Create DataLoader
         dataloader: DataLoader = DataLoader(
-            dataset,
+            dataset,  # type: ignore[arg-type]
             batch_size=batch_size,
             num_workers=self.pred_config.num_workers,
         )
 
         return dataset, dataloader
 
-    def logits_to_preds(
-        self, logits: torch.Tensor
-    ) -> tuple[torch.Tensor, list]:
+    def logits_to_preds(self, logits: torch.Tensor) -> tuple[torch.Tensor, list]:
         """Convert model logits to predictions and human-readable labels.
 
         This method processes raw model outputs based on the task type to
@@ -592,9 +555,7 @@ class DNAInference:
             preds = (probs > threshold).long()
             labels = []
             for pred in preds:
-                label = [
-                    label_names[i] for i in range(len(pred)) if pred[i] == 1
-                ]
+                label = [label_names[i] for i in range(len(pred)) if pred[i] == 1]
                 labels.append(label)
         elif task_type == "regression":
             preds = logits.squeeze(-1)
@@ -636,7 +597,7 @@ class DNAInference:
             if task_type == "regression":
                 scores = {label_names[0]: prob}
             elif task_type == "token":
-                scores = [max(x) for x in prob]
+                scores = [max(x) for x in prob]  # type: ignore
             else:
                 scores = {label_names[j]: p for j, p in enumerate(prob)}
             formatted_predictions[i] = {
@@ -679,9 +640,9 @@ class DNAInference:
                     f"Cannot enable output_hidden_states: {e}",
                     stacklevel=2,
                 )
-                return False, {}, params
+                return False, {}, params  # type: ignore
 
-        return True, embeddings, params
+        return True, embeddings, params  # type: ignore
 
     def _setup_attentions_config(
         self, output_attentions: bool, params: dict | None
@@ -702,11 +663,11 @@ class DNAInference:
             import inspect
 
             sig = inspect.signature(self.model.forward)
-            params = sig.parameters
+            params = sig.parameters  # type: ignore[assignment]
 
         embeddings = {"attentions": None}
 
-        if "output_attentions" in params:
+        if "output_attentions" in params:  # type: ignore[operator]
             try:
                 self.model.config.output_attentions = True
             except ValueError as e:
@@ -731,8 +692,7 @@ class DNAInference:
                 self.model.config.attn_implementation = "eager"
                 self.model.config.output_attentions = True
                 warnings.warn(
-                    "Switched to 'eager' attention implementation to "
-                    "support output_attentions",
+                    "Switched to 'eager' attention implementation to support output_attentions",
                     stacklevel=2,
                 )
                 return True
@@ -776,24 +736,19 @@ class DNAInference:
             torch.Tensor: Batch logits
         """
         # Process logits
-        if self.task_config.task_type == "embedding":
-            logits: None = None
-        else:
+        logits: torch.Tensor | None = None
+        if self.task_config.task_type != "embedding":
             if hasattr(outputs, "logits"):
-                logits: torch.Tensor = outputs.logits.detach().float().cpu()
+                logits = outputs.logits.detach().float().cpu()
             elif "logits" in outputs:
-                logits: torch.Tensor = outputs["logits"].detach().float().cpu()
+                logits = outputs["logits"].detach().float().cpu()
             elif isinstance(outputs, tuple) or isinstance(outputs, list):
                 # Assume logits are in outputs if outputs is a tuple or list
                 # index 0 is usually hidden states or last hidden state
                 # index 1 is usually logits
                 # indexes beyond 1 are usually other outputs like attentions
                 if len(outputs) > 1:
-                    logits: torch.Tensor = outputs[1].detach().float().cpu()
-                else:
-                    logits: None = None
-            else:
-                logits: None = None
+                    logits = outputs[1].detach().float().cpu()
         # Process hidden states
         if output_hidden_states:
             self._process_hidden_states(
@@ -845,17 +800,13 @@ class DNAInference:
                 available, else None
         """
         attention_mask: torch.Tensor | None = (
-            inputs["attention_mask"].long().cpu().detach()
-            if "attention_mask" in inputs
-            else None
+            inputs["attention_mask"].long().cpu().detach() if "attention_mask" in inputs else None
         )
         if attention_mask is None:
             if self.pad_id is not None and "input_ids" in inputs:
                 try:
                     input_ids = inputs["input_ids"]
-                    attention_mask = (
-                        (input_ids != self.pad_id).long().cpu().detach()
-                    )
+                    attention_mask = (input_ids != self.pad_id).long().cpu().detach()
                 except Exception:
                     attention_mask = None
         return attention_mask
@@ -897,11 +848,7 @@ class DNAInference:
                 for h in hiddens:
                     h = h.cpu().detach()
                     hidden_states.append(
-                        torch.tensor(
-                            _compute_mean_embeddings(
-                                h, attention_mask, reduce_strategy
-                            )
-                        )
+                        torch.tensor(_compute_mean_embeddings(h, attention_mask, reduce_strategy))
                         if reduce_hidden_states
                         else h
                     )
@@ -909,11 +856,7 @@ class DNAInference:
                 # Single layer of hidden states
                 h = hiddens.cpu().detach()
                 hidden_states.append(
-                    torch.tensor(
-                        _compute_mean_embeddings(
-                            h, attention_mask, reduce_strategy
-                        )
-                    )
+                    torch.tensor(_compute_mean_embeddings(h, attention_mask, reduce_strategy))
                     if reduce_hidden_states
                     else h
                 )
@@ -926,9 +869,7 @@ class DNAInference:
                     embeddings["hidden_states"][i].append(h)
         embeddings["attention_mask"].append(attention_mask)
 
-        labels = (
-            inputs["labels"].cpu().detach() if "labels" in inputs else None
-        )
+        labels = inputs["labels"].cpu().detach() if "labels" in inputs else None
         embeddings["labels"].append(labels)
 
     def _process_attentions(self, outputs: Any, embeddings: dict) -> None:
@@ -967,19 +908,14 @@ class DNAInference:
         if output_hidden_states:
             if embeddings.get("hidden_states"):
                 embeddings["hidden_states"] = tuple(
-                    torch.cat(lst, dim=0)
-                    for lst in embeddings["hidden_states"]
+                    torch.cat(lst, dim=0) for lst in embeddings["hidden_states"]
                 )
             if embeddings.get("attention_mask"):
                 if embeddings["attention_mask"][0] is not None:
-                    embeddings["attention_mask"] = torch.cat(
-                        embeddings["attention_mask"], dim=0
-                    )
+                    embeddings["attention_mask"] = torch.cat(embeddings["attention_mask"], dim=0)
             if embeddings.get("labels"):
                 if embeddings["labels"][0]:
-                    embeddings["labels"] = torch.cat(
-                        embeddings["labels"], dim=0
-                    )
+                    embeddings["labels"] = torch.cat(embeddings["labels"], dim=0)
 
         if output_attentions:
             if embeddings.get("attentions"):
@@ -1032,11 +968,11 @@ class DNAInference:
         all_logits = []
 
         # Setup configurations for outputs
-        output_hidden_states, hidden_embeddings, params = (
-            self._setup_hidden_states_config(output_hidden_states)
+        output_hidden_states, hidden_embeddings, params = self._setup_hidden_states_config(
+            output_hidden_states
         )
-        output_attentions, attention_embeddings = (
-            self._setup_attentions_config(output_attentions, params)
+        output_attentions, attention_embeddings = self._setup_attentions_config(
+            output_attentions, params
         )
 
         # Combine embeddings dictionaries
@@ -1052,10 +988,7 @@ class DNAInference:
 
         # Iterate over batches
         for batch in tqdm(dataloader, desc="Inferring"):
-            inputs = {
-                k: v.to(self.device) if hasattr(v, "to") else v
-                for k, v in batch.items()
-            }
+            inputs = {k: v.to(self.device) if hasattr(v, "to") else v for k, v in batch.items()}
             # Add output flags if supported
             # In case model config does not recognize these args
             if output_attentions:
@@ -1074,10 +1007,7 @@ class DNAInference:
             args = inputs.keys()
             accepted_inputs = {}
             for arg in args:
-                if (
-                    arg in self.accepted_args
-                    or "**kwargs" in self.accepted_args
-                ):
+                if arg in self.accepted_args or "**kwargs" in self.accepted_args:
                     accepted_inputs[arg] = inputs[arg]
 
             # Use autocast for mixed precision if enabled
@@ -1101,21 +1031,19 @@ class DNAInference:
 
         # Concatenate all logits
         if all_logits and all_logits[0] is not None:
-            all_logits = torch.cat(all_logits, dim=0)
+            all_logits = torch.cat(all_logits, dim=0)  # type: ignore
 
         # Finalize embeddings
-        self._finalize_embeddings(
-            embeddings, output_hidden_states, output_attentions
-        )
+        self._finalize_embeddings(embeddings, output_hidden_states, output_attentions)
 
         # Get predictions if requested
         predictions = None
         if do_pred and len(all_logits) > 0:
-            predictions = self.logits_to_preds(all_logits)
+            predictions = self.logits_to_preds(all_logits)  # type: ignore
             if return_dict:
-                predictions = self.format_output(predictions)
+                predictions = self.format_output(predictions)  # type: ignore
 
-        return all_logits, predictions, embeddings
+        return all_logits, predictions, embeddings  # type: ignore
 
     def infer_seqs(
         self,
@@ -1150,9 +1078,7 @@ class DNAInference:
             Evaluation requires that labels are available in the dataset
         """
         # Get dataset and dataloader from sequences
-        _, dataloader = self.generate_dataset(
-            sequences, batch_size=self.pred_config.batch_size
-        )
+        _, dataloader = self.generate_dataset(sequences, batch_size=self.pred_config.batch_size)
         # Do batch inference
         logits, predictions, embeddings = self.batch_infer(
             dataloader,
@@ -1165,7 +1091,7 @@ class DNAInference:
             self.embeddings = embeddings
         # Save predictions
         if save_to_file and self.pred_config.output_dir:
-            save_predictions(predictions, Path(self.pred_config.output_dir))
+            save_predictions(predictions, Path(self.pred_config.output_dir))  # type: ignore
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
             metrics = self.calculate_metrics(logits, self.labels)
@@ -1174,9 +1100,9 @@ class DNAInference:
             metrics_save.pop("scatter", None)
             if save_to_file and self.pred_config.output_dir:
                 save_metrics(metrics_save, Path(self.pred_config.output_dir))
-            return predictions, metrics
+            return predictions, metrics  # type: ignore
 
-        return predictions
+        return predictions  # type: ignore
 
     def infer_file(
         self,
@@ -1235,9 +1161,7 @@ class DNAInference:
                 batch_size=self.pred_config.batch_size,
                 num_workers=self.pred_config.num_workers,
             )
-            self.labels = (
-                file_path["labels"] if "labels" in file_path.features else []
-            )
+            self.labels = file_path["labels"] if "labels" in file_path.features else []
         else:
             _, dataloader = self.generate_dataset(
                 file_path,
@@ -1268,12 +1192,10 @@ class DNAInference:
             self.embeddings = embeddings
         # Save predictions
         if save_to_file and self.pred_config.output_dir:
-            save_predictions(predictions, Path(self.pred_config.output_dir))
+            save_predictions(predictions, Path(self.pred_config.output_dir))  # type: ignore
         # Do evaluation
         if len(self.labels) == len(logits) and evaluate:
-            metrics = self.calculate_metrics(
-                logits, self.labels, plot=plot_metrics
-            )
+            metrics = self.calculate_metrics(logits, self.labels, plot=plot_metrics)
             metrics_save = dict(metrics)
             metrics_save.pop("curve", None)
             metrics_save.pop("scatter", None)
@@ -1281,11 +1203,11 @@ class DNAInference:
                 save_metrics(metrics, Path(self.pred_config.output_dir))
             # Whether to plot metrics
             if plot_metrics:
-                return predictions, metrics
+                return predictions, metrics  # type: ignore
             else:
-                return predictions, metrics_save
+                return predictions, metrics_save  # type: ignore
 
-        return predictions
+        return predictions  # type: ignore
 
     def infer(
         self,
@@ -1430,7 +1352,7 @@ class DNAInference:
             logger.warning("No attention weights available to plot.")
             return None
 
-    def plot_hidden_states(
+    def plot_hidden_states(  # type: ignore
         self,
         reducer: str = "t-SNE",
         reduced: bool = False,
@@ -1477,9 +1399,7 @@ class DNAInference:
             if save_path:
                 suffix = os.path.splitext(save_path)[-1]
                 if suffix:
-                    embedding = save_path.replace(
-                        suffix, "_embedding" + suffix
-                    )
+                    embedding = save_path.replace(suffix, "_embedding" + suffix)
                 else:
                     embedding = os.path.join(save_path, "embedding.pdf")
             else:
@@ -1610,9 +1530,7 @@ class DNAInference:
         """
         try:
             total_params = sum(p.numel() for p in self.model.parameters())
-            trainable_params = sum(
-                p.numel() for p in self.model.parameters() if p.requires_grad
-            )
+            trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
             frozen_params = total_params - trainable_params
 
             return {
@@ -1621,7 +1539,7 @@ class DNAInference:
                 "frozen": frozen_params,
             }
         except Exception as e:
-            return {"error": str(e)}
+            return {"error": str(e)}  # type: ignore
 
     def get_available_outputs(self) -> dict[str, Any]:
         """Get information about available model outputs.
@@ -1657,9 +1575,7 @@ class DNAInference:
         try:
             # Get model parameters
             total_params = sum(p.numel() for p in self.model.parameters())
-            param_memory_mb = (total_params * 4) / (
-                1024 * 1024
-            )  # Assuming float32
+            param_memory_mb = (total_params * 4) / (1024 * 1024)  # Assuming float32
 
             # Estimate activation memory (rough approximation)
             if hasattr(self.model, "config"):
@@ -1670,9 +1586,9 @@ class DNAInference:
                 hidden_size, num_layers = 768, 12
 
             # Rough estimate for activations
-            activation_memory_mb = (
-                batch_size * sequence_length * hidden_size * num_layers * 2
-            ) / (1024 * 1024)
+            activation_memory_mb = (batch_size * sequence_length * hidden_size * num_layers * 2) / (
+                1024 * 1024
+            )
 
             total_memory_mb = param_memory_mb + activation_memory_mb
 
@@ -1680,8 +1596,7 @@ class DNAInference:
                 "total_estimated_mb": f"{total_memory_mb:.1f}",
                 "parameter_memory_mb": f"{param_memory_mb:.1f}",
                 "activation_memory_mb": f"{activation_memory_mb:.1f}",
-                "note": "Estimates are approximate and may vary based on "
-                "actual usage",
+                "note": "Estimates are approximate and may vary based on actual usage",
             }
         except Exception as e:
             return {"error": str(e)}
@@ -1719,7 +1634,7 @@ class DNAInference:
             for sequence generation
         """
         # Prepare prompt sequences
-        prompt_seqs = []
+        prompt_seqs: list[str] = []
         if isinstance(inputs, DataLoader):
             for data in tqdm(inputs, desc="Generating"):
                 seqs = data["sequence"]
@@ -1750,7 +1665,7 @@ class DNAInference:
                     "Output": generated_seqs,
                     "Score": scores,
                 })
-            return formatted_outputs
+            return formatted_outputs  # type: ignore
         elif "evo1" in str(self.model).lower():
             from evo import generate
 
@@ -1779,16 +1694,14 @@ class DNAInference:
                     "Output": generated_seqs,
                     "Score": scores,
                 })
-            return formatted_outputs
+            return formatted_outputs  # type: ignore
         elif "megadna" in str(self.model).lower():
             model = self.model
             tokenizer = self.tokenizer
             formatted_outputs = []
             for seq in prompt_seqs:
                 for _ in range(n_samples):
-                    input_ids = tokenizer(seq, return_tensors="pt").to(
-                        self.device
-                    )["input_ids"]
+                    input_ids = tokenizer(seq, return_tensors="pt").to(self.device)["input_ids"]
                     output = model.generate(
                         input_ids,
                         seq_len=n_tokens,
@@ -1800,18 +1713,13 @@ class DNAInference:
                         "Prompt": seq,
                         "Output": decoded.replace(" ", ""),
                     })
-            return formatted_outputs
-        elif (
-            "causallm" in str(self.model).lower()
-            or "lmhead" in str(self.model).lower()
-        ):
+            return formatted_outputs  # type: ignore
+        elif "causallm" in str(self.model).lower() or "lmhead" in str(self.model).lower():
             outputs = []
             # Tokenize prompt sequences
             for seq in prompt_seqs:
-                inputs = self.tokenizer(seq, return_tensors="pt").to(
-                    self.device
-                )
-                output = self.model.generate(
+                inputs = self.tokenizer(seq, return_tensors="pt").to(self.device)
+                output = self.model.generate(  # type: ignore
                     **inputs,
                     max_new_tokens=n_tokens,
                     temperature=temperature,
@@ -1819,20 +1727,16 @@ class DNAInference:
                     top_p=top_p,
                     do_sample=True,
                 )
-                decoded = self.tokenizer.decode(
-                    output[0], skip_special_tokens=True
-                )
+                decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
                 outputs.append({
                     "Prompt": seq,
                     "Output": decoded.replace(" ", ""),
                 })
-            return outputs
+            return outputs  # type: ignore
         else:
-            raise ValueError(
-                "This model is not supported for sequence generation."
-            )
+            raise ValueError("This model is not supported for sequence generation.")
 
-        return {}
+        return {}  # type: ignore[unreachable]
 
     def scoring(
         self,
@@ -1876,14 +1780,9 @@ class DNAInference:
         # Check if model supports scoring
         model_name = str(self.model).lower()
         if "evo2" in model_name:
-            outputs = self.model.score_sequences(
-                score_seqs, reduce_method=reduce_method
-            )
-            outputs = [
-                {"Input": score_seqs[i], "Score": s}
-                for i, s in enumerate(outputs)
-            ]
-            return outputs
+            outputs = self.model.score_sequences(score_seqs, reduce_method=reduce_method)
+            outputs = [{"Input": score_seqs[i], "Score": s} for i, s in enumerate(outputs)]
+            return outputs  # type: ignore
         elif "evo1" in model_name:
             from evo import score_sequences
 
@@ -1896,23 +1795,18 @@ class DNAInference:
                 reduce_method=reduce_method,
                 device=self.device,
             )
-            outputs = [
-                {"Input": score_seqs[i], "Score": s}
-                for i, s in enumerate(outputs)
-            ]
-            return outputs
+            outputs = [{"Input": score_seqs[i], "Score": s} for i, s in enumerate(outputs)]
+            return outputs  # type: ignore
         elif "megadna" in model_name:
             model = self.model
             tokenizer = self.tokenizer
             outputs = []
             for seq in score_seqs:
-                input_ids = tokenizer(seq, return_tensors="pt").to(
-                    self.device
-                )["input_ids"]
+                input_ids = tokenizer(seq, return_tensors="pt").to(self.device)["input_ids"]
                 with torch.no_grad():
                     loss = model(input_ids, return_value="loss")
                 outputs.append({"Input": seq, "Score": loss})
-            return outputs
+            return outputs  # type: ignore
 
         # General scoring for other base models (No classification head)
         # Use batch_infer to get embeddings and compute scores
@@ -1929,12 +1823,10 @@ class DNAInference:
                 padding="longest",
             )
         elif isinstance(inputs, DataLoader):
-            if "sequence" in inputs.dataset.dataset.column_names:
+            if "sequence" in inputs.dataset.dataset.column_names:  # type: ignore
                 seqs = inputs.dataset["sequence"]
-                if len(seqs) != len(inputs.dataset):
-                    raise ValueError(
-                        "Some sequences are missing in the dataset."
-                    )
+                if len(seqs) != len(inputs.dataset):  # type: ignore
+                    raise ValueError("Some sequences are missing in the dataset.")
                 score_seqs = [s for s in seqs if s]
             if score_seqs:
                 _, dataloader = self.generate_dataset(
@@ -1945,7 +1837,7 @@ class DNAInference:
             else:
                 dataloader = inputs
         else:
-            dataloader = inputs
+            dataloader = inputs  # type: ignore[unreachable]
         all_logits, _, embeddings = self.batch_infer(
             dataloader,
             output_hidden_states=True if score_type == "embedding" else False,
@@ -1959,7 +1851,7 @@ class DNAInference:
             # assume shape (N, L, V)
             for i in range(all_logits.size(0)):
                 logits_list.append(all_logits[i].detach().cpu())
-        elif isinstance(all_logits, (list, tuple)):
+        elif isinstance(all_logits, (list, tuple)):  # type: ignore[unreachable]
             for item in all_logits:
                 if item is not None:
                     logits_list.append(
@@ -1980,9 +1872,7 @@ class DNAInference:
                 elif reduce_method == "first":
                     seq_hidden = hidden_states[0][i]
                 else:
-                    seq_hidden = torch.stack(
-                        [h[i] for h in hidden_states], dim=0
-                    )
+                    seq_hidden = torch.stack([h[i] for h in hidden_states], dim=0)
                 if reduce_method == "mean":
                     score = seq_hidden.mean().item()
                 elif reduce_method == "max":
@@ -1992,7 +1882,7 @@ class DNAInference:
                 else:
                     score = seq_hidden.mean().item()
                 scores.append({"Input": score_seqs[i], "Score": score})
-            return scores
+            return scores  # type: ignore
         elif logits_list and score_type == "logits":
             # use logits as scores
             for i in range(len(score_seqs)):
@@ -2008,7 +1898,7 @@ class DNAInference:
                 else:
                     score = logits.mean().item()
                 scores.append({"Input": score_seqs[i], "Score": score})
-            return scores
+            return scores  # type: ignore
         elif logits_list and score_type == "probability":
             tokenizer = self.tokenizer
             for i, seq in enumerate(score_seqs):
@@ -2029,16 +1919,12 @@ class DNAInference:
                         is_mlm = True
                 with torch.no_grad():
                     # (L, V)
-                    logprobs = torch.log_softmax(
-                        logits.to(self.device), dim=-1
-                    )
+                    logprobs = torch.log_softmax(logits.to(self.device), dim=-1)
                 tgt_ids = input_ids.squeeze(0)
                 if is_mlm:
                     # MLM: logits[t] predicts token at t
                     # Gather token logprobs at each position
-                    gathered = logprobs.gather(
-                        1, tgt_ids.unsqueeze(-1)
-                    ).squeeze(-1)  # (L,)
+                    gathered = logprobs.gather(1, tgt_ids.unsqueeze(-1)).squeeze(-1)  # (L,)
                     # only keep positions where mask appears
                     mask_positions = tgt_ids == mask_token_id
                     if mask_positions.any():
@@ -2064,9 +1950,7 @@ class DNAInference:
                             token_logprobs = gathered
                     else:
                         # fallback: gather directly (if short)
-                        gathered = logprobs.gather(
-                            1, tgt_ids.unsqueeze(-1)
-                        ).squeeze(-1)
+                        gathered = logprobs.gather(1, tgt_ids.unsqueeze(-1)).squeeze(-1)
                         token_logprobs = gathered
                 if token_logprobs.numel() == 0:
                     score = float("nan")  # no tokens to score
@@ -2082,7 +1966,7 @@ class DNAInference:
                     else:
                         score = float(token_logprobs.mean().item())
                 scores.append({"Input": seq, "Score": score})
-            return scores
+            return scores  # type: ignore
 
         return {}
 
@@ -2155,7 +2039,7 @@ class DNAInference:
                     if layer not in layers:
                         layers.append(layer)
             # Get embeddings
-            all_embeddings = [[] for _ in layers]
+            all_embeddings = [[] for _ in layers]  # type: ignore
             for sequence in tqdm(sequences):
                 input_ids = (
                     torch
@@ -2166,15 +2050,11 @@ class DNAInference:
                     .unsqueeze(0)
                     .to(self.device)
                 )
-                _, embeddings = self.model(
-                    input_ids, return_embeddings=True, layer_names=layers
-                )
+                _, embeddings = self.model(input_ids, return_embeddings=True, layer_names=layers)
                 for i, n in enumerate(layers):
                     tmp = embeddings[n].detach().cpu().to(torch.float32)
                     if do_reduce:
-                        mean_emb = _compute_mean_embeddings(tmp, None).squeeze(
-                            0
-                        )
+                        mean_emb = _compute_mean_embeddings(tmp, None).squeeze(0)
                         all_embeddings[i].append(mean_emb)
                     else:
                         all_embeddings[i].append(tmp)
@@ -2187,12 +2067,10 @@ class DNAInference:
         elif is_special == "MEGADNA":
             model = self.model
             tokenizer = self.tokenizer
-            all_embeddings = [None] * 3
+            all_embeddings = [None] * 3  # type: ignore
             out_embeddings = []
             for sequence in tqdm(sequences):
-                input_ids = tokenizer(sequence, return_tensors="pt").to(
-                    self.device
-                )["input_ids"]
+                input_ids = tokenizer(sequence, return_tensors="pt").to(self.device)["input_ids"]
                 if not isinstance(input_ids, torch.LongTensor):
                     input_ids = input_ids.long()
                 with torch.no_grad():
@@ -2220,10 +2098,7 @@ class DNAInference:
                 self.embeddings["hidden_states"] = all_embeddings
             return out_embeddings
 
-        if (
-            "hidden_states" not in self.embeddings
-            or self.embeddings["hidden_states"] is None
-        ):
+        if "hidden_states" not in self.embeddings or self.embeddings["hidden_states"] is None:
             _, _, embeddings = self.batch_infer(
                 dataloader,
                 do_pred=False,

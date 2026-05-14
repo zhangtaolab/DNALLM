@@ -295,9 +295,7 @@ class TestMultiClassificationMetrics:
         """Test multi-class classification metrics with plotting data."""
         # Skip this test as multi-class plotting with AUROC is complex
         # and requires proper multi-class AUROC implementation
-        pytest.skip(
-            "Multi-class plotting with AUROC requires complex implementation"
-        )
+        pytest.skip("Multi-class plotting with AUROC requires complex implementation")
 
 
 class TestMultiLabelsMetrics:
@@ -598,9 +596,7 @@ class TestComputeMetrics:
         # Manually set an unsupported task type for testing
         task_config.task_type = "unsupported"
 
-        with pytest.raises(
-            ValueError, match="Unsupported task type for evaluation"
-        ):
+        with pytest.raises(ValueError, match="Unsupported task type for evaluation"):
             compute_metrics(task_config)
 
     def test_compute_metrics_with_plot(self):
@@ -764,9 +760,7 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
     if task_type == "multiclass":
         pytest.skip("Multiclass AUROC implementation has issues")
 
-    task_config = TaskConfig(
-        task_type=task_type, num_labels=num_labels, label_names=label_names
-    )
+    task_config = TaskConfig(task_type=task_type, num_labels=num_labels, label_names=label_names)
 
     compute_func = compute_metrics(task_config)
     assert callable(compute_func)

@@ -22,10 +22,7 @@ def main():
         inference_main()
     except ImportError as e:
         print(f"Error importing DNALLM package: {e}")
-        print(
-            "Please ensure the package is properly"
-            "installed or run from the project root."
-        )
+        print("Please ensure the package is properlyinstalled or run from the project root.")
         sys.exit(1)
     except Exception as e:
         print(f"Inference CLI execution failed: {e}")

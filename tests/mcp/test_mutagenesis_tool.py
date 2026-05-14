@@ -52,11 +52,10 @@ def mock_server(mock_inference_engine_for_mutagenesis):
     """Return a mock-configured DNALLMMCPServer."""
     from dnallm.mcp.server import DNALLMMCPServer
 
-    with patch(
-        "dnallm.mcp.server.MCPConfigManager"
-    ) as mock_cfg_mgr, patch(
-        "dnallm.mcp.server.ModelManager"
-    ) as mock_model_mgr:
+    with (
+        patch("dnallm.mcp.server.MCPConfigManager") as mock_cfg_mgr,
+        patch("dnallm.mcp.server.ModelManager") as mock_model_mgr,
+    ):
         mock_cfg = Mock()
         mock_cfg.get_server_config.return_value = Mock(
             mcp=Mock(name="test", description="test", version="1.0"),
@@ -66,9 +65,7 @@ def mock_server(mock_inference_engine_for_mutagenesis):
         mock_cfg_mgr.return_value = mock_cfg
 
         mock_mgr = Mock()
-        mock_mgr.get_inference_engine.return_value = (
-            mock_inference_engine_for_mutagenesis
-        )
+        mock_mgr.get_inference_engine.return_value = mock_inference_engine_for_mutagenesis
         mock_model_mgr.return_value = mock_mgr
 
         server = DNALLMMCPServer("config.yaml")
@@ -83,9 +80,7 @@ class TestDNAMutagenesisTool:
 
     async def test_single_base_substitution(self, mock_server):
         """Test single base substitution mutation type."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {
@@ -122,9 +117,7 @@ class TestDNAMutagenesisTool:
 
     async def test_multi_base_substitution(self, mock_server):
         """Test multi base substitution mutation type."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {
@@ -159,9 +152,7 @@ class TestDNAMutagenesisTool:
 
     async def test_deletion_mutation(self, mock_server):
         """Test deletion mutation type."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {
@@ -195,9 +186,7 @@ class TestDNAMutagenesisTool:
 
     async def test_insertion_mutation(self, mock_server):
         """Test insertion mutation type."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {
@@ -231,9 +220,7 @@ class TestDNAMutagenesisTool:
 
     async def test_combo_mutation(self, mock_server):
         """Test combo mutation type within limit."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {
@@ -343,9 +330,7 @@ class TestDNAMutagenesisTool:
 
     async def test_batch_sequences(self, mock_server):
         """Test processing multiple sequences."""
-        with patch(
-            "dnallm.mcp.server.Mutagenesis"
-        ) as mock_mut_cls:
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
             mock_mut = Mock()
             mock_mut_cls.return_value = mock_mut
             mock_mut.evaluate.return_value = {

@@ -20,7 +20,7 @@ import csv
 import json
 import os
 import re
-import subprocess
+import subprocess  # noqa: S404
 import sys
 import tempfile
 import time
@@ -34,6 +34,7 @@ from dnallm.utils import get_logger
 
 try:
     import nbformat
+
     HAS_NBFORMAT = True
 except ImportError:
     HAS_NBFORMAT = False
@@ -333,7 +334,8 @@ class DocVerifier:
 
             # Skip empty or comment-only blocks
             code_without_comments = "\n".join(
-                line for line in code.split("\n")
+                line
+                for line in code.split("\n")
                 if line.strip() and not line.strip().startswith("#")
             )
             if not stripped or not code_without_comments.strip():
@@ -364,7 +366,7 @@ class DocVerifier:
             "# --- end mocks ---",
         ]
 
-        for idx, (code, line, timeout) in enumerate(executable_blocks):
+        for idx, (code, line, _timeout) in enumerate(executable_blocks):
             script_lines.append(f"# --- block {idx} from line {line} ---")
             script_lines.append("_t0 = time.time()")
             script_lines.append("_exc = None")
@@ -402,14 +404,14 @@ class DocVerifier:
 
         try:
             start = time.time()
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 [sys.executable, temp_path],
                 cwd=str(self.project_root),
                 capture_output=True,
                 text=True,
                 timeout=max_timeout,
             )
-            overall_elapsed = int((time.time() - start) * 1000)
+            _ = int((time.time() - start) * 1000)  # timing for debugging
 
             output = proc.stdout.strip()
             # Try to parse the JSON results array from the last non-empty line
@@ -536,8 +538,8 @@ class DocVerifier:
 
             try:
                 start = time.time()
-                proc = subprocess.run(
-                    ["bash", "-n", temp_path],
+                proc = subprocess.run(  # noqa: S603
+                    ["bash", "-n", temp_path],  # noqa: S607
                     cwd=str(self.project_root),
                     capture_output=True,
                     text=True,
@@ -636,6 +638,7 @@ class DocVerifier:
 
             try:
                 import yaml
+
                 yaml.safe_load(code)
                 results.append(
                     BlockResult(
@@ -700,11 +703,15 @@ class DocVerifier:
             try:
                 # Support both single JSON object and JSONL (one object per line)
                 # Strip JSON comments (lines starting with //) before parsing
-                lines = [l for l in code.split("\n") if l.strip() and not l.strip().startswith("//")]
+                lines = [
+                    line_
+                    for line_ in code.split("\n")
+                    if line_.strip() and not line_.strip().startswith("//")
+                ]
                 if not lines:
                     raise ValueError("Empty JSON block after removing comments")
-                for l in lines:
-                    json.loads(l.strip())
+                for line_ in lines:
+                    json.loads(line_.strip())
                 results.append(
                     BlockResult(
                         file=rel_path,
@@ -830,18 +837,18 @@ class DocVerifier:
             try:
                 lines = stripped.split("\n")
                 in_sequence = False
-                for l in lines:
-                    l = l.strip()
-                    if not l:
+                for line_ in lines:
+                    line_ = line_.strip()
+                    if not line_:
                         continue
-                    if l.startswith(">"):
+                    if line_.startswith(">"):
                         in_sequence = True
                         continue
                     if in_sequence:
                         valid_chars = set("ACGTNacgtn")
-                        if not all(c in valid_chars for c in l):
-                            raise ValueError(f"Invalid FASTA character in line: {l[:50]}")
-                if not any(l.startswith(">") for l in lines if l.strip()):
+                        if not all(c in valid_chars for c in line_):
+                            raise ValueError(f"Invalid FASTA character in line: {line_[:50]}")
+                if not any(line_.startswith(">") for line_ in lines if line_.strip()):
                     raise ValueError("FASTA must have at least one header line starting with >")
                 results.append(
                     BlockResult(
@@ -908,23 +915,37 @@ class DocVerifier:
                 has_from = False
                 i = 0
                 while i < len(lines):
-                    l = lines[i].strip()
+                    line_ = lines[i].strip()
                     # Handle line continuations (backslash at end)
-                    while l.endswith("\\") and i + 1 < len(lines):
+                    while line_.endswith("\\") and i + 1 < len(lines):
                         i += 1
-                        l = l[:-1] + " " + lines[i].strip()
-                    if not l or l.startswith("#"):
+                        line_ = line_[:-1] + " " + lines[i].strip()
+                    if not line_ or line_.startswith("#"):
                         i += 1
                         continue
-                    upper = l.upper()
+                    upper = line_.upper()
                     valid_directives = (
-                        "FROM", "RUN", "CMD", "LABEL", "MAINTAINER", "EXPOSE",
-                        "ENV", "ADD", "COPY", "ENTRYPOINT", "VOLUME", "USER",
-                        "WORKDIR", "ARG", "ONBUILD", "STOPSIGNAL", "HEALTHCHECK",
+                        "FROM",
+                        "RUN",
+                        "CMD",
+                        "LABEL",
+                        "MAINTAINER",
+                        "EXPOSE",
+                        "ENV",
+                        "ADD",
+                        "COPY",
+                        "ENTRYPOINT",
+                        "VOLUME",
+                        "USER",
+                        "WORKDIR",
+                        "ARG",
+                        "ONBUILD",
+                        "STOPSIGNAL",
+                        "HEALTHCHECK",
                         "SHELL",
                     )
                     if not any(upper.startswith(d) for d in valid_directives):
-                        raise ValueError(f"Invalid Dockerfile instruction: {l[:50]}")
+                        raise ValueError(f"Invalid Dockerfile instruction: {line_[:50]}")
                     if upper.startswith("FROM"):
                         has_from = True
                     i += 1
@@ -1013,7 +1034,8 @@ class DocVerifier:
                 continue
             # Skip cells with only IPython magic
             non_magic_lines = [
-                line for line in source.split("\n")
+                line
+                for line in source.split("\n")
                 if line.strip() and not line.strip().startswith(("%", "!"))
             ]
             if not non_magic_lines:
@@ -1032,6 +1054,7 @@ class DocVerifier:
 
         # Execute via nbconvert CLI in subprocess (avoids ZMQ issues in nested contexts)
         import tempfile
+
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".ipynb", delete=False, dir=str(self.project_root)
         ) as f:
@@ -1039,14 +1062,19 @@ class DocVerifier:
             temp_nb = f.name
 
         try:
-            proc = subprocess.run(
+            proc = subprocess.run(  # noqa: S603
                 [
-                    sys.executable, "-m", "jupyter", "nbconvert",
-                    "--to", "notebook",
+                    sys.executable,
+                    "-m",
+                    "jupyter",
+                    "nbconvert",
+                    "--to",
+                    "notebook",
                     "--execute",
                     "--ExecutePreprocessor.timeout=120",
                     "--ExecutePreprocessor.kernel_name=python3",
-                    "--output", temp_nb + ".out.ipynb",
+                    "--output",
+                    temp_nb + ".out.ipynb",
                     temp_nb,
                 ],
                 cwd=str(self.project_root),
@@ -1136,7 +1164,7 @@ class DocVerifier:
             self.block_results.extend(bash_results)
 
             # Other language blocks — validate supported formats, SKIP the rest
-            for lang, code, line, skip in blocks:
+            for lang, _code, line, skip in blocks:
                 if lang not in ("python", "py", "bash"):
                     # If it has an explicit skip marker, honour it
                     if skip is not None:
@@ -1168,7 +1196,7 @@ class DocVerifier:
 
             # Remaining unsupported languages
             validated_langs = {"python", "py", "bash", "yaml", "json", "csv", "fasta", "dockerfile"}
-            for lang, code, line, skip in blocks:
+            for lang, _code, line, skip in blocks:
                 if lang not in validated_langs:
                     reason = skip or f"unsupported language: {lang}"
                     self.block_results.append(
@@ -1220,8 +1248,8 @@ class DocVerifier:
             "",
             "## Summary",
             "",
-            f"| Status  | Count |",
-            f"|---------|-------|",
+            "| Status  | Count |",
+            "|---------|-------|",
             f"| PASS    | {pass_count} |",
             f"| FAIL    | {fail_count} |",
             f"| SKIP    | {skip_count} |",
@@ -1391,7 +1419,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="JSON report path (default: .planning/phases/06-fix-documentation-code-examples-and-verify-all-docs-are-exec/verification_results.json)",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Print detailed progress",
     )

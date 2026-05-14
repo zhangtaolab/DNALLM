@@ -49,9 +49,7 @@ training_args:
 ### Model Loading
 ```python
 # For custom architectures
-model, tokenizer = load_model_and_tokenizer(
-    "model_name", trust_remote_code=True
-)
+model, tokenizer = load_model_and_tokenizer("model_name", trust_remote_code=True)
 ```
 
 ## Still Need Help?

@@ -86,9 +86,7 @@ def test_random_generate_sequences():
     assert all(20 <= len(seq) <= 30 for seq in seqs)
 
     # Test with GC content constraint
-    seqs = random_generate_sequences(
-        minl=20, samples=5, gc=(0.4, 0.6), seed=42
-    )
+    seqs = random_generate_sequences(minl=20, samples=5, gc=(0.4, 0.6), seed=42)
     assert len(seqs) == 5
     assert all(0.4 <= calc_gc_content(seq) <= 0.6 for seq in seqs)
 
@@ -98,8 +96,6 @@ def test_random_generate_sequences():
     assert any("N" in seq for seq in seqs)
 
     # Test with padding
-    seqs = random_generate_sequences(
-        minl=20, maxl=30, samples=5, padding_size=5, seed=42
-    )
+    seqs = random_generate_sequences(minl=20, maxl=30, samples=5, padding_size=5, seed=42)
     assert len(seqs) == 5
     assert all(len(seq) % 5 == 0 for seq in seqs)

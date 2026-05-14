@@ -154,9 +154,7 @@ class TestStructuredLogging:
 
             mock_logger.opt.return_value.log = capture_log
 
-            json_server._structured_log(
-                "info", "Tool executed", tool_name="dna_sequence_predict"
-            )
+            json_server._structured_log("info", "Tool executed", tool_name="dna_sequence_predict")
 
             assert len(log_calls) == 1
             log_entry = json.loads(log_calls[0][1].strip())
@@ -172,9 +170,7 @@ class TestStructuredLogging:
 
             mock_logger.opt.return_value.log = capture_log
 
-            json_server._structured_log(
-                "info", "Tool executed", duration_ms=123.456
-            )
+            json_server._structured_log("info", "Tool executed", duration_ms=123.456)
 
             assert len(log_calls) == 1
             log_entry = json.loads(log_calls[0][1].strip())
@@ -243,6 +239,7 @@ class TestLoggingIntegration:
     @pytest.mark.asyncio
     async def test_successful_tool_logs_duration(self, mock_server):
         """Verify successful tool execution logs positive duration."""
+
         async def fast_tool():
             await asyncio.sleep(0.01)
             return {"result": "ok"}
@@ -254,6 +251,7 @@ class TestLoggingIntegration:
                 class OptLogger:
                     def log(self, level, msg):
                         log_calls.append((level, msg))
+
                 return OptLogger()
 
             mock_logger.opt = capture_opt
@@ -289,6 +287,7 @@ class TestLoggingIntegration:
                 class OptLogger:
                     def log(self, level, msg):
                         log_calls.append((level, msg))
+
                 return OptLogger()
 
             mock_logger.opt = capture_opt
@@ -318,9 +317,7 @@ class TestLoggingIntegration:
 
             mock_logger.log = capture_log
 
-            mock_server._structured_log(
-                "info", "Simple message", tool_name="test_tool"
-            )
+            mock_server._structured_log("info", "Simple message", tool_name="test_tool")
 
             assert len(log_calls) == 1
             msg = log_calls[0][1]
@@ -343,6 +340,7 @@ class TestLoggingIntegration:
                 class OptLogger:
                     def log(self, level, msg):
                         log_calls.append((level, msg))
+
                 return OptLogger()
 
             mock_logger.opt = capture_opt

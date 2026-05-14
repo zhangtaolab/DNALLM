@@ -24,9 +24,7 @@ For most file-based formats, you can use the `DNADataset.load_local_data()` clas
 from dnallm.datahandling.data import DNADataset
 
 # Assuming 'my_data.csv' has columns 'dna_string' and 'target'
-dna_ds = DNADataset.load_local_data(
-    "my_data.csv", seq_col="dna_string", label_col="target"
-)
+dna_ds = DNADataset.load_local_data("my_data.csv", seq_col="dna_string", label_col="target")
 print(dna_ds)
 ```
 

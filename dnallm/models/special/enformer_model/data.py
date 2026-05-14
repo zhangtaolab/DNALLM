@@ -57,7 +57,7 @@ reverse_complement_map = torch.Tensor([3, 2, 1, 0, 4]).long()
 def torch_fromstring(seq_strs):
     batched = not isinstance(seq_strs, str)
     seq_strs = cast_list(seq_strs)
-    np_seq_chrs = [np.fromstring(t, dtype=np.uint8) for t in seq_strs]
+    np_seq_chrs = [np.fromstring(t, dtype=np.uint8) for t in seq_strs]  # type: ignore
     seq_chrs = list(map(torch.from_numpy, np_seq_chrs))
     return torch.stack(seq_chrs) if batched else seq_chrs[0]
 
@@ -90,9 +90,7 @@ def seq_indices_reverse_complement(seq_indices):
 def one_hot_reverse_complement(one_hot):
     *_, _, d = one_hot.shape
     if d != 4:
-        raise ValueError(
-            "must be one hot encoding with last dimension equal to 4"
-        )
+        raise ValueError("must be one hot encoding with last dimension equal to 4")
     return torch.flip(one_hot, (-1, -2))
 
 
@@ -137,10 +135,7 @@ class FastaInterval:
 
         left_padding = right_padding = 0
 
-        if (
-            exists(self.context_length)
-            and interval_length < self.context_length
-        ):
+        if exists(self.context_length) and interval_length < self.context_length:
             extra_seq = self.context_length - interval_length
 
             extra_left_seq = extra_seq // 2
@@ -157,11 +152,7 @@ class FastaInterval:
             right_padding = end - chromosome_length
             end = chromosome_length
 
-        seq = (
-            ("." * left_padding)
-            + str(chromosome[start:end])
-            + ("." * right_padding)
-        )
+        seq = ("." * left_padding) + str(chromosome[start:end]) + ("." * right_padding)
 
         should_rc_aug = self.rc_aug and coin_flip()
 

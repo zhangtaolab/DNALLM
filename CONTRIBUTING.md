@@ -402,6 +402,7 @@ tests/
 import pytest
 from dnallm.utils.sequence import check_sequence
 
+
 class TestSequenceValidation:
     """Test cases for DNA sequence validation."""
 
