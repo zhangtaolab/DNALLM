@@ -55,7 +55,6 @@ CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC...
 Often, you will have your sequences in a FASTA file and your labels in a separate file. The `dnallm.datahandling.data` module provides a `fasta_to_df` utility to easily parse FASTA files into a pandas DataFrame, which you can then merge with your labels.
 
 Let's assume you have `sequences.fa` and `labels.csv` (with a `name` column matching the FASTA headers and a `label` column).
-<!-- skip-verify: references function that does not exist in current codebase -->
 ```python
 import pandas as pd
 from dnallm.datahandling.data import fasta_to_df
@@ -102,7 +101,6 @@ While `DNADataset` doesn't load Pickle files directly for security and compatibi
 
 Let's say you have a `data.pkl` file containing a list of dictionaries or a pandas DataFrame.
 
-<!-- skip-verify: non-executable example code -->
 ```python
 import pandas as pd
 

@@ -1,6 +1,6 @@
 # DNALLM Documentation Verification Report
 
-**Generated:** 2026-05-13T00:37:28.844220+00:00Z
+**Generated:** 2026-05-13T23:55:54.307989+00:00Z
 **Total code blocks:** 528
 **Files scanned:** 120 Markdown + 0 notebooks
 
@@ -8,9 +8,9 @@
 
 | Status  | Count |
 |---------|-------|
-| PASS    | 256 |
+| PASS    | 315 |
 | FAIL    | 0 |
-| SKIP    | 272 |
+| SKIP    | 213 |
 | TIMEOUT | 0 |
 
 ## Details
@@ -19,8 +19,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 352 | python | SKIP | depends on variables defined in preceding code blocks |
-| 402 | python | PASS |  |
+| 351 | python | PASS |  |
+| 401 | python | PASS |  |
 | 35 | bash | PASS |  |
 | 41 | bash | PASS |  |
 | 49 | bash | PASS |  |
@@ -38,39 +38,39 @@
 | 205 | bash | PASS |  |
 | 220 | bash | PASS |  |
 | 238 | bash | PASS |  |
-| 436 | bash | PASS |  |
-| 478 | bash | PASS |  |
-| 494 | bash | PASS |  |
-| 500 | bash | PASS |  |
-| 624 | bash | PASS |  |
+| 435 | bash | PASS |  |
+| 477 | bash | PASS |  |
+| 493 | bash | PASS |  |
+| 499 | bash | PASS |  |
+| 623 | bash | PASS |  |
 | 253 | cmd | SKIP | unsupported language: cmd |
 | 273 | text | SKIP | unsupported language: text |
-| 384 |  | SKIP | unsupported language:  |
-| 458 |  | SKIP | unsupported language:  |
-| 514 | markdown | SKIP | unsupported language: markdown |
+| 383 |  | SKIP | unsupported language:  |
+| 457 |  | SKIP | unsupported language:  |
+| 513 | markdown | SKIP | unsupported language: markdown |
 ### README.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 254 | python | SKIP | depends on variables defined in preceding code blocks |
-| 270 | python | SKIP | depends on variables defined in preceding code blocks |
-| 307 | python | SKIP | requires async event loop context |
-| 329 | python | SKIP | requires async event loop and running server |
+| 305 | python | SKIP | requires async event loop context |
 | 229 | python | PASS |  |
+| 253 | python | PASS |  |
+| 268 | python | PASS |  |
+| 326 | python | PASS |  |
 | 15 | bash | PASS |  |
 | 69 | bash | PASS |  |
 | 100 | bash | PASS |  |
 | 128 | bash | PASS |  |
 | 172 | bash | PASS |  |
 | 185 | bash | PASS |  |
-| 293 | bash | PASS |  |
-| 302 | bash | PASS |  |
-| 361 | bash | PASS |  |
-| 376 | bash | PASS |  |
-| 388 | bash | PASS |  |
-| 442 | bash | PASS |  |
-| 480 | bash | PASS |  |
-| 413 |  | SKIP | unsupported language:  |
+| 291 | bash | PASS |  |
+| 300 | bash | PASS |  |
+| 358 | bash | PASS |  |
+| 373 | bash | PASS |  |
+| 385 | bash | PASS |  |
+| 439 | bash | PASS |  |
+| 477 | bash | PASS |  |
+| 410 |  | SKIP | unsupported language:  |
 ### docs/concepts/biology/dna_sequences.md
 
 | Line | Lang | Status | Error |
@@ -85,8 +85,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 14 | python | SKIP | depends on variables defined in preceding code blocks |
-| 29 | python | SKIP | depends on variables defined in preceding code blocks |
+| 13 | python | PASS |  |
+| 27 | python | PASS |  |
 ### docs/concepts/mcp.md
 
 | Line | Lang | Status | Error |
@@ -105,16 +105,16 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 146 | python | SKIP | depends on variables defined in preceding code blocks |
 | 109 | python | PASS |  |
 | 133 | python | PASS |  |
+| 145 | python | PASS |  |
 | 35 | bash | PASS |  |
 | 51 | bash | PASS |  |
 | 56 | bash | PASS |  |
 | 69 | bash | PASS |  |
-| 172 | bash | PASS |  |
-| 177 | bash | PASS |  |
-| 271 | bash | PASS |  |
+| 171 | bash | PASS |  |
+| 176 | bash | PASS |  |
+| 270 | bash | PASS |  |
 ### docs/faq/install_troubleshooting.md
 
 | Line | Lang | Status | Error |
@@ -176,28 +176,28 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 98 | python | SKIP | depends on variables defined in preceding code blocks |
-| 114 | python | SKIP | depends on variables defined in preceding code blocks |
-| 133 | python | SKIP | requires async event loop context |
+| 131 | python | SKIP | requires async event loop context |
 | 73 | python | PASS |  |
+| 97 | python | PASS |  |
+| 112 | python | PASS |  |
 | 45 | bash | PASS |  |
-| 148 | bash | PASS |  |
-| 160 | bash | PASS |  |
-| 184 | bash | PASS |  |
-| 210 |  | SKIP | unsupported language:  |
+| 146 | bash | PASS |  |
+| 158 | bash | PASS |  |
+| 182 | bash | PASS |  |
+| 208 |  | SKIP | unsupported language:  |
 ### docs/resources/datahandling.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 38 | python | SKIP | depends on variables defined in preceding code blocks |
-| 91 | python | SKIP | depends on variables defined in preceding code blocks |
 | 30 | python | PASS |  |
+| 37 | python | PASS |  |
+| 89 | python | PASS |  |
 ### docs/resources/model_selection.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 100 | python | SKIP | depends on variables defined in preceding code blocks |
 | 66 | python | PASS |  |
+| 99 | python | PASS |  |
 | 91 | yaml | SKIP | unsupported language: yaml |
 ### docs/resources/model_zoo.md
 
@@ -258,28 +258,28 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 86 | python | SKIP | depends on variables defined in preceding code blocks |
 | 56 | python | PASS |  |
+| 85 | python | PASS |  |
 | 29 | bash | PASS |  |
 | 38 | bash | PASS |  |
 ### docs/resources/models/special_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 76 | python | SKIP | depends on variables defined in preceding code blocks |
-| 110 | python | SKIP | depends on variables defined in preceding code blocks |
 | 33 | python | PASS |  |
+| 75 | python | PASS |  |
+| 108 | python | PASS |  |
 | 23 | bash | PASS |  |
 | 66 | bash | PASS |  |
-| 101 | bash | PASS |  |
-| 132 | bash | PASS |  |
-| 149 | bash | PASS |  |
+| 100 | bash | PASS |  |
+| 130 | bash | PASS |  |
+| 147 | bash | PASS |  |
 ### docs/resources/troubleshooting_models.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 91 | python | SKIP | depends on variables defined in preceding code blocks |
 | 78 | python | PASS |  |
+| 90 | python | PASS |  |
 | 26 | bash | PASS |  |
 | 32 | bash | PASS |  |
 | 45 | bash | PASS |  |
@@ -288,19 +288,19 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 20 | python | SKIP | depends on variables defined in preceding code blocks |
-| 120 | python | SKIP | depends on variables defined in preceding code blocks |
-| 174 | python | SKIP | depends on variables defined in preceding code blocks |
-| 241 | python | SKIP | depends on variables defined in preceding code blocks |
-| 578 | python | SKIP | depends on variables defined in preceding code blocks |
-| 600 | python | SKIP | depends on variables defined in preceding code blocks |
-| 86 | python | PASS |  |
-| 329 | python | PASS |  |
-| 366 | python | PASS |  |
-| 405 | python | PASS |  |
-| 466 | python | PASS |  |
-| 514 | python | PASS |  |
-| 557 | python | PASS |  |
+| 19 | python | PASS |  |
+| 85 | python | PASS |  |
+| 118 | python | PASS |  |
+| 171 | python | PASS |  |
+| 237 | python | PASS |  |
+| 325 | python | PASS |  |
+| 362 | python | PASS |  |
+| 401 | python | PASS |  |
+| 462 | python | PASS |  |
+| 510 | python | PASS |  |
+| 553 | python | PASS |  |
+| 573 | python | PASS |  |
+| 594 | python | PASS |  |
 ### docs/user_guide/benchmark/configuration.md
 
 | Line | Lang | Status | Error |
@@ -337,8 +337,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 44 | python | SKIP | k-fold cross-validation requires n_splits >= 2 |
 | 13 | python | PASS |  |
+| 43 | python | PASS |  |
 ### docs/user_guide/benchmark/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -374,29 +374,29 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 43 | python | SKIP | depends on variables defined in preceding code blocks |
-| 111 | bash | PASS |  |
-| 118 | bash | PASS |  |
+| 42 | python | PASS |  |
+| 110 | bash | PASS |  |
+| 117 | bash | PASS |  |
 | 26 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/case_studies/multi_task_learning.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 70 | python | SKIP | depends on variables defined in preceding code blocks |
+| 69 | python | PASS |  |
 | 28 |  | SKIP | unsupported language:  |
 | 38 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/case_studies/promoter_prediction.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 56 | python | SKIP | depends on variables defined in preceding code blocks |
+| 55 | python | PASS |  |
 | 23 | yaml | SKIP | unsupported language: yaml |
-| 135 |  | SKIP | unsupported language:  |
+| 134 |  | SKIP | unsupported language:  |
 ### docs/user_guide/case_studies/sequence_generation.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 45 | python | SKIP | depends on variables defined in preceding code blocks |
+| 44 | python | PASS |  |
 | 26 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/cli/config_generator.md
 
@@ -465,7 +465,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 26 | python | SKIP | depends on variables defined in preceding code blocks |
+| 25 | python | SKIP | empty code block |
 ### docs/user_guide/data_processing/data_preparation.md
 
 | Line | Lang | Status | Error |
@@ -476,33 +476,33 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 59 | python | SKIP | references function that does not exist in current codebase |
-| 106 | python | SKIP | non-executable example code |
 | 23 | python | PASS |  |
-| 87 | python | PASS |  |
+| 58 | python | PASS |  |
+| 86 | python | PASS |  |
+| 104 | python | PASS |  |
 | 36 | json | SKIP | unsupported language: json |
 | 47 | text | SKIP | unsupported language: text |
 ### docs/user_guide/data_processing/quality_control.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 16 | python | SKIP | depends on variables defined in preceding code blocks |
-| 28 | python | SKIP | depends on variables defined in preceding code blocks |
+| 15 | python | SKIP | empty code block |
+| 27 | python | SKIP | requires local data files |
 ### docs/user_guide/fine_tuning/advanced_techniques.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 21 | python | SKIP | depends on variables defined in preceding code blocks |
-| 83 | python | SKIP | depends on variables defined in preceding code blocks |
-| 118 | python | SKIP | depends on variables defined in preceding code blocks |
-| 243 | python | SKIP | depends on variables defined in preceding code blocks |
-| 279 | python | SKIP | depends on variables defined in preceding code blocks |
-| 334 | python | SKIP | depends on variables defined in preceding code blocks |
-| 386 | python | SKIP | depends on variables defined in preceding code blocks |
-| 462 | python | SKIP | depends on variables defined in preceding code blocks |
+| 20 | python | PASS |  |
+| 81 | python | PASS |  |
+| 115 | python | PASS |  |
+| 247 | python | PASS |  |
+| 282 | python | PASS |  |
+| 336 | python | PASS |  |
+| 387 | python | PASS |  |
+| 462 | python | PASS |  |
 | 533 | python | PASS |  |
 | 590 | python | PASS |  |
-| 318 | yaml | SKIP | unsupported language: yaml |
+| 321 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/fine_tuning/configuration.md
 
 | Line | Lang | Status | Error |
@@ -565,7 +565,7 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 641 | python | SKIP | depends on variables defined in preceding code blocks |
+| 641 | python | SKIP | BLEU metric requires string labels, mock dataset uses int labels |
 | 51 | python | PASS |  |
 | 142 | python | PASS |  |
 | 219 | python | PASS |  |
@@ -604,17 +604,17 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 25 | python | SKIP | depends on variables defined in preceding code blocks |
-| 75 | python | SKIP | depends on variables defined in preceding code blocks |
-| 121 | python | SKIP | depends on variables defined in preceding code blocks |
-| 136 | python | SKIP | depends on variables defined in preceding code blocks |
+| 24 | python | PASS |  |
+| 73 | python | PASS |  |
+| 118 | python | PASS |  |
+| 132 | python | PASS |  |
 ### docs/user_guide/inference/basic_inference.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 18 | python | SKIP | depends on variables defined in preceding code blocks |
-| 91 | bash | PASS |  |
-| 101 | json | SKIP | unsupported language: json |
+| 17 | python | PASS |  |
+| 90 | bash | PASS |  |
+| 100 | json | SKIP | unsupported language: json |
 ### docs/user_guide/inference/getting_started.md
 
 | Line | Lang | Status | Error |
@@ -625,28 +625,28 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 82 | python | SKIP | depends on variables defined in preceding code blocks |
-| 123 | python | SKIP | depends on variables defined in preceding code blocks |
-| 153 | python | SKIP | depends on variables defined in preceding code blocks |
 | 48 | python | PASS |  |
+| 81 | python | PASS |  |
+| 121 | python | PASS |  |
+| 150 | python | PASS |  |
 ### docs/user_guide/inference/performance_optimization.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 74 | python | SKIP | depends on variables defined in preceding code blocks |
-| 112 | python | SKIP | depends on variables defined in preceding code blocks |
+| 73 | python | PASS |  |
+| 110 | python | PASS |  |
 | 16 | yaml | SKIP | unsupported language: yaml |
 | 30 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/inference/visualization.md
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 65 | python | SKIP | depends on variables defined in preceding code blocks |
-| 91 | python | SKIP | depends on variables defined in preceding code blocks |
-| 117 | python | SKIP | depends on variables defined in preceding code blocks |
-| 150 | python | SKIP | depends on variables defined in preceding code blocks |
 | 39 | python | PASS |  |
-| 176 | bash | PASS |  |
+| 64 | python | PASS |  |
+| 89 | python | PASS |  |
+| 114 | python | PASS |  |
+| 146 | python | PASS |  |
+| 172 | bash | PASS |  |
 ### docs/user_guide/mcp/configuration.md
 
 | Line | Lang | Status | Error |
@@ -695,27 +695,27 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 214 | python | SKIP | requires async event loop and running server |
-| 229 | python | SKIP | requires async event loop and running server |
-| 277 | python | SKIP | requires async event loop and running server |
-| 321 | python | SKIP | requires async event loop and running server |
-| 426 | python | SKIP | requires async event loop and running server |
-| 452 | python | SKIP | requires async event loop and running server |
-| 479 | python | SKIP | requires async event loop and running server |
-| 502 | python | SKIP | requires async event loop and running server |
-| 558 | python | SKIP | requires async event loop and running server |
-| 397 | bash | PASS |  |
-| 404 | bash | PASS |  |
-| 411 | bash | PASS |  |
-| 418 | bash | PASS |  |
+| 228 | python | SKIP | requires async event loop and running server |
+| 276 | python | SKIP | requires async event loop and running server |
+| 320 | python | SKIP | requires async event loop and running server |
+| 425 | python | SKIP | requires async event loop and running server |
+| 451 | python | SKIP | requires async event loop and running server |
+| 478 | python | SKIP | requires async event loop and running server |
+| 501 | python | SKIP | requires async event loop and running server |
+| 557 | python | SKIP | requires async event loop and running server |
+| 213 | python | PASS |  |
+| 396 | bash | PASS |  |
+| 403 | bash | PASS |  |
+| 410 | bash | PASS |  |
+| 417 | bash | PASS |  |
 | 24 | json | SKIP | unsupported language: json |
 | 50 | json | SKIP | unsupported language: json |
 | 85 | json | SKIP | unsupported language: json |
 | 159 | json | SKIP | unsupported language: json |
-| 349 | javascript | SKIP | unsupported language: javascript |
-| 534 | json | SKIP | unsupported language: json |
-| 541 | json | SKIP | unsupported language: json |
-| 548 | json | SKIP | unsupported language: json |
+| 348 | javascript | SKIP | unsupported language: javascript |
+| 533 | json | SKIP | unsupported language: json |
+| 540 | json | SKIP | unsupported language: json |
+| 547 | json | SKIP | unsupported language: json |
 ### docs/user_guide/models.md
 
 | Line | Lang | Status | Error |
@@ -734,8 +734,8 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 39 | python | SKIP | depends on variables defined in preceding code blocks |
-| 70 | python | SKIP | depends on variables defined in preceding code blocks |
+| 38 | python | PASS |  |
+| 68 | python | PASS |  |
 | 20 | yaml | SKIP | unsupported language: yaml |
 ### docs/user_guide/performance/memory_optimization.md
 
@@ -766,15 +766,10 @@
 
 | Line | Lang | Status | Error |
 |------|------|--------|-------|
-| 559 | python | SKIP | depends on variables defined in preceding code blocks |
-| 608 | python | SKIP | depends on variables defined in preceding code blocks |
-| 663 | python | SKIP | depends on variables defined in preceding code blocks |
-| 694 | python | SKIP | depends on variables defined in preceding code blocks |
-| 716 | python | SKIP | depends on variables defined in preceding code blocks |
-| 749 | python | SKIP | depends on variables defined in preceding code blocks |
-| 881 | python | SKIP | requires running server instance to connect to |
-| 925 | python | SKIP | requires running server instance to connect to |
-| 1092 | python | SKIP | depends on variables defined in preceding code blocks |
+| 607 | python | SKIP | requires local model files |
+| 692 | python | SKIP | requires local data files |
+| 877 | python | SKIP | requires running server instance to connect to |
+| 921 | python | SKIP | requires running server instance to connect to |
 | 87 | python | PASS |  |
 | 132 | python | PASS |  |
 | 213 | python | PASS |  |
@@ -782,15 +777,20 @@
 | 274 | python | PASS |  |
 | 390 | python | PASS |  |
 | 475 | python | PASS |  |
-| 1076 | python | PASS |  |
-| 1114 | python | PASS |  |
-| 1183 | python | PASS |  |
+| 558 | python | PASS |  |
+| 661 | python | PASS |  |
+| 713 | python | PASS |  |
+| 745 | python | PASS |  |
+| 1072 | python | PASS |  |
+| 1087 | python | PASS |  |
+| 1109 | python | PASS |  |
+| 1178 | python | PASS |  |
 | 34 | bash | PASS |  |
 | 56 | bash | PASS |  |
 | 344 | bash | PASS |  |
-| 870 | bash | PASS |  |
-| 904 | bash | SKIP | requires running server instance to connect to |
-| 1022 | bash | PASS |  |
+| 866 | bash | PASS |  |
+| 900 | bash | SKIP | requires running server instance to connect to |
+| 1018 | bash | PASS |  |
 | 114 | csv | SKIP | unsupported language: csv |
 | 123 | tsv | SKIP | unsupported language: tsv |
 | 158 | yaml | SKIP | unsupported language: yaml |
@@ -800,14 +800,14 @@
 | 451 | csv | SKIP | unsupported language: csv |
 | 458 | yaml | SKIP | unsupported language: yaml |
 | 526 | yaml | SKIP | unsupported language: yaml |
-| 643 | yaml | SKIP | unsupported language: yaml |
-| 786 | yaml | SKIP | unsupported language: yaml |
-| 849 | yaml | SKIP | requires server configuration file and runtime environment |
-| 990 | dockerfile | SKIP | unsupported language: dockerfile |
-| 1038 | yaml | SKIP | unsupported language: yaml |
-| 1048 | yaml | SKIP | unsupported language: yaml |
-| 1056 | yaml | SKIP | unsupported language: yaml |
-| 1144 | yaml | SKIP | unsupported language: yaml |
-| 1160 | yaml | SKIP | unsupported language: yaml |
-| 1170 |  | SKIP | unsupported language:  |
-| 1194 | yaml | SKIP | unsupported language: yaml |
+| 642 | yaml | SKIP | unsupported language: yaml |
+| 782 | yaml | SKIP | unsupported language: yaml |
+| 845 | yaml | SKIP | requires server configuration file and runtime environment |
+| 986 | dockerfile | SKIP | unsupported language: dockerfile |
+| 1034 | yaml | SKIP | unsupported language: yaml |
+| 1044 | yaml | SKIP | unsupported language: yaml |
+| 1052 | yaml | SKIP | unsupported language: yaml |
+| 1139 | yaml | SKIP | unsupported language: yaml |
+| 1155 | yaml | SKIP | unsupported language: yaml |
+| 1165 |  | SKIP | unsupported language:  |
+| 1189 | yaml | SKIP | unsupported language: yaml |

@@ -210,7 +210,6 @@ Perform health check on the MCP server.
 - Server health status and statistics
 
 **Example:**
-<!-- skip-verify: requires async event loop and running server -->
 ```python
 from dnallm.mcp import DNALLMMCPClient
 
