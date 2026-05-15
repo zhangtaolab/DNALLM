@@ -245,12 +245,12 @@ agent = Agent(
 
 When analyzing a DNA sequence, you should:
 1. First call _list_loaded_models to see what models are available
-2. Then call _dna_multi_model_predict with the DNA sequence and appropriate model names
+2. Then call dna_multi_model_predict with the DNA sequence and appropriate model names
 3. Interpret and explain the results in a comprehensive way
 
 Available tools should include:
 - _list_loaded_models: Lists available DNA analysis models
-- _dna_multi_model_predict: Predicts DNA sequence properties using multiple models
+- dna_multi_model_predict: Predicts DNA sequence properties using multiple models
 
 Always use the tools to provide accurate analysis.""",
 )

@@ -28,7 +28,7 @@ The `DNADataset` class provides comprehensive functionality for DNA sequence dat
 ### Basic Setup
 
 ```python
-from dnallm import DNADataset
+from dnallm.datahandling import DNADataset
 from transformers import AutoTokenizer
 ```
 

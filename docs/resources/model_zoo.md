@@ -115,7 +115,7 @@ The following models are specifically designed for plant genomics:
 
 To use any of these models with DNALLM:
 ```python
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # Load a supported model
 model, tokenizer = load_model_and_tokenizer("zhangtaolab/plant-dnabert-BPE", source="huggingface")

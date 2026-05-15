@@ -1092,7 +1092,7 @@ trainer.save_pretrained("./models/weights_only")
 trainer.save_model("./models/safetensors_model", safe_serialization=True)
 
 # Load model
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 model, tokenizer = load_model_and_tokenizer("./models/final_model", task_config=configs["task"])
 ```
@@ -1114,7 +1114,6 @@ finetune:
   per_device_train_batch_size: 4
   gradient_accumulation_steps: 8
   fp16: true
-  gradient_checkpointing: true
 ```
 
 ### Q2: What to do if model training doesn't converge?

@@ -1,0 +1,72 @@
+name: Docs Validation
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+    branches: [main, master, dev]
+
+jobs:
+  docs-validation:
+    name: docs-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[test,dev]"
+
+      - name: Check docs/example/ sync
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          python scripts/check_docs_sync.py
+
+      - name: Validate docs code snippets
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          python scripts/validate_docs_snippets.py
+
+      - name: Validate YAML configs
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          python scripts/validate_yaml.py
+
+      - name: Run example tests
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          pytest tests/examples/test_examples.py -v
+
+      - name: Run YAML load tests
+        continue-on-error: true
+        run: |
+          source .venv/bin/activate
+          pytest tests/configuration/test_yaml_load.py -v

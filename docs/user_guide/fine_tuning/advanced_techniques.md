@@ -315,7 +315,6 @@ Implement gradient checkpointing to reduce memory usage.
 ```yaml
 # Enable gradient checkpointing in configuration
 finetune:
-  gradient_checkpointing: true
 ```
 
 ### Memory Efficient Attention

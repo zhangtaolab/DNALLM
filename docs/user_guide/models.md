@@ -52,7 +52,7 @@ This page provides access to comprehensive guides for different DNA language mod
 
 ### Basic Model Loading
 ```python
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # Load a DNA-specific model
 model, tokenizer = load_model_and_tokenizer("zhangtaolab/plant-dnabert-BPE", source="huggingface")

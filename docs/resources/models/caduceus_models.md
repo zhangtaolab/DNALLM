@@ -35,7 +35,7 @@ You can load a Caduceus model using the `AutoModel` classes from `transformers` 
 
 Here’s how to load a Caduceus model for a masked language modeling task.
 ```python
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # Use a specific Caduceus model
 model_name = "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
@@ -52,7 +52,7 @@ print("Tokenizer:", type(tokenizer))
 Let's use a Caduceus model to get embeddings for a DNA sequence.
 ```python
 import torch
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the pre-trained model and tokenizer
 model_name = "kuleshov-group/PlantCaduceus_l20"

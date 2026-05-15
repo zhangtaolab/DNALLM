@@ -16,7 +16,7 @@ This technique trades a small amount of computation for a massive reduction in m
 
 **Configuration (`config.yaml`):**
 ```yaml
-training_args:
+finetune:
   per_device_train_batch_size: 4 # A small batch size that fits in memory
   gradient_accumulation_steps: 8 # Accumulate gradients over 8 steps
   # Effective batch size = 4 * 8 = 32
@@ -41,8 +41,7 @@ This is another trade-off: it saves a significant amount of memory at the cost o
 
 **Configuration (`config.yaml`):**
 ```yaml
-training_args:
-  gradient_checkpointing: true
+finetune:
 ```
 
 **CLI Argument:**

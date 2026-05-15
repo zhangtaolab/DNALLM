@@ -48,7 +48,7 @@ Start the DNALLM MCP server with specified configuration.
 | Option | Short | Type | Default | Description |
 |--------|-------|------|---------|-------------|
 | `--config` | `-c` | PATH | `dnallm/mcp/configs/mcp_server_config.yaml` | Path to MCP server configuration file |
-| `--host` | | TEXT | `0.0.0.0` | Host to bind the server to |
+| `--host` | | TEXT | `127.0.0.1` | Host to bind the server to |
 | `--port` | `-p` | INTEGER | `8000` | Port to bind the server to |
 | `--log-level` | | CHOICE | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL) |
 | `--transport` | | CHOICE | `stdio` | Transport protocol (stdio, sse, streamable-http) |
@@ -86,7 +86,7 @@ mcp:
 
 # Server settings
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 8000
   transport: "stdio"  # stdio, sse, streamable-http
   log_level: "INFO"
@@ -299,17 +299,8 @@ eventSource.onmessage = function(event) {
   console.log('Prediction result:', data);
 };
 
-// Send prediction request
-fetch('http://localhost:8000/predict', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    sequence: 'ATCGATCGATCG',
-    model_name: 'promoter_model'
-  })
-});
+// The MCP server exposes tools via the SSE transport
+// Use an MCP client library to call tools like dna_sequence_predict
 ```
 
 ## Troubleshooting
@@ -347,12 +338,12 @@ tail -f logs/mcp_server.log
 
 ### Health Monitoring
 
-```bash
-# Check server health
-curl -X POST http://localhost:8000/health
+The MCP server does not expose REST endpoints. Use the MCP protocol
+(via stdio, SSE, or streamable-http transport) to interact with the server.
 
-# Get model status
-curl -X POST http://localhost:8000/models
+```bash
+# Check server is running by connecting via MCP client
+# The server exposes tools: dna_sequence_predict, dna_batch_predict, dna_multi_model_predict
 ```
 
 ## Performance Optimization

@@ -53,7 +53,7 @@ Create a main server configuration file (e.g., `mcp_server_config.yaml`):
 ```yaml
 # MCP Server Configuration
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 8000
   workers: 1
   log_level: "INFO"
@@ -268,7 +268,7 @@ dnallm-mcp-server [OPTIONS]
 
 Options:
   --config, -c PATH          Path to MCP server configuration file
-  --host TEXT                Host to bind the server to (default: 0.0.0.0)
+  --host TEXT                Host to bind the server to (default: 127.0.0.1)
   --port INTEGER             Port to bind the server to (default: 8000)
   --transport [stdio|sse|streamable-http]  Transport protocol (default: stdio)
   --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]  Logging level (default: INFO)
@@ -333,12 +333,12 @@ agent = Agent(
 
 When analyzing a DNA sequence, you should:
 1. First call _list_loaded_models to see what models are available
-2. Then call _dna_multi_model_predict with the DNA sequence and appropriate model names
+2. Then call dna_multi_model_predict with the DNA sequence and appropriate model names
 3. Interpret and explain the results in a comprehensive way
 
 Available tools should include:
 - _list_loaded_models: Lists available DNA analysis models
-- _dna_multi_model_predict: Predicts DNA sequence properties using multiple models
+- dna_multi_model_predict: Predicts DNA sequence properties using multiple models
 
 Always use the tools to provide accurate analysis.""",
 )

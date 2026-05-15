@@ -34,7 +34,6 @@ finetune:
   num_train_epochs: 5
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1"  # or "eval_accuracy"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -125,7 +124,6 @@ finetune:
   num_train_epochs: 8
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_accuracy"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -202,7 +200,6 @@ finetune:
   num_train_epochs: 6
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1_micro"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -279,7 +276,6 @@ finetune:
   num_train_epochs: 10
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_rmse"
-  greater_is_better: false  # Lower is better for RMSE
 ```
 
 ### Data Format
@@ -355,7 +351,6 @@ finetune:
   num_train_epochs: 15
   per_device_train_batch_size: 8  # Smaller batch size
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
   generation_max_length: 512
   generation_num_beams: 4
 ```
@@ -435,7 +430,6 @@ finetune:
   num_train_epochs: 8
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
   mlm_probability: 0.15  # Probability of masking tokens
 ```
 
@@ -516,7 +510,6 @@ finetune:
   num_train_epochs: 6
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1"
-  greater_is_better: true
 ```
 
 ### Data Format

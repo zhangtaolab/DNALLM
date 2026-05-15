@@ -12,7 +12,7 @@ datasets:
     num_labels: 2
     label_names:
       - negative
-      - postive
+      - positive
     threshold: 0.5
 
 models:

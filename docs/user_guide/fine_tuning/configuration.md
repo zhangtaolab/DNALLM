@@ -216,7 +216,6 @@ finetune:
   # Model selection
   load_best_model_at_end: true
   metric_for_best_model: "eval_loss"  # or "eval_accuracy", "eval_f1"
-  greater_is_better: false  # false for loss, true for accuracy/f1
 
   # Checkpointing
   save_total_limit: 3
@@ -224,7 +223,6 @@ finetune:
   resume_from_checkpoint: null  # Path to resume from
 
   # Early stopping
-  early_stopping_patience: 3
   early_stopping_threshold: 0.001
 ```
 
@@ -256,7 +254,6 @@ finetune:
   dataloader_num_workers: 4
 
   # Gradient checkpointing
-  gradient_checkpointing: false
 
   # Memory efficient attention
   memory_efficient_attention: false
@@ -307,7 +304,6 @@ finetune:
   # Model selection
   load_best_model_at_end: true
   metric_for_best_model: "eval_f1"
-  greater_is_better: true
 
   # Mixed precision
   bf16: true
@@ -353,7 +349,6 @@ finetune:
   # Model selection
   load_best_model_at_end: true
   metric_for_best_model: "eval_accuracy"
-  greater_is_better: true
 
   # Mixed precision
   fp16: true
@@ -394,7 +389,6 @@ finetune:
   # Model selection
   load_best_model_at_end: true
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
 
   # Generation settings
   generation_max_length: 512
@@ -441,7 +435,6 @@ finetune:
   # Model selection
   load_best_model_at_end: true
   metric_for_best_model: "eval_rmse"
-  greater_is_better: false
 
   # Mixed precision
   fp16: true
@@ -479,7 +472,6 @@ finetune:
   gradient_accumulation_steps: 2
 
   # Robust training
-  early_stopping_patience: 5
   save_total_limit: 10
 
   # Monitoring
@@ -495,7 +487,6 @@ finetune:
   # Memory optimization
   per_device_train_batch_size: 8
   gradient_accumulation_steps: 4
-  gradient_checkpointing: true
   memory_efficient_attention: true
 
   # Mixed precision

@@ -105,13 +105,13 @@ DNALLM also provides a convenient command-line interface:
 
 ```bash
 # Basic benchmark run
-dnallm-benchmark --config benchmark_config.yaml
+dnallm benchmark --config benchmark_config.yaml
 
 # Generate detailed report
-dnallm-benchmark --config config.yaml --output report.html
+dnallm benchmark --config config.yaml --output report.html
 
 # Run with custom parameters
-dnallm-benchmark --config config.yaml --batch-size 32 --device cuda
+dnallm benchmark --config config.yaml --batch-size 32 --device cuda
 ```
 
 ## Understanding Results

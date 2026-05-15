@@ -44,7 +44,7 @@ Optimizing performance is key to working efficiently with large DNA models. This
 -   **Why it helps**: This is the most effective way to train large models on GPUs with limited VRAM. It drastically reduces memory requirements with a minimal impact on speed.
 -   **How to use it**: Set `gradient_accumulation_steps` in your training configuration.
     ```yaml
-    training_args:
+    finetune:
       per_device_train_batch_size: 2 # A small size that fits in memory
       gradient_accumulation_steps: 16 # Effective batch size = 2 * 16 = 32
     ```

@@ -58,7 +58,7 @@ def __(mo, models):
 
 @app.cell
 def __(model_df):
-    tokenizers = model_df.Tokenzier.unique()
+    tokenizers = model_df.Tokenizer.unique()
     print("Available models:", tokenizers,sep="\n")
     return (tokenizers,)
 
@@ -134,7 +134,7 @@ def __(mo, model_df, model_dropdown, task_dropdown, tokenizer_dropdown):
         model_name = model_df[
             (model_df.Task == task_dropdown.value)
             & (model_df.Model == model_dropdown.value)
-            & (model_df.Tokenzier == tokenizer_dropdown.value)
+            & (model_df.Tokenizer == tokenizer_dropdown.value)
         ].Name.tolist()[0]
         print("Current model:", model_name, sep="\n")
         callout = ""

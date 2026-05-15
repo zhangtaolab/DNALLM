@@ -197,7 +197,7 @@ data:
   text_column: "sequence"
   label_column: "label"
 
-training:
+finetune:
   num_train_epochs: 3
   per_device_train_batch_size: 8
   learning_rate: 5e-5

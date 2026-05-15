@@ -23,14 +23,14 @@ First, ensure you have a YAML configuration file (`finetune_config.yaml`) and yo
 ```yaml
 # task configuration
 task:
-  task_type: "sequence_classification"
+  task_type: "binary"
   num_labels: 2
   label_map:
     0: "non-promoter"
     1: "promoter"
 
 # training configuration
-training:
+finetune:
   output_dir: "./outputs"
   num_train_epochs: 3
   per_device_train_batch_size: 32
@@ -44,7 +44,6 @@ training:
   eval_steps: 100
   load_best_model_at_end: True
   metric_for_best_model: "f1"
-  greater_is_better: True
 ```
 
 **Dataset:**

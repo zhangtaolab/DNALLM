@@ -99,7 +99,7 @@ class TaskConfig(BaseModel):
 
     task_type: str = Field(
         ...,
-        pattern="^(embedding|mask|generation|binary|multiclass|multilabel|regression|token)$",
+        pattern="^(embedding|mask|generation|binary|binary_classification|multiclass|multi_class_classification|multilabel|multi_label_classification|regression|token|token_classification)$",
     )
     num_labels: int | None = Field(default=2, description="Number of labels (default 2)")
     label_names: list[str] | None = None
@@ -114,27 +114,37 @@ class TaskConfig(BaseModel):
     )
 
     def model_post_init(self, __context):
-        if self.task_type == "binary":
+        task = self.task_type
+        if task == "binary_classification":
+            task = "binary"
+        elif task == "multi_class_classification":
+            task = "multiclass"
+        elif task == "multi_label_classification":
+            task = "multilabel"
+        elif task == "token_classification":
+            task = "token"
+
+        if task == "binary":
             self.num_labels = self.num_labels or 2
             self.label_names = self.label_names or ["negative", "positive"]
 
-        elif self.task_type == "multiclass":
+        elif task == "multiclass":
             if not self.num_labels or self.num_labels < 2:
                 raise ValueError("num_labels must be at least 2 for multiclass classification")
             if not self.label_names or len(self.label_names) != self.num_labels:
                 self.label_names = [f"class_{i}" for i in range(self.num_labels)]
 
-        elif self.task_type == "multilabel":
+        elif task == "multilabel":
             if not self.num_labels or self.num_labels < 2:
                 raise ValueError("num_labels must be at least 2 for multilabel classification")
             if not self.label_names or len(self.label_names) != self.num_labels:
                 self.label_names = [f"label_{i}" for i in range(self.num_labels)]
 
-        elif self.task_type == "regression":
+        elif task == "regression":
             self.num_labels = 1
             self.label_names = ["value"]
 
-        elif self.task_type in {"mask", "generation"}:
+        elif task in {"mask", "generation"}:
             self.num_labels = None
             self.label_names = None
 

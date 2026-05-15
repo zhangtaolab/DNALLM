@@ -90,7 +90,7 @@ class Benchmark:
         else:
             # Code-based initialization (No YAML config)
             self.config = {}
-            self.config["inference"] = InferenceConfig
+            self.config["inference"] = InferenceConfig()
             for k, v in dict(EvaluationConfig()).items():
                 setattr(self.config["inference"], k, v)
             self.config["inference"].batch_size = batch_size
@@ -101,7 +101,7 @@ class Benchmark:
             self.config["inference"].num_workers = kwargs.get("num_workers", 4)
             self.config["inference"].output_dir = kwargs.get("output_dir", None)
 
-            self.config["task"] = TaskConfig
+            self.config["task"] = TaskConfig()
 
             model_names = {}
             sources = []
@@ -139,7 +139,7 @@ class Benchmark:
         models = benchmark_config.models
         model_names = {m.name: m.path for m in models}
         sources = [m.source if hasattr(m, "source") else None for m in models]
-        self.config["inference"] = InferenceConfig
+        self.config["inference"] = InferenceConfig()
         for k, v in dict(benchmark_config.evaluation).items():
             setattr(self.config["inference"], k, v)
         self.config["inference"].output_dir = benchmark_config.output.path
@@ -147,7 +147,7 @@ class Benchmark:
             datasets = benchmark_config.datasets
             task_configs = []
             for d in datasets:
-                self.config["task"] = TaskConfig
+                self.config["task"] = TaskConfig()
                 self.config["task"].task_type = d.task
                 self.config["task"].num_labels = d.num_labels
                 self.config["task"].label_names = d.label_names
