@@ -1,43 +1,34 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T01:16:47Z",
+  "timestamp": "2026-05-15T09:03:50.751Z",
   "phase": "07",
   "phase_name": "docs-examples-sync",
   "phase_dir": ".planning/phases/07-docs-examples-sync",
   "plan": null,
   "task": null,
-  "total_tasks": 35,
+  "total_tasks": 15,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "Create phase PLAN.md", "status": "done", "commit": "be30f72"},
-    {"id": 2, "name": "Complete spec-phase — write 07-SPEC.md", "status": "done", "commit": "be30f72"},
-    {"id": 3, "name": "Complete discuss-phase — write 07-CONTEXT.md and 07-DISCUSSION-LOG.md", "status": "done", "commit": "e3affca"}
+    {"id": 1, "name": "Create 07-SPEC.md (12 requirements)", "status": "done", "commit": "be30f72"},
+    {"id": 2, "name": "Create 07-CONTEXT.md (4 decisions)", "status": "done", "commit": "e3affca"},
+    {"id": 3, "name": "Run plan-phase: research + plan + verify", "status": "done", "commit": null}
   ],
   "remaining_tasks": [
-    {"id": 4, "name": "Run plan-phase to create executable plan", "status": "not_started"},
-    {"id": 5, "name": "Execute Batch 1: Fix benchmark.py bug and TaskConfig regex", "status": "not_started"},
-    {"id": 6, "name": "Execute Batch 2: Fix example YAML configs", "status": "not_started"},
-    {"id": 7, "name": "Execute Batch 3: Fix example notebooks", "status": "not_started"},
-    {"id": 8, "name": "Execute Batch 4: Fix marimo examples", "status": "not_started"},
-    {"id": 9, "name": "Execute Batch 5: Fix MCP examples", "status": "not_started"},
-    {"id": 10, "name": "Execute Batch 6: Fix API documentation structure", "status": "not_started"},
-    {"id": 11, "name": "Execute Batch 7: Fix user guide import paths", "status": "not_started"},
-    {"id": 12, "name": "Execute Batch 8: Fix user guide API signatures", "status": "not_started"},
-    {"id": 13, "name": "Execute Batch 9: Fix user guide config keys", "status": "not_started"},
-    {"id": 14, "name": "Execute Batch 10: Fix user guide CLI commands", "status": "not_started"},
-    {"id": 15, "name": "Execute Batch 11: Fix MCP documentation", "status": "not_started"},
-    {"id": 16, "name": "Execute Batch 12: Fix tutorials and case studies", "status": "not_started"},
-    {"id": 17, "name": "Execute Batch 13: Establish docs/example sync and CI validation", "status": "not_started"}
+    {"id": 4, "name": "Execute Plan 07-01: Fix benchmark.py + TaskConfig regex", "status": "not_started"},
+    {"id": 5, "name": "Execute Plan 07-02: Fix example files", "status": "not_started"},
+    {"id": 6, "name": "Execute Plan 07-03: Fix documentation", "status": "not_started"},
+    {"id": 7, "name": "Execute Plan 07-04a: Create validation scripts", "status": "not_started"},
+    {"id": 8, "name": "Execute Plan 07-04b: Wire validation into CI", "status": "not_started"}
   ],
   "blockers": [],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "Local validation: run core notebook cells; CI: import+initialization only (non-blocking)", "rationale": "Full execution requires heavy dependencies (torch/transformers/CUDA) that may not be available in CI", "phase": "07"},
-    {"decision": "All fixes are per-file reviewed, no script-based bulk replacements", "rationale": "Documentation prose may legitimately reference strings being fixed; per-file review prevents accidental corruption", "phase": "07"},
-    {"decision": "Fix TaskConfig regex to accept both short and full task type names", "rationale": "Backward compatibility; zero code uses TaskType enum directly", "phase": "07"},
-    {"decision": "Execution order: pattern-based traversal (source -> YAML -> imports -> config keys -> API signatures -> CLI -> task types -> MCP -> notebooks -> API docs -> tutorials -> CI)", "rationale": "Builds context memory on one pattern before moving to next; more efficient for sequential file processing", "phase": "07"}
+    {"decision": "D-01: Strict local validation, CI informational only", "rationale": "Environment constraints prevent full notebook execution in CI", "phase": "07"},
+    {"decision": "D-02: File-by-file review, no bulk replacements", "rationale": "Prevent prose corruption in documentation", "phase": "07"},
+    {"decision": "D-03: Fix TaskConfig regex (not TaskType enum)", "rationale": "Zero code uses TaskType enum directly; regex expansion is safer", "phase": "07"},
+    {"decision": "D-04: Pattern-based traversal order", "rationale": "Builds context memory efficiently on one pattern at a time", "phase": "07"}
   ],
   "uncommitted_files": [],
-  "next_action": "Run /gsd:plan-phase 07 to create executable plan based on locked SPEC.md and CONTEXT.md",
-  "context_notes": "Phase 07 is ready for planning. SPEC.md (12 requirements) and CONTEXT.md (4 decisions) are committed. Key scout findings: (1) dnallm/__init__.py already exports load_model_and_tokenizer and DNADataset, so some import path fixes may be no-ops; (2) pyproject.toml registers dnallm-train/inference/mcp-server as standalone commands, so some CLI fixes need re-evaluation; (3) MCP server exposes tool names WITHOUT underscore prefix, so MCP tool name fixes may be no-ops. These findings are documented in CONTEXT.md code_context section."
+  "next_action": "Run /gsd:execute-phase 07 to begin executing Plan 07-01 (benchmark.py bug fix)",
+  "context_notes": "Plan-phase completed successfully. 5 executable plans created covering all 12 requirements. Plans passed verification with 0 blockers, 6 minor warnings. Key corrections during planning: (1) SPEC.md REQ-10/REQ-11 acceptance criteria updated to match research findings; (2) Plan 07-04 split into 07-04a/07-04b for scope sanity; (3) Mirror constraint (docs/example/ <-> example/) enforced across all plans. Ready for execution."
 }
