@@ -140,15 +140,16 @@ class Benchmark:
         model_names = {m.name: m.path for m in models}
         sources = [m.source if hasattr(m, "source") else None for m in models]
         self.config["inference"] = InferenceConfig()
+        inference_fields = set(InferenceConfig.model_fields.keys())
         for k, v in dict(benchmark_config.evaluation).items():
-            setattr(self.config["inference"], k, v)
+            if k in inference_fields:
+                setattr(self.config["inference"], k, v)
         self.config["inference"].output_dir = benchmark_config.output.path
         if hasattr(benchmark_config, "datasets"):
             datasets = benchmark_config.datasets
             task_configs = []
             for d in datasets:
-                self.config["task"] = TaskConfig()
-                self.config["task"].task_type = d.task
+                self.config["task"] = TaskConfig(task_type=d.task)
                 self.config["task"].num_labels = d.num_labels
                 self.config["task"].label_names = d.label_names
                 self.config["task"].threshold = d.threshold
