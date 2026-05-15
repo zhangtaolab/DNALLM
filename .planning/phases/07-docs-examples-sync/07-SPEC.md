@@ -18,7 +18,7 @@ The codebase recently underwent a major upgrade (type checking fixes, lint fixes
 - **Wrong config keys:** `training:` / `training_args:` used instead of `finetune:`, plus many invalid keys (`greater_is_better`, `early_stopping_patience`, etc.)
 - **Wrong task_type values:** `sequence_classification`, `token_classification` used instead of `binary`, `token`, etc.
 - **Wrong CLI commands:** `dnallm-train`, `dnallm-inference` documented as standalone scripts, but actual CLI uses subcommands
-- **MCP tool names:** Documented without underscore prefix (`dna_sequence_predict`) but actual server registers with prefix (`_dna_sequence_predict`)
+- **MCP tool names:** Documented with underscore prefix (`_dna_sequence_predict`) but actual server registers without prefix (`dna_sequence_predict`)
 - **API docs incomplete:** Missing `show_root_heading`, missing module docs, `TaskType` enum values don't match `TaskConfig` regex
 - **Mirror drift risk:** `docs/example/` mirrors `example/` but can diverge silently
 - No automated validation exists to catch docs/examples drift in CI
@@ -46,9 +46,9 @@ The codebase recently underwent a major upgrade (type checking fixes, lint fixes
    - Acceptance: `python -m py_compile` passes on all `.py` files; grep confirms `Tokenzier` typo is fixed
 
 5. **Fix MCP examples**
-   - Current: `mcp_client_ollama_pydantic_ai.ipynb` uses wrong tool names (no underscore prefix); `mcp_client_ollama_langchain_agents.ipynb` has wrong connection config
+   - Current: `mcp_client_ollama_pydantic_ai.ipynb` uses wrong tool names (underscore prefix); `mcp_client_ollama_langchain_agents.ipynb` has wrong connection config
    - Target: Both notebooks reference correct MCP tool names and valid connection configs
-   - Acceptance: Grep confirms tool names match server registration (`_dna_sequence_predict`, etc.); connection config uses valid `MCPServerStreamableHTTP` format
+   - Acceptance: Grep confirms tool names match server registration (`dna_sequence_predict`, etc.); connection config uses valid `MCPServerStreamableHTTP` format
 
 6. **Fix API documentation structure**
    - Current: 10 API doc files lack `show_root_heading: true`; 4 source modules have no API docs; `TaskType` enum values mismatch `TaskConfig` regex
@@ -71,14 +71,14 @@ The codebase recently underwent a major upgrade (type checking fixes, lint fixes
    - Acceptance: Grep returns zero matches for `training_args:` or `training:` (as top-level config key) in `docs/`; zero matches for invalid keys listed in review
 
 10. **Fix user guide CLI commands**
-    - Current: `dnallm-train`, `dnallm-inference`, `dnallm-benchmark`, `dnallm-mcp-server` documented as standalone scripts
-    - Target: All docs use `dnallm train`, `dnallm inference`, `dnallm mcp-server` subcommand format
-    - Acceptance: Grep returns zero matches for `dnallm-train `, `dnallm-inference `, `dnallm-benchmark `, `dnallm-mcp-server ` (with trailing space) in `docs/`
+    - Current: `dnallm-benchmark` documented as standalone script (it is not registered in pyproject.toml)
+    - Target: All docs use `dnallm benchmark` subcommand format for benchmark
+    - Acceptance: Grep returns zero matches for `dnallm-benchmark ` (with trailing space) in `docs/`
 
 11. **Fix MCP documentation**
-    - Current: Tool names lack underscore prefix; default host shown as `0.0.0.0` (actual: `127.0.0.1`); fake HTTP endpoints (`/health`, `/predict`) documented
-    - Target: Tool names have `_` prefix; host is `127.0.0.1`; only valid endpoints documented
-    - Acceptance: Grep confirms `_dna_sequence_predict` (with underscore) in MCP docs; no `/health` or `/predict` endpoints in MCP usage docs
+    - Current: Tool names documented with underscore prefix; default host shown as `0.0.0.0` (actual: `127.0.0.1`); fake HTTP endpoints (`/health`, `/predict`) documented
+    - Target: Tool names have NO underscore prefix (match exposed server names); host is `127.0.0.1`; only valid endpoints documented
+    - Acceptance: Grep confirms `dna_sequence_predict` (without underscore) in MCP docs; no `/health` or `/predict` endpoints in MCP usage docs
 
 12. **Establish docs/example sync and CI validation**
     - Current: `docs/example/` mirrors `example/` but no automated check prevents drift; no CI validates docs code snippets
@@ -118,8 +118,8 @@ The codebase recently underwent a major upgrade (type checking fixes, lint fixes
 - [ ] Zero `from dnallm import load_model_and_tokenizer` in `docs/`
 - [ ] Zero `from dnallm import DNADataset` in `docs/`
 - [ ] Zero `training_args:` or `training:` (as top-level config key) in `docs/`
-- [ ] Zero `dnallm-train `, `dnallm-inference `, `dnallm-benchmark ` standalone command references in `docs/`
-- [ ] All MCP tool names in docs have underscore prefix (`_dna_sequence_predict`, etc.)
+- [ ] Zero `dnallm-benchmark ` standalone command references in `docs/`
+- [ ] All MCP tool names in docs match exposed names (no underscore prefix: `dna_sequence_predict`, etc.)
 - [ ] `TaskType` enum values match `TaskConfig` regex (`binary`, `multiclass`, etc.)
 - [ ] All API doc `.md` files have `show_root_heading: true`
 - [ ] Sync check script exists and passes when directories match

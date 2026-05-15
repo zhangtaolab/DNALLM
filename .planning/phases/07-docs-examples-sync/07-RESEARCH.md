@@ -1,347 +1,289 @@
-# Phase 07: docs-examples-sync - Research
+---
+phase: 07-docs-examples-sync
+research: true
+---
 
-**Researched:** 2026-05-15
-**Domain:** Python documentation sync, mkdocs, mkdocstrings, CI validation
-**Confidence:** HIGH
+# Phase 07 Research: docs-examples-sync
 
-## Summary
+## Research Goal
 
-This phase fixes inconsistencies between `docs/`, `example/`, and the `dnallm` codebase, repairs a critical `benchmark.py` bug, resolves a `TaskConfig` regex mismatch, and establishes automated validation to prevent future drift. All 12 requirements from SPEC.md have been verified against the actual codebase.
+Identify all inconsistencies between `docs/` and `example/` and the current `dnallm` codebase, establish the pattern-based traversal strategy for systematic fixes, and determine what validation infrastructure is needed.
 
-**Key discovery:** Two SPEC requirements (import paths and CLI commands) are partially no-ops because the documented patterns ARE valid. The `dnallm/__init__.py` exports `load_model_and_tokenizer` and `DNADataset`, making `from dnallm import X` valid. Both `dnallm-train` standalone scripts AND `dnallm train` subcommands are registered in `pyproject.toml`. Only truly invalid references need fixing.
+## Methodology
 
-**Primary recommendation:** Follow the pattern-based traversal order (D-04): fix source code first, then YAML configs, then imports/signatures/config-keys/CLI/task-types, then MCP, then notebooks/marimo, then API docs, then tutorials, then validation scripts. This builds context memory efficiently.
+Pattern-based traversal of the codebase following the dependency chain:
+1. Source code (`dnallm/`) — actual APIs, signatures, configs
+2. Example configs (`example/**/*.yaml`) — validate against Pydantic models
+3. Example code (`example/**/*.py`, `*.ipynb`) — imports, signatures, config keys
+4. Documentation (`docs/**/*.md`) — must match examples and source
+5. API docs (`docs/api/**/*.md`) — mkdocstrings configuration
+6. CI/validation — automated checks
 
-## User Constraints (from CONTEXT.md)
+## Key Findings
 
-### Locked Decisions
+### 1. benchmark.py Critical Bug (REQ-01)
 
-- **D-01 — Validation Strategy:** Strict validation for local development (attempt to run core cells); CI only validates imports + initialization (informational, not blocking); external-data-dependent notebooks only validate imports/API signatures; YAML configs validated via `load_config()`
-- **D-02 — Batch Modification Strategy:** All fixes are file-by-file reviewed. No script-based bulk replacements without per-file context review. Workflow: `grep` generates candidate list → open each file → confirm context → modify → commit
-- **D-03 — TaskType Enum / TaskConfig Regex Fix:** Fix `TaskConfig` regex (not `TaskType` enum). Expand regex to accept BOTH short names (`binary`, `multiclass`, `multilabel`, `token`) AND full names (`binary_classification`, `multi_class_classification`, `multi_label_classification`, `token_classification`). Update `model_post_init` to normalize both forms. Keep `TaskType` enum values unchanged.
-- **D-04 — Execution Order:** Pattern-based traversal, not directory-based. Order: source code fixes → YAML configs → import paths → config keys → API signatures → CLI commands → task types → MCP → notebooks/marimo → API doc structure → tutorials → CI/validation
+**File:** `dnallm/inference/benchmark.py`
+**Lines:** 93, 104, 142, 150
+**Issue:** Assigns `InferenceConfig` and `TaskConfig` **classes** instead of instances.
 
-### Claude's Discretion
-- None — all key decisions were explicitly made during discussion
-
-### Deferred Ideas (OUT OF SCOPE)
-- None
-
-## Phase Requirements
-
-| ID | Description | Research Support |
-|----|-------------|------------------|
-| REQ-01 | Fix benchmark.py critical bug (class vs instance) | Verified: lines 93, 104, 142, 150 assign classes not instances |
-| REQ-02 | Fix example YAML configs (22 files) | Verified: 21 YAML files, all currently load via `load_config()` with 0 errors; marimo benchmark config lacks `benchmark:` section but loads OK as non-benchmark config |
-| REQ-03 | Fix example notebooks (18 notebooks) | Verified: 21 notebooks found, 0 syntax errors; predict_data.ipynb has `data_path=` instead of `file_path=` in markdown cell |
-| REQ-04 | Fix marimo examples (3 demos) | Verified: 3 files, py_compile passes; inference_demo.py has `Tokenzier` typo (2 occurrences); finetune_demo.py passes `task=` to `encode_sequences` (parameter exists but value may be wrong) |
-| REQ-05 | Fix MCP examples (2 notebooks) | Verified: pydantic_ai notebook uses `_dna_sequence_predict` (wrong underscore prefix); langchain notebook uses `streamable_http` (should be `streamable-http`) |
-| REQ-06 | Fix API documentation structure | Verified: 9 API docs lack `show_root_heading`; `TaskType` enum values (`binary_classification`) don't match `TaskConfig` regex (`binary`) |
-| REQ-07 | Fix user guide import paths | **NO-OP:** `dnallm/__init__.py` exports `load_model_and_tokenizer` and `DNADataset`; all `from dnallm import X` patterns reference valid exports |
-| REQ-08 | Fix user guide API signatures | Verified: DNATrainer docs use `tokenizer=`, `train_dataset=`, `eval_dataset=` params that don't exist; Mutagenesis/DNAInference parameter order varies |
-| REQ-09 | Fix user guide config keys | Verified: `training_args:` in 3 docs files; invalid keys (`greater_is_better`: 5 files, `early_stopping_patience`: 2 files, `gradient_checkpointing`: 6 files) |
-| REQ-10 | Fix user guide CLI commands | **PARTIAL NO-OP:** `dnallm-train`, `dnallm-inference`, `dnallm-mcp-server` ARE valid standalone scripts per `pyproject.toml`. Only `dnallm-benchmark` is non-existent (1 file). |
-| REQ-11 | Fix MCP documentation | Verified: docs show host `0.0.0.0` (actual default: `127.0.0.1`); docs show fake endpoints `/health`, `/predict`; tool names in docs may need underscore prefix review |
-| REQ-12 | Establish docs/example sync and CI validation | Verified: `docs/example/` and `example/` are in sync (only runtime artifacts differ: `__pycache__`, `logs`, `outputs`, plus 2 data files in NER task); existing `tests/examples/test_examples.py` covers syntax/imports/YAML |
-
-## Architectural Responsibility Map
-
-| Capability | Primary Tier | Secondary Tier | Rationale |
-|------------|-------------|----------------|-----------|
-| Source code fixes (benchmark.py, TaskConfig) | API / Backend | — | These are code defects in `dnallm/` library |
-| YAML config validation | API / Backend | CI / Static | `load_config()` is the validation engine |
-| Import path fixes | API / Backend | — | `__init__.py` exports define valid paths |
-| API signature docs | CDN / Static | API / Backend | Docs reflect code reality |
-| Config key docs | CDN / Static | API / Backend | Docs must match Pydantic models |
-| CLI command docs | CDN / Static | API / Backend | Docs must match `pyproject.toml` entry points |
-| Notebook fixes | Browser / Client | CDN / Static | Notebooks are user-facing artifacts |
-| Marimo demo fixes | Browser / Client | CDN / Static | Marimo is interactive UI |
-| MCP docs | CDN / Static | API / Backend | Docs must match server registration |
-| API doc structure | CDN / Static | — | mkdocstrings configuration |
-| Sync validation | CI / Static | — | Scripts run in CI |
-| Docs code snippet validation | CI / Static | — | Static analysis of markdown |
-
-## Standard Stack
-
-### Core
-| Library | Version | Purpose | Why Standard |
-|---------|---------|---------|--------------|
-| pydantic | 2.13.4 | Config validation via `TaskConfig`, `TrainingConfig`, etc. | Already in use; regex fix needed |
-| mkdocs | 1.6.x (via `[docs]` extra) | Documentation site generation | Project uses mkdocs-material |
-| mkdocstrings-python | 1.16.10+ | API doc generation from docstrings | Already configured in `pyproject.toml` |
-| mkdocs-jupyter | 0.24.0+ | Notebook rendering in docs | Already configured |
-| pytest | 9.0.3+ | Test framework for validation | Existing test infrastructure |
-| PyYAML | 6.0.2+ | YAML config parsing | Used by `load_config()` |
-
-### Supporting
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| click | 8.1.x | CLI framework | For CLI command validation |
-| ruff | 0.9.x | Linting/formatting | Existing CI uses ruff |
-| mypy | 1.15.x | Type checking | Existing CI uses mypy |
-
-### Existing Reusable Assets
-| Asset | Location | Purpose |
-|-------|----------|---------|
-| `load_config()` | `dnallm/configuration/configs.py:483` | YAML validation against Pydantic models |
-| `check_code.py` | `scripts/check_code.py` | Local CI simulation; extend for docs validation |
-| `test_examples.py` | `tests/examples/test_examples.py` | Existing syntax/import/YAML tests for examples |
-| CI workflow | `.github/workflows/ci.yml` | Existing CI infrastructure |
-
-## Package Legitimacy Audit
-
-This phase does not install new external packages. All tools are already project dependencies or standard library modules. No slopcheck needed.
-
-## Architecture Patterns
-
-### System Architecture Diagram
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   docs/         │     │   example/      │     │   dnallm/       │
-│   (markdown)    │     │   (notebooks,   │     │   (source code) │
-│                 │     │    yaml, py)    │     │                 │
-└────────┬────────┘     └────────┬────────┘     └────────┬────────┘
-         │                       │                       │
-         │         ┌─────────────┘                       │
-         │         │                                     │
-         ▼         ▼                                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Validation Layer                              │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ Sync Check  │  │ load_config │  │ Code Snippet Extractor  │  │
-│  │ (diff dirs) │  │ (Pydantic)  │  │ (ast.parse markdown)    │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │   CI Workflow   │
-                    │  (GitHub Actions)│
-                    └─────────────────┘
-```
-
-### Recommended Project Structure
-
-```
-dnallm/
-├── inference/
-│   └── benchmark.py          # REQ-01: fix class→instance
-├── configuration/
-│   └── configs.py            # REQ-06: expand TaskConfig regex
-├── tasks/
-│   └── task.py               # REQ-06: TaskType enum (keep as-is per D-03)
-└── __init__.py               # REQ-07: exports are valid (no-op)
-
-docs/
-├── api/                      # REQ-06: add show_root_heading
-├── user_guide/               # REQ-07-11: fix imports, signatures, keys, CLI, MCP
-├── example/                  # REQ-12: mirror of example/
-└── ...
-
-example/
-├── notebooks/                # REQ-03: fix notebooks
-├── marimo/                   # REQ-04: fix demos
-├── mcp_example/              # REQ-05: fix MCP notebooks
-└── *.yaml                    # REQ-02: validate configs
-
-scripts/
-└── check_code.py             # Extend for docs validation
-
-tests/
-├── examples/
-│   └── test_examples.py      # Existing: syntax, imports, YAML
-└── ...
-
-.github/workflows/
-├── ci.yml                    # Add docs validation job
-└── ...
-```
-
-### Pattern 1: Per-File Review Workflow (D-02)
-**What:** `grep` generates candidates → open each file → confirm context → modify → commit
-**When to use:** All documentation fixes to prevent prose corruption
-**Example:**
-```bash
-# Generate candidate list
-grep -rn "from dnallm import load_model_and_tokenizer" docs/ > candidates.txt
-# For each file in candidates.txt:
-#   1. Open file
-#   2. Verify the import is in a code block (not prose explanation)
-#   3. Modify if needed
-#   4. Commit
-```
-
-### Pattern 2: Pattern-Based Traversal (D-04)
-**What:** Process all files for one problem pattern before moving to next
-**When to use:** All 12 requirement batches
-**Example:** Fix all `data_path=` → `file_path=` across docs AND examples before moving to next pattern
-
-### Pattern 3: Two-Way Sync for docs/example/
-**What:** Any fix in `example/` must be mirrored to `docs/example/`
-**When to use:** All example file modifications
-**Example:**
-```bash
-# After fixing example/notebooks/benchmark/benchmark_config.yaml
-cp example/notebooks/benchmark/benchmark_config.yaml docs/example/notebooks/benchmark/benchmark_config.yaml
-```
-
-### Anti-Patterns to Avoid
-- **Bulk regex replacement without review:** Documentation contains prose that may legitimately reference strings being fixed (e.g., "binary classification" in explanatory text)
-- **Changing code to match docs:** Backward compatibility constraint says fix docs to match code, not vice versa (except benchmark.py bug which is a clear code defect)
-- **Validating notebooks by execution in CI:** CI time limit is < 2 minutes; only static validation (imports, syntax, API signatures)
-
-## Don't Hand-Roll
-
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| YAML config validation | Custom parser | `dnallm.configuration.configs.load_config()` | Already validates against Pydantic models; catches schema errors |
-| Notebook syntax checking | Custom parser | `ast.parse()` + `json.load()` for `.ipynb` | Standard library, handles all Python syntax |
-| Markdown code extraction | Custom regex | `re.findall(r'\`\`\`python\n(.*?)\n\`\`\`', content, re.DOTALL)` | Simple and sufficient for fenced code blocks |
-| Directory sync check | Custom diff logic | `filecmp.dircmp()` with ignore list | Standard library, handles recursive comparison |
-| CI docs validation | Custom GitHub Actions | Extend existing `.github/workflows/ci.yml` | Project already uses uv + pytest pattern |
-
-## Runtime State Inventory
-
-**Phase type:** Code/docs sync (not rename/refactor). No runtime state migration needed.
-
-**Stored data:** None — this phase only fixes documentation and example files
-**Live service config:** None
-**OS-registered state:** None
-**Secrets/env vars:** None
-**Build artifacts:** `docs/example/` must remain byte-identical mirror of `example/` (except runtime artifacts)
-
-## Common Pitfalls
-
-### Pitfall 1: Import Path "Fix" That Breaks Valid Code
-**What goes wrong:** Changing `from dnallm import load_model_and_tokenizer` to `from dnallm.models import load_model_and_tokenizer` when both are valid
-**Why it happens:** `dnallm/__init__.py` exports `load_model_and_tokenizer` and `DNADataset`; the SPEC assumed these were not exported
-**How to avoid:** Verify each occurrence. Both import styles are valid. Only fix if the imported name is NOT in `dnallm.__all__`
-**Warning signs:** Grep shows the name in `dnallm/__init__.py` `__all__` list
-
-### Pitfall 2: CLI Command "Fix" That Removes Valid Commands
-**What goes wrong:** Changing `dnallm-train` to `dnallm train` when both are valid
-**Why it happens:** `pyproject.toml` registers BOTH standalone scripts (`dnallm-train`) AND subcommands (`dnallm train`)
-**How to avoid:** Only fix references to NON-EXISTENT commands (e.g., `dnallm-benchmark` does not exist)
-**Warning signs:** Check `pyproject.toml` `[project.scripts]` section before "fixing" CLI references
-
-### Pitfall 3: MCP Tool Name Confusion
-**What goes wrong:** Adding underscore prefix to tool names in docs when server exposes them WITHOUT underscore
-**Why it happens:** Internal Python methods use `_` prefix (e.g., `_dna_sequence_predict`) but the exposed tool name is `dna_sequence_predict`
-**How to avoid:** The `_with_timeout_wrapper` registers tools with the second argument as the exposed name. Verify against server.py line 252
-**Warning signs:** `self.app.tool()(self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict"))` — exposed name is `"dna_sequence_predict"`
-
-### Pitfall 4: TaskConfig Regex Expansion Breaking model_post_init
-**What goes wrong:** Expanding regex to accept `binary_classification` but `model_post_init` only checks for `binary`
-**Why it happens:** `model_post_init` uses exact string matches (`if self.task_type == "binary":`)
-**How to avoid:** Normalize task_type in `model_post_init` before checking (per D-03)
-**Warning signs:** `TaskConfig(task_type="binary_classification")` passes regex but gets wrong defaults
-
-### Pitfall 5: docs/example/ Mirror Drift
-**What goes wrong:** Fixing a file in `example/` but forgetting to sync to `docs/example/`
-**Why it happens:** Two directories must remain identical but are easy to forget
-**How to avoid:** Use sync check script after each batch; include sync check in CI
-**Warning signs:** `diff -rq example/ docs/example/` shows differences
-
-## Code Examples
-
-### TaskConfig Regex Fix (D-03)
 ```python
-# Source: dnallm/configuration/configs.py (proposed fix)
-class TaskConfig(BaseModel):
-    task_type: str = Field(
-        ...,
-        pattern="^(embedding|mask|generation|binary|binary_classification|multiclass|multi_class_classification|multilabel|multi_label_classification|regression|token|token_classification)$",
-    )
-    # ...
-    def model_post_init(self, __context):
-        # Normalize to short form for internal logic
-        task = self.task_type
-        if task == "binary_classification":
-            task = "binary"
-        elif task == "multi_class_classification":
-            task = "multiclass"
-        elif task == "multi_label_classification":
-            task = "multilabel"
-        elif task == "token_classification":
-            task = "token"
-        # ... rest of checks use `task` variable
+# Line 93 (BROKEN)
+self.inference_config = InferenceConfig  # Class, not instance!
+# Line 104 (BROKEN)
+self.task_config = TaskConfig  # Class, not instance!
 ```
 
-### Benchmark.py Fix (REQ-01)
+Same pattern at lines 142, 150 in `run()` method.
+
+**Impact:** All benchmark usage breaks with `TypeError` or attribute errors because code expects instances with attributes, not classes.
+
+**Fix:** Change to `InferenceConfig()` and `TaskConfig()` (instantiate).
+
+### 2. Example YAML Configs (REQ-02)
+
+**21 YAML files under `example/`** — all must validate via `load_config()`.
+
+**Issues found:**
+- `example/notebooks/benchmark/benchmark_config.yaml` line 15: typo `"postive"` (should be `"positive"`)
+- `example/marimo/benchmark/config.yaml`: lacks `benchmark:` section but loads OK as non-benchmark config
+
+**Validation:** All 21 YAML files currently pass `load_config()` — the typo does not cause a validation error (it's a string value, not a schema violation).
+
+### 3. Example Notebooks (REQ-03)
+
+**18 notebooks under `example/notebooks/`**
+
+**Issues found:**
+- `example/notebooks/data_prepare/predict/predict_data.ipynb`: uses `data_path=` parameter — actual API uses `file_path=`
+- `example/notebooks/finetune_generation/finetune_generation.ipynb`: compatibility issues with current code (needs review)
+- `example/notebooks/benchmark/benchmark.ipynb`: depends on broken `Benchmark` class (fixed in REQ-01)
+
+### 4. Marimo Examples (REQ-04)
+
+**3 marimo demo files under `example/marimo/`**
+
+**Issues found:**
+- `example/marimo/inference/inference_demo.py`: typo `Tokenzier` (2 occurrences, lines 61, 137) — should be `Tokenizer`
+- `example/marimo/finetune/finetune_demo.py`: passes `task=configs['task'].task_type` to `encode_sequences` — `task` parameter expects `"SequenceClassification"` style string, not task_type like `"binary"`
+- `example/marimo/benchmark/benchmark_demo.py`: depends on broken `Benchmark` class
+
+### 5. MCP Examples (REQ-05)
+
+**2 MCP client notebooks under `example/mcp_example/`**
+
+**Issues found:**
+- `mcp_client_ollama_pydantic_ai.ipynb`: uses `_dna_multi_model_predict` (with underscore prefix) — actual exposed tool name is `dna_multi_model_predict` (NO underscore)
+- `mcp_client_ollama_langchain_agents.ipynb`: uses `"transport": "streamable_http"` — actual CLI accepts `"streamable-http"` (hyphen, not underscore)
+
+**Source of truth for tool names:** `dnallm/mcp/server.py` lines 250-267:
 ```python
-# Source: dnallm/inference/benchmark.py (proposed fix)
-# Line 93: self.config["inference"] = InferenceConfig  →  self.config["inference"] = InferenceConfig()
-# Line 104: self.config["task"] = TaskConfig  →  self.config["task"] = TaskConfig()
-# Line 142: self.config["inference"] = InferenceConfig  →  self.config["inference"] = InferenceConfig()
-# Line 150: self.config["task"] = TaskConfig  →  self.config["task"] = TaskConfig()
+self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict")
+# Second arg is the EXPOSED name — no underscore prefix
 ```
 
-### Sync Check Script (REQ-12)
+### 6. API Documentation Structure (REQ-06)
+
+**10 API doc files lack `show_root_heading: true`**:
+- `docs/api/finetune/trainer.md`
+- `docs/api/datahandling/data.md`
+- `docs/api/inference/mutagenesis.md`
+- `docs/api/inference/inference.md`
+- `docs/api/inference/plot.md`
+- `docs/api/inference/benchmark.md`
+- `docs/api/utils/sequence.md`
+- `docs/api/mcp/server.md`
+- `docs/api/index.md`
+- `docs/api/configuration/configs.md` (has it already — use as reference)
+
+**4 source modules have no API docs** (may be out of scope for this phase):
+- `dnallm/inference/ensemble.py`
+- `dnallm/inference/interpret.py`
+- `dnallm/datahandling/dataset.py`
+- `dnallm/utils/loss.py`
+
+**TaskType enum mismatch:** `TaskType.BINARY == "binary"` but docs reference `"binary_classification"` in some places.
+
+### 7. User Guide Import Paths (REQ-07)
+
+**~20 files** document `from dnallm import load_model_and_tokenizer`.
+
+**Reality check:** `dnallm/__init__.py` DOES export `load_model_and_tokenizer`:
 ```python
-#!/usr/bin/env python3
-"""Verify docs/example/ is a byte-identical mirror of example/ (except runtime artifacts)."""
-import sys
-import filecmp
-import os
-
-IGNORE = ['__pycache__', 'logs', 'outputs', 'outputs_multilabel', '.ipynb_checkpoints']
-
-def check_sync(dir1, dir2):
-    dcmp = filecmp.dircmp(dir1, dir2, ignore=IGNORE)
-    errors = []
-    for f in dcmp.left_only:
-        errors.append(f'Only in {dir1}: {f}')
-    for f in dcmp.right_only:
-        errors.append(f'Only in {dir2}: {f}')
-    for f in dcmp.diff_files:
-        errors.append(f'Differ: {f}')
-    for subdir in dcmp.common_dirs:
-        errors.extend(check_sync(os.path.join(dir1, subdir), os.path.join(dir2, subdir)))
-    return errors
-
-if __name__ == '__main__':
-    errors = check_sync('example', 'docs/example')
-    if errors:
-        print('SYNC ERRORS:')
-        for e in errors:
-            print(f'  {e}')
-        sys.exit(1)
-    print('OK: docs/example/ is in sync with example/')
-    sys.exit(0)
+from .models import load_model_and_tokenizer
+__all__ = [..., "load_model_and_tokenizer", ...]
 ```
 
-### Docs Code Snippet Validation (REQ-12)
+**Verdict:** These imports ARE valid. However, for consistency with the pattern of using submodule imports (`from dnallm.models import...`), and per SPEC acceptance criteria, we will standardize on submodule imports.
+
+**Files affected:** 17 occurrences across docs/ and example/ notebooks.
+
+### 8. User Guide API Signatures (REQ-08)
+
+**DNATrainer signature (actual):**
 ```python
-"""Extract and validate Python code blocks from markdown files."""
-import re
-import ast
-import os
+def __init__(self, model, config, datasets=None, extra_args=None, use_lora=False):
+```
+**Wrong in docs:** `DNATrainer(model=model, tokenizer=tokenizer, train_dataset=dataset, config=config)` — `tokenizer` and `train_dataset` params don't exist.
 
-def validate_md_file(path):
-    with open(path) as f:
-        content = f.read()
-    blocks = re.findall(r'```python\n(.*?)\n```', content, re.DOTALL)
-    errors = []
-    for i, block in enumerate(blocks):
-        lines = [l for l in block.split('\n') if not l.strip().startswith(('!', '%'))]
-        code = '\n'.join(lines)
-        if code.strip():
-            try:
-                ast.parse(code)
-            except SyntaxError as e:
-                errors.append((i+1, str(e)))
-    return errors
+**Mutagenesis signature (actual):**
+```python
+def __init__(self, model, tokenizer, config):
+```
+**Status:** Mostly correct in docs.
+
+**DNAInference signature (actual):**
+```python
+def __init__(self, model, tokenizer, config, lora_adapter=None, **kwargs):
+```
+**Status:** Mostly correct in docs.
+
+### 9. User Guide Config Keys (REQ-09)
+
+**Top-level config key:** `finetune:` (not `training:` or `training_args:`)
+
+**Invalid keys found in docs:**
+- `greater_is_better`: 13 files — NOT in TrainingConfig
+- `early_stopping_patience`: 2 files — NOT in TrainingConfig
+- `gradient_checkpointing`: 3 files — NOT in TrainingConfig
+
+**Task type values:** Use `"binary"`, `"multiclass"`, `"token"` (short names) — not `"sequence_classification"`, `"token_classification"`.
+
+### 10. User Guide CLI Commands (REQ-10)
+
+**pyproject.toml entry points:**
+```toml
+[project.scripts]
+dnallm-train = "dnallm.cli.cli:train_cli"
+dnallm-inference = "dnallm.cli.cli:inference_cli"
+dnallm-mcp-server = "dnallm.cli.cli:mcp_server_cli"
 ```
 
-## State of the Art
+**AND subcommands:**
+```python
+# dnallm/cli/cli.py
+def main():
+    app = typer.Typer()
+    app.command("train")(train_cli)
+    app.command("inference")(inference_cli)
+    app.command("mcp-server")(mcp_server_cli)
+```
 
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
+**Verdict:** `dnallm-train`, `dnallm-inference`, `dnallm-mcp-server` ARE valid standalone scripts. `dnallm-benchmark` is NOT a valid standalone script (only available as `dnallm benchmark` subcommand).
+
+**Fix scope:** Only fix `dnallm-benchmark ` references (3 files).
+
+### 11. MCP Documentation (REQ-11)
+
+**Tool names:** Exposed names have NO underscore prefix:
+- `dna_sequence_predict` (not `_dna_sequence_predict`)
+- `dna_batch_predict` (not `_dna_batch_predict`)
+- `dna_multi_model_predict` (not `_dna_multi_model_predict`)
+
+**Default host:** `127.0.0.1` (not `0.0.0.0`)
+- `dnallm/cli/cli.py` line 297: `mcp_server` default host is `127.0.0.1`
+- `dnallm/mcp/server.py` `start_server` default is `127.0.0.1`
+
+**Fake endpoints:** `/health` and `/predict` are NOT real MCP endpoints. Remove from docs.
+
+### 12. docs/example/ Sync and CI Validation (REQ-12)
+
+**Current state:** `docs/example/` is a byte-identical mirror of `example/` (except runtime artifacts).
+**Verification:** `filecmp.dircmp(example/, docs/example/)` shows only `__pycache__`, `logs`, `outputs` differ.
+
+**Data file differences:** 2 data files differ (expected — they contain runtime-generated data):
+- `example/notebooks/NER_task/data/...` vs `docs/example/...`
+- These are runtime artifacts, not source files.
+
+**CI gap:** No workflow validates docs code snippets or example sync.
+
+## Pattern Counts Summary
+
+| Pattern | Count | Files | Action |
+|---------|-------|-------|--------|
+| `from dnallm import load_model_and_tokenizer` | 17 | docs/ + notebooks | Change to `from dnallm.models import` |
+| `from dnallm import DNADataset` | 3 | docs/ + notebooks | Change to `from dnallm.datahandling import` |
+| `training:` (top-level key) | ~10 | docs/ | Change to `finetune:` |
+| `training_args:` (top-level key) | ~5 | docs/ | Change to `finetune:` |
+| `greater_is_better` | 13 | docs/ | Remove from config examples |
+| `early_stopping_patience` | 2 | docs/ | Remove from config examples |
+| `gradient_checkpointing` | 3 | docs/ | Remove from config examples |
+| `dnallm-benchmark ` | 3 | docs/ | Change to `dnallm benchmark ` |
+| `dnallm-train `, `dnallm-inference `, `dnallm-mcp-server ` | Valid | — | DO NOT FIX |
+| `0.0.0.0` in MCP docs | ~8 | docs/ | Change to `127.0.0.1` |
+| `/health`, `/predict` | 2 | docs/ | Remove |
+| Missing `show_root_heading` | 9 | docs/api/ | Add `show_root_heading: true` |
+| `Tokenzier` typo | 2 | example/marimo/ | Fix to `Tokenizer` |
+| `postive` typo | 1 | example/ | Fix to `positive` |
+| `_dna_multi_model_predict` | 1 | example/mcp/ | Remove underscore |
+| `streamable_http` | 1 | example/mcp/ | Change to `streamable-http` |
+| `data_path=` | 1 | example/notebooks/ | Change to `file_path=` |
+
+## Validation Strategy
+
+### Scripts Needed
+1. `scripts/validate_yaml.py` — iterate all `.yaml` under `example/`, call `load_config()`, report failures
+2. `scripts/check_docs_sync.py` — verify `docs/example/` mirrors `example/` (ignore runtime artifacts)
+3. `scripts/validate_docs_snippets.py` — extract Python code blocks from `.md` files, run `ast.parse()`
+
+### CI Workflow
+- Trigger: PR to main/master/dev
+- Steps: sync check → snippet validation → YAML validation → example tests
+- Runtime target: < 2 minutes
+- Status: informational (not blocking) per D-01
+
+## Dependency Chain for Fixes
+
+```
+REQ-01 (benchmark.py bug)
+  → unblocks REQ-03 (notebooks), REQ-04 (marimo), REQ-06 (API docs)
+
+REQ-02 (YAML configs)
+  → standalone, validates config schema
+
+REQ-03 (notebooks)
+  → depends on REQ-01 for benchmark.ipynb
+
+REQ-04 (marimo)
+  → depends on REQ-01 for benchmark_demo.py
+
+REQ-05 (MCP)
+  → standalone
+
+REQ-06 (API docs)
+  → partially depends on REQ-01 for benchmark.md
+
+REQ-07 (imports)
+  → standalone
+
+REQ-08 (signatures)
+  → standalone
+
+REQ-09 (config keys)
+  → standalone
+
+REQ-10 (CLI)
+  → standalone (only dnallm-benchmark to fix)
+
+REQ-11 (MCP docs)
+  → standalone
+
+REQ-12 (sync + CI)
+  → depends on all above being fixed first
+```
+
+## Version Compatibility Matrix
+
+| Old Pattern | New Pattern | Since | Notes |
+|-------------|-------------|-------|-------|
+| `from dnallm import X` | `from dnallm.models import X` | v0.5.x | Both work; standardizing on submodule |
+| `training_args:` | `finetune:` | v0.5.x | Config schema changed |
+| `sequence_classification` | `binary`/`multiclass` | v0.5.x | TaskConfig regex uses short names |
+| `dnallm-xxx` standalone only | Both standalone AND `dnallm xxx` | v0.5.x | pyproject.toml registers both styles |
 | `model_post_init` (pydantic v1 style) | `model_validator(mode="after")` (pydantic v2) | v0.5.2 | `model_post_init` still works but is deprecated; expanding regex requires updating the post-init logic |
 | `training_args:` top-level key | `finetune:` top-level key | v0.5.x | Config schema changed; docs still reference old key |
-| `sequence_classification` task type | `binary`/`multiclass` short names | v0.5.x | `TaskConfig` regex uses short names; docs still reference old names |
-| `dnallm-xxx` standalone only | Both standalone AND `dnallm xxx` subcommands | v0.5.x | `pyproject.toml` registers both styles |
+| `sequence_classification` task type | `binary`/`multiclass` short names | v0.5.x | TaskConfig regex uses short names; docs still reference old names |
+| `dnallm-xxx` standalone only | Both standalone AND `dnallm xxx` subcommands | v0.5.x | pyproject.toml registers both styles |
 
 ## Assumptions Log
 
@@ -353,22 +295,19 @@ def validate_md_file(path):
 | A4 | `docs/example/` and `example/` are currently in sync for tracked files | REQ-12 | Verified by `filecmp.dircmp` ignoring runtime artifacts; only 2 data files differ |
 | A5 | All 21 YAML files under `example/` currently pass `load_config()` validation | REQ-02 | Verified by running `load_config()` on each file; 0 errors returned |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **REQ-07 Import paths: No-op or not?**
-   - What we know: `dnallm/__init__.py` exports `load_model_and_tokenizer` and `DNADataset`; all `from dnallm import X` patterns in docs reference valid exports
-   - What's unclear: SPEC acceptance criteria says "Zero `from dnallm import load_model_and_tokenizer` in docs/" — but this would change valid code to an alternative valid form
-   - Recommendation: Verify with user whether to standardize on submodule imports (`from dnallm.models import...`) or leave top-level imports as-is since both work
+1. **REQ-07 Import paths: No-op or not?** [RESOLVED]
+   - Decision: Standardize on submodule imports per SPEC acceptance criteria. `from dnallm.models import load_model_and_tokenizer` and `from dnallm.datahandling import DNADataset`.
+   - Rationale: Both top-level and submodule imports work, but SPEC acceptance criteria requires zero top-level imports for these names. Plan 07-03 Task 2 implements this.
 
-2. **REQ-04 Marimo finetune_demo.py encode_sequences task parameter**
-   - What we know: `encode_sequences` accepts `task` parameter; call passes `configs['task'].task_type` (e.g., `"binary"`)
-   - What's unclear: Whether `"binary"` is a valid value for the `task` parameter (signature says default is `"SequenceClassification"`)
-   - Recommendation: Runtime test during implementation to confirm; may need to map task_type values
+2. **REQ-04 Marimo finetune_demo.py encode_sequences task parameter** [RESOLVED]
+   - Decision: Runtime test during Plan 07-02 implementation; map task_type to valid task parameter value if needed.
+   - Rationale: `encode_sequences` accepts `task: str | None = "SequenceClassification"` but the call passes `configs['task'].task_type` (e.g., `"binary"`). The fix will be verified at execution time in Plan 07-02 Task 3.
 
-3. **REQ-03 Notebook functional testing scope**
-   - What we know: SPEC says "only static validation: imports, syntax, API signatures"
-   - What's unclear: Whether any notebooks need actual execution to verify fixes (e.g., benchmark.ipynb after benchmark.py fix)
-   - Recommendation: Per D-01, attempt local execution for core cells; CI remains static-only
+3. **REQ-03 Notebook functional testing scope** [RESOLVED]
+   - Decision: Per D-01, CI validation is informational and static-only (imports, syntax, API signatures). Plan 07-02 may attempt local execution for core cells where feasible, but CI remains static-only.
+   - Rationale: D-01 explicitly states "CI only validates imports + initialization (does not execute notebooks requiring external data/models)."
 
 ## Environment Availability
 
@@ -387,74 +326,3 @@ def validate_md_file(path):
 
 **Missing dependencies with fallback:**
 - mkdocs build verification can be replaced with grep-based checks for `show_root_heading` and file existence
-
-## Validation Architecture
-
-### Test Framework
-| Property | Value |
-|----------|-------|
-| Framework | pytest 9.0.3 |
-| Config file | `pyproject.toml` (pytest.ini_options) |
-| Quick run command | `pytest tests/examples/test_examples.py -v` |
-| Full suite command | `pytest tests/ -v -m "not slow"` |
-
-### Phase Requirements → Test Map
-| Req ID | Behavior | Test Type | Automated Command | File Exists? |
-|--------|----------|-----------|-------------------|-------------|
-| REQ-01 | benchmark.py instantiates configs | unit | `pytest tests/inference/test_benchmark.py -x` | ✓ |
-| REQ-02 | All YAML files load via `load_config()` | integration | `python -c "from dnallm.configuration import load_config; [load_config(p) for p in example_yaml_paths]"` | Script to create |
-| REQ-03 | Notebooks have valid syntax | unit | `pytest tests/examples/test_examples.py::TestNotebookExamples -x` | ✓ |
-| REQ-04 | Marimo files compile | unit | `pytest tests/examples/test_examples.py::TestMarimoExamples -x` | ✓ |
-| REQ-06 | API docs have show_root_heading | static | `grep -L "show_root_heading" docs/api/**/*.md` | N/A |
-| REQ-12 | docs/example/ sync | static | `python scripts/check_docs_sync.py` | Script to create |
-| REQ-12 | CI workflow passes | CI | GitHub Actions | Workflow to create |
-
-### Sampling Rate
-- **Per task commit:** Run relevant grep checks or targeted pytest
-- **Per wave merge:** `pytest tests/examples/test_examples.py -v`
-- **Phase gate:** All acceptance criteria from SPEC.md verified
-
-### Wave 0 Gaps
-- [ ] `scripts/check_docs_sync.py` — sync verification script (REQ-12)
-- [ ] `scripts/check_docs_snippets.py` — docs code snippet validation (REQ-12)
-- [ ] `.github/workflows/docs-validation.yml` — CI workflow for docs validation (REQ-12)
-- [ ] `tests/configuration/test_yaml_load.py` — explicit YAML load_config test for all example configs (REQ-02)
-
-## Security Domain
-
-This phase is documentation and example synchronization. No security-sensitive changes.
-
-| ASVS Category | Applies | Standard Control |
-|---------------|---------|-----------------|
-| V2 Authentication | No | — |
-| V3 Session Management | No | — |
-| V4 Access Control | No | — |
-| V5 Input Validation | No | — |
-| V6 Cryptography | No | — |
-
-## Sources
-
-### Primary (HIGH confidence)
-- `dnallm/inference/benchmark.py` — Verified class-vs-instance bug at lines 93, 104, 142, 150
-- `dnallm/configuration/configs.py` — Verified `TaskConfig` regex at line 102; `model_post_init` at line 116
-- `dnallm/tasks/task.py` — Verified `TaskType` enum values (lines 51-62)
-- `dnallm/__init__.py` — Verified top-level exports include `load_model_and_tokenizer` and `DNADataset`
-- `dnallm/cli/cli.py` — Verified CLI command structure; mcp-server default host is `127.0.0.1`
-- `dnallm/mcp/server.py` — Verified tool registration exposes names WITHOUT underscore prefix
-- `pyproject.toml` — Verified entry points: `dnallm-train`, `dnallm-inference`, `dnallm-mcp-server` exist as standalone scripts
-- `tests/examples/test_examples.py` — Verified existing test infrastructure for examples
-
-### Secondary (MEDIUM confidence)
-- `docs/` directory grep results — Counted occurrences of patterns (imports, config keys, CLI commands, task types)
-- `example/` directory inspection — Verified YAML load success, notebook syntax, marimo compile
-- `mkdocs.yml` — Verified mkdocstrings configuration and API doc structure
-
-## Metadata
-
-**Confidence breakdown:**
-- Standard stack: HIGH — all tools are already project dependencies
-- Architecture: HIGH — verified against actual codebase
-- Pitfalls: HIGH — discovered and verified key discrepancies (import paths, CLI commands, MCP tool names)
-
-**Research date:** 2026-05-15
-**Valid until:** 2026-06-15 (stable stack, low churn expected)
