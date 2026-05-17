@@ -61,7 +61,7 @@ def validate_file(path: Path) -> list[dict]:
             ast.parse(code)
         except SyntaxError as e:
             # Approximate line number within the file
-            block_start_line = content[:match.start()].count("\n") + 2
+            block_start_line = content[: match.start()].count("\n") + 2
             errors.append({
                 "file": str(path),
                 "block": idx + 1,

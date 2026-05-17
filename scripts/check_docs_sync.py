@@ -5,7 +5,14 @@ import filecmp
 import sys
 from pathlib import Path
 
-IGNORE = {"__pycache__", "logs", "outputs", "outputs_multilabel", ".ipynb_checkpoints", ".gitignore"}
+IGNORE = {
+    "__pycache__",
+    "logs",
+    "outputs",
+    "outputs_multilabel",
+    ".ipynb_checkpoints",
+    ".gitignore",
+}
 IGNORE_SUFFIXES = (".gz", ".log")
 
 EXAMPLE_DIR = Path("example")
@@ -24,11 +31,17 @@ def check_sync(dcmp: filecmp.dircmp, path: str = "") -> list[str]:
 
     for name in dcmp.left_only:
         if not _should_ignore(name):
-            errors.append(f"ONLY in example/: {path}/{name}" if path else f"ONLY in example/: {name}")
+            errors.append(
+                f"ONLY in example/: {path}/{name}" if path else f"ONLY in example/: {name}"
+            )
 
     for name in dcmp.right_only:
         if not _should_ignore(name):
-            errors.append(f"ONLY in docs/example/: {path}/{name}" if path else f"ONLY in docs/example/: {name}")
+            errors.append(
+                f"ONLY in docs/example/: {path}/{name}"
+                if path
+                else f"ONLY in docs/example/: {name}"
+            )
 
     for name in dcmp.diff_files:
         errors.append(f"DIFFER: {path}/{name}" if path else f"DIFFER: {name}")
