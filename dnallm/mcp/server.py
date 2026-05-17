@@ -1783,8 +1783,6 @@ class DNALLMMCPServer:
         timeouts enabled.
         """
         import uvicorn
-        from starlette.applications import Starlette
-        from starlette.routing import Mount
 
         logger.info("Using Streamable HTTP transport")
 
