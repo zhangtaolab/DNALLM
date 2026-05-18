@@ -35,16 +35,10 @@ DNALLM supports quantization through the underlying inference framework. Set the
 from dnallm.models import load_model_and_tokenizer
 
 # Load model in FP16
-model, tokenizer = load_model_and_tokenizer(
-    "model_name",
-    torch_dtype="float16"
-)
+model, tokenizer = load_model_and_tokenizer("model_name", torch_dtype="float16")
 
 # Load model in INT8 (requires bitsandbytes)
-model, tokenizer = load_model_and_tokenizer(
-    "model_name",
-    load_in_8bit=True
-)
+model, tokenizer = load_model_and_tokenizer("model_name", load_in_8bit=True)
 ```
 
 ## Hardware Requirements

@@ -474,7 +474,9 @@ def multi_labels_metrics(label_list: list, plot: bool = False) -> Callable:
     return compute_metrics
 
 
-def token_classification_metrics(label_list: list, plot: bool = False, scheme: str = "IOB2") -> Callable:
+def token_classification_metrics(
+    label_list: list, plot: bool = False, scheme: str = "IOB2"
+) -> Callable:
     """Create metrics computation function for token classification tasks.
 
     This function returns a callable that computes sequence-level metrics for
