@@ -1783,8 +1783,6 @@ class DNALLMMCPServer:
         timeouts enabled.
         """
         import uvicorn
-        from starlette.applications import Starlette
-        from starlette.routing import Mount
 
         logger.info("Using Streamable HTTP transport")
 
@@ -1821,15 +1819,10 @@ class DNALLMMCPServer:
             else "info"
         )
 
-        # Wrap HTTP app in Starlette with lifespan to ensure shutdown cleanup
-        main_app = Starlette(
-            routes=[Mount("", http_app)],
-            lifespan=self._create_server_lifespan(),
-        )
-
         # Run the Starlette app with uvicorn with proper signal handling
+        # http_app already has lifespan for session_manager from streamable_http_app()
         config = uvicorn.Config(
-            app=main_app,
+            app=http_app,
             host=host,
             port=port,
             log_level=log_level,

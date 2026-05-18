@@ -78,6 +78,9 @@ test_demo/
 *.tar.gz
 *.pkl
 *.fxi
+*.csv
+*.tsv
+*.token_sizes
 
 # Model weights (should be downloaded, not committed)
 *.pt

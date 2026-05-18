@@ -152,7 +152,7 @@ def classification_metrics(plot: bool = False):
     return compute_metrics
 
 
-def regression_metrics(plot=False):
+def regression_metrics(plot: bool = False) -> Callable:
     """Create metrics computation function for regression tasks.
 
     This function returns a callable that computes regression metrics including
@@ -232,7 +232,7 @@ def regression_metrics(plot=False):
     return compute_metrics
 
 
-def multi_classification_metrics(label_list: list, plot: bool = False):
+def multi_classification_metrics(label_list: list, plot: bool = False) -> Callable:
     """Create metrics computation function for multi-class classification
     tasks.
 
@@ -364,7 +364,7 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
     return compute_metrics
 
 
-def multi_labels_metrics(label_list: list, plot: bool = False):
+def multi_labels_metrics(label_list: list, plot: bool = False) -> Callable:
     """Create metrics computation function for multi-label classification
     tasks.
 
@@ -474,7 +474,9 @@ def multi_labels_metrics(label_list: list, plot: bool = False):
     return compute_metrics
 
 
-def token_classification_metrics(label_list: list, plot: bool = False, scheme: str = "IOB2"):
+def token_classification_metrics(
+    label_list: list, plot: bool = False, scheme: str = "IOB2"
+) -> Callable:
     """Create metrics computation function for token classification tasks.
 
     This function returns a callable that computes sequence-level metrics for
@@ -625,7 +627,7 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
     return compute_metrics, preprocessing
 
 
-def compute_metrics(task_config: TaskConfig, plot: bool = False):
+def compute_metrics(task_config: TaskConfig, plot: bool = False) -> Callable:
     """Compute metrics based on task type.
 
     This function serves as the main entry point for metrics computation,
