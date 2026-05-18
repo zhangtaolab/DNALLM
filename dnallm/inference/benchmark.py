@@ -51,7 +51,7 @@ class Benchmark:
         metrics: list[str] | None = None,
         batch_size: int = 1,
         device: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Initialize the Benchmark class.
 

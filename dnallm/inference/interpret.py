@@ -307,7 +307,6 @@ class DNAInterpret:
                                 (e.g., 2 for 'Promoter').
                           - For 'causal_lm': Target *Token ID*
                                  (e.g., 8 for 'G').
-            task_type (str): Task type
             token_index (int, optional): for 'token_cls'/'causal_lm'
                 Token position to explain.
             embedding_layer (nn.Module, optional): Specific Embedding layer.
@@ -886,7 +885,7 @@ class DNAInterpret:
 
         return results
 
-    def plot_attributions(self, plot_type: str = "token", **kwargs):
+    def plot_attributions(self, plot_type: str = "token", **kwargs: Any):
         """
         Plot the attributions using specified plot type.
 
