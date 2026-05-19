@@ -78,21 +78,25 @@ def generate_md(notebook_path: Path, notebook_rel: str) -> str:
                 code = code_cells[code_idx]
 
             # Skip empty or trivial cells
-            if code.strip() and not all(l.strip().startswith("#") for l in code.splitlines() if l.strip()):
+            if code.strip() and not all(
+                l.strip().startswith("#") for l in code.splitlines() if l.strip()
+            ):
                 sections.append(("code", code))
             code_idx += 1
 
     # Add remaining code cells
     while code_idx < len(code_cells):
         code = code_cells[code_idx]
-        if code.strip() and not all(l.strip().startswith("#") for l in code.splitlines() if l.strip()):
+        if code.strip() and not all(
+            l.strip().startswith("#") for l in code.splitlines() if l.strip()
+        ):
             sections.append(("code", code))
         code_idx += 1
 
     # Assemble markdown
     lines = [
         "---",
-        f'notebook: {notebook_rel}',
+        f"notebook: {notebook_rel}",
         "sync_check: true",
         "---",
         "",
@@ -100,7 +104,7 @@ def generate_md(notebook_path: Path, notebook_rel: str) -> str:
         "",
         "## Full Notebook",
         "",
-        f'[:octicons-book-24: View Full Notebook]({github_url}){{ .md-button }}',
+        f"[:octicons-book-24: View Full Notebook]({github_url}){{ .md-button }}",
         "",
     ]
 

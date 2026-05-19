@@ -80,7 +80,9 @@ def get_imported_names(node: ast.AST) -> set[tuple[str | None, str]]:
     return set()
 
 
-def is_dnallm_equivalent_import(md_mod: str | None, md_name: str, nb_imports: set[tuple[str | None, str]]) -> bool:
+def is_dnallm_equivalent_import(
+    md_mod: str | None, md_name: str, nb_imports: set[tuple[str | None, str]]
+) -> bool:
     """Check if an import from dnallm is equivalent to a subpackage import.
 
     E.g. `from dnallm import DNAInference` matches `from dnallm.inference import DNAInference`.
@@ -189,7 +191,10 @@ def main() -> int:
 
         notebook_path = REPO_ROOT / notebook_rel
         if not notebook_path.exists():
-            all_errors.append((md_file, [{"type": "missing_notebook", "message": f"notebook not found: {notebook_rel}"}]))
+            all_errors.append((
+                md_file,
+                [{"type": "missing_notebook", "message": f"notebook not found: {notebook_rel}"}],
+            ))
             continue
 
         errors = check_pair(md_file, notebook_path)
