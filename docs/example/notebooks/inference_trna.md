@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/inference_for_tRNA/inference.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # tRNA Inference
@@ -57,13 +57,13 @@ results = predictor.infer_file(seq, evaluate=False)
 
 ```python
 for i in results:
-    sequence = results[i]['sequence']
-    label = results[i]['label']
-    score = results[i]['scores'][label]
-    print(f'Input sequence: {sequence}\n'
-          f'Predicted label: {label}\n'
-          f'Predicted score: {score}\n'
-          f'{"*" * 20}')
+	sequence = results[i]['sequence']
+	label = results[i]['label']
+	score = results[i]['scores'][label]
+	print(f'input sequence:{sequence}\n',
+   		f'predict label:{label}\n',
+		f'predict score:{score}\n',
+		f'*'*20)
 ```
 
 ## tRNAPointer: Token-Level Detection
@@ -94,34 +94,34 @@ predictor = DNAInference(
 tRNAPointer expects per-character tokenization:
 
 ```python
-seq = [...]  # Same sequences as above
+seq = ['AAGAAAGCTCAAATAGTATACGAAGAACTCGAAGCTAAGCAACTGTGAAGAGAAATTAAGTAGCTACAATTAGGTTATAAATAATTTGATTTCTACTCTAACTGTGACGTGGGGATGTAGCTCAGATGGTAGAGCGCTCGCTTAGCATGCGAGAGGTACGGGGATCGATACCCCGCATCTCCATTTTTTTATTTTTTTTTAGAATTCTACTTTTTCTAAAATTGACCCTTTAATTTTGTATTTATATTTCTTTTATAATGTATATGCATTCTGCATTTTATTTTTCCTTTACATTTTTTCTTATATAATGTAAGTTATGCATTCTGCATTTTCTTTTGTCTTTTTTTTTTCTTATAAGTGGTTGG', 'AAAACCCCAACTAGCTAGCATCGATCGAGCTAGCATGCATCGATCGATCGATCGATCGATCGATCGATCGAACACCCCGCGCGTAGCTACGGCTCAGAGCATCGATGCGCAGTCGAGCCGGGGGGGACATCGATCGATCGATCGATCGAGTCGACGATCGATCGAGCATATAATCGAGTCGACTGATCGATCGAGCGTACGATCGATCGATCGATGCATCCCCGATCGATCGATCGATCTTATAACACACACACACACACACGGAAAA']
 
 seq_token = []
-for s in seq:
-    seq_token.append([base for base in s])
+for _ in seq:
+	seq_token.append([base for base in _])
 
-results = predictor.infer_file(seq_token, evaluate=False)
+results = predictor.infer_file(seq_token,  evaluate=False)
 ```
 
 ### Extract tRNA Regions
 
 ```python
 for i in results:
-    sequence = ''.join(results[i]['sequence'])
-    label = results[i]['label']
-    try:
-        start = label.index("B-tRNA")
-        end = len(label) - 1 - label[::-1].index("I-tRNA")
-        tRNA_sequence = sequence[start:end + 1]
-        print(f'Input sequence: {sequence}\n'
-              f'tRNA start index: {start}\n'
-              f'tRNA end index: {end}\n'
-              f'tRNA sequence: {tRNA_sequence}\n'
-              f'{"*" * 20}')
-    except ValueError:
-        print(f'Input sequence: {sequence}\n'
-              'No tRNA found\n'
-              f'{"*" * 20}')
+	sequence = ''.join(results[i]['sequence'])
+	label = results[i]['label']
+	try:
+		start = label.index("B-tRNA")
+		end = len(label) - 1 - label[::-1].index("I-tRNA")
+		tRNA_sequence = sequence[start:end+1]
+		print(f'input sequence:{sequence}\n',
+     		  f'tRNA start index in sequence:{start}\n',
+			  f'tRNA end index in sequence:{end}\n',
+			  f'tRNA sequence:{tRNA_sequence}\n',
+			  f'*'*20)
+	except:
+		print(f'input sequence:{sequence}\n',
+     		  'No tRNA found\n',
+			  f'*'*20)
 ```
 
 ## Related Tutorials

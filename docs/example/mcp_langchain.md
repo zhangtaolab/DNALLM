@@ -1,6 +1,6 @@
 ---
 notebook: example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # DNALLM MCP Client with LangChain Agents
@@ -83,27 +83,23 @@ agent = create_agent(
 Send a natural language query to the agent:
 
 ```python
-dna_sequence = (
-    "AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGT"
-    "GCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCG"
-    "CTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGCCATTGCCGGCGGC"
-    "GCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"
+# Perform DNA sequence analysis using the LangChain agent
+# This demonstrates how to use the agent to analyze a DNA sequence using DNALLM's models
+# The agent will automatically select and use the appropriate MCP tools for analysis
+
+# Define the DNA sequence to analyze
+dna_sequence = """AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA"""
+
+# Invoke the agent to analyze the DNA sequence
+# The agent will use DNALLM's specialized models to provide comprehensive analysis
+dnallm_response = await agent.ainvoke(
+    {"messages": [{"role": "user", "content": f'What is the function of following DNA sequence? Please analyze it thoroughly using all available models:\n{dna_sequence}'}]}
 )
 
-dnallm_response = await agent.ainvoke(
-    {
-        "messages": [
-            {
-                "role": "user",
-                "content": (
-                    "What is the function of the following DNA sequence? "
-                    "Please analyze it thoroughly using all available models:\n"
-                    f"{dna_sequence}"
-                )
-            }
-        ]
-    }
-)
+# Display the analysis results
+# This prints the comprehensive DNA sequence analysis provided by the LangChain agent
+# The analysis includes insights from multiple DNALLM models (promoter, conservation, chromatin)
+# The results show detailed functional interpretation of the DNA sequence
 
 print(dnallm_response['messages'][-1].content)
 ```

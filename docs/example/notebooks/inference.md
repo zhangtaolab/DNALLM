@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/inference/inference.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # Basic Inference
@@ -69,11 +69,9 @@ print(results)
 For batch inference on a dataset:
 
 ```python
-results, metrics = inference_engine.infer_file(
-    './test.csv',
-    label_col='label',
-    evaluate=True
-)
+# Predict from file
+seq_file = './test.csv'
+results, metrics = inference_engine.infer_file(seq_file, label_col='label', evaluate=True)
 print(metrics)
 ```
 

@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/lora_finetune_inference/lora_inference.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # LoRA Inference
@@ -76,11 +76,9 @@ print(results)
 ## Infer on File
 
 ```python
+infer_file = "./test.csv"
 results, metrics = inference_engine.infer_file(
-    "./test.csv",
-    seq_col="sequence",
-    label_col="label",
-    evaluate=True
+    infer_file, seq_col="sequence", label_col="label", evaluate=True
 )
 
 print(metrics)

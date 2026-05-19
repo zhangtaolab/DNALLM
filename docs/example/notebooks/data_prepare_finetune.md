@@ -22,32 +22,33 @@ uv pip install -e '.[base,finetune,cuda124]'
 DNALLM includes curated benchmark datasets for quick experimentation:
 
 ```python
-from dnallm.datahandling import show_preset_dataset, load_preset_dataset
+from dnallm.datahandling import *
 
-# List available preset datasets
+# Display preset datasets
 show_preset_dataset()
 
 # Load a preset dataset
-.dataset = load_preset_dataset(
-    dataset_name='plant-genomic-benchmark',
-    task='promoter_strength.leaf'
-)
+dataset = load_preset_dataset(dataset_name='plant-genomic-benchmark', task='promoter_strength.leaf')
 ```
 
 Inspect the dataset:
 
 ```python
-.dataset.show(head=1)
-.dataset.statistics()
-.dataset.plot_statistics()
+dataset.show(head=1)
+dataset.statistics()
+dataset.plot_statistics()
 ```
 
 ## Load from Hugging Face / ModelScope
 
 ```python
-from dnallm import DNADataset
+# Load tokenizer for demonstration
+from transformers import AutoTokenizer
 
-.dataset = DNADataset.from_huggingface(
+tokenizer = AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")
+
+# Load dataset from Hugging Face
+dataset = DNADataset.from_huggingface(
     "zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
@@ -57,7 +58,8 @@ from dnallm import DNADataset
 ```
 
 ```python
-.dataset = DNADataset.from_modelscope(
+# Load dataset from ModelScope
+dataset = DNADataset.from_modelscope(
     "zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
@@ -71,8 +73,9 @@ from dnallm import DNADataset
 Single file:
 
 ```python
-.dataset = DNADataset.load_local_data(
-    "./train.csv",
+# Load single dataset
+dataset = DNADataset.load_local_data(
+    "../../../../tests/test_data/regression/train.csv",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -83,11 +86,12 @@ Single file:
 Pre-split files:
 
 ```python
-.dataset = DNADataset.load_local_data(
+# Load multiple files (e.g., pre-split datasets)
+dataset = DNADataset.load_local_data(
     {
-        "train": "./train.csv",
-        "test": "./test.csv",
-        "validation": "./dev.csv"
+        "train": "../../../../tests/test_data/regression/train.csv",
+        "test": "../../../../tests/test_data/regression/test.csv",
+        "validation": "../../../../tests/test_data/regression/dev.csv"
     },
     seq_col="sequence",
     label_col="label",
@@ -153,7 +157,7 @@ model, tokenizer = load_model_and_tokenizer(
     source="modelscope"
 )
 
-.dataset.encode_sequences(tokenizer=tokenizer)
+dataset.encode_sequences(tokenizer=tokenizer)
 ```
 
 ## Related Tutorials

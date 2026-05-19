@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/interpretation/interpretation.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # Model Interpretation
@@ -133,21 +133,19 @@ for start, end in hotspots:
 ### Plot Sequence Logos
 
 ```python
-import logomaker
-import matplotlib.pyplot as plt
+def plot_motif_logo( motif_df: pd.DataFrame, logo_type: str = 'bits', title: str = "Discovered Motif" ):
+    """ Plots a sequence logo from a motif matrix using Logomaker. """
+    import logomaker
+    import matplotlib.pyplot as plt
+    print(f"Generating '{logo_type}' logo plot for: {title}")
 
-def plot_motif_logo(motif_df, logo_type='bits', title="Discovered Motif"):
     if logo_type == 'bits':
-        logo_df = logomaker.transform_matrix(
-            motif_df,
-            from_type='probability',
-            to_type='information'
-        )
+        logo_df = logomaker.transform_matrix(motif_df, from_type='probability', to_type='information')
         y_label = 'Bits'
-    else:
+    elif logo_type == 'weights':
         logo_df = motif_df
         y_label = 'Contribution Score'
-
+    else: raise ValueError("logo_type must be 'bits' or 'weights'")
     logo = logomaker.Logo(logo_df, font_name='Arial Rounded MT Bold')
     logo.style_spines(visible=False)
     logo.style_spines(spines=['left', 'bottom'], visible=True)
@@ -156,11 +154,7 @@ def plot_motif_logo(motif_df, logo_type='bits', title="Discovered Motif"):
     plt.show()
 
 regions = list(hotspot_motifs.keys())
-plot_motif_logo(
-    hotspot_motifs[regions[0]],
-    logo_type='weights',
-    title="Hotspot Motif"
-)
+plot_motif_logo(hotspot_motifs[regions[0]], logo_type='weights', title="Hotspot Motif")
 ```
 
 ## Related Tutorials

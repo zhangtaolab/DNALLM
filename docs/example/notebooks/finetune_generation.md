@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/finetune_generation/finetune_generation.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # Generation Model Fine-Tuning
@@ -35,9 +35,11 @@ with open("ath_cds.csv", "w") as f:
 Load and split the dataset:
 
 ```python
-from dnallm import DNADataset
+# Load the datasets
+data_path = "ath_cds.csv"
+datasets = DNADataset.load_local_data(data_path, seq_col="sequence", sep=",")
 
-datasets = DNADataset.load_local_data("ath_cds.csv", seq_col="sequence", sep=",")
+# Sampling the datasets
 datasets.sampling(0.1, seed=42, overwrite=True)
 datasets.split_data(seed=42)
 ```
@@ -48,7 +50,8 @@ Preview a sample sequence:
 seq = datasets.dataset["test"][10]["sequence"]
 prompt = seq[:10]
 print("Length:", len(seq))
-print("Prompt:", prompt)
+print("Prompt sequence:", prompt)
+print("Full sequence:  ", seq)
 ```
 
 ## Part 1: DNAGPT

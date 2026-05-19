@@ -1,6 +1,6 @@
 ---
 notebook: example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
-sync_check: false
+sync_check: true
 ---
 
 # NER Data Generation
@@ -70,16 +70,54 @@ import gzip
 from pyfastx import Fasta
 from tqdm import tqdm
 
+# Load genome sequence
 genome_file = "osa1_r7.asm.fa.gz"
 genome = Fasta(genome_file)
-
+# Load annotation
 gene_anno = {}
 with gzip.open("osa1_r7.all_models.gff3.gz", "rt") as infile:
     for line in tqdm(infile):
         if line.startswith("#") or line.startswith("\n"):
             continue
         info = line.strip().split("\t")
-        # Parse gene and exon features...
+        chrom = info[0]
+        datatype = info[2]
+        start = int(info[3]) - 1
+        end = int(info[4])
+        strand = info[6]
+        description = info[8].split(";")
+        if datatype == "gene":
+            for item in description:
+                if item.startswith("Name="):
+                    gene = item[5:]
+            if gene not in gene_anno:
+                gene_anno[gene] = {}
+                gene_anno[gene]["chrom"] = chrom
+                gene_anno[gene]["start"] = start
+                gene_anno[gene]["end"] = end
+                gene_anno[gene]["strand"] = strand
+                gene_anno[gene]["isoform"] = {}
+        elif datatype in ["exon"]:
+            for item in description:
+                if item.startswith("Parent="):
+                    isoform = item[7:].split(',')[0]
+            if isoform not in gene_anno[gene]["isoform"]:
+                gene_anno[gene]["isoform"][isoform] = []
+            gene_anno[gene]["isoform"][isoform].append([datatype, start, end])
+
+# Get full gene annotation information and save
+gene_info = get_gene_annotation(gene_anno)
+annotation_bed = "rice_annotation.bed"
+with open(annotation_bed, "w") as outf:
+    for gene in sorted(gene_anno, key=lambda x: (gene_anno[x]["chrom"], gene_anno[x]["start"])):
+        chrom = gene_anno[gene]["chrom"]
+        strand = gene_anno[gene]["strand"]
+        if strand == "+":
+            for item in gene_info[gene]:
+                print(item[0], item[1], item[2], gene, item[3], item[4], sep="\t", file=outf)
+        else:
+            for item in gene_info[gene][::-1]:
+                print(item[0], item[1], item[2], gene, item[3], item[4], sep="\t", file=outf)
 ```
 
 ## Tokenize and Generate NER Labels
@@ -140,14 +178,10 @@ datasets = DNADataset.load_local_data(
 Split and inspect:
 
 ```python
-datasets.encode_sequences(
-    task=configs['task'].task_type,
-    remove_unused_columns=True
-)
-datasets.split_data()
-
-for split_name in datasets.dataset.keys():
-    print(f"{split_name}: {len(datasets.dataset[split_name])} samples")
+# check the dataset
+if hasattr(datasets.dataset, 'keys'):
+    for split_name in datasets.dataset.keys():
+        print(f"{split_name}: {len(datasets.dataset[split_name])} samples")
 ```
 
 ## Train NER Model
