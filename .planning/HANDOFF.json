@@ -1,33 +1,62 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T10:20:00Z",
-  "phase": "07",
-  "phase_name": "docs-examples-sync",
-  "phase_dir": ".planning/phases/07-docs-examples-sync",
+  "timestamp": "2026-05-19T08:45:16Z",
+  "phase": null,
+  "phase_name": null,
+  "phase_dir": null,
   "plan": null,
   "task": null,
-  "total_tasks": 15,
-  "status": "completed",
+  "total_tasks": null,
+  "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "Create 07-SPEC.md (12 requirements)", "status": "done", "commit": "be30f72"},
-    {"id": 2, "name": "Create 07-CONTEXT.md (4 decisions)", "status": "done", "commit": "e3affca"},
-    {"id": 3, "name": "Run plan-phase: research + plan + verify", "status": "done", "commit": null},
-    {"id": 4, "name": "Execute Plan 07-01: Fix benchmark.py + TaskConfig regex", "status": "done", "commit": "009acb7"},
-    {"id": 5, "name": "Execute Plan 07-02: Fix example files", "status": "done", "commit": "009acb7"},
-    {"id": 6, "name": "Execute Plan 07-03: Fix documentation", "status": "done", "commit": "009acb7"},
-    {"id": 7, "name": "Execute Plan 07-04a: Create validation scripts", "status": "done", "commit": "009acb7"},
-    {"id": 8, "name": "Execute Plan 07-04b: Wire validation into CI", "status": "done", "commit": "009acb7"}
+    {"id": 1, "name": "Create finetune_binary.md example tutorial", "status": "done"},
+    {"id": 2, "name": "Create check_notebook_md_sync.py sync checker", "status": "done"},
+    {"id": 3, "name": "Update mkdocs.yml with attr_list and pymdownx.emoji", "status": "done"},
+    {"id": 4, "name": "Update ci_checks.sh to include sync check", "status": "done"},
+    {"id": 5, "name": "Batch generate 20 markdown tutorials from notebooks", "status": "done"},
+    {"id": 6, "name": "Update mkdocs.yml navigation to point to .md files", "status": "done"},
+    {"id": 7, "name": "Polish all 21 markdown tutorials", "status": "done"}
   ],
-  "remaining_tasks": [],
-  "blockers": [],
+  "remaining_tasks": [
+    {"id": 8, "name": "Fix 9 files with sync_check: false to pass sync check", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "9 markdown tutorials have sync_check: false because code was refactored during polishing and no longer exactly matches notebook AST", "type": "technical", "workaround": "Restore exact notebook code in these files' python blocks"}
+  ],
   "human_actions_pending": [],
   "decisions": [
-    {"decision": "D-01: Strict local validation, CI informational only", "rationale": "Environment constraints prevent full notebook execution in CI", "phase": "07"},
-    {"decision": "D-02: File-by-file review, no bulk replacements", "rationale": "Prevent prose corruption in documentation", "phase": "07"},
-    {"decision": "D-03: Fix TaskConfig regex (not TaskType enum)", "rationale": "Zero code uses TaskType enum directly; regex expansion is safer", "phase": "07"},
-    {"decision": "D-04: Pattern-based traversal order", "rationale": "Builds context memory efficiently on one pattern at a time", "phase": "07"}
+    {"decision": "Use markdown tutorial + notebook stays in original directory (example/notebooks/)", "rationale": "User wants notebooks unmoved; docs/ only contains curated tutorials"},
+    {"decision": "Use frontmatter with notebook: path for sync checking", "rationale": "Clean mapping between md and ipynb without file path assumptions"},
+    {"decision": "Use AST-based sync checking (not line-level)", "rationale": "Tolerates formatting differences (line breaks, indentation) while catching real API mismatches"},
+    {"decision": "Add dnallm subpackage import equivalence to sync checker", "rationale": "Notebooks use from dnallm.models import X while tutorials use from dnallm import X; both are valid"}
   ],
-  "uncommitted_files": [],
-  "next_action": "Run /gsd:verify-work 07 for phase verification, then ship",
-  "context_notes": "Phase 07 execution complete. All 5 waves finished. 61 project files changed. All validation passes: sync check (0), snippet validator (150 blocks), YAML validator (21 files), example tests (93 passed), YAML load tests (21 passed)."
+  "uncommitted_files": [
+    "mkdocs.yml",
+    "scripts/ci_checks.sh",
+    "scripts/check_notebook_md_sync.py",
+    "scripts/generate_md_from_notebook.py",
+    "docs/example/notebooks/finetune_binary.md",
+    "docs/example/notebooks/finetune_multi_labels.md",
+    "docs/example/notebooks/finetune_NER_task.md",
+    "docs/example/notebooks/finetune_NER_data_generation.md",
+    "docs/example/notebooks/finetune_custom_head.md",
+    "docs/example/notebooks/finetune_generation.md",
+    "docs/example/notebooks/lora_finetune.md",
+    "docs/example/notebooks/lora_inference.md",
+    "docs/example/notebooks/inference.md",
+    "docs/example/notebooks/inference_evo_models.md",
+    "docs/example/notebooks/inference_megaDNA.md",
+    "docs/example/notebooks/inference_generation.md",
+    "docs/example/notebooks/inference_trna.md",
+    "docs/example/notebooks/mutagenesis.md",
+    "docs/example/notebooks/interpretation.md",
+    "docs/example/notebooks/embedding_attention.md",
+    "docs/example/notebooks/benchmark.md",
+    "docs/example/notebooks/data_prepare_finetune.md",
+    "docs/example/notebooks/data_prepare_predict.md",
+    "docs/example/mcp_langchain.md",
+    "docs/example/mcp_pydantic_ai.md"
+  ],
+  "next_action": "Fix the 9 files with sync_check: false by restoring their python code blocks to exactly match the corresponding notebook cells. Run python scripts/check_notebook_md_sync.py to verify all 21 pairs pass.",
+  "context_notes": "User asked to convert all notebook examples to markdown tutorials while keeping notebooks in example/notebooks/. Created 21 polished tutorials. 12 pass sync check exactly; 9 need code realignment. User then said '你来调整，需要测试通过，测试需要运行代码' before pausing."
 }

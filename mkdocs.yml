@@ -191,32 +191,32 @@ nav:
     - Notebooks:
       - Overview: example/notebooks/overview.md
       - Fine-Tuning:
-        - Binary Classification: example/notebooks/finetune_binary/finetune_binary.ipynb
-        - Multi-Label Classification: example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
-        - NER Fine-tuning: example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
-        - NER Data Generation: example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
-        - Custom Head: example/notebooks/finetune_custom_head/finetune.ipynb
-        - Generation: example/notebooks/finetune_generation/finetune_generation.ipynb
-        - LoRA Fine-tuning: example/notebooks/lora_finetune_inference/lora_finetune.ipynb
-        - LoRA Inference: example/notebooks/lora_finetune_inference/lora_inference.ipynb
+        - Binary Classification: example/notebooks/finetune_binary.md
+        - Multi-Label Classification: example/notebooks/finetune_multi_labels.md
+        - NER Fine-tuning: example/notebooks/finetune_NER_task.md
+        - NER Data Generation: example/notebooks/finetune_NER_data_generation.md
+        - Custom Head: example/notebooks/finetune_custom_head.md
+        - Generation: example/notebooks/finetune_generation.md
+        - LoRA Fine-tuning: example/notebooks/lora_finetune.md
+        - LoRA Inference: example/notebooks/lora_inference.md
       - Inference:
-        - Basic Inference: example/notebooks/inference/inference.ipynb
-        - EVO Models: example/notebooks/generation_evo_models/inference.ipynb
-        - MegaDNA Models: example/notebooks/generation_megaDNA/inference.ipynb
-        - Sequence Generation: example/notebooks/generation/inference.ipynb
-        - tRNA Inference: example/notebooks/inference_for_tRNA/inference.ipynb
+        - Basic Inference: example/notebooks/inference.md
+        - EVO Models: example/notebooks/inference_evo_models.md
+        - MegaDNA Models: example/notebooks/inference_megaDNA.md
+        - Sequence Generation: example/notebooks/inference_generation.md
+        - tRNA Inference: example/notebooks/inference_trna.md
       - Analysis:
-        - Mutagenesis: example/notebooks/in_silico_mutagenesis/in_silico_mutagenesis.ipynb
-        - Interpretation: example/notebooks/interpretation/interpretation.ipynb
-        - Embedding: example/notebooks/embedding_attention.ipynb
+        - Mutagenesis: example/notebooks/mutagenesis.md
+        - Interpretation: example/notebooks/interpretation.md
+        - Embedding: example/notebooks/embedding_attention.md
       - Benchmarking:
-        - Benchmark: example/notebooks/benchmark/benchmark.ipynb
+        - Benchmark: example/notebooks/benchmark.md
       - Data Preparation:
-        - Fine-tuning Data: example/notebooks/data_prepare/finetune/finetune_data.ipynb
-        - Prediction Data: example/notebooks/data_prepare/predict/predict_data.ipynb
+        - Fine-tuning Data: example/notebooks/data_prepare_finetune.md
+        - Prediction Data: example/notebooks/data_prepare_predict.md
       - MCP Examples:
-        - LangChain Agents: example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
-        - Pydantic AI: example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+        - LangChain Agents: example/mcp_langchain.md
+        - Pydantic AI: example/mcp_pydantic_ai.md
     - Marimo Demos:
       - Fine-tuning Demo: example/marimo/finetune/finetune_demo.py
       - Inference Demo: example/marimo/inference/inference_demo.py
@@ -256,7 +256,11 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - codehilite
   - toc:
       permalink: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.superfences

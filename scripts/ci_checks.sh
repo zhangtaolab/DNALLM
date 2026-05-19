@@ -79,8 +79,17 @@ echo ""
 print_status "INFO" "Running CI checks..."
 echo "======================================"
 
-# 1. Ruff formatting (matches CI step "Run linting and code quality checks with Ruff")
-print_status "INFO" "1/4: Ruff formatting check..."
+# 1. Notebook / markdown sync check
+print_status "INFO" "1/5: Notebook markdown sync check..."
+if python scripts/check_notebook_md_sync.py; then
+    print_status "SUCCESS" "Notebook markdown sync check passed"
+else
+    print_status "ERROR" "Notebook markdown sync check failed. Update docs/ tutorials or source notebooks"
+    exit 1
+fi
+
+# 2. Ruff formatting (matches CI step "Run linting and code quality checks with Ruff")
+print_status "INFO" "2/5: Ruff formatting check..."
 if ruff format --check .; then
     print_status "SUCCESS" "Ruff formatting check passed"
 else
@@ -88,8 +97,8 @@ else
     exit 1
 fi
 
-# 2. Ruff linting
-print_status "INFO" "2/4: Ruff linting check..."
+# 3. Ruff linting
+print_status "INFO" "3/5: Ruff linting check..."
 if ruff check . --statistics; then
     print_status "SUCCESS" "Ruff linting check passed"
 else
@@ -97,10 +106,10 @@ else
     exit 1
 fi
 
-# 3. Tests with coverage (matches CI step "Run fast tests")
+# 4. Tests with coverage (matches CI step "Run fast tests")
 echo ""
 if [ "$INCLUDE_SLOW" = true ]; then
-    print_status "INFO" "3/4: Running full test suite (including slow tests)..."
+    print_status "INFO" "4/5: Running full test suite (including slow tests)..."
     pytest tests/ -v --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
 else
     print_status "INFO" "3/4: Running fast tests (excludes slow)..."
@@ -108,9 +117,9 @@ else
 fi
 print_status "SUCCESS" "Tests passed"
 
-# 4. MyPy type checking (informational, matches CI's `|| true`)
+# 5. MyPy type checking (informational, matches CI's `|| true`)
 echo ""
-print_status "INFO" "4/4: MyPy type checking (informational)..."
+print_status "INFO" "5/5: MyPy type checking (informational)..."
 if mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/; then
     print_status "SUCCESS" "MyPy passed"
 else
