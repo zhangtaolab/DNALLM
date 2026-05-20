@@ -42,10 +42,87 @@ Import the DNALLM fine-tuning tools and Marimo UI components:
 ```python
 import sys
 from os import path
+
+# Add parent directory to path for local imports
 sys.path.append(path.abspath(path.join(path.dirname(__file__), "../../..")))
+
 import marimo as mo
 import pandas as pd
+
+# Core DNALLM imports for fine-tuning
 from dnallm import load_config, load_model_and_tokenizer, DNADataset, DNATrainer
+```
+
+---
+
+## Configure UI Inputs
+
+Set up interactive UI elements for model selection, dataset path, and sequence parameters:
+
+```python
+# App title
+title = mo.md(
+    "<center><h2>Finetune a DNA model with a custom dataset</h2></center>"
+)
+
+# Section header for configuration
+config_title = mo.md("<h3>Finetune configuration</h3>")
+
+# Config file input (YAML)
+config_text = mo.ui.text(
+    value="finetune_config.yaml",
+    placeholder="config.yaml",
+    label="Config file (*.yaml)",
+    full_width=True
+)
+
+# Model selection
+model_text = mo.ui.text(
+    value="zhangtaolab/plant-dnagpt-BPE",
+    placeholder="zhangtaolab/plant-dnagpt-BPE",
+    label="Model name or path",
+    full_width=True
+)
+source1_text = mo.ui.dropdown(
+    ['local', 'huggingface', 'modelscope'],
+    value="modelscope",
+    label="Model source",
+    full_width=True
+)
+
+# Dataset selection
+datasets_text = mo.ui.text(
+    value="zhangtaolab/plant-multi-species-core-promoters",
+    placeholder="zhangtaolab/plant-multi-species-core-promoters",
+    label="Datasets name or path",
+    full_width=True
+)
+source2_text = mo.ui.dropdown(
+    ['local', 'huggingface', 'modelscope'],
+    value="modelscope",
+    label="Dataset source",
+    full_width=True
+)
+
+# Sequence column parameters
+seq_col_text = mo.ui.text(
+    value="sequence", placeholder="sequence",
+    label="Sequence column name", full_width=True
+)
+label_col_text = mo.ui.text(
+    value="label", placeholder="label",
+    label="Label column name", full_width=True
+)
+maxlen_text = mo.ui.text(
+    value="512", placeholder="512",
+    label="Max token length", full_width=True
+)
+
+# Layout: title + config input
+mo.vstack(
+    [title, config_title, config_text.style(width="30ch")],
+    align='center', justify='center'
+)
 ```
 
 ---
@@ -56,11 +133,16 @@ Load the fine-tuning configuration from a YAML file and initialize UI states fro
 
 ```python
 if config_text.value:
+    # Load YAML config into Pydantic models
     raw_configs = load_config(config_text.value)
     raw_task_configs = raw_configs['task']
     raw_train_configs = raw_configs['finetune']
+
+    # Build reactive state objects for each config field
     states = {}
     states['label_separator'] = mo.state(',')
+
+    # Mirror task config fields into UI states
     for att in dir(raw_task_configs):
         if not att.startswith("_"):
             if att == "label_names":
@@ -69,15 +151,20 @@ if config_text.value:
                 states[att] = mo.state(",".join(all_labels))
             else:
                 states[att] = mo.state(getattr(raw_task_configs, att))
+
+    # Mirror training config fields into UI states
     for att in dir(raw_train_configs):
         if not att.startswith("_"):
             states[att] = mo.state(getattr(raw_train_configs, att))
+
+    # Derive precision state from bf16/fp16 flags
     if raw_train_configs.bf16:
         states['precision'] = mo.state('bf16')
     elif raw_train_configs.fp16:
         states['precision'] = mo.state('fp16')
     else:
         states['precision'] = mo.state('float32')
+
     configs = raw_configs
 else:
     raw_task_configs = None
@@ -92,6 +179,7 @@ else:
 Interactive UI for adjusting training hyperparameters:
 
 ```python
+# Build a dictionary of interactive UI controls, one per hyperparameter
 config_dict = mo.ui.dictionary({
     "task_type": mo.ui.dropdown(
         options=['mask', 'generation', 'binary', 'multiclass', 'multilabel', 'regression', 'token'],
@@ -244,6 +332,8 @@ config_dict = mo.ui.dictionary({
         label="output_dir", full_width=True
     ),
 })
+
+# Layout hyperparameters in a grid (4 per row)
 elems = list(config_dict.values())
 rows = [
     mo.hstack(
@@ -251,6 +341,8 @@ rows = [
     ) for i in range(0, len(elems), 4)
 ]
 config_stack = mo.vstack(rows, align="stretch", gap=0.5)
+
+# Model and dataset section
 model_title = mo.md("<h3>Model and dataset</h3>")
 model_stack = mo.hstack(
     [model_text.style(width="75ch"), source1_text],
@@ -264,6 +356,8 @@ options_stack = mo.hstack(
     [seq_col_text, label_col_text, maxlen_text],
     align='center', justify='center'
 )
+
+# Combine all UI sections vertically
 mo.vstack(
     [config_stack, model_title, model_stack, datasets_stack, options_stack],
     align='center', justify='center'
@@ -279,8 +373,11 @@ Apply the UI-edited values back to the config objects:
 ```python
 if configs:
     for arg in config_dict:
+        # Update task-level fields
         if arg in ['task_type', 'num_labels']:
             setattr(configs['task'], arg, config_dict[arg].value)
+
+        # Handle label names with separator splitting
         if arg == "label_names":
             sep = config_dict['label_separator'].value
             setattr(
@@ -288,8 +385,12 @@ if configs:
                 arg,
                 config_dict[arg].value.split(sep)
             )
+
+        # Update training config fields
         if arg in dir(configs['finetune']):
             setattr(configs['finetune'], arg, config_dict[arg].value)
+
+        # Map precision dropdown to bf16/fp16 flags
         if arg == "precision":
             if config_dict[arg].value == "bf16":
                 configs['finetune'].bf16 = True
@@ -297,6 +398,7 @@ if configs:
                 configs['finetune'].fp16 = True
             else:
                 pass
+
     print(configs)
 ```
 
@@ -310,7 +412,8 @@ Load the model, tokenizer, and dataset, then prepare them for training:
 def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
             datasets_text, source2_text, seq_col_text, label_col_text,
             maxlen_text, DNADataset):
-    # Load model and tokenizer
+    """Load model, tokenizer, and dataset for training."""
+    # Load model and tokenizer from the specified source
     model_name = model_text.value
     source1 = source1_text.value
     if model_name:
@@ -322,13 +425,15 @@ def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
     else:
         model = None
         tokenizer = None
-    # Load datasets
+
+    # Load dataset from HuggingFace, ModelScope, or local path
     datasets_name = datasets_text.value
     seq_col = seq_col_text.value
     label_col = label_col_text.value
     max_length = int(maxlen_text.value)
     source2 = source2_text.value
     print(datasets_name, source2)
+
     if datasets_name:
         if source2 == "huggingface":
             datasets = DNADataset.from_huggingface(
@@ -347,17 +452,20 @@ def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
             )
     else:
         datasets = None
-    # Process datasets
+
+    # Encode sequences and split into train/validation sets
     if datasets is not None:
         datasets.encode_sequences(remove_unused_columns=True)
         if isinstance(datasets.dataset, dict):
-            pass
+            pass  # Already split (has 'train'/'validation' keys)
         else:
             datasets.split_data()
     else:
         pass
+
     return (model, tokenizer, datasets,)
 
+# Create the training start button
 train_button = mo.ui.button(
     label="Start Training",
     on_click=lambda _: prepare(
@@ -376,6 +484,7 @@ mo.vstack([train_button], align='center', justify='center')
 Real-time training output is displayed here:
 
 ```python
+# mo.output provides a reactive text area for live logs
 text_output = mo.output
 ```
 
@@ -390,9 +499,11 @@ from transformers import TrainerCallback
 from math import ceil
 
 def get_total_steps(trainer):
+    """Calculate total training steps from dataloader or max_steps."""
     if trainer.args.max_steps and trainer.args.max_steps > 0:
         total_steps = trainer.args.max_steps
     else:
+        # Compute from dataloader length and gradient accumulation
         train_dl = trainer.get_train_dataloader()
         steps_per_epoch = ceil(
             len(train_dl) / trainer.args.gradient_accumulation_steps
@@ -400,7 +511,10 @@ def get_total_steps(trainer):
         total_steps = steps_per_epoch * trainer.args.num_train_epochs
     return total_steps
 
+
 class MarimoCallback(TrainerCallback):
+    """Custom callback that streams training logs to the Marimo UI."""
+
     def __init__(self, text_out):
         self.text_out = text_out
         self.steps = []
@@ -411,6 +525,8 @@ class MarimoCallback(TrainerCallback):
         step = state.global_step
         self.steps.append(step)
         increment = self.steps[-1] - self.steps[-2] if len(self.steps) > 1 else 0
+
+        # Format log messages for display
         txt = ''
         if "loss" in logs:
             txt = f"**Step {step}**<br>" + ", ".join(
@@ -425,6 +541,8 @@ class MarimoCallback(TrainerCallback):
         self.text_out.clear()
         self.text_out.replace(mo.md(self.all_logs))
 
+
+# Start training when button is clicked
 if train_button.value:
     model, _, datasets = train_button.value
     trainer = DNATrainer(
@@ -432,8 +550,19 @@ if train_button.value:
         config=configs,
         datasets=datasets
     )
+    # Attach live logging callback
     trainer.trainer.add_callback(MarimoCallback(text_output))
     trainer.train()
 else:
     trainer = None
 ```
+
+---
+
+## See Also
+
+- [Binary Classification Fine-Tuning Notebook](example/notebooks/finetune_binary.md) — Static tutorial for binary classification
+- [Multi-Label Classification Notebook](example/notebooks/finetune_multi_labels.md) — Fine-tuning for multi-label tasks
+- [LoRA Fine-Tuning Notebook](example/notebooks/lora_finetune.md) — Parameter-efficient fine-tuning with LoRA
+- [Fine-Tuning User Guide](user_guide/fine_tuning/getting_started.md) — Comprehensive fine-tuning documentation
+- [DNATrainer API](api/finetune/trainer.md) — API reference for the trainer class
