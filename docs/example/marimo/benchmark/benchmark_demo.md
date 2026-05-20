@@ -10,74 +10,113 @@ This interactive demo shows how to benchmark multiple DNA language models using 
 
 [:octicons-terminal-24: View Full Demo](https://github.com/zhangtaolab/DNALLM/blob/main/example/marimo/benchmark/benchmark_demo.py){ .md-button }
 
+## Prerequisites
+
+Install DNALLM with the inference and benchmark extras:
+
+```bash
+uv pip install -e '.[base,inference,cuda124]'
+```
+
+Then launch the demo:
+
+```bash
+uv run --no-sync marimo run example/marimo/benchmark/benchmark_demo.py
+```
+
+## Overview
+
+This Marimo app provides an interactive interface for benchmarking multiple DNA language models on the same dataset. You can:
+
+- Select 2–12 models to compare
+- Configure dataset and evaluation parameters
+- Run benchmarks and visualize results side-by-side
+
+---
+
+## Import Dependencies
+
+The demo imports the DNALLM benchmark tools and Marimo UI components:
+
 ```python
 import sys
-# from os import path
-# sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
 import marimo as mo
 import pandas as pd
 from dnallm import load_config, load_model_and_tokenizer, Benchmark
 ```
 
+---
+
+## Configure Benchmark Parameters
+
+Set up the benchmark configuration, including the number of models to compare, dataset path, and model source:
+
 ```python
 model_texts = {}
 name_texts = {}
-# model_stacks = {}
 number_of_models = int(number_text.value)
-default_models = [["Plant DNABERT", "zhangtaolab/plant-dnabert-BPE-promoter"],
-                  ["Plant DNAGPT", "zhangtaolab/plant-dnagpt-BPE-promoter"]] + [["", ""]] * 10
+default_models = [
+    ["Plant DNABERT", "zhangtaolab/plant-dnabert-BPE-promoter"],
+    ["Plant DNAGPT", "zhangtaolab/plant-dnagpt-BPE-promoter"]
+] + [["", ""]] * 10
 model_texts = mo.ui.dictionary({
-    i: mo.ui.text(value=default_models[i][1], placeholder=default_models[i][1],
-                  label=f"Model{i+1}", full_width=True)
+    i: mo.ui.text(
+        value=default_models[i][1],
+        placeholder=default_models[i][1],
+        label=f"Model{i+1}",
+        full_width=True
+    )
     for i in range(number_of_models)
 })
 name_texts = mo.ui.dictionary({
-    i: mo.ui.text(value=default_models[i][0], placeholder=default_models[i][0],
-                  label=f"Model{i+1} name", full_width=True)
+    i: mo.ui.text(
+        value=default_models[i][0],
+        placeholder=default_models[i][0],
+        label=f"Model{i+1} name",
+        full_width=True
+    )
     for i in range(number_of_models)
 })
-# model_stacks = mo.ui.dictionary({
-#     i: mo.hstack([model_texts.value[i].style(width="60ch"), name_texts.value[i].style(width="30ch")],
-#                  align='start', justify='center')
-#     for i in range(number_of_models)
-# })
-# for i in range(int(number_of_models)):
-#     if i == 0:
-#         value1 = "Plant DNABERT"
-#         value2 = "zhangtaolab/plant-dnabert-BPE-promoter"
-#     elif i == 1:
-#         value1 = "Plant DNAGPT"
-#         value2 = "zhangtaolab/plant-dnagpt-BPE-promoter"
-#     else:
-#         value1 = ""
-#         value2 = ""
-#     model_texts[i] = mo.ui.text(value=value2, placeholder="zhangtaolab/plant-dnagpt-BPE",
-#                                 label=f"Model{i+1}", full_width=True)
-#     name_texts[i] = mo.ui.text(value=value1, placeholder="Plant DNAGPT",
-#                                label=f"Model{i+1} name", full_width=True)
-#     model_stacks[i] = mo.hstack([model_texts[i].style(width="60ch"), name_texts[i].style(width="30ch")],
-#                                 align='start', justify='center')
-# mo.vstack([model_stacks.value[i] for i in range(int(number_of_models))],
-#           align='center', justify='center')
-mo.hstack([model_texts.vstack(align='stretch', gap=0.5),
-           name_texts.vstack(align='stretch', gap=0.5)],
-          widths=[2, 1], align='stretch', gap=0.5)
+mo.hstack(
+    [model_texts.vstack(align='stretch', gap=0.5),
+     name_texts.vstack(align='stretch', gap=0.5)],
+    widths=[2, 1], align='stretch', gap=0.5
+)
 ```
+
+---
+
+## Load Configuration
+
+Load the benchmark configuration from a YAML file:
 
 ```python
 configs = load_config(config_text.value)
 ```
 
+---
+
+## Load Dataset
+
+Load the evaluation dataset using the benchmark's built-in data loader:
+
 ```python
 benchmark = Benchmark(config=configs)
 if datasets_text.value:
-    # Load the dataset
-    dataset = benchmark.get_dataset(datasets_text.value,
-                                    seq_col=seq_col_text.value,
-                                    label_col=label_col_text.value)
+    dataset = benchmark.get_dataset(
+        datasets_text.value,
+        seq_col=seq_col_text.value,
+        label_col=label_col_text.value
+    )
 else:
     dataset = None
 ```
+
+---
+
+## Build Model Name Mapping
+
+Create a mapping from display names to model identifiers:
 
 ```python
 model_names = {
@@ -87,13 +126,27 @@ model_names = {
 }
 ```
 
+---
+
+## Run Benchmark
+
+Click the **Start Benchmark** button to run inference on all selected models:
+
 ```python
-predict_button = mo.ui.button(label="Start Benchmark",
-                                on_click=lambda value: benchmark.run(
-                                    model_names, source=source_text.value)
-                                )
+predict_button = mo.ui.button(
+    label="Start Benchmark",
+    on_click=lambda value: benchmark.run(
+        model_names, source=source_text.value
+    )
+)
 mo.hstack([predict_button], align='center', justify='center')
 ```
+
+---
+
+## Retrieve Results
+
+After benchmarking completes, the results are displayed:
 
 ```python
 if predict_button.value:
@@ -103,36 +156,55 @@ else:
 results
 ```
 
+---
+
+## Plot Metrics
+
+Adjust the figure size and click **Plot metrics** to visualize benchmark results:
+
 ```python
-figure_size = mo.ui.number(start=200, stop=5120, step=10, label='Figure size',
-                        value = 800)
+figure_size = mo.ui.number(
+    start=200, stop=5120, step=10,
+    label='Figure size', value=800
+)
 ```
 
 ```python
-plot_button = mo.ui.button(label="Plot metrics",
-                        on_click=lambda value: benchmark.plot(results, separate=True)
-                        )
+plot_button = mo.ui.button(
+    label="Plot metrics",
+    on_click=lambda value: benchmark.plot(results, separate=True)
+)
 mo.hstack([figure_size, plot_button], align='center', justify='center')
 ```
+
+---
+
+## Visualization
+
+View per-metric and per-model Altair charts:
 
 ```python
 plot_out = plot_button.value
 if plot_out:
     num_models = len(model_names)
-    charts1 = mo.ui.tabs(
-            {
-                metric: mo.ui.altair_chart(plot_out[0][metric]).properties(
-                    width=figure_size.value, height=figure_size.value * num_models / 10
-                    ) for metric in plot_out[0]
-            }, 
+    charts1 = mo.ui.tabs({
+        metric: mo.ui.altair_chart(
+            plot_out[0][metric]
+        ).properties(
+            width=figure_size.value,
+            height=figure_size.value * num_models / 10
         )
-    charts2 = mo.ui.tabs(
-            {
-                name: mo.ui.altair_chart(plot_out[1][name]).properties(
-                    width=figure_size.value, height=figure_size.value
-                    ) for name in plot_out[1]
-            }
+        for metric in plot_out[0]
+    })
+    charts2 = mo.ui.tabs({
+        name: mo.ui.altair_chart(
+            plot_out[1][name]
+        ).properties(
+            width=figure_size.value,
+            height=figure_size.value
         )
+        for name in plot_out[1]
+    })
 else:
     charts1 = ""
     charts2 = ""

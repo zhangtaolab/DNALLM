@@ -10,14 +10,49 @@ This interactive demo shows how to fine-tune a DNA language model with a custom 
 
 [:octicons-terminal-24: View Full Demo](https://github.com/zhangtaolab/DNALLM/blob/main/example/marimo/finetune/finetune_demo.py){ .md-button }
 
+## Prerequisites
+
+Install DNALLM with the fine-tuning extras:
+
+```bash
+uv pip install -e '.[base,finetune,cuda124]'
+```
+
+Then launch the demo:
+
+```bash
+uv run --no-sync marimo run example/marimo/finetune/finetune_demo.py
+```
+
+## Overview
+
+This Marimo app provides an interactive interface for fine-tuning DNA language models. You can:
+
+- Load and edit training configurations from a YAML file
+- Select model, dataset, and task type interactively
+- Adjust hyperparameters (learning rate, batch size, epochs, etc.)
+- Monitor training progress in real time
+
+---
+
+## Import Dependencies
+
+Import the DNALLM fine-tuning tools and Marimo UI components:
+
 ```python
 import sys
 from os import path
-sys.path.append(path.abspath(path.join(path.dirname(__file__), '../../..')))
+sys.path.append(path.abspath(path.join(path.dirname(__file__), "../../..")))
 import marimo as mo
 import pandas as pd
 from dnallm import load_config, load_model_and_tokenizer, DNADataset, DNATrainer
 ```
+
+---
+
+## Load Configuration
+
+Load the fine-tuning configuration from a YAML file and initialize UI states from the config values:
 
 ```python
 if config_text.value:
@@ -50,109 +85,164 @@ else:
     configs = None
 ```
 
+---
+
+## Configure Hyperparameters
+
+Interactive UI for adjusting training hyperparameters:
+
 ```python
 config_dict = mo.ui.dictionary({
-    "task_type": mo.ui.dropdown(options=['mask', 'generation',
-                                         'binary', 'multiclass', 'multilabel', 'regression', 'token'],
-                                value=states["task_type"][0](),
-                                on_change=states["task_type"][1],
-                                label="task_type", full_width=True),
-    "num_labels": mo.ui.number(value=states["num_labels"][0](),
-                               on_change=states["num_labels"][1],
-                               start=0, step=1,
-                               label="num_labels", full_width=True),
-    "label_separator": mo.ui.dropdown(options=[',', ';', '|', '/', '&'],
-                                      value=states["label_separator"][0](),
-                                      on_change=states["label_separator"][1],
-                                      label="label_separator", full_width=True),
-    "label_names": mo.ui.text(value=states["label_names"][0](),
-                              on_change=states["label_names"][1],
-                              label="label_names", full_width=True),
-    "num_train_epochs": mo.ui.number(value=states["num_train_epochs"][0](),
-                                     on_change=states["num_train_epochs"][1],
-                                     start=1, step=1,
-                                     label="num_train_epochs", full_width=True),
-    "per_device_train_batch_size": mo.ui.number(value=states["per_device_train_batch_size"][0](),
-                                                on_change=states["per_device_train_batch_size"][1],
-                                                start=1, step=1,
-                                                label="per_device_train_batch_size", full_width=True),
-    "per_device_eval_batch_size": mo.ui.number(value=states["per_device_train_batch_size"][0](),
-                                               on_change=states["per_device_train_batch_size"][1],
-                                               start=1, step=1,
-                                               label="per_device_eval_batch_size", full_width=True),
-    "gradient_accumulation_steps": mo.ui.number(value=states["gradient_accumulation_steps"][0](),
-                                                on_change=states["gradient_accumulation_steps"][1],
-                                                start=1, step=1,
-                                                label="gradient_accumulation_steps", full_width=True),
-    "logging_strategy": mo.ui.dropdown(options=['steps', 'epoch'],
-                                       value=states["logging_strategy"][0](),
-                                       on_change=states["logging_strategy"][1],
-                                       label="logging_strategy", full_width=True),
-    "logging_steps": mo.ui.number(value=states["logging_steps"][0](),
-                                  on_change=states["logging_steps"][1],
-                                  start=0, step=5,
-                                  label="logging_steps", full_width=True),
-    "eval_strategy": mo.ui.dropdown(options=['steps', 'epoch'],
-                                    value=states["logging_strategy"][0](),
-                                    on_change=states["logging_strategy"][1],
-                                    label="eval_strategy", full_width=True),
-    "eval_steps": mo.ui.number(value=states["eval_steps"][0](),
-                               on_change=states["eval_steps"][1],
-                               start=0, step=5,
-                               label="eval_steps", full_width=True),
-    "save_strategy": mo.ui.dropdown(options=['steps', 'epoch'],
-                                    value=states["logging_strategy"][0](),
-                                    on_change=states["logging_strategy"][1],
-                                    label="save_strategy", full_width=True),
-    "save_steps": mo.ui.number(value=states["save_steps"][0](),
-                               on_change=states["save_steps"][1],
-                               start=0, step=5,
-                               label="save_steps", full_width=True),
-    "save_total_limit": mo.ui.number(value=states["save_total_limit"][0](),
-                                     on_change=states["save_total_limit"][1],
-                                     start=1, step=1,
-                                     label="save_total_limit", full_width=True),
-    "learning_rate": mo.ui.number(value=states["learning_rate"][0](),
-                                  on_change=states["learning_rate"][1],
-                                  start=1e-10, stop=1, step=1e-6,
-                                  label="learning_rate", full_width=True),
-    "weight_decay": mo.ui.number(value=states["weight_decay"][0](),
-                                 on_change=states["weight_decay"][1],
-                                 start=0.0, stop=1, step=0.005,
-                                 label="weight_decay", full_width=True),
-    "adam_beta1": mo.ui.number(value=states["adam_beta1"][0](),
-                               on_change=states["adam_beta1"][1],
-                               start=0.0, stop=1.0, step=0.001,
-                               label="adam_beta1", full_width=True),
-    "adam_beta2": mo.ui.number(value=states["adam_beta2"][0](),
-                               on_change=states["adam_beta2"][1],
-                               start=0.0, stop=1.0, step=0.001,
-                               label="adam_beta2", full_width=True),
-    "adam_epsilon": mo.ui.number(value=states["adam_epsilon"][0](),
-                                 on_change=states["adam_epsilon"][1],
-                                 start=1e-10, stop=1.0, step=1e-8,
-                                 label="adam_epsilon", full_width=True),
-    "max_grad_norm": mo.ui.number(value=states["max_grad_norm"][0](),
-                                  on_change=states["max_grad_norm"][1],
-                                  start=0.0, step=0.1,
-                                  label="max_grad_norm", full_width=True),
-    "warmup_ratio": mo.ui.number(value=states["warmup_ratio"][0](),
-                                 on_change=states["warmup_ratio"][1],
-                                 start=0.0, step=0.01,
-                                 label="warmup_ratio", full_width=True),
-    "lr_scheduler_type": mo.ui.dropdown(options=['linear', 'cosine', 'cosine_with_restarts',
-                                                 'polynomial', 'constant',
-                                                 'constant_with_warmup', 'inverse_sqrt'],
-                                        value=states["lr_scheduler_type"][0](),
-                                        on_change=states["lr_scheduler_type"][1],
-                                        label="lr_scheduler_type", full_width=True),
-    "precision": mo.ui.dropdown(options=['float32', 'fp16', 'bf16'],
-                                value=states["precision"][0](),
-                                on_change=states["precision"][1],
-                                label="precision", full_width=True),
-    "output_dir": mo.ui.text(value=states["output_dir"][0](),
-                             on_change=states["output_dir"][1],
-                             label="output_dir", full_width=True),
+    "task_type": mo.ui.dropdown(
+        options=['mask', 'generation', 'binary', 'multiclass', 'multilabel', 'regression', 'token'],
+        value=states["task_type"][0](),
+        on_change=states["task_type"][1],
+        label="task_type", full_width=True
+    ),
+    "num_labels": mo.ui.number(
+        value=states["num_labels"][0](),
+        on_change=states["num_labels"][1],
+        start=0, step=1,
+        label="num_labels", full_width=True
+    ),
+    "label_separator": mo.ui.dropdown(
+        options=[',', ';', '|', '/', '&'],
+        value=states["label_separator"][0](),
+        on_change=states["label_separator"][1],
+        label="label_separator", full_width=True
+    ),
+    "label_names": mo.ui.text(
+        value=states["label_names"][0](),
+        on_change=states["label_names"][1],
+        label="label_names", full_width=True
+    ),
+    "num_train_epochs": mo.ui.number(
+        value=states["num_train_epochs"][0](),
+        on_change=states["num_train_epochs"][1],
+        start=1, step=1,
+        label="num_train_epochs", full_width=True
+    ),
+    "per_device_train_batch_size": mo.ui.number(
+        value=states["per_device_train_batch_size"][0](),
+        on_change=states["per_device_train_batch_size"][1],
+        start=1, step=1,
+        label="per_device_train_batch_size", full_width=True
+    ),
+    "per_device_eval_batch_size": mo.ui.number(
+        value=states["per_device_train_batch_size"][0](),
+        on_change=states["per_device_train_batch_size"][1],
+        start=1, step=1,
+        label="per_device_eval_batch_size", full_width=True
+    ),
+    "gradient_accumulation_steps": mo.ui.number(
+        value=states["gradient_accumulation_steps"][0](),
+        on_change=states["gradient_accumulation_steps"][1],
+        start=1, step=1,
+        label="gradient_accumulation_steps", full_width=True
+    ),
+    "logging_strategy": mo.ui.dropdown(
+        options=['steps', 'epoch'],
+        value=states["logging_strategy"][0](),
+        on_change=states["logging_strategy"][1],
+        label="logging_strategy", full_width=True
+    ),
+    "logging_steps": mo.ui.number(
+        value=states["logging_steps"][0](),
+        on_change=states["logging_steps"][1],
+        start=0, step=5,
+        label="logging_steps", full_width=True
+    ),
+    "eval_strategy": mo.ui.dropdown(
+        options=['steps', 'epoch'],
+        value=states["logging_strategy"][0](),
+        on_change=states["logging_strategy"][1],
+        label="eval_strategy", full_width=True
+    ),
+    "eval_steps": mo.ui.number(
+        value=states["eval_steps"][0](),
+        on_change=states["eval_steps"][1],
+        start=0, step=5,
+        label="eval_steps", full_width=True
+    ),
+    "save_strategy": mo.ui.dropdown(
+        options=['steps', 'epoch'],
+        value=states["logging_strategy"][0](),
+        on_change=states["logging_strategy"][1],
+        label="save_strategy", full_width=True
+    ),
+    "save_steps": mo.ui.number(
+        value=states["save_steps"][0](),
+        on_change=states["save_steps"][1],
+        start=0, step=5,
+        label="save_steps", full_width=True
+    ),
+    "save_total_limit": mo.ui.number(
+        value=states["save_total_limit"][0](),
+        on_change=states["save_total_limit"][1],
+        start=1, step=1,
+        label="save_total_limit", full_width=True
+    ),
+    "learning_rate": mo.ui.number(
+        value=states["learning_rate"][0](),
+        on_change=states["learning_rate"][1],
+        start=1e-10, stop=1, step=1e-6,
+        label="learning_rate", full_width=True
+    ),
+    "weight_decay": mo.ui.number(
+        value=states["weight_decay"][0](),
+        on_change=states["weight_decay"][1],
+        start=0.0, stop=1, step=0.005,
+        label="weight_decay", full_width=True
+    ),
+    "adam_beta1": mo.ui.number(
+        value=states["adam_beta1"][0](),
+        on_change=states["adam_beta1"][1],
+        start=0.0, stop=1.0, step=0.001,
+        label="adam_beta1", full_width=True
+    ),
+    "adam_beta2": mo.ui.number(
+        value=states["adam_beta2"][0](),
+        on_change=states["adam_beta2"][1],
+        start=0.0, stop=1.0, step=0.001,
+        label="adam_beta2", full_width=True
+    ),
+    "adam_epsilon": mo.ui.number(
+        value=states["adam_epsilon"][0](),
+        on_change=states["adam_epsilon"][1],
+        start=1e-10, stop=1.0, step=1e-8,
+        label="adam_epsilon", full_width=True
+    ),
+    "max_grad_norm": mo.ui.number(
+        value=states["max_grad_norm"][0](),
+        on_change=states["max_grad_norm"][1],
+        start=0.0, step=0.1,
+        label="max_grad_norm", full_width=True
+    ),
+    "warmup_ratio": mo.ui.number(
+        value=states["warmup_ratio"][0](),
+        on_change=states["warmup_ratio"][1],
+        start=0.0, step=0.01,
+        label="warmup_ratio", full_width=True
+    ),
+    "lr_scheduler_type": mo.ui.dropdown(
+        options=['linear', 'cosine', 'cosine_with_restarts',
+                 'polynomial', 'constant',
+                 'constant_with_warmup', 'inverse_sqrt'],
+        value=states["lr_scheduler_type"][0](),
+        on_change=states["lr_scheduler_type"][1],
+        label="lr_scheduler_type", full_width=True
+    ),
+    "precision": mo.ui.dropdown(
+        options=['float32', 'fp16', 'bf16'],
+        value=states["precision"][0](),
+        on_change=states["precision"][1],
+        label="precision", full_width=True
+    ),
+    "output_dir": mo.ui.text(
+        value=states["output_dir"][0](),
+        on_change=states["output_dir"][1],
+        label="output_dir", full_width=True
+    ),
 })
 elems = list(config_dict.values())
 rows = [
@@ -162,18 +252,29 @@ rows = [
 ]
 config_stack = mo.vstack(rows, align="stretch", gap=0.5)
 model_title = mo.md("<h3>Model and dataset</h3>")
-model_stack = mo.hstack([model_text.style(width="75ch"), source1_text], align='center', justify='center')
-datasets_stack = mo.hstack([datasets_text.style(width="75ch"), source2_text], align='center', justify='center')
-options_stack = mo.hstack(
-    [seq_col_text,
-    label_col_text,
-    maxlen_text],
-    align='center',
-    justify='center'
+model_stack = mo.hstack(
+    [model_text.style(width="75ch"), source1_text],
+    align='center', justify='center'
 )
-mo.vstack([config_stack, model_title, model_stack, datasets_stack, options_stack],
-          align='center', justify='center')
+datasets_stack = mo.hstack(
+    [datasets_text.style(width="75ch"), source2_text],
+    align='center', justify='center'
+)
+options_stack = mo.hstack(
+    [seq_col_text, label_col_text, maxlen_text],
+    align='center', justify='center'
+)
+mo.vstack(
+    [config_stack, model_title, model_stack, datasets_stack, options_stack],
+    align='center', justify='center'
+)
 ```
+
+---
+
+## Apply Configuration Changes
+
+Apply the UI-edited values back to the config objects:
 
 ```python
 if configs:
@@ -196,12 +297,19 @@ if configs:
                 configs['finetune'].fp16 = True
             else:
                 pass
-print(configs)
+    print(configs)
 ```
 
+---
+
+## Load Model and Dataset
+
+Load the model, tokenizer, and dataset, then prepare them for training:
+
 ```python
-def prepare(configs, model_text, source1_text, load_model_and_tokenizer, 
-    datasets_text, source2_text, seq_col_text, label_col_text, maxlen_text, DNADataset):
+def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
+            datasets_text, source2_text, seq_col_text, label_col_text,
+            maxlen_text, DNADataset):
     # Load model and tokenizer
     model_name = model_text.value
     source1 = source1_text.value
@@ -223,14 +331,20 @@ def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
     print(datasets_name, source2)
     if datasets_name:
         if source2 == "huggingface":
-            datasets = DNADataset.from_huggingface(datasets_name, seq_col=seq_col, label_col=label_col,
-                                                tokenizer=tokenizer, max_length=max_length)
+            datasets = DNADataset.from_huggingface(
+                datasets_name, seq_col=seq_col, label_col=label_col,
+                tokenizer=tokenizer, max_length=max_length
+            )
         elif source2 == "modelscope":
-            datasets = DNADataset.from_modelscope(datasets_name, seq_col=seq_col, label_col=label_col,
-                                                tokenizer=tokenizer, max_length=max_length)
+            datasets = DNADataset.from_modelscope(
+                datasets_name, seq_col=seq_col, label_col=label_col,
+                tokenizer=tokenizer, max_length=max_length
+            )
         else:
-            datasets = DNADataset.load_local_data(datasets_name, seq_col=seq_col, label_col=label_col,
-                                                tokenizer=tokenizer, max_length=max_length)
+            datasets = DNADataset.load_local_data(
+                datasets_name, seq_col=seq_col, label_col=label_col,
+                tokenizer=tokenizer, max_length=max_length
+            )
     else:
         datasets = None
     # Process datasets
@@ -242,30 +356,44 @@ def prepare(configs, model_text, source1_text, load_model_and_tokenizer,
             datasets.split_data()
     else:
         pass
-        
     return (model, tokenizer, datasets,)
-train_button = mo.ui.button(label="Start Training", 
-                            on_click=lambda _: prepare(
-                                configs, model_text, source1_text, load_model_and_tokenizer,
-                                datasets_text, source2_text, seq_col_text, label_col_text, maxlen_text, DNADataset
-                            ))
+
+train_button = mo.ui.button(
+    label="Start Training",
+    on_click=lambda _: prepare(
+        configs, model_text, source1_text, load_model_and_tokenizer,
+        datasets_text, source2_text, seq_col_text, label_col_text,
+        maxlen_text, DNADataset
+    )
+)
 mo.vstack([train_button], align='center', justify='center')
 ```
+
+---
+
+## Training Output
+
+Real-time training output is displayed here:
 
 ```python
 text_output = mo.output
 ```
 
+---
+
+## Start Training
+
+Initialize the trainer with a custom Marimo callback for live logging:
+
 ```python
 from transformers import TrainerCallback
 from math import ceil
+
 def get_total_steps(trainer):
     if trainer.args.max_steps and trainer.args.max_steps > 0:
         total_steps = trainer.args.max_steps
     else:
-        # 2️⃣ else compute from dataloader
         train_dl = trainer.get_train_dataloader()
-        # number of optimizer updates per epoch
         steps_per_epoch = ceil(
             len(train_dl) / trainer.args.gradient_accumulation_steps
         )
@@ -280,14 +408,9 @@ class MarimoCallback(TrainerCallback):
         self.all_logs = ""
 
     def on_log(self, args, state, control, logs=None, **kwargs):
-        # logs might contain 'loss', 'eval_loss', 'eval_accuracy', etc.
         step = state.global_step
         self.steps.append(step)
         increment = self.steps[-1] - self.steps[-2] if len(self.steps) > 1 else 0
-        # update progress bar
-        # self.bar.update(increment=increment)
-
-        # collect
         txt = ''
         if "loss" in logs:
             txt = f"**Step {step}**<br>" + ", ".join(
