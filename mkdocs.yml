@@ -218,9 +218,9 @@ nav:
         - LangChain Agents: example/mcp_langchain.md
         - Pydantic AI: example/mcp_pydantic_ai.md
     - Marimo Demos:
-      - Fine-tuning Demo: example/marimo/finetune/finetune_demo.py
-      - Inference Demo: example/marimo/inference/inference_demo.py
-      - Benchmark Demo: example/marimo/benchmark/benchmark_demo.py
+      - Fine-tuning Demo: example/marimo/finetune/finetune_demo.md
+      - Inference Demo: example/marimo/inference/inference_demo.md
+      - Benchmark Demo: example/marimo/benchmark/benchmark_demo.md
   - FAQ: 
     - Overview: faq/index.md
     - Installation: faq/install_troubleshooting.md
