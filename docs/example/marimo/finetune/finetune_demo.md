@@ -15,7 +15,7 @@ This interactive demo shows how to fine-tune a DNA language model with a custom 
 Install DNALLM with the fine-tuning extras:
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 Then launch the demo:
