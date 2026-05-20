@@ -79,7 +79,7 @@ def generate_md(notebook_path: Path, notebook_rel: str) -> str:
 
             # Skip empty or trivial cells
             if code.strip() and not all(
-                l.strip().startswith("#") for l in code.splitlines() if l.strip()
+                line.strip().startswith("#") for line in code.splitlines() if line.strip()
             ):
                 sections.append(("code", code))
             code_idx += 1
@@ -88,7 +88,7 @@ def generate_md(notebook_path: Path, notebook_rel: str) -> str:
     while code_idx < len(code_cells):
         code = code_cells[code_idx]
         if code.strip() and not all(
-            l.strip().startswith("#") for l in code.splitlines() if l.strip()
+            line.strip().startswith("#") for line in code.splitlines() if line.strip()
         ):
             sections.append(("code", code))
         code_idx += 1
