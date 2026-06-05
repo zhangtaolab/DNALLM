@@ -150,7 +150,7 @@ For development and testing without GPU acceleration:
 
 ```bash
 # Create environment
-conda create -n dnallm-cpu python=3.12 -y
+conda create -n dnallm-cpu python=3.12 uv -y
 conda activate dnallm-cpu
 
 # Install all dependencies and CPU version
@@ -169,7 +169,7 @@ For GPU-accelerated training and inference:
 nvidia-smi
 
 # Create environment (using CUDA 12.4 as example)
-conda create -n dnallm-gpu python=3.12 -y
+conda create -n dnallm-gpu python=3.12 uv -y
 conda activate dnallm-gpu
 
 # Install all dependencies and CUDA 12.4 support
@@ -179,7 +179,61 @@ uv pip install -e '.[all,cuda124]'
 python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
 ```
 
-### Scenario 3: Using Mamba Model Architecture
+### Scenario 3: Using Huawei Ascend NPU for Training and Inference
+
+For Huawei Ascend NPU accelerated training and inference, users should first check their device and environment, then install the appropriate dependencies.
+
+If Huawei Ascend driver is not installed in the machine, first check the device and install the corresponding drivers.
+
+For NPU driver, please refer to: https://www.hiascend.com/hardware/firmware-drivers/community
+
+For Ascend Extension for PyTorch (CANN driver), please refer to: https://www.hiascend.com/zh/cann/download
+
+For example, if you have a `Ascend 910B NPU with AArch64 architecture`, install drivers like this:
+
+```bash
+# Install NPU driver
+wget -c "https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/Ascend%20HDK/Ascend%20HDK%2025.5.2/Ascend-hdk-910b-npu-driver_25.5.2_linux-aarch64.run"
+bash ./Ascend-hdk-910b-npu-driver_25.5.2_linux-aarch64.run --install
+# Install CANN Toolkit
+wget https://ascend-cann-open.obs.cn-north-4.myhuaweicloud.com/CANN/CANN%209.0.0/Ascend-cann_9.0.0_linux-aarch64.run
+bash ./Ascend-cann_9.0.0_linux-aarch64.run --install
+# Install CANN Kernel/Ops
+wget https://ascend-repo.obs.cn-east-2.myhuaweicloud.com/CANN/CANN%209.0.0/Ascend-cann-910b-ops_9.0.0_linux-aarch64.run
+bash ./Ascend-cann-910b-ops_9.0.0_linux-aarch64.run --install
+
+# Check the drivers
+source /usr/local/Ascend/cann/set_env.sh
+python3 -c "import acl;print(acl.get_soc_name())"
+npu-smi info
+```
+
+if you want to auto-activate the driver environment, add the `set_env.sh` to system environment.
+```bash
+echo "source /usr/local/Ascend/cann/set_env.sh" >> ~/.bashrc
+```
+
+To use the NPU accelerating in torch, a specific version of `torch_npu` package is also required. Please refer to [this page](https://gitcode.com/Ascend/pytorch) to check the dependency map.
+
+For example, CANN 9.0.0 support Pytorch version from 2.7.1 to 2.10.0, also the Python version need to >=3.9.
+
+```bash
+# Create environment (using CANN 9.0.0 as example)
+conda create -n dnallm-npu python=3.11 uv -y
+conda activate dnallm-npu
+
+# Install dependencies of NPU support
+uv pip install torch torch_npu==2.9.0
+
+# Verify installation
+python -c "import torch; import torch_npu; print(f'PyTorch: {torch.__version__}'); print(f'NPU available: {torch.npu.is_available()}')"
+```
+
+During training or inference, Huawei Ascend NPU accelerate is supported for most of the DNA models (models supported by Huggingface Transformers library).
+
+For other non-transformer models or CUDA-dependent models, Huawei provides a specific framework for efficient model training and inference, named [MindSpeed](https://gitcode.com/Ascend/MindSpeed-LLM/). Detailed supported model list is shown [here](https://gitcode.com/Ascend/MindSpeed-LLM/blob/master/docs/zh/pytorch/models/supported_models.md).
+
+### Scenario 4: Using Mamba Model Architecture
 
 For models with Mamba architecture (Plant DNAMamba, Caduceus, Jamba-DNA):
 
@@ -198,7 +252,7 @@ uv pip install -e '.[cuda124,mamba]' --no-cache-dir --no-build-isolation
 python -c "from mambapy import Mamba; print('Mamba installed successfully!')"
 ```
 
-### Scenario 4: Complete Development Environment
+### Scenario 5: Complete Development Environment
 
 For contributors and developers:
 
@@ -220,7 +274,7 @@ print('CUDA:', torch.version.cuda if torch.cuda.is_available() else 'CPU')
 "
 ```
 
-### Scenario 5: Running MCP Server Only
+### Scenario 6: Running MCP Server Only
 
 For MCP server deployment:
 

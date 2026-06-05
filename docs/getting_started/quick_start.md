@@ -99,6 +99,23 @@ uv pip install -e '.[cuda124]'
 uv pip install -e '.[cuda121]'
 ```
 
+### Huawei NPU Support
+
+For Huawei Ascend NPU acceleration, install the appropriate torch and extension version:
+
+```bash
+# For venv users: activate virtual environment
+source .venv/bin/activate
+# For conda users: activate conda environment
+# conda activate dnallm
+
+# Install specific torch and extension version according the CANN driver's version
+uv pip install torch torch_npu
+```
+
+Detailed installation method see [installation.md](./installation.md##Installation-Scenarios)
+
+
 ### Native Mamba Support
 
 Native Mamba architecture runs significantly faster than transformer-compatible Mamba architecture, but native Mamba depends on Nvidia GPUs.

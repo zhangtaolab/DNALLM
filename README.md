@@ -10,7 +10,7 @@
 
 DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
-## 📦 Installation
+## 📦 Quick Installation
 
 ```bash
 pip install dnallm
@@ -47,6 +47,23 @@ DNALLM-Suite supports a wide range of DNA language models including:
 - **Hugging Face Hub**: Primary model repository
 - **ModelScope**: Alternative model source with additional models
 - **Custom Models**: Support for locally trained or custom architectures
+
+## 🖥️ Supported Platforms
+
+DNALLM-Suite has been tested on a wide range of platforms and devices:
+
+### Platforms:
+- **Linux**
+- **Windows**
+- **MacOS**
+
+### Device:
+- **CPU**
+- **Nvidia GPU (CUDA)**
+- **AMD GPU (ROCm)**
+- **Apple Silicon (MPS)**
+- **Huawei Ascend NPU (CANN)**
+- **Intel Arc GPU (XPU)**
 
 ## 🛠️ Installation
 
