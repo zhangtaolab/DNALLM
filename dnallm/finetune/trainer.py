@@ -193,6 +193,7 @@ class DNATrainer:
         training_args.pop("hyperparameter_search", None)
         training_args.pop("use_qlora", None)
         training_args.pop("quantization_config", None)
+        self._save_safetensors = training_args.pop("save_safetensors", True)
         self.training_args = TrainingArguments(
             **training_args,
         )
@@ -379,7 +380,7 @@ class DNATrainer:
         if hasattr(self.model, "save_pretrained"):
             self.model.save_pretrained(
                 self.train_config.output_dir,
-                safe_serialization=self.trainer.args.save_safetensors,
+                safe_serialization=self._save_safetensors,
             )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
@@ -433,7 +434,7 @@ class DNATrainer:
         if hasattr(self.model, "save_pretrained"):
             self.model.save_pretrained(
                 self.train_config.output_dir,
-                safe_serialization=self.trainer.args.save_safetensors,
+                safe_serialization=self._save_safetensors,
             )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore

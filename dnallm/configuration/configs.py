@@ -290,6 +290,7 @@ class TrainingConfig(BaseModel):
     seed: int = 42
     bf16: bool = False
     fp16: bool = False
+    gradient_checkpointing: bool = False
     load_best_model_at_end: bool = False
     metric_for_best_model: str = "eval_loss"
     report_to: list[str] = Field(
