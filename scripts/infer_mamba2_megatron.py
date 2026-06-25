@@ -264,7 +264,7 @@ def disable_dynamo() -> None:
 
         torch._dynamo.config.suppress_errors = True
         torch._dynamo.disable()
-    except Exception: # noqa: S110
+    except Exception:  # noqa: S110
         pass
 
 

@@ -66,7 +66,7 @@ def disable_dynamo() -> None:
 
         torch._dynamo.config.suppress_errors = True
         torch._dynamo.disable()
-    except Exception: # noqa: S110 - best-effort compatibility guard
+    except Exception:  # noqa: S110 - best-effort compatibility guard
         pass
 
 

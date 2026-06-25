@@ -61,6 +61,7 @@ from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
 transformers_version = Version(str(transformers.__version__))
 
+
 class DNATrainer:
     """DNA Language Model Trainer that supports multiple model types.
 
