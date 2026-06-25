@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (

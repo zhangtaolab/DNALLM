@@ -1,6 +1,6 @@
 from typing import Any
 import torch.nn as nn
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]
 
 
 def _handle_mutbert_tokenizer(tokenizer: Any) -> Any:

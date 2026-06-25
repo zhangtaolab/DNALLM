@@ -1119,6 +1119,7 @@ class DNAInference:
         lowercase: bool = False,
         sampling: float | None = None,
         do_encode: bool = True,
+        padding: str | bool = True,
         save_to_file: bool = False,
         plot_metrics: bool = False,
     ) -> dict | tuple[dict, dict]:
@@ -1142,6 +1143,8 @@ class DNAInference:
             uppercase: Whether to convert sequences to uppercase
             lowercase: Whether to convert sequences to lowercase
             sampling: Fraction of data to randomly sample for inference
+            do_encode: Whether to encode sequences for the model
+            padding: Whether to apply padding to sequences
             save_to_file: Whether to save predictions and metrics to
                 output directory
             plot_metrics: Whether to generate metric plots
@@ -1174,6 +1177,7 @@ class DNAInference:
                 lowercase=lowercase,
                 sampling=sampling,
                 do_encode=do_encode,
+                padding=padding,
                 batch_size=self.pred_config.batch_size,
             )
         # Do batch inference
@@ -2059,7 +2063,7 @@ class DNAInference:
                     else:
                         all_embeddings[i].append(tmp)
             for i, _ in enumerate(layers):
-                all_embeddings[i] = np.stack(all_embeddings[i], axis=0)
+                all_embeddings[i] = np.stack(all_embeddings[i], axis=0)  # type: ignore[call-overload]
             if self.embeddings["hidden_states"] is None:
                 self.embeddings["hidden_states"] = all_embeddings
             return all_embeddings

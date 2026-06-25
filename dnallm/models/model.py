@@ -12,7 +12,7 @@ from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -56,7 +56,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
     def __init__(self, config, custom_model=None):
         super().__init__(config)
-        from transformers import AutoModel
+        from transformers import AutoModel  # type: ignore[attr-defined]
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
@@ -110,7 +110,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel
+        from transformers import AutoModel  # type: ignore[attr-defined]
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -463,7 +463,7 @@ def _get_model_path_and_imports(
 
     # Import transformers modules for local and huggingface sources
     try:
-        from transformers import (
+        from transformers import (  # type: ignore[attr-defined]
             AutoConfig,
             AutoModel,
             AutoModelForMaskedLM,

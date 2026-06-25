@@ -62,7 +62,7 @@ dependencies = [
     "tokenizers>=0.21.0",
     "torch>=2.4.0,<2.12",
     "tqdm>=4.67.1",
-    "transformers>=4.49.0",
+    "transformers>=4.49.0,<5",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -254,6 +254,8 @@ exclude = [
     "dnallm/tasks/metrics/",
     ".claude",
     ".planning",
+    "dnallm/models/special/mamba_npu.py",
+    "dnallm/finetune/megatron.py",
 ]
 
 # Same as Black.
@@ -360,6 +362,10 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = false
 show_error_codes = true
+exclude = [
+    "dnallm/models/special/mamba_npu.py",
+    "dnallm/finetune/megatron.py",
+]
 
 [[tool.mypy.overrides]]
 module = [

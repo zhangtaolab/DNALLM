@@ -88,150 +88,54 @@ python MindSpeed-LLM/convert_ckpt_v2.py \
     --save-dir plant-dnamamba2-BPE_mg \
     --target-tensor-parallel-size 1 \
     --target-pipeline-parallel-size 1 \
+    --num-layers 48 \
     --hidden-size 1024 \
     --mamba-state-dim 128 \
     --mamba-head-dim 64 \
     --mamba-num-groups 1 \
     --model-type-hf 'mamba2'
+
+# Download fine-tuning data
+git clone https://huggingface.co/datasets/zhangtaolab/plant-multi-species-core-promoters
 ```
 
 After conversion and data processing, start fine-tuning
 ```bash
-#!/bin/bash
-
-# ================= Environment =================
-export CUDA_DEVICE_MAX_CONNECTIONS=1
-export CPU_AFFINITY_CONF=1
-export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
-export HCCL_CONNECT_TIMEOUT=3600
-export TASK_QUEUE_ENABLE=2
-
-# ================= Hardware for single NPU =================
-NPUS_PER_NODE=1
-MASTER_ADDR=localhost
-MASTER_PORT=6000
-NNODES=1
-NODE_RANK=0
-WORLD_SIZE=1
-
-# ================= model and data path =================
-# Recommend absolute path
-CKPT_LOAD_DIR="/root/autodl-tmp/mamba2_130M_spv3"
-CKPT_SAVE_DIR="/root/autodl-tmp/mamba2_130M_spv3_finetuned_V2"
-TOKENIZER_PATH="/root/autodl-tmp/mamba2_130M_spv3"
-TRAIN_CSV="/root/autodl-tmp/datasets/train.csv"
-DEV_CSV="/root/autodl-tmp/datasets/dev.csv"
-TEST_CSV="/root/autodl-tmp/datasets/test.csv"
-
-# ================= Hyper-parameters =================
-TP=1
-PP=1
-MBS=32
-GBS=32
-
-DISTRIBUTED_ARGS="
-    --nproc_per_node $NPUS_PER_NODE \
-    --nnodes $NNODES \
-    --node_rank $NODE_RANK \
-    --master_addr $MASTER_ADDR \
-    --master_port $MASTER_PORT
-"
-
-# ================= Mamba2 parameters =================
-MAMBA_ARGS="
-    --spec mindspeed_llm.tasks.models.spec.mamba_spec layer_spec \
-    --reuse-fp32-param \
-    --no-shared-storage \
-    --use-distributed-optimizer \
-    --use-flash-attn \
-    --use-mcore-models \
-    --tensor-model-parallel-size ${TP} \
-    --pipeline-model-parallel-size ${PP} \
-    --sequence-parallel \
-    --num-layers 24 \
-    --num_labels 3 \
+python -m torch.distributed.launch scripts/finetune_mamba2_megatron.py \
+    --load plant-dnamamba2-BPE_mg \
+    --save plant-dnamamba2-BPE_promoter \
+    --tokenizer-name-or-path plant-dnamamba2-BPE \
+    --train_csv plant-multi-species-core-promoters/train.csv \
+    --test_csv plant-multi-species-core-promoters/test.csv \
+    --dev_csv plant-multi-species-core-promoters/dev.csv \
+    --num_labels 2 \
     --problem_type single_label_classification \
-    --group-query-attention \
-    --num-query-groups 24 \
-    --mamba-num-groups 1 \
-    --mamba-chunk-size 256 \
-    --mamba-state-dim 128 \
-    --mamba-d-conv 4 \
-    --mamba-expand 2 \
-    --mamba-head-dim 64 \
-    --tokenizer-type PretrainedFromHF \
-    --tokenizer-name-or-path ${TOKENIZER_PATH} \
-    --hidden-size 768 \
-    --seq-length 512 \
-    --max-position-embeddings 512 \
-    --micro-batch-size ${MBS} \
-    --global-batch-size ${GBS} \
-    --num-attention-heads 24 \
-    --make-vocab-size-divisible-by 1 \
-    --train-iters 2000 \
-    --lr-decay-style cosine \
-    --untie-embeddings-and-output-weights \
-    --disable-bias-linear \
-    --attention-dropout 0.0 \
-    --init-method-std 0.02 \
-    --hidden-dropout 0.0 \
-    --position-embedding-type none \
-    --normalization RMSNorm \
-    --use-fused-swiglu \
-    --use-fused-rmsnorm \
-    --swiglu \
-    --no-masked-softmax-fusion \
-    --attention-softmax-in-fp32 \
-    --lr 2.5e-5 \
-    --min-lr 2.5e-6 \
-    --lr-decay-style cosine \
-    --weight-decay 0.1 \
-    --clip-grad 1.0 \
-    --adam-beta1 0.9 \
-    --adam-beta2 0.95 \
-    --initial-loss-scale 65536 \
-    --rotary-base 10000 \
-    --no-gradient-accumulation-fusion \
-    --norm-epsilon 1e-6 \
-    --no-load-optim \
-    --no-load-rng \
-    --bf16
-"
+    --micro-batch-size 12 \
+    --global-batch-size 12 \
+    --epochs 3 \
+    --lr 2e-5 \
+    --no-enable-hf2mg-convert
+```
 
-OUTPUT_ARGS="
-    --log-interval 1 \
-    --save-interval 1000 \
-    --eval-interval 1000 \
-    --load ${CKPT_LOAD_DIR} \
-    --save ${CKPT_SAVE_DIR} \
-    --no-save-rng \
-    --no-save-optim
-"
+To use the fine-tuned model, run the following script:
+```bash
+python -m torch.distributed.launch scripts/infer_mamba2_megatron.py \
+    --load plant-dnamamba2-BPE_promoter \
+    --tokenizer-name-or-path plant-dnamamba2-BPE \
+    --input-file plant-multi-species-core-promoters/test.csv \
+    --output-file inference_test.csv \
+    --num_labels 2 \
+    --problem_type single_label_classification \
+    --micro-batch-size 16 \
+    --global-batch-size 16
+```
 
-CKPT_ARGS="
-    --enable-hf2mg-convert \
-    --model-type-hf mamba2
-"
-
-EXTRA_ARGS="
-    --train_csv $TRAIN_CSV \
-    --dev_csv $DEV_CSV \
-    --test_csv $TEST_CSV \
-    --tensorboard_dir ${CKPT_SAVE_DIR}/tensorboard_logs
-"
-
-# ================= Run =================
-mkdir -p logs
-mkdir -p ${CKPT_SAVE_DIR}
-
-python -m torch.distributed.launch $DISTRIBUTED_ARGS finetune_mamba2.py \
-    $MAMBA_ARGS \
-    $OUTPUT_ARGS \
-    $CKPT_ARGS \
-    $EXTRA_ARGS \
-    --distributed-backend nccl \
-    --transformer-impl local \
-    | tee logs/finetune_mamba2_130M_single_card.log
+Output contents are looked like this:
+```text
+id,text,sp,label,probabilities,predictions
+0,TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAGTCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGATAGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAGGCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGATCCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT,bd30,1,"[0.0038909912109375, 0.99609375]",1.0
+1,ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCATGAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAATGCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTGCTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGATGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC,broomcorn,0,"[0.99609375, 0.005645751953125]",0.0
+2,TCATGTACATCCGTATACAGTTGATAATGCAATTTTTAAAAAGTCTTATATTTAGAAACAGAGGAAGTGATATTTATTGTTGGCAAGGACTAATATAGTTTTTCTTAACAACAAGTATTCTTCTTTTGAAATTACTTGTCATAAAAACAAATATAAATGGATGTATCTAAACTAAAATATACTTCCATAATATATGTCTTTTTTAGAGATTTCACTAAATGGCTACATACGGATGTATATAGATATATTTTAAAGTATAGATTCATTTATTTTGTTCCGTATGTAGTCCCCTAGTAAAAT,barley,0,"[1.0, 0.00014400482177734375]",0.0
 ```
 
 ### Caduceus Models

@@ -13,7 +13,7 @@ from captum.attr import (
     DeepLift,
     GradientShap,
 )
-from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers import PreTrainedModel, PreTrainedTokenizer  # type: ignore[attr-defined]
 from .plot import (
     plot_attributions_token,
     plot_attributions_line,

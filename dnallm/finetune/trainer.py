@@ -45,7 +45,9 @@ from typing import Any
 from collections.abc import Callable
 import torch
 from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments, EarlyStoppingCallback
+from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]
+import transformers
+from packaging.version import Version
 from peft import get_peft_model, LoraConfig
 
 try:
@@ -57,6 +59,7 @@ from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
 from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
+transformers_version = Version(str(transformers.__version__))
 
 class DNATrainer:
     """DNA Language Model Trainer that supports multiple model types.
@@ -241,7 +244,7 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
@@ -251,7 +254,7 @@ class DNATrainer:
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
 
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]
@@ -378,10 +381,21 @@ class DNATrainer:
         self.trainer.save_model()
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
-            self.model.save_pretrained(
-                self.train_config.output_dir,
-                safe_serialization=self._save_safetensors,
-            )
+            # Transformers 5 enforces safetensors
+            if transformers_version >= Version("5.0.0"):
+                if self.trainer.args.save_safetensors:
+                    self.model.save_pretrained(
+                        self.train_config.output_dir,
+                    )
+                else:
+                    torch.save(
+                        self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
+                    )
+            else:
+                self.model.save_pretrained(
+                    self.train_config.output_dir,
+                    safe_serialization=self.trainer.args.save_safetensors,
+                )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
         return metrics
@@ -431,11 +445,23 @@ class DNATrainer:
 
         # Save the best model
         self.trainer.save_model()
+        # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
-            self.model.save_pretrained(
-                self.train_config.output_dir,
-                safe_serialization=self._save_safetensors,
-            )
+            # Transformers 5 enforces safetensors
+            if transformers_version >= Version("5.0.0"):
+                if self.trainer.args.save_safetensors:
+                    self.model.save_pretrained(
+                        self.train_config.output_dir,
+                    )
+                else:
+                    torch.save(
+                        self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
+                    )
+            else:
+                self.model.save_pretrained(
+                    self.train_config.output_dir,
+                    safe_serialization=self.trainer.args.save_safetensors,
+                )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
 

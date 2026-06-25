@@ -1574,7 +1574,7 @@ def _compute_mean_embeddings(
         else:  # mean pooling without mask
             attention_mask_array = np.ones((embeddings.shape[0], embeddings.shape[1]), dtype=int)
     else:
-        attention_mask_array = np.array(attention_mask)
+        attention_mask_array = np.array(attention_mask)  # type: ignore[assignment]
 
     # use center (middle of window) embeddings within window size
     if isinstance(strategy, int):

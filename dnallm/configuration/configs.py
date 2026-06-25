@@ -98,8 +98,9 @@ class TaskConfig(BaseModel):
     """Configuration for different fine-tuning tasks"""
 
     task_type: str = Field(
-        ...,
+        default="binary",
         pattern="^(embedding|mask|generation|binary|binary_classification|multiclass|multi_class_classification|multilabel|multi_label_classification|regression|token|token_classification)$",
+        description="Task type"
     )
     num_labels: int | None = Field(default=2, description="Number of labels (default 2)")
     label_names: list[str] | None = None

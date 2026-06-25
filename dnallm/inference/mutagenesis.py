@@ -613,7 +613,7 @@ class Mutagenesis:
             all_hyp_scores.append(hyp_scores)
 
         one_hot_seqs = np.array(all_one_hot)
-        hyp_scores = np.array(all_hyp_scores)
+        hyp_scores = np.array(all_hyp_scores)  # type: ignore[assignment]
         contrib_scores = hyp_scores * one_hot_seqs
         return one_hot_seqs, hyp_scores, contrib_scores
 

@@ -8,6 +8,7 @@ DNA language models from various sources.
 import os
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+import importlib
 from typing import Any
 
 from dnallm.models.model import (
@@ -232,7 +233,8 @@ class TestGetModelPathAndImports:
             "dnallm.models.model.download_model",
             return_value="/downloaded/model",
         ) as mock_download:
-            with patch("modelscope.hub.snapshot_download.snapshot_download") as mock_ms_download:
+            snapshot_module = importlib.import_module("modelscope.hub.snapshot_download")
+            with patch.object(snapshot_module, "snapshot_download") as mock_ms_download:
                 with patch("modelscope.AutoModel") as mock_auto_model:
                     model_path, modules = _get_model_path_and_imports("test-model", "modelscope")
 

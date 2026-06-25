@@ -27,7 +27,7 @@ def _handle_megadna_models(
 
     for m in megadna_models:
         if m in model_name:
-            from transformers import PretrainedConfig, PreTrainedTokenizer
+            from transformers import PretrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]
 
             class MegaDNAConfig(PretrainedConfig):
                 model_type = "megadna"

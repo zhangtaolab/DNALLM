@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PretrainedConfig, BatchEncoding
+from transformers import PretrainedConfig, BatchEncoding  # type: ignore[attr-defined]
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
