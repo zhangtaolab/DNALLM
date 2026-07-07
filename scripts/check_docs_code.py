@@ -107,9 +107,7 @@ class DocCodeChecker:
         if self.docs_dir.exists():
             self.md_files = list(self.docs_dir.glob("**/*.md"))
 
-    def extract_code_blocks(
-        self, file_path: Path
-    ) -> list[tuple[str, str, int]]:
+    def extract_code_blocks(self, file_path: Path) -> list[tuple[str, str, int]]:
         """Extract code blocks from markdown file.
 
         Args:
@@ -147,9 +145,7 @@ class DocCodeChecker:
                         # Extract language (handle cases like ```python)
                         lang_part = stripped[3:].strip()
                         # Take first part as language
-                        current_lang = (
-                            lang_part.split()[0] if lang_part else ""
-                        )
+                        current_lang = lang_part.split()[0] if lang_part else ""
                         current_code = []
                         start_line = i
                     else:
@@ -181,9 +177,7 @@ class DocCodeChecker:
 
         return code_blocks
 
-    def check_python_code(
-        self, code: str, file_path: Path, line_num: int
-    ) -> dict:
+    def check_python_code(self, code: str, file_path: Path, line_num: int) -> dict:
         """Check Python code syntax and imports.
 
         Args:
@@ -313,9 +307,7 @@ class DocCodeChecker:
                 "file": file_path,
             }
 
-    def check_bash_code(
-        self, code: str, file_path: Path, line_num: int
-    ) -> dict:
+    def check_bash_code(self, code: str, file_path: Path, line_num: int) -> dict:
         """Check bash command validity.
 
         Args:
@@ -345,9 +337,7 @@ class DocCodeChecker:
             }
 
         commands = [
-            c.strip()
-            for c in code.split("\n")
-            if c.strip() and not c.strip().startswith("#")
+            c.strip() for c in code.split("\n") if c.strip() and not c.strip().startswith("#")
         ]
 
         if not commands:
@@ -450,9 +440,7 @@ class DocCodeChecker:
         print(f"Python blocks: {py_count}")
         print(f"Bash blocks: {bash_count}")
         excluded = ["python", "bash", "yaml"]
-        other_count = sum(
-            v for k, v in code_stats.items() if k not in excluded
-        )
+        other_count = sum(v for k, v in code_stats.items() if k not in excluded)
         print(f"YAML blocks: {yaml_count}")
         print(f"Other blocks: {other_count}")
         print(f"Checkable: {checked_count}")
@@ -486,9 +474,7 @@ def main() -> int:
         f"Code blocks: {len(results)}",
     ]
 
-    err_warn_count = len([
-        r for r in results if r["result"].get("status") in ["error", "warning"]
-    ])
+    err_warn_count = len([r for r in results if r["result"].get("status") in ["error", "warning"]])
     report_lines.append(f"Issues found: {err_warn_count}")
     report_lines.extend([
         f"Processing issues: {len(issues)}",
@@ -537,12 +523,8 @@ def main() -> int:
     print(f"\n📊 Report saved to: {report_file}")
 
     total_results = len(results)
-    error_count = len([
-        r for r in results if r["result"].get("status") == "error"
-    ])
-    warnings = len([
-        r for r in results if r["result"].get("status") == "warning"
-    ])
+    error_count = len([r for r in results if r["result"].get("status") == "error"])
+    warnings = len([r for r in results if r["result"].get("status") == "warning"])
 
     print("\n📈 Statistics:")
     print(f"  - Total blocks: {total_results}")
