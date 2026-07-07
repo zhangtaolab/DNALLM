@@ -211,18 +211,19 @@ def regression_metrics(plot: bool = False) -> Callable:
                 "spearmanr": spearmanr,
             }
         else:
-            mse = mse_metric.compute(references=labels, predictions=logits)
-            mae = mae_metric.compute(references=labels, predictions=logits)
-            r2 = r2_metric.compute(references=labels, predictions=logits)
-            spearmanr = spm_metric.compute(references=labels, predictions=logits)
+            logits_flat = logits.flatten() if hasattr(logits, "flatten") else logits
+            mse = mse_metric.compute(references=labels, predictions=logits_flat)
+            mae = mae_metric.compute(references=labels, predictions=logits_flat)
+            r2 = r2_metric.compute(references=labels, predictions=logits_flat)
+            spearmanr = spm_metric.compute(references=labels, predictions=logits_flat)
             metrics = {**mse, **mae, "r2": r2, **spearmanr}
             if plot:
                 # Fix: logits is already a numpy array,
                 # no need to call .numpy()
-                if hasattr(logits, "numpy"):
-                    predicted = logits.numpy().flatten()
+                if hasattr(logits_flat, "numpy"):
+                    predicted = logits_flat.numpy()
                 else:
-                    predicted = logits.flatten()
+                    predicted = logits_flat
                 metrics["scatter"] = {
                     "predicted": predicted,
                     "experiment": labels,
