@@ -100,7 +100,7 @@ docs = [
     "mkdocs-jupyter>=0.24.0",
     "mkdocs-material>=9.6.1",
     "mkdocstrings-python>=1.16.10",
-    "click<8.2.2",
+    "click<8.4.3",
 ]
 ui = [
     "gradio>=4.0.0",
