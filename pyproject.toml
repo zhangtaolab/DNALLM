@@ -44,6 +44,7 @@ dependencies = [
     "oss2>=2.18.0",
     "nbstripout>=0.8.1",
     "ninja>1",
+    "numba>0.56.2",
     "numpy>=1.26.0",
     "optuna>=3.6.0",
     "openpyxl>=3.1.5",
