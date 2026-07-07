@@ -58,9 +58,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # --- 2. Initialize Inference Engine ---
-inference_engine = DNAInference(
-    model=model, tokenizer=tokenizer, config=configs
-)
+inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs)
 
 # --- 3. Generate Sequences ---
 # Provide one or more prompts to start the generation process.

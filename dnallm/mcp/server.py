@@ -20,8 +20,11 @@ Architecture:
 
 Transport Protocols:
     - stdio: Standard input/output for CLI tools
-    - sse: Server-Sent Events for real-time web applications
-    - streamable-http: HTTP-based streaming protocol
+    - streamable-http: HTTP-based streaming protocol (recommended for
+      remote connections, per MCP spec 2025-11-25)
+    - sse: Server-Sent Events for real-time web applications (legacy,
+      deprecated in MCP spec 2025-11-25 but retained for backward
+      compatibility)
 
 Example:
     Basic server initialization:
@@ -29,7 +32,8 @@ Example:
     ```python
     server = DNALLMMCPServer("config/server_config.yaml")
     await server.initialize()
-    server.start_server(host="127.0.0.1", port=8000, transport="sse")
+    server.start_server(host="127.0.0.1", port=8000,
+                        transport="streamable-http")
     ```
 
 Note:
@@ -37,8 +41,17 @@ Note:
     initialization. See the configuration documentation for details.
 """
 
+import asyncio
+import functools
+import json
+import re
+import time
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Any
 from pathlib import Path
+
+import numpy as np
 from loguru import logger
 
 # MCP SDK imports
@@ -48,6 +61,8 @@ from mcp.server.fastmcp import FastMCP
 
 from .config_manager import MCPConfigManager
 from .model_manager import ModelManager
+from ..inference.mutagenesis import Mutagenesis
+from ..inference.interpret import DNAInterpret
 
 
 class DNALLMMCPServer:
@@ -62,7 +77,7 @@ class DNALLMMCPServer:
     The server manages multiple DNA language models and provides various
     prediction modes including single sequence prediction, batch processing,
     and multi-model comparison. All operations support progress reporting
-    through SSE for real-time user feedback.
+    through streaming transports for real-time user feedback.
 
     Attributes:
         config_path (str): Path to the main server configuration file
@@ -83,7 +98,11 @@ class DNALLMMCPServer:
         # Initialize asynchronously
         await server.initialize()
 
-        # Start with SSE transport
+        # Start with Streamable HTTP transport (recommended)
+        server.start_server(host="0.0.0.0", port=8000,
+                           transport="streamable-http")
+
+        # Start with SSE transport (legacy, backward compatible)
         server.start_server(host="0.0.0.0", port=8000,
                            transport="sse")
         ```
@@ -127,9 +146,7 @@ class DNALLMMCPServer:
         config_dir = config_path_obj.parent
         config_filename = config_path_obj.name
         # Initialize core components
-        self.config_manager = MCPConfigManager(
-            str(config_dir), config_filename
-        )
+        self.config_manager = MCPConfigManager(str(config_dir), config_filename)
         self.model_manager = ModelManager(self.config_manager)
 
         # FastMCP application instances
@@ -179,6 +196,13 @@ class DNALLMMCPServer:
         if not server_config:
             raise RuntimeError("Failed to load server configuration")
 
+        # Load timeout and logging configuration
+        timeout_config = self.config_manager.get_timeout_config()
+        self._tool_timeout_seconds = timeout_config.get("tool_timeout_seconds", 30)
+
+        logging_config = self.config_manager.get_logging_config()
+        self._log_format = logging_config.get("log_format", "text")
+
         # Create FastMCP application with configuration
         self.app = FastMCP(
             name=server_config.mcp.name,
@@ -223,28 +247,153 @@ class DNALLMMCPServer:
         if self.app is None:
             raise RuntimeError("FastMCP app not initialized")
 
-        # Register basic prediction tools
-        self.app.tool()(self._dna_sequence_predict)
-        self.app.tool()(self._dna_batch_predict)
-        self.app.tool()(self._dna_multi_model_predict)
+        # Register basic prediction tools (wrapped with timeout)
+        self.app.tool()(
+            self._with_timeout_wrapper(self._dna_sequence_predict, "dna_sequence_predict")
+        )
+        self.app.tool()(self._with_timeout_wrapper(self._dna_batch_predict, "dna_batch_predict"))
+        self.app.tool()(
+            self._with_timeout_wrapper(self._dna_multi_model_predict, "dna_multi_model_predict")
+        )
 
-        # Register model management tools
-        self.app.tool()(self._list_loaded_models)
-        self.app.tool()(self._get_model_info)
-        self.app.tool()(self._list_models_by_task_type)
-        self.app.tool()(self._get_all_available_models)
+        # Register model management tools (wrapped with timeout)
+        self.app.tool()(self._with_timeout_wrapper(self._list_loaded_models, "list_loaded_models"))
+        self.app.tool()(self._with_timeout_wrapper(self._get_model_info, "get_model_info"))
+        self.app.tool()(
+            self._with_timeout_wrapper(self._list_models_by_task_type, "list_models_by_task_type")
+        )
+        self.app.tool()(
+            self._with_timeout_wrapper(self._get_all_available_models, "get_all_available_models")
+        )
 
         # Register monitoring and streaming tools
-        self.app.tool()(self._health_check)
+        self.app.tool()(self._with_timeout_wrapper(self._health_check, "health_check"))
+        # Streaming tools handle timeout internally (chunk-based)
         self.app.tool()(self._dna_stream_predict)
         self.app.tool()(self._dna_stream_batch_predict)
         self.app.tool()(self._dna_stream_multi_model_predict)
 
+        # Register mutagenesis and interpretation tools (wrapped with timeout)
+        self.app.tool()(self._with_timeout_wrapper(self._dna_mutagenesis, "dna_mutagenesis"))
+        self.app.tool()(self._with_timeout_wrapper(self._dna_interpret, "dna_interpret"))
+
         logger.info("Registered MCP tools successfully")
 
-    async def _dna_sequence_predict(
-        self, sequence: str, model_name: str
-    ) -> dict[str, Any]:
+    def _with_timeout_wrapper(self, tool_func, tool_name: str):
+        """Create a timeout wrapper for a tool function.
+
+        Wraps an async tool function with timeout handling and structured
+        logging. Non-streaming tools use asyncio.wait_for for the entire
+        call. Streaming tools handle timeout internally via chunk-based
+        timers.
+
+        Args:
+            tool_func: The async tool function to wrap
+            tool_name: Name of the tool for logging and error reporting
+
+        Returns:
+            Wrapped async function with timeout and logging
+        """
+
+        async def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            try:
+                result = await asyncio.wait_for(
+                    tool_func(*args, **kwargs),
+                    timeout=self._tool_timeout_seconds,
+                )
+                duration_ms = (time.perf_counter() - start) * 1000
+                self._structured_log(
+                    "info",
+                    f"Tool {tool_name} completed",
+                    tool_name=tool_name,
+                    duration_ms=duration_ms,
+                    status="success",
+                )
+                return result
+            except asyncio.TimeoutError:
+                duration_ms = (time.perf_counter() - start) * 1000
+                self._structured_log(
+                    "error",
+                    f"Tool {tool_name} timed out",
+                    tool_name=tool_name,
+                    duration_ms=duration_ms,
+                    status="error",
+                )
+                return {
+                    "isError": True,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (f"Timeout after {self._tool_timeout_seconds}s"),
+                        }
+                    ],
+                    "error_type": "timeout",
+                    "timeout_seconds": self._tool_timeout_seconds,
+                    "tool_name": tool_name,
+                    "suggestion": (
+                        "Try with fewer positions, smaller sequence, or increase timeout in config"
+                    ),
+                }
+
+        # Preserve the original function's signature for FastMCP
+        functools.update_wrapper(wrapper, tool_func)
+        return wrapper
+
+    def _structured_log(
+        self,
+        level: str,
+        message: str,
+        tool_name: str | None = None,
+        request_id: str | None = None,
+        duration_ms: float | None = None,
+        status: str | None = None,
+        **extra,
+    ) -> None:
+        """Emit a structured log entry.
+
+        Supports both JSON and text log formats. JSON format is designed
+        for log aggregation in production deployments. Text format is
+        backward-compatible human-readable output.
+
+        Args:
+            level: Log level (debug, info, warning, error, critical)
+            message: Log message
+            tool_name: Optional tool name for context
+            request_id: Optional request identifier for tracing
+            duration_ms: Optional operation duration in milliseconds
+            status: Optional operation status (success, error, etc.)
+            **extra: Additional fields for JSON format
+        """
+        # Normalize level for loguru (requires uppercase)
+        loguru_level = level.upper()
+        if self._log_format == "json":
+            log_entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "level": loguru_level,
+                "message": message,
+            }
+            if tool_name is not None:
+                log_entry["tool_name"] = tool_name
+            if request_id is not None:
+                log_entry["request_id"] = request_id
+            if duration_ms is not None:
+                log_entry["duration_ms"] = round(duration_ms, 2)  # type: ignore[assignment]
+            if status is not None:
+                log_entry["status"] = status
+            log_entry.update(extra)
+            logger.opt(raw=True).log(loguru_level, json.dumps(log_entry))
+        else:
+            parts = [message]
+            if tool_name:
+                parts.append(f"[tool={tool_name}]")
+            if duration_ms is not None:
+                parts.append(f"[duration={duration_ms:.2f}ms]")
+            if status:
+                parts.append(f"[status={status}]")
+            logger.log(loguru_level, " ".join(parts))
+
+    async def _dna_sequence_predict(self, sequence: str, model_name: str) -> dict[str, Any]:
         """Predict DNA sequence using a specific model.
 
         This tool performs single DNA sequence prediction using a specified
@@ -276,17 +425,12 @@ class DNALLMMCPServer:
         """
         try:
             # Perform prediction through model manager
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
+            result = await self.model_manager.predict_sequence(model_name, sequence)
 
             # Check if prediction was successful
             if result is None:
                 return {
-                    "error": (
-                        f"Model {model_name} not available or prediction "
-                        "failed"
-                    ),
+                    "error": (f"Model {model_name} not available or prediction failed"),
                     "isError": True,
                 }
 
@@ -297,18 +441,15 @@ class DNALLMMCPServer:
                 "sequence": sequence,
             }
         except Exception as e:
-            # Log error for debugging and return error response
-            logger.error(f"Error in dna_sequence_predict: {e}")
+            logger.error(f"Error in dna_sequence_predict: {e}", exc_info=True)
             return {
                 "content": [
-                    {"type": "text", "text": f"Prediction error: {e!s}"}
+                    {"type": "text", "text": "Prediction failed. See server logs for details."}
                 ],
                 "isError": True,
             }
 
-    async def _dna_batch_predict(
-        self, sequences: list[str], model_name: str
-    ) -> dict[str, Any]:
+    async def _dna_batch_predict(self, sequences: list[str], model_name: str) -> dict[str, Any]:
         """Predict multiple DNA sequences using a specific model.
 
         This tool performs batch prediction on multiple DNA sequences using
@@ -344,15 +485,10 @@ class DNALLMMCPServer:
             acceleration.
         """
         try:
-            result = await self.model_manager.predict_batch(
-                model_name, sequences
-            )
+            result = await self.model_manager.predict_batch(model_name, sequences)
             if result is None:
                 return {
-                    "error": (
-                        f"Model {model_name} not available or prediction "
-                        "failed"
-                    ),
+                    "error": (f"Model {model_name} not available or prediction failed"),
                     "isError": True,
                 }
 
@@ -362,12 +498,12 @@ class DNALLMMCPServer:
                 "sequence_count": len(sequences),
             }
         except Exception as e:
-            logger.error(f"Error in dna_batch_predict: {e}")
+            logger.error(f"Error in dna_batch_predict: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Batch prediction error: {e!s}",
+                        "text": "Batch prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -428,9 +564,7 @@ class DNALLMMCPServer:
                 }
 
             # Perform multi-model prediction through model manager
-            result = await self.model_manager.predict_multi_model(
-                model_names, sequence
-            )
+            result = await self.model_manager.predict_multi_model(model_names, sequence)
 
             # Return successful results in MCP format
             return {
@@ -439,13 +573,12 @@ class DNALLMMCPServer:
                 "sequence": sequence,
             }
         except Exception as e:
-            # Log error and return error response
-            logger.error(f"Error in dna_multi_model_predict: {e}")
+            logger.error(f"Error in dna_multi_model_predict: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Multi-model prediction error: {e!s}",
+                        "text": "Multi-model prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -468,12 +601,12 @@ class DNALLMMCPServer:
                 "models": models_info,
             }
         except Exception as e:
-            logger.error(f"Error in list_loaded_models: {e}")
+            logger.error(f"Error in list_loaded_models: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error listing models: {e!s}",
+                        "text": "Failed to list models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -495,20 +628,18 @@ class DNALLMMCPServer:
                 "info": info,
             }
         except Exception as e:
-            logger.error(f"Error in get_model_info: {e}")
+            logger.error(f"Error in get_model_info: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error getting model info: {e!s}",
+                        "text": "Failed to get model info. See server logs for details.",
                     }
                 ],
                 "isError": True,
             }
 
-    async def _list_models_by_task_type(
-        self, task_type: str
-    ) -> dict[str, Any]:
+    async def _list_models_by_task_type(self, task_type: str) -> dict[str, Any]:
         """List all available models filtered by task type."""
         try:
             all_models = self.model_manager.get_all_models_info()
@@ -525,12 +656,12 @@ class DNALLMMCPServer:
                 "models": filtered_models,
             }
         except Exception as e:
-            logger.error(f"Error in list_models_by_task_type: {e}")
+            logger.error(f"Error in list_models_by_task_type: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error filtering models: {e!s}",
+                        "text": "Failed to filter models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -549,12 +680,12 @@ class DNALLMMCPServer:
                 "models": all_models,
             }
         except Exception as e:
-            logger.error(f"Error in get_all_available_models: {e}")
+            logger.error(f"Error in get_all_available_models: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Error getting available models: {e!s}",
+                        "text": "Failed to get available models. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -569,15 +700,9 @@ class DNALLMMCPServer:
             health_status = {
                 "status": "healthy",
                 "loaded_models": len(loaded_models),
-                "total_configured_models": len(
-                    self.config_manager.get_enabled_models()
-                ),
-                "server_name": (
-                    server_config.mcp.name if server_config else "Unknown"
-                ),
-                "server_version": (
-                    server_config.mcp.version if server_config else "Unknown"
-                ),
+                "total_configured_models": len(self.config_manager.get_enabled_models()),
+                "server_name": (server_config.mcp.name if server_config else "Unknown"),
+                "server_version": (server_config.mcp.version if server_config else "Unknown"),
             }
 
             return {
@@ -585,12 +710,12 @@ class DNALLMMCPServer:
                 "health": health_status,
             }
         except Exception as e:
-            logger.error(f"Error in health_check: {e}")
+            logger.error(f"Error in health_check: {e}", exc_info=True)
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Health check error: {e!s}",
+                        "text": "Health check failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -645,47 +770,57 @@ class DNALLMMCPServer:
         Note:
             Progress updates are sent at key stages: initialization (0%),
             model loading (25%), processing (75%), and completion (100%).
+            Uses chunk-based timeout that resets after each progress update.
         """
+        tool_name = "dna_stream_predict"
+        start = time.perf_counter()
         try:
-            if stream_progress and context:
-                # Send initial progress update
-                await context.report_progress(
-                    0, 100, f"Starting prediction with model {model_name}"
-                )
-
-            # Send progress update for model loading
-            if stream_progress and context:
-                await context.report_progress(
-                    25, 100, "Loading model and tokenizer..."
-                )
-
-            # Perform prediction
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
-
-            if result is None:
-                error_msg = (
-                    f"Model {model_name} not available or prediction failed"
-                )
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
                 if stream_progress and context:
+                    # Send initial progress update
                     await context.report_progress(
-                        100, 100, f"Error: {error_msg}"
+                        0, 100, f"Starting prediction with model {model_name}"
                     )
-                return {"error": error_msg, "isError": True}
 
-            # Send progress update for prediction completion
-            if stream_progress and context:
-                await context.report_progress(
-                    75, 100, "Processing prediction results..."
-                )
+                # Send progress update for model loading
+                if stream_progress and context:
+                    await context.report_progress(25, 100, "Loading model and tokenizer...")
 
-            # Send final result
-            if stream_progress and context:
-                await context.report_progress(
-                    100, 100, "Prediction completed successfully"
-                )
+                # Perform prediction
+                result = await self.model_manager.predict_sequence(model_name, sequence)
 
+                if result is None:
+                    error_msg = f"Model {model_name} not available or prediction failed"
+                    if stream_progress and context:
+                        await context.report_progress(100, 100, f"Error: {error_msg}")
+                    duration_ms = (time.perf_counter() - start) * 1000
+                    self._structured_log(
+                        "error",
+                        f"Tool {tool_name} failed",
+                        tool_name=tool_name,
+                        duration_ms=duration_ms,
+                        status="error",
+                    )
+                    return {"error": error_msg, "isError": True}
+
+                # Send progress update for prediction completion
+                if stream_progress and context:
+                    await context.report_progress(75, 100, "Processing prediction results...")
+
+                # Send final result
+                if stream_progress and context:
+                    await context.report_progress(100, 100, "Prediction completed successfully")
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return {
                 "content": [{"type": "text", "text": str(result)}],
                 "model_name": model_name,
@@ -693,15 +828,48 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
-        except Exception as e:
-            logger.error(f"Error in dna_stream_predict: {e}")
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(100, 100, "Error: Timeout - prediction took too long")
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer positions, smaller sequence, or increase timeout in config"
+                ),
+            }
+        except Exception as e:
+            if stream_progress and context:
+                await context.report_progress(100, 100, "Error: Streaming prediction failed")
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Streaming prediction error: {e!s}",
+                        "text": "Streaming prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -716,9 +884,7 @@ class DNALLMMCPServer:
     ) -> dict[str, Any]:
         """Stream batch DNA sequence prediction with real-time progress
         updates."""
-        return await self._process_batch_prediction(
-            sequences, model_name, stream_progress, context
-        )
+        return await self._process_batch_prediction(sequences, model_name, stream_progress, context)
 
     async def _process_batch_prediction(
         self,
@@ -728,67 +894,74 @@ class DNALLMMCPServer:
         context: Any | None,
     ) -> dict[str, Any]:
         """Process batch prediction with progress reporting."""
+        tool_name = "dna_stream_batch_predict"
+        start = time.perf_counter()
         try:
-            if stream_progress and context:
-                await context.report_progress(
-                    0,
-                    100,
-                    (
-                        f"Starting batch prediction with "
-                        f"{len(sequences)} sequences using model "
-                        f"{model_name}"
-                    ),
-                )
-
-            results = []
-            total_sequences = len(sequences)
-
-            for i, sequence in enumerate(sequences):
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
                 if stream_progress and context:
-                    progress = int((i / total_sequences) * 100)
                     await context.report_progress(
-                        progress,
+                        0,
                         100,
-                        f"Processing sequence {i + 1}/{total_sequences}",
+                        (
+                            f"Starting batch prediction with "
+                            f"{len(sequences)} sequences using model "
+                            f"{model_name}"
+                        ),
                     )
 
-                # Predict current sequence
-                result = await self.model_manager.predict_sequence(
-                    model_name, sequence
-                )
-                if result is not None:
-                    results.append({
-                        "sequence": sequence,
-                        "result": result,
-                        "index": i,
-                    })
-                else:
-                    results.append({
-                        "sequence": sequence,
-                        "result": None,
-                        "error": (f"Prediction failed for sequence {i + 1}"),
-                        "index": i,
-                    })
+                results = []
+                total_sequences = len(sequences)
 
-            # Send completion update
-            successful_predictions = len([
-                r for r in results if r.get("result") is not None
-            ])
-            failed_predictions = len([
-                r for r in results if r.get("result") is None
-            ])
+                for i, sequence in enumerate(sequences):
+                    if stream_progress and context:
+                        progress = int((i / total_sequences) * 100)
+                        await context.report_progress(
+                            progress,
+                            100,
+                            f"Processing sequence {i + 1}/{total_sequences}",
+                        )
 
-            if stream_progress and context:
-                await context.report_progress(
-                    100,
-                    100,
-                    (
-                        f"Batch prediction completed: "
-                        f"{successful_predictions} successful, "
-                        f"{failed_predictions} failed"
-                    ),
-                )
+                    # Predict current sequence
+                    result = await self.model_manager.predict_sequence(model_name, sequence)
+                    if result is not None:
+                        results.append({
+                            "sequence": sequence,
+                            "result": result,
+                            "index": i,
+                        })
+                    else:
+                        results.append({
+                            "sequence": sequence,
+                            "result": None,
+                            "error": (f"Prediction failed for sequence {i + 1}"),
+                            "index": i,
+                        })
 
+                # Send completion update
+                successful_predictions = len([r for r in results if r.get("result") is not None])
+                failed_predictions = len([r for r in results if r.get("result") is None])
+
+                if stream_progress and context:
+                    await context.report_progress(
+                        100,
+                        100,
+                        (
+                            f"Batch prediction completed: "
+                            f"{successful_predictions} successful, "
+                            f"{failed_predictions} failed"
+                        ),
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return {
                 "content": [{"type": "text", "text": str(results)}],
                 "model_name": model_name,
@@ -799,15 +972,51 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
-        except Exception as e:
-            logger.error(f"Error in dna_stream_batch_predict: {e}")
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(
+                    100, 100, "Error: Timeout - batch prediction took too long"
+                )
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer sequences, smaller sequence length, or "
+                    "increase timeout in config"
+                ),
+            }
+        except Exception as e:
+            if stream_progress and context:
+                await context.report_progress(100, 100, "Error: Streaming batch prediction failed")
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Streaming batch prediction error: {e!s}",
+                        "text": "Streaming batch prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -834,60 +1043,105 @@ class DNALLMMCPServer:
         context: Any | None,
     ) -> dict[str, Any]:
         """Process multi-model prediction with progress reporting."""
+        tool_name = "dna_stream_multi_model_predict"
+        start = time.perf_counter()
         try:
-            if model_names is None:
-                model_names = self.model_manager.get_loaded_models()
+            async with asyncio.timeout(  # type: ignore[attr-defined]
+                self._tool_timeout_seconds
+            ):
+                if model_names is None:
+                    model_names = self.model_manager.get_loaded_models()
 
-            if not model_names:
-                return {
-                    "error": "No models available for prediction",
-                    "isError": True,
-                }
+                if not model_names:
+                    return {
+                        "error": "No models available for prediction",
+                        "isError": True,
+                    }
 
-            if stream_progress and context:
-                await context.report_progress(
-                    0,
-                    100,
-                    (
-                        f"Starting multi-model prediction with "
-                        f"{len(model_names)} models"
-                    ),
+                if stream_progress and context:
+                    await context.report_progress(
+                        0,
+                        100,
+                        (f"Starting multi-model prediction with {len(model_names)} models"),
+                    )
+
+                results = await self._predict_with_multiple_models(
+                    model_names, sequence, stream_progress, context
                 )
 
-            results = await self._predict_with_multiple_models(
-                model_names, sequence, stream_progress, context
-            )
-
-            # Send completion update
-            result_dict = self._format_multi_model_results(
-                results, model_names, sequence, stream_progress
-            )
-
-            if stream_progress and context:
-                successful = result_dict.get("successful_predictions", 0)
-                failed = result_dict.get("failed_predictions", 0)
-                await context.report_progress(
-                    100,
-                    100,
-                    (
-                        f"Multi-model prediction completed: "
-                        f"{successful} successful, {failed} failed"
-                    ),
+                # Send completion update
+                result_dict = self._format_multi_model_results(
+                    results, model_names, sequence, stream_progress
                 )
 
+                if stream_progress and context:
+                    successful = result_dict.get("successful_predictions", 0)
+                    failed = result_dict.get("failed_predictions", 0)
+                    await context.report_progress(
+                        100,
+                        100,
+                        (
+                            f"Multi-model prediction completed: "
+                            f"{successful} successful, {failed} failed"
+                        ),
+                    )
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "info",
+                f"Tool {tool_name} completed",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="success",
+            )
             return result_dict
 
-        except Exception as e:
-            logger.error(f"Error in dna_stream_multi_model_predict: {e}")
+        except asyncio.TimeoutError:
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} timed out",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             if stream_progress and context:
-                await context.report_progress(100, 100, f"Error: {e!s}")
+                await context.report_progress(
+                    100, 100, "Error: Timeout - multi-model prediction took too long"
+                )
+            return {
+                "isError": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Timeout after {self._tool_timeout_seconds}s",
+                    }
+                ],
+                "error_type": "timeout",
+                "timeout_seconds": self._tool_timeout_seconds,
+                "tool_name": tool_name,
+                "suggestion": (
+                    "Try with fewer models, smaller sequence, or increase timeout in config"
+                ),
+            }
+        except Exception as e:
+            if stream_progress and context:
+                await context.report_progress(
+                    100, 100, "Error: Streaming multi-model prediction failed"
+                )
+            duration_ms = (time.perf_counter() - start) * 1000
+            self._structured_log(
+                "error",
+                f"Tool {tool_name} failed: {e}",
+                tool_name=tool_name,
+                duration_ms=duration_ms,
+                status="error",
+            )
             return {
                 "content": [
                     {
                         "type": "text",
-                        "text": (
-                            f"Streaming multi-model prediction error: {e!s}"
-                        ),
+                        "text": "Streaming multi-model prediction failed. See server logs for details.",
                     }
                 ],
                 "isError": True,
@@ -910,16 +1164,11 @@ class DNALLMMCPServer:
                 await context.report_progress(
                     progress,
                     100,
-                    (
-                        f"Processing with model {i + 1}/{total_models}: "
-                        f"{model_name}"
-                    ),
+                    (f"Processing with model {i + 1}/{total_models}: {model_name}"),
                 )
 
             # Predict with current model
-            result = await self.model_manager.predict_sequence(
-                model_name, sequence
-            )
+            result = await self.model_manager.predict_sequence(model_name, sequence)
             if result is not None:
                 results[model_name] = result
             else:
@@ -940,14 +1189,10 @@ class DNALLMMCPServer:
         """Format multi-model prediction results."""
         # Count successful and failed predictions
         successful_predictions = len([
-            r
-            for r in results.values()
-            if not isinstance(r, dict) or r.get("result") is not None
+            r for r in results.values() if not isinstance(r, dict) or r.get("result") is not None
         ])
         failed_predictions = len([
-            r
-            for r in results.values()
-            if isinstance(r, dict) and r.get("result") is None
+            r for r in results.values() if isinstance(r, dict) and r.get("result") is None
         ])
 
         return {
@@ -959,6 +1204,388 @@ class DNALLMMCPServer:
             "results": results,
             "streamed": stream_progress,
         }
+
+    async def _dna_mutagenesis(
+        self,
+        model_name: str,
+        sequence: str | None = None,
+        sequences: list[str] | None = None,
+        mutation_type: str = "single_base_substitution",
+        positions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Perform in silico mutagenesis on DNA sequences.
+
+        This tool evaluates the impact of sequence mutations on model
+        predictions, supporting single base substitutions, multi-base
+        substitutions, deletions, insertions, and exhaustive combinations.
+
+        Args:
+            sequence (str | None): Single DNA sequence to mutate. If provided,
+                it is processed as a one-element list internally.
+            sequences (list[str] | None): List of DNA sequences to mutate.
+                Either sequence or sequences must be provided.
+            mutation_type (str): Type of mutation to perform. One of:
+                "single_base_substitution", "multi_base_substitution",
+                "deletion", "insertion", "combo". Defaults to
+                "single_base_substitution".
+            positions (list[int] | None): 0-based positions to mutate.
+                Required and must be non-empty.
+            model_name (str): Name of the model to use for prediction.
+
+        Returns:
+            dict[str, Any]: Mutagenesis results in MCP format:
+                - On success: Contains 'content', 'original_prediction',
+                  'mutated_prediction', 'delta', 'affected_positions',
+                  'mutation_type', 'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            # Validate model_name is non-empty
+            if not model_name:
+                return {
+                    "error": "model_name is required",
+                    "isError": True,
+                }
+
+            # Validate mutation type
+            allowed_types = {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "deletion",
+                "insertion",
+                "combo",
+            }
+            if mutation_type not in allowed_types:
+                return {
+                    "error": (
+                        f"Invalid mutation_type: {mutation_type}. Must be one of: {allowed_types}"
+                    ),
+                    "isError": True,
+                }
+
+            # Validate positions
+            if positions is None or len(positions) == 0:
+                return {
+                    "error": "positions must be a non-empty list of integers",
+                    "isError": True,
+                }
+
+            # Validate sequence input
+            if sequence is None and sequences is None:
+                return {
+                    "error": "Either sequence or sequences must be provided",
+                    "isError": True,
+                }
+
+            # Wrap single sequence as list
+            if sequences is None:
+                if sequence is None:
+                    raise ValueError("Either sequence or sequences must be provided")
+                sequences = [sequence]
+
+            # Validate DNA sequence content
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            for i, seq in enumerate(sequences):
+                if not dna_pattern.match(seq):
+                    return {
+                        "error": (
+                            f"Sequence at index {i} contains invalid "
+                            f"characters. Only A, C, G, T, N "
+                            f"(case-insensitive) are allowed."
+                        ),
+                        "isError": True,
+                    }
+
+            # Enforce combo limit: n <= 5 (4^5 = 1024 max combos)
+            if mutation_type == "combo" and len(positions) > 5:
+                return {
+                    "error": (
+                        f"Combo mutation supports at most 5 positions "
+                        f"(got {len(positions)}). "
+                        f"Limit: 4^5 = 1024 combinations."
+                    ),
+                    "isError": True,
+                }
+
+            # Get model inference engine
+            inference_engine = self.model_manager.get_inference_engine(model_name)
+            if inference_engine is None:
+                return {
+                    "error": f"Model {model_name} not loaded",
+                    "isError": True,
+                }
+
+            model = inference_engine.model
+            tokenizer = inference_engine.tokenizer
+            config = inference_engine.config
+
+            # Prepare mutagenesis parameters based on mutation type
+            replace_mut = mutation_type in {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "combo",
+            }
+            delete_size = 1 if mutation_type == "deletion" else 0
+            insert_seq = "N" if mutation_type == "insertion" else None
+
+            results = []
+            for seq in sequences:
+                mutagenesis = Mutagenesis(model, tokenizer, config)
+                mutagenesis.mutate_sequence(
+                    seq,
+                    replace_mut=replace_mut,
+                    delete_size=delete_size,
+                    insert_seq=insert_seq,
+                )
+                eval_result = mutagenesis.evaluate(do_pred=True)
+
+                # Extract original and mutated predictions
+                raw = eval_result.get("raw", {})
+                original_prediction = {
+                    "sequence": raw.get("sequence", seq),
+                    "prediction": raw.get("pred", {}),
+                    "score": raw.get("score", 0.0),
+                }
+
+                # Aggregate mutated predictions
+                mutated_entries = [v for k, v in eval_result.items() if k != "raw"]
+                mutated_prediction = {
+                    "count": len(mutated_entries),
+                    "predictions": [
+                        {
+                            "sequence": e.get("sequence", ""),
+                            "prediction": e.get("pred", {}),
+                            "logfc": e.get("logfc", 0.0),
+                            "diff": e.get("diff", 0.0),
+                            "score": e.get("score", 0.0),
+                        }
+                        for e in mutated_entries
+                    ],
+                }
+
+                # Compute delta (average logfc and diff)
+                if mutated_entries:
+                    avg_logfc = float(
+                        np.mean([
+                            float(np.mean(e.get("logfc", 0)))
+                            if hasattr(e.get("logfc", 0), "__len__")
+                            else float(e.get("logfc", 0))
+                            for e in mutated_entries
+                        ])
+                    )
+                    avg_diff = float(
+                        np.mean([
+                            float(np.mean(e.get("diff", 0)))
+                            if hasattr(e.get("diff", 0), "__len__")
+                            else float(e.get("diff", 0))
+                            for e in mutated_entries
+                        ])
+                    )
+                else:
+                    avg_logfc = 0.0
+                    avg_diff = 0.0
+
+                delta = {
+                    "average_logfc": avg_logfc,
+                    "average_diff": avg_diff,
+                }
+
+                results.append({
+                    "original_prediction": original_prediction,
+                    "mutated_prediction": mutated_prediction,
+                    "delta": delta,
+                })
+
+            # Format response
+            result_payload: dict[str, Any]
+            if len(results) == 1:
+                result_payload = results[0]
+            else:
+                result_payload = {
+                    "batch_results": results,
+                    "sequence_count": len(sequences),
+                }
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Mutagenesis complete: {mutation_type} "
+                            f"at positions {positions} using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                **result_payload,
+                "affected_positions": positions,
+                "mutation_type": mutation_type,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in dna_mutagenesis: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Mutagenesis failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
+
+    async def _dna_interpret(
+        self,
+        sequence: str,
+        model_name: str,
+        method: str = "lig",
+        target_class: int | None = None,
+        max_length: int | None = None,
+    ) -> dict[str, Any]:
+        """Interpret model predictions using attribution methods.
+
+        This tool provides model interpretability by computing attribution
+        scores for each token in a DNA sequence using various Captum methods.
+
+        Args:
+            sequence (str): DNA sequence to interpret.
+            model_name (str): Name of the model to use.
+            method (str): Attribution method. One of: "lig",
+                "deeplift", "occlusion", "feature_ablation",
+                "layer_conductance", "gradient_shap", "noise_tunnel",
+                "integrated_gradients". Defaults to "lig".
+            target_class (int | None): Target class index for attribution.
+                If None, auto-selects the class with maximum probability.
+            max_length (int | None): Maximum token length for tokenizer.
+
+        Returns:
+            dict[str, Any]: Interpretation results in MCP format:
+                - On success: Contains 'content', 'attributions',
+                  'tokens', 'method', 'target_class', 'model_name',
+                  'sequence'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            # Validate DNA sequence content
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            if not dna_pattern.match(sequence):
+                return {
+                    "error": (
+                        "Sequence contains invalid characters. "
+                        "Only A, C, G, T, N (case-insensitive) are allowed."
+                    ),
+                    "isError": True,
+                }
+
+            # Validate and map method names
+            allowed_methods = {
+                "lig",
+                "deeplift",
+                "occlusion",
+                "feature_ablation",
+                "layer_conductance",
+                "gradient_shap",
+                "noise_tunnel",
+                "integrated_gradients",
+            }
+            if method not in allowed_methods:
+                return {
+                    "error": (f"Invalid method: {method}. Must be one of: {allowed_methods}"),
+                    "isError": True,
+                }
+
+            # Map external method names to internal dispatch names
+            method_map = {
+                "gradient_shap": "gradshap",
+                "integrated_gradients": "lig",
+            }
+            mapped_method = method_map.get(method, method)
+
+            # Get model inference engine
+            inference_engine = self.model_manager.get_inference_engine(model_name)
+            if inference_engine is None:
+                return {
+                    "error": f"Model {model_name} not loaded",
+                    "isError": True,
+                }
+
+            model = inference_engine.model
+            tokenizer = inference_engine.tokenizer
+            config = inference_engine.config
+
+            # Auto-select target class if not provided
+            if target_class is None:
+                pred_result = await self.model_manager.predict_sequence(model_name, sequence)
+                if pred_result is not None:
+                    # Try to extract probabilities and find max
+                    probs = pred_result.get("probabilities", [])
+                    if probs:
+                        target_class = int(np.argmax(probs))
+                    else:
+                        # Fallback: use class 0
+                        target_class = 0
+                else:
+                    target_class = 0
+
+            # Instantiate interpreter
+            interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
+
+            # Handle layer_conductance: auto-detect embedding layer
+            kwargs: dict[str, Any] = {}
+            if mapped_method == "layer_conductance":
+                target_layer = interpreter._find_embedding_layer()
+                kwargs["target_layer"] = target_layer
+
+            # Run interpretation
+            tokens, attr_scores = interpreter.interpret(
+                input_seq=sequence,
+                method=mapped_method,
+                target=target_class,
+                max_length=max_length,
+                **kwargs,  # type: ignore[arg-type]
+            )
+
+            # Normalize attribution scores
+            attr_min = float(np.min(attr_scores))
+            attr_max = float(np.max(attr_scores))
+            attr_range = attr_max - attr_min
+            if attr_range > 1e-12:
+                normalized = ((attr_scores - attr_min) / (attr_range + 1e-8)).tolist()
+            else:
+                normalized = np.zeros_like(attr_scores).tolist()
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Interpretation complete: {method} "
+                            f"for class {target_class} using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                "attributions": {
+                    "raw": attr_scores.tolist(),
+                    "normalized": normalized,
+                },
+                "tokens": tokens,
+                "method": method,
+                "target_class": target_class,
+                "model_name": model_name,
+                "sequence": sequence,
+            }
+        except Exception as e:
+            logger.error(f"Error in dna_interpret: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Interpretation failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
 
     def _create_server_lifespan(self):
         """Create lifespan context manager for server graceful
@@ -979,7 +1606,6 @@ class DNALLMMCPServer:
             This follows modern async application lifecycle patterns and
             ensures proper cleanup of models and resources during shutdown.
         """
-        from contextlib import asynccontextmanager
 
         @asynccontextmanager
         async def lifespan(app):
@@ -1002,14 +1628,20 @@ class DNALLMMCPServer:
         """Start the MCP server with the specified transport protocol.
 
         This method starts the server using one of the supported transport
-        protocols.
-        The server must be initialized before calling this method. The
-        transport
-        protocol determines how the server communicates with clients:
+        protocols. The server must be initialized before calling this method.
+        The transport protocol determines how the server communicates with
+        clients:
 
         - stdio: Standard input/output for CLI tools and automation
-        - sse: Server-Sent Events for real-time web applications
         - streamable-http: HTTP-based streaming for REST API integration
+          (recommended per MCP spec 2025-11-25)
+        - sse: Server-Sent Events (legacy, deprecated in MCP spec 2025-11-25
+          but retained for backward compatibility)
+
+        Session management for the ``streamable-http`` transport is handled
+        entirely by the FastMCP SDK via ``StreamableHTTPSessionManager``.
+        Callers do not need to create, track, or clean up ``MCP-Session-Id``
+        headers manually.
 
         Args:
             host (str, optional): Host address to bind the server to.
@@ -1017,7 +1649,7 @@ class DNALLMMCPServer:
             port (int, optional): Port number to bind the server to.
                 Defaults to 8000. Only used for HTTP-based transports.
             transport (str, optional): Transport protocol to use.
-                Choices: "stdio", "sse", "streamable-http".
+                Choices: "stdio", "streamable-http", "sse".
                 Defaults to "stdio".
 
         Raises:
@@ -1027,7 +1659,14 @@ class DNALLMMCPServer:
 
         Example:
             ```python
-            # Start with SSE for real-time web apps
+            # Start with Streamable HTTP (recommended)
+            server.start_server(
+                host="0.0.0.0",
+                port=8000,
+                transport="streamable-http"
+            )
+
+            # Start with SSE (legacy, backward compatible)
             server.start_server(
                 host="0.0.0.0",
                 port=8000,
@@ -1045,9 +1684,7 @@ class DNALLMMCPServer:
         """
         # Validate server initialization state
         if not self._initialized:
-            raise RuntimeError(
-                "Server not initialized. Call initialize() first."
-            )
+            raise RuntimeError("Server not initialized. Call initialize() first.")
 
         # Override host/port from configuration if available
         server_config = self.config_manager.get_server_config()
@@ -1055,10 +1692,14 @@ class DNALLMMCPServer:
             host = server_config.server.host
             port = server_config.server.port
 
-        logger.info(
-            f"Starting DNALLM MCP Server on {host}:{port} with "
-            f"{transport} transport"
-        )
+        logger.info(f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport")
+
+        # Validate transport before dispatching
+        valid_transports = ("stdio", "sse", "streamable-http")
+        if transport not in valid_transports:
+            raise ValueError(
+                f"Invalid transport: {transport!r}. Must be one of: {valid_transports}"
+            )
 
         # Dispatch to appropriate transport handler
         if transport == "sse":
@@ -1076,17 +1717,18 @@ class DNALLMMCPServer:
         from starlette.routing import Mount
 
         server_config = self.config_manager.get_server_config()
-        sse_config = (
-            server_config.sse
-            if server_config and hasattr(server_config, "sse")
-            else None
-        )
+        sse_config = server_config.sse if server_config and hasattr(server_config, "sse") else None
         mount_path = (
-            sse_config.mount_path
-            if sse_config and hasattr(sse_config, "mount_path")
-            else "/mcp"
+            sse_config.mount_path if sse_config and hasattr(sse_config, "mount_path") else "/mcp"
         )
         logger.info(f"Using SSE transport with mount path: {mount_path}")
+
+        # Read configured log level from server config
+        log_level = (
+            server_config.server.log_level.lower()
+            if server_config and hasattr(server_config.server, "log_level")
+            else "info"
+        )
 
         # Get the Starlette app from FastMCP
         if self.app is None:
@@ -1116,7 +1758,7 @@ class DNALLMMCPServer:
             app=main_app,
             host=host,
             port=port,
-            log_level="info",
+            log_level=log_level,
             access_log=False,  # Reduce log noise
             loop="asyncio",
             timeout_keep_alive=5,  # Keep-alive timeout
@@ -1127,27 +1769,63 @@ class DNALLMMCPServer:
         uvicorn_server.run()
 
     def _start_http_server(self, host: str, port: int) -> None:
-        """Start Streamable HTTP server."""
+        """Start Streamable HTTP server.
+
+        This method creates and runs a uvicorn server using the Streamable
+        HTTP application provided by FastMCP's ``streamable_http_app()``.
+        Session management (including ``MCP-Session-Id`` header handling)
+        is performed entirely by the FastMCP SDK via
+        ``StreamableHTTPSessionManager`` — callers do not need to manage
+        session state manually.
+
+        The uvicorn configuration mirrors the SSE server for consistency:
+        asyncio loop, no access logs, keep-alive and graceful-shutdown
+        timeouts enabled.
+        """
         import uvicorn
 
         logger.info("Using Streamable HTTP transport")
+
+        # Read streamable_http config if available
+        server_config = self.config_manager.get_server_config()
+        streamable_http_config = (
+            server_config.streamable_http
+            if server_config and hasattr(server_config, "streamable_http")
+            else None
+        )
+
+        # Use streamable_http host/port only if server config doesn't specify
+        # them (to avoid overriding CLI args which are passed as parameters)
+        if streamable_http_config:
+            if server_config and server_config.server.host == host:
+                host = streamable_http_config.host
+            if server_config and server_config.server.port == port:
+                port = streamable_http_config.port
+            http_path = streamable_http_config.path
+        else:
+            http_path = "/mcp"
 
         # Get the Streamable HTTP app from FastMCP
         if self.app is None:
             raise RuntimeError("FastMCP app not initialized")
         http_app = self.app.streamable_http_app()
 
-        logger.info(
-            f"Streamable HTTP app created, starting uvicorn server "
-            f"on {host}:{port}"
+        logger.info(f"Streamable HTTP endpoint: http://{host}:{port}{http_path}")
+
+        # Read configured log level from server config
+        log_level = (
+            server_config.server.log_level.lower()
+            if server_config and hasattr(server_config.server, "log_level")
+            else "info"
         )
 
         # Run the Starlette app with uvicorn with proper signal handling
+        # http_app already has lifespan for session_manager from streamable_http_app()
         config = uvicorn.Config(
             app=http_app,
             host=host,
             port=port,
-            log_level="info",
+            log_level=log_level,
             access_log=False,  # Reduce log noise
             loop="asyncio",
             timeout_keep_alive=5,  # Keep-alive timeout
@@ -1288,12 +1966,13 @@ Examples:
         type=str,
         choices=["stdio", "sse", "streamable-http"],
         default="stdio",
-        help="Transport protocol to use (default: %(default)s)",
+        help=(
+            "Transport protocol (streamable-http=recommended per MCP "
+            "2025-11-25, sse=legacy, stdio=default) (default: %(default)s)"
+        ),
     )
 
-    parser.add_argument(
-        "--version", action="version", version="DNALLM MCP Server 1.0.0"
-    )
+    parser.add_argument("--version", action="version", version="DNALLM MCP Server 1.0.0")
 
     args = parser.parse_args()
 
@@ -1301,10 +1980,7 @@ Examples:
     config_path = Path(args.config)
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
-        logger.error(
-            "Please create a configuration file or specify the "
-            "correct path with --config"
-        )
+        logger.error("Please create a configuration file or specify the correct path with --config")
         sys.exit(1)
 
     try:
@@ -1327,16 +2003,11 @@ Examples:
         logger.info("-" * 50)
 
         # Start server - let uvicorn handle signals for HTTP/SSE transports
-        logger.info(
-            f"Starting server on {args.host}:{args.port} with "
-            f"{args.transport} transport"
-        )
+        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
         logger.info("Press Ctrl+C to stop the server")
 
         # Start server (uvicorn will handle signals properly)
-        server.start_server(
-            host=args.host, port=args.port, transport=args.transport
-        )
+        server.start_server(host=args.host, port=args.port, transport=args.transport)
 
     except KeyboardInterrupt:
         logger.info("\nReceived interrupt signal, shutting down...")

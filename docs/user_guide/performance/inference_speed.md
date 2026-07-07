@@ -65,7 +65,6 @@ Standard PyTorch execution involves Python overhead that can slow down model exe
 ### How to Optimize
 
 `torch.compile()` is a feature in PyTorch 2.0+ that JIT (Just-In-Time) compiles your model into optimized kernel code. It can provide significant speedups (1.3x-2x) with a single line of code.
-
 ```python
 # Before your inference loop, compile the model
 compiled_model = torch.compile(model)

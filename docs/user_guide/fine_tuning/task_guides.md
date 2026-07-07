@@ -34,7 +34,6 @@ finetune:
   num_train_epochs: 5
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1"  # or "eval_accuracy"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -125,7 +124,6 @@ finetune:
   num_train_epochs: 8
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_accuracy"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -139,7 +137,6 @@ CGCGCGCGCGCG,3
 ```
 
 ### Example Implementation
-
 ```python
 # Load multi-class model
 model, tokenizer = load_model_and_tokenizer(
@@ -203,7 +200,6 @@ finetune:
   num_train_epochs: 6
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1_micro"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -280,7 +276,6 @@ finetune:
   num_train_epochs: 10
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_rmse"
-  greater_is_better: false  # Lower is better for RMSE
 ```
 
 ### Data Format
@@ -356,7 +351,6 @@ finetune:
   num_train_epochs: 15
   per_device_train_batch_size: 8  # Smaller batch size
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
   generation_max_length: 512
   generation_num_beams: 4
 ```
@@ -404,9 +398,7 @@ trainer.train()
 test_sequences = ["ATCG", "GCTA", "TATA"]
 for seq in test_sequences:
     inputs = tokenizer(seq, return_tensors="pt")
-    outputs = model.generate(
-        inputs["input_ids"], max_length=512, num_beams=4, early_stopping=True
-    )
+    outputs = model.generate(inputs["input_ids"], max_length=512, num_beams=4, early_stopping=True)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
     print(f"Input: {seq} -> Generated: {generated}")
 ```
@@ -438,7 +430,6 @@ finetune:
   num_train_epochs: 8
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
   mlm_probability: 0.15  # Probability of masking tokens
 ```
 
@@ -519,7 +510,6 @@ finetune:
   num_train_epochs: 6
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_f1"
-  greater_is_better: true
 ```
 
 ### Data Format
@@ -651,9 +641,7 @@ for item in dataset.test_data:
 
 # Calculate BLEU score
 bleu_scores = []
-for pred, ref in zip(
-    generated_sequences, [item["label"] for item in dataset.test_data]
-):
+for pred, ref in zip(generated_sequences, [str(item["label"]) for item in dataset.test_data]):
     score = sentence_bleu([ref.split()], pred.split())
     bleu_scores.append(score)
 

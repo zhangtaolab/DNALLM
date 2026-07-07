@@ -60,6 +60,12 @@ sse:
   cors_origins: ["*"]  # CORS origins for web clients
   enable_heartbeat: true  # Enable heartbeat for connection monitoring
 
+# Streamable HTTP configuration (recommended per MCP spec 2025-11-25)
+streamable_http:
+  host: "0.0.0.0"
+  port: 8000
+  path: "/mcp"  # MCP endpoint path
+
 # Logging configuration
 logging:
   level: "INFO"

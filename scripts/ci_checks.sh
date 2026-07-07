@@ -1,188 +1,131 @@
 #!/bin/bash
+# DNALLM Local CI Simulation
+# Runs the exact same checks as the GitHub Actions CI pipeline.
+# Use this before pushing to verify CI will pass.
+#
+# This script handles environment setup automatically:
+#   - Creates .venv if missing
+#   - Installs dependencies via uv
+#   - Activates the virtual environment
+#
+# Usage: ./scripts/ci_checks.sh [--all]
+#   --all    Include slow tests (finetune/inference real model tests)
 
-# DNALLM Local CI Checks Script
-# This script runs the same quality checks and tests that the GitHub Actions CI pipeline runs
-# Run this script before pushing code to ensure it will pass CI
+set -euo pipefail
 
-set -e  # Exit on any error
-
-echo "🚀 Starting DNALLM Local CI Checks..."
-echo "======================================"
-
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Function to print colored output
 print_status() {
     local status=$1
     local message=$2
     case $status in
-        "INFO")
-            echo -e "${BLUE}ℹ️  ${message}${NC}"
-            ;;
-        "SUCCESS")
-            echo -e "${GREEN}✅ ${message}${NC}"
-            ;;
-        "WARNING")
-            echo -e "${YELLOW}⚠️  ${message}${NC}"
-            ;;
-        "ERROR")
-            echo -e "${RED}❌ ${message}${NC}"
-            ;;
+        "INFO")    echo -e "${BLUE}ℹ️  ${message}${NC}" ;;
+        "SUCCESS") echo -e "${GREEN}✅ ${message}${NC}" ;;
+        "WARNING") echo -e "${YELLOW}⚠️  ${message}${NC}" ;;
+        "ERROR")   echo -e "${RED}❌ ${message}${NC}" ;;
     esac
 }
 
-# Function to check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
+# Parse arguments
+INCLUDE_SLOW=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --all)
+            INCLUDE_SLOW=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--all]"
+            echo "  --all  Include slow tests (~10 minutes)"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
-# Check if we're in the right directory
+# Check project root
 if [ ! -f "pyproject.toml" ]; then
-    print_status "ERROR" "This script must be run from the project root directory (where pyproject.toml is located)"
+    print_status "ERROR" "Must run from project root (where pyproject.toml is located)"
     exit 1
 fi
 
-# Check if virtual environment exists
-if [ ! -d ".venv" ]; then
-    print_status "WARNING" "Virtual environment not found. Creating one..."
-    if command_exists uv; then
-        uv venv
-    else
-        print_status "ERROR" "UV not found. Please install UV first: https://docs.astral.sh/uv/getting-started/installation/"
-        exit 1
-    fi
+# Check for uv
+if ! command -v uv &> /dev/null; then
+    print_status "INFO" "Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-# Activate virtual environment
-print_status "INFO" "Activating virtual environment..."
+# Create venv if missing
+if [ ! -d ".venv" ]; then
+    print_status "INFO" "Creating virtual environment..."
+    uv venv
+fi
+
+# Activate venv
 source .venv/bin/activate
 
-# Install dependencies if needed
-print_status "INFO" "Installing/updating dependencies..."
+# Install dependencies
+print_status "INFO" "Installing dependencies..."
 uv pip install -e ".[test,dev]"
 
 echo ""
-print_status "INFO" "Running Code Quality Checks..."
+print_status "INFO" "Running CI checks..."
 echo "======================================"
 
-# 1. Ruff formatting check
-print_status "INFO" "Checking code formatting with Ruff..."
+# 1. Notebook / markdown sync check
+print_status "INFO" "1/5: Notebook markdown sync check..."
+if python scripts/check_notebook_md_sync.py; then
+    print_status "SUCCESS" "Notebook markdown sync check passed"
+else
+    print_status "ERROR" "Notebook markdown sync check failed. Update docs/ tutorials or source notebooks"
+    exit 1
+fi
+
+# 2. Ruff formatting (matches CI step "Run linting and code quality checks with Ruff")
+print_status "INFO" "2/5: Ruff formatting check..."
 if ruff format --check .; then
     print_status "SUCCESS" "Ruff formatting check passed"
 else
-    print_status "ERROR" "Ruff formatting check failed. Run 'ruff format .' to auto-format your code"
+    print_status "ERROR" "Ruff formatting check failed. Run 'ruff format .' to fix"
     exit 1
 fi
 
-# 2. Ruff linting check
-print_status "INFO" "Running Ruff linting checks..."
+# 3. Ruff linting
+print_status "INFO" "3/5: Ruff linting check..."
 if ruff check . --statistics; then
     print_status "SUCCESS" "Ruff linting check passed"
 else
-    print_status "ERROR" "Ruff linting check failed. Run 'ruff check . --fix' to auto-fix issues"
+    print_status "ERROR" "Ruff linting check failed. Run 'ruff check . --fix' to auto-fix"
     exit 1
 fi
 
-# 3. Flake8 MCP module check (matches CI)
-print_status "INFO" "Running Flake8 check for MCP module..."
-if flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402; then
-    print_status "SUCCESS" "Flake8 MCP module check passed"
-else
-    print_status "ERROR" "Flake8 MCP module found issues. Please fix these issues"
-    exit 1
-fi
-
-# 4. Flake8 other modules check (matches CI)
-print_status "INFO" "Running Flake8 check for other modules (excluding metrics)..."
-if flake8 dnallm/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 --exclude=dnallm/tasks/metrics/; then
-    print_status "SUCCESS" "Flake8 other modules check passed"
-else
-    print_status "ERROR" "Flake8 found issues in other modules. Please fix these issues"
-    exit 1
-fi
-
-# 4. MyPy type checking
-print_status "INFO" "Running MyPy type checking..."
-if mypy dnallm/ \
-    --ignore-missing-imports \
-    --no-strict-optional \
-    --disable-error-code=var-annotated \
-    --disable-error-code=assignment \
-    --disable-error-code=return-value \
-    --disable-error-code=arg-type \
-    --disable-error-code=index \
-    --disable-error-code=attr-defined \
-    --disable-error-code=operator \
-    --disable-error-code=call-overload \
-    --disable-error-code=valid-type \
-    --disable-error-code=no-redef \
-    --disable-error-code=dict-item \
-    --disable-error-code=return \
-    --disable-error-code=unreachable \
-    --disable-error-code=misc \
-    --disable-error-code=import-untyped \
-    --exclude=dnallm/tasks/metrics/; then
-    print_status "SUCCESS" "MyPy type checking passed"
-else
-    print_status "WARNING" "MyPy type checking found issues. Consider adding type annotations for better code quality"
-fi
-
+# 4. Tests with coverage (matches CI step "Run fast tests")
 echo ""
-print_status "INFO" "Running Tests..."
-echo "======================================"
-
-# 5. Run tests with coverage
-print_status "INFO" "Running pytest with coverage..."
-if pytest tests/ -v --cov=dnallm --cov-report=term-missing; then
-    print_status "SUCCESS" "All tests passed"
+if [ "$INCLUDE_SLOW" = true ]; then
+    print_status "INFO" "4/5: Running full test suite (including slow tests)..."
+    pytest tests/ -v --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
 else
-    print_status "ERROR" "Some tests failed. Please fix the failing tests before pushing"
-    exit 1
+    print_status "INFO" "3/4: Running fast tests (excludes slow)..."
+    pytest tests/ -v -m "not slow" --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
 fi
+print_status "SUCCESS" "Tests passed"
 
+# 5. MyPy type checking (informational, matches CI's `|| true`)
 echo ""
-print_status "INFO" "Running Additional Checks..."
-echo "======================================"
-
-# 6. Check for common issues
-print_status "INFO" "Checking for common issues..."
-
-# Check for TODO/FIXME comments
-todo_count=$(grep -r "TODO\|FIXME" dnallm/ --exclude-dir=__pycache__ --exclude-dir=.git | wc -l)
-if [ "$todo_count" -gt 0 ]; then
-    print_status "WARNING" "Found $todo_count TODO/FIXME comments. Consider addressing these before pushing"
+print_status "INFO" "5/5: MyPy type checking (informational)..."
+if mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/; then
+    print_status "SUCCESS" "MyPy passed"
 else
-    print_status "SUCCESS" "No TODO/FIXME comments found"
-fi
-
-# Check for print statements (should use logging instead)
-print_count=$(grep -r "print(" dnallm/ --exclude-dir=__pycache__ --exclude-dir=.git | wc -l)
-if [ "$print_count" -gt 0 ]; then
-    print_status "WARNING" "Found $print_count print statements. Consider using logging instead for production code"
-else
-    print_status "SUCCESS" "No print statements found"
-fi
-
-# Check for hardcoded paths
-hardcoded_paths=$(grep -r "/home\|/Users\|C:\\" dnallm/ --exclude-dir=__pycache__ --exclude-dir=.git | wc -l)
-if [ "$hardcoded_paths" -gt 0 ]; then
-    print_status "WARNING" "Found $hardcoded_paths potentially hardcoded paths. Use relative paths or environment variables"
-else
-    print_status "SUCCESS" "No hardcoded paths found"
+    print_status "WARNING" "MyPy found issues (informational, does not block CI)"
 fi
 
 echo ""
 print_status "SUCCESS" "🎉 All CI checks completed successfully!"
-print_status "INFO" "Your code is ready to be pushed to GitHub"
-echo ""
-print_status "INFO" "Next steps:"
-echo "  1. git add ."
-echo "  2. git commit -m 'Your commit message'"
-echo "  3. git push origin your-branch"
-echo ""
-print_status "INFO" "The GitHub Actions CI will run these same checks automatically"
+print_status "INFO" "Your code is ready to push."

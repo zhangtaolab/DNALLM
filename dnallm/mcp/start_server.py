@@ -37,10 +37,7 @@ def setup_logging(log_level: str = "INFO"):
     logger.add(
         log_dir / "mcp_server.log",
         level=log_level,
-        format=(
-            "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | "
-            "{name}:{function}:{line} - {message}"
-        ),
+        format=("{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"),
         rotation="10 MB",
         retention="7 days",
     )
@@ -68,9 +65,7 @@ def main():
         default="0.0.0.0",  # noqa: S104
         help="Host to bind the server to",
     )
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Port to bind the server to"
-    )
+    parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
     parser.add_argument(
         "--log-level",
         type=str,
@@ -95,10 +90,7 @@ def main():
     config_path = Path(args.config)
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
-        logger.info(
-            "Please create a configuration file or specify the correct "
-            "path with --config"
-        )
+        logger.info("Please create a configuration file or specify the correct path with --config")
         sys.exit(1)
 
     try:
@@ -115,13 +107,8 @@ def main():
         logger.info(f"Enabled models: {info['enabled_models']}")
 
         # Start server (this is blocking and runs outside asyncio)
-        logger.info(
-            f"Starting server on {args.host}:{args.port} with "
-            f"{args.transport} transport"
-        )
-        server.start_server(
-            host=args.host, port=args.port, transport=args.transport
-        )
+        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        server.start_server(host=args.host, port=args.port, transport=args.transport)
 
     except KeyboardInterrupt:
         logger.info("Received interrupt signal, shutting down...")

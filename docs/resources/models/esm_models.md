@@ -59,10 +59,9 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use the loaded Nucleotide Transformer to get embeddings for a DNA sequence.
-
 ```python
 import torch
-from dnallm.utils.load import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the model and its specific tokenizer
 model_name = "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"

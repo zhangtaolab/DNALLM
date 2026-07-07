@@ -99,6 +99,23 @@ uv pip install -e '.[cuda124]'
 uv pip install -e '.[cuda121]'
 ```
 
+### Huawei NPU Support
+
+For Huawei Ascend NPU acceleration, install the appropriate torch and extension version:
+
+```bash
+# For venv users: activate virtual environment
+source .venv/bin/activate
+# For conda users: activate conda environment
+# conda activate dnallm
+
+# Install specific torch and extension version according the CANN driver's version
+uv pip install torch torch_npu
+```
+
+Detailed installation method see [installation.md](./installation.md##Installation-Scenarios)
+
+
 ### Native Mamba Support
 
 Native Mamba architecture runs significantly faster than transformer-compatible Mamba architecture, but native Mamba depends on Nvidia GPUs.
@@ -138,9 +155,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "TCACATCCGGGTGAAACCTCGAGTTCCTATAACCTGCCGACAGGTGGCGGGTCTTATAAAACTGATCACTACAATTCCCAATGGAAAAAAAAAAAAAAAAACCCTTATTTGACTCTCATTATAGATCAACGATGGATCTAGCTCTTCTTTTGTAATTACCTGACTTTTGACCTGACGAACCAAGTTATCGGTTGGGGCCCTGTCAAACGACAGGTCGCTTAGAGGGCATATGTGAGAAAAAGGGTCCTGTTTTTTATCCACGGAGAAAGAAAGCAAGAAGAGGAGAGGTTTTAAAAAAAA"
@@ -149,15 +164,11 @@ print(f"Inference result: {inference_result}")
 ```
 
 ### 2. *In-silico* Mutagenesis Analysis
-
 ```python
-from dnallm import load_config
-from dnallm.inference import Mutagenesis
+from dnallm import load_config, Mutagenesis
 
 # Load configuration
-configs = load_config(
-    "./example/notebooks/in_silico_mutagenesis/inference_config.yaml"
-)
+configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_config.yaml")
 
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
@@ -180,16 +191,13 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
 
 ### 3. Model Fine-tuning
-
 ```python
 from dnallm import load_config
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
 # Load configuration
-configs = load_config(
-    "./example/notebooks/finetune_binary/finetune_config.yaml"
-)
+configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml")
 
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnabert-BPE"
@@ -216,7 +224,6 @@ trainer.train()
 ```
 
 ### 4. Models Benchmark
-
 ```python
 from dnallm import load_config
 from dnallm.inference import Benchmark

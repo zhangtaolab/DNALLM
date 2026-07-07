@@ -37,9 +37,8 @@ You can load a HyenaDNA model using the custom `HyenaDNAForCausalLM` class or th
 ### Loading a Model
 
 Here’s how to load a HyenaDNA model for a causal language modeling task.
-
 ```python
-from dnallm.utils.load import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # Use a specific HyenaDNA model
 model_name = "LongSafari/hyenadna-small-32k-seqlen-hf"
@@ -54,10 +53,9 @@ print("Tokenizer:", type(tokenizer))
 ## 4. Inference Example
 
 Let's use a HyenaDNA model to get embeddings for a DNA sequence.
-
 ```python
 import torch
-from dnallm.utils.load import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the pre-trained model and tokenizer
 model_name = "LongSafari/hyenadna-tiny-1k-seqlen-hf"
@@ -72,8 +70,6 @@ inputs = tokenizer(dna_sequence, return_tensors="pt")
 with torch.no_grad():
     outputs = model(**inputs)
 
-embeddings = outputs.hidden_states[
-    -1
-]  # Hyena outputs hidden states differently
+embeddings = outputs.hidden_states[-1]  # Hyena outputs hidden states differently
 print("Shape of embeddings:", embeddings.shape)
 ```

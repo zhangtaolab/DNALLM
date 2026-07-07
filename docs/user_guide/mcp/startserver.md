@@ -19,7 +19,7 @@ Start the server with default configuration:
 
 ```bash
 # Using the module directly
-python -m dnallm.mcp.start_server
+dnallm-mcp-server
 
 # Or using the CLI entry point
 dnallm-mcp-server
@@ -28,20 +28,20 @@ dnallm-mcp-server
 ### 2. Start with Custom Configuration
 
 ```bash
-python -m dnallm.mcp.start_server --config /path/to/your/config.yaml
+dnallm-mcp-server --config /path/to/your/config.yaml
 ```
 
 ### 3. Start with Different Transport Protocols
 
 ```bash
 # STDIO transport (default) - for CLI tools
-python -m dnallm.mcp.start_server --transport stdio
+dnallm-mcp-server --transport stdio
 
 # SSE transport - for web applications
-python -m dnallm.mcp.start_server --transport sse --host 0.0.0.0 --port 8000
+dnallm-mcp-server --transport sse --host 0.0.0.0 --port 8000
 
 # Streamable HTTP transport - for REST APIs
-python -m dnallm.mcp.start_server --transport streamable-http --host 0.0.0.0 --port 8000
+dnallm-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
 ```
 
 ## Configuration Setup
@@ -53,7 +53,7 @@ Create a main server configuration file (e.g., `mcp_server_config.yaml`):
 ```yaml
 # MCP Server Configuration
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 8000
   workers: 1
   log_level: "INFO"
@@ -226,7 +226,7 @@ models:
 **Use Case**: Command-line tools, automation scripts
 
 ```bash
-python -m dnallm.mcp.start_server --transport stdio
+dnallm-mcp-server --transport stdio
 ```
 
 **Features**:
@@ -239,7 +239,7 @@ python -m dnallm.mcp.start_server --transport stdio
 **Use Case**: Real-time web applications, interactive tools
 
 ```bash
-python -m dnallm.mcp.start_server --transport sse --host 0.0.0.0 --port 8000
+dnallm-mcp-server --transport sse --host 0.0.0.0 --port 8000
 ```
 
 **Features**:
@@ -253,7 +253,7 @@ python -m dnallm.mcp.start_server --transport sse --host 0.0.0.0 --port 8000
 **Use Case**: REST API integration, HTTP clients
 
 ```bash
-python -m dnallm.mcp.start_server --transport streamable-http --host 0.0.0.0 --port 8000
+dnallm-mcp-server --transport streamable-http --host 0.0.0.0 --port 8000
 ```
 
 **Features**:
@@ -263,12 +263,12 @@ python -m dnallm.mcp.start_server --transport streamable-http --host 0.0.0.0 --p
 
 ## Command Line Options
 
-```bash
-python -m dnallm.mcp.start_server [OPTIONS]
+```text
+dnallm-mcp-server [OPTIONS]
 
 Options:
   --config, -c PATH          Path to MCP server configuration file
-  --host TEXT                Host to bind the server to (default: 0.0.0.0)
+  --host TEXT                Host to bind the server to (default: 127.0.0.1)
   --port INTEGER             Port to bind the server to (default: 8000)
   --transport [stdio|sse|streamable-http]  Transport protocol (default: stdio)
   --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]  Logging level (default: INFO)
@@ -287,7 +287,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}'
 
 # For STDIO transport
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}' | python -m dnallm.mcp.start_server
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}' | dnallm-mcp-server
 ```
 
 ### 2. List Available Models
@@ -310,6 +310,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
 
 Here's how to connect to the MCP server using Python:
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from pydantic import BaseModel
@@ -332,12 +333,12 @@ agent = Agent(
 
 When analyzing a DNA sequence, you should:
 1. First call _list_loaded_models to see what models are available
-2. Then call _dna_multi_model_predict with the DNA sequence and appropriate model names
+2. Then call dna_multi_model_predict with the DNA sequence and appropriate model names
 3. Interpret and explain the results in a comprehensive way
 
 Available tools should include:
 - _list_loaded_models: Lists available DNA analysis models
-- _dna_multi_model_predict: Predicts DNA sequence properties using multiple models
+- dna_multi_model_predict: Predicts DNA sequence properties using multiple models
 
 Always use the tools to provide accurate analysis.""",
 )
@@ -367,7 +368,7 @@ print(result.output)
    lsof -i :8000
 
    # Use a different port
-   python -m dnallm.mcp.start_server --port 8001
+   dnallm-mcp-server --port 8001
    ```
 
 2. **Model Loading Failed**
@@ -379,10 +380,10 @@ print(result.output)
 3. **Configuration File Not Found**
    ```bash
    # Use absolute path
-   python -m dnallm.mcp.start_server --config /absolute/path/to/config.yaml
+   dnallm-mcp-server --config /absolute/path/to/config.yaml
 
    # Or create a default config
-   python -m dnallm.mcp.start_server --config ./mcp_server_config.yaml
+   dnallm-mcp-server --config ./mcp_server_config.yaml
    ```
 
 4. **Memory Issues**

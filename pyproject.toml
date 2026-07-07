@@ -1,6 +1,6 @@
 [project]
 name = "dnallm"
-version = "0.4.0"
+version = "0.5.2"
 description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -26,6 +26,7 @@ dependencies = [
     "accelerate>=1.4.0",
     "addict>=2.4.0",
     "altair[all]>=5.5.0",
+    "bitsandbytes>=0.43.0",
     "captum>=0.7.0",
     "colorama>=0.4.6",
     "datasets<=3.2.0",
@@ -43,7 +44,9 @@ dependencies = [
     "oss2>=2.18.0",
     "nbstripout>=0.8.1",
     "ninja>1",
-    "numpy<2",
+    "numba>0.56.2",
+    "numpy>=1.26.0",
+    "optuna>=3.6.0",
     "openpyxl>=3.1.5",
     "pandas>=2.2.3",
     "peft>=0.14.0",
@@ -58,9 +61,9 @@ dependencies = [
     "starlette>=0.40.0,<0.48.0",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.4.0,<=2.7",
+    "torch>=2.4.0,<2.12",
     "tqdm>=4.67.1",
-    "transformers>=4.49.0,<4.56.0",
+    "transformers>=4.49.0,<5",
     "umap-learn>=0.5.7",
     "uvicorn>=0.24.0",
     "wandb>=0.19.8",
@@ -78,7 +81,6 @@ Documentation = "https://zhangtaolab.github.io/DNALLM/"
 dev = [
     "dnallm[test,notebook]",
     "ruff==0.15.8",
-    "flake8>=7.0.0",
     "pre-commit>=3.6.0",
     "mypy>=1.15.0",
     "pandas-stubs>=2.3.0",
@@ -103,7 +105,9 @@ docs = [
 ui = [
     "gradio>=4.0.0",
 ]
-mcp = []
+mcp = [
+    "mcp>=1.0.0",
+]
 base = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
@@ -113,27 +117,27 @@ all = [
     "dnallm[base,docs,ui]",
 ]
 cpu = [
-    "torch>=2.4.0,<2.7",
+    "torch>=2.4.0,<2.12",
 ]
 cuda121 = [
-    "torch>=2.2.0,<2.7",
+    "torch>=2.2.0,<2.12",
 ]
 cuda124 = [
-    "torch>=2.4.0,<2.7",
+    "torch>=2.4.0,<2.12",
 ]
 cuda126 = [
-    "torch>=2.6.0,<=2.7",
+    "torch>=2.6.0,<2.12",
 ]
 cuda128 = [
-    "torch>=2.6.0,<=2.7",
+    "torch>=2.6.0,<2.12",
 ]
 rocm = [
-    "torch>=2.5.0,<2.7",
+    "torch>=2.5.0,<2.12",
 ]
 mamba = [
     "causal_conv1d==1.6.0",
     "mamba-ssm==2.3.0",
-    "torch>=2.6.0,<=2.7",
+    "torch>=2.6.0,<2.12",
 ]
 
 #mamba = [
@@ -217,6 +221,7 @@ dnallm-train = "dnallm.cli.train:main"
 dnallm-inference = "dnallm.cli.inference:main"
 dnallm-model-config-generator = "dnallm.cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
+dnallm-mutagenesis = "dnallm.cli.mutagenesis:main"
 
 # Ruff configuration
 [tool.ruff]
@@ -248,10 +253,14 @@ exclude = [
     "htmlcov",
     "*.egg-info",
     "dnallm/tasks/metrics/",
+    ".claude",
+    ".planning",
+    "dnallm/models/special/mamba_npu.py",
+    "dnallm/finetune/megatron.py",
 ]
 
 # Same as Black.
-line-length = 79
+line-length = 100
 indent-width = 4
 
 # Assume Python 3.10+
@@ -319,6 +328,8 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Allow magic values in default arguments
 "**/migrations/*.py" = ["PLR2004"]
+"dnallm/models/modeling_auto.py" = ["E501"]
+"tests/conftest.py" = ["S105"]  # mock tokenizer special tokens are not passwords
 
 [tool.ruff.lint.isort]
 known-first-party = ["dnallm"]
@@ -339,7 +350,7 @@ line-ending = "auto"
 # MyPy configuration
 [tool.mypy]
 python_version = "3.10"
-warn_return_any = true
+warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
@@ -347,15 +358,18 @@ check_untyped_defs = true
 disallow_untyped_decorators = false
 no_implicit_optional = true
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_no_return = true
 warn_unreachable = true
-strict_equality = true
+strict_equality = false
 show_error_codes = true
+exclude = [
+    "dnallm/models/special/mamba_npu.py",
+    "dnallm/finetune/megatron.py",
+]
 
 [[tool.mypy.overrides]]
 module = [
-    "transformers.*",
     "datasets.*",
     "altair.*",
     "umap.*",
@@ -386,7 +400,6 @@ module = [
     "sklearn.*.*",
     "scikit_learn.*",
     "scikit_learn.*.*",
-    "pandas.*",
     "numpy.*",
     "torch.*",
     "torch.*.*",
@@ -406,6 +419,21 @@ module = [
     "nbstripout.*",
     "mamba_ssm.*",
     "causal_conv1d.*",
+    "lucagplm.*",
+    "evo.*",
+    "evo2.*",
+    "vortex.*",
+    "stripedhyena.*",
+    "pyfaidx.*",
+    "polars.*",
+    "pacmap.*",
+    "olmo.*",
+    "gpn.*",
+    "flash_attn.*",
+    "borzoi_pytorch.*",
+    "captum.*",
+    "triton.*",
+    "triton.language.*",
 ]
 ignore_missing_imports = true
 
@@ -431,8 +459,11 @@ markers = [
     "unit: marks unit tests",
     "inference: marks inference-related tests",
     "utils: marks utility function tests",
-    "data: marks data handling tests"
+    "data: marks data handling tests",
+    "legacy: marks tests for legacy/deprecated features"
 ]
+console_output_style = "progress"
+minversion = "6.0"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

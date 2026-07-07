@@ -96,7 +96,6 @@ task:
 ```
 
 **Loading the base model with the new head:**
-
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 

@@ -21,6 +21,7 @@ import os
 import torch
 import numpy as np
 from scipy.special import softmax
+from collections.abc import Callable
 from typing import Any, cast
 
 import sklearn.metrics
@@ -65,26 +66,18 @@ def calculate_metric_with_sklearn(eval_pred):
         # Reshape logits to 2D if needed
         logits = logits.reshape(-1, logits.shape[-1])
     predictions = np.argmax(logits, axis=-1)
-    valid_mask = (
-        labels != -100
-    )  # Exclude padding tokens (assuming -100 is the padding token ID)
+    valid_mask = labels != -100  # Exclude padding tokens (assuming -100 is the padding token ID)
     valid_predictions = predictions[valid_mask]
     valid_labels = labels[valid_mask]
     print(valid_labels.shape, valid_predictions.shape)
     return {
         "accuracy": accuracy_score(valid_labels, valid_predictions),
-        "f1": f1_score(
-            valid_labels, valid_predictions, average="macro", zero_division=0
-        ),
-        "matthews_correlation": matthews_corrcoef(
-            valid_labels, valid_predictions
-        ),
+        "f1": f1_score(valid_labels, valid_predictions, average="macro", zero_division=0),
+        "matthews_correlation": matthews_corrcoef(valid_labels, valid_predictions),
         "precision": precision_score(
             valid_labels, valid_predictions, average="macro", zero_division=0
         ),
-        "recall": recall_score(
-            valid_labels, valid_predictions, average="macro", zero_division=0
-        ),
+        "recall": recall_score(valid_labels, valid_predictions, average="macro", zero_division=0),
     }
 
 
@@ -140,18 +133,14 @@ def classification_metrics(plot: bool = False):
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
         metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
         metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
-        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(
-            labels, predictions
-        ).ravel()
+        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(labels, predictions).ravel()
         metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
         metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0
         metrics["FNR"] = fn / (fn + tp) if (fn + tp) > 0 else 0
         if plot:
             fpr, tpr, _ = roc_curve(labels, pred_probs[:, 1])
-            precision, recall, _ = precision_recall_curve(
-                labels, pred_probs[:, 1]
-            )
+            precision, recall, _ = precision_recall_curve(labels, pred_probs[:, 1])
             metrics["curve"] = {
                 "fpr": fpr,
                 "tpr": tpr,
@@ -163,7 +152,7 @@ def classification_metrics(plot: bool = False):
     return compute_metrics
 
 
-def regression_metrics(plot=False):
+def regression_metrics(plot: bool = False) -> Callable:
     """Create metrics computation function for regression tasks.
 
     This function returns a callable that computes regression metrics including
@@ -189,9 +178,7 @@ def regression_metrics(plot=False):
             yp = y_pred[:, k]
             if np.std(yt) == 0:
                 continue
-            r = pearson_metric.compute(
-                predictions=yp.tolist(), references=yt.tolist()
-            )["pearsonr"]
+            r = pearson_metric.compute(predictions=yp.tolist(), references=yt.tolist())["pearsonr"]
             rs.append(r)
         return np.mean(rs), rs
 
@@ -202,9 +189,7 @@ def regression_metrics(plot=False):
             yp = y_pred[:, k]
             if np.std(yt) == 0:
                 continue
-            r = spm_metric.compute(
-                predictions=yp.tolist(), references=yt.tolist()
-            )["spearmanr"]
+            r = spm_metric.compute(predictions=yp.tolist(), references=yt.tolist())["spearmanr"]
             rs.append(r)
         return np.mean(rs), rs
 
@@ -229,9 +214,7 @@ def regression_metrics(plot=False):
             mse = mse_metric.compute(references=labels, predictions=logits)
             mae = mae_metric.compute(references=labels, predictions=logits)
             r2 = r2_metric.compute(references=labels, predictions=logits)
-            spearmanr = spm_metric.compute(
-                references=labels, predictions=logits
-            )
+            spearmanr = spm_metric.compute(references=labels, predictions=logits)
             metrics = {**mse, **mae, "r2": r2, **spearmanr}
             if plot:
                 # Fix: logits is already a numpy array,
@@ -249,7 +232,7 @@ def regression_metrics(plot=False):
     return compute_metrics
 
 
-def multi_classification_metrics(label_list: list, plot: bool = False):
+def multi_classification_metrics(label_list: list, plot: bool = False) -> Callable:
     """Create metrics computation function for multi-class classification
     tasks.
 
@@ -286,34 +269,18 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
 
         metrics = {}
         metrics["accuracy"] = accuracy_score(labels, predictions)
-        metrics["precision"] = precision_score(
-            labels, predictions, average="macro"
-        )
+        metrics["precision"] = precision_score(labels, predictions, average="macro")
         metrics["recall"] = recall_score(labels, predictions, average="macro")
         metrics["f1"] = f1_score(labels, predictions, average="macro")
-        metrics["precision_micro"] = precision_score(
-            labels, predictions, average="micro"
-        )
-        metrics["recall_micro"] = recall_score(
-            labels, predictions, average="micro"
-        )
+        metrics["precision_micro"] = precision_score(labels, predictions, average="micro")
+        metrics["recall_micro"] = recall_score(labels, predictions, average="micro")
         metrics["f1_micro"] = f1_score(labels, predictions, average="micro")
-        metrics["precision_weighted"] = precision_score(
-            labels, predictions, average="weighted"
-        )
-        metrics["recall_weighted"] = recall_score(
-            labels, predictions, average="weighted"
-        )
-        metrics["f1_weighted"] = f1_score(
-            labels, predictions, average="weighted"
-        )
+        metrics["precision_weighted"] = precision_score(labels, predictions, average="weighted")
+        metrics["recall_weighted"] = recall_score(labels, predictions, average="weighted")
+        metrics["f1_weighted"] = f1_score(labels, predictions, average="weighted")
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
-        metrics["AUROC"] = roc_auc_score(
-            labels, pred_probs, average="macro", multi_class="ovr"
-        )
-        metrics["AUPRC"] = average_precision_score(
-            labels, pred_probs, average="macro"
-        )
+        metrics["AUROC"] = roc_auc_score(labels, pred_probs, average="macro", multi_class="ovr")
+        metrics["AUPRC"] = average_precision_score(labels, pred_probs, average="macro")
         tpr_list, tnr_list, fpr_list, fnr_list = [], [], [], []
         for label_cnt in multilabel_confusion_matrix(labels, predictions):
             tn, fp, fn, tp = label_cnt.ravel()
@@ -349,12 +316,8 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
         if plot:
             label_curves = {}
             for i, label_name in enumerate(label_list):
-                fpr, tpr, _ = roc_curve(
-                    np.array(labels) == i, pred_probs[:, i]
-                )
-                prec, rec, _ = precision_recall_curve(
-                    np.array(labels) == i, pred_probs[:, i]
-                )
+                fpr, tpr, _ = roc_curve(np.array(labels) == i, pred_probs[:, i])
+                prec, rec, _ = precision_recall_curve(np.array(labels) == i, pred_probs[:, i])
                 label_curves[label_name] = {
                     "fpr": fpr,
                     "tpr": tpr,
@@ -364,9 +327,7 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
             # overall fpr, tpr for macro-average ROC curve
             # and precision-recall curve can be added here if needed
             all_fpr = np.unique(
-                np.concatenate([
-                    label_curves[label]["fpr"] for label in label_list
-                ])
+                np.concatenate([label_curves[label]["fpr"] for label in label_list])
             )
             mean_tpr = np.zeros_like(all_fpr)
             for label in label_list:
@@ -377,9 +338,7 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
                 )
             mean_tpr /= len(label_list)
             all_recall = np.unique(
-                np.concatenate([
-                    label_curves[label]["recall"] for label in label_list
-                ])
+                np.concatenate([label_curves[label]["recall"] for label in label_list])
             )
             mean_precision = np.zeros_like(all_recall)
             for label in label_list:
@@ -405,7 +364,7 @@ def multi_classification_metrics(label_list: list, plot: bool = False):
     return compute_metrics
 
 
-def multi_labels_metrics(label_list: list, plot: bool = False):
+def multi_labels_metrics(label_list: list, plot: bool = False) -> Callable:
     """Create metrics computation function for multi-label classification
     tasks.
 
@@ -455,49 +414,31 @@ def multi_labels_metrics(label_list: list, plot: bool = False):
         # metrics = {**accuracy, **precision, **recall, **f1}
         metrics = {}
         metrics["accuracy"] = accuracy_score(labels, raw_pred)
-        metrics["precision"] = precision_score(
-            labels, raw_pred, average="macro"
-        )
+        metrics["precision"] = precision_score(labels, raw_pred, average="macro")
         metrics["recall"] = recall_score(labels, raw_pred, average="macro")
         metrics["f1"] = f1_score(labels, raw_pred, average="macro")
-        metrics["precision_micro"] = precision_score(
-            labels, raw_pred, average="micro"
-        )
-        metrics["recall_micro"] = recall_score(
-            labels, raw_pred, average="micro"
-        )
+        metrics["precision_micro"] = precision_score(labels, raw_pred, average="micro")
+        metrics["recall_micro"] = recall_score(labels, raw_pred, average="micro")
         metrics["f1_micro"] = f1_score(labels, raw_pred, average="micro")
-        metrics["precision_weighted"] = precision_score(
-            labels, raw_pred, average="weighted"
-        )
-        metrics["recall_weighted"] = recall_score(
-            labels, raw_pred, average="weighted"
-        )
+        metrics["precision_weighted"] = precision_score(labels, raw_pred, average="weighted")
+        metrics["recall_weighted"] = recall_score(labels, raw_pred, average="weighted")
         metrics["f1_weighted"] = f1_score(labels, raw_pred, average="weighted")
-        metrics["precision_samples"] = precision_score(
-            labels, raw_pred, average="samples"
-        )
-        metrics["recall_samples"] = recall_score(
-            labels, raw_pred, average="samples"
-        )
+        metrics["precision_samples"] = precision_score(labels, raw_pred, average="samples")
+        metrics["recall_samples"] = recall_score(labels, raw_pred, average="samples")
         metrics["f1_samples"] = f1_score(labels, raw_pred, average="samples")
         mcc_per_label = {}
         roc_data, roc_auc = {}, {}
         pr_data, pr_auc = {}, {}
         for i in range(labels.shape[1]):
             # Compute matthews correlation coefficient for each class
-            mcc_per_label[label_list[i]] = matthews_corrcoef(
-                labels[:, i], raw_pred[:, i]
-            )
+            mcc_per_label[label_list[i]] = matthews_corrcoef(labels[:, i], raw_pred[:, i])
             # Compute ROC curve and ROC area for each class
             fpr, tpr, _ = roc_curve(labels[:, i], pred_probs[:, i])
             auc = roc_auc_score(labels[:, i], pred_probs[:, i])
             roc_data[label_list[i]] = (fpr, tpr)
             roc_auc[label_list[i]] = auc
             # Compute PR curve and PR area for each class
-            prec, rec, _ = precision_recall_curve(
-                labels[:, i], pred_probs[:, i]
-            )
+            prec, rec, _ = precision_recall_curve(labels[:, i], pred_probs[:, i])
             ap = average_precision_score(labels[:, i], pred_probs[:, i])
             pr_data[label_list[i]] = (prec, rec)
             pr_auc[label_list[i]] = ap
@@ -535,7 +476,7 @@ def multi_labels_metrics(label_list: list, plot: bool = False):
 
 def token_classification_metrics(
     label_list: list, plot: bool = False, scheme: str = "IOB2"
-):
+) -> Callable:
     """Create metrics computation function for token classification tasks.
 
     This function returns a callable that computes sequence-level metrics for
@@ -592,9 +533,7 @@ def token_classification_metrics(
     return compute_metrics
 
 
-def preprocess_logits_for_metrics(
-    logits: torch.Tensor, labels: torch.Tensor
-) -> torch.Tensor:
+def preprocess_logits_for_metrics(logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
     """Preprocess logits for metrics computation.
 
     This function handles logits preprocessing to avoid memory leaks
@@ -607,12 +546,12 @@ def preprocess_logits_for_metrics(
     Returns:
         Tuple of (processed_logits, labels)
     """
-    logits = logits[0] if isinstance(logits, tuple) else logits
+    logits = logits[0] if isinstance(logits, tuple) else logits  # type: ignore[unreachable]
 
     return logits
 
 
-def metrics_for_dnabert2(task: str) -> tuple[callable, callable]:
+def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
     """Create metrics computation function for DNABERT2 model evaluation.
 
     This function provides specialized metrics computation for DNABERT2 models,
@@ -646,33 +585,23 @@ def metrics_for_dnabert2(task: str) -> tuple[callable, callable]:
         logits, labels = eval_pred
         if task.lower() == "regression":
             r2 = r2_metric.compute(references=labels, predictions=logits[0])
-            spearman = spm_metric.compute(
-                references=labels, predictions=logits[0]
-            )
+            spearman = spm_metric.compute(references=labels, predictions=logits[0])
             return {"r2": r2, "spearmanr": spearman["spearmanr"]}
         else:
             if task.lower() == "classification":
                 predictions = torch.argmax(torch.from_numpy(logits[0]), dim=-1)
                 return cast(
                     dict[str, Any],
-                    clf_metrics.compute(
-                        predictions=predictions, references=labels
-                    ),
+                    clf_metrics.compute(predictions=predictions, references=labels),
                 )
             else:
                 pred_probs = softmax(logits[0], axis=1)
-                pred_list: list[int] = [
-                    x.tolist().index(max(x)) for x in pred_probs
-                ]
+                pred_list: list[int] = [x.tolist().index(max(x)) for x in pred_probs]
                 precision = metric1.compute(
                     predictions=pred_list, references=labels, average="micro"
                 )
-                recall = metric2.compute(
-                    predictions=pred_list, references=labels, average="micro"
-                )
-                f1 = metric3.compute(
-                    predictions=pred_list, references=labels, average="micro"
-                )
+                recall = metric2.compute(predictions=pred_list, references=labels, average="micro")
+                f1 = metric3.compute(predictions=pred_list, references=labels, average="micro")
                 mcc = metric4.compute(predictions=pred_list, references=labels)
                 roc_auc_ovr = roc_metric.compute(
                     references=labels,
@@ -698,7 +627,7 @@ def metrics_for_dnabert2(task: str) -> tuple[callable, callable]:
     return compute_metrics, preprocessing
 
 
-def compute_metrics(task_config: TaskConfig, plot: bool = False):
+def compute_metrics(task_config: TaskConfig, plot: bool = False) -> Callable:
     """Compute metrics based on task type.
 
     This function serves as the main entry point for metrics computation,
@@ -719,14 +648,12 @@ def compute_metrics(task_config: TaskConfig, plot: bool = False):
     if task_config.task_type == "binary":
         return classification_metrics(plot=plot)
     elif task_config.task_type == "multiclass":
-        return multi_classification_metrics(task_config.label_names, plot=plot)
+        return multi_classification_metrics(task_config.label_names, plot=plot)  # type: ignore
     elif task_config.task_type == "multilabel":
-        return multi_labels_metrics(task_config.label_names, plot=plot)
+        return multi_labels_metrics(task_config.label_names, plot=plot)  # type: ignore
     elif task_config.task_type == "regression":
         return regression_metrics(plot=plot)
     elif task_config.task_type == "token":
-        return token_classification_metrics(task_config.label_names, plot=plot)
+        return token_classification_metrics(task_config.label_names, plot=plot)  # type: ignore
     else:
-        raise ValueError(
-            f"Unsupported task type for evaluation: {task_config.task_type}"
-        )
+        raise ValueError(f"Unsupported task type for evaluation: {task_config.task_type}")

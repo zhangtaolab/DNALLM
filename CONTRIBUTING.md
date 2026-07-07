@@ -270,7 +270,7 @@ scripts\check_code.bat --verbose
 6. **Test Coverage** (Pytest with coverage)
 
 #### Example Usage
-```bash
+```text
 # Quick code quality check (default - no tests)
 $ python scripts/check_code.py
 [INFO] Starting DNALLM code quality checks...
@@ -398,10 +398,9 @@ tests/
 3. **Test method naming**: `test_*`
 4. **Use descriptive test names** that explain what is being tested
 
-Example:
 ```python
 import pytest
-from dnallm.utils.sequence import validate_dna_sequence
+from dnallm.utils.sequence import check_sequence
 
 
 class TestSequenceValidation:
@@ -409,19 +408,18 @@ class TestSequenceValidation:
 
     def test_valid_sequence(self):
         """Test validation of valid DNA sequences."""
-        assert validate_dna_sequence("ATCG") == True
-        assert validate_dna_sequence("ATCGATCG") == True
+        assert check_sequence("ATCG") == True
+        assert check_sequence("ATCGATCG") == True
 
     def test_invalid_characters(self):
         """Test validation rejects invalid characters."""
-        with pytest.raises(ValueError):
-            validate_dna_sequence("ATCGX")
+        assert check_sequence("ATCGX") == False
 
     @pytest.mark.slow
     def test_large_sequence(self):
         """Test validation of large sequences."""
         large_seq = "ATCG" * 1000
-        assert validate_dna_sequence(large_seq) == True
+        assert check_sequence(large_seq) == True
 ```
 
 ### Test Markers

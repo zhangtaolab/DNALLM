@@ -14,7 +14,6 @@ The inference process in DNALLM follows these steps:
 ## 2. A Complete Example
 
 Let's put everything together in a Python script. This example demonstrates loading a promoter prediction model and using it to classify DNA sequences.
-
 ```python
 import os
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
@@ -39,9 +38,7 @@ def main():
 
     # 3. Initialize DNAInference Engine
     print("Initializing inference engine...")
-    inference_engine = DNAInference(
-        model=model, tokenizer=tokenizer, config=configs
-    )
+    inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs)
 
     # --- 4. Run Inference ---
 

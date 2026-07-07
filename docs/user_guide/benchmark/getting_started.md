@@ -78,7 +78,6 @@ evaluation:
 ```
 
 ### 3. Run the Benchmark
-
 ```python
 # Load configuration
 config = load_config("benchmark_config.yaml")
@@ -94,7 +93,7 @@ print("Benchmark Results:")
 print("=" * 50)
 for dataset_name, dataset_results in results.items():
     print(f"\n{dataset_name}:")
-    for model_name, metrics in model_results.items():
+    for model_name, metrics in dataset_results.items():
         print(f"  {model_name}:")
         for metric, value in metrics.items():
             print(f"    {metric}: {value:.4f}")
@@ -106,13 +105,13 @@ DNALLM also provides a convenient command-line interface:
 
 ```bash
 # Basic benchmark run
-dnallm-benchmark --config benchmark_config.yaml
+dnallm benchmark --config benchmark_config.yaml
 
 # Generate detailed report
-dnallm-benchmark --config config.yaml --output report.html
+dnallm benchmark --config config.yaml --output report.html
 
 # Run with custom parameters
-dnallm-benchmark --config config.yaml --batch-size 32 --device cuda
+dnallm benchmark --config config.yaml --batch-size 32 --device cuda
 ```
 
 ## Understanding Results

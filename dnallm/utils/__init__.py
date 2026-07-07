@@ -25,6 +25,7 @@ from .logger import (
     log_function_call,
 )
 from .support import is_fp8_capable, is_flash_attention_capable
+from .training_plots import plot_loss_curve, plot_lr_schedule
 
 __all__ = [
     "LoggingContext",
@@ -41,6 +42,8 @@ __all__ = [
     "log_progress",
     "log_success",
     "log_warning",
+    "plot_loss_curve",
+    "plot_lr_schedule",
     "random_generate_sequences",
     "reverse_complement",
     "seq2kmer",

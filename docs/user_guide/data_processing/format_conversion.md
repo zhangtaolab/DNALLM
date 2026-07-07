@@ -24,9 +24,7 @@ For most file-based formats, you can use the `DNADataset.load_local_data()` clas
 from dnallm.datahandling.data import DNADataset
 
 # Assuming 'my_data.csv' has columns 'dna_string' and 'target'
-dna_ds = DNADataset.load_local_data(
-    "my_data.csv", seq_col="dna_string", label_col="target"
-)
+dna_ds = DNADataset.load_local_data("my_data.csv", seq_col="dna_string", label_col="target")
 print(dna_ds)
 ```
 
@@ -55,7 +53,6 @@ CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGC...
 Often, you will have your sequences in a FASTA file and your labels in a separate file. The `dnallm.datahandling.data` module provides a `fasta_to_df` utility to easily parse FASTA files into a pandas DataFrame, which you can then merge with your labels.
 
 Let's assume you have `sequences.fa` and `labels.csv` (with a `name` column matching the FASTA headers and a `label` column).
-
 ```python
 import pandas as pd
 from dnallm.datahandling.data import fasta_to_df
@@ -83,8 +80,6 @@ print("Conversion complete!")
 The DNALLM `DNADataset` class can directly load data from several high-performance formats like Apache Arrow and Parquet. This is often more efficient than using CSV, especially for large datasets.
 
 ### Loading Arrow or Parquet Files
-
-If your data is already in Arrow or Parquet format with `sequence` and `label` columns, you can load it directly.
 
 ```python
 from dnallm.datahandling.data import DNADataset
@@ -117,6 +112,7 @@ df = pd.DataFrame(data)
 df[["sequence", "label"]].to_csv("converted_dataset.csv", index=False)
 # Or for better performance:
 # df[["sequence", "label"]].to_parquet("converted_dataset.parquet")
+```
 
 ---
 

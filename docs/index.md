@@ -36,12 +36,26 @@ DNALLM-Suite supports a wide range of DNA language models including:
 - **ModelScope**: Alternative model source with additional models
 - **Custom Models**: Support for locally trained or custom architectures
 
+## 🖥️ Supported Platforms
+
+DNALLM-Suite has been tested on a wide range of platforms and devices:
+
+### Platforms
+- [**Linux**]  [**Windows**]  [**MacOS**]
+
+### Device
+- **CPU**
+- **Nvidia GPU (CUDA)**
+- **AMD GPU (ROCm)**
+- **Apple Silicon (MPS)**
+- **Huawei Ascend NPU (CANN)**
+- **Intel Arc GPU (XPU)**
+
 ## 🚀 Quick Start
 
 DNALLM-Suite uses conda for environment management and uv for dependency management and packaging.
 
 1. **Install dependencies (recommended: [uv](https://docs.astral.sh/uv/))**
-
 ```bash
 # Clone repository
 git clone https://github.com/zhangtaolab/DNALLM.git
@@ -69,8 +83,10 @@ uv pip install -e '.[all]'
 python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
 
-2. **Basic Model Loading and Inference**
+For NPU support such as Huawei Ascend, see [installation](getting_started/installation.md#scenario-3-using-huawei-ascend-npu-for-training-and-inference) section.
 
+
+2. **Basic Model Loading and Inference**
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
@@ -84,9 +100,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
@@ -95,7 +109,6 @@ print(f"Inference result: {inference_result}")
 ```
 
 3. **In-silico Mutagenesis Analysis**
-
 ```python
 from dnallm import Mutagenesis
 
@@ -113,7 +126,6 @@ plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
 
 4. **Model Fine-tuning**
-
 ```python
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
@@ -134,7 +146,6 @@ trainer.train()
 ```
 
 5. **MCP Server Deployment**
-
 ```python
 # Start MCP server for real-time DNA sequence prediction
 from dnallm.mcp import DNALLMMCPServer
@@ -144,58 +155,58 @@ server = DNALLMMCPServer("config/mcp_server_config.yaml")
 await server.initialize()
 
 # Start server with SSE transport for real-time streaming
-server.start_server(host="0.0.0.0", port=8000, transport="sse")
+server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 ```
 
-6. **Launch Jupyter Lab, Marimo or Gradio App for interactive development:**
+6. **Launch Jupyter Lab, Marimo or Gradio App for interactive development**
 
-#### Interactive Demos (Marimo)
-```bash
-# Fine-tuning demo
-uv run --no-sync marimo run example/marimo/finetune/finetune_demo.py
+    (1) Interactive Demos (Marimo)
+    ```bash
+    # Fine-tuning demo
+    uv run --no-sync marimo run example/marimo/finetune/finetune_demo.py
 
-# Inference demo
-uv run --no-sync marimo run example/marimo/inference/inference_demo.py
+    # Inference demo
+    uv run --no-sync marimo run example/marimo/inference/inference_demo.py
 
-# Benchmark demo
-uv run --no-sync marimo run example/marimo/benchmark/benchmark_demo.py
-```
+    # Benchmark demo
+    uv run --no-sync marimo run example/marimo/benchmark/benchmark_demo.py
+    ```
 
-#### Jupyter Notebooks
-```bash
-# Launch Jupyter Lab
-uv run --no-sync jupyter lab
+    (2) Jupyter Notebooks
+    ```bash
+    # Launch Jupyter Lab
+    uv run --no-sync jupyter lab
 
-# Available notebooks:
-# - example/notebooks/finetune_binary/ - Binary classification fine-tuning
-# - example/notebooks/finetune_multi_labels/ - Multi-label classification
-# - example/notebooks/finetune_NER_task/ - Named Entity Recognition
-# - example/notebooks/inference/ - Model inference
-# - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
-# - example/notebooks/inference_for_tRNA/ - tRNA-specific analysis
-# - example/notebooks/generation_evo_models/ - EVO model inference
-# - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
-# - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
-# - example/notebooks/finetune_custom_head/ - Custom classification head
-# - example/notebooks/finetune_generation/ - Sequence generation
-# - example/notebooks/generation/ - Sequence generation examples
-# - example/notebooks/generation_megaDNA/ - MegaDNA model inference
-# - example/notebooks/interpretation/ - Model interpretation
-# - example/notebooks/data_prepare/ - Data preparation examples
-# - example/notebooks/benchmark/ - Model evaluation and benchmarking
-```
+    # Available notebooks:
+    # - example/notebooks/finetune_binary/ - Binary classification fine-tuning
+    # - example/notebooks/finetune_multi_labels/ - Multi-label classification
+    # - example/notebooks/finetune_NER_task/ - Named Entity Recognition
+    # - example/notebooks/inference/ - Model inference
+    # - example/notebooks/in_silico_mutagenesis/ - Mutation analysis
+    # - example/notebooks/inference_for_tRNA/ - tRNA-specific analysis
+    # - example/notebooks/generation_evo_models/ - EVO model inference
+    # - example/notebooks/lora_finetune_inference/ - LoRA fine-tuning
+    # - example/notebooks/embedding_attention.ipynb - Embedding and attention analysis
+    # - example/notebooks/finetune_custom_head/ - Custom classification head
+    # - example/notebooks/finetune_generation/ - Sequence generation
+    # - example/notebooks/generation/ - Sequence generation examples
+    # - example/notebooks/generation_megaDNA/ - MegaDNA model inference
+    # - example/notebooks/interpretation/ - Model interpretation
+    # - example/notebooks/data_prepare/ - Data preparation examples
+    # - example/notebooks/benchmark/ - Model evaluation and benchmarking
+    ```
 
-#### Web-based UI (Gradio)
-```bash
-# Launch Gradio configuration generator app
-uv run --no-sync python ui/run_config_app.py
+    (3) Web-based UI (Gradio)
+    ```bash
+    # Launch Gradio configuration generator app
+    uv run --no-sync python ui/run_config_app.py
 
-# Or run the model config generator directly
-uv run --no-sync python ui/model_config_generator_app.py
+    # Or run the model config generator directly
+    uv run --no-sync python ui/model_config_generator_app.py
 
-# For Generation, we also provide a app
-uv run --no-sync python ui/generation_task_app.py
-```
+    # For Generation, we also provide a app
+    uv run --no-sync python ui/generation_task_app.py
+    ```
 
 ## 🎯 Supported Task Types
 
@@ -247,7 +258,6 @@ For more details, please refer to the following guidelines.
 - **[FAQ](docs/faq/)** - Common questions and solutions
 
 - **[DeepWiki](https://deepwiki.com/zhangtaolab/DNALLM)** - A documentation that can ask
-
 
 ## 🤝 Contributing
 

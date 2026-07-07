@@ -39,6 +39,105 @@ If you encounter network or compilation issues, you can use the provided helper 
 sh scripts/install_mamba.sh
 ```
 
+### NPU accelerate for Mamba-2 models (for Huawei Ascend NPU)
+
+Native Mamba-series models require NVIDIA CUDA to accelerate the training and inference. Huawei provides a specific framework named [MindSpeed](https://gitcode.com/Ascend/MindSpeed-LLM) to accelerate the training of Mamba-2/3 architechture (Mamba-1 model is not supported currently).
+
+To utilize this function, several packages need to be installed first. Here we provide a tutorial for installing these packages (Offical tutorial see [here](https://gitcode.com/Ascend/MindSpeed-LLM/blob/master/docs/zh/pytorch/training/install_guide.md)).
+
+```bash
+# 0. Activate your DNALLM environment
+# for conda environment
+conda activate dnallm
+# for uv or python virtual environment
+# source .venv/bin/activate
+
+# 1. Install the MindSpeed-Core library
+git clone https://gitcode.com/ascend/MindSpeed.git
+cd MindSpeed
+git checkout master  # checkout commit from MindSpeed master
+pip install -r requirements.txt 
+pip install -e .
+cd ..
+
+# 2. Install the MindSpeed-LLM and Nvidia Megatron-LM library (for LLM training)
+git clone https://gitcode.com/ascend/MindSpeed-LLM.git
+git clone https://github.com/NVIDIA/Megatron-LM.git
+cd Megatron-LM
+cp -r megatron ../MindSpeed-LLM/
+cd ../MindSpeed-LLM
+git checkout master
+pip install -r requirements.txt
+cd ..
+```
+
+To fine-tuning a Mamba-2 model, pretrained model weight should be converted from huggingface format to Megatron-Mcore format first (official tutorial see [here](https://gitcode.com/Ascend/MindSpeed-LLM/blob/master/docs/zh/pytorch/training/quick_start.md)).
+```bash
+# Activate the CANN dependencies
+source /usr/local/Ascend/ascend-toolkit/set_env.sh
+export CUDA_DEVICE_MAX_CONNECTIONS=1
+
+# Download mamba-2-based model
+git clone https://huggingface.co/zhangtaolab/plant-dnamamba2-BPE
+
+# Convert weight format (the model parameters need to be confirmed by users manually)
+python MindSpeed-LLM/convert_ckpt_v2.py \
+    --load-model-type hf \
+    --save-model-type mg \
+    --load-dir plant-dnamamba2-BPE \
+    --save-dir plant-dnamamba2-BPE_mg \
+    --target-tensor-parallel-size 1 \
+    --target-pipeline-parallel-size 1 \
+    --num-layers 48 \
+    --hidden-size 1024 \
+    --mamba-state-dim 128 \
+    --mamba-head-dim 64 \
+    --mamba-num-groups 1 \
+    --model-type-hf 'mamba2'
+
+# Download fine-tuning data
+git clone https://huggingface.co/datasets/zhangtaolab/plant-multi-species-core-promoters
+```
+
+After conversion and data processing, start fine-tuning
+```bash
+python -m torch.distributed.launch scripts/finetune_mamba2_megatron.py \
+    --load plant-dnamamba2-BPE_mg \
+    --save plant-dnamamba2-BPE_promoter \
+    --tokenizer-name-or-path plant-dnamamba2-BPE \
+    --train_csv plant-multi-species-core-promoters/train.csv \
+    --test_csv plant-multi-species-core-promoters/test.csv \
+    --dev_csv plant-multi-species-core-promoters/dev.csv \
+    --num_labels 2 \
+    --problem_type single_label_classification \
+    --micro-batch-size 12 \
+    --global-batch-size 12 \
+    --epochs 3 \
+    --lr 2e-5 \
+    --no-enable-hf2mg-convert
+```
+
+To use the fine-tuned model, run the following script:
+```bash
+python -m torch.distributed.launch scripts/infer_mamba2_megatron.py \
+    --load plant-dnamamba2-BPE_promoter \
+    --tokenizer-name-or-path plant-dnamamba2-BPE \
+    --input-file plant-multi-species-core-promoters/test.csv \
+    --output-file inference_test.csv \
+    --num_labels 2 \
+    --problem_type single_label_classification \
+    --micro-batch-size 16 \
+    --global-batch-size 16
+```
+
+Output contents are looked like this:
+```text
+id,text,sp,label,probabilities,predictions
+0,TTGTCGAACCATTGAATCATAGCCGAACCGATGAGGAAGATGATCAAAATCATAAAATTACGAGTCGTGAGATACACAAACTATGTGGAGTAGACCATGATAGTTTGGTCAAAAAAAGTAGACCATGATAGCCACGCCGAAACGGGATGGACCCGAGAGACCATTAATCTAAGCGTCGTTGCATCTACCGTCAGGCGCCGCCATAAAAAACACACAAAAACATTAAAAAAAAGGTACTAAAACGACGTCAGATGTTGATCCGTGGTTACTCAGCTCCTGATCGCATACGTTTTTTTTTTT,bd30,1,"[0.0038909912109375, 0.99609375]",1.0
+1,ATCTTGCGACACATGTATAGAACATTATAGCAAAAACTAATTACACAGTTTATCTGTAAATCATGAGACGAATCTTTTAAGCCTAATTACTTCATGATTGAACAATATTTGTTAAATAAAAATAAGAATGCTACTGTGCACAAAAATTTTTCGTGCAGGTACTAAACAAGGCCAGCGCAAATGGCCTATACTTGCTCATAAAGGATGCTTCAAGTAGGAGTACCGTACTATACAGTTAGTACAGTAGTAGTGGTATAGATGGCCATGCAGCCCGAGGCACGACGGCCCGGCCCACGGTAC,broomcorn,0,"[0.99609375, 0.005645751953125]",0.0
+2,TCATGTACATCCGTATACAGTTGATAATGCAATTTTTAAAAAGTCTTATATTTAGAAACAGAGGAAGTGATATTTATTGTTGGCAAGGACTAATATAGTTTTTCTTAACAACAAGTATTCTTCTTTTGAAATTACTTGTCATAAAAACAAATATAAATGGATGTATCTAAACTAAAATATACTTCCATAATATATGTCTTTTTTAGAGATTTCACTAAATGGCTACATACGGATGTATATAGATATATTTTAAAGTATAGATTCATTTATTTTGTTCCGTATGTAGTCCCCTAGTAAAAT,barley,0,"[1.0, 0.00014400482177734375]",0.0
+```
+
 ### Caduceus Models
 
 Caduceus models are built into the DNALLM framework and do not require a separate installation beyond the base dependencies.
@@ -82,7 +181,6 @@ mut_analyzer.plot(predictions, save_path="./results/dnamamba_mut_effects.pdf")
 Caduceus models are bi-directional (MLM-style) and excel at classification tasks, especially on long sequences where standard BERT models might struggle.
 
 **Example: Fine-tuning PlantCAD2 for classification**
-
 ```python
 from dnallm import (
     load_config,

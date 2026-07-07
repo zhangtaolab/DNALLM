@@ -1,4 +1,4 @@
-from transformers import PretrainedConfig
+from transformers import PretrainedConfig  # type: ignore[attr-defined]
 
 
 class SpaceConfig(PretrainedConfig):

@@ -38,7 +38,7 @@ In the configuration, you must define the `task_type` as `sequence_classificatio
 ```yaml
 # task configuration
 task:
-  task_type: "sequence_classification"
+  task_type: "binary"
   problem_type: "multi_label_classification" # Specify multi-label problem
   num_labels: 4 # Total number of unique labels
   label_map:
@@ -48,7 +48,7 @@ task:
     3: "label4"
 
 # training configuration
-training:
+finetune:
   output_dir: "./outputs_multi_task"
   num_train_epochs: 5
   per_device_train_batch_size: 16
@@ -61,7 +61,6 @@ training:
   save_strategy: "epoch"
   load_best_model_at_end: True
   metric_for_best_model: "f1_macro"
-  greater_is_better: True
 ```
 
 ### Python Script

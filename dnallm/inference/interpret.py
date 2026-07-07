@@ -13,7 +13,7 @@ from captum.attr import (
     DeepLift,
     GradientShap,
 )
-from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers import PreTrainedModel, PreTrainedTokenizer  # type: ignore[attr-defined]
 from .plot import (
     plot_attributions_token,
     plot_attributions_line,
@@ -41,9 +41,7 @@ class _CaptumWrapperInputIDs(nn.Module):
         Accepts input_ids.
         It assumes the model outputs an object with a .logits attribute.
         """
-        outputs = self.model(
-            input_ids=input_ids, attention_mask=attention_mask
-        )
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
         # Supports ...ForSequenceClassification,
         # ...ForTokenClassification, ...ForCausalLM
         if hasattr(outputs, "logits"):
@@ -79,9 +77,7 @@ class _CaptumWrapperInputEmbeds(nn.Module):
         Accepts inputs_embeds instead of input_ids.
         """
         # Assume the model supports inputs_embeds
-        outputs = self.model(
-            inputs_embeds=inputs_embeds, attention_mask=attention_mask
-        )
+        outputs = self.model(inputs_embeds=inputs_embeds, attention_mask=attention_mask)
 
         if hasattr(outputs, "logits"):
             return outputs.logits
@@ -125,8 +121,8 @@ class DNAInterpret:
         """
         self.model = model.eval()
         self.tokenizer = tokenizer
-        self.task_config = config["task"]
-        self.pred_config = config["inference"]
+        self.task_config = config["task"]  # type: ignore[index]
+        self.pred_config = config["inference"]  # type: ignore[index]
         self.device = self.pred_config.device
         self.embedding_layer = None
         self.model.to(self.device)
@@ -154,20 +150,13 @@ class DNAInterpret:
             if hasattr(tokenizer, "pad_token"):
                 pad_token = tokenizer.pad_token
                 if hasattr(tokenizer, "convert_tokens_to_ids"):
-                    self.pad_token_id = tokenizer.convert_tokens_to_ids(
-                        pad_token
-                    )
+                    self.pad_token_id = tokenizer.convert_tokens_to_ids(pad_token)
                 elif hasattr(tokenizer, "tokenize"):
                     self.pad_token_id = tokenizer.tokenize(pad_token)[0]
                 elif hasattr(tokenizer, "encode"):
-                    self.pad_token_id = tokenizer.encode(
-                        pad_token, add_special_tokens=False
-                    )[0]
+                    self.pad_token_id = tokenizer.encode(pad_token, add_special_tokens=False)[0]
                 else:
-                    print(
-                        "Warning: Cannot determine pad_token_id. "
-                        "Using 0. This may be incorrect."
-                    )
+                    print("Warning: Cannot determine pad_token_id. Using 0. This may be incorrect.")
                     self.pad_token_id = 0
 
     def _find_embedding_layer(self) -> nn.Module:
@@ -198,7 +187,7 @@ class DNAInterpret:
                 if isinstance(obj, nn.Embedding):
                     if self.embedding_layer != path:
                         print(f"Auto-detected embedding layer at: {path}")
-                    self.embedding_layer = path
+                    self.embedding_layer = path  # type: ignore[assignment]
                     return obj
             except AttributeError:
                 continue
@@ -240,30 +229,25 @@ class DNAInterpret:
             attention_mask = inputs["attention_mask"].to(self.device)
         except Exception:
             inputs = self.tokenizer.tokenize(sequence)
-            input_ids = (
-                torch
-                .tensor(inputs, dtype=torch.long)
-                .unsqueeze(0)
-                .to(self.device)
-            )
+            input_ids = torch.tensor(inputs, dtype=torch.long).unsqueeze(0).to(self.device)
             attention_mask = torch.ones_like(input_ids).to(self.device)
         return input_ids, attention_mask
 
     def _ids_to_tokens(
-        self, token_ids: int, input_seq: str | None = None
+        self, token_ids: torch.Tensor | int | list[int], input_seq: str | None = None
     ) -> list[str]:
         """Convert token IDs to string tokens."""
         if hasattr(self.tokenizer, "convert_ids_to_tokens"):
-            tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
+            tokens = self.tokenizer.convert_ids_to_tokens(token_ids)  # type: ignore[arg-type]
         elif hasattr(self.tokenizer, "decode"):
-            tokens = [self.tokenizer.decode(tid) for tid in token_ids]
+            tokens = [self.tokenizer.decode(tid) for tid in token_ids]  # type: ignore
         elif hasattr(self.tokenizer, "decode_token"):
-            tokens = [self.tokenizer.decode_token(tid) for tid in token_ids]
+            tokens = [self.tokenizer.decode_token(tid) for tid in token_ids]  # type: ignore
         elif hasattr(self.tokenizer, "tokenize") and input_seq is not None:
-            tokens = self.tokenizer.tokenize(input_seq)
+            tokens = self.tokenizer.tokenize(input_seq)  # type: ignore
         else:
-            tokens = input_seq.split()
-        return tokens
+            tokens = input_seq.split()  # type: ignore
+        return tokens  # type: ignore[return-value]
 
     def _get_pad_baseline(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Create a baseline tensor filled with PAD token IDs."""
@@ -281,14 +265,14 @@ class DNAInterpret:
         if task_type in ["binary", "multiclass", "multilabel", "regression"]:
             # Sequence classification/regression: target is class index (int)
             # logits shape: [batch, num_classes]
-            return target
+            return target  # type: ignore
 
         elif task_type == "token":
             # Token classification (NER): target is (token_index, class_index)
             # logits shape: [batch, seq_len, num_classes]
             if token_index is None:
                 raise ValueError("`token_index` must be provided.")
-            return (token_index, target)
+            return (token_index, target)  # type: ignore
 
         elif task_type == "generation":
             # CausalLM (Generation): target is (token_index, vocab_id)
@@ -297,7 +281,7 @@ class DNAInterpret:
                 token_index = -1  # last token's prediction
 
             # At this point, 'target' is interpreted as *vocab_id*
-            return (token_index, target)
+            return (token_index, target)  # type: ignore
         else:
             raise ValueError(f"Unknown task_type: {task_type}.")
 
@@ -323,7 +307,6 @@ class DNAInterpret:
                                 (e.g., 2 for 'Promoter').
                           - For 'causal_lm': Target *Token ID*
                                  (e.g., 8 for 'G').
-            task_type (str): Task type
             token_index (int, optional): for 'token_cls'/'causal_lm'
                 Token position to explain.
             embedding_layer (nn.Module, optional): Specific Embedding layer.
@@ -350,9 +333,7 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         # 3. Prepare inputs and baselines
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baseline_input_ids = self._get_pad_baseline(input_ids)
 
         # 4. Format Captum target
@@ -372,9 +353,7 @@ class DNAInterpret:
         attr_scores = attributions.sum(dim=-1).squeeze(0)
         attr_scores = attr_scores.cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_deeplift(
@@ -400,9 +379,7 @@ class DNAInterpret:
         if max_length is None:
             max_length = self.pred_config.max_length
 
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baseline_input_ids = self._get_pad_baseline(input_ids)
         captum_target = self._format_captum_target(target, token_index)
 
@@ -414,13 +391,9 @@ class DNAInterpret:
             **kwargs,
         )
 
-        attr_scores = (
-            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
-        )
+        attr_scores = attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_gradshap(
@@ -455,9 +428,7 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         # 3. Prepare Embeddings (the same as LayerConductance)
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baseline_input_ids = self._get_pad_baseline(input_ids)
         embedding_layer = self._find_embedding_layer()
         with torch.no_grad():
@@ -478,13 +449,9 @@ class DNAInterpret:
         )
 
         # 6. Process results (shape: (batch, seq_len, embed_dim) -> (seq_len))
-        attr_scores = (
-            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
-        )
+        attr_scores = attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_occlusion(
@@ -521,9 +488,7 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         # 2. Prepare inputs
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
 
         # 3. Occlusion baseline is a single PAD token ID (scalar)
         baselines = self.pad_token_id
@@ -545,9 +510,7 @@ class DNAInterpret:
         # Shape: (batch, seq_len) -> (seq_len)
         attr_scores = attributions.squeeze(0).cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_feature_ablation(
@@ -581,9 +544,7 @@ class DNAInterpret:
 
         # 2. Prepare inputs and baselines
         # (FeatureAblation requires a tensor baseline)
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baselines = self._get_pad_baseline(input_ids)
 
         # 3. Format Captum target
@@ -592,9 +553,7 @@ class DNAInterpret:
         # 4. FeatureAblation requires feature_mask to define features
         # (default one feature per token)
         # Shape: (batch_size, num_features) -> (1, seq_len)
-        feature_mask = (
-            torch.arange(input_ids.shape[1]).unsqueeze(0).to(self.device)
-        )
+        feature_mask = torch.arange(input_ids.shape[1]).unsqueeze(0).to(self.device)
 
         # 5. Compute attributions
         attributions = ablation.attribute(
@@ -610,9 +569,7 @@ class DNAInterpret:
         # Shape: (batch, seq_len) -> (seq_len)
         attr_scores = attributions.squeeze(0).cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_layer_conductance(
@@ -653,9 +610,7 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         # 2. Prepare inputs (input_ids)
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baseline_input_ids = self._get_pad_baseline(input_ids)
 
         # 3. Manually convert IDs to Embeddings
@@ -685,9 +640,7 @@ class DNAInterpret:
         attr_scores = attributions.sum(dim=-1).squeeze(0)
         attr_scores = attr_scores.cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def run_noise_tunnel(
@@ -721,10 +674,7 @@ class DNAInterpret:
             nt_stdevs (float): The standard deviation of the noise.
             **kwargs (Any): Additional arguments for NoiseTunnel.
         """
-        print(
-            f"Running NoiseTunnel ({nt_type}) "
-            f"with base method: {base_method}..."
-        )
+        print(f"Running NoiseTunnel ({nt_type}) with base method: {base_method}...")
 
         # 1. Use wrapper that accepts inputs_embeds
         wrapper = _CaptumWrapperInputEmbeds(self.model)
@@ -738,8 +688,7 @@ class DNAInterpret:
             attr_method = GradientShap(wrapper)
         else:
             raise ValueError(
-                f"Unknown base_method: {base_method}. "
-                "Supported: 'lig', 'deeplift', 'gradshap'"
+                f"Unknown base_method: {base_method}. Supported: 'lig', 'deeplift', 'gradshap'"
             )
 
         # 3. Wrap with NoiseTunnel
@@ -750,9 +699,7 @@ class DNAInterpret:
             max_length = self.pred_config.max_length
 
         # 4. Prepare Embeddings (same as LayerConductance)
-        input_ids, attention_mask = self._get_input_tensors(
-            input_seq, max_length
-        )
+        input_ids, attention_mask = self._get_input_tensors(input_seq, max_length)
         baseline_input_ids = self._get_pad_baseline(input_ids)
         embedding_layer = self._find_embedding_layer()
         with torch.no_grad():
@@ -788,13 +735,9 @@ class DNAInterpret:
 
         # 8. Process results
         # Shape: (batch, seq_len, hidden_dim) -> (seq_len)
-        attr_scores = (
-            attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
-        )
+        attr_scores = attributions.sum(dim=-1).squeeze(0).cpu().detach().numpy()
 
-        tokens = self._ids_to_tokens(
-            token_ids=input_ids.squeeze(0), input_seq=input_seq
-        )
+        tokens = self._ids_to_tokens(token_ids=input_ids.squeeze(0), input_seq=input_seq)
         return tokens, attr_scores
 
     def interpret(
@@ -853,10 +796,7 @@ class DNAInterpret:
             )
         elif method == "layer_conductance":
             if target_layer is None:
-                raise ValueError(
-                    "`target_layer` must be provided for "
-                    "`layer_conductance` method."
-                )
+                raise ValueError("`target_layer` must be provided for `layer_conductance` method.")
             tokens, attr_scores = self.run_layer_conductance(
                 input_seq,
                 target,
@@ -866,8 +806,14 @@ class DNAInterpret:
                 **kwargs,
             )
         elif method == "noise_tunnel":
+            base_method = kwargs.pop("base_method", "lig")
             tokens, attr_scores = self.run_noise_tunnel(
-                input_seq, target, token_index, max_length=max_length, **kwargs
+                input_seq,
+                target,
+                base_method,
+                token_index=token_index,
+                max_length=max_length,
+                **kwargs,  # type: ignore[arg-type]
             )
         else:
             raise ValueError(
@@ -879,7 +825,7 @@ class DNAInterpret:
         if plot:
             self.attributions = (tokens, attr_scores)
         else:
-            self.attributions = None
+            self.attributions = None  # type: ignore
 
         return tokens, attr_scores
 
@@ -933,13 +879,13 @@ class DNAInterpret:
             )
             results.append((tokens, scores))
         if plot:
-            self.attributions = results
+            self.attributions = results  # type: ignore
         else:
-            self.attributions = None
+            self.attributions = None  # type: ignore
 
         return results
 
-    def plot_attributions(self, plot_type: str = "token", **kwargs):
+    def plot_attributions(self, plot_type: str = "token", **kwargs: Any):
         """
         Plot the attributions using specified plot type.
 
@@ -956,11 +902,8 @@ class DNAInterpret:
 
         plot_type = plot_type.lower()
         if isinstance(self.attributions, list):
-            if plot_type != "multi":
-                print(
-                    "Warning: Multiple attributions found, "
-                    "falling back to 'multi' plot."
-                )
+            if plot_type != "multi":  # type: ignore[unreachable]
+                print("Warning: Multiple attributions found, falling back to 'multi' plot.")
             # Multiple sequences' attributions
             plot = plot_attributions_multi(self.attributions, **kwargs)
         elif plot_type == "token":
@@ -973,10 +916,9 @@ class DNAInterpret:
             plot = plot_attributions_line(tokens, scores, **kwargs)
         elif plot_type == "multi":
             # Multiple sequences' attributions
-            plot = plot_attributions_multi(self.attributions, **kwargs)
+            plot = plot_attributions_multi(self.attributions, **kwargs)  # type: ignore
         else:
             raise ValueError(
-                f"Unknown plot_type: {plot_type}. "
-                "Supported: 'token', 'line', 'multi'."
+                f"Unknown plot_type: {plot_type}. Supported: 'token', 'line', 'multi'."
             )
         return plot

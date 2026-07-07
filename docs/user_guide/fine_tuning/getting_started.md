@@ -97,7 +97,6 @@ print(f"Test samples: {len(dataset.test_data)}")
 ```
 
 ### 4. Load Pre-trained Model
-
 ```python
 # Load configuration
 config = load_config("finetune_config.yaml")
@@ -329,10 +328,8 @@ Configure early stopping to prevent overfitting:
 ```yaml
 finetune:
   # ... other settings ...
-  early_stopping_patience: 3
   early_stopping_threshold: 0.001
   metric_for_best_model: "eval_loss"
-  greater_is_better: false
 ```
 
 ## Common Hyperparameters

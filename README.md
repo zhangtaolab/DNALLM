@@ -4,11 +4,19 @@
   <img src="docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
 DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+
+## 📦 Quick Installation
+
+```bash
+pip install dnallm
+```
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
@@ -39,6 +47,23 @@ DNALLM-Suite supports a wide range of DNA language models including:
 - **Hugging Face Hub**: Primary model repository
 - **ModelScope**: Alternative model source with additional models
 - **Custom Models**: Support for locally trained or custom architectures
+
+## 🖥️ Supported Platforms
+
+DNALLM-Suite has been tested on a wide range of platforms and devices:
+
+### Platforms:
+- **Linux**
+- **Windows**
+- **MacOS**
+
+### Device:
+- **CPU**
+- **Nvidia GPU (CUDA)**
+- **AMD GPU (ROCm)**
+- **Apple Silicon (MPS)**
+- **Huawei Ascend NPU (CANN)**
+- **Intel Arc GPU (XPU)**
 
 ## 🛠️ Installation
 
@@ -218,7 +243,6 @@ The installation method for the dependencies of these models can be found **[her
 ## 🚀 Quick Start
 
 ### 1. Basic Model Loading and Inference
-
 ```python
 from dnallm import load_config, load_model_and_tokenizer, DNAInference
 
@@ -232,9 +256,7 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # Initialize inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # Make inference
 sequence = "AATATATTTAATCGGTGTATAATTTCTGTGAAGATCCTCGATACTTCATATAAGAGATTTTGAGAGAGAGAGAGAACCAATTTTCGAATGGGTGAGTTGGCAAAGTATTCACTTTTCAGAACATAATTGGGAAACTAGTCACTTTACTATTCAAAATTTGCAAAGTAGTC"
@@ -243,7 +265,6 @@ print(f"Inference result: {inference_result}")
 ```
 
 ### 2. In-silico Mutagenesis Analysis
-
 ```python
 from dnallm import Mutagenesis
 
@@ -259,9 +280,6 @@ predictions = mutagenesis.evaluate(strategy="mean")
 # Visualize results
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
-
-### 3. Model Fine-tuning
-
 ```python
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
@@ -283,6 +301,22 @@ trainer.train()
 
 ### 4. MCP Server Deployment
 
+Start the MCP server via the CLI:
+
+```bash
+# Start with Streamable HTTP (recommended, per MCP spec 2025-11-25)
+dnallm-mcp-server --transport streamable-http --host 127.0.0.1 --port 8000
+```
+
+The server exposes a single `/mcp` endpoint (POST/GET/DELETE) per MCP spec 2025-11-25.
+
+Legacy SSE transport is still supported for backward compatibility:
+
+```bash
+# Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
+dnallm-mcp-server --transport sse --host 127.0.0.1 --port 8000
+```
+<!-- skip-verify: requires async event loop context -->
 ```python
 # Start MCP server for real-time DNA sequence prediction
 from dnallm.mcp import DNALLMMCPServer
@@ -291,13 +325,33 @@ from dnallm.mcp import DNALLMMCPServer
 server = DNALLMMCPServer("config/mcp_server_config.yaml")
 await server.initialize()
 
-# Start server with SSE transport for real-time streaming
-server.start_server(host="0.0.0.0", port=8000, transport="sse")
+# Start server with Streamable HTTP transport (recommended, MCP spec 2025-11-25)
+server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
+
+# Legacy SSE transport is still supported for backward compatibility
+# server.start_server(host="0.0.0.0", port=8000, transport="sse")
 ```
 
 #### MCP Server Features
-- **Real-time Streaming**: Server-Sent Events (SSE) for live prediction updates
-- **Multiple Transport Protocols**: STDIO, SSE, and Streamable HTTP
+- **Real-time Streaming**: Streamable HTTP for live prediction updates (MCP spec 2025-11-25)
+- **Multiple Transport Protocols**: STDIO, Streamable HTTP (recommended), and SSE (legacy)
+- **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
+- **Model Management**: Dynamic model loading and switching
+- **Batch Processing**: Efficient handling of multiple sequences
+```python
+from dnallm.mcp.client import DNALLMMCPClient
+
+# Connect via Streamable HTTP (recommended)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
+result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
+
+# Connect via stdio for local CLI usage
+client = DNALLMMCPClient(transport="stdio")
+result = client.health_check()
+
+# Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
+# client = DNALLMMCPClient(transport="sse", url="http://localhost:8000/sse")
+```
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
 - **Batch Processing**: Efficient handling of multiple sequences

@@ -52,10 +52,7 @@ def _handle_dnabert2_models(model_path: str, load_args: list) -> tuple:
                         'raise ImportError("Temporarily disabled '
                         'by script due to incompatible Triton version.")\n'
                     )
-                logger.warning(
-                    "Triton version does not support, "
-                    "flash_attn_triton disabled."
-                )
+                logger.warning("Triton version does not support, flash_attn_triton disabled.")
             else:
                 triton_file_path = None
 

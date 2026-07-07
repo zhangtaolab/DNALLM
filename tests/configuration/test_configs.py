@@ -24,6 +24,8 @@ from dnallm.configuration.configs import (
     OutputConfig,
     TaskConfig,
     TrainingConfig,
+    HyperparameterSearchConfig,
+    SearchSpaceDistribution,
     load_config,
 )
 
@@ -68,9 +70,7 @@ class TestTaskConfig:
 
     def test_multiclass_task_config_custom_labels(self):
         """Test multiclass task configuration with custom labels."""
-        config = TaskConfig(
-            task_type="multiclass", num_labels=3, label_names=["A", "B", "C"]
-        )
+        config = TaskConfig(task_type="multiclass", num_labels=3, label_names=["A", "B", "C"])
 
         assert config.task_type == "multiclass"
         assert config.num_labels == 3
@@ -78,9 +78,7 @@ class TestTaskConfig:
 
     def test_multiclass_task_config_invalid_num_labels(self):
         """Test multiclass task configuration with invalid num_labels."""
-        with pytest.raises(
-            ValidationError, match="num_labels must be at least 2"
-        ):
+        with pytest.raises(ValidationError, match="num_labels must be at least 2"):
             TaskConfig(task_type="multiclass", num_labels=1)
 
     def test_multilabel_task_config_default(self):
@@ -98,9 +96,7 @@ class TestTaskConfig:
 
     def test_multilabel_task_config_custom_labels(self):
         """Test multilabel task configuration with custom labels."""
-        config = TaskConfig(
-            task_type="multilabel", num_labels=2, label_names=["tag1", "tag2"]
-        )
+        config = TaskConfig(task_type="multilabel", num_labels=2, label_names=["tag1", "tag2"])
 
         assert config.task_type == "multilabel"
         assert config.num_labels == 2
@@ -224,6 +220,79 @@ class TestTrainingConfig:
 
         assert config.lr_scheduler_kwargs == lr_kwargs
 
+    def test_training_config_early_stopping_defaults(self):
+        """Test early stopping configuration with defaults."""
+        config = TrainingConfig()
+        assert config.callbacks is not None
+        assert config.callbacks.early_stopping is not None
+        assert config.callbacks.early_stopping.patience is None
+        assert config.callbacks.early_stopping.threshold == 0.0
+
+    def test_training_config_early_stopping_custom(self):
+        """Test early stopping configuration with custom values."""
+        from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
+
+        config = TrainingConfig(
+            callbacks=CallbackConfig(early_stopping=EarlyStoppingConfig(patience=3, threshold=0.01))
+        )
+        assert config.callbacks.early_stopping.patience == 3
+        assert config.callbacks.early_stopping.threshold == 0.01
+
+    def test_training_config_early_stopping_negative_patience(self):
+        """Test early stopping with negative patience raises error."""
+        from dnallm.configuration.configs import CallbackConfig, EarlyStoppingConfig
+
+        with pytest.raises(ValidationError):
+            TrainingConfig(
+                callbacks=CallbackConfig(early_stopping=EarlyStoppingConfig(patience=-1))
+            )
+
+    def test_training_config_max_grad_norm(self):
+        """Test gradient clipping threshold propagation."""
+        config = TrainingConfig(max_grad_norm=0.5)
+        assert config.max_grad_norm == 0.5
+
+    def test_training_config_max_grad_norm_propagates_to_training_arguments(self):
+        """Test that max_grad_norm is passed to TrainingArguments."""
+        from transformers import TrainingArguments
+
+        config = TrainingConfig(max_grad_norm=0.5)
+        args = TrainingArguments(
+            output_dir="/tmp/test",
+            max_grad_norm=config.max_grad_norm,
+        )
+        assert args.max_grad_norm == 0.5
+
+    def test_training_config_report_to_default(self):
+        """Test default report_to is tensorboard."""
+        config = TrainingConfig()
+        assert config.report_to == ["tensorboard"]
+
+    def test_training_config_report_to_string_coercion(self):
+        """Test that string report_to is coerced to list."""
+        config = TrainingConfig(report_to="wandb")
+        assert config.report_to == ["wandb"]
+
+    def test_training_config_report_to_multiple(self):
+        """Test multiple trackers."""
+        config = TrainingConfig(report_to=["tensorboard", "wandb"])
+        assert config.report_to == ["tensorboard", "wandb"]
+
+    def test_training_config_report_to_none(self):
+        """Test disabling all trackers."""
+        config = TrainingConfig(report_to=["none"])
+        assert config.report_to == ["none"]
+
+    def test_training_config_report_to_invalid(self):
+        """Test invalid tracker name raises error."""
+        with pytest.raises(ValidationError):
+            TrainingConfig(report_to=["invalid_tracker"])
+
+    def test_training_config_report_to_none_with_others(self):
+        """Test that 'none' combined with other trackers raises error."""
+        with pytest.raises(ValidationError):
+            TrainingConfig(report_to=["none", "tensorboard"])
+
 
 class TestInferenceConfig:
     """Test cases for InferenceConfig class."""
@@ -262,9 +331,7 @@ class TestBenchmarkInfoConfig:
 
     def test_benchmark_info_config_required_fields(self):
         """Test benchmark info configuration with required fields."""
-        config = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        config = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
 
         assert config.name == "Test Benchmark"
         assert config.description == "Test description"
@@ -466,15 +533,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_minimal(self):
         """Test benchmark configuration with minimal required fields."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
 
         config = BenchmarkConfig(
@@ -493,15 +554,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_with_metrics(self):
         """Test benchmark configuration with metrics."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
         metrics = ["accuracy", "f1", "precision", "recall"]
 
@@ -517,15 +572,9 @@ class TestBenchmarkConfig:
 
     def test_benchmark_config_with_evaluation(self):
         """Test benchmark configuration with custom evaluation settings."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
         evaluation = EvaluationConfig(batch_size=64, device="cuda")
 
@@ -555,9 +604,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -584,9 +631,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -611,9 +656,7 @@ class TestLoadConfig:
             }
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -646,9 +689,7 @@ class TestLoadConfig:
             "output": {"path": "/tmp/results", "format": "html"},
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -675,9 +716,7 @@ class TestLoadConfig:
             },
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -704,9 +743,7 @@ class TestLoadConfig:
 
     def test_load_config_invalid_yaml(self):
         """Test loading configuration with invalid YAML."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content: [")
             config_path = f.name
 
@@ -720,9 +757,7 @@ class TestLoadConfig:
         """Test loading configuration with invalid task type."""
         config_data = {"task": {"task_type": "invalid_type"}}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             config_path = f.name
 
@@ -771,14 +806,8 @@ class TestEdgeCases:
 
     def test_benchmark_config_empty_models(self):
         """Test benchmark config with empty models list."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
-        datasets = [
-            DatasetConfig(
-                name="dataset1", path="/path/to/dataset1", task="binary"
-            )
-        ]
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
+        datasets = [DatasetConfig(name="dataset1", path="/path/to/dataset1", task="binary")]
         output = OutputConfig()
 
         # Pydantic doesn't validate empty lists by default
@@ -794,9 +823,7 @@ class TestEdgeCases:
 
     def test_benchmark_config_empty_datasets(self):
         """Test benchmark config with empty datasets list."""
-        benchmark_info = BenchmarkInfoConfig(
-            name="Test Benchmark", description="Test description"
-        )
+        benchmark_info = BenchmarkInfoConfig(name="Test Benchmark", description="Test description")
         models = [ModelConfig(name="model1", path="/path/to/model1")]
         output = OutputConfig()
 
@@ -810,6 +837,80 @@ class TestEdgeCases:
             metrics=None,
         )
         assert len(config.datasets) == 0
+
+
+class TestHyperparameterSearchConfig:
+    """Test cases for HyperparameterSearchConfig and SearchSpaceDistribution."""
+
+    def test_search_space_float_inference(self):
+        """Test float type inference from value range."""
+        dist = SearchSpaceDistribution(low=1e-6, high=1e-3)
+        assert dist.type == "float"
+        assert dist.log is True  # Auto-enabled for >10x range
+
+    def test_search_space_int_inference(self):
+        """Test int type inference from integer bounds."""
+        dist = SearchSpaceDistribution(low=4, high=32, step=4)
+        assert dist.type == "int"
+        assert dist.log is False
+        assert dist.step == 4
+
+    def test_search_space_explicit_type(self):
+        """Test explicit type override."""
+        dist = SearchSpaceDistribution(low=1, high=10, type="float")
+        assert dist.type == "float"
+        assert dist.log is False  # 10x range, but explicit int was overridden
+
+    def test_search_space_invalid_step_for_float(self):
+        """Test that step for float raises error."""
+        with pytest.raises(ValidationError):
+            SearchSpaceDistribution(low=0.1, high=1.0, step=0.1)
+
+    def test_search_space_invalid_range(self):
+        """Test that low >= high raises error."""
+        with pytest.raises(ValidationError):
+            SearchSpaceDistribution(low=5, high=5)
+
+    def test_hyperparameter_search_config_defaults(self):
+        """Test default hyperparameter search config."""
+        config = HyperparameterSearchConfig()
+        assert config.n_trials == 0
+        assert config.direction == "minimize"
+        assert config.metric == "eval_loss"
+        assert config.search_space == {}
+
+    def test_hyperparameter_search_config_custom(self):
+        """Test custom hyperparameter search config."""
+        config = HyperparameterSearchConfig(
+            search_space={
+                "learning_rate": SearchSpaceDistribution(low=1e-6, high=1e-3),
+            },
+            n_trials=10,
+            direction="maximize",
+            metric="eval_accuracy",
+        )
+        assert config.n_trials == 10
+        assert config.direction == "maximize"
+        assert config.metric == "eval_accuracy"
+        assert "learning_rate" in config.search_space
+
+    def test_hyperparameter_search_config_invalid_direction(self):
+        """Test invalid direction raises error."""
+        with pytest.raises(ValidationError):
+            HyperparameterSearchConfig(direction="invalid")
+
+    def test_training_config_with_hyperparameter_search(self):
+        """Test TrainingConfig integrates hyperparameter search."""
+        config = TrainingConfig(
+            hyperparameter_search=HyperparameterSearchConfig(
+                search_space={
+                    "learning_rate": SearchSpaceDistribution(low=1e-6, high=1e-3),
+                },
+                n_trials=3,
+            )
+        )
+        assert config.hyperparameter_search.n_trials == 3
+        assert config.hyperparameter_search.search_space["learning_rate"].type == "float"
 
 
 if __name__ == "__main__":

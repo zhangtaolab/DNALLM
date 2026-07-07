@@ -39,19 +39,16 @@ export HTTPS_PROXY="http://your.proxy.server:port"
 ### Memory Issues
 ```yaml
 # In your config file
-training_args:
+finetune:
   gradient_accumulation_steps: 4
   per_device_train_batch_size: 2
   fp16: true
-  gradient_checkpointing: true
 ```
 
 ### Model Loading
 ```python
 # For custom architectures
-model, tokenizer = load_model_and_tokenizer(
-    "model_name", trust_remote_code=True
-)
+model, tokenizer = load_model_and_tokenizer("model_name", trust_remote_code=True)
 ```
 
 ## Still Need Help?

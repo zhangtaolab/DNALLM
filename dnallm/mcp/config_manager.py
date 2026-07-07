@@ -43,20 +43,13 @@ class MCPConfigManager:
             self._load_server_config()
             self._load_model_configs()
         else:
-            logger.warning(
-                f"Configuration file not found: {self.server_config_path}"
-            )
+            logger.warning(f"Configuration file not found: {self.server_config_path}")
 
     def _load_server_config(self) -> None:
         """Load and validate the main server configuration."""
         try:
-            self.server_config = validate_mcp_server_config(
-                str(self.server_config_path)
-            )
-            logger.info(
-                f"Successfully loaded server configuration from "
-                f"{self.server_config_path}"
-            )
+            self.server_config = validate_mcp_server_config(str(self.server_config_path))
+            logger.info(f"Successfully loaded server configuration from {self.server_config_path}")
         except Exception as e:
             logger.error(f"Failed to load server configuration: {e}")
             raise
@@ -78,18 +71,12 @@ class MCPConfigManager:
                     # Make path relative to the config directory
                     config_path = self.config_dir / config_path
 
-                model_config = validate_inference_model_config(
-                    str(config_path)
-                )
+                model_config = validate_inference_model_config(str(config_path))
                 self.model_configs[model_name] = model_config
-                logger.info(
-                    f"Successfully loaded model configuration: {model_name}"
-                )
+                logger.info(f"Successfully loaded model configuration: {model_name}")
 
             except Exception as e:
-                logger.error(
-                    f"Failed to load model configuration for {model_name}: {e}"
-                )
+                logger.error(f"Failed to load model configuration for {model_name}: {e}")
                 # Continue loading other models even if one fails
 
     def get_server_config(self) -> MCPServerConfig | None:
@@ -128,11 +115,7 @@ class MCPConfigManager:
         if not self.server_config:
             return []
 
-        return [
-            name
-            for name, entry in self.server_config.models.items()
-            if entry.enabled
-        ]
+        return [name for name, entry in self.server_config.models.items() if entry.enabled]
 
     def get_model_priority(self, model_name: str) -> int:
         """Get priority of a specific model.
@@ -143,10 +126,7 @@ class MCPConfigManager:
         Returns:
             Priority value (1-10, higher is more important)
         """
-        if (
-            not self.server_config
-            or model_name not in self.server_config.models
-        ):
+        if not self.server_config or model_name not in self.server_config.models:
             return 1
 
         return self.server_config.models[model_name].priority
@@ -187,6 +167,29 @@ class MCPConfigManager:
             "enable_compression": sse_config.enable_compression,
         }
 
+    def get_streamable_http_config(self) -> dict[str, Any]:
+        """Get Streamable HTTP configuration.
+
+        Returns:
+            Dictionary of Streamable HTTP configuration parameters
+        """
+        if not self.server_config:
+            return {}
+
+        streamable_http_config = self.server_config.streamable_http
+        if streamable_http_config is None:
+            return {
+                "host": self.server_config.server.host,
+                "port": self.server_config.server.port,
+                "path": "/mcp",
+            }
+
+        return {
+            "host": streamable_http_config.host,
+            "port": streamable_http_config.port,
+            "path": streamable_http_config.path,
+        }
+
     def get_logging_config(self) -> dict[str, Any]:
         """Get logging configuration.
 
@@ -203,6 +206,20 @@ class MCPConfigManager:
             "file": logging_config.file,
             "max_size": logging_config.max_size,
             "backup_count": logging_config.backup_count,
+            "log_format": logging_config.log_format,
+        }
+
+    def get_timeout_config(self) -> dict[str, Any]:
+        """Get timeout configuration.
+
+        Returns:
+            Dictionary of timeout configuration parameters
+        """
+        if not self.server_config:
+            return {"tool_timeout_seconds": 30}
+
+        return {
+            "tool_timeout_seconds": self.server_config.tool_timeout_seconds,
         }
 
     def reload_configurations(self) -> None:
@@ -238,9 +255,7 @@ class MCPConfigManager:
         # Check that all model config files exist and are valid
         for model_name, _model_entry in self.server_config.models.items():
             if model_name not in self.model_configs:
-                errors.append(
-                    f"Model configuration not loaded for '{model_name}'"
-                )
+                errors.append(f"Model configuration not loaded for '{model_name}'")
 
         return errors
 
@@ -257,7 +272,7 @@ class MCPConfigManager:
         }
 
         for model_name, model_config in self.model_configs.items():
-            summary["models"][model_name] = {
+            summary["models"][model_name] = {  # type: ignore[index]
                 "task_type": model_config.task.task_type,
                 "num_labels": model_config.task.num_labels,
                 "label_names": model_config.task.label_names,

@@ -127,9 +127,7 @@ class TestTaskConfig:
 
     def test_task_config_model_post_init_empty_labels(self):
         """Test that model_post_init handles empty label names."""
-        config = TaskConfig(
-            task_type="regression", num_labels=1, label_names=[]
-        )
+        config = TaskConfig(task_type="regression", num_labels=1, label_names=[])
 
         assert config.label_names == []
         # Should be updated to match label_names length
@@ -193,9 +191,7 @@ class TestTaskConfig:
 
     def test_task_config_json_serialization(self):
         """Test task config JSON serialization."""
-        config = TaskConfig(
-            task_type="regression", num_labels=1, threshold=0.5
-        )
+        config = TaskConfig(task_type="regression", num_labels=1, threshold=0.5)
 
         json_str = config.model_dump_json()
         assert isinstance(json_str, str)
@@ -233,9 +229,7 @@ class TestTaskConfig:
 
     def test_task_config_string_representation(self):
         """Test task config string representation."""
-        config = TaskConfig(
-            task_type="multiclass", num_labels=3, label_names=["A", "B", "C"]
-        )
+        config = TaskConfig(task_type="multiclass", num_labels=3, label_names=["A", "B", "C"])
 
         str_repr = str(config)
         assert "multiclass" in str_repr
@@ -453,13 +447,9 @@ def test_task_type_validation(task_type, expected_valid):
         (5, ["A", "B", "C", "D", "E"], 5),
     ],
 )
-def test_task_config_label_handling(
-    num_labels, label_names, expected_num_labels
-):
+def test_task_config_label_handling(num_labels, label_names, expected_num_labels):
     """Test task config label handling with various inputs."""
-    config = TaskConfig(
-        task_type="multiclass", num_labels=num_labels, label_names=label_names
-    )
+    config = TaskConfig(task_type="multiclass", num_labels=num_labels, label_names=label_names)
 
     assert config.num_labels == expected_num_labels
     if label_names is None:

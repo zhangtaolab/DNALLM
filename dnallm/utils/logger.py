@@ -31,7 +31,11 @@ class DNALLMLogger:
             level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         """
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(getattr(logging, level.upper()))
+        level_name = level.upper()
+        if hasattr(logging, level_name):
+            self.logger.setLevel(getattr(logging, level_name))
+        else:
+            self.logger.setLevel(logging.INFO)
 
         # Prevent duplicate handlers
         if not self.logger.handlers:
@@ -56,8 +60,7 @@ class DNALLMLogger:
         file_handler = logging.FileHandler(log_dir / "dnallm.log")
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - "
-            "%(filename)s:%(lineno)d - %(message)s",
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
@@ -85,9 +88,7 @@ class DNALLMLogger:
 
     def success(self, message: str, **kwargs):
         """Log success message with green color."""
-        self.logger.info(
-            f"{Fore.GREEN}✅ {message}{Style.RESET_ALL}", **kwargs
-        )
+        self.logger.info(f"{Fore.GREEN}✅ {message}{Style.RESET_ALL}", **kwargs)
 
     def failure(self, message: str, **kwargs):
         """Log failure message with red color."""
@@ -99,9 +100,7 @@ class DNALLMLogger:
 
     def warning_icon(self, message: str, **kwargs):
         """Log warning message with yellow color and icon."""
-        self.logger.warning(
-            f"{Fore.YELLOW}⚠️  {message}{Style.RESET_ALL}", **kwargs
-        )
+        self.logger.warning(f"{Fore.YELLOW}⚠️  {message}{Style.RESET_ALL}", **kwargs)
 
     def info_icon(self, message: str, **kwargs):
         """Log info message with cyan color and icon."""
@@ -162,8 +161,7 @@ def setup_logging(level: str = "INFO", log_file: str | None = None):
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
         file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - "
-            "%(filename)s:%(lineno)d - %(message)s",
+            "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         file_handler.setFormatter(file_formatter)
@@ -218,11 +216,16 @@ class LoggingContext:
 
     def __enter__(self):
         self.original_level = get_logger().logger.level
-        get_logger().logger.setLevel(getattr(logging, self.level.upper()))
+        level_name = self.level.upper()
+        if hasattr(logging, level_name):
+            get_logger().logger.setLevel(getattr(logging, level_name))
+        else:
+            get_logger().logger.setLevel(logging.INFO)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        get_logger().logger.setLevel(self.original_level)
+        if self.original_level is not None:
+            get_logger().logger.setLevel(self.original_level)
 
 
 # Decorator for logging function calls
@@ -231,9 +234,7 @@ def log_function_call(func):
 
     def wrapper(*args, **kwargs):
         logger = get_logger()
-        logger.debug(
-            f"Calling {func.__name__} with args={args}, kwargs={kwargs}"
-        )
+        logger.debug(f"Calling {func.__name__} with args={args}, kwargs={kwargs}")
         try:
             result = func(*args, **kwargs)
             logger.debug(f"{func.__name__} completed successfully")

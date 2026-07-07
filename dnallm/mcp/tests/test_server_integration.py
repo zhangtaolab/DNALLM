@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 import yaml
 
+from ..config_validators import MCPServerConfig
 from ..server import DNALLMMCPServer
 
 
@@ -61,9 +62,7 @@ class TestDNALLMMCPServer:
             },
             "logging": {
                 "level": "INFO",
-                "format": (
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                ),
+                "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                 "file": "./logs/test.log",
                 "max_size": "10MB",
                 "backup_count": 5,
@@ -112,7 +111,7 @@ class TestDNALLMMCPServer:
 
         # Create second model config
         model_config2 = model_config.copy()
-        model_config2["model"]["name"] = "test_model2"
+        model_config2["model"]["name"] = "test_model2"  # type: ignore[index]
         model_config2_path = temp_dir / "test_model2_config.yaml"
         with open(model_config2_path, "w") as f:
             yaml.dump(model_config2, f)
@@ -127,9 +126,7 @@ class TestDNALLMMCPServer:
             config_path = self.create_test_configs(temp_path)
 
             # Mock the model loading to avoid actual model loading
-            with patch(
-                "dnallm.mcp.model_manager.load_model_and_tokenizer"
-            ) as mock_load:
+            with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
                 mock_model = Mock()
                 mock_tokenizer = Mock()
                 mock_load.return_value = (mock_model, mock_tokenizer)
@@ -180,6 +177,127 @@ class TestDNALLMMCPServer:
         info = server.get_server_info()
         assert "error" in info or info.get("name") is None
 
+    @pytest.mark.asyncio
+    async def test_streamable_http_server_startup(self):
+        """Test server initializes with streamable_http config block."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            server_config = {
+                "server": {
+                    "host": "0.0.0.0",  # noqa: S104
+                    "port": 8000,
+                    "workers": 1,
+                    "log_level": "INFO",
+                    "debug": False,
+                },
+                "mcp": {
+                    "name": "Test MCP Server",
+                    "version": "0.1.0",
+                    "description": "Test server",
+                },
+                "models": {
+                    "test_model": {
+                        "name": "test_model",
+                        "model_name": "Test Model",
+                        "config_path": "./test_model_config.yaml",
+                        "enabled": True,
+                        "priority": 1,
+                    }
+                },
+                "multi_model": {},
+                "sse": {
+                    "heartbeat_interval": 30,
+                    "max_connections": 100,
+                    "connection_timeout": 300,
+                    "enable_compression": True,
+                },
+                "streamable_http": {
+                    "host": "0.0.0.0",  # noqa: S104
+                    "port": 8000,
+                    "path": "/mcp",
+                },
+                "logging": {
+                    "level": "INFO",
+                    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "file": "./logs/test.log",
+                    "max_size": "10MB",
+                    "backup_count": 5,
+                },
+            }
+
+            config_path = temp_path / "mcp_server_config.yaml"
+            with open(config_path, "w") as f:
+                yaml.dump(server_config, f)
+
+            model_config = {
+                "task": {"task_type": "binary", "num_labels": 2},
+                "inference": {"batch_size": 16, "device": "cpu"},
+                "model": {"name": "test_model", "path": "test/path", "source": "huggingface"},
+            }
+            model_config_path = temp_path / "test_model_config.yaml"
+            with open(model_config_path, "w") as f:
+                yaml.dump(model_config, f)
+
+            with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
+                mock_model = Mock()
+                mock_tokenizer = Mock()
+                mock_load.return_value = (mock_model, mock_tokenizer)
+
+                server = DNALLMMCPServer(str(config_path))
+                await server.initialize()
+
+                assert server._initialized is True
+                assert server.app is not None
+
+    def test_server_config_with_streamable_http(self, caplog):
+        """Test MCPServerConfig validates with both sse and streamable_http blocks."""
+        import logging
+
+        config = {
+            "server": {
+                "host": "0.0.0.0",  # noqa: S104
+                "port": 8000,
+                "workers": 1,
+                "log_level": "INFO",
+                "debug": False,
+            },
+            "mcp": {
+                "name": "Test",
+                "version": "0.1.0",
+                "description": "Test",
+            },
+            "models": {},
+            "multi_model": {},
+            "sse": {
+                "heartbeat_interval": 30,
+                "max_connections": 100,
+                "connection_timeout": 300,
+                "enable_compression": True,
+            },
+            "streamable_http": {
+                "host": "0.0.0.0",  # noqa: S104
+                "port": 8000,
+                "path": "/mcp",
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "file": "./logs/test.log",
+                "max_size": "10MB",
+                "backup_count": 5,
+            },
+            "tool_timeout_seconds": 30,
+        }
+        with caplog.at_level(logging.WARNING):
+            validated = MCPServerConfig(**config)  # type: ignore
+        assert validated.streamable_http is not None
+        assert validated.streamable_http.host == "0.0.0.0"  # noqa: S104
+        assert validated.streamable_http.port == 8000
+        assert validated.streamable_http.path == "/mcp"
+        assert validated.sse is not None
+        assert "Both 'sse' and 'streamable_http'" in caplog.text
+
 
 class TestMCPTools:
     """Test MCP tool functionality."""
@@ -214,9 +332,7 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": (
-                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                    ),
+                    "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,
@@ -264,9 +380,7 @@ class TestMCPTools:
                 },
                 "logging": {
                     "level": "INFO",
-                    "format": (
-                        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                    ),
+                    "format": ("%(asctime)s - %(name)s - %(levelname)s - %(message)s"),
                     "file": "./logs/test.log",
                     "max_size": "10MB",
                     "backup_count": 5,

@@ -277,7 +277,7 @@ def __(mo, configs, model_text, source1_text, load_model_and_tokenizer,
             datasets = None
         # Process datasets
         if datasets is not None:
-            datasets.encode_sequences(task=configs['task'].task_type, remove_unused_columns=True)
+            datasets.encode_sequences(remove_unused_columns=True)
             if isinstance(datasets.dataset, dict):
                 pass
             else:

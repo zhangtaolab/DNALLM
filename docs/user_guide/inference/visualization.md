@@ -61,7 +61,6 @@ This will produce a grid of bar charts for all scalar metrics and a combined plo
 To understand which parts of a sequence a model focuses on, you can visualize its attention weights. This requires running inference with `output_attentions=True`.
 
 **Basic Usage:**
-
 ```python
 # Assume 'inference_engine' is an initialized DNAInference instance
 
@@ -119,9 +118,7 @@ After performing an *in silico* mutagenesis experiment, you can visualize the im
 predictions = mut_analyzer.evaluate(strategy="mean")
 
 # Generate and save the plot
-mutation_plot = mut_analyzer.plot(
-    predictions, save_path="./results/mutation_effects.pdf"
-)
+mutation_plot = mut_analyzer.plot(predictions, save_path="./results/mutation_effects.pdf")
 
 # To display in a notebook
 mutation_plot

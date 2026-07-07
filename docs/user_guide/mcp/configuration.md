@@ -15,7 +15,7 @@ The MCP server uses a hierarchical configuration system with two main files:
 
 ```yaml
 server:
-  host: "0.0.0.0"              # Host address to bind to
+  host: "127.0.0.1"              # Host address to bind to
   port: 8000                   # Port number
   workers: 1                   # Number of worker processes
   log_level: "INFO"            # Logging level
@@ -199,7 +199,7 @@ model:
 ```yaml
 # mcp_server_config.yaml
 server:
-  host: "0.0.0.0"
+  host: "127.0.0.1"
   port: 8000
   workers: 1
   log_level: "INFO"
@@ -381,7 +381,7 @@ You can override configuration values using environment variables:
 
 ```bash
 # Server settings
-export DNALLM_MCP_HOST="0.0.0.0"
+export DNALLM_MCP_HOST="127.0.0.1"
 export DNALLM_MCP_PORT="8000"
 export DNALLM_MCP_LOG_LEVEL="DEBUG"
 
@@ -391,7 +391,7 @@ export DNALLM_MODEL_BATCH_SIZE="32"
 export DNALLM_MODEL_PRECISION="float16"
 
 # Start server
-python -m dnallm.mcp.start_server
+dnallm-mcp-server
 ```
 
 ## Configuration Validation
@@ -442,7 +442,7 @@ The server validates configuration files on startup. Common validation errors:
 1. **Configuration File Not Found**
    ```bash
    # Use absolute paths
-   python -m dnallm.mcp.start_server --config /absolute/path/to/config.yaml
+   dnallm-mcp-server --config /absolute/path/to/config.yaml
    ```
 
 2. **Model Loading Failed**

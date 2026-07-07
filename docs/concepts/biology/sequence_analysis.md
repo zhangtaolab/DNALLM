@@ -13,7 +13,7 @@ Functional analysis aims to understand what a DNA sequence *does*. This is often
 ```python
 # Using DNAInference to predict promoter strength (a regression task)
 inference_result = inference_engine.infer(sequence="GATTACA...")
-print(f"Predicted Promoter Strength: {inference_result[0]['score']}")
+print(f"Predicted Promoter Strength: {inference_result['score']}")
 ```
 
 ## 2. Key Site Identification (In Silico Mutagenesis)

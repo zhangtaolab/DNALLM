@@ -40,16 +40,26 @@ Usage Example:
     ```
 """
 
+from pathlib import Path
 from typing import Any
 from collections.abc import Callable
 import torch
 from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]
+import transformers
+from packaging.version import Version
 from peft import get_peft_model, LoraConfig
+
+try:
+    import optuna
+except ImportError:
+    optuna = None  # type: ignore[assignment]
 
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
 from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
+
+transformers_version = Version(str(transformers.__version__))
 
 
 class DNATrainer:
@@ -57,9 +67,9 @@ class DNATrainer:
 
     This trainer class provides a unified interface for training, evaluating,
     and predicting with DNA language models. It supports various task types
-    including
-    classification,
-    regression, and masked language modeling.
+    including classification, regression, and masked language modeling.
+    Early stopping is supported via the callbacks configuration in TrainingConfig.
+    QLoRA (4-bit quantized LoRA) is supported via use_qlora in TrainingConfig.
 
     Attributes:
         model: The DNA language model to be trained
@@ -72,13 +82,43 @@ class DNATrainer:
         data_split: Available dataset splits
 
     Examples:
+        Standard LoRA training:
         ```python
         trainer = DNATrainer(
             model=model,
             config=config,
-            datasets=datasets
+            datasets=datasets,
+            use_lora=True,
         )
         metrics = trainer.train()
+        ```
+
+        QLoRA training (4-bit quantization):
+        ```python
+        # Model must be loaded with quantization_config before passing to trainer
+        model, tokenizer = load_model_and_tokenizer(
+            model_name,
+            task_config=task_config,
+            quantization_config={
+                "load_in_4bit": True,
+                "bnb_4bit_compute_dtype": "float16",
+                "bnb_4bit_use_double_quant": True,
+                "bnb_4bit_quant_type": "nf4",
+            },
+        )
+        trainer = DNATrainer(
+            model=model,
+            config=config,
+            datasets=datasets,
+            use_lora=True,
+        )
+        metrics = trainer.train()
+        ```
+
+    Plotting:
+        After training, generate visualization plots:
+        ```python
+        trainer.plot_history(output_dir="./plots")
         ```
     """
 
@@ -107,11 +147,19 @@ class DNATrainer:
         self.extra_args = extra_args
         self.use_lora = use_lora
 
-        # LoRA
+        # LoRA / QLoRA
         if use_lora:
             from ..models.model import peft_forward_compatiable
 
             print("[Info] Applying LoRA to the model...")
+
+            # QLoRA: prepare 4-bit model for k-bit training
+            if self.train_config.use_qlora:
+                from peft import prepare_model_for_kbit_training
+
+                print("[Info] Preparing model for 4-bit QLoRA training...")
+                model = prepare_model_for_kbit_training(model)
+
             lora_config = LoraConfig(**config["lora"].dict())
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
@@ -144,16 +192,27 @@ class DNATrainer:
         training_args = self.train_config.model_dump()
         if self.extra_args:
             training_args.update(self.extra_args)
+        # Remove non-TrainingArguments fields
+        training_args.pop("callbacks", None)
+        training_args.pop("hyperparameter_search", None)
+        training_args.pop("use_qlora", None)
+        training_args.pop("quantization_config", None)
+        self._save_safetensors = training_args.pop("save_safetensors", True)
         self.training_args = TrainingArguments(
             **training_args,
         )
         self.training_args.remove_unused_columns = (
             False
-            if self.use_lora
-            or "DNALLMforSequenceClassification"
-            in self.model.__class__.__name__
+            if self.use_lora or "DNALLMforSequenceClassification" in self.model.__class__.__name__
             else self.training_args.remove_unused_columns
         )
+
+        # Enable gradient checkpointing for QLoRA (required for memory efficiency)
+        if self.train_config.use_qlora and hasattr(self.model, "gradient_checkpointing_enable"):
+            self.model.gradient_checkpointing_enable()
+            print("[Info] Gradient checkpointing enabled for QLoRA.")
+        if self.datasets is None:
+            raise ValueError("Datasets are required for training")
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):
             self.data_split = self.datasets.dataset.keys()
@@ -186,23 +245,45 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
+                tokenizer=self.datasets.tokenizer,  # type: ignore
                 mlm=True,
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
 
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer, mlm=False
+                tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]
+                mlm=False,
             )
         else:
             data_collator = None
+
+        # Assemble callbacks
+        callbacks = []
+        if (
+            self.train_config.callbacks
+            and self.train_config.callbacks.early_stopping
+            and self.train_config.callbacks.early_stopping.patience is not None
+        ):
+            callbacks.append(
+                EarlyStoppingCallback(
+                    early_stopping_patience=self.train_config.callbacks.early_stopping.patience,
+                    early_stopping_threshold=self.train_config.callbacks.early_stopping.threshold,
+                )
+            )
+            if not self.training_args.load_best_model_at_end:
+                print(
+                    "[Warning] Early stopping enabled but load_best_model_at_end=False. "
+                    "Enabling load_best_model_at_end."
+                )
+                self.training_args.load_best_model_at_end = True
+
         # Initialize trainer
         self.trainer = Trainer(
             model=self.model,
@@ -212,6 +293,7 @@ class DNATrainer:
             compute_metrics=compute_metrics,
             data_collator=data_collator,
             preprocess_logits_for_metrics=preprocess_logits,
+            callbacks=callbacks,
         )
 
     def customize_trainer(self, trainer_cls: Trainer):
@@ -245,6 +327,39 @@ class DNATrainer:
         """
         return compute_metrics(self.task_config)  # type: ignore[no-any-return]
 
+    def _create_hp_space_fn(self) -> Callable:
+        """Create the hp_space function for Optuna hyperparameter search.
+
+        Returns a callable that takes an Optuna trial and returns
+        a dict of hyperparameter values for TrainingArguments.
+        """
+        search_config = self.train_config.hyperparameter_search
+        if not search_config or not search_config.search_space:
+            return lambda trial: {}
+
+        def hp_space(trial) -> dict[str, Any]:
+            result = {}
+            for param_name, distribution in search_config.search_space.items():
+                if distribution.type == "float":
+                    result[param_name] = trial.suggest_float(
+                        param_name,
+                        distribution.low,
+                        distribution.high,
+                        log=distribution.log,
+                    )
+                elif distribution.type == "int":
+                    kwargs = {
+                        "name": param_name,
+                        "low": int(distribution.low),
+                        "high": int(distribution.high),
+                    }
+                    if distribution.step is not None:
+                        kwargs["step"] = distribution.step
+                    result[param_name] = trial.suggest_int(**kwargs)
+            return result
+
+        return hp_space
+
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
@@ -267,15 +382,91 @@ class DNATrainer:
         self.trainer.save_model()
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
-            self.model.save_pretrained(
-                self.train_config.output_dir,
-                safe_serialization=self.trainer.args.save_safetensors,
-            )
+            # Transformers 5 enforces safetensors
+            if transformers_version >= Version("5.0.0"):
+                if self.trainer.args.save_safetensors:
+                    self.model.save_pretrained(
+                        self.train_config.output_dir,
+                    )
+                else:
+                    torch.save(
+                        self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
+                    )
+            else:
+                self.model.save_pretrained(
+                    self.train_config.output_dir,
+                    safe_serialization=self.trainer.args.save_safetensors,
+                )
         if save_tokenizer:
-            self.datasets.tokenizer.save_pretrained(
-                self.train_config.output_dir
-            )
+            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
         return metrics
+
+    def search(self, save_tokenizer: bool = True) -> dict[str, Any]:
+        """Run hyperparameter search using Optuna backend.
+
+        This method runs multiple training trials with different
+        hyperparameters and returns the best run configuration.
+
+        Args:
+            save_tokenizer: Whether to save the tokenizer with the best model.
+
+        Returns:
+            Dictionary containing:
+            - "best_run": The best run object from hyperparameter_search
+            - "best_hyperparameters": Dict of best hyperparameter values
+            - "best_metric": The best objective metric value
+        """
+        if optuna is None:
+            raise ImportError(
+                "Optuna is required for hyperparameter search. Install it with: pip install optuna"
+            )
+
+        search_config = self.train_config.hyperparameter_search
+        if not search_config or search_config.n_trials <= 0:
+            raise ValueError(
+                "Hyperparameter search is disabled. Set n_trials > 0 in "
+                "hyperparameter_search configuration."
+            )
+
+        self.model.train()
+
+        best_run = self.trainer.hyperparameter_search(
+            direction=search_config.direction,
+            backend="optuna",
+            n_trials=search_config.n_trials,
+            hp_space=self._create_hp_space_fn(),
+            study_name=search_config.study_name,
+        )
+
+        result = {
+            "best_run": best_run,
+            "best_hyperparameters": best_run.hyperparameters,
+            "best_metric": getattr(best_run, "objective", None),
+        }
+
+        # Save the best model
+        self.trainer.save_model()
+        # check if have save_pretrained method
+        if hasattr(self.model, "save_pretrained"):
+            # Transformers 5 enforces safetensors
+            if transformers_version >= Version("5.0.0"):
+                if self.trainer.args.save_safetensors:
+                    self.model.save_pretrained(
+                        self.train_config.output_dir,
+                    )
+                else:
+                    torch.save(
+                        self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
+                    )
+            else:
+                self.model.save_pretrained(
+                    self.train_config.output_dir,
+                    safe_serialization=self.trainer.args.save_safetensors,
+                )
+        if save_tokenizer:
+            self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
+
+        return result
 
     def evaluate(self) -> dict[str, float]:
         """Evaluate the model on the evaluation dataset.
@@ -304,6 +495,48 @@ class DNATrainer:
         self.model.eval()
         result = {}
         if "test" in self.data_split:
-            test_dataset = self.datasets.dataset["test"]
+            test_dataset = self.datasets.dataset["test"]  # type: ignore
             result = self.trainer.predict(test_dataset)
         return result
+
+    def plot_history(
+        self,
+        output_dir: str | None = None,
+        plot_loss: bool = True,
+        plot_lr: bool = True,
+    ) -> dict[str, Path]:
+        """Generate training visualization plots from trainer state.
+
+        This is a convenience method that delegates to the standalone
+        plotting utilities in dnallm.utils.training_plots.
+
+        Args:
+            output_dir: Directory to save plots. Defaults to training output_dir.
+            plot_loss: Whether to generate loss curve plot.
+            plot_lr: Whether to generate learning rate schedule plot.
+
+        Returns:
+            Dictionary mapping plot names to saved file paths.
+        """
+        from pathlib import Path
+
+        from dnallm.utils.training_plots import plot_loss_curve, plot_lr_schedule
+
+        plot_dir = output_dir or self.train_config.output_dir or "."
+        plot_path = Path(plot_dir)
+        plot_path.mkdir(parents=True, exist_ok=True)
+
+        results: dict[str, Path] = {}
+        log_history = self.trainer.state.log_history
+
+        if plot_loss:
+            loss_path = plot_path / "training_loss.png"
+            plot_loss_curve(log_history, output_path=loss_path)
+            results["loss_curve"] = loss_path
+
+        if plot_lr:
+            lr_path = plot_path / "lr_schedule.png"
+            plot_lr_schedule(log_history, output_path=lr_path)
+            results["lr_schedule"] = lr_path
+
+        return results

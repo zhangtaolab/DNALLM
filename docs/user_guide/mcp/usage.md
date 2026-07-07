@@ -210,21 +210,19 @@ Perform health check on the MCP server.
 - Server health status and statistics
 
 **Example:**
-```json
-{
-  "status": "healthy",
-  "loaded_models": 3,
-  "total_configured_models": 3,
-  "server_name": "DNALLM MCP Server",
-  "server_version": "0.1.0",
-  "uptime": "2h 15m 30s"
-}
+```python
+from dnallm.mcp import DNALLMMCPClient
+
+# Connect using streamable-http transport (recommended)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
+
+# Single sequence prediction
+result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
+print(result)
 ```
 
-## Client Examples
-
 ### Python with Pydantic AI
-
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from pydantic import BaseModel
@@ -247,12 +245,12 @@ agent = Agent(
 
 When analyzing a DNA sequence, you should:
 1. First call _list_loaded_models to see what models are available
-2. Then call _dna_multi_model_predict with the DNA sequence and appropriate model names
+2. Then call dna_multi_model_predict with the DNA sequence and appropriate model names
 3. Interpret and explain the results in a comprehensive way
 
 Available tools should include:
 - _list_loaded_models: Lists available DNA analysis models
-- _dna_multi_model_predict: Predicts DNA sequence properties using multiple models
+- dna_multi_model_predict: Predicts DNA sequence properties using multiple models
 
 Always use the tools to provide accurate analysis.""",
 )
@@ -274,6 +272,7 @@ print(result.output)
 
 ### Python with MCP Client
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from mcp import ClientSession, StdioServerParameters
@@ -282,9 +281,7 @@ from mcp.client.stdio import stdio_client
 
 async def main():
     # Connect to MCP server via STDIO
-    server_params = StdioServerParameters(
-        command="python", args=["-m", "dnallm.mcp.start_server"]
-    )
+    server_params = StdioServerParameters(command="dnallm-mcp-server")
 
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -319,6 +316,7 @@ if __name__ == "__main__":
 
 ### Python with SSE Client
 
+<!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
 from mcp.client.sse import sse_client
@@ -425,16 +423,6 @@ curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
 ```
 
 #### Multi-Model Prediction
-```bash
-curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_multi_model_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_names": ["promoter_model", "conservation_model"]}}}'
-```
-
-## Usage Patterns
-
-### 1. Basic DNA Analysis Workflow
-
 ```python
 async def basic_dna_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
@@ -450,9 +438,7 @@ async def basic_dna_analysis(sequence):
         print(f"Promoter prediction: {result}")
 
         # 3. Multi-model analysis
-        multi_result = await read.call_tool(
-            "dna_multi_model_predict", {"sequence": sequence}
-        )
+        multi_result = await read.call_tool("dna_multi_model_predict", {"sequence": sequence})
         print(f"Multi-model analysis: {multi_result}")
 
         return multi_result
@@ -527,9 +513,7 @@ async def model_comparison(sequence):
 
         print(f"Model comparison for sequence: {sequence}")
         for model_name, result in results.items():
-            print(
-                f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})"
-            )
+            print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
 
         print(f"Consensus: {consensus}")
 

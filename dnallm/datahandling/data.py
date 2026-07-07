@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
@@ -118,9 +118,7 @@ class DNADataset:
         cls.sep = sep
         cls.multi_label_sep = multi_label_sep
         # Check if input is a list or dict
-        if isinstance(
-            file_paths, dict
-        ):  # Handling multiple files (pre-split datasets)
+        if isinstance(file_paths, dict):  # Handling multiple files (pre-split datasets)
             ds_dict = {}
             for split, path in file_paths.items():
                 ds_dict[split] = cls._load_single_data(
@@ -171,18 +169,14 @@ class DNADataset:
         """
         file_path, file_type = cls._normalize_file_path(file_path)
         sep = cls._determine_separator(file_type, sep)
-        file_type = cls._check_header_and_type(
-            file_path, file_type, seq_col, label_col, sep
-        )
+        file_type = cls._check_header_and_type(file_path, file_type, seq_col, label_col, sep)
 
         # Load dataset based on file type
         if file_type in ["csv", "tsv", "json", "parquet", "arrow"]:
             ds = cls._load_structured_data(file_path, file_type, sep)
         elif file_type in ["pkl", "pickle", "dict"]:
             if isinstance(file_path, list):
-                raise ValueError(
-                    "Dictionary/pickle files must be single files, not lists"
-                )
+                raise ValueError("Dictionary/pickle files must be single files, not lists")
             ds = cls._load_dict_data(file_path)
         elif file_type in ["fa", "fna", "fas", "fasta"]:
             if isinstance(file_path, list):
@@ -204,9 +198,7 @@ class DNADataset:
         return ds
 
     @classmethod
-    def _normalize_file_path(
-        cls, file_path: str | list
-    ) -> tuple[str | list, str]:
+    def _normalize_file_path(cls, file_path: str | list) -> tuple[str | list, str]:
         """Normalize file path and determine file type."""
         if isinstance(file_path, list):
             file_path = [os.path.expanduser(fpath) for fpath in file_path]
@@ -217,9 +209,7 @@ class DNADataset:
         return file_path, file_type
 
     @classmethod
-    def _determine_separator(
-        cls, file_type: str, sep: str | None
-    ) -> str | None:
+    def _determine_separator(cls, file_type: str, sep: str | None) -> str | None:
         """Determine the appropriate separator for the file type."""
         if file_type == "csv":
             return sep if sep else ","
@@ -240,9 +230,7 @@ class DNADataset:
         if file_type in ["csv", "tsv", "txt"] and isinstance(file_path, str):
             with open(file_path) as f:
                 header = f.readline().strip()
-                if not header or (
-                    seq_col not in header and label_col not in header
-                ):
+                if not header or (seq_col not in header and label_col not in header):
                     return "txt"
         return file_type
 
@@ -252,9 +240,7 @@ class DNADataset:
     ) -> Dataset:
         """Load structured data files (CSV, TSV, JSON, Parquet, Arrow)."""
         if file_type in ["csv", "tsv"]:
-            ds = load_dataset(
-                "csv", data_files=file_path, split="train", delimiter=sep
-            )
+            ds = load_dataset("csv", data_files=file_path, split="train", delimiter=sep)
         elif file_type == "json":
             ds = load_dataset("json", data_files=file_path, split="train")
         elif file_type in ["parquet", "arrow"]:
@@ -283,11 +269,7 @@ class DNADataset:
                         sequences.append(seq)
                         labels.append(lab)
                     header = line[1:].strip()
-                    lab = (
-                        header.split(fasta_sep)[-1]
-                        if fasta_sep in header
-                        else header
-                    )
+                    lab = header.split(fasta_sep)[-1] if fasta_sep in header else header
                     seq = ""
                 else:
                     seq += line.strip()
@@ -311,18 +293,14 @@ class DNADataset:
                         split="train",
                         delimiter=sep,
                     )
-                record = (
-                    line.strip().split(sep) if sep else line.strip().split()
-                )
+                record = line.strip().split(sep) if sep else line.strip().split()
                 if len(record) >= 2:
                     sequences.append(record[0])
                     labels.append(record[1])
         return Dataset.from_dict({"sequence": sequences, "labels": labels})
 
     @classmethod
-    def _rename_columns(
-        cls, ds: Dataset, seq_col: str, label_col: str
-    ) -> Dataset:
+    def _rename_columns(cls, ds: Dataset, seq_col: str, label_col: str) -> Dataset:
         """Rename columns to standard names if needed."""
         if seq_col != "sequence" and seq_col in ds.column_names:
             if "sequence" not in ds.features:
@@ -333,22 +311,15 @@ class DNADataset:
         return ds
 
     @classmethod
-    def _format_labels(
-        cls, ds: Dataset, multi_label_sep: str | None
-    ) -> Dataset:
+    def _format_labels(cls, ds: Dataset, multi_label_sep: str | None) -> Dataset:
         """Format labels to appropriate types."""
 
         def format_labels(example):
             labels = example["labels"]
             if isinstance(labels, str):
                 try:
-                    if (
-                        multi_label_sep is not None
-                        and multi_label_sep in labels
-                    ):
-                        example["labels"] = [
-                            float(x) for x in labels.split(multi_label_sep)
-                        ]
+                    if multi_label_sep is not None and multi_label_sep in labels:
+                        example["labels"] = [float(x) for x in labels.split(multi_label_sep)]
                     else:
                         try:
                             example["labels"] = float(labels)
@@ -394,7 +365,7 @@ class DNADataset:
             ds = ds.rename_column(seq_col, "sequence")
         if label_col != "labels":
             ds = ds.rename_column(label_col, "labels")
-        cls.is_split: bool = isinstance(ds, DatasetDict)
+        cls.is_split: bool = isinstance(ds, DatasetDict)  # type: ignore[misc]
         return cls(ds, tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
@@ -507,12 +478,12 @@ class DNADataset:
             )
 
         # Post-process dataset
-        self._post_process_encoded_dataset(
-            remove_unused_columns, return_tensors
-        )
+        self._post_process_encoded_dataset(remove_unused_columns, return_tensors)
 
     def _get_tokenizer_config(self) -> dict:
         """Get tokenizer configuration."""
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is required")
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
         sp_token_map = (
@@ -551,18 +522,12 @@ class DNADataset:
         # Get pad token
         if not sp_token_map.get("pad_token"):
             if hasattr(self.tokenizer, "decode"):
-                sp_token_map["pad_token"] = self.tokenizer.decode(
-                    sp_token_map["pad_id"]
-                )
+                sp_token_map["pad_token"] = self.tokenizer.decode(sp_token_map["pad_id"])
             elif hasattr(self.tokenizer, "convert_ids_to_tokens"):
-                pad_token = self.tokenizer.convert_ids_to_tokens(
-                    sp_token_map["pad_id"]
-                )
+                pad_token = self.tokenizer.convert_ids_to_tokens(sp_token_map["pad_id"])
                 sp_token_map["pad_token"] = pad_token
             elif hasattr(self.tokenizer, "decode_token"):
-                sp_token_map["pad_token"] = self.tokenizer.decode_token(
-                    sp_token_map["pad_id"]
-                )
+                sp_token_map["pad_token"] = self.tokenizer.decode_token(sp_token_map["pad_id"])
             self.tokenizer.pad_token = sp_token_map["pad_token"]
         # Get eos token
         eos_token = sp_token_map.get("eos_token")
@@ -590,6 +555,8 @@ class DNADataset:
         seq_sep: str | None = None,
     ) -> None:
         """Apply sequence classification tokenization."""
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer is required")
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -609,9 +576,7 @@ class DNADataset:
             if lowercase:
                 sequences = [x.lower() for x in sequences]
             if seq_sep is not None:
-                sequences = [
-                    seq.replace(seq_sep, sep_token) for seq in sequences
-                ]
+                sequences = [seq.replace(seq_sep, sep_token) for seq in sequences]
             if self.tokenizer is None:
                 raise ValueError("Tokenizer is not initialized")
             return self.tokenizer(
@@ -642,9 +607,7 @@ class DNADataset:
             desc="Encoding inputs",
         )
 
-    def _process_token_classification_batch(
-        self, examples: dict, config: dict
-    ) -> BatchEncoding:
+    def _process_token_classification_batch(self, examples: dict, config: dict) -> BatchEncoding:
         """Process a batch for token classification."""
         tokenized_examples: dict = {
             "sequence": [],
@@ -659,9 +622,7 @@ class DNADataset:
             input_seqs = input_seqs.split(self.multi_label_sep)
 
         for i, example_tokens in enumerate(input_seqs):
-            processed = self._process_single_token_sequence(
-                example_tokens, examples, i, config
-            )
+            processed = self._process_single_token_sequence(example_tokens, examples, i, config)
             for key, value in processed.items():
                 if key in tokenized_examples:
                     tokenized_examples[key].append(value)
@@ -676,25 +637,17 @@ class DNADataset:
         """Process a single token sequence for token classification."""
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
-        all_ids = list(
-            self.tokenizer.encode(example_tokens, is_split_into_words=True)
-        )
+        all_ids = list(self.tokenizer.encode(example_tokens, is_split_into_words=True))
         example_ner_tags = (
-            examples["labels"][i]
-            if "labels" in examples
-            else [0] * len(example_tokens)
+            examples["labels"][i] if "labels" in examples else [0] * len(example_tokens)
         )
 
         pad_len = config["max_length"] - len(all_ids)
 
         if pad_len >= 0:
-            return self._pad_sequence(
-                all_ids, example_tokens, example_ner_tags, pad_len, config
-            )
+            return self._pad_sequence(all_ids, example_tokens, example_ner_tags, pad_len, config)
         else:
-            return self._truncate_sequence(
-                all_ids, example_tokens, example_ner_tags, config
-            )
+            return self._truncate_sequence(all_ids, example_tokens, example_ner_tags, config)
 
     def _pad_sequence(
         self,
@@ -708,8 +661,8 @@ class DNADataset:
         all_masks = [1] * len(all_ids) + [0] * pad_len
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
-        if isinstance(example_tokens, str):
-            example_tokens = list(example_tokens)
+        if isinstance(example_tokens, str):  # type: ignore
+            example_tokens = list(example_tokens)  # type: ignore[unreachable]
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
                 example_tokens, example_ner_tags, pad_len, config
@@ -737,10 +690,8 @@ class DNADataset:
         all_masks = [1] * config["max_length"]
 
         if config["cls_token"]:
-            example_tokens, example_ner_tags = (
-                self._add_special_tokens_truncated(
-                    example_tokens, example_ner_tags, config
-                )
+            example_tokens, example_ner_tags = self._add_special_tokens_truncated(
+                example_tokens, example_ner_tags, config
             )
         else:
             example_tokens = example_tokens[: config["max_length"]]
@@ -768,9 +719,7 @@ class DNADataset:
                 + [config["sep_token"]]
                 + [config["pad_token"]] * pad_len
             )
-            example_ner_tags = (
-                [-100] + example_ner_tags + [-100] * (pad_len + 1)
-            )
+            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
         elif config["eos_token"]:
             example_tokens = (
                 [config["cls_token"]]
@@ -778,14 +727,10 @@ class DNADataset:
                 + [config["eos_token"]]
                 + [config["pad_token"]] * pad_len
             )
-            example_ner_tags = (
-                [-100] + example_ner_tags + [-100] * (pad_len + 1)
-            )
+            example_ner_tags = [-100] + example_ner_tags + [-100] * (pad_len + 1)
         else:
             example_tokens = (
-                [config["cls_token"]]
-                + example_tokens
-                + [config["pad_token"]] * pad_len
+                [config["cls_token"]] + example_tokens + [config["pad_token"]] * pad_len
             )
             example_ner_tags = [-100] + example_ner_tags + [-100] * pad_len
         return example_tokens, example_ner_tags
@@ -844,14 +789,10 @@ class DNADataset:
         ]
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
-                unused_cols = [
-                    f for f in self.dataset[dt].features if f not in used_cols
-                ]
+                unused_cols = [f for f in self.dataset[dt].features if f not in used_cols]
                 self.dataset[dt] = self.dataset[dt].remove_columns(unused_cols)
         else:
-            unused_cols = [
-                f for f in self.dataset.features if f not in used_cols
-            ]
+            unused_cols = [f for f in self.dataset.features if f not in used_cols]
             self.dataset = self.dataset.remove_columns(unused_cols)
 
     def split_data(
@@ -871,21 +812,15 @@ class DNADataset:
         """
         # check if the dataset is already a DatasetDict
         if isinstance(self.dataset, DatasetDict):
-            raise ValueError(
-                "Dataset is already a DatasetDict, no need to split"
-            )
+            raise ValueError("Dataset is already a DatasetDict, no need to split")
         # First, split off test+validation from training data
-        split_result = self.dataset.train_test_split(
-            test_size=test_size + val_size, seed=seed
-        )
+        split_result = self.dataset.train_test_split(test_size=test_size + val_size, seed=seed)
         train_ds = split_result["train"]
         temp_ds = split_result["test"]
         # Further split temp_ds into test and validation sets
         if val_size > 0:
             rel_val_size = val_size / (test_size + val_size)
-            temp_split = temp_ds.train_test_split(
-                test_size=rel_val_size, seed=seed
-            )
+            temp_split = temp_ds.train_test_split(test_size=rel_val_size, seed=seed)
             test_ds = temp_split["train"]
             val_ds = temp_split["test"]
             self.dataset = DatasetDict({
@@ -921,9 +856,7 @@ class DNADataset:
             valid_chars: Allowed characters in the sequences
         """
         self.dataset = self.dataset.filter(
-            lambda example: check_sequence(
-                example["sequence"], minl, maxl, gc, valid_chars
-            )
+            lambda example: check_sequence(example["sequence"], minl, maxl, gc, valid_chars)
         )
 
     def random_generate(
@@ -953,9 +886,7 @@ class DNADataset:
                 or use the data as a dataset
         """
 
-        def process(
-            minl, maxl, number, gc, n_ratio, padding_size, seed, label_func
-        ):
+        def process(minl, maxl, number, gc, n_ratio, padding_size, seed, label_func):
             sequences = random_generate_sequences(
                 minl=minl,
                 maxl=maxl,
@@ -977,13 +908,8 @@ class DNADataset:
         if append:
             if isinstance(self.dataset, DatasetDict):
                 for dt in self.dataset:
-                    total_length = sum(
-                        len(self.dataset[split])
-                        for split in self.dataset.keys()
-                    )
-                    number = round(
-                        samples * len(self.dataset[dt]) / total_length
-                    )
+                    total_length = sum(len(self.dataset[split]) for split in self.dataset.keys())
+                    number = round(samples * len(self.dataset[dt]) / total_length)
                     random_ds = process(
                         minl,
                         maxl,
@@ -1034,9 +960,7 @@ class DNADataset:
 
         self.dataset = self.dataset.filter(non_missing)
 
-    def raw_reverse_complement(
-        self, ratio: float = 0.5, seed: int | None = None
-    ) -> None:
+    def raw_reverse_complement(self, ratio: float = 0.5, seed: int | None = None) -> None:
         """Do reverse complement of sequences in the dataset.
 
         Args:
@@ -1065,9 +989,7 @@ class DNADataset:
         else:
             self.dataset = process(self.dataset, ratio, seed)
 
-    def augment_reverse_complement(
-        self, reverse: bool = True, complement: bool = True
-    ) -> None:
+    def augment_reverse_complement(self, reverse: bool = True, complement: bool = True) -> None:
         """Augment the dataset by adding reverse complement sequences.
 
         This method doubles the dataset size.
@@ -1101,9 +1023,7 @@ class DNADataset:
 
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
-                self.dataset[dt] = process(
-                    self.dataset[dt], reverse, complement
-                )
+                self.dataset[dt] = process(self.dataset[dt], reverse, complement)
         else:
             self.dataset = process(self.dataset, reverse, complement)
 
@@ -1122,9 +1042,7 @@ class DNADataset:
 
         def process(ds, reverse, complement, sep):
             def concat_fn(example):
-                rc = reverse_complement(
-                    example["sequence"], reverse=reverse, complement=complement
-                )
+                rc = reverse_complement(example["sequence"], reverse=reverse, complement=complement)
                 example["sequence"] = example["sequence"] + sep + rc
                 return example
 
@@ -1133,9 +1051,7 @@ class DNADataset:
 
         if isinstance(self.dataset, DatasetDict):
             for dt in self.dataset:
-                self.dataset[dt] = process(
-                    self.dataset[dt], reverse, complement, sep
-                )
+                self.dataset[dt] = process(self.dataset[dt], reverse, complement, sep)
         else:
             self.dataset = process(self.dataset, reverse, complement, sep)
 
@@ -1164,14 +1080,10 @@ class DNADataset:
         dataset = self.dataset
         if isinstance(dataset, DatasetDict):
             for dt in dataset.keys():
-                random_idx = random.sample(
-                    range(len(dataset[dt])), int(len(dataset[dt]) * ratio)
-                )
+                random_idx = random.sample(range(len(dataset[dt])), int(len(dataset[dt]) * ratio))
                 dataset[dt] = dataset[dt].select(random_idx)
         else:
-            random_idx = random.sample(
-                range(len(dataset)), int(len(dataset) * ratio)
-            )
+            random_idx = random.sample(range(len(dataset)), int(len(dataset) * ratio))
             dataset = dataset.select(random_idx)
 
         if overwrite:
@@ -1181,9 +1093,7 @@ class DNADataset:
             # Create a new DNADataset object with the sampled data
             return DNADataset(dataset, self.tokenizer, self.max_length)
 
-    def head(
-        self, head: int = 10, show: bool = False
-    ) -> dict[Any, Any] | None:
+    def head(self, head: int = 10, show: bool = False) -> dict[Any, Any] | None:
         """Fetch the head n data from the dataset.
 
         Args:
@@ -1366,17 +1276,11 @@ class DNADataset:
 
     def _determine_string_label_type(self, first_label: str) -> str:
         """Determine data type for string labels."""
-        if self.multi_label_sep is not None and self.multi_label_sep in str(
-            first_label
-        ):
+        if self.multi_label_sep is not None and self.multi_label_sep in str(first_label):
             multi_labels = str(first_label).split(self.multi_label_sep)
-            return (
-                "multi_regression" if "." in multi_labels[0] else "multi_label"
-            )
+            return "multi_regression" if "." in multi_labels[0] else "multi_label"
         else:
-            return (
-                "regression" if "." in str(first_label) else "classification"
-            )
+            return "regression" if "." in str(first_label) else "classification"
 
     def statistics(self) -> dict:
         """Get statistics of the dataset.
@@ -1411,15 +1315,10 @@ class DNADataset:
             elif isinstance(dataset, pd.DataFrame):
                 df = dataset.copy()
             else:
-                raise ValueError(
-                    "prepare_dataframe expects a datasets.Dataset or "
-                    "pandas.DataFrame"
-                )
+                raise ValueError("prepare_dataframe expects a datasets.Dataset or pandas.DataFrame")
             return df
 
-        def compute_basic_stats(
-            df: pd.DataFrame, seq_col: str = "sequence"
-        ) -> dict:
+        def compute_basic_stats(df: pd.DataFrame, seq_col: str = "sequence") -> dict:
             """Compute number of samples and sequence length statistics."""
             seqs = df[seq_col].fillna("").astype(str)
             lens = seqs.str.len()
@@ -1427,25 +1326,21 @@ class DNADataset:
                 "n_samples": len(lens),
                 "min_len": int(lens.min()) if len(lens) > 0 else 0,
                 "max_len": int(lens.max()) if len(lens) > 0 else 0,
-                "mean_len": float(lens.mean())
-                if len(lens) > 0
-                else float("nan"),
-                "median_len": float(lens.median())
-                if len(lens) > 0
-                else float("nan"),
+                "mean_len": float(lens.mean()) if len(lens) > 0 else float("nan"),
+                "median_len": float(lens.median()) if len(lens) > 0 else float("nan"),
             }
 
         stats = {}
         seq_col = "sequence"
         # label_col = "labels"  # Not used in current implementation
         if isinstance(self.dataset, DatasetDict):
-            self.stats_for_plot = {}
+            self.stats_for_plot = {}  # type: ignore[assignment]
             for split_name, split_ds in self.dataset.items():
                 df = prepare_dataframe(split_ds)
                 data_type = self.data_type
                 basic = compute_basic_stats(df, seq_col)
                 stats[split_name] = {"data_type": data_type, **basic}
-                self.stats_for_plot[split_name] = df
+                self.stats_for_plot[split_name] = df  # type: ignore[index]
         else:
             df = prepare_dataframe(self.dataset)
             data_type = self.data_type
@@ -1480,13 +1375,12 @@ class DNADataset:
 
         if self.stats is None or self.stats_for_plot is None:
             raise ValueError(
-                "Statistics have not been computed yet. Please call "
-                "`statistics()` method first."
+                "Statistics have not been computed yet. Please call `statistics()` method first."
             )
 
         task_type = self.data_type or "unknown"
-        if isinstance(self.stats_for_plot, dict):
-            df_list = {}
+        if isinstance(self.stats_for_plot, dict):  # type: ignore[unreachable]
+            df_list = {}  # type: ignore[unreachable]
             for split_name, df in self.stats_for_plot.items():
                 df_list[split_name] = df.copy()
             final = self._create_final_chart(df_list, task_type)
@@ -1508,21 +1402,17 @@ class DNADataset:
         if isinstance(self.stats, dict):
             for split_name, _ in self.stats.items():
                 stats = df[split_name] if isinstance(df, dict) else df
-                chart = self._per_split_charts(
-                    stats, task_type, seq_col, label_col
-                ).properties(title=split_name)
+                chart = self._per_split_charts(stats, task_type, seq_col, label_col).properties(
+                    title=split_name
+                )
                 split_charts.append(chart)
-            return alt.hconcat(*split_charts).properties(
-                title="Dataset splits"
-            )
+            return alt.hconcat(*split_charts).properties(title="Dataset splits")
         else:
-            return self._per_split_charts(
-                df, task_type, seq_col, label_col
-            ).properties(title="Full dataset")
+            return self._per_split_charts(df, task_type, seq_col, label_col).properties(  # type: ignore
+                title="Full dataset"
+            )
 
-    def _display_or_save_chart(
-        self, final: Any, save_path: str | None
-    ) -> None:
+    def _display_or_save_chart(self, final: Any, save_path: str | None) -> None:
         """Display or save the final chart."""
         if save_path:
             final.save(save_path)
@@ -1552,9 +1442,7 @@ class DNADataset:
             df[c] = pd.to_numeric(df[c].replace("", np.nan))
         return df
 
-    def _classification_plots(
-        self, df: pd.DataFrame, label_col: str, seq_col: str
-    ) -> tuple:
+    def _classification_plots(self, df: pd.DataFrame, label_col: str, seq_col: str) -> tuple:
         """Build histogram of seq lengths colorized by label and GC boxplot
         grouped by label."""
         import altair as alt
@@ -1575,9 +1463,7 @@ class DNADataset:
                     title="Sequence length",
                 ),
                 y=alt.Y("count():Q", title="Count"),
-                color=alt.Color(
-                    "label_str:N", legend=alt.Legend(title="Labels")
-                ),
+                color=alt.Color("label_str:N", legend=alt.Legend(title="Labels")),
                 tooltip=[alt.Tooltip("seq_len:Q"), alt.Tooltip("count():Q")],
             )
             .properties(width=300, height=240)
@@ -1600,9 +1486,7 @@ class DNADataset:
         )
         return hist, box
 
-    def _regression_plots(
-        self, df: pd.DataFrame, label_col: str, seq_col: str
-    ) -> tuple:
+    def _regression_plots(self, df: pd.DataFrame, label_col: str, seq_col: str) -> tuple:
         """Build histogram of seq lengths (ungrouped) and GC scatter (GC vs
         label value)."""
         import altair as alt
@@ -1654,20 +1538,14 @@ class DNADataset:
 
         if data_type == "classification":
             hist, box = self._classification_plots(df, label_col, seq_col)
-            return alt.hconcat(hist, box).properties(
-                title="Classification stats"
-            )
+            return alt.hconcat(hist, box).properties(title="Classification stats")
 
         if data_type == "regression":
             hist, scatter = self._regression_plots(df, label_col, seq_col)
-            return alt.hconcat(hist, scatter).properties(
-                title="Regression stats"
-            )
+            return alt.hconcat(hist, scatter).properties(title="Regression stats")
 
         if data_type in ("multi-classification", "multi-regression"):
-            return self._create_multi_target_charts(
-                df, data_type, seq_col, label_col
-            )
+            return self._create_multi_target_charts(df, data_type, seq_col, label_col)
 
         raise ValueError(f"Unknown data_type: {data_type}")
 
@@ -1685,33 +1563,21 @@ class DNADataset:
             subdf[c] = lbls_df[c]
 
             if data_type == "multi-classification":
-                pair = self._create_multi_classification_chart(
-                    subdf, c, seq_col
-                )
+                pair = self._create_multi_classification_chart(subdf, c, seq_col)
             else:  # multi-regression
                 pair = self._create_multi_regression_chart(subdf, c, seq_col)
             per_subcharts.append(pair)
 
-        return alt.hconcat(*per_subcharts).properties(
-            title="Multi-target stats"
-        )
+        return alt.hconcat(*per_subcharts).properties(title="Multi-target stats")
 
-    def _create_multi_classification_chart(
-        self, subdf: pd.DataFrame, c: str, seq_col: str
-    ) -> Any:
+    def _create_multi_classification_chart(self, subdf: pd.DataFrame, c: str, seq_col: str) -> Any:
         """Create chart for multi-classification sublabel."""
         import altair as alt
 
         subdf_for_plot = subdf.copy()
-        subdf_for_plot["labels_for_plot"] = (
-            subdf[c].astype("Int64").astype(str)
-        )
-        subdf_for_plot["seq_len"] = (
-            subdf_for_plot[seq_col].fillna("").astype(str).str.len()
-        )
-        subdf_for_plot["gc"] = (
-            subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
-        )
+        subdf_for_plot["labels_for_plot"] = subdf[c].astype("Int64").astype(str)
+        subdf_for_plot["seq_len"] = subdf_for_plot[seq_col].fillna("").astype(str).str.len()
+        subdf_for_plot["gc"] = subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
             alt
@@ -1742,20 +1608,14 @@ class DNADataset:
         )
         return alt.vconcat(hist, box).properties(title=f"Sub-label {c}")
 
-    def _create_multi_regression_chart(
-        self, subdf: pd.DataFrame, c: str, seq_col: str
-    ) -> Any:
+    def _create_multi_regression_chart(self, subdf: pd.DataFrame, c: str, seq_col: str) -> Any:
         """Create chart for multi-regression subtarget."""
         import altair as alt
 
         subdf_for_plot = subdf.copy()
         subdf_for_plot["label_val"] = pd.to_numeric(subdf[c], errors="coerce")
-        subdf_for_plot["seq_len"] = (
-            subdf_for_plot[seq_col].fillna("").astype(str).str.len()
-        )
-        subdf_for_plot["gc"] = (
-            subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
-        )
+        subdf_for_plot["seq_len"] = subdf_for_plot[seq_col].fillna("").astype(str).str.len()
+        subdf_for_plot["gc"] = subdf_for_plot[seq_col].fillna("").astype(str).map(calc_gc_content)
 
         hist = (
             alt
@@ -1801,9 +1661,7 @@ def show_preset_dataset() -> dict:
     return PRESET_DATASETS
 
 
-def load_preset_dataset(
-    dataset_name: str, task: str | None = None
-) -> "DNADataset":
+def load_preset_dataset(dataset_name: str, task: str | None = None) -> "DNADataset":
     """Load a preset dataset from Hugging Face or ModelScope.
 
     Args:
@@ -1824,14 +1682,10 @@ def load_preset_dataset(
     return _create_dna_dataset(ds, ds_info)
 
 
-def _get_dataset_info(
-    dataset_name: str, preset_datasets: dict
-) -> dict[Any, Any]:
+def _get_dataset_info(dataset_name: str, preset_datasets: dict) -> dict[Any, Any]:
     """Get dataset information from preset datasets."""
     if dataset_name not in preset_datasets:
-        raise ValueError(
-            f"Dataset {dataset_name} not found in preset datasets."
-        )
+        raise ValueError(f"Dataset {dataset_name} not found in preset datasets.")
     return dict(preset_datasets[dataset_name])
 
 
@@ -1856,13 +1710,9 @@ def _standardize_column_names(ds: Any) -> Any:
     label_col = "labels"
 
     if isinstance(ds, DatasetDict):
-        return _standardize_datasetdict_columns(
-            ds, seq_cols, label_cols, seq_col, label_col
-        )
+        return _standardize_datasetdict_columns(ds, seq_cols, label_cols, seq_col, label_col)
     else:
-        return _standardize_single_dataset_columns(
-            ds, seq_cols, label_cols, seq_col, label_col
-        )
+        return _standardize_single_dataset_columns(ds, seq_cols, label_cols, seq_col, label_col)
 
 
 def _standardize_datasetdict_columns(
@@ -1890,9 +1740,7 @@ def _standardize_single_dataset_columns(
     return ds
 
 
-def _find_column_names(
-    dataset: Any, seq_cols: list, label_cols: list
-) -> tuple[str, str]:
+def _find_column_names(dataset: Any, seq_cols: list, label_cols: list) -> tuple[str, str]:
     """Find appropriate column names for sequence and labels."""
     seq_col = "sequence"
     label_col = "labels"

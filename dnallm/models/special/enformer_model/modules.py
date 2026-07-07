@@ -56,9 +56,7 @@ def log(t, eps=1e-20):
 
 
 def MaybeSyncBatchnorm(is_distributed=True):  # noqa: N802
-    is_distributed = default(
-        is_distributed, dist.is_initialized() and dist.get_world_size() > 1
-    )
+    is_distributed = default(is_distributed, dist.is_initialized() and dist.get_world_size() > 1)
     # print(f"sync batchnorm for distributed training: {is_distributed}")
     return nn.SyncBatchNorm if is_distributed else nn.BatchNorm1d
 
@@ -71,9 +69,7 @@ def poisson_loss(pred, target):
 def pearson_corr_coef(x, y, dim=1, reduce_dims=(-1,)):
     x_centered = x - x.mean(dim=dim, keepdim=True)
     y_centered = y - y.mean(dim=dim, keepdim=True)
-    return F.cosine_similarity(x_centered, y_centered, dim=dim).mean(
-        dim=reduce_dims
-    )
+    return F.cosine_similarity(x_centered, y_centered, dim=dim).mean(dim=reduce_dims)
 
 
 # relative positional encoding functions
@@ -83,29 +79,21 @@ def get_positional_features_exponential(
     positions, features, seq_len, min_half_life=3.0, dtype=torch.float
 ):
     max_range = math.log(seq_len) / math.log(2.0)
-    half_life = 2 ** torch.linspace(
-        min_half_life, max_range, features, device=positions.device
-    )
+    half_life = 2 ** torch.linspace(min_half_life, max_range, features, device=positions.device)
     half_life = half_life[None, ...]
     positions = positions.abs()[..., None]
     return torch.exp(-math.log(2.0) / half_life * positions)
 
 
-def get_positional_features_central_mask(
-    positions, features, seq_len, dtype=torch.float
-):
-    center_widths = 2 ** torch.arange(
-        1, features + 1, device=positions.device
-    ).to(dtype)
+def get_positional_features_central_mask(positions, features, seq_len, dtype=torch.float):
+    center_widths = 2 ** torch.arange(1, features + 1, device=positions.device).to(dtype)
     center_widths = center_widths - 1
     return (center_widths[None, ...] > positions.abs()[..., None]).to(dtype)
 
 
 def gamma_pdf(x, concentration, rate):
     log_unnormalized_prob = torch.xlogy(concentration - 1.0, x) - rate * x
-    log_normalization = torch.lgamma(
-        concentration
-    ) - concentration * torch.log(rate)
+    log_normalization = torch.lgamma(concentration) - concentration * torch.log(rate)
     return torch.exp(log_unnormalized_prob - log_normalization)
 
 
@@ -124,63 +112,46 @@ def get_positional_features_gamma(
     if not exists(start_mean):
         start_mean = seq_len / features
 
-    mean = torch.linspace(
-        start_mean, seq_len, features, device=positions.device
-    )
+    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)
 
     mean = mean[None, ...]
     concentration = (mean / stddev) ** 2
     rate = mean / stddev**2
 
-    probabilities = gamma_pdf(
-        positions.to(dtype).abs()[..., None], concentration, rate
-    )
+    probabilities = gamma_pdf(positions.to(dtype).abs()[..., None], concentration, rate)
     probabilities = probabilities + eps
     outputs = probabilities / torch.amax(probabilities, dim=-1, keepdim=True)
     return outputs
 
 
-def get_positional_embed(
-    seq_len, feature_size, device, use_tf_gamma, dtype=torch.float
-):
+def get_positional_embed(seq_len, feature_size, device, use_tf_gamma, dtype=torch.float):
     distances = torch.arange(-seq_len + 1, seq_len, device=device)
 
     if use_tf_gamma and seq_len != 1536:
-        raise ValueError(
-            "if using tf gamma, only sequence length of 1536 allowed for now"
-        )
+        raise ValueError("if using tf gamma, only sequence length of 1536 allowed for now")
 
     feature_functions = [
         get_positional_features_exponential,
         get_positional_features_central_mask,
-        (
-            get_positional_features_gamma
-            if not use_tf_gamma
-            else always(TF_GAMMAS.to(device))
-        ),
+        (get_positional_features_gamma if not use_tf_gamma else always(TF_GAMMAS.to(device))),  # type: ignore
     ]
 
     num_components = len(feature_functions) * 2
 
     if (feature_size % num_components) != 0:
         raise ValueError(
-            "feature size is not divisible by "
-            f"number of components ({num_components})"
+            f"feature size is not divisible by number of components ({num_components})"
         )
 
     num_basis_per_class = feature_size // num_components
 
     embeddings = []
     for fn in feature_functions:
-        embeddings.append(
-            fn(distances, num_basis_per_class, seq_len, dtype=dtype)
-        )
+        embeddings.append(fn(distances, num_basis_per_class, seq_len, dtype=dtype))
 
-    embeddings = torch.cat(embeddings, dim=-1)
-    embeddings = torch.cat(
-        (embeddings, torch.sign(distances)[..., None] * embeddings), dim=-1
-    )
-    return embeddings.to(dtype)
+    concatenated = torch.cat(embeddings, dim=-1)  # type: ignore
+    concatenated = torch.cat((concatenated, torch.sign(distances)[..., None] * embeddings), dim=-1)  # type: ignore
+    return concatenated.to(dtype)  # type: ignore
 
 
 def relative_shift(x):
@@ -257,10 +228,7 @@ class TargetLengthCrop(nn.Module):
             return x
 
         if seq_len < target_len:
-            raise ValueError(
-                f"sequence length {seq_len} is less than "
-                f"target length {target_len}"
-            )
+            raise ValueError(f"sequence length {seq_len} is less than target length {target_len}")
 
         trim = (target_len - seq_len) // 2
 
@@ -278,9 +246,7 @@ def ConvBlock(  # noqa: N802
     return nn.Sequential(
         batchnorm_klass(dim),
         GELU(),
-        nn.Conv1d(
-            dim, default(dim_out, dim), kernel_size, padding=kernel_size // 2
-        ),
+        nn.Conv1d(dim, default(dim_out, dim), kernel_size, padding=kernel_size // 2),
     )
 
 
@@ -314,9 +280,7 @@ class Attention(nn.Module):
 
         self.num_rel_pos_features = num_rel_pos_features
 
-        self.to_rel_k = nn.Linear(
-            num_rel_pos_features, dim_key * heads, bias=False
-        )
+        self.to_rel_k = nn.Linear(num_rel_pos_features, dim_key * heads, bias=False)
         self.rel_content_bias = nn.Parameter(torch.randn(1, heads, 1, dim_key))
         self.rel_pos_bias = nn.Parameter(torch.randn(1, heads, 1, dim_key))
 
@@ -342,9 +306,7 @@ class Attention(nn.Module):
 
         q = q * self.scale
 
-        content_logits = einsum(
-            "b h i d, b h j d -> b h i j", q + self.rel_content_bias, k
-        )
+        content_logits = einsum("b h i d, b h j d -> b h i j", q + self.rel_content_bias, k)
 
         positions = get_positional_embed(
             n,
@@ -357,9 +319,7 @@ class Attention(nn.Module):
         rel_k = self.to_rel_k(positions)
 
         rel_k = rearrange(rel_k, "n (h d) -> h n d", h=h)
-        rel_logits = einsum(
-            "b h i d, h j d -> b h i j", q + self.rel_pos_bias, rel_k
-        )
+        rel_logits = einsum("b h i d, h j d -> b h i j", q + self.rel_pos_bias, rel_k)
         rel_logits = relative_shift(rel_logits)
 
         logits = content_logits + rel_logits
@@ -414,9 +374,7 @@ class Experts(nn.Module):
         self.num_experts = num_experts
 
         # 初始化权重和偏置
-        self.weight = nn.Parameter(
-            torch.empty(num_experts, input_size, output_size)
-        )
+        self.weight = nn.Parameter(torch.empty(num_experts, input_size, output_size))
         if bias:
             self.bias = nn.Parameter(torch.empty(num_experts, output_size))
         else:
@@ -508,8 +466,7 @@ class SpeciesMoE(nn.Module):
         self.noisy_gating = noisy_gating
         output_dim = 2 * num_experts if noisy_gating else num_experts
         self.gates = nn.ModuleDict({
-            k: nn.Sequential(nn.Linear(dim, output_dim), nn.LeakyReLU())
-            for k in species
+            k: nn.Sequential(nn.Linear(dim, output_dim), nn.LeakyReLU()) for k in species
         })
 
         self.layer_norm = nn.LayerNorm(dim)
@@ -554,8 +511,8 @@ class SpeciesMoE(nn.Module):
         residual = x
         batch_size, length, dim = x.shape
         x = x.view(batch_size * length, dim)
-        (expert_size, batch_index, batch_gates, gates, zloss, cvloss) = (
-            self.top_k_gating(x, species)
+        (expert_size, batch_index, batch_gates, gates, zloss, cvloss) = self.top_k_gating(
+            x, species
         )
 
         x = self.layer_norm(x)
@@ -575,9 +532,7 @@ class SpeciesMoE(nn.Module):
 
 # transformer block
 class TransformerBlock(nn.Module):
-    def __init__(
-        self, config, species, use_tf_gamma=False, use_species_moe=False
-    ):
+    def __init__(self, config, species, use_tf_gamma=False, use_species_moe=False):
         super().__init__()
         self.attention = Residual(
             nn.Sequential(
@@ -605,7 +560,7 @@ class TransformerBlock(nn.Module):
                 config.dropout_rate,
             )
         else:
-            self.feed_forward = MLP(config.dim, config.dropout_rate)
+            self.feed_forward = MLP(config.dim, config.dropout_rate)  # type: ignore[assignment]
 
     def forward(self, x, species):
         x = self.attention(x)
@@ -632,9 +587,7 @@ class TransformerModel(nn.Module):
         transformer = []
         for _ in range(config.depth):
             use_moe = "species" in config.moe
-            transformer.append(
-                TransformerBlock(config, species, use_tf_gamma, use_moe)
-            )
+            transformer.append(TransformerBlock(config, species, use_tf_gamma, use_moe))
         self.transformer = nn.ModuleList(transformer)
 
     def forward(self, x, species):
@@ -688,8 +641,7 @@ class TracksMoE(nn.Module):
         self.output_proj = Experts(seqlen * 2, seqlen, self.num_experts)
 
         self.tracks_embedding = nn.ParameterDict({
-            key: nn.Parameter(torch.randn(1, 1, seqlen))
-            for key in self.TRACK_TYPES
+            key: nn.Parameter(torch.randn(1, 1, seqlen)) for key in self.TRACK_TYPES
         })
 
         self.index = self._load_indices(species)
@@ -699,9 +651,7 @@ class TracksMoE(nn.Module):
         index = {}
         for sp in species:
             df = pd.read_csv(
-                os.path.join(
-                    os.path.dirname(__file__), f"targets_{sp}_sorted.txt"
-                ),
+                os.path.join(os.path.dirname(__file__), f"targets_{sp}_sorted.txt"),
                 sep="\t",
             )
             index[sp] = df["index"].tolist()
@@ -776,9 +726,7 @@ class TracksMoE(nn.Module):
             gates_list.append(gates)
             weights_list.append(weights.detach())
 
-        gates = torch.cat(gates_list, dim=1).view(
-            batch_size * tracks, self.num_experts
-        )
+        gates = torch.cat(gates_list, dim=1).view(batch_size * tracks, self.num_experts)
         weights = torch.cat(weights_list, dim=1)
 
         expert_size = (gates > 0).sum(dim=0)
@@ -809,33 +757,25 @@ class TracksMoE(nn.Module):
         y = rearrange(y, "b d n -> b n d")
         return y + residual, all_gates, total_zloss, total_cvloss, weights
 
-    def _compute_gates(
-        self, temp, gate_logits, embedding_logits, task_idx, batch_size
-    ):
+    def _compute_gates(self, temp, gate_logits, embedding_logits, task_idx, batch_size):
         temp_tracks = temp.shape[1]
         temp = temp.view(batch_size * temp_tracks, self.seqlen)
 
-        gates = torch.zeros(
-            (batch_size, temp_tracks, self.num_experts), device=temp.device
-        )
+        gates = torch.zeros((batch_size, temp_tracks, self.num_experts), device=temp.device)
         zloss = torch.tensor(0.0, device=temp.device)
         cvloss = torch.tensor(0.0, device=temp.device)
         temp_token = gate_logits[
             :,
-            task_idx * self.gates_per_type : (task_idx + 1)
-            * self.gates_per_type,
+            task_idx * self.gates_per_type : (task_idx + 1) * self.gates_per_type,
         ]
         temp_embedding = embedding_logits[
             :,
-            task_idx * self.gates_per_type : (task_idx + 1)
-            * self.gates_per_type,
+            task_idx * self.gates_per_type : (task_idx + 1) * self.gates_per_type,
         ]
         token_weights = F.softmax(temp_token, dim=1)
         embedding_weights = F.softmax(temp_embedding, dim=1)
         weights = (token_weights + embedding_weights) / 2.0
-        zloss = (
-            zloss + compute_zloss(temp_token) + compute_zloss(temp_embedding)
-        )
+        zloss = zloss + compute_zloss(temp_token) + compute_zloss(temp_embedding)
         for j in range(self.gates_per_type):
             logits = self.gates[task_idx * self.gates_per_type + j](temp)
             top_k_logits, top_k_indices = torch.topk(logits, self.topk, dim=1)
@@ -847,9 +787,7 @@ class TracksMoE(nn.Module):
             )
             temp_gates.scatter_(1, top_k_indices, probs)
             # cvloss += compute_cvloss(temp_gates)
-            temp_gates = temp_gates.view(
-                batch_size, temp_tracks, self.num_experts
-            )
+            temp_gates = temp_gates.view(batch_size, temp_tracks, self.num_experts)
             temp_gates = temp_gates * weights[:, j].view(batch_size, 1, 1)
             gates = gates + temp_gates
 

@@ -72,7 +72,6 @@ uv pip install lucagplm
 LucaOne is an MLM-style model and is primarily used for feature extraction and zero-shot scoring.
 
 **Example: Loading the LucaOne model**
-
 ```python
 from dnallm import load_config, load_model_and_tokenizer
 

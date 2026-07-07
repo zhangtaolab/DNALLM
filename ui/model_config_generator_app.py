@@ -25,18 +25,13 @@ try:
     import importlib.util
 
     modeling_auto_path = dnallm_path / "models" / "modeling_auto.py"
-    spec = importlib.util.spec_from_file_location(
-        "modeling_auto", modeling_auto_path
-    )
+    spec = importlib.util.spec_from_file_location("modeling_auto", modeling_auto_path)
     modeling_auto = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modeling_auto)
 
     MODEL_INFO = modeling_auto.MODEL_INFO
     PRETRAIN_MODEL_MAPS = modeling_auto.PRETRAIN_MODEL_MAPS
-    print(
-        "✅ Successfully loaded MODEL_INFO"
-        "and PRETRAIN_MODEL_MAPS from modeling_auto.py"
-    )
+    print("✅ Successfully loaded MODEL_INFOand PRETRAIN_MODEL_MAPS from modeling_auto.py")
 
 except ImportError as e:
     print(f"Warning: Could not import DNALLM models: {e}")
@@ -178,10 +173,7 @@ class GradioConfigGenerator:
 
     def get_model_info(self, model_path):
         """Get detailed information about a model from YAML"""
-        if (
-            hasattr(self, "yaml_model_details")
-            and model_path in self.yaml_model_details
-        ):
+        if hasattr(self, "yaml_model_details") and model_path in self.yaml_model_details:
             return self.yaml_model_details[model_path]
         return None
 
@@ -200,9 +192,7 @@ class GradioConfigGenerator:
             "regression": "regression",
         }
 
-        task_type = task_type_mapping.get(
-            task.get("task_type"), "binary_classification"
-        )
+        task_type = task_type_mapping.get(task.get("task_type"), "binary_classification")
         num_labels = task.get("num_labels", 2)
         label_names = task.get("label_names", "")
         threshold = task.get("threshold", 0.5)
@@ -334,13 +324,10 @@ class GradioConfigGenerator:
     def create_interface(self):
         """Create the main Gradio interface"""
 
-        with gr.Blocks(
-            title="DNALLM Configuration Generator", theme=gr.themes.Soft()
-        ) as interface:
+        with gr.Blocks(title="DNALLM Configuration Generator", theme=gr.themes.Soft()) as interface:
             gr.Markdown("# 🚀 DNALLM Configuration Generator")
             gr.Markdown(
-                "Generate configuration files for"
-                "fine-tuning, inference, and benchmarking tasks"
+                "Generate configuration files forfine-tuning, inference, and benchmarking tasks"
             )
 
             # Output section - define this first so it can be passed to tabs
@@ -363,9 +350,7 @@ class GradioConfigGenerator:
                         visible=False,
                     )
 
-                    save_btn = gr.Button(
-                        "Save Configuration", variant="primary"
-                    )
+                    save_btn = gr.Button("Save Configuration", variant="primary")
                     clear_btn = gr.Button("Clear", variant="secondary")
 
             with gr.Tabs():
@@ -388,9 +373,7 @@ class GradioConfigGenerator:
                 outputs=[download_info],
             )
 
-            clear_btn.click(
-                fn=self._clear_output, outputs=[output_text, download_info]
-            )
+            clear_btn.click(fn=self._clear_output, outputs=[output_text, download_info])
 
         return interface
 
@@ -406,9 +389,7 @@ class GradioConfigGenerator:
                     interactive=True,
                 )
 
-                auto_fill_btn = gr.Button(
-                    "🔍 Auto-Fill from Model", variant="secondary"
-                )
+                auto_fill_btn = gr.Button("🔍 Auto-Fill from Model", variant="secondary")
 
             # Model description display
             model_description = gr.Markdown(value="", visible=False)
@@ -539,9 +520,7 @@ class GradioConfigGenerator:
             with gr.Row():
                 use_bf16 = gr.Checkbox(label="Use bfloat16", value=False)
                 use_fp16 = gr.Checkbox(label="Use float16", value=False)
-                use_epoch_based = gr.Checkbox(
-                    label="Use Epoch-based Logging/Saving", value=False
-                )
+                use_epoch_based = gr.Checkbox(label="Use Epoch-based Logging/Saving", value=False)
 
             with gr.Row():
                 logging_steps = gr.Number(
@@ -634,9 +613,7 @@ class GradioConfigGenerator:
                     interactive=True,
                 )
 
-                auto_fill_btn = gr.Button(
-                    "🔍 Auto-Fill from Model", variant="secondary"
-                )
+                auto_fill_btn = gr.Button("🔍 Auto-Fill from Model", variant="secondary")
 
             # Model description display
             model_description = gr.Markdown(value="", visible=False)
@@ -764,9 +741,7 @@ class GradioConfigGenerator:
                     interactive=True,
                 )
 
-                model_tag = gr.Dropdown(
-                    choices=[], label="Model Tag", interactive=True
-                )
+                model_tag = gr.Dropdown(choices=[], label="Model Tag", interactive=True)
 
             with gr.Row():
                 model_source = gr.Dropdown(
@@ -782,9 +757,7 @@ class GradioConfigGenerator:
                     interactive=True,
                 )
 
-                auto_fill_model_btn = gr.Button(
-                    "🔍 Auto-Fill Model Info", variant="secondary"
-                )
+                auto_fill_model_btn = gr.Button("🔍 Auto-Fill Model Info", variant="secondary")
 
             # Model description display
             model_description = gr.Markdown(value="", visible=False)
@@ -797,9 +770,7 @@ class GradioConfigGenerator:
             )
 
             with gr.Row():
-                trust_remote_code = gr.Checkbox(
-                    label="Trust Remote Code", value=True
-                )
+                trust_remote_code = gr.Checkbox(label="Trust Remote Code", value=True)
                 torch_dtype = gr.Dropdown(
                     choices=["float32", "float16", "bfloat16"],
                     label="Data Type",
@@ -810,13 +781,9 @@ class GradioConfigGenerator:
             gr.Markdown("## Datasets Configuration")
 
             with gr.Row():
-                dataset_name = gr.Textbox(
-                    label="Dataset Name", interactive=True
-                )
+                dataset_name = gr.Textbox(label="Dataset Name", interactive=True)
 
-                dataset_path = gr.Textbox(
-                    label="Dataset File Path", interactive=True
-                )
+                dataset_path = gr.Textbox(label="Dataset File Path", interactive=True)
 
             with gr.Row():
                 dataset_format = gr.Dropdown(
@@ -897,9 +864,7 @@ class GradioConfigGenerator:
             with gr.Row():
                 use_eval_fp16 = gr.Checkbox(label="Use float16", value=True)
                 use_eval_bf16 = gr.Checkbox(label="Use bfloat16", value=False)
-                deterministic = gr.Checkbox(
-                    label="Enable Deterministic Mode", value=True
-                )
+                deterministic = gr.Checkbox(label="Enable Deterministic Mode", value=True)
 
             gr.Markdown("## Output Configuration")
 
@@ -918,15 +883,9 @@ class GradioConfigGenerator:
                 )
 
             with gr.Row():
-                save_predictions = gr.Checkbox(
-                    label="Save Predictions", value=True
-                )
-                save_embeddings = gr.Checkbox(
-                    label="Save Embeddings", value=False
-                )
-                generate_plots = gr.Checkbox(
-                    label="Generate Plots", value=True
-                )
+                save_predictions = gr.Checkbox(label="Save Predictions", value=True)
+                save_embeddings = gr.Checkbox(label="Save Embeddings", value=False)
+                generate_plots = gr.Checkbox(label="Generate Plots", value=True)
 
             # Generate button
             generate_benchmark_btn = gr.Button(
@@ -1049,9 +1008,7 @@ class GradioConfigGenerator:
                 config["task"]["threshold"] = threshold
 
             if label_names:  # label_names
-                config["task"]["label_names"] = [
-                    name.strip() for name in label_names.split(",")
-                ]
+                config["task"]["label_names"] = [name.strip() for name in label_names.split(",")]
 
             # Add logging and saving strategies
             if use_epoch_based:
@@ -1074,9 +1031,7 @@ class GradioConfigGenerator:
 
             # Add advanced settings
             if gradient_accumulation_steps > 1:
-                config["finetune"]["gradient_accumulation_steps"] = (
-                    gradient_accumulation_steps
-                )
+                config["finetune"]["gradient_accumulation_steps"] = gradient_accumulation_steps
 
             if max_grad_norm != 1.0:
                 config["finetune"]["max_grad_norm"] = max_grad_norm
@@ -1084,9 +1039,7 @@ class GradioConfigGenerator:
             config["finetune"]["lr_scheduler_type"] = "linear"
 
             self.config = config
-            return yaml.dump(
-                config, default_flow_style=False, allow_unicode=True, indent=2
-            )
+            return yaml.dump(config, default_flow_style=False, allow_unicode=True, indent=2)
 
         except Exception as e:
             return f"Error generating configuration: {e!s}"
@@ -1120,9 +1073,7 @@ class GradioConfigGenerator:
             }
 
             self.config = config
-            return yaml.dump(
-                config, default_flow_style=False, allow_unicode=True, indent=2
-            )
+            return yaml.dump(config, default_flow_style=False, allow_unicode=True, indent=2)
 
         except Exception as e:
             return f"Error generating configuration: {e!s}"
@@ -1207,9 +1158,7 @@ class GradioConfigGenerator:
             config["metrics"] = ["accuracy", "f1_score", "precision", "recall"]
 
             self.config = config
-            return yaml.dump(
-                config, default_flow_style=False, allow_unicode=True, indent=2
-            )
+            return yaml.dump(config, default_flow_style=False, allow_unicode=True, indent=2)
 
         except Exception as e:
             return f"Error generating configuration: {e!s}"
@@ -1259,9 +1208,7 @@ def main():
     interface = generator.create_interface()
 
     # Launch the app
-    interface.launch(
-        server_name="127.0.0.1", server_port=7860, share=False, show_error=True
-    )
+    interface.launch(server_name="127.0.0.1", server_port=7860, share=False, show_error=True)
 
 
 if __name__ == "__main__":

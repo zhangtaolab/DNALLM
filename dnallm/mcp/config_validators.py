@@ -10,9 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 class TaskConfig(BaseModel):
     """Task configuration for DNA prediction models."""
 
-    task_type: str = Field(
-        ..., pattern="^(binary|multiclass|multilabel|regression)$"
-    )
+    task_type: str = Field(..., pattern="^(binary|multiclass|multilabel|regression)$")
     num_labels: int = Field(..., ge=1)
     label_names: list[str] = Field(..., min_length=1)
     threshold: float = Field(0.5, ge=0.0, le=1.0)
@@ -92,9 +90,7 @@ class ServerConfig(BaseModel):
     host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
     port: int = Field(8000, ge=1024, le=65535)
     workers: int = Field(1, ge=1, le=16)
-    log_level: str = Field(
-        "INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$"
-    )
+    log_level: str = Field("INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     debug: bool = Field(False)
 
 
@@ -142,6 +138,24 @@ class SSEConfig(BaseModel):
     enable_compression: bool = Field(True)
 
 
+class StreamableHTTPConfig(BaseModel):
+    """Streamable HTTP configuration.
+
+    Configuration for the Streamable HTTP transport protocol as defined
+    in the MCP specification 2025-11-25. The default path of ``/mcp``
+    follows the standard MCP endpoint convention.
+
+    Attributes:
+        host: Host address to bind the HTTP server to.
+        port: Port number to bind the HTTP server to.
+        path: URL path for the MCP endpoint (defaults to ``/mcp``).
+    """
+
+    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
+    port: int = Field(8000, ge=1024, le=65535)
+    path: str = Field("/mcp", min_length=1)
+
+
 class LoggingConfig(BaseModel):
     """Logging configuration."""
 
@@ -150,6 +164,7 @@ class LoggingConfig(BaseModel):
     file: str = Field(..., min_length=1)
     max_size: str = Field("10MB", pattern="^[0-9]+(MB|GB)$")
     backup_count: int = Field(5, ge=1, le=20)
+    log_format: str = Field("text", pattern="^(json|text)$")
 
 
 class MCPServerConfig(BaseModel):
@@ -160,7 +175,9 @@ class MCPServerConfig(BaseModel):
     models: dict[str, ModelEntryConfig]
     multi_model: dict[str, MultiModelConfig]
     sse: SSEConfig
+    streamable_http: StreamableHTTPConfig | None = Field(None)
     logging: LoggingConfig
+    tool_timeout_seconds: int = Field(30, ge=1, le=300)
 
     @field_validator("models")
     @classmethod
@@ -185,6 +202,25 @@ class MCPServerConfig(BaseModel):
                             f"Model '{model_name}' referenced in multi-model "
                             f"config but not defined in models"
                         )
+        return v
+
+    @field_validator("streamable_http")
+    @classmethod
+    def warn_both_transports(cls, v, info):
+        """Warn when both SSE and Streamable HTTP blocks are present.
+
+        Having both ``sse`` and ``streamable_http`` configured is a valid
+        transitional state, but it is unusual in production. A warning is
+        logged so operators are aware that two transports are active.
+        """
+        import logging
+
+        if v is not None and info.data and "sse" in info.data:
+            logging.getLogger(__name__).warning(
+                "Both 'sse' and 'streamable_http' blocks are present in the "
+                "server configuration. This is valid for transitional "
+                "deployments but unusual in production."
+            )
         return v
 
 

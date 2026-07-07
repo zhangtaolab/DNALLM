@@ -90,12 +90,12 @@ model, tokenizer = load_model_and_tokenizer(
 )
 
 # 3. Initialize the inference engine
-inference_engine = DNAInference(
-    config=configs, model=model, tokenizer=tokenizer
-)
+inference_engine = DNAInference(config=configs, model=model, tokenizer=tokenizer)
 
 # 4. Make a prediction on a sample sequence
-sequence = "TCACATCCGGGTGAAACCTCGAGTTCCTATAACCTGCCGACAGGTGGCGGGTCTTATAAAACTGATCACTACAATTCCCAATGGAAAAA"
+sequence = (
+    "TCACATCCGGGTGAAACCTCGAGTTCCTATAACCTGCCGACAGGTGGCGGGTCTTATAAAACTGATCACTACAATTCCCAATGGAAAAA"
+)
 inference_result = inference_engine.infer(sequence)
 
 print(f"Inference result: {inference_result}")

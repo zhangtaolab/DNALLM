@@ -1,5 +1,7 @@
 import os
 import json
+from typing import overload
+
 import torch
 import torch.nn as nn
 
@@ -136,19 +138,23 @@ class DNAOneHotTokenizer:
 
         if return_tensors == "np" and return_dict:
             for key in output:
-                output[key] = output[key].numpy()
+                output[key] = output[key].numpy()  # type: ignore[assignment]
 
         return output if return_dict else None
 
-    def convert_tokens_to_ids(
-        self, tokens: list[str] | str
-    ) -> list[int] | int:
+    @overload
+    def convert_tokens_to_ids(self, tokens: str) -> int: ...
+    @overload
+    def convert_tokens_to_ids(self, tokens: list[str]) -> list[int]: ...
+    def convert_tokens_to_ids(self, tokens: list[str] | str) -> list[int] | int:
         if isinstance(tokens, str):
             return self.token_to_id.get(tokens, self.unk_token_id)
-        return [
-            self.token_to_id.get(token, self.unk_token_id) for token in tokens
-        ]
+        return [self.token_to_id.get(token, self.unk_token_id) for token in tokens]
 
+    @overload
+    def convert_ids_to_tokens(self, ids: int) -> str: ...
+    @overload
+    def convert_ids_to_tokens(self, ids: list[int]) -> list[str]: ...
     def convert_ids_to_tokens(self, ids: list[int] | int) -> list[str] | str:
         if isinstance(ids, int):
             return self.id_to_token.get(ids, "N")
@@ -185,10 +191,7 @@ class DNAOneHotTokenizer:
     ) -> list[str]:
         if isinstance(sequences, torch.Tensor):
             sequences = sequences.tolist()
-        return [
-            self.decode(seq, skip_special_tokens=skip_special_tokens)
-            for seq in sequences
-        ]
+        return [self.decode(seq, skip_special_tokens=skip_special_tokens) for seq in sequences]
 
     @property
     def vocab_size(self):
@@ -224,9 +227,7 @@ class DNAOneHotTokenizer:
         """
         Load Tokenizer from a specified directory.
         """
-        config_file = os.path.join(
-            pretrained_model_name_or_path, "tokenizer_config.json"
-        )
+        config_file = os.path.join(pretrained_model_name_or_path, "tokenizer_config.json")
 
         if os.path.isfile(config_file):
             with open(config_file, encoding="utf-8") as f:

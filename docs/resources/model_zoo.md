@@ -45,7 +45,6 @@ The following table shows all currently supported models and their fine-tuning/i
 | plant-genomic-jamba | CausalLM | StripedMamba | ✅ | suzuki-2001 | 50M | 1 | [GitHub](https://github.com/suzuki-2001/genomic-jamba) |
 | ProkBERT | MaskedLM | MegatronBert | ✅ | neuralbioinfo | 21M / 25M / 27M | 3 | [Frontiers in Microbiology](https://doi.org/10.3389/fmicb.2023.1331233) |
 
-
 ## Model Categories
 
 ### By Architecture Type
@@ -115,19 +114,17 @@ The following models are specifically designed for plant genomics:
 ## Getting Started
 
 To use any of these models with DNALLM:
-
 ```python
-from dnallm import load_model_and_tokenizer
+from dnallm.models import load_model_and_tokenizer
 
 # Load a supported model
-model, tokenizer = load_model_and_tokenizer(
-    "zhangtaolab/plant-dnabert-BPE", source="huggingface"
-)
+model, tokenizer = load_model_and_tokenizer("zhangtaolab/plant-dnabert-BPE", source="huggingface")
 
 # For fine-tuning
 from dnallm.finetune import DNATrainer
 
-trainer = DNATrainer(model=model, tokenizer=tokenizer)
+# trainer = DNATrainer(model=model, config=config, datasets=datasets)
+# trainer.train()
 ```
 
 ## Contributing New Models

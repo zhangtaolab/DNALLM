@@ -76,6 +76,20 @@ test_demo/
 *.zip
 *.tar
 *.tar.gz
+*.pkl
+*.fxi
+*.csv
+*.tsv
+*.token_sizes
+
+# Model weights (should be downloaded, not committed)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Test downloads (large test data and models)
+tests/downloads/
 
 # OS
 .DS_Store
@@ -89,6 +103,10 @@ Thumbs.db
 dnallm/models/downloads/
 dnallm/data/cache/
 dnallm/ui/tmp/
+
+# Planning artifacts (dev branch only, never merged)
+.planning/
+.claude/
 
 # Jupyter Notebook tmp files
 .ipynb_checkpoints/

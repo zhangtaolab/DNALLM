@@ -29,6 +29,31 @@ finetune:
   seed: 42
   bf16: false
   fp16: false
+# Hyperparameter search configuration (uncomment to enable)
+# hyperparameter_search:
+#   search_space:
+#     learning_rate:
+#       low: 1.0e-6
+#       high: 1.0e-3
+#     per_device_train_batch_size:
+#       type: int
+#       low: 4
+#       high: 32
+#       step: 4
+#   n_trials: 0
+#   direction: minimize
+#   metric: eval_loss
+# QLoRA configuration (uncomment to enable 4-bit quantization)
+# use_qlora: false
+# quantization_config:
+#   load_in_4bit: true
+#   bnb_4bit_compute_dtype: float16
+#   bnb_4bit_use_double_quant: true
+#   bnb_4bit_quant_type: nf4
+callbacks:
+  early_stopping:
+    patience: null
+    threshold: 0.0
 task:
   label_names:
   - negative

@@ -8,6 +8,7 @@ DNA language models from various sources.
 import os
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+import importlib
 from typing import Any
 
 from dnallm.models.model import (
@@ -77,9 +78,7 @@ class TestDownloadModel:
         """Test download failure for model not found in ModelScope."""
         mock_downloader = Mock(side_effect=Exception("response [404]"))
 
-        with pytest.raises(
-            ValueError, match="Model test-model download failed"
-        ):
+        with pytest.raises(ValueError, match="Model test-model download failed"):
             download_model("test-model", mock_downloader, max_try=1)
 
     def test_download_other_error(self):
@@ -87,9 +86,7 @@ class TestDownloadModel:
         mock_downloader = Mock(side_effect=Exception("unknown error"))
 
         with patch("time.sleep"):  # Mock sleep to speed up test
-            with pytest.raises(
-                ValueError, match="Model test-model download failed"
-            ):
+            with pytest.raises(ValueError, match="Model test-model download failed"):
                 download_model("test-model", mock_downloader, max_try=2)
 
     @pytest.mark.slow
@@ -101,9 +98,7 @@ class TestDownloadModel:
             from huggingface_hub import snapshot_download
 
             # Try to download a small test model
-            result = download_model(
-                "microsoft/DialoGPT-small", snapshot_download, max_try=1
-            )
+            result = download_model("microsoft/DialoGPT-small", snapshot_download, max_try=1)
             assert result is not None
             assert os.path.exists(result)
         except Exception as e:
@@ -186,9 +181,7 @@ class TestSetupHuggingfaceMirror:
 
     def test_setup_mirror_disabled(self):
         """Test setting up HuggingFace mirror when disabled."""
-        with patch.dict(
-            os.environ, {"HF_ENDPOINT": "https://hf-mirror.com"}, clear=True
-        ):
+        with patch.dict(os.environ, {"HF_ENDPOINT": "https://hf-mirror.com"}, clear=True):
             _setup_huggingface_mirror(False)
             assert "HF_ENDPOINT" not in os.environ
 
@@ -207,9 +200,7 @@ class TestGetModelPathAndImports:
     def test_get_model_path_local_exists(self):
         """Test getting model path for existing local model."""
         with patch("os.path.exists", return_value=True):
-            model_path, modules = _get_model_path_and_imports(
-                "/path/to/model", "local"
-            )
+            model_path, modules = _get_model_path_and_imports("/path/to/model", "local")
 
             assert model_path == "/path/to/model"
             assert "AutoModel" in modules
@@ -218,9 +209,7 @@ class TestGetModelPathAndImports:
     def test_get_model_path_local_not_exists(self):
         """Test getting model path for non-existing local model."""
         with patch("os.path.exists", return_value=False):
-            with pytest.raises(
-                ValueError, match="Model /path/to/model not found locally"
-            ):
+            with pytest.raises(ValueError, match="Model /path/to/model not found locally"):
                 _get_model_path_and_imports("/path/to/model", "local")
 
     def test_get_model_path_huggingface(self):
@@ -229,12 +218,8 @@ class TestGetModelPathAndImports:
             "dnallm.models.model.download_model",
             return_value="/downloaded/model",
         ) as mock_download:
-            with patch(
-                "huggingface_hub.snapshot_download"
-            ) as mock_hf_download:
-                model_path, modules = _get_model_path_and_imports(
-                    "test-model", "huggingface"
-                )
+            with patch("huggingface_hub.snapshot_download") as mock_hf_download:
+                model_path, modules = _get_model_path_and_imports("test-model", "huggingface")
 
                 assert model_path == "/downloaded/model"
                 mock_download.assert_called_once_with(
@@ -248,13 +233,10 @@ class TestGetModelPathAndImports:
             "dnallm.models.model.download_model",
             return_value="/downloaded/model",
         ) as mock_download:
-            with patch(
-                "modelscope.hub.snapshot_download.snapshot_download"
-            ) as mock_ms_download:
+            snapshot_module = importlib.import_module("modelscope.hub.snapshot_download")
+            with patch.object(snapshot_module, "snapshot_download") as mock_ms_download:
                 with patch("modelscope.AutoModel") as mock_auto_model:
-                    model_path, modules = _get_model_path_and_imports(
-                        "test-model", "modelscope"
-                    )
+                    model_path, modules = _get_model_path_and_imports("test-model", "modelscope")
 
                     assert model_path == "/downloaded/model"
                     mock_download.assert_called_once_with(
@@ -291,9 +273,7 @@ class TestCreateLabelMappings:
 
     def test_create_label_mappings_no_labels(self):
         """Test creating label mappings without labels."""
-        task_config = TaskConfig(
-            task_type="mask", num_labels=None, label_names=None
-        )
+        task_config = TaskConfig(task_type="mask", num_labels=None, label_names=None)
 
         id2label, label2id = _create_label_mappings(task_config)
 
@@ -310,22 +290,16 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForMaskedLM"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForMaskedLM"].from_pretrained.return_value = mock_model
 
-        model, tokenizer = _load_model_by_task_type(
-            "mask", "test-model", 1, {}, {}, modules
-        )
+        model, tokenizer = _load_model_by_task_type("mask", "test-model", 1, {}, {}, modules)
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
         modules["AutoTokenizer"].from_pretrained.assert_called_once_with(
             "test-model", trust_remote_code=True
         )
-        modules[
-            "AutoModelForMaskedLM"
-        ].from_pretrained.assert_called_once_with(
+        modules["AutoModelForMaskedLM"].from_pretrained.assert_called_once_with(
             "test-model", trust_remote_code=True, attn_implementation="eager"
         )
 
@@ -335,13 +309,9 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForCausalLM"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForCausalLM"].from_pretrained.return_value = mock_model
 
-        model, tokenizer = _load_model_by_task_type(
-            "generation", "test-model", 1, {}, {}, modules
-        )
+        model, tokenizer = _load_model_by_task_type("generation", "test-model", 1, {}, {}, modules)
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
@@ -355,9 +325,7 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForSequenceClassification"].from_pretrained.return_value = mock_model
 
         id2label = {0: "negative", 1: "positive"}
         label2id = {"negative": 0, "positive": 1}
@@ -368,9 +336,7 @@ class TestLoadModelByTaskType:
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.assert_called_once_with(
+        modules["AutoModelForSequenceClassification"].from_pretrained.assert_called_once_with(
             "test-model",
             num_labels=2,
             id2label=id2label,
@@ -389,19 +355,13 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForSequenceClassification"].from_pretrained.return_value = mock_model
 
-        model, tokenizer = _load_model_by_task_type(
-            "multilabel", "test-model", 3, {}, {}, modules
-        )
+        model, tokenizer = _load_model_by_task_type("multilabel", "test-model", 3, {}, {}, modules)
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.assert_called_once_with(
+        modules["AutoModelForSequenceClassification"].from_pretrained.assert_called_once_with(
             "test-model",
             num_labels=3,
             problem_type="multi_label_classification",
@@ -418,19 +378,13 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForSequenceClassification"].from_pretrained.return_value = mock_model
 
-        model, tokenizer = _load_model_by_task_type(
-            "regression", "test-model", 1, {}, {}, modules
-        )
+        model, tokenizer = _load_model_by_task_type("regression", "test-model", 1, {}, {}, modules)
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
-        modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.assert_called_once_with(
+        modules["AutoModelForSequenceClassification"].from_pretrained.assert_called_once_with(
             "test-model",
             num_labels=1,
             problem_type="regression",
@@ -447,9 +401,7 @@ class TestLoadModelByTaskType:
         mock_tokenizer = Mock()
         mock_model = Mock()
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-        modules[
-            "AutoModelForTokenClassification"
-        ].from_pretrained.return_value = mock_model
+        modules["AutoModelForTokenClassification"].from_pretrained.return_value = mock_model
 
         id2label = {0: "O", 1: "B-GENE", 2: "I-GENE"}
         label2id = {"O": 0, "B-GENE": 1, "I-GENE": 2}
@@ -463,9 +415,7 @@ class TestLoadModelByTaskType:
         modules["AutoTokenizer"].from_pretrained.assert_called_once_with(
             "test-model", trust_remote_code=True, add_prefix_space=True
         )
-        modules[
-            "AutoModelForTokenClassification"
-        ].from_pretrained.assert_called_once_with(
+        modules["AutoModelForTokenClassification"].from_pretrained.assert_called_once_with(
             "test-model",
             num_labels=3,
             id2label=id2label,
@@ -482,9 +432,7 @@ class TestLoadModelByTaskType:
         modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
         modules["AutoModel"].from_pretrained.return_value = mock_model
 
-        model, tokenizer = _load_model_by_task_type(
-            "embedding", "test-model", 1, {}, {}, modules
-        )
+        model, tokenizer = _load_model_by_task_type("embedding", "test-model", 1, {}, {}, modules)
 
         assert model == mock_model
         assert tokenizer == mock_tokenizer
@@ -561,12 +509,8 @@ class TestLoadModelAndTokenizer:
 
         with (
             patch("dnallm.models.model._setup_huggingface_mirror"),
-            patch(
-                "dnallm.models.model._handle_evo2_models", return_value=None
-            ),
-            patch(
-                "dnallm.models.model._handle_evo1_models", return_value=None
-            ),
+            patch("dnallm.models.model._handle_evo2_models", return_value=None),
+            patch("dnallm.models.model._handle_evo1_models", return_value=None),
             patch("dnallm.models.model._handle_gpn_models", return_value=None),
             patch(
                 "dnallm.models.model._get_model_path_and_imports",
@@ -585,10 +529,7 @@ class TestLoadModelAndTokenizer:
         ):
             with pytest.raises(
                 ValueError,
-                match=(
-                    "num_labels is required for task type 'regression' "
-                    "but is None"
-                ),
+                match=("num_labels is required for task type 'regression' but is None"),
             ):
                 load_model_and_tokenizer("test-model", task_config)
 
@@ -681,9 +622,7 @@ class TestLoadPresetModel:
         ("regression", "regression"),
     ],
 )
-def test_load_model_by_task_type_problem_types(
-    task_type, expected_problem_type
-):
+def test_load_model_by_task_type_problem_types(task_type, expected_problem_type):
     """Test that correct problem types are set for different task types."""
     modules = {
         "AutoTokenizer": Mock(),
@@ -692,15 +631,11 @@ def test_load_model_by_task_type_problem_types(
     mock_tokenizer = Mock()
     mock_model = Mock()
     modules["AutoTokenizer"].from_pretrained.return_value = mock_tokenizer
-    modules[
-        "AutoModelForSequenceClassification"
-    ].from_pretrained.return_value = mock_model
+    modules["AutoModelForSequenceClassification"].from_pretrained.return_value = mock_model
 
     _load_model_by_task_type(task_type, "test-model", 2, {}, {}, modules)
 
-    call_args = modules[
-        "AutoModelForSequenceClassification"
-    ].from_pretrained.call_args
+    call_args = modules["AutoModelForSequenceClassification"].from_pretrained.call_args
     assert call_args[1]["problem_type"] == expected_problem_type
 
 
@@ -717,9 +652,7 @@ def test_load_model_by_task_type_problem_types(
         ("embedding", "eager"),
     ],
 )
-def test_load_model_by_task_type_attention_implementation(
-    task_type, expected_attn_implementation
-):
+def test_load_model_by_task_type_attention_implementation(task_type, expected_attn_implementation):
     """Test that eager attention implementation is used for all task types."""
     modules = {
         "AutoTokenizer": Mock(),
@@ -743,13 +676,9 @@ def test_load_model_by_task_type_attention_implementation(
     elif task_type == "generation":
         call_args = modules["AutoModelForCausalLM"].from_pretrained.call_args
     elif task_type in ["binary", "multiclass", "multilabel", "regression"]:
-        call_args = modules[
-            "AutoModelForSequenceClassification"
-        ].from_pretrained.call_args
+        call_args = modules["AutoModelForSequenceClassification"].from_pretrained.call_args
     elif task_type == "token":
-        call_args = modules[
-            "AutoModelForTokenClassification"
-        ].from_pretrained.call_args
+        call_args = modules["AutoModelForTokenClassification"].from_pretrained.call_args
     else:
         call_args = modules["AutoModel"].from_pretrained.call_args
 

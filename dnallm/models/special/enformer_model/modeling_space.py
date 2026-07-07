@@ -8,7 +8,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_space import SpaceConfig
 
-from transformers import PreTrainedModel
+from transformers import PreTrainedModel  # type: ignore[attr-defined]
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from .modules import (
@@ -34,7 +34,7 @@ TARGET_LENGTH = 896
 
 # main class
 class Space(PreTrainedModel):
-    config_class = SpaceConfig
+    config_class = SpaceConfig  # type: ignore
     base_model_prefix = "space"
 
     @staticmethod
@@ -105,7 +105,7 @@ class Space(PreTrainedModel):
         )
 
         # create final heads for human and mouse
-        self.heads = nn.ModuleDict({
+        self.heads = nn.ModuleDict({  # type: ignore[misc]
             key: nn.Sequential(
                 nn.Linear(self.dim * 2, features),
             )
@@ -113,9 +113,7 @@ class Space(PreTrainedModel):
         })
 
         if "tracks" in config.moe:
-            self.tracks = TracksMoE(
-                config, self.species, topk=config.tracks_topk
-            )
+            self.tracks = TracksMoE(config, self.species, topk=config.tracks_topk)
 
         self.softplus = nn.Softplus()
 
@@ -139,7 +137,7 @@ class Space(PreTrainedModel):
         x = self.stem(x)
         x = self.conv_tower(x)
         x = rearrange(x, "b d n -> b n d")
-        x = checkpoint_sequential(self.transformer, len(self.transformer), x)
+        x = checkpoint_sequential(self.transformer, len(self.transformer), x)  # type: ignore
         x = self.crop_final(x)
         x = self.final_pointwise(x)
         return x
@@ -157,10 +155,7 @@ class Space(PreTrainedModel):
         if isinstance(inputs_ids, list):
             inputs_ids = str_to_one_hot(inputs_ids)
 
-        elif (
-            isinstance(inputs_ids, torch.Tensor)
-            and inputs_ids.dtype is torch.long
-        ):
+        elif isinstance(inputs_ids, torch.Tensor) and inputs_ids.dtype is torch.long:
             x = seq_indices_to_one_hot(inputs_ids)
         x = x.to(self.device)
 
@@ -176,9 +171,7 @@ class Space(PreTrainedModel):
         x = self.conv_tower(x)
         x = Rearrange("b d n -> b n d")(x)
 
-        x, gates_list, species_zloss, species_cvloss = self.transformer(
-            x, species
-        )
+        x, gates_list, species_zloss, species_cvloss = self.transformer(x, species)
         x, embedding = x[:, :-1, :], x[:, -1, :]
         species_statistics = {
             "gates": gates_list,
@@ -219,8 +212,7 @@ class Space(PreTrainedModel):
         if labels is not None:
             if species is None:
                 raise ValueError(
-                    "species must be passed in if one were"
-                    "to calculate loss directly with targets"
+                    "species must be passed in if one wereto calculate loss directly with targets"
                 )
 
             if return_corr_coef:
@@ -250,9 +242,7 @@ class Space(PreTrainedModel):
         """
         Load a pretrained model from a given path.
         """
-        model = TrainingSpace.from_pretrained(
-            model_name_or_path, *model_args, **kwargs
-        )
+        model = TrainingSpace.from_pretrained(model_name_or_path, *model_args, **kwargs)
         space = model.model
         return space
 
@@ -270,12 +260,8 @@ class TrainingSpace(PreTrainedModel):
         self.cvloss_lambda = config.cvloss_lambda
 
     def forward(self, human_x, mouse_x, human_labels=None, mouse_labels=None):
-        output_human = self.model(
-            human_x, labels=human_labels, species="human"
-        )
-        output_mouse = self.model(
-            mouse_x, labels=mouse_labels, species="mouse"
-        )
+        output_human = self.model(human_x, labels=human_labels, species="human")
+        output_mouse = self.model(mouse_x, labels=mouse_labels, species="mouse")
 
         if human_labels is not None and mouse_labels is not None:
             loss = {
@@ -310,9 +296,7 @@ class TrainingSpace(PreTrainedModel):
 
         return {"human": output_human, "mouse": output_mouse}
 
-    def get_species_loss(
-        self, statistics_human, statistics_mouse, batch_size, device
-    ):
+    def get_species_loss(self, statistics_human, statistics_mouse, batch_size, device):
         tot = batch_size * self.config.num * 2
         total_MIloss = torch.tensor(0.0, device=device)  # noqa: N806
         # total_cvloss = torch.tensor(0.0, device=device)
@@ -331,12 +315,8 @@ class TrainingSpace(PreTrainedModel):
                     total_MIloss + self.MIloss_lambda * MIloss
                 )
                 # total_cvloss = total_cvloss + self.cvloss_lambda * cvloss
-        zloss = self.zloss_lambda * (
-            statistics_human["zloss"] + statistics_mouse["zloss"]
-        )
-        cvloss = self.cvloss_lambda * (
-            statistics_human["cvloss"] + statistics_mouse["cvloss"]
-        )
+        zloss = self.zloss_lambda * (statistics_human["zloss"] + statistics_mouse["zloss"])
+        cvloss = self.cvloss_lambda * (statistics_human["cvloss"] + statistics_mouse["cvloss"])
         loss = {
             "species_auxloss": total_MIloss,
             "species_zloss": zloss,
@@ -344,9 +324,7 @@ class TrainingSpace(PreTrainedModel):
         }
         return loss
 
-    def get_tracks_loss(
-        self, statistics_human, statistics_mouse, batch_size, device
-    ):
+    def get_tracks_loss(self, statistics_human, statistics_mouse, batch_size, device):
         tot = batch_size * (5313 + 1643)
         gates = statistics_human["gates"]
         gates.update(statistics_mouse["gates"])
@@ -356,9 +334,7 @@ class TrainingSpace(PreTrainedModel):
         MIloss, cvloss = self._compute_aux_loss(gates)  # noqa: N806
         cvloss = self.cvloss_lambda * cvloss
         MIloss = self.MIloss_lambda * MIloss  # noqa: N806
-        zloss = self.zloss_lambda * (
-            statistics_human["zloss"] + statistics_mouse["zloss"]
-        )
+        zloss = self.zloss_lambda * (statistics_human["zloss"] + statistics_mouse["zloss"])
 
         loss = {
             "tracks_auxloss": MIloss,
@@ -381,7 +357,7 @@ class TrainingSpace(PreTrainedModel):
 
 
 class SpaceForSequenceClassification(PreTrainedModel):
-    config_class = SpaceConfig
+    config_class = SpaceConfig  # type: ignore
     base_model_prefix = "space"
 
     def __init__(self, config, **kwargs):
@@ -408,11 +384,7 @@ class SpaceForSequenceClassification(PreTrainedModel):
         return_dict: bool | None = None,
         **kwargs,
     ):
-        return_dict = (
-            return_dict
-            if return_dict is not None
-            else self.config.use_return_dict
-        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         outputs = self.model(
             input_ids,
             return_only_embeddings=return_only_embeddings,
@@ -442,12 +414,10 @@ class SpaceForSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()
-                loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1)
-                )
+                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()
+                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
                 loss = loss_fct(logits, labels)
             else:
                 raise NotImplementedError(self.config.problem_type)

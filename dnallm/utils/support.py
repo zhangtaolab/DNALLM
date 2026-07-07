@@ -19,8 +19,7 @@ def is_fp8_capable() -> bool:
         return True
     else:
         logger.warning(
-            f"Current device compute capability is {major}.{minor}, "
-            "which does not support FP8."
+            f"Current device compute capability is {major}.{minor}, which does not support FP8."
         )
         return False
 

@@ -60,9 +60,7 @@ dataset = DNADataset.load_local_data(
 )
 
 # Initialize trainer and start fine-tuning
-trainer = DNATrainer(
-    model=model, tokenizer=tokenizer, train_dataset=dataset, config=config
-)
+trainer = DNATrainer(model=model, config=config, datasets=dataset)
 
 trainer.train()
 ```

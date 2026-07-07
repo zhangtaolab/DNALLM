@@ -78,7 +78,6 @@ This score represents how likely the model thinks the sequence is, from start to
 
 **Usage**:
 Set `task_type: "generation"` in your configuration.
-
 ```python
 # Use a config with task_type: "generation"
 configs = load_config("config_clm.yaml")

@@ -36,9 +36,7 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
 
             # Split dataset into k folds
             for fold, (train_idx, val_idx) in enumerate(kfold.split(dataset)):
-                print(
-                    f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}"
-                )
+                print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 
                 # Split data for this fold
                 train_data = dataset.select(train_idx)
@@ -74,12 +72,8 @@ for model_name, results in cv_results.items():
     print(f"\n{model_name} Cross-Validation Results:")
     for dataset_name, metrics in results.items():
         print(f"  {dataset_name}:")
-        print(
-            f"    Accuracy: {metrics['mean_accuracy']:.4f} ± {metrics['std_accuracy']:.4f}"
-        )
-        print(
-            f"    F1 Score: {metrics['mean_f1']:.4f} ± {metrics['std_f1']:.4f}"
-        )
+        print(f"    Accuracy: {metrics['mean_accuracy']:.4f} ± {metrics['std_accuracy']:.4f}")
+        print(f"    F1 Score: {metrics['mean_f1']:.4f} ± {metrics['std_f1']:.4f}")
 ```
 
 ### Stratified K-Fold for Imbalanced Data
@@ -91,9 +85,7 @@ from sklearn.model_selection import StratifiedKFold
 def run_stratified_cv_benchmark(models, datasets, k_folds=5):
     """Run stratified k-fold cross-validation for imbalanced datasets."""
 
-    stratified_kfold = StratifiedKFold(
-        n_splits=k_folds, shuffle=True, random_state=42
-    )
+    stratified_kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
     cv_results = {}
 
     for model_name, model_info in models.items():
@@ -104,9 +96,7 @@ def run_stratified_cv_benchmark(models, datasets, k_folds=5):
             labels = [item["label"] for item in dataset]
 
             fold_scores = []
-            for fold, (train_idx, val_idx) in enumerate(
-                stratified_kfold.split(dataset, labels)
-            ):
+            for fold, (train_idx, val_idx) in enumerate(stratified_kfold.split(dataset, labels)):
                 # ... rest of the implementation similar to above
                 pass
 
@@ -118,7 +108,6 @@ def run_stratified_cv_benchmark(models, datasets, k_folds=5):
 DNALLM allows you to implement custom evaluation metrics for specific use cases.
 
 ### Basic Custom Metric
-
 ```python
 from dnallm.tasks.metrics import CustomMetric
 import numpy as np
@@ -197,9 +186,7 @@ class ComprehensiveDNAMetric(CustomMetric):
             results["conservation_score"] = self._compute_conservation_score(
                 predictions, targets, sequences
             )
-            results["motif_score"] = self._compute_motif_score(
-                predictions, targets, sequences
-            )
+            results["motif_score"] = self._compute_motif_score(predictions, targets, sequences)
 
         # Overall score (weighted average)
         weights = [0.4, 0.2, 0.2, 0.2]  # Adjust weights as needed
@@ -305,12 +292,8 @@ def profile_model_performance(model, tokenizer, dataset, num_samples=100):
         "avg_batch_time": avg_batch_time,
         "std_batch_time": std_batch_time,
         "samples_per_second": num_samples / total_time,
-        "memory_used_mb": memory_used / 1024 / 1024
-        if torch.cuda.is_available()
-        else 0,
-        "memory_reserved_mb": memory_reserved / 1024 / 1024
-        if torch.cuda.is_available()
-        else 0,
+        "memory_used_mb": memory_used / 1024 / 1024 if torch.cuda.is_available() else 0,
+        "memory_reserved_mb": memory_reserved / 1024 / 1024 if torch.cuda.is_available() else 0,
         "cpu_usage_percent": cpu_percent,
         "throughput": num_samples / total_time,
     }
@@ -423,11 +406,7 @@ def find_optimal_batch_size(model, dataset, max_batch_size=128):
         try:
             # Test batch size
             start_time = time.time()
-            memory_before = (
-                torch.cuda.memory_allocated()
-                if torch.cuda.is_available()
-                else 0
-            )
+            memory_before = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
 
             # Run inference
             dataloader = dataset.get_dataloader(batch_size=batch_size)
@@ -437,11 +416,7 @@ def find_optimal_batch_size(model, dataset, max_batch_size=128):
                 break  # Just test one batch
 
             inference_time = time.time() - start_time
-            memory_after = (
-                torch.cuda.memory_allocated()
-                if torch.cuda.is_available()
-                else 0
-            )
+            memory_after = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
 
             results[batch_size] = {
                 "inference_time": inference_time,
@@ -459,9 +434,7 @@ def find_optimal_batch_size(model, dataset, max_batch_size=128):
                 print(f"Batch size {batch_size} failed: {e}")
 
     # Find optimal batch size
-    optimal_batch_size = max(
-        results.keys(), key=lambda x: results[x]["throughput"]
-    )
+    optimal_batch_size = max(results.keys(), key=lambda x: results[x]["throughput"])
 
     return optimal_batch_size, results
 ```
@@ -491,9 +464,7 @@ def run_multi_dataset_benchmark(models, datasets, metrics):
                 metrics=metrics,
             )
 
-            all_results[model_name]["dataset_results"][dataset_name] = (
-                dataset_result
-            )
+            all_results[model_name]["dataset_results"][dataset_name] = dataset_result
 
         # Aggregate across datasets
         all_results[model_name]["aggregated_metrics"] = aggregate_metrics(
@@ -527,9 +498,7 @@ def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
     sorted_data = sorted(dataset, key=lambda x: x[time_column])
 
     # Create temporal splits
-    total_days = (
-        sorted_data[-1][time_column] - sorted_data[0][time_column]
-    ).days
+    total_days = (sorted_data[-1][time_column] - sorted_data[0][time_column]).days
     num_splits = total_days // interval_days
 
     temporal_results = []
