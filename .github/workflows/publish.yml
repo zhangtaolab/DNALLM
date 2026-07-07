@@ -23,7 +23,7 @@ jobs:
         version: "latest"
     
     - name: Cache uv dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v6
       with:
         path: ~/.cache/uv
         key: ${{ runner.os }}-uv-publish-${{ hashFiles('**/pyproject.toml') }}
