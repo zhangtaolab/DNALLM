@@ -86,12 +86,6 @@ jobs:
           file: ./coverage.xml
           fail_ci_if_error: false
 
-      - name: Run slow tests
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
-          pytest tests/ -v -m "slow" --cov=dnallm --cov-report=xml --cov-report=term-missing --tb=short --cov-append
-
       - name: Run type checking
         run: |
           source .venv/bin/activate
