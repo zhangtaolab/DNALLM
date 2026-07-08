@@ -42,7 +42,7 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
         
       - name: Cache uv dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
@@ -124,7 +124,7 @@ jobs:
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Cache uv dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-cuda-${{ matrix.cuda-version }}-${{ hashFiles('**/pyproject.toml') }}
@@ -221,7 +221,7 @@ jobs:
           python-version: 3.11
           
       - name: Cache mkdocs dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           key: mkdocs-material-${{ github.run_number }}
           path: .cache
