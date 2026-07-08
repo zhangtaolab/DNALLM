@@ -34,7 +34,7 @@ jobs:
           sudo rm -rf /usr/local/.ghcup
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           
@@ -111,7 +111,7 @@ jobs:
           sudo rm -rf /usr/local/.ghcup
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -171,7 +171,7 @@ jobs:
 
       - name: Set up Python ${{ matrix.python-version }}
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -216,7 +216,7 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
           
