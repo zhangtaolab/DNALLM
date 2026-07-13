@@ -61,7 +61,7 @@ dependencies = [
     "starlette>=0.40.0,<0.48.0",
     "tensorboardx>=2.6.2.2",
     "tokenizers>=0.21.0",
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.14",
     "tqdm>=4.67.1",
     "transformers>=4.49.0,<5",
     "umap-learn>=0.5.7",
@@ -125,27 +125,27 @@ all = [
     "dnallm[base,docs,ui]",
 ]
 cpu = [
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.14",
 ]
 cuda121 = [
-    "torch>=2.2.0,<2.12",
+    "torch>=2.2.0,<2.14",
 ]
 cuda124 = [
-    "torch>=2.4.0,<2.12",
+    "torch>=2.4.0,<2.14",
 ]
 cuda126 = [
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.14",
 ]
 cuda128 = [
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.14",
 ]
 rocm = [
-    "torch>=2.5.0,<2.12",
+    "torch>=2.5.0,<2.14",
 ]
 mamba = [
     "causal_conv1d==1.6.0",
     "mamba-ssm==2.3.0",
-    "torch>=2.6.0,<2.12",
+    "torch>=2.6.0,<2.14",
 ]
 
 #mamba = [
