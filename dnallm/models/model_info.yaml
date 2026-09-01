@@ -149,6 +149,16 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
+  - name: "PlantHelixSeek"
+    model: "zhangtaolab/PlantHelixSeek"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
+  - name: "CrossDNA"
+    model: "chengCCC/CrossDNA_pretrain"
+    task:
+      describe: "Pretrained model for DNA sequence understanding."
+      task_type: "mask"
 
 
 finetuned:

@@ -9,6 +9,7 @@ from .enformer import _handle_enformer_models
 from .space import _handle_space_models
 from .borzoi import _handle_borzoi_models
 from .basenji2 import _handle_basenji2_tokenizer
+from .crossdna import _handle_crossdna_models
 
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "_handle_mutbert_tokenizer",
     "_handle_omnidna_models",
     "_handle_space_models",
+    "_handle_crossdna_models",
 ]

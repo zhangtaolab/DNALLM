@@ -30,6 +30,7 @@ from .special import (
     _handle_space_models,
     _handle_borzoi_models,
     _handle_basenji2_tokenizer,
+    _handle_crossdna_models,
 )
 from .head import (
     BasicMLPHead,
@@ -860,6 +861,14 @@ def load_model_and_tokenizer(
             custom_tokenizer,
             bnb_config,
         ]
+        if "crossdna" in downloaded_model_path.lower():
+            model, tokenizer = _handle_crossdna_models(
+                task_type, downloaded_model_path,
+                safe_num_labels, id2label, label2id,
+                modules, head_config,
+                custom_tokenizer,
+                bnb_config,
+            )
         model, tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
         if model is None or tokenizer is None:
             model, tokenizer = _load_model_by_task_type(*load_args)
