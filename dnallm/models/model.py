@@ -863,9 +863,13 @@ def load_model_and_tokenizer(
         ]
         if "crossdna" in downloaded_model_path.lower():
             model, tokenizer = _handle_crossdna_models(
-                task_type, downloaded_model_path,
-                safe_num_labels, id2label, label2id,
-                modules, head_config,
+                task_type,
+                downloaded_model_path,
+                safe_num_labels,
+                id2label,
+                label2id,
+                modules,
+                head_config,
                 custom_tokenizer,
                 bnb_config,
             )

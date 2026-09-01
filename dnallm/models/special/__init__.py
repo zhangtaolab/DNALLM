@@ -15,6 +15,7 @@ from .crossdna import _handle_crossdna_models
 __all__ = [
     "_handle_basenji2_tokenizer",
     "_handle_borzoi_models",
+    "_handle_crossdna_models",
     "_handle_dnabert2_models",
     "_handle_enformer_models",
     "_handle_evo1_models",
@@ -25,5 +26,4 @@ __all__ = [
     "_handle_mutbert_tokenizer",
     "_handle_omnidna_models",
     "_handle_space_models",
-    "_handle_crossdna_models",
 ]

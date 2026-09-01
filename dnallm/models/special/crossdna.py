@@ -10,7 +10,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -116,7 +116,7 @@ def _build_crossdna_sequence_classification_class(
 
         # CrossDNA pretraining checkpoints may contain EMA-teacher copies.
         # Downstream classification intentionally does not keep these modules.
-        _keys_to_ignore_on_load_unexpected = [
+        _keys_to_ignore_on_load_unexpected = [  # noqa: RUF012
             r"backbone\.branchA_core_ema\..*",
             r"backbone\.branchB_core_ema\..*",
             r"backbone\.bridge_ema\..*",
@@ -144,12 +144,8 @@ def _build_crossdna_sequence_classification_class(
             # Do NOT reuse CrossDNA's pretraining gate warm-up (5000 steps in
             # the 8.1M config).  Fine-tuning should use the pretrained gate from
             # the first optimization step unless explicitly overridden.
-            classifier_gate_freeze_steps = int(
-                getattr(config, "classifier_gate_freeze_steps", 0)
-            )
-            classifier_detach_gate = bool(
-                getattr(config, "classifier_detach_gate", False)
-            )
+            classifier_gate_freeze_steps = int(getattr(config, "classifier_gate_freeze_steps", 0))
+            classifier_detach_gate = bool(getattr(config, "classifier_detach_gate", False))
             self.backbone.gate_freeze_steps = classifier_gate_freeze_steps
             self.backbone.detach_gate = classifier_detach_gate
 
@@ -171,12 +167,9 @@ def _build_crossdna_sequence_classification_class(
             classifier_dropout = getattr(config, "classifier_dropout", None)
             if classifier_dropout is None:
                 classifier_dropout = getattr(config, "dropout", 0.1)
-            classifier_dropout = float(classifier_dropout)
+            classifier_dropout = float(classifier_dropout)  # type: ignore
             if not 0.0 <= classifier_dropout <= 1.0:
-                raise ValueError(
-                    "classifier_dropout must be in [0, 1], "
-                    f"got {classifier_dropout}"
-                )
+                raise ValueError(f"classifier_dropout must be in [0, 1], got {classifier_dropout}")
 
             self.classifier_dropout = nn.Dropout(classifier_dropout)
             self.classifier = nn.Linear(int(config.d_model), self.num_labels)
@@ -190,12 +183,8 @@ def _build_crossdna_sequence_classification_class(
 
             # The currently distributed CrossDNA tokenizer encodes A/C/G/T/N
             # as 7/8/9/10/11, while the backbone expects 0/1/2/3/4.
-            self.auto_remap_tokenizer_ids = bool(
-                getattr(config, "auto_remap_tokenizer_ids", True)
-            )
-            self.tokenizer_base_offset = int(
-                getattr(config, "tokenizer_base_offset", 7)
-            )
+            self.auto_remap_tokenizer_ids = bool(getattr(config, "auto_remap_tokenizer_ids", True))
+            self.tokenizer_base_offset = int(getattr(config, "tokenizer_base_offset", 7))
 
             config.classifier_dropout = classifier_dropout
             config.classifier_pooling = self.pooling
@@ -209,15 +198,14 @@ def _build_crossdna_sequence_classification_class(
 
         def _prepare_input_ids(
             self,
-            input_ids: torch.LongTensor,
+            input_ids: torch.Tensor,
             attention_mask: torch.Tensor | None = None,
-        ) -> tuple[torch.LongTensor, torch.Tensor | None]:
+        ) -> tuple[torch.Tensor, torch.Tensor | None]:
             if input_ids is None:
                 raise ValueError("input_ids must be provided")
             if input_ids.ndim != 2:
                 raise ValueError(
-                    "input_ids must have shape [batch, length], "
-                    f"got {tuple(input_ids.shape)}"
+                    f"input_ids must have shape [batch, length], got {tuple(input_ids.shape)}"
                 )
             if input_ids.dtype not in {
                 torch.int8,
@@ -226,9 +214,7 @@ def _build_crossdna_sequence_classification_class(
                 torch.int64,
                 torch.uint8,
             }:
-                raise TypeError(
-                    f"input_ids must contain integer token IDs, got {input_ids.dtype}"
-                )
+                raise TypeError(f"input_ids must contain integer token IDs, got {input_ids.dtype}")
 
             if attention_mask is not None and attention_mask.shape != input_ids.shape:
                 raise ValueError(
@@ -260,9 +246,9 @@ def _build_crossdna_sequence_classification_class(
             if attention_mask is None:
                 effective_mask = base_mask.to(dtype=torch.long)
             else:
-                effective_mask = (
-                    attention_mask.to(dtype=torch.bool) & base_mask
-                ).to(dtype=attention_mask.dtype)
+                effective_mask = (attention_mask.to(dtype=torch.bool) & base_mask).to(
+                    dtype=attention_mask.dtype
+                )
 
             return normalized, effective_mask
 
@@ -273,8 +259,7 @@ def _build_crossdna_sequence_classification_class(
         ) -> torch.Tensor:
             if hidden_states.ndim != 3:
                 raise ValueError(
-                    "Expected hidden_states with shape [B, L, H], "
-                    f"got {tuple(hidden_states.shape)}"
+                    f"Expected hidden_states with shape [B, L, H], got {tuple(hidden_states.shape)}"
                 )
 
             batch_size, seq_len, _ = hidden_states.shape
@@ -321,10 +306,15 @@ def _build_crossdna_sequence_classification_class(
                 return pooled.masked_fill(all_masked.unsqueeze(-1), 0.0)
 
             if self.pooling == "last":
-                positions = torch.arange(
-                    seq_len,
-                    device=hidden_states.device,
-                ).unsqueeze(0).expand(batch_size, -1)
+                positions = (
+                    torch
+                    .arange(
+                        seq_len,
+                        device=hidden_states.device,
+                    )
+                    .unsqueeze(0)
+                    .expand(batch_size, -1)
+                )
                 last_idx = positions.masked_fill(~mask, -1).max(dim=1).values
                 safe_idx = last_idx.clamp_min(0)
                 pooled = hidden_states[
@@ -337,7 +327,7 @@ def _build_crossdna_sequence_classification_class(
 
         def forward(
             self,
-            input_ids: torch.LongTensor,
+            input_ids: torch.Tensor,
             attention_mask: torch.Tensor | None = None,
             labels: torch.Tensor | None = None,
             output_hidden_states: bool | None = None,
@@ -349,9 +339,7 @@ def _build_crossdna_sequence_classification_class(
             if return_dict is None:
                 return_dict = bool(getattr(self.config, "use_return_dict", True))
             if output_hidden_states is None:
-                output_hidden_states = bool(
-                    getattr(self.config, "output_hidden_states", False)
-                )
+                output_hidden_states = bool(getattr(self.config, "output_hidden_states", False))
 
             input_ids, pooling_mask = self._prepare_input_ids(
                 input_ids,
@@ -415,10 +403,10 @@ def _build_crossdna_sequence_classification_class(
                 output: tuple[Any, ...] = (logits,)
                 if output_hidden_states:
                     output += (hidden_output,)
-                return ((loss,) + output) if loss is not None else output
+                return ((loss,) + output) if loss is not None else output  # noqa: RUF005
 
             return SequenceClassifierOutput(
-                loss=loss,
+                loss=loss,  # type: ignore[arg-type]
                 logits=logits,
                 hidden_states=hidden_output,
                 attentions=None,
@@ -565,9 +553,7 @@ def _handle_crossdna_models(
     if not hasattr(config, "tokenizer_base_offset"):
         config.tokenizer_base_offset = 7
 
-    auto_model_for_sequence_classification = modules[
-        "AutoModelForSequenceClassification"
-    ]
+    auto_model_for_sequence_classification = modules["AutoModelForSequenceClassification"]
     _register_crossdna_sequence_classification(
         config=config,
         model_path=checkpoint_dir,
@@ -593,6 +579,6 @@ def _handle_crossdna_models(
 
 __all__ = [
     "_handle_crossdna_models",
-    "_resolve_crossdna_checkpoint_dir",
     "_register_crossdna_sequence_classification",
+    "_resolve_crossdna_checkpoint_dir",
 ]
