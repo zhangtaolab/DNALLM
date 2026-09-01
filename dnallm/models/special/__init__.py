@@ -9,11 +9,13 @@ from .enformer import _handle_enformer_models
 from .space import _handle_space_models
 from .borzoi import _handle_borzoi_models
 from .basenji2 import _handle_basenji2_tokenizer
+from .crossdna import _handle_crossdna_models
 
 
 __all__ = [
     "_handle_basenji2_tokenizer",
     "_handle_borzoi_models",
+    "_handle_crossdna_models",
     "_handle_dnabert2_models",
     "_handle_enformer_models",
     "_handle_evo1_models",

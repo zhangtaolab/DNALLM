@@ -36,7 +36,7 @@ DNALLM-Suite supports a wide range of DNA language models including:
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
-- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT
+- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek， CrossDNA
 
 ### Causal Language Models (CLM)
 - **EVO Series**: EVO-1, EVO-2

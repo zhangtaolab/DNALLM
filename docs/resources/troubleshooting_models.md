@@ -18,6 +18,7 @@ Some models require special packages that are not part of the base DNALLM instal
 - `ImportError: No module named 'mamba_ssm'`
 - `ImportError: No module named 'gpn'`
 - `ImportError: No module named 'ai2_olmo'`
+- `ImportError: No module named 'fla'`
 
 **Solution**:
 You must install the required dependencies for the specific model you are trying to use. Refer to the Installation Guide for detailed commands.
@@ -31,6 +32,12 @@ uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation
 **Example for Evo-1:**
 ```bash
 uv pip install evo-model
+```
+
+**Example for fla:**
+```bash
+# Activate your virtual environment first
+uv pip install flash-linear-attention
 ```
 
 ### Problem: `flash_attn` installation fails

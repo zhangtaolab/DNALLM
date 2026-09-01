@@ -44,6 +44,8 @@ The following table shows all currently supported models and their fine-tuning/i
 | Omni-DNA | CausalLM | OLMoModel | ✅ | zehui127 | 20M / 60M / 116M / 300M / 700M / 1B | 6 | [arXiv](https://doi.org/10.48550/arXiv.2502.03499) |
 | plant-genomic-jamba | CausalLM | StripedMamba | ✅ | suzuki-2001 | 50M | 1 | [GitHub](https://github.com/suzuki-2001/genomic-jamba) |
 | ProkBERT | MaskedLM | MegatronBert | ✅ | neuralbioinfo | 21M / 25M / 27M | 3 | [Frontiers in Microbiology](https://doi.org/10.3389/fmicb.2023.1331233) |
+| PlantHelixSeek | MaskedLM | HelixSeek | ✅ | zhangtaolab | 470M (240M) | 1 | [GitHub](https://github.com/zhangtaolab/PlantHelixSeek) |
+| CrossDNA | MaskedLM | Comba | ✅ | chengCCC | 8.1M / 28.6M / 71.6M / 519M | 4 | [Nature Machine Intelligence](https://doi.org/10.1038/s42256-026-01249-1) |
 
 ## Model Categories
 
@@ -53,7 +55,7 @@ The following table shows all currently supported models and their fine-tuning/i
 - **BERT-based**: DNABERT, DNABERT-2, DNABERT-S, Plant DNABERT, GENA-LM, GROVER, MutBERT, ProkBERT, MutBERT, Plant DNAModernBert
 - **ESM-based**: Nucleotide Transformer, AgroNT, Plant Nucleotide Transformer
 - **Caduceus-based**: Caduceus-Ph, Caduceus-Ps, PlantCaduceus、PlantCAD2
-- **Other**: GENA-LM-BigBird, GPN, JanusDNA, LucaOne
+- **Other**: GENA-LM-BigBird, GPN, JanusDNA, LucaOne, PlantHelixSeek, CrossDNA
 
 #### **Causal Language Models (CLM)**
 - **Llama-based**: GENERator, OmniNA
