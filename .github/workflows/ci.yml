@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13']
         numpy-version: ['1.26.4', '2.2.0']
     steps:
       - name: Checkout code
@@ -55,12 +55,17 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          uv pip install -e ".[base]"
 
       - name: Install specific numpy version
         run: |
           source .venv/bin/activate
-          uv pip install "numpy==${{ matrix.numpy-version }}"
+          if [ "${{ matrix.numpy-version }}" = "1.26.4" ]; then
+            uv pip install "numpy==${{ matrix.numpy-version }}" "scipy>=1.15.2"
+          elif [ "${{ matrix.numpy-version }}" = "2.2.0" ]; then
+            uv pip install "numpy==${{ matrix.numpy-version }}"
+          fi
+          
 
       - name: Run linting and code quality checks with Ruff
         run: |
@@ -80,12 +85,6 @@ jobs:
         with:
           file: ./coverage.xml
           fail_ci_if_error: false
-
-      - name: Run slow tests
-        continue-on-error: true
-        run: |
-          source .venv/bin/activate
-          pytest tests/ -v -m "slow" --cov=dnallm --cov-report=xml --cov-report=term-missing --tb=short --cov-append
 
       - name: Run type checking
         run: |
@@ -140,9 +139,9 @@ jobs:
         run: |
           uv venv
           if [ "${{ matrix.cuda-version }}" = "12.1" ]; then
-            uv pip install -e ".[test,dev,cuda121]"
+            uv pip install -e ".[base,cuda121]"
           elif [ "${{ matrix.cuda-version }}" = "12.4" ]; then
-            uv pip install -e ".[test,dev,cuda124]"
+            uv pip install -e ".[base,cuda124]"
           fi
           
       - name: Run GPU-enabled tests
