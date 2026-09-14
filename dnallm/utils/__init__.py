@@ -4,6 +4,7 @@ DNALLM Utilities
 This module contains utility functions and classes for the DNALLM project.
 """
 
+from . import cuda_compat as _cuda_compat
 from . import transformers_compat as _transformers_compat
 from .sequence import (
     calc_gc_content,
@@ -30,6 +31,7 @@ from .training_plots import plot_loss_curve, plot_lr_schedule
 
 __all__ = [
     "LoggingContext",
+    "_cuda_compat",
     "_transformers_compat",
     "calc_gc_content",
     "check_sequence",
