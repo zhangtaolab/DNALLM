@@ -51,6 +51,10 @@ class TestBenchmark(unittest.TestCase):
 
     def create_test_config(self):
         """Create a test configuration file."""
+        # Use POSIX-style paths in YAML so Windows backslashes
+        # (e.g. ``\U`` in ``C:\Users``) are not parsed as escape sequences
+        data_path = Path(self.data_path).as_posix()
+        results_dir = Path(self.results_dir).as_posix()
         config_content = f"""task:
   task_type: "binary"
   num_labels: 2
@@ -69,7 +73,7 @@ models:
   source: "huggingface"
 datasets:
 - name: "test_dataset"
-  path: "{self.data_path}"
+  path: "{data_path}"
   task: "binary"
   text_column: "sequence"
   label_column: "labels"
@@ -82,7 +86,7 @@ evaluation:
   num_workers: 1
 output:
   format: "html"
-  path: "{self.results_dir}"
+  path: "{results_dir}"
 """
         with open(self.config_path, "w") as f:
             f.write(config_content)

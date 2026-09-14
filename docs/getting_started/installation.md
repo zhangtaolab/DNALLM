@@ -103,9 +103,37 @@ source .venv/bin/activate  # Linux/MacOS
 # CUDA 12.4 (recommended for recent GPUs)
 uv pip install -e '.[cuda124]'
 
+# CUDA 13.0 (requires torch >= 2.9, NVIDIA driver >= 580)
+uv pip install -e '.[cuda130]'
+
 # Other supported versions: cpu, cuda121, cuda126, cuda128
 uv pip install -e '.[cuda121]'
 ```
+
+#### Windows with CUDA 13.0
+
+CUDA 13.0 (cu130) PyTorch wheels are available for **Windows and Linux** starting from PyTorch 2.9.0:
+
+```powershell
+# 1. Install the latest NVIDIA driver (>= 580.xx) from https://www.nvidia.com/drivers
+#    No local CUDA toolkit is required — PyTorch wheels bundle the CUDA runtime.
+
+# 2. Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate
+
+# 3. Install DNALLM with CUDA 13.0 support
+pip install uv
+uv pip install -e '.[base,cuda130]'
+
+# 4. Verify GPU is detected
+python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
+```
+
+> **Notes for Windows users:**
+> - CUDA 13.0 wheels require an NVIDIA driver version **580 or newer**. Check with `nvidia-smi`.
+> - If you have an RTX 50-series (Blackwell) GPU, both `cuda128` (torch 2.6+) and `cuda130` (torch 2.9+) work; `cuda130` ships the newest CUDA runtime.
+> - The local CUDA toolkit (`nvcc`) is NOT needed for normal usage — only for compiling packages from source (e.g., `flash-attn`, `mamba-ssm`), which additionally requires [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) (Desktop development with C++).
 
 ## Dependency Groups
 
@@ -137,6 +165,7 @@ DNALLM provides multiple dependency groups for different use cases:
 | **cuda124** | 2.4.0-2.7 | NVIDIA (recommended) | Most modern GPUs |
 | **cuda126** | 2.6.0-2.7 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
 | **cuda128** | 2.6.0-2.7 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
+| **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) | Newest driver / RTX 50-series, Windows with driver >= 580 |
 | **rocm** | 2.5.0-2.7 | AMD GPUs | AMD GPU users |
 | **mamba** | 2.6.0-2.7 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
 
