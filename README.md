@@ -168,7 +168,7 @@ uv pip install -e '.[all,cuda130]'
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `docs` + `ui` |
+| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
 | `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |

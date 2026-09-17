@@ -4,7 +4,7 @@ DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and infe
 
 ## Prerequisites
 
-- Python 3.10 or higher (Python 3.12 recommended)
+- Python 3.10 or higher (Python 3.13 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:
@@ -53,7 +53,7 @@ git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
 
 # Create conda environment
-conda create -n dnallm python=3.12 -y
+conda create -n dnallm python=3.13 -y
 
 # Activate conda environment
 conda activate dnallm
@@ -76,7 +76,7 @@ git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
 
 # Create conda environment
-conda create -n dnallm python=3.12 -y
+conda create -n dnallm python=3.13 -y
 
 # Activate conda environment
 conda activate dnallm
@@ -86,6 +86,14 @@ pip install dnallm
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
+
+> **Important for GPU users:** plain `pip` does NOT read the per-CUDA-version
+> package indexes configured in `pyproject.toml` (`[tool.uv.sources]`), which
+> are only honored by uv. With pip you must install the GPU build of PyTorch
+> explicitly from the PyTorch index — see the
+> [GPU Support](#gpu-support-with-plain-pip) section below. Otherwise pip
+> silently installs the default (CPU) wheel and `torch.cuda.is_available()`
+> stays `False` even with a GPU present.
 
 ## GPU Support
 
@@ -109,6 +117,52 @@ uv pip install -e '.[cuda130]'
 # Other supported versions: cpu, cuda121, cuda126, cuda128
 uv pip install -e '.[cuda121]'
 ```
+
+### GPU Support with plain pip
+
+If you use `pip` instead of `uv` (e.g., inside a conda environment), the
+`[tool.uv.sources]` index configuration is ignored, so the hardware extras
+above will not pull the GPU build of PyTorch. Install torch explicitly from
+the PyTorch wheel index instead:
+
+```bash
+# NVIDIA CUDA (choose one index matching your GPU/driver)
+pip install torch --index-url https://download.pytorch.org/whl/cu130
+
+# Intel GPU (XPU, e.g. Intel Arc / Data Center GPU)
+pip install torch --index-url https://download.pytorch.org/whl/xpu
+
+# CPU only
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+Two rules to avoid the most common pitfalls:
+
+1. **Install torch LAST.** Run `pip install -e '.[base]'` (or `pip install
+   dnallm`) FIRST, then install torch from the index above. The editable
+   install re-resolves `torch` from PyPI, whose default Windows wheel is the
+   CPU build (`+cpu`) — it will silently replace a GPU torch installed
+   earlier. Respect the `torch<2.12` pin from `pyproject.toml`, e.g.:
+
+   ```bash
+   pip install -e '.[base]'                                  # dnallm + deps
+   pip install --force-reinstall --no-deps 'torch==2.11.0' \
+       --index-url https://download.pytorch.org/whl/cu130    # GPU torch LAST
+   ```
+
+2. **Always verify** afterwards — the suffix matters:
+
+   ```bash
+   python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
+   # CUDA env:  2.11.0+cu130 13.0 True
+   # XPU env:   2.11.0+xpu None False  (check torch.xpu.is_available() instead)
+   # Wrong:     2.11.0+cpu  None False  <-- pip fell back to the CPU wheel
+   ```
+
+> **Note:** The `torch==2.11.0` pin above is the newest release satisfying
+> DNALLM's `torch<2.12` requirement. The PyTorch indexes also ship newer
+> versions (2.12+), which must NOT be used with the current DNALLM release.
+> Check the exact pins in `pyproject.toml` for your version.
 
 #### Windows with CUDA 13.0
 
@@ -143,7 +197,7 @@ DNALLM provides multiple dependency groups for different use cases:
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `base` + `docs` + `ui` |
+| **all** | Install all optional dependencies | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
 | **base** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, flake8, pre-commit, mypy, pandas-stubs) |
 | **test** | Testing environment only | pytest and plugins |
@@ -179,7 +233,7 @@ For development and testing without GPU acceleration:
 
 ```bash
 # Create environment
-conda create -n dnallm-cpu python=3.12 uv -y
+conda create -n dnallm-cpu python=3.13 uv -y
 conda activate dnallm-cpu
 
 # Install all dependencies and CPU version
@@ -198,7 +252,7 @@ For GPU-accelerated training and inference:
 nvidia-smi
 
 # Create environment (using CUDA 12.4 as example)
-conda create -n dnallm-gpu python=3.12 uv -y
+conda create -n dnallm-gpu python=3.13 uv -y
 conda activate dnallm-gpu
 
 # Install all dependencies and CUDA 12.4 support
@@ -208,7 +262,79 @@ uv pip install -e '.[all,cuda124]'
 python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
 ```
 
-### Scenario 3: Using Huawei Ascend NPU for Training and Inference
+### Scenario 3: Using Intel GPU (XPU) for Training and Inference
+
+For Intel Arc / Data Center GPU accelerated training and inference:
+
+```bash
+# Create environment
+conda create -n dnallm-xpu python=3.13 -y
+conda activate dnallm-xpu
+
+# Install base dependencies first
+pip install jupyterlab -e '.[base]'
+
+# Install the XPU build of PyTorch LAST (plain pip only —
+# uv users can simply do: uv pip install -e '.[base]' then the xpu index)
+pip install --force-reinstall --no-deps 'torch==2.11.0' \
+    --index-url https://download.pytorch.org/whl/xpu
+
+# Verify installation
+python -c "
+import torch
+print(f'PyTorch: {torch.__version__}')
+print(f'XPU available: {torch.xpu.is_available()}')
+if torch.xpu.is_available():
+    print(f'GPU: {torch.xpu.get_device_name(0)}')
+"
+```
+
+> **Notes for Intel GPU users:**
+> - During training, Hugging Face `Trainer` automatically falls back to XPU
+>   when no CUDA device is present. To force XPU on a machine that ALSO has an
+>   NVIDIA GPU, hide CUDA before starting Python:
+>   `export CUDA_VISIBLE_DEVICES=""` (Linux) or
+>   `set CUDA_VISIBLE_DEVICES=` (Windows cmd).
+> - The XPU wheel pulls in Intel SYCL/oneAPI runtime packages automatically.
+>   If you ever force-reinstall a *different* torch version over an existing
+>   XPU install, the runtime versions may drift and torch fails to load with
+>   `OSError: [WinError 126] ... c10_xpu.dll` (or `shm.dll`). Fix by
+>   reinstalling the exact runtime pins listed in the torch wheel's
+>   `METADATA` (e.g., `intel-sycl-rt==2025.3.2`, `tbb==2022.3.1`, ...), or
+>   simply reinstall torch WITH its dependencies (omit `--no-deps`).
+> - Windows: the Intel GPU driver must be recent enough for the installed
+>   PyTorch XPU build — update from [Intel's website](https://www.intel.com/content/www/us/en/download/785597/)
+>   if `torch.xpu.is_available()` returns `False`.
+
+### Scenario 4: Multiple GPU Types on One Machine
+
+On a machine with BOTH an NVIDIA GPU and an Intel GPU, the CUDA and XPU
+torch builds cannot coexist in one environment. Create separate environments
+and select the kernel per notebook:
+
+```bash
+# NVIDIA environment
+conda create -n dnallm-cuda python=3.13 -y
+conda activate dnallm-cuda
+uv pip install -e '.[all,cuda130]'        # or plain pip: see Scenario 2 / GPU Support with plain pip
+
+# Intel environment
+conda create -n dnallm-xpu python=3.13 -y
+conda activate dnallm-xpu
+pip install jupyterlab -e '.[base]'
+pip install 'torch==2.11.0' --index-url https://download.pytorch.org/whl/xpu
+
+# CPU fallback environment
+conda create -n dnallm-cpu python=3.13 -y
+conda activate dnallm-cpu
+uv pip install -e '.[all,cpu]'
+```
+
+Then pick the matching kernel (`dnallm-cuda` / `dnallm-xpu` / `dnallm-cpu`)
+in Jupyter/VS Code. The example notebooks include a device-selection cell
+that auto-detects which devices are visible in the active environment.
+
+### Scenario 5: Using Huawei Ascend NPU for Training and Inference
 
 For Huawei Ascend NPU accelerated training and inference, users should first check their device and environment, then install the appropriate dependencies.
 
@@ -262,7 +388,7 @@ During training or inference, Huawei Ascend NPU accelerate is supported for most
 
 For other non-transformer models or CUDA-dependent models, Huawei provides a specific framework for efficient model training and inference, named [MindSpeed](https://gitcode.com/Ascend/MindSpeed-LLM/). Detailed supported model list is shown [here](https://gitcode.com/Ascend/MindSpeed-LLM/blob/master/docs/zh/pytorch/models/supported_models.md).
 
-### Scenario 4: Using Mamba Model Architecture
+### Scenario 6: Using Mamba Model Architecture
 
 For models with Mamba architecture (Plant DNAMamba, Caduceus, Jamba-DNA):
 
@@ -281,13 +407,13 @@ uv pip install -e '.[cuda124,mamba]' --no-cache-dir --no-build-isolation
 python -c "from mambapy import Mamba; print('Mamba installed successfully!')"
 ```
 
-### Scenario 5: Complete Development Environment
+### Scenario 7: Complete Development Environment
 
 For contributors and developers:
 
 ```bash
 # Create environment
-conda create -n dnallm-dev python=3.12 -y
+conda create -n dnallm-dev python=3.13 -y
 conda activate dnallm-dev
 
 # Install all dependencies + CUDA support
@@ -303,13 +429,13 @@ print('CUDA:', torch.version.cuda if torch.cuda.is_available() else 'CPU')
 "
 ```
 
-### Scenario 6: Running MCP Server Only
+### Scenario 8: Running MCP Server Only
 
 For MCP server deployment:
 
 ```bash
 # Create environment
-conda create -n dnallm-mcp python=3.12 -y
+conda create -n dnallm-mcp python=3.13 -y
 conda activate dnallm-mcp
 
 # MCP dependencies are included in core, just install with CUDA support
@@ -359,6 +485,17 @@ try:
 except ImportError:
     print('Mamba: Not installed')
 "
+
+# Verify Intel XPU (XPU build of PyTorch only)
+python -c "
+import torch
+if hasattr(torch, 'xpu'):
+    print(f'XPU available: {torch.xpu.is_available()}')
+    if torch.xpu.is_available():
+        print(f'GPU: {torch.xpu.get_device_name(0)}')
+else:
+    print('XPU: torch build has no XPU support')
+"
 ```
 
 ## Troubleshooting
@@ -379,6 +516,48 @@ uv pip uninstall torch torchvision torchaudio
 # 3. Reinstall matching version
 uv pip install -e '.[cuda121]'  # Choose based on actual situation
 ```
+
+### GPU Present but `torch.cuda.is_available()` Returns False
+
+**Issue**: The GPU shows up in `nvidia-smi`, but PyTorch cannot see it.
+
+**Solution**: Almost always a wrong PyTorch build. Check the wheel suffix:
+```bash
+python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
+```
+
+- `2.x.x+cpu` — you have the CPU build. This happens with plain `pip`
+  (pip ignores the per-CUDA indexes in `pyproject.toml`, and the default
+  PyPI wheel for Windows is the CPU build) or when `pip install -e '.[...]'`
+  re-resolved torch *after* a GPU torch was installed. Fix by reinstalling
+  the GPU build LAST, e.g.:
+
+  ```bash
+  pip install --force-reinstall --no-deps 'torch==2.11.0' \
+      --index-url https://download.pytorch.org/whl/cu130
+  ```
+- `2.x.x+cuXXX` but still `False` — driver too old for that CUDA build
+  (cu130 needs NVIDIA driver >= 580); update the driver.
+
+### XPU: `OSError: [WinError 126]` Loading `c10_xpu.dll` / `shm.dll`
+
+**Issue**: torch XPU build installed, but importing torch fails with
+"module not found"-style errors naming `c10_xpu.dll` or `shm.dll`.
+
+**Solution**: The Intel SYCL/oneAPI runtime packages drifted out of sync
+with the torch wheel (common after a `--no-deps` force-reinstall of a
+different torch version). Either reinstall torch WITH its dependencies:
+
+```bash
+pip install --force-reinstall 'torch==2.11.0' \
+    --index-url https://download.pytorch.org/whl/xpu
+```
+
+or install the exact runtime pins listed in the installed torch wheel's
+`METADATA` (`<env>/Lib/site-packages/torch-2.11.0+xpu.dist-info/META-DATA`),
+e.g. `intel-sycl-rt==2025.3.2`, `intel-cmplr-lib-rt==2025.3.2`,
+`intel-openmp==2025.3.2`, `tbb==2022.3.1`, `intel-pti==0.16.0`,
+`onemkl-sycl-*==2025.3.1`, ...
 
 ### Mamba Installation Failure
 
@@ -405,7 +584,7 @@ sh scripts/install_mamba.sh
 **Solution**:
 ```bash
 # 1. Create new environment
-conda create -n dnallm-new python=3.12 -y
+conda create -n dnallm-new python=3.13 -y
 conda activate dnallm-new
 
 # 2. Use uv to resolve dependencies
