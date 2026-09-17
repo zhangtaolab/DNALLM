@@ -154,18 +154,21 @@ source .venv/bin/activate  # Linux/MacOS
 # CUDA 12.4 (recommended for recent GPUs)
 uv pip install -e '.[all,cuda124]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128
+# Other supported versions: cpu, cuda121, cuda126, cuda128, cuda130
 # Nvidia 5090 Please use cuda128 & torch==2.7
 uv pip install -e '.[all,cuda128]'
+
+# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+uv pip install -e '.[all,cuda130]'
 ```
 
-> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `rocm`, `mamba`) are mutually exclusive. You must choose exactly one. Do NOT combine multiple CUDA versions.
+> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) are mutually exclusive. You must choose exactly one. Do NOT combine multiple CUDA versions.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `docs` + `ui` |
+| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
 | `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |
@@ -183,6 +186,7 @@ uv pip install -e '.[all,cuda128]'
 | `cuda124` | 2.4.0-2.7 | Most modern GPUs (recommended) |
 | `cuda126` | 2.6.0-2.7 | Ada/Hopper with Flash Attention |
 | `cuda128` | 2.6.0-2.7 | RTX 5090 and latest hardware |
+| `cuda130` | 2.9.0-2.12 | CUDA 13.0, Windows & Linux (driver >= 580) |
 | `rocm` | 2.5.0-2.7 | AMD GPUs |
 | `mamba` | 2.6.0-2.7 | Native Mamba architecture (requires CUDA) |
 

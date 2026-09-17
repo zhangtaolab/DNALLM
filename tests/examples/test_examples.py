@@ -85,6 +85,11 @@ def _get_excel_files():
 
 MARIMO_FILES = _get_marimo_files()
 NOTEBOOK_FILES = _get_notebook_files()
+
+# Documented optional dependencies that are not installable on all
+# platforms (e.g. pybedtools requires bedtools/pysam and has no Windows
+# wheels). Missing ones are skipped instead of failing the import check.
+OPTIONAL_IMPORT_MODULES = ("pybedtools",)
 YAML_FILES = _get_yaml_files()
 CSV_FILES = _get_csv_files()
 EXCEL_FILES = _get_excel_files()
@@ -249,11 +254,19 @@ class TestNotebookExamples:
             pytest.skip("No import statements found")
 
         failed = []
+        skipped_optional = []
         for stmt in import_statements:
             try:
                 exec(compile(stmt, str(nb_file), "exec"), {})  # noqa: S102
             except (ImportError, ModuleNotFoundError) as e:
-                failed.append(f"{stmt}: {e}")
+                missing = getattr(e, "name", None) or ""
+                if any(
+                    missing == mod or missing.startswith(f"{mod}.")
+                    for mod in OPTIONAL_IMPORT_MODULES
+                ):
+                    skipped_optional.append(f"{stmt}: {e}")
+                else:
+                    failed.append(f"{stmt}: {e}")
 
         if failed:
             pytest.fail(f"Failed imports in {nb_file.name}: {', '.join(failed[:3])}")
