@@ -122,9 +122,9 @@ def _mock_tok_fn(sequences, **kwargs):
 _mock_tokenizer.side_effect = _mock_tok_fn
 _mock_tokenizer.pad.side_effect = _mock_tok_fn
 _mock_tokenizer.__call__ = _mock_tok_fn
-_mock_tokenizer.pad_token = "[PAD]"  # noqa: S105
-_mock_tokenizer.eos_token = "[EOS]"  # noqa: S105
-_mock_tokenizer.sep_token = "[SEP]"  # noqa: S105
+_mock_tokenizer.pad_token = "[PAD]"  # ruff: ignore[hardcoded-password-string]
+_mock_tokenizer.eos_token = "[EOS]"  # ruff: ignore[hardcoded-password-string]
+_mock_tokenizer.sep_token = "[SEP]"  # ruff: ignore[hardcoded-password-string]
 _mock_tokenizer.pad_token_id = 0
 _mock_tokenizer.eos_token_id = 1
 _mock_tokenizer.special_tokens_map = {"pad_token": "[PAD]", "eos_token": "[EOS]"}
@@ -630,7 +630,7 @@ try:
             return torch.optim.lr_scheduler.LinearLR(optimizer, total_iters=num_training_steps)
 
         torch.optim.lr_scheduler.get_scheduler = _mock_get_scheduler
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -646,7 +646,7 @@ try:
 
         if not hasattr(_inf_mod, "load_model_and_tokenizer"):
             _inf_mod.load_model_and_tokenizer = lambda *a, **k: (_mock_model, _mock_tokenizer)
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # DNADataset
@@ -656,7 +656,7 @@ try:
         DNADataset.from_huggingface = classmethod(lambda cls, *a, **k: _make_mock_dataset())
         DNADataset.from_modelscope = classmethod(lambda cls, *a, **k: _make_mock_dataset())
         DNADataset.load_local_data = classmethod(lambda cls, *a, **k: _make_mock_dataset())
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # preset datasets
@@ -672,7 +672,7 @@ try:
         _orig_load_preset = getattr(_dna_data, "load_preset_dataset", None)
         if _orig_load_preset is not None:
             _dna_data.load_preset_dataset = lambda *a, **k: _make_mock_dataset()
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # CustomMetric mock
@@ -681,7 +681,7 @@ try:
 
         if not hasattr(_metrics_mod, "CustomMetric"):
             _metrics_mod.CustomMetric = _MockCustomMetric
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # inference
@@ -697,7 +697,7 @@ try:
         DNAInference.plot_attentions = _MockDNAInference.plot_attentions
         DNAInference.plot_hidden_states = _MockDNAInference.plot_hidden_states
         DNAInference.force_eager_attention = _MockDNAInference.force_eager_attention
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     try:
@@ -708,7 +708,7 @@ try:
         Benchmark.run_without_config = _MockBenchmark.run_without_config
         Benchmark.plot = _MockBenchmark.plot
         Benchmark.evaluate_single_model = _MockBenchmark.evaluate_single_model
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     try:
@@ -719,7 +719,7 @@ try:
         Mutagenesis.evaluate = _MockMutagenesis.evaluate
         Mutagenesis.plot = _MockMutagenesis.plot
         Mutagenesis.get_important_positions = _MockMutagenesis.get_important_positions
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     try:
@@ -729,14 +729,14 @@ try:
         DNAInterpret.interpret = _MockDNAInterpret.interpret
         DNAInterpret.batch_interpret = _MockDNAInterpret.batch_interpret
         DNAInterpret.plot_attributions = _MockDNAInterpret.plot_attributions
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
     try:
         import dnallm.inference
 
         if not hasattr(dnallm.inference, "DNAInterpreter"):
             dnallm.inference.DNAInterpreter = DNAInterpret
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # trainer
@@ -753,7 +753,7 @@ try:
         DNATrainer.save_lora_adapter = _MockDNATrainer.save_lora_adapter
         DNATrainer.infer = _MockDNATrainer.infer
         DNATrainer.predict = _MockDNATrainer.predict
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
     # MCP client
@@ -777,10 +777,10 @@ try:
         DNALLMMCPClient.get_all_available_models = _MockMCPClient.get_all_available_models
         DNALLMMCPClient.health_check = _MockMCPClient.health_check
         DNALLMMCPClient.call = _MockMCPClient.call
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
 
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 # --- transformers mocks ---
@@ -798,7 +798,7 @@ try:
     _orig_auto_tok = getattr(transformers, "AutoTokenizer", None)
     if _orig_auto_tok is not None:
         _orig_auto_tok.from_pretrained = classmethod(lambda cls, *a, **k: _mock_tokenizer)
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 # --- create temp files for doc examples ---
@@ -846,7 +846,7 @@ try:
             return _orig_read_pickle(filepath_or_buffer, *args, **kwargs)
 
         pd.read_pickle = _mock_read_pickle
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -855,7 +855,7 @@ try:
     import matplotlib.pyplot as _plt
 
     _plt.show = lambda *a, **k: None
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -875,7 +875,7 @@ try:
                 return _mock_model
 
         _peft_mod.PeftModel = _MockPeftModel
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -884,7 +884,7 @@ try:
     import nltk.translate.bleu_score as _bleu_mod
 
     _bleu_mod.sentence_bleu = lambda *a, **k: 0.5
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -900,7 +900,7 @@ try:
         return _orig_exists(path)
 
     _os_mod.path.exists = _mock_exists
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -910,7 +910,7 @@ try:
 
     _builtins_mod.exit = lambda *a, **k: None
     _builtins_mod.quit = lambda *a, **k: None
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 
@@ -948,7 +948,7 @@ try:
             "attention_mask": _torch.ones(1, 5, dtype=_torch.long),
         }
     ]
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass
 
 # --- inject common names into builtins for blocks that omit imports ---
@@ -1007,7 +1007,7 @@ try:
         import dnallm.datahandling.data as _dna_data_mod
 
         _dna_data_mod.fasta_to_df = _mock_fasta_to_df
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
-except Exception:  # noqa: S110
+except Exception:  # ruff: ignore[try-except-pass]
     pass

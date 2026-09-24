@@ -19,7 +19,7 @@ class TestDNALLMMCPServer:
         # Create main server config
         server_config = {
             "server": {
-                "host": "0.0.0.0",  # noqa: S104
+                "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                 "port": 8000,
                 "workers": 1,
                 "log_level": "INFO",
@@ -185,7 +185,7 @@ class TestDNALLMMCPServer:
 
             server_config = {
                 "server": {
-                    "host": "0.0.0.0",  # noqa: S104
+                    "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                     "port": 8000,
                     "workers": 1,
                     "log_level": "INFO",
@@ -213,7 +213,7 @@ class TestDNALLMMCPServer:
                     "enable_compression": True,
                 },
                 "streamable_http": {
-                    "host": "0.0.0.0",  # noqa: S104
+                    "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                     "port": 8000,
                     "path": "/mcp",
                 },
@@ -256,7 +256,7 @@ class TestDNALLMMCPServer:
 
         config = {
             "server": {
-                "host": "0.0.0.0",  # noqa: S104
+                "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                 "port": 8000,
                 "workers": 1,
                 "log_level": "INFO",
@@ -276,7 +276,7 @@ class TestDNALLMMCPServer:
                 "enable_compression": True,
             },
             "streamable_http": {
-                "host": "0.0.0.0",  # noqa: S104
+                "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                 "port": 8000,
                 "path": "/mcp",
             },
@@ -292,7 +292,7 @@ class TestDNALLMMCPServer:
         with caplog.at_level(logging.WARNING):
             validated = MCPServerConfig(**config)  # type: ignore
         assert validated.streamable_http is not None
-        assert validated.streamable_http.host == "0.0.0.0"  # noqa: S104
+        assert validated.streamable_http.host == "0.0.0.0"  # ruff: ignore[hardcoded-bind-all-interfaces]
         assert validated.streamable_http.port == 8000
         assert validated.streamable_http.path == "/mcp"
         assert validated.sse is not None
@@ -311,7 +311,7 @@ class TestMCPTools:
             # Create minimal config
             server_config = {
                 "server": {
-                    "host": "0.0.0.0",  # noqa: S104
+                    "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                     "port": 8000,
                     "workers": 1,
                     "log_level": "INFO",
@@ -359,7 +359,7 @@ class TestMCPTools:
             # Create minimal config
             server_config = {
                 "server": {
-                    "host": "0.0.0.0",  # noqa: S104
+                    "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                     "port": 8000,
                     "workers": 1,
                     "log_level": "INFO",

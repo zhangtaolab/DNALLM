@@ -76,7 +76,7 @@ uv pip install -e '.[all]'
 # Or install only core + base development tools
 # uv pip install -e '.[base]'
 
-# Add GPU support (choose ONE: cpu, cuda121, cuda124, cuda126, cuda128, rocm)
+# Add GPU support (choose ONE: cpu, cuda121, cuda124, cuda126, cuda128, cuda130, rocm)
 # uv pip install -e '.[all,cuda124]'
 
 # Verify installation

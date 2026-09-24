@@ -219,7 +219,7 @@ class TestConfigFileValidation:
         """Test validation of MCP server config file."""
         config_data = {
             "server": {
-                "host": "0.0.0.0",  # noqa: S104
+                "host": "0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
                 "port": 8000,
                 "workers": 1,
                 "log_level": "INFO",
@@ -283,7 +283,7 @@ class TestConfigFileValidation:
             dummy_config2_path.write_text("dummy: config2")
 
             config = validate_mcp_server_config(config_path)
-            assert config.server.host == "0.0.0.0"  # noqa: S104
+            assert config.server.host == "0.0.0.0"  # ruff: ignore[hardcoded-bind-all-interfaces]
             assert config.mcp.name == "Test MCP Server"
             assert len(config.models) == 2
         finally:

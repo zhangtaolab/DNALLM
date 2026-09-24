@@ -400,7 +400,7 @@ def test_client_parse_result_empty_content():
 
 
 @pytest.mark.asyncio
-async def test_client_sync_from_async_raises(sse_client):  # noqa: RUF029
+async def test_client_sync_from_async_raises(sse_client):  # ruff: ignore[unused-async]
     """Verify sync method raises RuntimeError when called from async."""
     with pytest.raises(RuntimeError, match="async context"):
         sse_client.dna_sequence_predict("ATCG", "dnabert-2")

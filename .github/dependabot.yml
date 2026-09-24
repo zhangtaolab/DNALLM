@@ -8,6 +8,11 @@ updates:
       day: "monday"
     target-branch: "dev"
     open-pull-requests-limit: 10
+    ignore:
+      # mcp is deliberately pinned <2 (commit 3490b71); 2.x breaks the server API.
+      # Revisit as a planned upgrade, not an automated PR.
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: "development"

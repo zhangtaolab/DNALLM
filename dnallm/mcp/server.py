@@ -1611,11 +1611,14 @@ class DNALLMMCPServer:
         async def lifespan(app):
             # Startup phase: log successful initialization
             logger.info("Server startup complete")
-            yield  # Server is running
-            # Shutdown phase: cleanup resources gracefully
-            logger.info("Starting graceful shutdown...")
-            await self.shutdown()
-            logger.info("Graceful shutdown complete")
+            try:
+                yield  # Server is running
+            finally:
+                # Shutdown phase: cleanup resources gracefully
+                # Runs on both clean exit and exceptions/termination signals
+                logger.info("Starting graceful shutdown...")
+                await self.shutdown()
+                logger.info("Graceful shutdown complete")
 
         return lifespan
 
@@ -1942,7 +1945,7 @@ Examples:
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",  # noqa: S104
+        default="0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
         help="Host to bind the server to (default: %(default)s)",
     )
 

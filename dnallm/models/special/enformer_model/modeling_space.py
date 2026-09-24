@@ -67,7 +67,7 @@ class Space(PreTrainedModel):
         filter_list = [half_dim, *filter_list]
 
         conv_layers = []
-        for dim_in, dim_out in zip(  # noqa: B905, RUF007
+        for dim_in, dim_out in zip(  # ruff: ignore[zip-without-explicit-strict, zip-instead-of-pairwise]
             filter_list[:-1], filter_list[1:]
         ):
             conv_layers.append(
@@ -298,7 +298,7 @@ class TrainingSpace(PreTrainedModel):
 
     def get_species_loss(self, statistics_human, statistics_mouse, batch_size, device):
         tot = batch_size * self.config.num * 2
-        total_MIloss = torch.tensor(0.0, device=device)  # noqa: N806
+        total_MIloss = torch.tensor(0.0, device=device)  # ruff: ignore[non-lowercase-variable-in-function]
         # total_cvloss = torch.tensor(0.0, device=device)
         for i, block in enumerate(self.model.transformer.transformer):
             if isinstance(block.feed_forward, SpeciesMoE):
@@ -310,8 +310,8 @@ class TrainingSpace(PreTrainedModel):
                     dim=0,
                 )
                 gates = gates / tot
-                MIloss, cvloss = self._compute_aux_loss(gates)  # noqa: N806
-                total_MIloss = (  # noqa: N806
+                MIloss, cvloss = self._compute_aux_loss(gates)  # ruff: ignore[non-lowercase-variable-in-function]
+                total_MIloss = (  # ruff: ignore[non-lowercase-variable-in-function]
                     total_MIloss + self.MIloss_lambda * MIloss
                 )
                 # total_cvloss = total_cvloss + self.cvloss_lambda * cvloss
@@ -331,9 +331,9 @@ class TrainingSpace(PreTrainedModel):
         gates = torch.stack([gates[key] for key in gates.keys()], dim=0)
 
         gates = gates / tot
-        MIloss, cvloss = self._compute_aux_loss(gates)  # noqa: N806
+        MIloss, cvloss = self._compute_aux_loss(gates)  # ruff: ignore[non-lowercase-variable-in-function]
         cvloss = self.cvloss_lambda * cvloss
-        MIloss = self.MIloss_lambda * MIloss  # noqa: N806
+        MIloss = self.MIloss_lambda * MIloss  # ruff: ignore[non-lowercase-variable-in-function]
         zloss = self.zloss_lambda * (statistics_human["zloss"] + statistics_mouse["zloss"])
 
         loss = {
@@ -345,9 +345,9 @@ class TrainingSpace(PreTrainedModel):
 
     def _compute_aux_loss(self, gates):
         eps = 1e-10
-        P_TI = torch.sum(gates, dim=1, keepdim=True) + eps  # noqa: N806
-        P_EI = torch.sum(gates, dim=0, keepdim=True) + eps  # noqa: N806
-        MIloss = -(  # noqa: N806
+        P_TI = torch.sum(gates, dim=1, keepdim=True) + eps  # ruff: ignore[non-lowercase-variable-in-function]
+        P_EI = torch.sum(gates, dim=0, keepdim=True) + eps  # ruff: ignore[non-lowercase-variable-in-function]
+        MIloss = -(  # ruff: ignore[non-lowercase-variable-in-function]
             gates * torch.log(gates / P_TI / P_EI + eps)
         ).sum()
         experts_usage = gates.sum(dim=0)

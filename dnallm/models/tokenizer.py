@@ -41,7 +41,7 @@ class DNAOneHotTokenizer:
         self.id_to_token = {0: "A", 1: "C", 2: "G", 3: "T", 4: "N", -1: "-"}
 
         self.pad_token_id = -1
-        self.pad_token = "-"  # noqa: S105
+        self.pad_token = "-"  # ruff: ignore[hardcoded-password-string]
         self.unk_token_id = 4  # N
 
         self.vocab_vectors = torch.tensor(

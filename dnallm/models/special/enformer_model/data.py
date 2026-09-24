@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F  # noqa: N812
+import torch.nn.functional as F  # ruff: ignore[lowercase-imported-as-non-lowercase]
 from torch.utils.data import Dataset
 
 import numpy as np
@@ -21,7 +21,7 @@ def cast_list(t):
 
 
 def coin_flip():
-    return random() > 0.5  # noqa: S311
+    return random() > 0.5  # ruff: ignore[suspicious-non-cryptographic-random-usage]
 
 
 # genomic function transforms
@@ -129,7 +129,7 @@ class FastaInterval:
             min_shift = max(start + min_shift, 0) - start
             max_shift = min(end + max_shift, chromosome_length) - end
 
-            rand_shift = randrange(min_shift, max_shift)  # noqa: S311
+            rand_shift = randrange(min_shift, max_shift)  # ruff: ignore[suspicious-non-cryptographic-random-usage]
             start += rand_shift
             end += rand_shift
 
@@ -188,7 +188,7 @@ class GenomeIntervalDataset(Dataset):
         bed_file,
         fasta_file,
         filter_df_fn=identity,
-        chr_bed_to_fasta_map=dict(),  # noqa: B006, C408
+        chr_bed_to_fasta_map=dict(),  # ruff: ignore[mutable-argument-default, unnecessary-collection-call]
         context_length=None,
         return_seq_indices=False,
         shift_augs=None,

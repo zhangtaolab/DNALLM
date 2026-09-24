@@ -10,7 +10,7 @@ from typing import Any
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F  # noqa: N812
+import torch.nn.functional as F  # ruff: ignore[lowercase-imported-as-non-lowercase]
 from transformers.dynamic_module_utils import get_class_from_dynamic_module
 from transformers.modeling_outputs import SequenceClassifierOutput
 
@@ -116,7 +116,7 @@ def _build_crossdna_sequence_classification_class(
 
         # CrossDNA pretraining checkpoints may contain EMA-teacher copies.
         # Downstream classification intentionally does not keep these modules.
-        _keys_to_ignore_on_load_unexpected = [  # noqa: RUF012
+        _keys_to_ignore_on_load_unexpected = [  # ruff: ignore[mutable-class-default]
             r"backbone\.branchA_core_ema\..*",
             r"backbone\.branchB_core_ema\..*",
             r"backbone\.bridge_ema\..*",
@@ -403,7 +403,7 @@ def _build_crossdna_sequence_classification_class(
                 output: tuple[Any, ...] = (logits,)
                 if output_hidden_states:
                     output += (hidden_output,)
-                return ((loss,) + output) if loss is not None else output  # noqa: RUF005
+                return ((loss,) + output) if loss is not None else output  # ruff: ignore[collection-literal-concatenation]
 
             return SequenceClassifierOutput(
                 loss=loss,  # type: ignore[arg-type]

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 from pathlib import Path
 
@@ -66,7 +66,7 @@ def run_command(
         print("-" * 50)
 
     try:
-        result = subprocess.run(  # noqa: S603
+        result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
             cmd,
             capture_output=True,
             text=True,
@@ -129,7 +129,7 @@ def check_environment() -> bool:
     missing = []
     for tool in required_tools:
         try:
-            subprocess.run(  # noqa: S603
+            subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
                 [tool, "--version"],
                 capture_output=True,
                 check=True,

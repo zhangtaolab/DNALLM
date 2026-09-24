@@ -95,6 +95,9 @@ source .venv/bin/activate  # Linux/MacOS
 # CUDA 12.4 (recommended for recent GPUs)
 uv pip install -e '.[cuda124]'
 
+# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+uv pip install -e '.[cuda130]'
+
 # Other supported versions: cpu, cuda121, cuda126, cuda128
 uv pip install -e '.[cuda121]'
 ```
@@ -323,7 +326,7 @@ DNALLM supports the following task types:
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
   - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `mcp`)
-  - Hardware-specific groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `rocm`, `mamba`) — mutually exclusive
+  - Hardware-specific groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) — mutually exclusive
   - Installation scenarios for different use cases
   - Troubleshooting common issues
 

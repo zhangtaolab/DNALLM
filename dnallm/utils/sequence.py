@@ -166,7 +166,7 @@ def random_generate_sequences(
         while True:
             if len(sequences) >= samples:
                 break
-            length = random.randint(minl, maxl)  # noqa: S311
+            length = random.randint(minl, maxl)  # ruff: ignore[suspicious-non-cryptographic-random-usage]
             if padding_size:
                 length = (
                     (length // padding_size + 1) * padding_size if length % padding_size else length
@@ -174,7 +174,7 @@ def random_generate_sequences(
                 if length > maxl:
                     length -= padding_size
             seq = "".join(
-                random.choices(  # noqa: S311
+                random.choices(  # ruff: ignore[suspicious-non-cryptographic-random-usage]
                     basemap,
                     weights=weights,
                     k=length,
@@ -196,7 +196,7 @@ def random_generate_sequences(
             if len(sequences) >= samples:
                 break
             seq = "".join(
-                random.choices(  # noqa: S311
+                random.choices(  # ruff: ignore[suspicious-non-cryptographic-random-usage]
                     basemap,
                     weights=weights,
                     k=length,

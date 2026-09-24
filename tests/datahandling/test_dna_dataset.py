@@ -11,7 +11,7 @@ This module contains all tests for the DNADataset class, including:
 
 import json
 import os
-import pickle  # noqa: S403
+import pickle  # ruff: ignore[suspicious-pickle-import]
 import tempfile
 from typing import Any
 from unittest.mock import Mock, patch
