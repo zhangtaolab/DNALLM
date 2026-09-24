@@ -87,7 +87,7 @@ class InferenceModelConfig(BaseModel):
 class ServerConfig(BaseModel):
     """Server configuration."""
 
-    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
+    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # ruff: ignore[hardcoded-bind-all-interfaces]
     port: int = Field(8000, ge=1024, le=65535)
     workers: int = Field(1, ge=1, le=16)
     log_level: str = Field("INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
@@ -151,7 +151,7 @@ class StreamableHTTPConfig(BaseModel):
         path: URL path for the MCP endpoint (defaults to ``/mcp``).
     """
 
-    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # noqa: S104
+    host: str = Field("0.0.0.0", pattern="^[0-9.]+$")  # ruff: ignore[hardcoded-bind-all-interfaces]
     port: int = Field(8000, ge=1024, le=65535)
     path: str = Field("/mcp", min_length=1)
 

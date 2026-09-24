@@ -961,7 +961,7 @@ def plot_token_scatter(
             "dash": [3, 3],
         },
         {
-            "label": f"+{threshold_std}σ ({upper_limit:.2f})",  # noqa: RUF001
+            "label": f"+{threshold_std}σ ({upper_limit:.2f})",  # ruff: ignore[ambiguous-unicode-character-string]
             "value": upper_limit,
             "color": "orange",
             "dash": [3, 3],

@@ -177,7 +177,7 @@ def _patch_initialize_weights_for_quantized_missing():
             return original(self)
 
         try:
-            import bitsandbytes  # noqa: F401
+            import bitsandbytes  # ruff: ignore[unused-import]
         except Exception:  # pragma: no cover - bitsandbytes not installed
             return original(self)
 

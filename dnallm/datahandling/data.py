@@ -250,9 +250,9 @@ class DNADataset:
     @classmethod
     def _load_dict_data(cls, file_path: str) -> Dataset:
         """Load dictionary/pickle data files."""
-        import pickle  # noqa: S403
+        import pickle  # ruff: ignore[suspicious-pickle-import]
 
-        data = pickle.load(open(file_path, "rb"))  # noqa: S301
+        data = pickle.load(open(file_path, "rb"))  # ruff: ignore[suspicious-pickle-usage]
         return Dataset.from_dict(data)
 
     @classmethod

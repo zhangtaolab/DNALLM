@@ -20,7 +20,7 @@ import csv
 import json
 import os
 import re
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 import tempfile
 import time
@@ -404,7 +404,7 @@ class DocVerifier:
 
         try:
             start = time.time()
-            proc = subprocess.run(  # noqa: S603
+            proc = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
                 [sys.executable, temp_path],
                 cwd=str(self.project_root),
                 capture_output=True,
@@ -538,8 +538,8 @@ class DocVerifier:
 
             try:
                 start = time.time()
-                proc = subprocess.run(  # noqa: S603
-                    ["bash", "-n", temp_path],  # noqa: S607
+                proc = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
+                    ["bash", "-n", temp_path],  # ruff: ignore[start-process-with-partial-path]
                     cwd=str(self.project_root),
                     capture_output=True,
                     text=True,
@@ -1062,7 +1062,7 @@ class DocVerifier:
             temp_nb = f.name
 
         try:
-            proc = subprocess.run(  # noqa: S603
+            proc = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
                 [
                     sys.executable,
                     "-m",

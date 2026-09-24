@@ -43,7 +43,7 @@ def _handle_megadna_models(
                 """
 
                 # Define the vocabulary file names for saving
-                vocab_files_names = {  # noqa: RUF012
+                vocab_files_names = {  # ruff: ignore[mutable-class-default]
                     "vocab_file": "vocab.txt"
                 }
                 DEFAULT_TOKENS = ("**", "#")

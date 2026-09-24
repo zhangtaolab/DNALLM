@@ -9,7 +9,7 @@ class SpaceConfig(PretrainedConfig):
         dim=768,  # small
         depth=11,
         heads=8,
-        output_heads=dict(human=5313, mouse=1643),  # noqa: B006, C408
+        output_heads=dict(human=5313, mouse=1643),  # ruff: ignore[mutable-argument-default, unnecessary-collection-call]
         target_length=896,
         attn_dim_key=64,
         dropout_rate=0.4,

@@ -51,7 +51,7 @@ def load_user_model(model_name, model_source, config_path):
         return gr.update(interactive=True)
 
     except Exception as e:
-        error_msg = f"❌ Failed to load model: {str(e)}"  # noqa: RUF010
+        error_msg = f"❌ Failed to load model: {str(e)}"  # ruff: ignore[explicit-f-string-type-conversion]
         print(error_msg)
         return error_msg, gr.update(interactive=False)  # disable button
 
@@ -86,7 +86,7 @@ def generate_dna(prompt, n_tokens, n_samples, temperature, top_k, top_p):
         return result_text
 
     except Exception as e:
-        return f"❌ Generation error: {str(e)}"  # noqa: RUF010
+        return f"❌ Generation error: {str(e)}"  # ruff: ignore[explicit-f-string-type-conversion]
 
 
 css = """

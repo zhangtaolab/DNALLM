@@ -141,10 +141,10 @@ class TestMarimoExamples:
         for cell in import_cells:
             try:
                 compiled = compile(cell, str(py_file), "exec")
-                exec(compiled, {"__file__": str(py_file)})  # noqa: S102
+                exec(compiled, {"__file__": str(py_file)})  # ruff: ignore[exec-builtin]
             except (ImportError, ModuleNotFoundError) as e:
                 pytest.fail(f"Import error in {py_file.name}: {e}")
-            except Exception:  # noqa: S110
+            except Exception:  # ruff: ignore[try-except-pass]
                 # Non-import errors (e.g., missing data files, UI calls) are acceptable
                 pass
 
@@ -257,7 +257,7 @@ class TestNotebookExamples:
         skipped_optional = []
         for stmt in import_statements:
             try:
-                exec(compile(stmt, str(nb_file), "exec"), {})  # noqa: S102
+                exec(compile(stmt, str(nb_file), "exec"), {})  # ruff: ignore[exec-builtin]
             except (ImportError, ModuleNotFoundError) as e:
                 missing = getattr(e, "name", None) or ""
                 if any(

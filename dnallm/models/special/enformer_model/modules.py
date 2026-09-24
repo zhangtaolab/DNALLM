@@ -2,7 +2,7 @@ import os
 import math
 import torch
 from torch import nn, einsum
-import torch.nn.functional as F  # noqa: N812
+import torch.nn.functional as F  # ruff: ignore[lowercase-imported-as-non-lowercase]
 import torch.distributed as dist
 import pandas as pd
 from einops import rearrange
@@ -55,7 +55,7 @@ def log(t, eps=1e-20):
 # maybe sync batchnorm, for distributed training
 
 
-def MaybeSyncBatchnorm(is_distributed=True):  # noqa: N802
+def MaybeSyncBatchnorm(is_distributed=True):  # ruff: ignore[invalid-function-name]
     is_distributed = default(is_distributed, dist.is_initialized() and dist.get_world_size() > 1)
     # print(f"sync batchnorm for distributed training: {is_distributed}")
     return nn.SyncBatchNorm if is_distributed else nn.BatchNorm1d
@@ -238,7 +238,7 @@ class TargetLengthCrop(nn.Module):
         return x[:, -trim:trim]
 
 
-def ConvBlock(  # noqa: N802
+def ConvBlock(  # ruff: ignore[invalid-function-name]
     dim, dim_out=None, kernel_size=1, is_distributed=True
 ):
     batchnorm_klass = MaybeSyncBatchnorm(is_distributed=is_distributed)
@@ -300,7 +300,7 @@ class Attention(nn.Module):
         k = self.to_k(x)
         v = self.to_v(x)
 
-        q, k, v = map(  # noqa: C417
+        q, k, v = map(  # ruff: ignore[unnecessary-map]
             lambda t: rearrange(t, "b n (h d) -> b h n d", h=h), (q, k, v)
         )
 
@@ -608,7 +608,7 @@ class TransformerModel(nn.Module):
 
 
 class TracksMoE(nn.Module):
-    TRACK_TYPES = [  # noqa: RUF012
+    TRACK_TYPES = [  # ruff: ignore[mutable-class-default]
         "DNASE/ATAC",
         "TF ChIP-seq",
         "Histone ChIP-seq",

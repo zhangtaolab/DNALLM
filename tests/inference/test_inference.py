@@ -148,11 +148,11 @@ task:
         }
 
         # Mock tokenizer properties
-        mock_tokenizer.pad_token = "[PAD]"  # noqa: S105
-        mock_tokenizer.unk_token = "[UNK]"  # noqa: S105
-        mock_tokenizer.cls_token = "[CLS]"  # noqa: S105
-        mock_tokenizer.sep_token = "[SEP]"  # noqa: S105
-        mock_tokenizer.mask_token = "[MASK]"  # noqa: S105
+        mock_tokenizer.pad_token = "[PAD]"  # ruff: ignore[hardcoded-password-string]
+        mock_tokenizer.unk_token = "[UNK]"  # ruff: ignore[hardcoded-password-string]
+        mock_tokenizer.cls_token = "[CLS]"  # ruff: ignore[hardcoded-password-string]
+        mock_tokenizer.sep_token = "[SEP]"  # ruff: ignore[hardcoded-password-string]
+        mock_tokenizer.mask_token = "[MASK]"  # ruff: ignore[hardcoded-password-string]
 
         return mock_tokenizer
 

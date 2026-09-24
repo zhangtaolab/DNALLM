@@ -1,7 +1,7 @@
 """Test runner for MCP server tests."""
 
 import sys
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from pathlib import Path
 from ..utils import get_logger
 
@@ -27,7 +27,7 @@ def run_tests():
     ]
 
     try:
-        subprocess.run(cmd, check=True)  # noqa: S603
+        subprocess.run(cmd, check=True)  # ruff: ignore[subprocess-without-shell-equals-true]
         logger.info("\n" + "=" * 50)
         logger.success("All tests passed!")
         return True
