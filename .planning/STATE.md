@@ -20,10 +20,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-29)
+See: .planning/PROJECT.md (updated 2026-09-30)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 01 — Harness Integrity & Measured Baseline
+**Current focus:** Phase 2 — Suite Hygiene & Known-Bug Fixes
 
 ## Current Position
 
@@ -84,7 +84,6 @@ None yet.
 
 - Phase 3 sizing: RESOLVED as unknown — measured this cycle (01-02): baseline 45.92%, gap to 90% = 44.08 points (~3,255 statements; inference 1,505 / models 1,210 / mcp 449). Remaining decision: split Phase 3 via `/gsd-phase` at planning time (near the split threshold)
 - Phase 3: MCP transport test pattern (`server.py:1718+` vs pinned `mcp>=1.3.0,<2`) is unverified against the installed SDK — run plan-phase with `--research-phase` for the mcp wave
-- Phase 1: subprocess-coverage scope RESOLVED (01-02 AUDIT-04): start minimal, no patch — canary evidence recorded in 01-AUDIT-REPORT.md; escalate only when a future test's assertions depend on child-process-side code paths
 
 ## Deferred Items
 
@@ -96,6 +95,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-29T18:44:52.620Z
-Stopped at: Phase 01 complete, ready to plan Phase 2
+Last session: 2026-09-30
+Stopped at: Phase 01 complete, ready to discuss Phase 2
 Resume file: None

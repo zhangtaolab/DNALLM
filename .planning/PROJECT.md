@@ -23,11 +23,15 @@ Inferred from the existing codebase (see `.planning/codebase/`):
 - ✓ Existing pytest suite: 464 tests across `tests/` and `dnallm/mcp/tests/`
 - ✓ Published to PyPI; CI matrix Python 3.11–3.13
 
+Shipped in Phase 1 (Harness Integrity & Measured Baseline, 2026-09-30):
+
+- ✓ Full-suite audit report with pass/fail/skip census (625/0/0/9, both roots, `slow` included) — Phase 1 (`01-AUDIT-REPORT.md`)
+- ✓ Measured line coverage on the agreed denominator (whole `dnallm/` minus vendored dirs, unimportable adapters, packaged test files; 7-entry omit list in `pyproject.toml`) — Phase 1
+- ✓ Per-module coverage gap report (`term-missing` + `coverage.json`, 43-row ranked worklist) — Phase 1
+- ✓ Honest harness: single pytest config (`pyproject.toml` only), real exit codes (mask removed, permanent CI canary), measured baseline **45.92%** — Phase 1
+
 ### Active
 
-- [ ] Run the full pytest suite (including `slow` tests) and produce a pass/fail/skip audit report
-- [ ] Measure line coverage with pytest-cov over the whole `dnallm/` package, excluding vendored code (`dnallm/tasks/metrics/`, `dnallm/models/special/enformer_model/`) and unimportable adapters (`dnallm/finetune/megatron.py`, `dnallm/models/special/mamba_npu.py`)
-- [ ] Produce a per-module coverage gap report (`term-missing`) identifying what to test
 - [ ] Fix failing tests and real code bugs blocking coverage (known: multiclass AUROC crash in `dnallm/tasks/metrics.py:283`, CrossDNA handler result overwritten in `dnallm/models/model.py:873-887`)
 - [ ] Write new tests until coverage exceeds 90% on the agreed denominator
 - [ ] Enforce the gate in CI: `--cov-fail-under=90` on a run that includes `slow` tests (network model downloads accepted)
@@ -61,10 +65,11 @@ Inferred from the existing codebase (see `.planning/codebase/`):
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Coverage denominator: whole `dnallm/` excluding vendored dirs and unimportable adapters | Vendored code is upstream and excluded from lint/mypy; adapters cannot import in CI — including them makes 90% unattainable | — Pending |
-| Audit first, then fix | Gap report drives test-writing priorities and surfaces real bugs before mass test authoring | — Pending |
-| CI hard gate `--cov-fail-under=90`, run includes slow tests | Prevents coverage regression; owner accepts network downloads and longer CI runs for real coverage | — Pending |
-| Fix real code bugs encountered during audit (AUROC, CrossDNA) | Skipped-crash tests hide real defects; unskipping them is required for honest coverage | — Pending |
+| Coverage denominator: whole `dnallm/` excluding vendored dirs and unimportable adapters | Vendored code is upstream and excluded from lint/mypy; adapters cannot import in CI — including them makes 90% unattainable | ✓ Landed Phase 1 (7-entry omit list; baseline 45.92% on 7,383 stmts) |
+| Audit first, then fix | Gap report drives test-writing priorities and surfaces real bugs before mass test authoring | ✓ Landed Phase 1 (43-row ranked worklist from measured artifacts) |
+| CI hard gate `--cov-fail-under=90`, run includes slow tests | Prevents coverage regression; owner accepts network downloads and longer CI runs for real coverage | On track — Phase 4 (no `fail_under` yet by design) |
+| Fix real code bugs encountered during audit (AUROC, CrossDNA) | Skipped-crash tests hide real defects; unskipping them is required for honest coverage | Confirmed — census located both as live skip targets (Phase 2 scope) |
+| Subprocess coverage: start minimal, escalate only on canary evidence (Phase 1) | pytest-cov 7 removed `.pth` subprocess auto-measurement; no collected test spawns subprocesses | ✓ Landed Phase 1 (AUDIT-04; escalation trigger recorded) |
 
 ## Evolution
 
@@ -84,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-29 after initialization*
+*Last updated: 2026-09-30 after Phase 1*
