@@ -60,6 +60,10 @@ fi
 if ! command -v uv &> /dev/null; then
     print_status "INFO" "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
+    # The installer is a child process and cannot mutate this shell's PATH;
+    # it puts uv in ~/.local/bin, so export it here or `uv venv`/`uv pip
+    # install` below fail with "command not found" on fresh hosts.
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Create venv if missing
