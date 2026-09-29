@@ -9,10 +9,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Harness & Measurement Config
 
-- [ ] **HARN-01**: Delete `tests/pytest.ini`; `pyproject.toml [tool.pytest.ini_options]` is the single pytest config source; CI invokes bare `pytest` so both test roots (`tests/`, `dnallm/mcp/tests/`) are collected
-- [ ] **HARN-02**: Fix exit-code masking in root `conftest.py` (cleanup via `pytest_sessionfinish` with status propagation, no unconditional `os._exit(0)`); add a permanent CI canary step proving a failing test run fails the job
-- [ ] **HARN-03**: Add `[tool.coverage.run]`/`[tool.coverage.report]` to `pyproject.toml`: `source = ["dnallm"]`, omit list (vendored `dnallm/tasks/metrics/`, `enformer_model/`, unimportable `megatron.py`/`mamba_npu.py`, test files `dnallm/mcp/tests/*`, `run_tests.py`, `example_sse_usage.py`), `show_missing` — no `fail_under` yet
-- [ ] **HARN-04**: Bump test dependency floors: `pytest-cov>=7.0`, `pytest-asyncio>=1.0`, `pytest-timeout>=2.3.1,<2.5`, `coverage[toml]>=7.10.6`
+- [x] **HARN-01**: Delete `tests/pytest.ini`; `pyproject.toml [tool.pytest.ini_options]` is the single pytest config source; CI invokes bare `pytest` so both test roots (`tests/`, `dnallm/mcp/tests/`) are collected
+- [x] **HARN-02**: Fix exit-code masking in root `conftest.py` (cleanup via `pytest_sessionfinish` with status propagation, no unconditional `os._exit(0)`); add a permanent CI canary step proving a failing test run fails the job
+- [x] **HARN-03**: Add `[tool.coverage.run]`/`[tool.coverage.report]` to `pyproject.toml`: `source = ["dnallm"]`, omit list (vendored `dnallm/tasks/metrics/`, `enformer_model/`, unimportable `megatron.py`/`mamba_npu.py`, test files `dnallm/mcp/tests/*`, `run_tests.py`, `example_sse_usage.py`), `show_missing` — no `fail_under` yet
+- [x] **HARN-04**: Bump test dependency floors: `pytest-cov>=7.0`, `pytest-asyncio>=1.0`, `pytest-timeout>=2.3.1,<2.5`, `coverage[toml]>=7.10.6`
 
 ### Audit & Baseline
 
@@ -74,10 +74,10 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| HARN-01 | Phase 1 | Pending |
-| HARN-02 | Phase 1 | Pending |
-| HARN-03 | Phase 1 | Pending |
-| HARN-04 | Phase 1 | Pending |
+| HARN-01 | Phase 1 | Complete |
+| HARN-02 | Phase 1 | Complete |
+| HARN-03 | Phase 1 | Complete |
+| HARN-04 | Phase 1 | Complete |
 | AUDIT-01 | Phase 1 | Pending |
 | AUDIT-02 | Phase 1 | Pending |
 | AUDIT-03 | Phase 1 | Pending |

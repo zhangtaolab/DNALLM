@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 1
+current_phase: 01
 current_phase_name: Harness Integrity & Measured Baseline
 status: executing
-stopped_at: Roadmap created — 4 phases covering all 23 v1 requirements; REQUIREMENTS.md traceability filled in
-last_updated: "2026-09-29T17:20:12.382Z"
-last_activity: 2026-09-29
-last_activity_desc: Roadmap created (4 phases, 23/23 v1 requirements mapped)
-state_head: 837c44cba0a17042a8acc9882d2f5a2fac766cfa
+stopped_at: "Completed 01-01-PLAN.md (harness integrity: single pytest config, honest exit codes, coverage config, CI canary)"
+last_updated: "2026-09-29T17:36:56.811Z"
+last_activity: 2026-09-30
+last_activity_desc: Phase 01 execution started
+state_head: be3e0f1c175b13d29594c4fddbd4c02bbbd9cb7b
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-29)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 1 — Harness Integrity & Measured Baseline
+**Current focus:** Phase 01 — Harness Integrity & Measured Baseline
 
 ## Current Position
 
-Phase: 1 (Harness Integrity & Measured Baseline) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
+Phase: 01 (Harness Integrity & Measured Baseline) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-09-29 — Roadmap created (4 phases, 23/23 v1 requirements mapped)
+Last activity: 2026-09-30 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 10 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -63,6 +68,9 @@ Recent decisions affecting current work:
 - Roadmap: strict wave order harness → audit → fixes → tests → gate; gate enabled LAST so it is never permanently red (research consensus, all 4 researchers)
 - Roadmap: coverage denominator = whole `dnallm/` minus vendored dirs, unimportable adapters, packaged test files
 - Roadmap: Phase 3 kept as a single phase (coarse granularity); split decision deferred until Phase 1's measured baseline lands
+- [Phase 01]: Coverage activation Route A: all scope/omit/report config lives in [tool.coverage.*]; a single bare --cov on an invocation is activation, not configuration (recorded for the verifier in commit messages)
+- [Phase 01]: Omit boundary exact at seven entries: vendored dnallm/tasks/metrics/ dir omitted while measured dispatcher dnallm/tasks/metrics.py stays in the denominator (no neighbor spill; eighth omit entries prohibited)
+- [Phase 01]: pytest floor >=8.4 + minversion 8.4 aligned (discretionary coherence with pytest-asyncio 1.x; no lockfile so fresh CI resolves stay coherent)
 
 ### Pending Todos
 
@@ -84,6 +92,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-29
-Stopped at: Roadmap created — 4 phases covering all 23 v1 requirements; REQUIREMENTS.md traceability filled in
+Last session: 2026-09-29T17:36:56.797Z
+Stopped at: Completed 01-01-PLAN.md (harness integrity: single pytest config, honest exit codes, coverage config, CI canary)
 Resume file: None
