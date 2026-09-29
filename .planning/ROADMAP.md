@@ -12,7 +12,7 @@ This milestone turns an untrustworthy 464-test suite into an enforced >90% cover
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Harness Integrity & Measured Baseline** - Make every test result and coverage number trustworthy: one pytest config, real exit codes, agreed denominator, measured baseline
+- [x] **Phase 1: Harness Integrity & Measured Baseline** - Make every test result and coverage number trustworthy: one pytest config, real exit codes, agreed denominator, measured baseline (completed 2026-09-30)
 - [ ] **Phase 2: Suite Hygiene & Known-Bug Fixes** - Fix the known code defects hiding behind skips and make every remaining skip typed and intentional
 - [ ] **Phase 3: Test Authoring to >90% Coverage** - Close the measured gaps biggest-first with tests that assert observable behavior until coverage exceeds 90%
 - [ ] **Phase 4: CI Gate Enforcement** - Turn 90% into a ratcheted CI hard gate that provably fails when coverage drops
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. An audit report exists with pass/fail/skip counts by skip reason (both roots, `slow` included), a ranked per-module gap worklist (`term-missing` + machine-readable artifact), the measured baseline coverage %, and cold/warm slow-test wall-clock timings
   5. The subprocess-coverage scope decision is recorded with canary evidence (start minimal; escalate to `patch = ["subprocess"]` only on proof)
 
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -90,7 +90,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Harness Integrity & Measured Baseline | 2/2 | In Progress|  |
+| 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 0/? | Not started | - |
 | 3. Test Authoring to >90% Coverage | 0/? | Not started | - |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
