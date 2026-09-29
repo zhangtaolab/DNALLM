@@ -29,7 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A coverage run driven purely by `pyproject.toml` config (no CLI cov flags) reports over the agreed denominator: vendored dirs, unimportable adapters, and packaged test files appear in no report row, and no `fail_under` exists yet
   4. An audit report exists with pass/fail/skip counts by skip reason (both roots, `slow` included), a ranked per-module gap worklist (`term-missing` + machine-readable artifact), the measured baseline coverage %, and cold/warm slow-test wall-clock timings
   5. The subprocess-coverage scope decision is recorded with canary evidence (start minimal; escalate to `patch = ["subprocess"]` only on proof)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Single pytest config + honest exit codes + coverage config/floors + CI canary (HARN-01..04)
+- [ ] 01-02-PLAN.md — Full-suite audit: census by skip reason, ranked gap worklist, baseline %, cold/warm timings, subprocess decision (AUDIT-01..04)
 
 ### Phase 2: Suite Hygiene & Known-Bug Fixes
 **Goal**: The suite reports true code behavior — no test is skipped because the code crashes, and every remaining skip is a typed, intentional network skip
@@ -75,7 +79,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Harness Integrity & Measured Baseline | 0/? | Not started | - |
+| 1. Harness Integrity & Measured Baseline | 0/2 | Planned | - |
 | 2. Suite Hygiene & Known-Bug Fixes | 0/? | Not started | - |
 | 3. Test Authoring to >90% Coverage | 0/? | Not started | - |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
