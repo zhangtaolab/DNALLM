@@ -209,14 +209,16 @@ jobs:
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
       - name: Run mamba-specific tests
+        id: mamba-tests
         if: steps.gpu-check.outputs.has_gpu == 'true'
         continue-on-error: true
         run: |
           source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --tb=short
+          set -o pipefail
+          pytest tests/ -v -m "not slow" --tb=short 2>&1 | tee pytest.log
 
       - name: Upload mamba test logs on failure
-        if: steps.gpu-check.outputs.has_gpu == 'true' && failure()
+        if: always() && steps.mamba-tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: mamba-test-logs-${{ matrix.python-version }}
