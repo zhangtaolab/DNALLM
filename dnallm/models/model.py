@@ -542,30 +542,13 @@ def _load_model_by_task_type(
 
     # Common tokenizer loading
     if custom_tokenizer is None:
-        try:
-            if task_type == "token":
-                tokenizer = auto_tokenizer.from_pretrained(
-                    model_name, trust_remote_code=True, add_prefix_space=True
-                )
-            else:
-                tokenizer = auto_tokenizer.from_pretrained(model_name, trust_remote_code=True)
-        except Exception:
-            # transformers v5 cannot rebuild slow Unigram tokenizers whose
-            # tokenizer_config names a slow class (e.g. DebertaV2Tokenizer);
-            # load the fast tokenizer from tokenizer.json instead
-            try:
-                from transformers import PreTrainedTokenizerFast
+        from .tokenizer import load_tokenizer_with_fallback
 
-                tokenizer = PreTrainedTokenizerFast.from_pretrained(model_name)
-                logger.warning("AutoTokenizer failed; loaded fast tokenizer from tokenizer.json.")
-            except Exception:
-                logger.warning(
-                    "Failed to load tokenizer from pretrained model. "
-                    "Falling back to custom DNAOneHotTokenizer."
-                )
-                from .tokenizer import DNAOneHotTokenizer
-
-                tokenizer = DNAOneHotTokenizer()
+        tokenizer = load_tokenizer_with_fallback(
+            model_name,
+            auto_tokenizer_cls=auto_tokenizer,
+            add_prefix_space=(task_type == "token"),
+        )
     else:
         tokenizer = custom_tokenizer()
 
