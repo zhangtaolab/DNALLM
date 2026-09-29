@@ -550,13 +550,22 @@ def _load_model_by_task_type(
             else:
                 tokenizer = auto_tokenizer.from_pretrained(model_name, trust_remote_code=True)
         except Exception:
-            logger.warning(
-                "Failed to load tokenizer from pretrained model. "
-                "Falling back to custom DNAOneHotTokenizer."
-            )
-            from .tokenizer import DNAOneHotTokenizer
+            # transformers v5 cannot rebuild slow Unigram tokenizers whose
+            # tokenizer_config names a slow class (e.g. DebertaV2Tokenizer);
+            # load the fast tokenizer from tokenizer.json instead
+            try:
+                from transformers import PreTrainedTokenizerFast
 
-            tokenizer = DNAOneHotTokenizer()
+                tokenizer = PreTrainedTokenizerFast.from_pretrained(model_name)
+                logger.warning("AutoTokenizer failed; loaded fast tokenizer from tokenizer.json.")
+            except Exception:
+                logger.warning(
+                    "Failed to load tokenizer from pretrained model. "
+                    "Falling back to custom DNAOneHotTokenizer."
+                )
+                from .tokenizer import DNAOneHotTokenizer
+
+                tokenizer = DNAOneHotTokenizer()
     else:
         tokenizer = custom_tokenizer()
 
@@ -932,21 +941,17 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     device = module.weight.device
                     in_features = weight_shape[1]
                     out_features = weight_shape[0]
-                    # Try to use bnb.nn.Linear4bit with proper compute_dtype if available
-                    try:
-                        import bitsandbytes as bnb
-
-                        compute_dtype = getattr(module, "compute_dtype", torch.float16)
-                        replacement = bnb.nn.Linear4bit(
-                            in_features,
-                            out_features,
-                            compute_dtype=compute_dtype,
-                        ).to(device)
-                    except Exception:
-                        # Fallback to standard nn.Linear in float16
-                        replacement = nn.Linear(in_features, out_features, dtype=torch.float16).to(  # type: ignore[assignment]
-                            device
-                        )
+                    # Replace with a standard nn.Linear in the compute dtype.
+                    # These layers are newly initialized heads (pooler, classifier)
+                    # that PEFT may mark trainable via modules_to_save — they must
+                    # stay in floating point, a fresh Linear4bit would quantize its
+                    # weight to uint8 on device and break requires_grad.
+                    compute_dtype = getattr(module, "compute_dtype", torch.float16)
+                    replacement = nn.Linear(
+                        in_features,
+                        out_features,
+                        dtype=compute_dtype,  # type: ignore[assignment]
+                    ).to(device)
                     # Copy existing weight data if available
                     with torch.no_grad():
                         if hasattr(module, "weight") and module.weight is not None:

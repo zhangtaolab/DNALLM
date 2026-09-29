@@ -43,6 +43,7 @@ Usage Example:
 from pathlib import Path
 from typing import Any
 from collections.abc import Callable
+import math
 import torch
 from datasets import DatasetDict
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]
@@ -198,6 +199,9 @@ class DNATrainer:
         training_args.pop("use_qlora", None)
         training_args.pop("quantization_config", None)
         self._save_safetensors = training_args.pop("save_safetensors", True)
+        # transformers v5 removed warmup_ratio from TrainingArguments;
+        # convert it to warmup_steps once the train dataset size is known
+        self._warmup_ratio = training_args.pop("warmup_ratio", None)
         self.training_args = TrainingArguments(
             **training_args,
         )
@@ -234,6 +238,19 @@ class DNATrainer:
         else:
             eval_dataset = None
             self.training_args.eval_strategy = "no"
+
+        # Convert warmup_ratio to warmup_steps (warmup_ratio was removed in transformers v5)
+        if self._warmup_ratio and not self.training_args.warmup_steps:
+            if self.training_args.max_steps and self.training_args.max_steps > 0:
+                num_training_steps = self.training_args.max_steps
+            else:
+                steps_per_epoch = math.ceil(
+                    len(train_dataset) / self.training_args.per_device_train_batch_size
+                )
+                num_training_steps = (
+                    steps_per_epoch // self.training_args.gradient_accumulation_steps
+                ) * self.training_args.num_train_epochs
+            self.training_args.warmup_steps = int(self._warmup_ratio * num_training_steps)
 
         # Set problem type specific settings
         if self.task_config.task_type == "regression":
@@ -384,7 +401,7 @@ class DNATrainer:
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
-                if self.trainer.args.save_safetensors:
+                if self._save_safetensors:
                     self.model.save_pretrained(
                         self.train_config.output_dir,
                     )
@@ -395,7 +412,7 @@ class DNATrainer:
             else:
                 self.model.save_pretrained(
                     self.train_config.output_dir,
-                    safe_serialization=self.trainer.args.save_safetensors,
+                    safe_serialization=self._save_safetensors,
                 )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore
@@ -450,7 +467,7 @@ class DNATrainer:
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
-                if self.trainer.args.save_safetensors:
+                if self._save_safetensors:
                     self.model.save_pretrained(
                         self.train_config.output_dir,
                     )
@@ -461,7 +478,7 @@ class DNATrainer:
             else:
                 self.model.save_pretrained(
                     self.train_config.output_dir,
-                    safe_serialization=self.trainer.args.save_safetensors,
+                    safe_serialization=self._save_safetensors,
                 )
         if save_tokenizer:
             self.datasets.tokenizer.save_pretrained(self.train_config.output_dir)  # type: ignore

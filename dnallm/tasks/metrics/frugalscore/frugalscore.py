@@ -108,7 +108,7 @@ class FRUGALSCORE(evaluate.Metric):
             fp16=(device == "gpu"),
             per_device_eval_batch_size=batch_size,
             report_to="all",
-            no_cuda=(device == "cpu"),
+            use_cpu=(device == "cpu"),
             log_level="warning",
         )
         dataset = {"sentence1": predictions, "sentence2": references}
@@ -125,6 +125,6 @@ class FRUGALSCORE(evaluate.Metric):
 
         tokenized_datasets = raw_datasets.map(tokenize_function, batched=True)
         tokenized_datasets.remove_columns(["sentence1", "sentence2"])
-        trainer = Trainer(self.model, training_args, tokenizer=self.tokenizer)
+        trainer = Trainer(self.model, training_args, processing_class=self.tokenizer)
         predictions = trainer.predict(tokenized_datasets)
         return {"scores": list(predictions.predictions.squeeze(-1))}
