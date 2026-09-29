@@ -90,11 +90,12 @@ dev = [
     "seaborn>=0.13.0",
 ]
 test = [
-    "pytest>=8.3.5",
-    "pytest-asyncio>=0.21.1",
-    "pytest-cov>=6.0.0",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.0",
+    "pytest-cov>=7.0",
     "pytest-progress>=0.1.0",
-    "pytest-timeout>=2.3.1",
+    "pytest-timeout>=2.3.1,<2.5",
+    "coverage[toml]>=7.10.6",
 ]
 notebook = [
     "jupyter>=1.1.1",
@@ -485,7 +486,7 @@ markers = [
     "legacy: marks tests for legacy/deprecated features"
 ]
 console_output_style = "progress"
-minversion = "6.0"
+minversion = "8.4"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
@@ -494,3 +495,20 @@ filterwarnings = [
     "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
     "ignore:co_lnotab is deprecated, use co_lines instead:DeprecationWarning"
 ]
+
+# Coverage configuration
+[tool.coverage.run]
+source_pkgs = ["dnallm"]
+omit = [
+    "*/dnallm/tasks/metrics/*",                    # vendored HF evaluate
+    "*/dnallm/models/special/enformer_model/*",    # ported Enformer
+    "*/dnallm/finetune/megatron.py",               # unimportable adapter
+    "*/dnallm/models/special/mamba_npu.py",        # unimportable adapter
+    "*/dnallm/mcp/tests/*",                        # packaged test files
+    "*/dnallm/mcp/run_tests.py",                   # helper script
+    "*/dnallm/mcp/example_sse_usage.py",           # example script
+]
+
+[tool.coverage.report]
+show_missing = true
+# NO fail_under in this phase — the enforcement threshold is added in Phase 4, ratcheted
