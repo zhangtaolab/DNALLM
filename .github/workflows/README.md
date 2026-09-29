@@ -171,7 +171,7 @@ flake8 .
 mypy dnallm/
 
 # Run tests
-pytest tests/ -v --cov=dnallm
+pytest --cov
 
 # Run specific test categories
 pytest tests/ -m "not slow"
@@ -182,7 +182,7 @@ pytest tests/ -m "integration"
 ## 📚 Additional Resources
 
 - [Project Testing Documentation](../tests/TESTING.md)
-- [Pytest Configuration](../tests/pytest.ini)
+- [Pytest Configuration](../../pyproject.toml) (see `[tool.pytest.ini_options]`)
 - [Project Dependencies](../../pyproject.toml)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 

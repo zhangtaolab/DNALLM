@@ -110,10 +110,10 @@ fi
 echo ""
 if [ "$INCLUDE_SLOW" = true ]; then
     print_status "INFO" "4/5: Running full test suite (including slow tests)..."
-    pytest tests/ -v --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
+    pytest -v --cov
 else
     print_status "INFO" "3/4: Running fast tests (excludes slow)..."
-    pytest tests/ -v -m "not slow" --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
+    pytest -v -m "not slow" --cov
 fi
 print_status "SUCCESS" "Tests passed"
 
