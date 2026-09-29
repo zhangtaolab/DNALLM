@@ -426,17 +426,20 @@ rm tests/test_zz_subprocess_canary.py
 
 **Note:** no `[ASSUMED]` claims concern compliance, security, or retention policy; all are mechanical/behavioral and self-verifying during execution.
 
-## Open Questions
+## Open Questions (RESOLVED — all three adopted into the phase plans)
 
 1. **Coverage activation route (HARN-03 interpretation)**
    - What we know: scope/omit/report must live in pyproject; the enabling mechanism is free. Route A (`pytest --cov`, one flag) keeps pytest-cov integration; Route B (`coverage run -m pytest`) is letter-strict "no CLI cov flags" but bypasses pytest-cov entirely.
    - What's unclear: which reading the owner/verifier will apply to success criterion 3.
    - Recommendation: Route A for the CI fast leg and the audit (simplest, probe-adjacent), and state the interpretation explicitly in PLAN.md; Route B costs nothing later if verification objects. Do NOT put `--cov` in addopts (every local run would pay measurement overhead; bare-`--cov`-last arg-eating hazard; Pitfall 4).
+   - **RESOLVED — Route A adopted:** 01-01-PLAN.md Task 3 records the interpretation for the verifier (ALL scope/omit/report configuration lives in `[tool.coverage.*]`; exactly ONE enabling `--cov` flag on the invocation is activation, not configuration) and applies it to the CI fast leg; 01-02-PLAN.md Task 1 uses the same single-flag route for every audit invocation; no `--cov` was added to addopts.
 2. **Does the audit run locally, in CI, or both?**
    - What we know: cold/warm cache control and GPU only exist locally; CI is always cold. Owner accepted network cost.
    - What's unclear: where the AUDIT-03 timings of record are produced.
    - Recommendation: audit locally (this machine: warm 21G cache + NVIDIA GB10), record env in the report; CI stays fast-leg-only this phase. Phase 4's GATE-02 defines the slow CI lane.
+   - **RESOLVED — local audit adopted:** 01-02-PLAN.md Task 1 produces the AUDIT-03 timings of record locally (GPU + warm cache, environment recorded per Pitfall 7) with CI staying fast-leg-only this phase.
 3. **pytest floor bump coherence (A6)** — decide whether HARN-04 also raises `pytest>=8.3.5` → `>=8.4`. Recommendation: yes, one-line change, keeps fresh resolves on pytest-asyncio 1.4; but it is outside the literal HARN-04 text, so planner should flag it as a discretionary edit.
+   - **RESOLVED — discretionary bump adopted:** 01-01-PLAN.md Task 2 raises the floor to `pytest>=8.4` and aligns `[tool.pytest.ini_options]` minversion to "8.4", flagged as discretionary in the plan and required to be flagged in the commit message.
 
 ## Environment Availability
 
