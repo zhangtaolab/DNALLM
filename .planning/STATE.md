@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Harness Integrity & Measured Baseline
-status: executing
-stopped_at: "Completed 01-01-PLAN.md (harness integrity: single pytest config, honest exit codes, coverage config, CI canary)"
-last_updated: "2026-09-29T17:36:56.811Z"
+status: verifying
+stopped_at: "Completed 01-02-PLAN.md (measured baseline audit: 45.92%, census 625/0/0/9, AUDIT-04 minimal)"
+last_updated: "2026-09-29T18:44:52.635Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 01 execution started
-state_head: be3e0f1c175b13d29594c4fddbd4c02bbbd9cb7b
+state_head: 41e3a7aab3977d82f9f5e57e626a6a5519d52d25
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-29)
 
 Phase: 01 (Harness Integrity & Measured Baseline) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 min | 3 tasks | 6 files |
+| Phase 01 P02 | 52 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - [Phase 01]: Coverage activation Route A: all scope/omit/report config lives in [tool.coverage.*]; a single bare --cov on an invocation is activation, not configuration (recorded for the verifier in commit messages)
 - [Phase 01]: Omit boundary exact at seven entries: vendored dnallm/tasks/metrics/ dir omitted while measured dispatcher dnallm/tasks/metrics.py stays in the denominator (no neighbor spill; eighth omit entries prohibited)
 - [Phase 01]: pytest floor >=8.4 + minversion 8.4 aligned (discretionary coherence with pytest-asyncio 1.x; no lockfile so fresh CI resolves stay coherent)
+- [Phase 01]: AUDIT-04 subprocess coverage: start minimal (no patch) — canary showed child-side execution unmeasured ('No data to report' child-only; parent-import control 7/75 lines) and zero collected tests spawn subprocesses; escalate only when a future test's assertions depend on child-process-side code paths
+- [Phase 01]: Measured baseline 45.92% (3390/7383 stmts, 57 files); gap to 90% = 44.08 points (~3255 stmts) concentrated inference 1505 / models 1210 / mcp 449 — Phase-3 sizing input landed; single-phase Phase 3 viable but near the split threshold
+- [Phase 01]: Cold-leg method boundary recorded: HF_HOME isolates the HF cache only — ModelScope-sourced trainer tests ran warm in both legs; only two slow tests are genuinely HF-cold (+85.5s combined)
 
 ### Pending Todos
 
@@ -78,9 +82,9 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1→3: Phase 3 sizing (distance to 90%) is unknown until the Phase 1 baseline/gap report exists — revisit wave granularity then
+- Phase 3 sizing: RESOLVED as unknown — measured this cycle (01-02): baseline 45.92%, gap to 90% = 44.08 points (~3,255 statements; inference 1,505 / models 1,210 / mcp 449). Remaining decision: split Phase 3 via `/gsd-phase` at planning time (near the split threshold)
 - Phase 3: MCP transport test pattern (`server.py:1718+` vs pinned `mcp>=1.3.0,<2`) is unverified against the installed SDK — run plan-phase with `--research-phase` for the mcp wave
-- Phase 1: subprocess-coverage scope is an unresolved config conflict (start minimal; let a canary decide)
+- Phase 1: subprocess-coverage scope RESOLVED (01-02 AUDIT-04): start minimal, no patch — canary evidence recorded in 01-AUDIT-REPORT.md; escalate only when a future test's assertions depend on child-process-side code paths
 
 ## Deferred Items
 
@@ -92,6 +96,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-29T17:36:56.797Z
-Stopped at: Completed 01-01-PLAN.md (harness integrity: single pytest config, honest exit codes, coverage config, CI canary)
+Last session: 2026-09-29T18:44:52.620Z
+Stopped at: Completed 01-02-PLAN.md (measured baseline audit: 45.92%, census 625/0/0/9, AUDIT-04 minimal)
 Resume file: None

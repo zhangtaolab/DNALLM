@@ -16,10 +16,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Audit & Baseline
 
-- [ ] **AUDIT-01**: Full-suite audit census (both roots, `slow` included): pass/fail/skip counts by skip reason
-- [ ] **AUDIT-02**: Ranked per-module coverage gap report (`term-missing` + machine-readable artifact) as the test-authoring worklist
-- [ ] **AUDIT-03**: Measured baseline coverage % on the agreed denominator + slow-test wall-clock timings (cold and warm cache)
-- [ ] **AUDIT-04**: Explicit subprocess-coverage scope decision (canary-driven: start minimal, escalate to `patch = ["subprocess"]` only on evidence)
+- [x] **AUDIT-01**: Full-suite audit census (both roots, `slow` included): pass/fail/skip counts by skip reason
+- [x] **AUDIT-02**: Ranked per-module coverage gap report (`term-missing` + machine-readable artifact) as the test-authoring worklist
+- [x] **AUDIT-03**: Measured baseline coverage % on the agreed denominator + slow-test wall-clock timings (cold and warm cache)
+- [x] **AUDIT-04**: Explicit subprocess-coverage scope decision (canary-driven: start minimal, escalate to `patch = ["subprocess"]` only on evidence)
 
 ### Known-Defect Fixes
 
@@ -78,10 +78,10 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 | HARN-02 | Phase 1 | Complete |
 | HARN-03 | Phase 1 | Complete |
 | HARN-04 | Phase 1 | Complete |
-| AUDIT-01 | Phase 1 | Pending |
-| AUDIT-02 | Phase 1 | Pending |
-| AUDIT-03 | Phase 1 | Pending |
-| AUDIT-04 | Phase 1 | Pending |
+| AUDIT-01 | Phase 1 | Complete |
+| AUDIT-02 | Phase 1 | Complete |
+| AUDIT-03 | Phase 1 | Complete |
+| AUDIT-04 | Phase 1 | Complete |
 | FIX-01 | Phase 2 | Pending |
 | FIX-02 | Phase 2 | Pending |
 | FIX-03 | Phase 2 | Pending |
