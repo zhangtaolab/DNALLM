@@ -104,8 +104,7 @@ dnallm/models/downloads/
 dnallm/data/cache/
 dnallm/ui/tmp/
 
-# Planning artifacts (dev branch only, never merged)
-.planning/
+# Claude local artifacts
 .claude/
 
 # Jupyter Notebook tmp files
