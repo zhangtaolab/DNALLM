@@ -51,7 +51,15 @@ Plans:
   3. Every skip in the suite is typed (specific network exceptions) and matches an expected-skip allowlist; a new unexpected skip fails the run instead of passing silently
   4. Running the PDF-marked tests leaves the git working tree clean (artifacts written under `tmp_path`), and `.gitignore` ignores `tests/inference/pdf/` correctly
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 02-01-PLAN.md — Multiclass AUROC presence-guard fix + CrossDNA dispatch fix, proven by unskipped and sentinel regression tests (FIX-01, FIX-02)
+- [ ] 02-02-PLAN.md — PDF test artifacts under tmp_path, pdf marker applied, .gitignore typo fixed, strays deleted (FIX-04)
+
+**Wave 2** *(blocked on Wave 1 — 02-01 owns tests/models/test_model.py and changes the skip census)*
+- [ ] 02-03-PLAN.md — Typed network skips (httpx tuple + group unwrapping), dead-skip deletion, expected-skip allowlist + CI junit audit step (FIX-03)
 
 ### Phase 3: Test Authoring to >90% Coverage
 
