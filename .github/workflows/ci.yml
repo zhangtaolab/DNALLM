@@ -8,6 +8,9 @@ on:
       - dev
   pull_request:
     branches: [ main, master, dev ]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
 
 # Least privilege: every job (including test jobs that run arbitrary test code
 # and third-party actions) defaults to read-only. Only `deploy` overrides this
@@ -19,6 +22,7 @@ jobs:
   test:
     name: test (py${{ matrix.python-version }}, numpy${{ matrix.numpy-version }})
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13']
@@ -82,18 +86,11 @@ jobs:
         run: |
           source .venv/bin/activate
           pytest -m "not slow" --cov --junitxml=pytest-junit.xml
-          coverage xml -o coverage.xml
 
       - name: Skip audit (unexpected skips fail the job)
         run: |
           source .venv/bin/activate
           python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
 
       - name: Exit-code canary (a failing test must fail the job)
         run: |
@@ -120,6 +117,7 @@ jobs:
           
   test-cuda:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11']
@@ -178,6 +176,7 @@ jobs:
           
   test-mamba:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11']
@@ -230,13 +229,138 @@ jobs:
           path: |
             pytest.log
             /tmp/mamba-build.log
-          
+
+  coverage-gate:
+    name: coverage-gate (py3.12, fast leg)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      - name: Run gated fast census (not slow)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -m "not slow" -ra --durations=0 --junitxml=pytest-junit-gate.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (gated junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
+
+  coverage-nightly:
+    name: coverage-nightly (py3.12, full suite incl. slow)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 480
+    continue-on-error: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Restore model caches (keyed on models.lock)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/huggingface/hub
+            ~/.cache/modelscope/hub
+          key: ${{ runner.os }}-models-${{ hashFiles('models.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-models-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      - name: Run gated full census (slow included)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -ra --durations=0 --junitxml=pytest-junit-nightly.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (nightly junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-nightly.xml tests/expected_skips.yaml
+
   deploy:
     needs: [test, test-cuda, test-mamba]
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
