@@ -9,10 +9,10 @@
 
 Coverage cannot regress — the gate goes live green and provably fails CI when coverage drops.
 
-In scope (GATE-01..GATE-05, ROADMAP success criteria 1-5):
+In scope (GATE-01..GATE-05, ROADMAP success criteria 1-5 — **GATE-02 amended by owner decision 2026-09-30**, below):
 1. `fail_under = 90` active in `[tool.coverage.report]`, enforced through the pytest exit code; identical command locally and in CI
-2. Dedicated single-leg CI job (py3.12, full suite incl. `slow`) with HF model cache keyed on `models.lock`, per-test timeout marks, job-level `timeout-minutes` backstop — passes green
-3. A synthetic regression (deliberately coverage-dropping change) demonstrably fails the CI job — end-to-end exercise of the Phase-1 exit-code fix
+2. ~~Dedicated single-leg CI job (py3.12, full suite incl. `slow`)~~ **AMENDED**: gated PR job runs the fast leg (`-m "not slow"`, measured 96% alone — the slow tests add ~1 statement); the slow-inclusive suite moves to a scheduled nightly job with the same `fail_under` and census command (visible, non-blocking on PRs). Rationale (owner, on measured evidence): full slow suite = 4–7.5h on 4-core CPU runners (13× GPU→CPU factor, 16GB RAM ceiling) — beyond practical PR gating; nightly keeps slow coverage under the same ratchet. Cache keyed on `models.lock` (9-entry manifest, both HF + ModelScope hub paths) applies to the nightly job; per-test timeout marks + `timeout-minutes` backstop on both jobs
+3. A synthetic regression (deliberately coverage-dropping change) demonstrably fails the PR-gated CI job — end-to-end exercise of the Phase-1 exit-code fix
 4. Codecov step: codecov-action v7 as reporting-only, or removed — no dead/failing step remains
 5. Gated coverage job triggers on PRs to both `dev` and `main`
 
