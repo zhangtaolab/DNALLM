@@ -293,9 +293,26 @@ class TestMultiClassificationMetrics:
 
     def test_multi_classification_metrics_with_plot(self):
         """Test multi-class classification metrics with plotting data."""
-        # Skip this test as multi-class plotting with AUROC is complex
-        # and requires proper multi-class AUROC implementation
-        pytest.skip("Multi-class plotting with AUROC requires complex implementation")
+        label_list = ["label1", "label2", "label3"]
+        compute_func = multi_classification_metrics(label_list, plot=True)
+
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])  # every class present
+
+        metrics = compute_func((logits, labels))
+
+        assert "curve" in metrics
+        assert set(metrics["curve"]) == {"fpr", "tpr", "precision", "recall"}
+
+    def test_multi_classification_metrics_missing_class_raises(self):
+        """A batch lacking a class must fail honestly, not return nan metrics."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.8, 0.1, 0.1]])
+        labels = np.array([0, 1, 0])  # class 2 absent
+
+        with pytest.raises(ValueError, match=r"missing class id\(s\)"):
+            compute_func((logits, labels))
 
 
 class TestMultiLabelsMetrics:
@@ -746,9 +763,9 @@ class TestMetricsIntegration:
         ("binary", 2, ["negative", "positive"]),
         (
             "multiclass",
-            2,
-            ["A", "B"],
-        ),  # Fix: Use 2 classes to avoid AUROC issues
+            3,
+            ["A", "B", "C"],
+        ),  # 3 classes: sklearn's macro-ovr path needs >2 unique target values
         ("multilabel", 2, ["label1", "label2"]),
         ("regression", 1, None),
         ("token", 3, ["O", "B-GENE", "I-GENE"]),
@@ -756,10 +773,6 @@ class TestMetricsIntegration:
 )
 def test_compute_metrics_task_types(task_type, num_labels, label_names):
     """Test compute_metrics with different task types."""
-    # Skip multiclass test due to AUROC implementation issues
-    if task_type == "multiclass":
-        pytest.skip("Multiclass AUROC implementation has issues")
-
     task_config = TaskConfig(task_type=task_type, num_labels=num_labels, label_names=label_names)
 
     compute_func = compute_metrics(task_config)
@@ -780,12 +793,10 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         ])
         labels = np.array([[0, 1], [1, 2]])
     elif task_type == "multiclass":
-        # Fix: Use binary classification for multiclass to
-        # avoid AUROC issues
-        # The actual multiclass implementation has AUROC issues,
-        # so we test with binary
-        logits = np.array([[0.1, 0.9], [0.8, 0.2]])
-        labels = np.array([1, 0])
+        # 3 classes, 3 samples: every class id must appear in labels
+        # (macro-ovr AUROC requires all classes present in the batch)
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])
     else:
         logits = np.array([[0.1, 0.9], [0.8, 0.2]])
         labels = np.array([1, 0])

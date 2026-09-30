@@ -280,7 +280,26 @@ def multi_classification_metrics(label_list: list, plot: bool = False) -> Callab
         metrics["recall_weighted"] = recall_score(labels, predictions, average="weighted")
         metrics["f1_weighted"] = f1_score(labels, predictions, average="weighted")
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
-        metrics["AUROC"] = roc_auc_score(labels, pred_probs, average="macro", multi_class="ovr")
+        # All classes must appear in the eval batch: roc_auc_score(multi_class="ovr")
+        # and average_precision_score both degrade or crash otherwise
+        # (average_precision_score takes no labels kwarg, so this guard is its
+        # only protection; it also protects the per-class curve branch below).
+        expected_classes = np.arange(len(label_list))
+        present_classes = np.unique(labels)
+        if not np.array_equal(present_classes, expected_classes):
+            missing = np.setdiff1d(expected_classes, present_classes).tolist()
+            raise ValueError(
+                f"Multiclass metrics require every class in the eval batch; "
+                f"missing class id(s) {missing} "
+                f"({len(present_classes)}/{len(label_list)} classes present)."
+            )
+        metrics["AUROC"] = roc_auc_score(
+            labels,
+            pred_probs,
+            average="macro",
+            multi_class="ovr",
+            labels=expected_classes,
+        )
         metrics["AUPRC"] = average_precision_score(labels, pred_probs, average="macro")
         tpr_list, tnr_list, fpr_list, fnr_list = [], [], [], []
         for label_cnt in multilabel_confusion_matrix(labels, predictions):
