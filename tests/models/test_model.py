@@ -500,6 +500,53 @@ class TestLoadModelAndTokenizer:
             assert model is not None
             assert tokenizer == "tokenizer"
 
+    def test_load_model_crossdna_result_not_overwritten(self):
+        """CrossDNA handler result must survive the dispatch chain verbatim."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        sentinel_model = Mock()
+        # load_model_and_tokenizer rebinds the model via .to(device); a plain
+        # Mock would return a fresh child mock and break the identity check.
+        sentinel_model.to = Mock(return_value=sentinel_model)
+        sentinel_tokenizer = Mock()
+        other_model, other_tokenizer = Mock(), Mock()
+
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch("dnallm.models.model._handle_evo2_models", return_value=None),
+            patch("dnallm.models.model._handle_evo1_models", return_value=None),
+            patch("dnallm.models.model._handle_gpn_models", return_value=None),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=(
+                    "/models/CrossDNA-8.1M",
+                    {"AutoTokenizer": Mock(), "AutoModelForMaskedLM": Mock()},
+                ),
+            ),
+            patch(
+                "dnallm.models.model._create_label_mappings",
+                return_value=({}, {}),
+            ),
+            patch(
+                "dnallm.models.model._handle_crossdna_models",
+                return_value=(sentinel_model, sentinel_tokenizer),
+            ),
+            patch(
+                "dnallm.models.model._handle_dnabert2_models",
+                return_value=(other_model, other_tokenizer),
+            ),
+            patch(
+                "dnallm.models.model._load_model_by_task_type",
+                side_effect=AssertionError("generic loader must not run"),
+            ),
+            patch("dnallm.models.model._configure_model_padding"),
+        ):
+            model, tokenizer = load_model_and_tokenizer(
+                "CrossDNA-8.1M", task_config, source="local"
+            )
+
+            assert model is sentinel_model
+            assert tokenizer is sentinel_tokenizer
+
     def test_load_model_missing_num_labels_classification(self):
         """Test that correct problem types are set for different task types."""
         # Create a task config that bypasses Pydantic validation
