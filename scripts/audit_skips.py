@@ -97,6 +97,11 @@ def main(junit_path: str, allowlist_path: str) -> int:
         skipped = testcase.find("skipped")
         if skipped is None:
             continue
+        if (skipped.get("type") or "").startswith("pytest.xfail"):
+            # junit records an expected failure as <skipped type="pytest.xfail"
+            # message="<xfail reason>"/>; that is an expected outcome, not a
+            # skip, so it must not be audited against the allowlist.
+            continue
         message = skipped.get("message") or ""
         test_id = f"{testcase.get('classname')}::{testcase.get('name')}"
         hit = next((entry for entry in allowed if entry_matches(message, entry)), None)
