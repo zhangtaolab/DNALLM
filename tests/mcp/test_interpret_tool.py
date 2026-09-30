@@ -390,3 +390,89 @@ class TestDNAInterpretTool:
             assert "isError" not in result or result.get("isError") is False
             call_kwargs = mock_interp.interpret.call_args[1]
             assert call_kwargs["max_length"] == 256
+
+    async def test_invalid_sequence_characters_return_error(self, mock_server):
+        """Non-ACGTN characters fail validation before engine access."""
+        result = await mock_server._dna_interpret(
+            sequence="ATGZ",
+            model_name="test-model",
+            method="lig",
+            target_class=0,
+        )
+
+        assert result["isError"] is True
+        assert "invalid characters" in result["error"]
+        assert "A, C, G, T, N" in result["error"]
+
+    async def test_target_class_fallback_on_empty_probabilities(self, mock_server):
+        """Auto-selection falls back to class 0 when probabilities are empty."""
+
+        async def mock_predict(*args, **kwargs):  # ruff: ignore[unused-async]
+            return {"probabilities": []}
+
+        mock_server.model_manager.predict_sequence = mock_predict
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret.return_value = (
+                ["A", "T", "G", "C"],
+                np.array([0.1, -0.2, 0.3, -0.1]),
+            )
+
+            result = await mock_server._dna_interpret(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=None,
+            )
+
+        assert result["target_class"] == 0
+
+    async def test_target_class_fallback_on_none_prediction(self, mock_server):
+        """Auto-selection falls back to class 0 when prediction fails."""
+
+        async def mock_predict(*args, **kwargs):  # ruff: ignore[unused-async]
+            return None
+
+        mock_server.model_manager.predict_sequence = mock_predict
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret.return_value = (
+                ["A", "T", "G", "C"],
+                np.array([0.1, -0.2, 0.3, -0.1]),
+            )
+
+            result = await mock_server._dna_interpret(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=None,
+            )
+
+        assert result["target_class"] == 0
+
+    async def test_interpret_exception_returns_error_dict(self, mock_server):
+        """A raising interpretation is caught with the verbatim text."""
+
+        async def mock_predict(*args, **kwargs):  # ruff: ignore[unused-async]
+            return {"probabilities": [0.2, 0.8]}
+
+        mock_server.model_manager.predict_sequence = mock_predict
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp_cls.side_effect = RuntimeError("captum fault")
+
+            result = await mock_server._dna_interpret(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=1,
+            )
+
+        assert result["isError"] is True
+        assert result["content"][0]["text"] == (
+            "Interpretation failed. See server logs for details."
+        )

@@ -360,3 +360,66 @@ class TestDNAMutagenesisTool:
             assert "isError" not in result or result.get("isError") is False
             assert "batch_results" in result
             assert result["sequence_count"] == 2
+
+    async def test_empty_model_name_returns_error(self, mock_server):
+        """An empty model_name fails validation before any engine access."""
+        result = await mock_server._dna_mutagenesis(
+            sequence="ATGC",
+            mutation_type="single_base_substitution",
+            positions=[0],
+            model_name="",
+        )
+
+        assert result == {"error": "model_name is required", "isError": True}
+
+    async def test_invalid_sequence_characters_return_error(self, mock_server):
+        """Non-ACGTN characters fail validation with the index named."""
+        result = await mock_server._dna_mutagenesis(
+            sequence="ATGZ",
+            mutation_type="single_base_substitution",
+            positions=[0],
+            model_name="test-model",
+        )
+
+        assert result["isError"] is True
+        assert "index 0" in result["error"]
+        assert "invalid characters" in result["error"]
+
+    async def test_no_mutated_entries_delta_zero(self, mock_server):
+        """An eval result with only the raw entry yields zero averages."""
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = {
+                "raw": {
+                    "sequence": "ATGC",
+                    "pred": np.array([0.1]),
+                    "score": 0.0,
+                }
+                # no mutated entries
+            }
+
+            result = await mock_server._dna_mutagenesis(
+                sequence="ATGC",
+                mutation_type="single_base_substitution",
+                positions=[0],
+                model_name="test-model",
+            )
+
+        assert result["delta"] == {"average_logfc": 0.0, "average_diff": 0.0}
+        assert result["mutated_prediction"]["count"] == 0
+
+    async def test_mutagenesis_exception_returns_error_dict(self, mock_server):
+        """A raising Mutagenesis evaluation is caught with the verbatim text."""
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
+            mock_mut_cls.side_effect = RuntimeError("mutagenesis engine fault")
+
+            result = await mock_server._dna_mutagenesis(
+                sequence="ATGC",
+                mutation_type="single_base_substitution",
+                positions=[0],
+                model_name="test-model",
+            )
+
+        assert result["isError"] is True
+        assert result["content"][0]["text"] == ("Mutagenesis failed. See server logs for details.")

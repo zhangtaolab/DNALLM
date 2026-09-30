@@ -162,10 +162,9 @@ class TestInMemoryProtocolRoundTrip:
 
     async def test_list_tools_returns_complete_registered_set(self, real_server):
         """list_tools enumerates every tool registered in server.py."""
-        names: set[str] = set()
         async with self._client_session(real_server) as session:
             result = await session.list_tools()
-            names = {tool.name for tool in result.tools}
+        names = {tool.name for tool in result.tools}
         assert names == EXPECTED_TOOLS
         assert len(names) == 13
 
@@ -339,7 +338,11 @@ class TestSSEConstruction:
     """Test _start_sse_server assembly (construction-only; see module docstring)."""
 
     def _run_sse_start(self, server):
-        """Start SSE with patched uvicorn, returning (config kwargs, routes)."""
+        """Start SSE via start_server dispatch with patched uvicorn.
+
+        Driving through ``start_server(transport="sse")`` exercises the
+        dispatch line, not just the private starter.
+        """
         sentinel_sse_app = Mock()
         mock_app = MagicMock()
         mock_app.sse_app.return_value = sentinel_sse_app
@@ -348,7 +351,7 @@ class TestSSEConstruction:
             patch("uvicorn.Config") as mock_config_cls,
             patch("uvicorn.Server") as mock_server_cls,
         ):
-            server._start_sse_server("127.0.0.1", 8123)
+            server.start_server(host="127.0.0.1", port=8123, transport="sse")
         kwargs = mock_config_cls.call_args.kwargs
         return kwargs, kwargs["app"].routes, mock_server_cls, sentinel_sse_app
 

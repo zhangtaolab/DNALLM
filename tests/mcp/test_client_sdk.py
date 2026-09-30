@@ -11,7 +11,7 @@ import asyncio
 import inspect
 import json
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -404,3 +404,313 @@ async def test_client_sync_from_async_raises(sse_client):  # ruff: ignore[unused
     """Verify sync method raises RuntimeError when called from async."""
     with pytest.raises(RuntimeError, match="async context"):
         sse_client.dna_sequence_predict("ATCG", "dnabert-2")
+
+
+# ---------------------------------------------------------------------------
+# Default URL derivation
+# ---------------------------------------------------------------------------
+
+
+def test_client_default_urls_per_transport():
+    """Each transport derives its documented default endpoint URL."""
+    http_client = DNALLMMCPClient(transport="streamable-http")
+    assert http_client.url == "http://localhost:8000/mcp"
+
+    sse = DNALLMMCPClient(transport="sse")
+    assert sse.url == "http://localhost:8000/sse"
+
+
+# ---------------------------------------------------------------------------
+# Connection establishment (mocked SDK transport factories)
+# ---------------------------------------------------------------------------
+
+
+class _FakeSession:
+    """Minimal ClientSession stand-in recording initialize calls."""
+
+    initialized = False
+
+    def __init__(self, read, write):
+        self.read, self.write = read, write
+        self.call_tool = AsyncMock(
+            return_value=MagicMock(isError=False, content=[MagicMock(text='{"result": "ok"}')])
+        )
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    async def initialize(self):
+        _FakeSession.initialized = True
+
+
+def _fake_transport_cm(yields):
+    """Build an async CM yielding the given tuple (read/write streams)."""
+
+    class _CM:
+        async def __aenter__(self):
+            return yields
+
+        async def __aexit__(self, *args):
+            return None
+
+    return _CM()
+
+
+@pytest.mark.asyncio
+async def test_connect_streamable_http_initializes_session():
+    """The streamable-http _connect branch yields an initialized session."""
+    client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
+    _FakeSession.initialized = False
+    with (
+        patch(
+            "mcp.client.streamable_http.streamable_http_client",
+            return_value=_fake_transport_cm((Mock(), Mock(), Mock())),
+        ),
+        patch("mcp.ClientSession", _FakeSession),
+    ):
+        async with client._connect() as session:
+            assert isinstance(session, _FakeSession)
+    assert _FakeSession.initialized is True
+
+
+@pytest.mark.asyncio
+async def test_connect_sse_initializes_session():
+    """The sse _connect branch yields an initialized session."""
+    client = DNALLMMCPClient(transport="sse", url="http://localhost:8000/sse")
+    _FakeSession.initialized = False
+    with (
+        patch("mcp.client.sse.sse_client", return_value=_fake_transport_cm((Mock(), Mock()))),
+        patch("mcp.ClientSession", _FakeSession),
+    ):
+        async with client._connect() as session:
+            assert isinstance(session, _FakeSession)
+    assert _FakeSession.initialized is True
+
+
+@pytest.mark.asyncio
+async def test_connect_stdio_builds_server_parameters():
+    """The stdio branch spawns with the configured command/args/env."""
+    client = DNALLMMCPClient(
+        transport="stdio", command="dnallm-mcp-server", args=["--x"], env={"K": "V"}
+    )
+    captured = []
+    _FakeSession.initialized = False
+
+    def fake_stdio_client(server_params):
+        captured.append(server_params)
+        return _fake_transport_cm((Mock(), Mock()))
+
+    with (
+        patch("mcp.client.stdio.stdio_client", side_effect=fake_stdio_client),
+        patch("mcp.ClientSession", _FakeSession),
+    ):
+        async with client._connect() as session:
+            assert isinstance(session, _FakeSession)
+
+    assert captured[0].command == "dnallm-mcp-server"
+    assert captured[0].args == ["--x"]
+    assert captured[0].env == {"K": "V"}
+    assert _FakeSession.initialized is True
+
+
+# ---------------------------------------------------------------------------
+# Persistent session context manager
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_client_async_context_manages_persistent_session(mock_session, mock_connect):
+    """__aenter__ opens a persistent session; __aexit__ closes it."""
+    client = DNALLMMCPClient(transport="sse")
+    client._connect = lambda: mock_connect
+
+    async with client as entered:
+        assert entered is client  # __aenter__ yields the client, not the session
+        assert client._session is mock_session
+        # Persistent-session branch of _call_tool (no per-call connect)
+        result = await client.acall("health_check", {})
+        mock_session.call_tool.assert_awaited_with("health_check", {})
+        assert result == {"result": "ok"}
+
+    assert client._session is None
+    assert client._connect_cm is None
+
+
+@pytest.mark.asyncio
+async def test_client_close_closes_open_session(mock_session, mock_connect):
+    """close() tears down the persistent session."""
+    client = DNALLMMCPClient(transport="sse")
+    client._connect = lambda: mock_connect
+
+    await client.__aenter__()
+    assert client._session is mock_session
+    await client.close()
+
+    assert client._session is None
+    assert client._connect_cm is None
+
+
+# ---------------------------------------------------------------------------
+# Parse-result error corner
+# ---------------------------------------------------------------------------
+
+
+def test_client_parse_result_error_non_json_text():
+    """Non-JSON error text is wrapped into an error dict, not dropped."""
+    error_result = MagicMock()
+    error_result.isError = True
+    error_result.content = [MagicMock(text="plain failure text")]
+
+    parsed = DNALLMMCPClient._parse_result(error_result)
+    assert parsed == {"error": "plain failure text", "isError": True}
+
+
+# ---------------------------------------------------------------------------
+# Connection failure semantics (research Pitfall 11)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_connection_failure_surfaces_through_exception_group():
+    """Connection failures escape as ExceptionGroups wrapping httpx errors.
+
+    The MCP transports fail through httpx inside anyio TaskGroups, so the
+    catchable shape is a group whose leaves are httpx transport errors —
+    never a bare httpx exception type.
+    """
+    import httpx
+    from exceptiongroup import ExceptionGroup
+
+    from dnallm.mcp.tests._network_skip import _network_leaves
+
+    client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
+    group = ExceptionGroup("connection attempt", [httpx.ConnectError("refused")])
+
+    class _FailingCM:
+        async def __aenter__(self):
+            raise group
+
+        async def __aexit__(self, *args):
+            return False
+
+    with patch("mcp.client.streamable_http.streamable_http_client", return_value=_FailingCM()):
+        with pytest.raises(ExceptionGroup) as excinfo:
+            await client.acall("health_check", {})
+
+    leaves = _network_leaves(excinfo.value)
+    assert leaves, "exception group must carry leaves"
+    assert all(isinstance(leaf, httpx.TransportError) for leaf in leaves)
+
+
+# ---------------------------------------------------------------------------
+# Remaining typed-method execution coverage
+# ---------------------------------------------------------------------------
+
+ASYNC_TYPED_CALLS = [
+    (
+        "adna_batch_predict",
+        (["ATCG", "GCTA"], "m"),
+        "dna_batch_predict",
+        {"sequences": ["ATCG", "GCTA"], "model_name": "m"},
+    ),
+    (
+        "adna_multi_model_predict",
+        ("ATCG", ["m1"]),
+        "dna_multi_model_predict",
+        {"sequence": "ATCG", "model_names": ["m1"]},
+    ),
+    (
+        "adna_stream_predict",
+        ("ATCG", "m", False),
+        "dna_stream_predict",
+        {"sequence": "ATCG", "model_name": "m", "stream_progress": False},
+    ),
+    (
+        "adna_stream_batch_predict",
+        ((["ATCG"], "m", False)),
+        "dna_stream_batch_predict",
+        {"sequences": ["ATCG"], "model_name": "m", "stream_progress": False},
+    ),
+    (
+        "adna_stream_multi_model_predict",
+        ("ATCG", ["m1"], False),
+        "dna_stream_multi_model_predict",
+        {"sequence": "ATCG", "model_names": ["m1"], "stream_progress": False},
+    ),
+    ("alist_loaded_models", (), "list_loaded_models", {}),
+    ("aget_model_info", ("m1",), "get_model_info", {"model_name": "m1"}),
+    ("alist_models_by_task_type", ("binary",), "list_models_by_task_type", {"task_type": "binary"}),
+    ("aget_all_available_models", (), "get_all_available_models", {}),
+    ("ahealth_check", (), "health_check", {}),
+]
+
+
+@pytest.mark.parametrize(("method", "args", "tool", "payload"), ASYNC_TYPED_CALLS)
+@pytest.mark.asyncio
+async def test_async_typed_methods_call_correct_tool(
+    method, args, tool, payload, mock_session, mock_connect
+):
+    """Each async typed method invokes its named MCP tool with the payload."""
+    client = DNALLMMCPClient(transport="sse")
+    client._connect = lambda: mock_connect
+
+    result = await getattr(client, method)(*args)
+
+    mock_session.call_tool.assert_awaited_once_with(tool, payload)
+    assert result == {"result": "ok"}
+
+
+SYNC_TYPED_CALLS = [
+    (
+        "dna_batch_predict",
+        (["ATCG"], "m"),
+        "dna_batch_predict",
+        {"sequences": ["ATCG"], "model_name": "m"},
+    ),
+    (
+        "dna_multi_model_predict",
+        ("ATCG", ["m1"]),
+        "dna_multi_model_predict",
+        {"sequence": "ATCG", "model_names": ["m1"]},
+    ),
+    (
+        "dna_stream_predict",
+        ("ATCG", "m"),
+        "dna_stream_predict",
+        {"sequence": "ATCG", "model_name": "m", "stream_progress": True},
+    ),
+    (
+        "dna_stream_batch_predict",
+        (["ATCG"], "m"),
+        "dna_stream_batch_predict",
+        {"sequences": ["ATCG"], "model_name": "m", "stream_progress": True},
+    ),
+    (
+        "dna_stream_multi_model_predict",
+        ("ATCG", ["m1"]),
+        "dna_stream_multi_model_predict",
+        {"sequence": "ATCG", "model_names": ["m1"], "stream_progress": True},
+    ),
+    ("list_loaded_models", (), "list_loaded_models", {}),
+    ("get_model_info", ("m1",), "get_model_info", {"model_name": "m1"}),
+    ("list_models_by_task_type", ("binary",), "list_models_by_task_type", {"task_type": "binary"}),
+    ("get_all_available_models", (), "get_all_available_models", {}),
+    ("health_check", (), "health_check", {}),
+]
+
+
+@pytest.mark.parametrize(("method", "args", "tool", "payload"), SYNC_TYPED_CALLS)
+def test_sync_typed_methods_call_correct_tool(
+    method, args, tool, payload, mock_session, mock_connect
+):
+    """Each sync typed method bridges to its named MCP tool."""
+    client = DNALLMMCPClient(transport="sse")
+    client._connect = lambda: mock_connect
+
+    result = getattr(client, method)(*args)
+
+    mock_session.call_tool.assert_awaited_once_with(tool, payload)
+    assert result == {"result": "ok"}
