@@ -132,7 +132,7 @@ The project uses pytest markers to categorize tests:
 ### Coverage Requirements
 
 - All code changes must maintain or improve test coverage
-- Coverage reports are generated in XML and terminal formats
+- Coverage totals are reported in the terminal only — the junit XML artifact carries test results, not coverage, and no XML coverage report or codecov upload is produced in CI
 - Enforced floor: `fail_under = 90` in `pyproject.toml [tool.coverage.report]` fails any `--cov` run — local or CI — whose total drops below 90; the threshold is identical everywhere
 
 ### Quality Standards
