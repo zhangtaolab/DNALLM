@@ -51,6 +51,7 @@ class TestTrainerRealModel(unittest.TestCase):
         if self.configs is None:
             self.skipTest("Configuration not available")
 
+    @pytest.mark.timeout(7200)
     def test_complete_training_workflow(self):
         """Test complete training workflow from start to finish."""
         try:
@@ -309,6 +310,7 @@ class TestTrainerRealModel(unittest.TestCase):
             print(f"❌ Failed to initialize trainer: {e}")
             self.fail(f"Trainer initialization failed: {e}")
 
+    @pytest.mark.timeout(7200)
     def test_training(self):
         """Test training process independently."""
         try:
@@ -401,6 +403,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"Prediction failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_early_stopping_stops_before_full_epochs(self):
         """Test that early stopping stops training before num_train_epochs."""
         try:
@@ -479,6 +482,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"Early stopping test failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_no_early_stopping_runs_full_epochs(self):
         """Test that training runs full epochs when early stopping is disabled."""
         try:
@@ -553,6 +557,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"No early stopping test failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_qlora_training(self):
         """Test QLoRA training with 4-bit quantization.
 
@@ -695,6 +700,7 @@ def test_qlora_config_validation():
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(7200)
 def test_with_config_file():
     """Test with the provided finetune config file."""
     try:

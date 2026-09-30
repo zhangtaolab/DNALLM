@@ -457,6 +457,7 @@ task:
         shutil.rmtree(cls.test_dir)
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_real_model_integration(self):
         """Test with real model loading from ModelScope."""
         try:
