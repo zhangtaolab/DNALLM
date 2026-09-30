@@ -73,9 +73,25 @@ Plans:
   4. The `inference`, `datahandling`/`finetune`, and `cli` + compat-shim waves close their ranked gaps, with `transformers_compat` verified as a behavior contract (e.g. idempotent `apply_patches`), not line completion
   5. Every new test holds at least one observable-behavior assertion, and the pragma count stays at the recorded baseline (3)
 
-**Plans**: TBD
+**Plans**: 5 plans (one per wave — locked sizing decision)
 
-> Sizing note (research flag): the distance to 90% is unknown until Phase 1's baseline lands. If the measured gap makes this phase too large, split it via `/gsd-phase` after Phase 1 — preserving the wave order (models → mcp → inference → datahandling/finetune → cli/shims) and keeping all waves after the Phase 2 bug fixes.
+Plans:
+**Wave 1**
+- [ ] 03-01-PLAN.md — Inference area (1,505 missing): engine paths, interpret/mutagenesis real-torch, plot/benchmark + refreshed post-Phase-2 baseline (TEST-03)
+
+**Wave 2** *(blocked on Wave 1 — per-wave census chains)*
+- [ ] 03-02-PLAN.md — Models area (1,210): dispatch sentinel matrix, retry/reason-classification, tokenizer fallback chain, heads/losses, special handlers (TEST-01)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 03-03-PLAN.md — MCP area (449): in-memory streamable-http pair, transport construction, streaming progress coroutines, model_manager/start_server/client (TEST-02)
+
+**Wave 4** *(blocked on Wave 3)*
+- [ ] 03-04-PLAN.md — Datahandling/finetune area (441): format round-trips, tokenization/augmentation/splitting, trainer wiring (TEST-04)
+
+**Wave 5** *(blocked on Wave 4)*
+- [ ] 03-05-PLAN.md — CLI/compat + 60-line orphans + FINAL GATE: transformers_compat behavior contract, CliRunner, total >90.5% strict, audit 0, pragma 3 (TEST-05, TEST-06)
+
+> Sizing resolved (locked in 03-CONTEXT.md): single phase, one plan per wave in ranked-worklist order (inference first — biggest gap, not the ROADMAP's illustrative order), coverage re-measured by full census after each wave, landing target >90.5%.
 
 ### Phase 4: CI Gate Enforcement
 
@@ -100,5 +116,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
-| 3. Test Authoring to >90% Coverage | 0/? | Not started | - |
+| 3. Test Authoring to >90% Coverage | 0/5 | In planning | - |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
