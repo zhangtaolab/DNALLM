@@ -81,8 +81,13 @@ jobs:
       - name: Run fast tests
         run: |
           source .venv/bin/activate
-          pytest -m "not slow" --cov
+          pytest -m "not slow" --cov --junitxml=pytest-junit.xml
           coverage xml -o coverage.xml
+
+      - name: Skip audit (unexpected skips fail the job)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
