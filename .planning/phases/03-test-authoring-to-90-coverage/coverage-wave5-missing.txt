@@ -1,0 +1,61 @@
+Name                                   Stmts   Miss  Cover   Missing
+--------------------------------------------------------------------
+dnallm/__init__.py                         9      0   100%
+dnallm/cli/__init__.py                     6      0   100%
+dnallm/cli/cli.py                        152      1    99%   347
+dnallm/cli/inference.py                   30      1    97%   70
+dnallm/cli/model_config_generator.py      17      1    94%   33
+dnallm/cli/mutagenesis.py                 93      1    99%   269
+dnallm/cli/train.py                       24      1    96%   70
+dnallm/configuration/__init__.py           2      0   100%
+dnallm/configuration/configs.py          254      0   100%
+dnallm/datahandling/__init__.py            2      0   100%
+dnallm/datahandling/data.py              732      8    99%   512-513, 581, 1232-1233, 1411, 1420-1421
+dnallm/datahandling/dataset_auto.py        1      0   100%
+dnallm/finetune/__init__.py                2      0   100%
+dnallm/finetune/trainer.py               183      2    99%   56-57
+dnallm/inference/__init__.py               6      0   100%
+dnallm/inference/benchmark.py            264     11    96%   169-170, 436, 438, 508, 518, 537-538, 580, 625-626
+dnallm/inference/inference.py            826     93    89%   117, 126, 221-227, 243, 246, 248-249, 495-499, 506-508, 638-643, 676, 699-706, 836-837, 839-844, 857-858, 892-893, 918, 1097-1103, 1162-1167, 1185, 1196, 1339, 1408-1410, 1487-1488, 1505-1506, 1590, 1605-1606, 1643-1648, 1780, 1824, 1833, 1842-1844, 1861-1867, 1895, 1898-1903, 1911, 1938, 1952-1958, 1960, 1966-1971, 1975, 2030, 2061-2062, 2079, 2095
+dnallm/inference/interpret.py            291     23    92%   87, 144-148, 154-160, 187-191, 243, 245, 636, 688, 725, 867, 870, 884, 919
+dnallm/inference/mutagenesis.py          297      9    97%   286, 429-430, 436, 505, 563, 574-576
+dnallm/inference/plot.py                 742     40    95%   54, 56, 378-379, 411, 437, 537-538, 1010, 1019-1020, 1066-1067, 1112, 1152, 1203, 1243-1244, 1458, 1471, 1484, 1490-1517, 1547-1549, 1668, 1680, 1744, 1971, 2123-2124
+dnallm/mcp/__init__.py                     7      0   100%
+dnallm/mcp/client.py                     144      0   100%
+dnallm/mcp/config_manager.py             103      0   100%
+dnallm/mcp/config_validators.py          138      0   100%
+dnallm/mcp/model_manager.py              176      0   100%
+dnallm/mcp/server.py                     522      2    99%   1286, 2065
+dnallm/mcp/start_server.py                53      4    92%   11-14, 126
+dnallm/models/__init__.py                  5      0   100%
+dnallm/models/head.py                    221      0   100%
+dnallm/models/losses.py                   18      0   100%
+dnallm/models/model.py                   464     10    98%   138, 207, 229, 291, 293, 295, 297, 768, 951-952
+dnallm/models/modeling_auto.py             3      0   100%
+dnallm/models/special/__init__.py         13      0   100%
+dnallm/models/special/basenji2.py          6      0   100%
+dnallm/models/special/borzoi.py           76     42    45%   30, 59-68, 72, 76-77, 89-140
+dnallm/models/special/crossdna.py        270     14    95%   75-76, 169, 382, 520-521, 547, 549, 551, 553, 555, 557, 571-572
+dnallm/models/special/dnabert2.py         36      0   100%
+dnallm/models/special/enformer.py         21      0   100%
+dnallm/models/special/evo.py             194      1    99%   86
+dnallm/models/special/gpn.py              13      0   100%
+dnallm/models/special/lucaone.py          25      0   100%
+dnallm/models/special/megadna.py          65     10    85%   26, 80, 83, 86, 98-105, 136-137
+dnallm/models/special/mutbert.py          18      0   100%
+dnallm/models/special/omnidna.py          13      0   100%
+dnallm/models/special/space.py            21      0   100%
+dnallm/models/tokenizer.py               149      1    99%   141
+dnallm/tasks/__init__.py                   0      0   100%
+dnallm/tasks/metrics.py                  277      0   100%
+dnallm/tasks/task.py                      20      0   100%
+dnallm/utils/__init__.py                   7      0   100%
+dnallm/utils/cuda_compat.py               30      0   100%
+dnallm/utils/logger.py                   109      0   100%
+dnallm/utils/sequence.py                  75      0   100%
+dnallm/utils/support.py                   17      0   100%
+dnallm/utils/training_plots.py            66      0   100%
+dnallm/utils/transformers_compat.py       90      0   100%
+dnallm/version.py                          1      0   100%
+--------------------------------------------------------------------
+TOTAL                                   7399    275    96%
