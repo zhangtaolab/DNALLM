@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 3
+open_count: 4
 waived_count: 0
 fixed_count: 0
-total_count: 3
-last_updated: 2026-09-30T09:46:44.856Z
+total_count: 4
+last_updated: 2026-09-30T10:39:17.694Z
 ---
 
 # Broken Windows Ledger
@@ -18,6 +18,7 @@ last_updated: 2026-09-30T09:46:44.856Z
 | 1 | 01 | deviation | .planning/phases/01-harness-integrity-measured-baseline/01-01-PLAN.md |  | Task 2 verify grep 'tasks/metrics' false-positives on measured dispatcher dnallm/tasks/metrics.py; boundary re-proved with precise patterns (vendored dir absent, neighbors present) | open |  | 2026-09-29T17:37:20.663Z |  |
 | 2 | 3 | unmet-truth | dnallm/inference/inference.py | 1643 | generate-from-DataLoader never appends to prompt_seqs (seqs.extend on itself); causallm generate over a DataLoader returns empty list | open |  | 2026-09-30T09:46:44.754Z |  |
 | 3 | 3 | unmet-truth | dnallm/inference/mutagenesis.py | 429 | evaluate strategy max calls raw_score.index() on an ndarray (AttributeError) — latent bug documented as accepted residual | open |  | 2026-09-30T09:46:44.856Z |  |
+| 4 | 03 | stub | dnallm/models/model.py | 264 | cosine_similarity loss_function constructs CosineEmbeddingLoss but calls it with (logits, labels) — missing target arg raises TypeError for every user selecting it (covered by test_forward_cosine_similarity_loss_crashes; fix deferred, semantics ambiguous) | open |  | 2026-09-30T10:39:17.694Z |  |
 
 ````json
 [
@@ -57,6 +58,19 @@ last_updated: 2026-09-30T09:46:44.856Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-30T09:46:44.856Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 4,
+    "kind": "stub",
+    "phase": "03",
+    "file": "dnallm/models/model.py",
+    "line": 264,
+    "description": "cosine_similarity loss_function constructs CosineEmbeddingLoss but calls it with (logits, labels) — missing target arg raises TypeError for every user selecting it (covered by test_forward_cosine_similarity_loss_crashes; fix deferred, semantics ambiguous)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-30T10:39:17.694Z",
     "resolved_at": null,
     "milestone": null
   }

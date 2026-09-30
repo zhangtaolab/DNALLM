@@ -30,7 +30,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Test Authoring
 
-- [ ] **TEST-01**: Tests for `models/model.py` + `special/*` (dispatch-chain fault-injection, retry/reason-classification branches, tokenizer fallback chain)
+- [x] **TEST-01**: Tests for `models/model.py` + `special/*` (dispatch-chain fault-injection, retry/reason-classification branches, tokenizer fallback chain)
 - [ ] **TEST-02**: Tests for `mcp/server.py` (transports, streaming generators, timeout-wrapper error paths)
 - [x] **TEST-03**: Tests for `inference/*` (engine paths, logits→predictions, interpret/mutagenesis/benchmark)
 - [ ] **TEST-04**: Tests for `datahandling`/`finetune` (dataset loading/tokenization/augmentation, trainer wiring)
@@ -86,7 +86,7 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 | FIX-02 | Phase 2 | Complete |
 | FIX-03 | Phase 2 | Complete |
 | FIX-04 | Phase 2 | Complete |
-| TEST-01 | Phase 3 | Pending |
+| TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 3 | Pending |
 | TEST-03 | Phase 3 | Complete |
 | TEST-04 | Phase 3 | Pending |

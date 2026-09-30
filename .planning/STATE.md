@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Test Authoring to >90% Coverage
 status: executing
-stopped_at: "Completed 03-01-PLAN.md (inference wave: area 176/250)"
-last_updated: "2026-09-30T09:47:05.162Z"
+stopped_at: "Completed 03-02-PLAN.md (models wave: area 88/240)"
+last_updated: "2026-09-30T10:38:46.117Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 3 execution started
-state_head: 972ec98282b0a9e17436566591a1bd21fe10fdfa
+state_head: 1f984148545a4df97ee8ddedabffa9c7f9fbfb7c
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 3 (Test Authoring to >90% Coverage) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 3 execution started
 
@@ -63,6 +63,8 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P02 | 11 min | 2 tasks | 2 files |
 | Phase 02 P03 | 34 min | 2 tasks | 8 files |
 | Phase 03 P01 | 80 min | 3 tasks | 9 files |
+| Phase 03 P02 | 46 min | 3 tasks | 8 files |
+| Phase 03 P02 | 46 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +93,12 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-01] Inference tests use real collaborators (SimpleDNATokenizer + deterministic TinyDNAModel through the full engine path) instead of Mocks wherever autograd/encode semantics are the behavior
 - [Phase 03]: [03-01] Five latent crashes in plot.py/benchmark.py fixed under Rule 1 (multilabel curve scalars, dict annotations, entropy shape, pydantic code-based Benchmark init, StratifiedKFold y) — each blocked coverage of a real user path
 - [Phase 03]: [03-01] Wave-1 landed: inference-area missing 176 of gate 250 (was 1,575 fast-leg); suite 64.75% (4,791 covered); refreshed post-Phase-2 baseline recorded; census 919 passed / 7 allowlisted skips / audit exit 0
+- [Phase 03]: [03-02] Models wave: DNALLMforSequenceClassification covered via tiny real torch backbones behind patched AutoModel.from_config (dict-based head_config made the wrapper's ~200 missing lines gate-blocking)
+- [Phase 03]: [03-02] Evo timebox did NOT fire: EvoTokenizerWrapper needs no stubs and the evo2/evo1 stub shapes were satisfiable — evo.py at 99%, evo residual ledger explicitly empty
+- [Phase 03]: [03-02] Wave-2 landed: models-area missing 88 of gate 240 (was 1209); suite 79.90% (5912/7399); census 1236 passed / 7 allowlisted skips / audit 0; cosine_similarity loss TypeError recorded as latent bug, not fixed
+- [Phase 03]: [03-02] Models wave: DNALLMforSequenceClassification covered via tiny real torch backbones behind patched AutoModel.from_config; the wrapper's ~200 missing lines were gate-blocking
+- [Phase 03]: [03-02] Evo timebox did NOT fire: EvoTokenizerWrapper needs no stubs and evo2/evo1 stub shapes were satisfiable — evo.py 99%, evo residual ledger explicitly empty
+- [Phase 03]: [03-02] Wave-2: models-area missing 88 of gate 240 (was 1209); suite 79.90%; census 1236/0/7, audit 0; cosine_similarity loss TypeError recorded as latent bug
 
 ### Pending Todos
 
@@ -111,6 +119,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:47:05.141Z
-Stopped at: Completed 03-01-PLAN.md (inference wave: area 176/250)
+Last session: 2026-09-30T10:38:46.098Z
+Stopped at: Completed 03-02-PLAN.md (models wave: area 88/240)
 Resume file: None
