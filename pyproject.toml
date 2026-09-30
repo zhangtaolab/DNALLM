@@ -511,4 +511,5 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
-# NO fail_under in this phase — the enforcement threshold is added in Phase 4, ratcheted
+fail_under = 90   # Phase 4 ratchet (GATE-01). Suite landed at 96.30% (Phase 3).
+                  # Applies to every `--cov` invocation — use `--no-cov` for scoped runs.
