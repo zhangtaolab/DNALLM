@@ -18,6 +18,7 @@ from dnallm.configuration.configs import (
     BenchmarkConfig,
     BenchmarkInfoConfig,
     DatasetConfig,
+    EarlyStoppingConfig,
     EvaluationConfig,
     InferenceConfig,
     ModelConfig,
@@ -911,6 +912,70 @@ class TestHyperparameterSearchConfig:
         )
         assert config.hyperparameter_search.n_trials == 3
         assert config.hyperparameter_search.search_space["learning_rate"].type == "float"
+
+
+class TestTaskConfigAliasNormalization:
+    """model_post_init alias branches for verbose task_type spellings."""
+
+    def test_binary_classification_alias_applies_binary_defaults(self):
+        """'binary_classification' normalizes to the binary defaults."""
+        config = TaskConfig(task_type="binary_classification")
+        assert config.label_names == ["negative", "positive"]
+        assert config.num_labels == 2
+
+    def test_multi_class_classification_alias_generates_class_names(self):
+        """'multi_class_classification' normalizes to multiclass name generation."""
+        config = TaskConfig(task_type="multi_class_classification", num_labels=3)
+        assert config.label_names == ["class_0", "class_1", "class_2"]
+
+    def test_multi_label_classification_alias_generates_label_names(self):
+        """'multi_label_classification' normalizes to multilabel name generation."""
+        config = TaskConfig(task_type="multi_label_classification", num_labels=2)
+        assert config.label_names == ["label_0", "label_1"]
+
+    def test_multilabel_num_labels_below_two_rejected(self):
+        """Multilabel classification requires at least two labels."""
+        with pytest.raises(ValidationError, match="at least 2 for multilabel"):
+            TaskConfig(task_type="multilabel", num_labels=1)
+
+    def test_token_classification_alias_constructs_without_defaults(self):
+        """'token_classification' normalizes to token, which sets no defaults."""
+        config = TaskConfig(task_type="token_classification")
+        assert config.task_type == "token_classification"  # stored verbatim
+        assert config.label_names is None
+        assert config.num_labels == 2  # untouched by the post-init chain
+
+
+class TestEarlyStoppingValidation:
+    """EarlyStoppingConfig field validators."""
+
+    def test_negative_threshold_rejected(self):
+        """A negative improvement threshold is rejected."""
+        with pytest.raises(ValidationError, match="threshold must be non-negative"):
+            EarlyStoppingConfig(threshold=-0.1)
+
+
+class TestSearchSpaceDistributionEdges:
+    """SearchSpaceDistribution validator branches not covered elsewhere."""
+
+    def test_int_step_on_float_distribution_rejected(self):
+        """step is only valid for int distributions (an int step on floats fails)."""
+        with pytest.raises(ValidationError, match="'step' is only valid for int"):
+            SearchSpaceDistribution(low=0.1, high=1.0, step=2)
+
+    def test_log_requires_positive_low(self):
+        """log=True with a non-positive low is rejected."""
+        with pytest.raises(ValidationError, match="low must be positive when log=True"):
+            SearchSpaceDistribution(low=0, high=1, log=True)
+
+
+class TestTrainingConfigReportToEdges:
+    """TrainingConfig report_to validator combinations."""
+
+    def test_all_cannot_be_combined_with_other_trackers(self):
+        """'all' mixed with a concrete tracker is rejected."""
+        with pytest.raises(ValidationError, match="'all' cannot be combined"):
+            TrainingConfig(report_to=["all", "wandb"])
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from dnallm.tasks.metrics import (
     token_classification_metrics,
     preprocess_logits_for_metrics,
     compute_metrics,
+    metrics_for_dnabert2,
 )
 from dnallm.configuration.configs import TaskConfig
 
@@ -849,3 +850,131 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         # All metrics functions should return a dictionary
         assert isinstance(metrics, dict)
         assert len(metrics) > 0
+
+
+class TestRegressionEdgeBranches:
+    """Edge branches of regression_metrics left open after FIX-01."""
+
+    def test_macro_correlations_skip_constant_target_columns(self):
+        """Constant target columns are skipped in the pearson/spearman macros.
+
+        Column 1 of the labels is constant (std 0), so both macro aggregators
+        must compute over column 0 only — hand-computed expectations:
+        pearson from np.corrcoef, spearman ranks give exactly -0.5.
+        """
+        compute_metrics_fn = regression_metrics()
+        labels = np.array([[1.0, 5.0], [2.0, 5.0], [3.0, 5.0]])
+        logits = np.array([[2.0, 0.4], [3.5, 0.6], [1.0, 0.8]])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        expected_pearson = float(np.corrcoef(labels[:, 0], logits[:, 0])[0, 1])
+        assert metrics["pearsonr"] == pytest.approx(expected_pearson)
+        assert metrics["spearmanr"] == pytest.approx(-0.5)  # ranks 1,2,3 vs 2,3,1
+
+    def test_single_output_plot_accepts_tensor_logits(self):
+        """The plot branch handles torch tensors via their .numpy() bridge."""
+        import torch
+
+        compute_metrics_fn = regression_metrics(plot=True)
+        logits = torch.tensor([[1.5], [2.3]])
+        labels = np.array([1.4, 2.1])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        assert metrics["mse"] == pytest.approx(((1.5 - 1.4) ** 2 + (2.3 - 2.1) ** 2) / 2)
+        assert metrics["mae"] == pytest.approx((0.1 + 0.2) / 2)
+        assert np.allclose(metrics["scatter"]["predicted"], [1.5, 2.3])
+        assert np.allclose(metrics["scatter"]["experiment"], [1.4, 2.1])
+
+
+class TestMetricsForDnabert2Arms:
+    """The real metrics_for_dnabert2 task arms (network-free via patched evaluate)."""
+
+    def test_regression_arm_returns_r2_dict_and_spearmanr(self):
+        """task='regression' computes r2 as the whole metric dict plus spearmanr."""
+
+        def fake_load(path, *args, **kwargs):
+            metric = Mock()
+            if path == "r_squared":
+                metric.compute.return_value = {"r2": 0.8}
+            elif path == "spearmanr":
+                metric.compute.return_value = {"spearmanr": 0.9}
+            return metric
+
+        with patch("evaluate.load", side_effect=fake_load):
+            compute_fn, preprocess = metrics_for_dnabert2("regression")
+            result = compute_fn((np.array([[1.5], [2.3]]), np.array([1.4, 2.1])))
+
+        assert result == {"r2": {"r2": 0.8}, "spearmanr": 0.9}
+        assert preprocess is preprocess_logits_for_metrics
+
+    def test_classification_arm_uses_torch_argmax_predictions(self):
+        """task='classification' combines sklearn metrics on argmax predictions."""
+        clf_metrics = Mock()
+        clf_metrics.compute.return_value = {
+            "accuracy": 1.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "matthews_correlation": 1.0,
+        }
+        with (
+            patch("evaluate.load", return_value=Mock()),
+            patch("evaluate.combine", return_value=clf_metrics),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("classification")
+            logits = (np.array([[0.9, 0.1], [0.2, 0.8], [0.7, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == clf_metrics.compute.return_value
+        call_kwargs = clf_metrics.compute.call_args.kwargs
+        assert call_kwargs["predictions"].tolist() == [0, 1, 0]
+        assert np.array_equal(call_kwargs["references"], labels)
+
+    def test_generic_arm_merges_micro_metrics_and_both_auroc_modes(self):
+        """Any other task label takes the micro-precision/recall/f1 + ovr/ovo AUROC path."""
+        precision = Mock()
+        precision.compute.return_value = {"precision": 0.7}
+        recall = Mock()
+        recall.compute.return_value = {"recall": 0.6}
+        f1 = Mock()
+        f1.compute.return_value = {"f1": 0.65}
+        mcc = Mock()
+        mcc.compute.return_value = {"matthews_correlation": 0.5}
+        roc = Mock()
+        roc.compute.side_effect = lambda **kwargs: {
+            "roc_auc": 0.7 if kwargs["multi_class"] == "ovr" else 0.8
+        }
+
+        def fake_load(path, *args, **kwargs):
+            return {
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "matthews_correlation": mcc,
+                "roc_auc": roc,
+            }.get(path, Mock())
+
+        with (
+            patch("evaluate.load", side_effect=fake_load),
+            patch("evaluate.combine", return_value=Mock()),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("multiclass")
+            logits = (np.array([[2.0, 0.1], [0.2, 3.0], [1.5, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == {
+            "precision": 0.7,
+            "recall": 0.6,
+            "f1": 0.65,
+            "matthews_correlation": 0.5,
+            "AUROC_ovr": 0.7,
+            "AUROC_ovo": 0.8,
+        }
+        # pred_list comes from argmax(softmax(logits)) == argmax(logits).
+        assert precision.compute.call_args.kwargs["predictions"] == [0, 1, 0]
+        assert precision.compute.call_args.kwargs["average"] == "micro"
+        assert mcc.compute.call_args.kwargs["predictions"] == [0, 1, 0]
