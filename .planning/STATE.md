@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Suite Hygiene & Known-Bug Fixes
-status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-09-30T00:36:58.695Z"
+status: verifying
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-09-30T01:09:12.339Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 2 execution started
-state_head: b20f63ecb19af639284da0b554e95ce05d0037c2
+state_head: 8656018c103fad87c44c068ffe56e8ea3fc73c41
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 25
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 Phase: 2 (Suite Hygiene & Known-Bug Fixes) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 2 execution started
 
 Progress: [███░░░░░░░] 25%
@@ -60,6 +60,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P02 | 52 min | 2 tasks | 6 files |
 | Phase 02 P01 | 6 min | 2 tasks | 4 files |
 | Phase 02 P02 | 11 min | 2 tasks | 2 files |
+| Phase 02 P03 | 34 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-01] 12-handler audit verdict: exactly one overwrite bug (CrossDNA, fixed); _handle_gpn_models/_handle_omnidna_models are str|None import-availability gates and must not be converted to early returns; commented-out LucaOne site left as dead code
 - [Phase 02]: [Phase 02]: [02-02] FIX-04 rebind target is sys.modules[__name__] (object form), not a dotted string: tests/ lacks __init__.py so pytest imports test_plot as top-level — a string target imports a second module copy and rebinds the wrong object (tests stay green, tree still dirtied); the twice-run tree-clean gate is the tripwire
 - [Phase 02]: [Phase 02]: [02-02] pdf marker applied at class level to exactly the 9 create_pdf_file-writing classes: -m pdf selects 53 / deselects 12 (TestPrepareData + TestEdgeCases have zero callers)
+- [Phase 02]: [02-03] FIX-03 typed skips realized with httpx.TransportError (not the decision's requests/urllib3 classes): live probing proved the MCP clients fail through httpx inside ExceptionGroups — the named classes belong to the dead download-model sites; broad except survives only as the unwrapping entry point (all-leaves rule)
+- [Phase 02]: [02-03] Skip enforcement is out-of-process: ci.yml emits pytest-junit.xml, scripts/audit_skips.py matches every junit skip against tests/expected_skips.yaml (11 categorized entries frozen from a verbatim local run), exit 1 on any unmatched skip; audit fails closed on absent/unparseable junit and malformed (empty-matcher) allowlist entries
+- [Phase 02]: [02-03] Dead string-matching skip scaffolding in tests/models/test_model.py deleted (adopted option a): download_model only raises ValueError('Model ... download failed.') which never matched the substring condition, so the skip branch was unreachable; skipif reasons enter the allowlist as reason_like defensive entries, never widened matchers
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T00:36:58.677Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-09-30T01:09:12.322Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None

@@ -51,7 +51,7 @@ Plans:
   3. Every skip in the suite is typed (specific network exceptions) and matches an expected-skip allowlist; a new unexpected skip fails the run instead of passing silently
   4. Running the PDF-marked tests leaves the git working tree clean (artifacts written under `tmp_path`), and `.gitignore` ignores `tests/inference/pdf/` correctly
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -59,7 +59,7 @@ Plans:
 - [x] 02-02-PLAN.md — PDF test artifacts under tmp_path, pdf marker applied, .gitignore typo fixed, strays deleted (FIX-04)
 
 **Wave 2** *(blocked on Wave 1 — 02-01 owns tests/models/test_model.py and changes the skip census)*
-- [ ] 02-03-PLAN.md — Typed network skips (httpx tuple + group unwrapping), dead-skip deletion, expected-skip allowlist + CI junit audit step (FIX-03)
+- [x] 02-03-PLAN.md — Typed network skips (httpx tuple + group unwrapping), dead-skip deletion, expected-skip allowlist + CI junit audit step (FIX-03)
 
 ### Phase 3: Test Authoring to >90% Coverage
 
@@ -99,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
-| 2. Suite Hygiene & Known-Bug Fixes | 2/3 | In Progress|  |
+| 2. Suite Hygiene & Known-Bug Fixes | 3/3 | In Progress|  |
 | 3. Test Authoring to >90% Coverage | 0/? | Not started | - |
 | 4. CI Gate Enforcement | 0/? | Not started | - |

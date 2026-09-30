@@ -25,7 +25,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **FIX-01**: Fix multiclass AUROC crash in `dnallm/tasks/metrics.py:283` and unskip `tests/tasks/test_metrics.py:761`
 - [x] **FIX-02**: Fix CrossDNA handler result overwrite in `dnallm/models/model.py:873-887` (early-return chain-of-responsibility pattern) and add regression test
-- [ ] **FIX-03**: Replace broad `except Exception: pytest.skip` with typed network skips; enforce an expected-skip allowlist
+- [x] **FIX-03**: Replace broad `except Exception: pytest.skip` with typed network skips; enforce an expected-skip allowlist
 - [x] **FIX-04**: Point PDF test artifacts at `tmp_path`; fix `.gitignore` typo (`test/inference/pdf/` → `tests/inference/pdf/`)
 
 ### Test Authoring
@@ -84,7 +84,7 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 | AUDIT-04 | Phase 1 | Complete |
 | FIX-01 | Phase 2 | Complete |
 | FIX-02 | Phase 2 | Complete |
-| FIX-03 | Phase 2 | Pending |
+| FIX-03 | Phase 2 | Complete |
 | FIX-04 | Phase 2 | Complete |
 | TEST-01 | Phase 3 | Pending |
 | TEST-02 | Phase 3 | Pending |
