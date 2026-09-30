@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Suite Hygiene & Known-Bug Fixes
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-09-30T00:20:14.822Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-09-30T00:36:58.695Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 2 execution started
-state_head: e7af353951765492ef1cf35893fb3f56397258a5
+state_head: b20f63ecb19af639284da0b554e95ce05d0037c2
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
   percent: 25
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 2 (Suite Hygiene & Known-Bug Fixes) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 2 execution started
 
@@ -59,6 +59,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 01 P01 | 10 min | 3 tasks | 6 files |
 | Phase 01 P02 | 52 min | 2 tasks | 6 files |
 | Phase 02 P01 | 6 min | 2 tasks | 4 files |
+| Phase 02 P02 | 11 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,8 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-01] FIX-01: presence guard + labels=expected_classes (not labels= alone) — sklearn 1.9.1 silently nans on absent-class batches; guard makes behavior version-independent and no try/except-to-nan anywhere in the multiclass path
 - [Phase 02]: [02-01] FIX-02: guarded first-resolved-wins chain (None-init + disjunctive None-checks), NOT a literal function-level return — post-processing (padding, .to(device), bnb fix) must still run for CrossDNA results; activates previously dead handler path (intended, per REQUIREMENTS)
 - [Phase 02]: [02-01] 12-handler audit verdict: exactly one overwrite bug (CrossDNA, fixed); _handle_gpn_models/_handle_omnidna_models are str|None import-availability gates and must not be converted to early returns; commented-out LucaOne site left as dead code
+- [Phase 02]: [Phase 02]: [02-02] FIX-04 rebind target is sys.modules[__name__] (object form), not a dotted string: tests/ lacks __init__.py so pytest imports test_plot as top-level — a string target imports a second module copy and rebinds the wrong object (tests stay green, tree still dirtied); the twice-run tree-clean gate is the tripwire
+- [Phase 02]: [Phase 02]: [02-02] pdf marker applied at class level to exactly the 9 create_pdf_file-writing classes: -m pdf selects 53 / deselects 12 (TestPrepareData + TestEdgeCases have zero callers)
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T00:20:14.805Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-09-30T00:36:58.677Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
