@@ -73,7 +73,7 @@ Plans:
   4. The `inference`, `datahandling`/`finetune`, and `cli` + compat-shim waves close their ranked gaps, with `transformers_compat` verified as a behavior contract (e.g. idempotent `apply_patches`), not line completion
   5. Every new test holds at least one observable-behavior assertion, and the pragma count stays at the recorded baseline (3)
 
-**Plans**: 3/5 plans executed (one per wave — locked sizing decision)
+**Plans**: 4/5 plans executed (one per wave — locked sizing decision)
 
 Plans:
 **Wave 1**
@@ -86,7 +86,7 @@ Plans:
 - [x] 03-03-PLAN.md — MCP area (449): in-memory streamable-http pair, transport construction, streaming progress coroutines, model_manager/start_server/client (TEST-02)
 
 **Wave 4** *(blocked on Wave 3)*
-- [ ] 03-04-PLAN.md — Datahandling/finetune area (441): format round-trips, tokenization/augmentation/splitting, trainer wiring (TEST-04)
+- [x] 03-04-PLAN.md — Datahandling/finetune area (441): format round-trips, tokenization/augmentation/splitting, trainer wiring (TEST-04)
 
 **Wave 5** *(blocked on Wave 4)*
 - [ ] 03-05-PLAN.md — CLI/compat + 60-line orphans + FINAL GATE: transformers_compat behavior contract, CliRunner, total >90.5% strict, audit 0, pragma 3 (TEST-05, TEST-06)
@@ -116,5 +116,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
-| 3. Test Authoring to >90% Coverage | 3/5 | In Progress|  |
+| 3. Test Authoring to >90% Coverage | 4/5 | In Progress|  |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
