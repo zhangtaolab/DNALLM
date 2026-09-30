@@ -103,7 +103,9 @@ The workflows are triggered on:
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
-**Purpose**: Full coverage census including the `slow` tests (real HF/ModelScope model downloads) under the same `fail_under = 90` floor. Runs only on the 03:00 UTC schedule and via manual workflow dispatch — event guards keep it out of the push/PR loop.
+**Purpose**: Coverage census including the `slow` tests (real HF/ModelScope model downloads) under the same `fail_under = 90` floor. Runs only on the 03:00 UTC schedule and via manual workflow dispatch — event guards keep it out of the push/PR loop.
+
+**Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
 **Timeout**: 480 minutes (the slow suite is projected at 4-7.5h on 4-core CPU runners)
 
@@ -112,7 +114,7 @@ The workflows are triggered on:
 **Steps**:
 1. **Code Checkout** / **Free Disk Space** / **Python 3.12 Setup** / **UV + Caches**: shared uv cache plus the `models.lock`-keyed model caches
 2. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
-3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long trainer tests
+3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long trainer tests
 4. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
 
 ## 🧪 Testing Strategy

@@ -345,6 +345,12 @@ jobs:
           source .venv/bin/activate
           uv pip install "numpy==2.2.0"
 
+      # NOTE: 27 tests carry the slow mark; 21 execute here. The 6 MCP
+      # live-server probes (dnallm/mcp/tests/test_sse_client.py,
+      # test_streamable_http_client.py) target localhost:8000 and no CI job
+      # starts a server there, so they skip deterministically as typed
+      # "network-unavailable:" skips (allowlisted in tests/expected_skips.yaml).
+      # Those probes are local-only.
       - name: Run gated full census (slow included)
         run: |
           source .venv/bin/activate
