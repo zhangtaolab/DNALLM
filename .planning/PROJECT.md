@@ -38,7 +38,7 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 - ✓ PDF tests leave the tree clean — autouse tmp_path rebind, gitignore fixed, 9 strays deleted — Phase 2
 
 ### Active
-- [ ] Write new tests until coverage exceeds 90% on the agreed denominator
+- [ ] Write new tests until coverage exceeds 90% on the agreed denominator — ✓ DELIVERED Phase 3: **96.30%** (7,131/7,405 stmts, verifier-reproduced at HEAD d152d12; ~1,000 behavior tests across 5 ranked-worklist waves; pragma held at 3; 7 allowlisted skips; 8 latent source bugs fixed en route)
 - [ ] Enforce the gate in CI: `--cov-fail-under=90` on a run that includes `slow` tests (network model downloads accepted)
 
 ### Out of Scope
@@ -94,4 +94,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-30 after Phase 2*
+*Last updated: 2026-09-30 after Phase 3*

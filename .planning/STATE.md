@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-30)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 3 — Test Authoring to >90% Coverage
+**Current focus:** Phase 4 — CI Gate Enforcement
 
 ## Current Position
 
