@@ -39,6 +39,7 @@ class TestMCPFunctionality:
 
     @pytest.mark.asyncio
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     async def test_mcp_functionality(self, dna_sequence):
         """Test MCP server functionality with the provided DNA sequence."""
         try:

@@ -176,6 +176,7 @@ class TestDownloadModel:
         assert mock_sleep.call_count == 0
 
     @pytest.mark.slow
+    @pytest.mark.timeout(900)
     def test_download_real_huggingface_connection(self):
         """Test real HuggingFace connection (requires network)."""
         from huggingface_hub import snapshot_download
@@ -186,6 +187,7 @@ class TestDownloadModel:
         assert os.path.exists(result)
 
     @pytest.mark.slow
+    @pytest.mark.timeout(900)
     def test_download_real_modelscope_connection(self):
         """Test real ModelScope connection (requires network)."""
         from modelscope.hub.snapshot_download import snapshot_download
