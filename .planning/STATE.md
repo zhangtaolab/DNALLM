@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Test Authoring to >90% Coverage
 status: executing
-stopped_at: "Completed 03-02-PLAN.md (models wave: area 88/240)"
-last_updated: "2026-09-30T10:38:46.117Z"
+stopped_at: "Completed 03-03-PLAN.md (mcp wave: area 6/110)"
+last_updated: "2026-09-30T11:32:57.655Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 3 execution started
-state_head: 1f984148545a4df97ee8ddedabffa9c7f9fbfb7c
+state_head: 5a38837007cfccf93d2e379c805eb889448be283
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 3 (Test Authoring to >90% Coverage) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 3 execution started
 
@@ -65,6 +65,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P01 | 80 min | 3 tasks | 9 files |
 | Phase 03 P02 | 46 min | 3 tasks | 8 files |
 | Phase 03 P02 | 46 min | 3 tasks | 8 files |
+| Phase 03 P03 | 49 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-02] Models wave: DNALLMforSequenceClassification covered via tiny real torch backbones behind patched AutoModel.from_config; the wrapper's ~200 missing lines were gate-blocking
 - [Phase 03]: [03-02] Evo timebox did NOT fire: EvoTokenizerWrapper needs no stubs and evo2/evo1 stub shapes were satisfiable — evo.py 99%, evo residual ledger explicitly empty
 - [Phase 03]: [03-02] Wave-2: models-area missing 88 of gate 240 (was 1209); suite 79.90%; census 1236/0/7, audit 0; cosine_similarity loss TypeError recorded as latent bug
+- [Phase 03]: Wave-3 (mcp): wire tool names carry the leading underscore (FastMCP derives names from __name__ via functools.update_wrapper) — the 13-tool registration set is pinned with the underscores real clients must call
+- [Phase 03]: [03-03] Rule 1 fix in _format_multi_model_results: success/failure keyed on the explicit {result: None} marker entry — .get('result') misclassified every successful dict prediction ('0 successful, N failed' on fully successful multi-model runs)
+- [Phase 03]: [03-03] Wave-3 landed: mcp-area missing 6 of gate 110 (was 449); suite 85.89% (6355/7399); census 1380 passed / 7 allowlisted skips / audit 0; in-memory ASGI MCP round trip proven end to end with zero sockets
 
 ### Pending Todos
 
@@ -119,6 +123,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T10:38:46.098Z
-Stopped at: Completed 03-02-PLAN.md (models wave: area 88/240)
+Last session: 2026-09-30T11:32:49.540Z
+Stopped at: Completed 03-03-PLAN.md (mcp wave: area 6/110)
 Resume file: None
