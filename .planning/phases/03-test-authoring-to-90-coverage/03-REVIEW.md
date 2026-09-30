@@ -1,8 +1,8 @@
 ---
 phase: 03-test-authoring-to-90-coverage
-reviewed: 2026-09-30T13:34:02Z
+reviewed: 2026-09-30T13:53:55Z
 depth: standard
-files_reviewed: 37
+files_reviewed: 36
 files_reviewed_list:
   - dnallm/inference/benchmark.py
   - dnallm/inference/plot.py
@@ -41,220 +41,130 @@ files_reviewed_list:
   - tests/utils/test_training_plots.py
   - tests/utils/test_transformers_compat.py
 findings:
-  critical: 1
-  warning: 4
+  critical: 0
+  warning: 0
   info: 5
-  total: 10
-status: issues_found
+  total: 5
+status: clean
 ---
 
-# Phase 03: Code Review Report
+# Phase 03: Code Review Report (Iteration 2 — post-fix re-review)
 
-**Reviewed:** 2026-09-30T13:34:02Z
+**Reviewed:** 2026-09-30T13:53:55Z
 **Depth:** standard
-**Files Reviewed:** 37 (3 source files with Rule-1 fixes, 34 test files)
-**Status:** issues_found
+**Files Reviewed:** 36
+**Status:** clean
 
 ## Summary
 
-Reviewed the current state of all 37 in-scope files: the three source files carrying
-Rule-1 latent-bug fixes (`dnallm/inference/benchmark.py`, `dnallm/inference/plot.py`,
-`dnallm/mcp/server.py`) and the 34 test files (~1,000 new tests across 5 waves).
+Re-review after the iteration-1 fix round. All five Critical/Warning findings from the
+prior report (`.planning/phases/03-test-authoring-to-90-coverage/03-REVIEW.iter2.md`)
+were verified fixed **against current source and by execution, not by trusting the fix
+report**. No new Critical or Warning findings surfaced in the fresh pass. Five Info
+findings remain open and deferrable (IN-01/02/04/05 unchanged; IN-03 rejected with an
+independently reproduced disproof). Per the loop contract, Info-only does not block:
+**status = clean**.
 
-**The four Rule-1 source fixes are all correct and each is pinned by a real behavior
-test:** the `InferenceConfig` field-filter in `Benchmark.__init__` (pydantic v2
-extra-field crash), the scalar-skip guard in `_process_curve_data` (covered by
-`test_multilabel_curves_split_by_label`, which exercises scalar `AUROC`/`AUPRC` next
-to curve arrays), the entropy broadcast fix in `plot_attention_map` (covered by the
-`entropy` param of `test_normalization_methods`), and the `_prepare_annotations`
-`list(data.keys())` fix. The `_format_multi_model_results` success-count fix in
-`server.py` is correct for the actual data flow (`predict_sequence` raw results carry
-no `"result"` key; only the failure entry built at `server.py:1175-1178` does), and
-`test_routes_each_model_with_ordered_progress` would have failed against the old
-counting logic.
+### Fix verification (each re-confirmed in source and by test execution)
 
-**Phase-discipline checks (verified by scan, not assumed):**
-- No new `# pragma: no cover` (budget remains the 3 pre-existing ones in
-  `dnallm/utils/transformers_compat.py`).
-- Zero added `pytest.skip`/`skipif` lines across the whole diff; the skips visible
-  in `test_cuda_compat.py` and `test_examples.py` are pre-existing.
-- All `sys.modules` stubbing goes through `monkeypatch.setitem` (spot-verified in
-  `test_evo.py`, `test_family_handlers.py`, `test_cli.py`, `test_transformers_compat.py`).
-- No live sockets: `test_server_transports.py` uses `httpx.ASGITransport` with a
-  localhost base_url (in-memory only); all client-SDK transports patch the `mcp`
-  factory functions; `tests/mcp/test_timeout.py` sleeps are pre-existing.
-- `ruff check` and `ruff format --check` pass on every changed file.
+| Prior ID | Claim | Verified state |
+|---|---|---|
+| CR-01 | `run_without_config()` default `k_folds=1` crash | **Fixed.** `benchmark.py:465-468` guards `k_folds <= 1` (`kfold = None`, never dereferenced — sole consumer sits under `if k_folds > 1:`); single-fold branch at `benchmark.py:519-523` wraps indices in `np.asarray` so the shared `val_idx.tolist()` works, and no splitter is constructed (also cures the latent `KFold(n_splits=1)` constructor `ValueError`). Pinned by `test_default_k_folds_single_full_fold` (`tests/benchmark/test_benchmark.py:882-909`): exact fold rows `== [expected]` (all 8 rows, original order), exactly one `fold_results` entry, `mean_/std_accuracy` asserted. Edge-checked: `stratified=True` with `k_folds=1` takes the single-fold branch and never touches the `None` splitter. |
+| WR-01 | Stratified fallback passed `y=None`, still raised | **Fixed.** `benchmark.py:508-516`: labels present → `kfold.split(indices, y)`; labels absent → fresh plain `KFold` (correct — `StratifiedKFold.split()` requires `y` positionally). Both arms pinned: `test_stratified_folds_balance_classes` (`test_benchmark.py:836-856`, each fold's sorted labels `== [0,0,1,1]` — proves labels actually reach the splitter) and `test_stratified_without_labels_falls_back_to_plain_split` (`test_benchmark.py:858-880`, 2 fold results, no raise). |
+| WR-02 | `test_prepare_data_empty_metrics` was smoke-only, wrong premise | **Fixed.** `tests/inference/test_plot.py:255-267` now asserts the real contract: `bars == {"models": []}` and all four curve dicts empty. |
+| WR-03 | `test_tokenizer_max_length_respected` asserted nothing | **Fixed.** `tests/benchmark/test_benchmark.py:703-716` now observes the cap at the real boundary: `patch(...DNADataset, wraps=DNADataset)` + `assert ds_cls.call_args.kwargs["max_length"] == 10` (tokenizer cap 10 beating config default 512). |
+| WR-04 | New `tempfile.mkdtemp()` calls leaked directories | **Fixed.** `dnallm/mcp/tests/test_config_validators.py:181,192,202,214` now use the constant string `"validator-output-dir"` (only non-empty-string shape is validated). The remaining `mkdtemp` calls (lines 75/95/112/140/324) are the pre-existing copies the prior review explicitly scoped out. |
 
-The one Critical finding is a real crash that survived the phase: the default
-`k_folds=1` path of `Benchmark.run_without_config()` (the sibling branch of the
-stratified fix) raises `AttributeError` and is exercised by no test in the suite.
+**IN-03 disproof independently reproduced** (probe run by this reviewer under the repo's
+own ruff 0.16.9 / `preview = true` config, in the repo root): `# ruff: ignore[hardcoded-password-string]`
+suppresses the violation; `# noqa: S105` is itself flagged by `noqa-comments`
+("`noqa` comment used instead of `ruff: ignore`"); the uncommented line fires
+`hardcoded-password-string`. The original premise was wrong for this repo's toolchain —
+IN-03 stays rejected and is not re-raised.
+
+### Fresh-pass evidence (this iteration)
+
+- **Full fast suite executed:** `pytest tests/ dnallm/mcp/tests/ -m "not slow"` →
+  **1635 passed, 1 skipped (pre-existing), 27 deselected, exit 0** in 107.96s. No
+  regressions from the fix commits. The three fix-touched test files also run green
+  in isolation (179 passed).
+- **Fix-round diff scrutinized commit-by-commit** (`6f4e439..4fcb545`, 4 files,
+  +75/−28): the source change is minimal and edge-safe; no new defects introduced.
+- **Assertion-free test scan** (AST across all 33 test files, recognizing bare `assert`,
+  `pytest.raises`, mock `assert_*` calls, and `assert_*` helper functions): after
+  eliminating false positives, only two candidates remained —
+  `test_main_keyboard_interrupt_shuts_down_cleanly` (`tests/mcp/test_server_transports.py:515`)
+  and `test_clear_missing_cache_is_a_noop` (`tests/models/test_model.py:1497`) — both
+  legitimate "must not raise" contract tests whose contrasting branches are pinned by
+  siblings (`test_main_server_error_exits_with_code_1`,
+  `test_unsupported_source_warns_and_returns`). No new smoke-only tests.
+- **Discipline gates re-run:** `# pragma: no cover` count still 3 (all pre-existing in
+  `dnallm/utils/transformers_compat.py`); no skip markers added by the fix diff;
+  `ruff check` and `ruff format --check` pass on every fix-changed file.
+- **Source files re-checked:** the phase's Rule-1 fixes in `benchmark.py` (pydantic
+  field-filter, `__init__`), `plot.py` (scalar-skip guard at `_process_curve_data:99`,
+  entropy broadcast at `plot_attention_map:1309-1316`, `_prepare_annotations` list-keys
+  at line 137), and `server.py` (`_format_multi_model_results:1194-1199` explicit
+  key-presence failure check) are all intact and still pinned by their tests.
 
 ## Critical Issues
 
-### CR-01: `Benchmark.run_without_config()` crashes with AttributeError on its default `k_folds=1`
-
-**File:** `dnallm/inference/benchmark.py:508-512`
-**Issue:** When `k_folds <= 1` (the documented default, `k_folds: int = 1`), the code
-builds `kfold_split = [(indices, indices)]` where `indices = list(range(len(dataset)))`
-is a plain Python list (line 492). The loop body then calls `val_idx.tolist()`
-(line 512), and lists have no `.tolist()` — verified by execution:
-
-```
-AttributeError: 'list' object has no attribute 'tolist'
-```
-
-Calling the public API with its defaults — `benchmark.run_without_config()` — always
-crashes. The phase fixed the stratified arm of the same `if k_folds > 1:` block (the
-`y`-labels TypeError) but left the sibling `else` arm broken, and the new tests in
-`tests/benchmark/test_benchmark.py` (`TestRunWithoutConfig`) only pass `k_folds=2`,
-so the default-parameter branch is both broken and uncovered (repo-wide grep confirms
-no other caller/test exercises it).
-
-**Fix:**
-```python
-else:
-    # numpy arrays so the shared .tolist() below works on this branch too
-    idx_array = np.asarray(indices)
-    kfold_split = [(idx_array, idx_array)]
-```
-(or guard the consumer: `val_indices = val_idx.tolist() if hasattr(val_idx, "tolist") else list(val_idx)`),
-plus a regression test: `results = benchmark.run_without_config()` (default args)
-must produce one fold result per model/dataset.
+None.
 
 ## Warnings
 
-### WR-01: StratifiedKFold fallback passes `y=None`, which still raises — the fallback is not a fallback
-
-**File:** `dnallm/inference/benchmark.py:498-504`
-**Issue:** The new stratified branch fetches the label column and falls back to
-`y = None` when the inner dataset has no `"labels"` column, then calls
-`kfold.split(indices, y)`. Verified against the installed scikit-learn:
-`StratifiedKFold.split(x, None)` raises
-`TypeError: Input should have at least 1 dimension i.e. satisfy len(x.shape) > 0...`.
-So for datasets without a labels column, `stratified=True` still crashes with a
-TypeError — same exception class the fix was eliminating, only with a more obscure
-message. No test covers the no-labels stratified path.
-**Fix:** Fail loudly or degrade deliberately, e.g.:
-```python
-if y is None:
-    if stratified:
-        raise ValueError(
-            "stratified=True requires a 'labels' column in the dataset."
-        )
-    kfold_split = kfold.split(indices)
-```
-and add a test for the chosen contract.
-
-### WR-02: `test_prepare_data_empty_metrics` is a smoke-only test that swallows every exception and asserts nothing
-
-**File:** `tests/inference/test_plot.py:255-274`
-**Issue:** The test calls `prepare_data({}, "binary")` inside
-`try/except Exception` whose handler is `print(...)` + `pass`. There is no assertion,
-so the test can never fail — it validates nothing. Its stated premise ("We expect it
-to fail") is also wrong: `prepare_data({}, "binary")` returns
-`({"models": []}, {...})` without raising. This directly violates the locked phase
-discipline "every test must assert observable behavior (no smoke-only tests)".
-**Fix:** Assert the real contract:
-```python
-def test_prepare_data_empty_metrics(self):
-    bars, curves = prepare_data({}, "binary")
-    assert bars["models"] == []
-    assert curves["AUROC"] == {} and curves["ROC"]["fpr"] == []
-```
-(or `pytest.raises` if an error is the intended behavior — it currently is not).
-
-### WR-03: `test_tokenizer_max_length_respected` asserts nothing about the behavior its name claims
-
-**File:** `tests/benchmark/test_benchmark.py:703-717`
-**Issue:** The docstring promises "A tokenizer with model_max_length caps the encode
-length", the test sets `tokenizer.model_max_length = 10`, but the only assertion is
-`assert mock_infer is not None` — vacuously true because `mock_infer` is the
-`patch.object` context object. `batch_infer` is fully mocked, so the capped length
-is never observed anywhere in the test. This is a smoke-only test under the phase
-discipline.
-**Fix:** Observe the cap, e.g. patch the dataset boundary and assert the kwarg:
-```python
-with patch("dnallm.inference.benchmark.DNADataset", wraps=DNADataset) as ds_cls:
-    benchmark.evaluate_single_model(ConstantOutputFake(), tokenizer, self._dataset())
-assert ds_cls.call_args.kwargs["max_length"] == 10
-```
-
-### WR-04: New `tempfile.mkdtemp()` calls leak temp directories and bypass the tmp_path discipline
-
-**File:** `dnallm/mcp/tests/test_config_validators.py:181,192,202,214` (added this phase)
-**Issue:** Four new tests use `output_dir=tempfile.mkdtemp()`. `output_dir` is
-validated only as `str` with `min_length=1` (`dnallm/mcp/config_validators.py:30`),
-so no real directory is needed — yet each call creates a real directory under `/tmp`
-that is never removed (leaked per test run, forever). This violates the phase rule
-"tmp_path for artifacts". (Lines 75/95/112/140/324 are the pre-existing copies of the
-same pattern.)
-**Fix:** Replace with `str(tmp_path)` (add the `tmp_path` fixture to the signature),
-or a constant string such as `"/tmp/out-dir-value"` since only string shape is validated.
+None.
 
 ## Info
 
+The following remain from the prior review, unchanged in current state, and are
+deferrable (no fix required for this phase to close):
+
 ### IN-01: Commented-out assertions leave two legacy plot tests as smoke tests
 
-**File:** `tests/benchmark/test_benchmark.py:400-401,455-456` (pre-existing, in-scope)
+**File:** `tests/benchmark/test_benchmark.py:400-401,455-456`
 **Issue:** `test_plot_for_classification` and `test_plot_for_regression` patch
-`plot_bars`/`plot_curve`/`plot_scatter` and then assert nothing — the mock assertions
-are commented out (`# mock_plot_bars.assert_called_once()`). The new
-`TestBenchmarkPlotSelection` class covers this behavior properly, so these two are
-dead weight that still "pass".
-**Fix:** Either restore the mock assertions or delete the two legacy tests in favor
-of the new class.
+`plot_bars`/`plot_curve`/`plot_scatter` but their mock assertions are commented out.
+Superseded by `TestBenchmarkPlotSelection`.
+**Fix:** Restore the mock assertions or delete the two legacy tests.
 
-### IN-02: Placeholder/vacuous assertions in new benchmark tests
+### IN-02: Placeholder/vacuous assertion in new benchmark test
 
-**File:** `tests/benchmark/test_benchmark.py:756`
-**Issue:** `assert Subset is not None  # document the related torch Subset path`
-pins nothing (an import can never be None there). It suggests the torch `Subset`
-label-extraction branch (`benchmark.py:437-438`) is intentionally left unexercised.
-**Fix:** Remove the assert, or better, add a real test passing a
-`torch.utils.data.Subset` as `val_data` and assert the extracted labels match
-`[dataset.labels[i] for i in indices]`.
-
-### IN-03: `# ruff: ignore[...]` comments are invalid ruff syntax and do nothing
-
-**File:** `tests/inference/test_interpret.py:48`, `tests/models/test_special/test_evo.py:64,78`,
-`tests/mcp/test_start_server.py:139`, `tests/mcp/test_client_sdk.py:403`
-**Issue:** Ruff has no `# ruff: ignore[rule]` inline directive (per-line suppression
-is `# noqa: CODE`). Verified: `ruff check` passes on all these files regardless of the
-comments, so they are dead text giving false suppression confidence.
-**Fix:** Drop the comments, or convert to `# noqa: S105`-style only where a rule
-actually fires.
+**File:** `tests/benchmark/test_benchmark.py:755`
+**Issue:** `assert Subset is not None  # document the related torch Subset path` pins
+nothing; the torch `Subset` label-extraction branch (`benchmark.py:437-438`) stays
+unexercised.
+**Fix:** Remove the assert, or add a real test passing a `torch.utils.data.Subset` as
+`val_data` and assert the extracted labels match `[dataset.labels[i] for i in indices]`.
 
 ### IN-04: Direct `from conftest import SimpleDNATokenizer` imports
 
 **File:** `tests/benchmark/test_benchmark.py:25`, `tests/finetune/test_trainer.py:17`
-**Issue:** Importing `conftest` as a top-level module relies on pytest's prepend
-import mode putting `tests/` on `sys.path` (it works today, and `test_benchmark.py`
-additionally carries a `sys.path.insert` hack at line 23). It is a fragile,
-discouraged pytest pattern that breaks under `importmode=importlib`.
-**Fix:** Move `SimpleDNATokenizer`/`TinyDNAModel` into a plain helper module (e.g.
-`tests/_fakes.py`) and import from there; keep conftest for fixtures only.
+**Issue:** Relies on pytest's prepend import mode putting `tests/` on `sys.path`; breaks
+under `importmode=importlib`.
+**Fix:** Move shared fakes into a plain helper module (e.g. `tests/_fakes.py`).
 
 ### IN-05: Dead code in `global_cleanup` fixture
 
 **File:** `tests/conftest.py:229-233`
-**Issue:** The session-scoped autouse fixture body is `return` followed by an
-unreachable comment block ("Cleanup after all tests complete"). Misleading — no
-cleanup actually happens.
-**Fix:** Either implement the teardown (yield + cleanup) or reduce the fixture to a
-docstring-only no-op without the dead comment.
+**Issue:** Session-scoped autouse fixture body is `return` followed by an unreachable
+comment block; no cleanup actually happens.
+**Fix:** Implement the teardown (yield + cleanup) or reduce to a docstring-only no-op.
+
+### IN-03 (rejected): `# ruff: ignore[...]` comments claimed non-functional
+
+**File:** n/a — original citations at `tests/inference/test_interpret.py:48`,
+`tests/models/test_special/test_evo.py:64,78`, `tests/mcp/test_start_server.py:139`,
+`tests/mcp/test_client_sdk.py:403`
+**Issue:** The original claim was empirically disproven (first by the fixer, re-confirmed
+by this reviewer's own probe under the repo config): under ruff 0.16.9 with
+`preview = true`, `# ruff: ignore[rule]` is the functional per-line suppression
+directive, and `# noqa:` is itself a violation. Kept here only as a record of why it is
+not re-raised; no action.
 
 ---
 
-**Positive observations (verified, not assumed):** the three source fixes are each
-pinned by tests that would fail against the pre-fix code; the new test suite is
-predominantly behavior-driven (real torch modules with recomputed expected values in
-`test_head.py`, `test_losses.py`, `test_inference.py::TestScoringPath`; exact
-progress-call sequences in `test_server_streaming.py`); the altair process-global
-transformer toggling is neutralized by the autouse `_default_data_transformer`
-fixture; PDF writes are redirected to `tmp_path` by the autouse `pdf_output_dir`
-fixture; and the multi-model success-count behavior (`2 successful, 0 failed` for raw
-dict results) is locked by `test_routes_each_model_with_ordered_progress`.
-
-_Reviewed: 2026-09-30T13:34:02Z_
+_Reviewed: 2026-09-30T13:53:55Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Iteration: 2 (post-fix re-review)_
