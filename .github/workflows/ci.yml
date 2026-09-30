@@ -291,7 +291,11 @@ jobs:
     name: coverage-nightly (py3.12, full suite incl. slow)
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    timeout-minutes: 480
+    # Per-test timeout ceilings across the census sum to 720min (7 phase marks
+    # = 600min + download/real-inference/MCP marks = 120min). Keep the job kill
+    # at or above that sum: a hung test then fails via its own mark (junit +
+    # skip audit still run) instead of a job kill (no junit, model-cache forfeit).
+    timeout-minutes: 720
     continue-on-error: false
     steps:
       - name: Checkout code
