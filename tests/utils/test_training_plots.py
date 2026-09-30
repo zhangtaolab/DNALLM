@@ -65,6 +65,20 @@ class TestPlotLossCurve:
 
             assert result.exists()
 
+    def test_plot_loss_curve_skips_entries_without_step(self):
+        """Test that log entries lacking a step key are tolerated and skipped."""
+        log_history = [
+            {"loss": 0.9},  # no step: must be skipped, not crash
+            {"step": 5, "loss": 0.5},
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "skip_stepless.png"
+            result = plot_loss_curve(log_history, output_path=output_path)
+
+            assert result.exists()
+            assert result.stat().st_size > 0
+
 
 class TestPlotLRSchedule:
     """Test cases for plot_lr_schedule function."""
