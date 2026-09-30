@@ -432,6 +432,143 @@ class TestDnabert2Handler:
         assert model == "dbs-model"
         assert tokenizer == "dbs-tokenizer"
 
+    def _dnabert2_dir_with_triton_file(self, tmp_path):
+        """Build a DNABERT-2 checkpoint dir containing flash_attn_triton.py."""
+        model_dir = tmp_path / "dnabert-2"
+        model_dir.mkdir()
+        original_content = "def attention():\n    pass\n"
+        triton_file = model_dir / "flash_attn_triton.py"
+        triton_file.write_text(original_content)
+        load_args = ["mask", str(model_dir), 0, {}, {}, {"AutoTokenizer": Mock()}]
+        return model_dir, triton_file, original_content, load_args
+
+    def test_working_triton_probe_disables_file_and_restores(self, tmp_path, monkeypatch):
+        """A triton where tl.dot(trans_b=True) runs takes the disable/restore path."""
+        fake_tl = types.ModuleType("triton.language")
+        fake_tl.float32 = "f32"
+        fake_tl.zeros = lambda shape, dtype=None: (shape, dtype)
+        fake_tl.dot = lambda *args, **kwargs: None
+        fake_triton = types.ModuleType("triton")
+        monkeypatch.setitem(sys.modules, "triton", fake_triton)
+        monkeypatch.setitem(sys.modules, "triton.language", fake_tl)
+
+        _, triton_file, original_content, load_args = self._dnabert2_dir_with_triton_file(tmp_path)
+        seen_during_load = {}
+
+        def capture_load(*args):
+            seen_during_load["content"] = triton_file.read_text()
+            return ("m", "t")
+
+        with patch(
+            "dnallm.models.model._load_model_by_task_type",
+            side_effect=capture_load,
+        ):
+            model, tokenizer = _handle_dnabert2_models(str(load_args[1]), load_args)
+
+        assert (model, tokenizer) == ("m", "t")
+        # The disable marker was live while the model loaded...
+        assert "Temporarily disabled" in seen_during_load["content"]
+        # ...and the original content is restored afterwards.
+        assert triton_file.read_text() == original_content
+
+    def test_typeerror_triton_probe_leaves_file_untouched(self, tmp_path, monkeypatch):
+        """tl.dot raising TypeError (unsupported trans_b) means no disable."""
+        fake_tl = types.ModuleType("triton.language")
+        fake_tl.float32 = "f32"
+        fake_tl.zeros = lambda shape, dtype=None: (shape, dtype)
+
+        def dot_without_trans_b(*args, **kwargs):
+            raise TypeError("dot() got an unexpected keyword argument 'trans_b'")
+
+        fake_tl.dot = dot_without_trans_b
+        fake_triton = types.ModuleType("triton")
+        monkeypatch.setitem(sys.modules, "triton", fake_triton)
+        monkeypatch.setitem(sys.modules, "triton.language", fake_tl)
+
+        _, triton_file, original_content, load_args = self._dnabert2_dir_with_triton_file(tmp_path)
+        seen_during_load = {}
+
+        def capture_load(*args):
+            seen_during_load["content"] = triton_file.read_text()
+            return ("m", "t")
+
+        with patch(
+            "dnallm.models.model._load_model_by_task_type",
+            side_effect=capture_load,
+        ):
+            model, tokenizer = _handle_dnabert2_models(str(load_args[1]), load_args)
+
+        assert (model, tokenizer) == ("m", "t")
+        # Unsupported trans_b -> no disable: the file is never modified.
+        assert seen_during_load["content"] == original_content
+        assert triton_file.read_text() == original_content
+
+    def test_failing_triton_probe_treated_as_supported(self, tmp_path, monkeypatch):
+        """A non-TypeError triton failure also takes the disable/restore path."""
+        fake_tl = types.ModuleType("triton.language")
+        fake_tl.float32 = "f32"
+
+        def broken_zeros(shape, dtype=None):
+            raise RuntimeError("triton needs an active CUDA context")
+
+        fake_tl.zeros = broken_zeros
+        fake_triton = types.ModuleType("triton")
+        monkeypatch.setitem(sys.modules, "triton", fake_triton)
+        monkeypatch.setitem(sys.modules, "triton.language", fake_tl)
+
+        _, triton_file, original_content, load_args = self._dnabert2_dir_with_triton_file(tmp_path)
+
+        with patch(
+            "dnallm.models.model._load_model_by_task_type",
+            return_value=("m", "t"),
+        ):
+            model, tokenizer = _handle_dnabert2_models(str(load_args[1]), load_args)
+
+        assert (model, tokenizer) == ("m", "t")
+        assert triton_file.read_text() == original_content
+
+
+class TestHandlerExtraRegistration:
+    """The `extra` registration arms of the list-gated handlers."""
+
+    def test_lucaone_extra_appended_to_registry(self, monkeypatch):
+        """A truthy extra name is appended to the LucaOne registry list."""
+        from dnallm.models.special import lucaone as lucaone_module
+
+        registry = list(lucaone_module.lucaone_models)
+        monkeypatch.setattr(lucaone_module, "lucaone_models", registry)
+
+        result = lucaone_module._handle_lucaone_models(
+            "bert-base", "local", None, extra="My-LucaOne"
+        )
+
+        assert result is None  # non-matching name still falls through
+        assert "My-LucaOne" in registry
+
+    def test_omnidna_extra_appended_to_registry(self, monkeypatch):
+        """A truthy extra name is appended to the Omni-DNA registry list."""
+        from dnallm.models.special import omnidna as omnidna_module
+
+        registry = list(omnidna_module.omnidna_models)
+        monkeypatch.setattr(omnidna_module, "omnidna_models", registry)
+
+        result = omnidna_module._handle_omnidna_models("bert-base", extra="My-OmniDNA")
+
+        assert result is None
+        assert "My-OmniDNA" in registry
+
+    def test_space_extra_appended_to_registry(self, monkeypatch):
+        """A truthy extra name is appended to the Space registry list."""
+        from dnallm.models.special import space as space_module
+
+        registry = list(space_module.space_models)
+        monkeypatch.setattr(space_module, "space_models", registry)
+
+        result = space_module._handle_space_models("bert", "local", "binary", 2, extra="My-Space")
+
+        assert result is None
+        assert "My-Space" in registry
+
 
 class TestLucaoneHandler:
     """The LucaOne handler with lucagplm stubbed."""

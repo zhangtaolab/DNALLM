@@ -176,6 +176,16 @@ class TestBasicUNet1DHead:
         assert logits.shape == (2, 3)
         _assert_differentiable(head, logits)
 
+    def test_forward_pads_length_mismatched_skip_connections(self):
+        """Sequence lengths that halve unevenly are padded onto their skip connection."""
+        torch.manual_seed(0)
+        head = BasicUNet1DHead(input_dim=4, num_classes=3, num_layers=2, initial_filters=8)
+
+        logits = head(torch.randn(2, 10, 4))
+
+        assert logits.shape == (2, 3)
+        _assert_differentiable(head, logits)
+
     def test_non_positive_initial_filters_default_to_input_dim(self):
         """initial_filters<=0 falls back to the input dimension."""
         head = BasicUNet1DHead(input_dim=4, num_classes=2, initial_filters=0)
@@ -214,6 +224,12 @@ class TestMegaDNAMultiScaleHead:
         """embedding_dims must contain exactly three integers."""
         with pytest.raises(ValueError, match="embedding_dims list must contain 3 integers"):
             MegaDNAMultiScaleHead(embedding_dims=[8, 6], num_classes=2)
+
+    def test_default_embedding_dims(self):
+        """Omitting embedding_dims falls back to the documented [512, 256, 128]."""
+        head = MegaDNAMultiScaleHead()
+
+        assert head.embedding_dims == [512, 256, 128]
 
     def test_hidden_dims_stack(self):
         """Multiple hidden dims build a deeper MLP."""
