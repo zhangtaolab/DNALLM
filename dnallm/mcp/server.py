@@ -1187,13 +1187,16 @@ class DNALLMMCPServer:
         stream_progress: bool,
     ) -> dict[str, Any]:
         """Format multi-model prediction results."""
-        # Count successful and failed predictions
-        successful_predictions = len([
-            r for r in results.values() if not isinstance(r, dict) or r.get("result") is not None
-        ])
+        # Count successful and failed predictions. The only failure marker is
+        # the {"error": ..., "result": None} entry built by
+        # _predict_with_multiple_models; raw prediction dicts (which carry no
+        # "result" key) are successes — hence the explicit key-presence check.
         failed_predictions = len([
-            r for r in results.values() if isinstance(r, dict) and r.get("result") is None
+            r
+            for r in results.values()
+            if isinstance(r, dict) and "result" in r and r["result"] is None
         ])
+        successful_predictions = len(results) - failed_predictions
 
         return {
             "content": [{"type": "text", "text": str(results)}],
