@@ -105,17 +105,17 @@ Plans:
   4. The coverage reporting step either runs on codecov-action v7 as reporting-only or is removed — no dead or failing reporting step remains
   5. PRs targeting both `dev` and `main` trigger the gated coverage job
 
-**Plans**: 1/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 04-01-PLAN.md — Gate mechanism: fail_under=90 live with local red/green proofs + CI inputs (models.lock manifest, per-test timeout marks) (GATE-01, GATE-02)
 
 **Wave 2** *(blocked on Wave 1 — jobs consume fail_under, models.lock, and the timeout marks)*
-- [ ] 04-02-PLAN.md — Two gated jobs live on dev: coverage-gate (fast PR leg) + coverage-nightly (scheduled slow census, models.lock-keyed cache); third-party uploader step removed (GATE-02, GATE-03, GATE-05)
+- [x] 04-02-PLAN.md — Two gated jobs live on dev: coverage-gate (fast PR leg) + coverage-nightly (scheduled slow census, models.lock-keyed cache); third-party uploader step removed (GATE-02, GATE-03, GATE-05)
 
 **Wave 3** *(blocked on Wave 2 — the probe needs the gate live on dev)*
-- [ ] 04-03-PLAN.md — GATE-04 synthetic-regression probe PR (red check, verbatim evidence, zero residue) + WR-05 README minimal-touch + owner hand-off (branch protection, runtime decision) (GATE-04, GATE-05)
+- [x] 04-03-PLAN.md — GATE-04 synthetic-regression probe PR (red check, verbatim evidence, zero residue) + WR-05 README minimal-touch + owner hand-off (branch protection, runtime decision) (GATE-04, GATE-05)
 
 ## Progress
 
@@ -127,4 +127,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
 | 3. Test Authoring to >90% Coverage | 5/5 | Complete    | 2026-09-30 |
-| 4. CI Gate Enforcement | 1/3 | In Progress|  |
+| 4. CI Gate Enforcement | 3/3 | In Progress|  |

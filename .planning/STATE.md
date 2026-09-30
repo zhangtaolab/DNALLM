@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: CI Gate Enforcement
-status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-09-30T17:01:56.966Z"
+status: verifying
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-09-30T18:16:20.890Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 4 execution started
-state_head: a4720efd2dfd2e61468d53e6f895b6282b4216cf
+state_head: 29ed1644185bd9fcd104058ad21215c07560e045
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 13
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 Phase: 4 (CI Gate Enforcement) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 4 execution started
 
 Progress: [████████░░] 75%
@@ -71,6 +71,8 @@ Progress: [████████░░] 75%
 | Phase 03 P05 | 51 min | 3 tasks | 12 files |
 | Phase 04 P01 | 44 min | 3 tasks | 4 files |
 | Phase 04 P02 | 27 min | 3 tasks | 1 files |
+| Phase 04 P03 | 52 min | 2 tasks | 1 files |
+| Phase 04 P03 | 52 min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -124,6 +126,10 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-02] coverage-nightly is schedule/dispatch-only with models.lock-keyed whole-hub cache; calibration dispatch run 36747594207 healthy into census in ~2.3 min (uv cache warm from the green push run; models cache cold-miss at 0s and seeds only on job success); event isolation live: exactly one non-skipped job on dispatch
 - [Phase 04]: [04-02] GATE-03 removed, not bumped: codecov-action@v3 uploader + orphaned coverage.xml export deleted, no replacement reporting step, permissions stay contents: read — native fail_under is the enforcement
 - [Phase 04]: [04-02] OWNER NOTE: GitHub runs scheduled workflows only from the default branch — the nightly cron activates when this ci.yml reaches main; manual dispatch on dev already works (run 36747594207 used the dev ref's workflow file). Making coverage-gate a required check is the separate documented owner follow-up (branches currently unprotected)
+- [Phase 04]: [Phase 04]: [04-03] GATE-04 probe target is the whole tests/models directory, not the single file: the plan-as-written single-file rehearsal measured GREEN (91.64%) under -m "not slow" so pushing it would prove nothing; directory deletion rehearsed RED 78.92%, CI reproduced 78.91% — the plan own re-plan path (FA-GATE-04) executed
+- [Phase 04]: [Phase 04]: [04-03] GATE-04 evidence: probe PR 39 (base dev) coverage-gate check concluded FAILURE with verbatim line "ERROR: Coverage failure: total of 79 is less than fail-under=90"; 1261 tests green, only the floor red; zero residue (PR closed unmerged, branch deleted, dev clean)
+- [Phase 04]: [Phase 04]: [04-03] Job-level logs API (gh api actions/jobs/<id>/logs) serves completed jobs mid-run — run-level gh --log-failed gates on whole-run completion; harvested evidence before the last test-cuda leg finished
+- [Phase 04]: [Phase 04]: [04-03] GATE-05 proven live on dev side (probe PR triggered the gated job to FAILURE); PRs to main inherit the same pull_request block; branch protection handed to owner as exact gh api PUT commands naming context "coverage-gate (py3.12, fast leg)"
 
 ### Pending Todos
 
@@ -144,6 +150,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T17:01:45.591Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-09-30T18:16:08.699Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
