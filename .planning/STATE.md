@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: CI Gate Enforcement
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-09-30T16:32:21.050Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-09-30T17:01:56.966Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 4 execution started
-state_head: ced0adc13999df68c7908901ac4670a6ac041703
+state_head: a4720efd2dfd2e61468d53e6f895b6282b4216cf
 progress:
   total_phases: 4
   completed_phases: 3
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 4 (CI Gate Enforcement) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 4 execution started
 
@@ -70,6 +70,7 @@ Progress: [████████░░] 75%
 | Phase 03 P04 | 39 min | 3 tasks | 4 files |
 | Phase 03 P05 | 51 min | 3 tasks | 12 files |
 | Phase 04 P01 | 44 min | 3 tasks | 4 files |
+| Phase 04 P02 | 27 min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,10 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-01] Synthetic-drop proof uses --ignore=tests/models (dir), not single-file: under -m 'not slow' the file covers only 344 stmts (91.65% green); dir ignore = 78.92% red rc=1 — GATE-04 probe in 04-03 likely needs the directory-level deletion, single-file predicted ~91-92% stays green
 - [Phase 04]: [04-01] models.lock dataset entry tagged 'dataset:' (plan verify counts 2 hf/6 ms/1 dataset); pattern map's 'ms dataset:' rendering failed the plan's own awk checks
 - [Phase 04]: [04-01] fail_under=90 live from pyproject alone: census of record green at 96.30% (rc=0), synthetic drop red at 78.92% with 'Coverage failure: total of 79 is less than fail-under=90' (rc=1); nothing pushed in this wave per plan
+- [Phase 04]: [04-02] Two-job gate live on dev: coverage-gate (fast leg, push/PR) green at 96.27% on push run 36745734429 with fail_under riding the pytest exit code; all six matrix legs stayed green under the same ratchet; nightly + deploy skipped on push (guards proven at runtime)
+- [Phase 04]: [04-02] coverage-nightly is schedule/dispatch-only with models.lock-keyed whole-hub cache; calibration dispatch run 36747594207 healthy into census in ~2.3 min (uv cache warm from the green push run; models cache cold-miss at 0s and seeds only on job success); event isolation live: exactly one non-skipped job on dispatch
+- [Phase 04]: [04-02] GATE-03 removed, not bumped: codecov-action@v3 uploader + orphaned coverage.xml export deleted, no replacement reporting step, permissions stay contents: read — native fail_under is the enforcement
+- [Phase 04]: [04-02] OWNER NOTE: GitHub runs scheduled workflows only from the default branch — the nightly cron activates when this ci.yml reaches main; manual dispatch on dev already works (run 36747594207 used the dev ref's workflow file). Making coverage-gate a required check is the separate documented owner follow-up (branches currently unprotected)
 
 ### Pending Todos
 
@@ -139,6 +144,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T16:32:21.024Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-09-30T17:01:45.591Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

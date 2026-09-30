@@ -40,8 +40,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 ### CI Gate
 
 - [x] **GATE-01**: `fail_under = 90` in `[tool.coverage.report]` — enabled only after the suite first crosses 90% (ratchet, never permanently red)
-- [ ] **GATE-02**: Dedicated single-leg slow-inclusive coverage CI job (py3.12, full suite, HF model cache keyed on `models.lock`, per-test timeout marks + job-level `timeout-minutes` backstop)
-- [ ] **GATE-03**: Fix or remove the dead `codecov-action@v3` step (→ `@v7` or drop); reporting only, never the gate
+- [x] **GATE-02**: Dedicated single-leg slow-inclusive coverage CI job (py3.12, full suite, HF model cache keyed on `models.lock`, per-test timeout marks + job-level `timeout-minutes` backstop)
+- [x] **GATE-03**: Fix or remove the dead `codecov-action@v3` step (→ `@v7` or drop); reporting only, never the gate
 - [ ] **GATE-04**: Synthetic-regression proof that the gate actually fails CI when coverage drops (end-to-end exercise of HARN-02)
 - [ ] **GATE-05**: Gate runs on PRs to every protected branch (`dev` and `main`), not just `main`
 
@@ -93,8 +93,8 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 | TEST-05 | Phase 3 | Complete |
 | TEST-06 | Phase 3 | Complete |
 | GATE-01 | Phase 4 | Complete |
-| GATE-02 | Phase 4 | Pending |
-| GATE-03 | Phase 4 | Pending |
+| GATE-02 | Phase 4 | Complete |
+| GATE-03 | Phase 4 | Complete |
 | GATE-04 | Phase 4 | Pending |
 | GATE-05 | Phase 4 | Pending |
 
