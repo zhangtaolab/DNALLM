@@ -280,18 +280,21 @@ def multi_classification_metrics(label_list: list, plot: bool = False) -> Callab
         metrics["recall_weighted"] = recall_score(labels, predictions, average="weighted")
         metrics["f1_weighted"] = f1_score(labels, predictions, average="weighted")
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
-        # All classes must appear in the eval batch: roc_auc_score(multi_class="ovr")
-        # and average_precision_score both degrade or crash otherwise
+        # Every class must appear in the full evaluation prediction set (HF
+        # Trainer calls compute_metrics once over the accumulated eval
+        # predictions, not per batch): roc_auc_score(multi_class="ovr") and
+        # average_precision_score both degrade or crash otherwise
         # (average_precision_score takes no labels kwarg, so this guard is its
         # only protection; it also protects the per-class curve branch below).
         expected_classes = np.arange(len(label_list))
         present_classes = np.unique(labels)
         if not np.array_equal(present_classes, expected_classes):
             missing = np.setdiff1d(expected_classes, present_classes).tolist()
+            unexpected = np.setdiff1d(present_classes, expected_classes).tolist()
             raise ValueError(
-                f"Multiclass metrics require every class in the eval batch; "
-                f"missing class id(s) {missing} "
-                f"({len(present_classes)}/{len(label_list)} classes present)."
+                f"Multiclass metrics require every class id in the eval predictions; "
+                f"missing class id(s) {missing}, unexpected id(s) {unexpected} "
+                f"({len(present_classes)}/{len(label_list)} distinct ids present)."
             )
         metrics["AUROC"] = roc_auc_score(
             labels,

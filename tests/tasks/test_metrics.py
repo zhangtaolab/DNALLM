@@ -314,6 +314,16 @@ class TestMultiClassificationMetrics:
         with pytest.raises(ValueError, match=r"missing class id\(s\)"):
             compute_func((logits, labels))
 
+    def test_multi_classification_metrics_unexpected_class_id_raises(self):
+        """An out-of-range label id must be named in the error, not masked as missing."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.05, 0.1, 0.85]])
+        labels = np.array([0, 1, 5])  # id 5 is outside the 3-class label list
+
+        with pytest.raises(ValueError, match=r"unexpected id\(s\) \[5\]"):
+            compute_func((logits, labels))
+
 
 class TestMultiLabelsMetrics:
     """Test multi_labels_metrics function."""
