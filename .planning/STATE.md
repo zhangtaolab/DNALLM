@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: CI Gate Enforcement
 status: executing
-stopped_at: Phase 03 complete, ready to plan Phase 4
-last_updated: "2026-09-30T15:46:36.069Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-09-30T16:32:21.050Z"
 last_activity: 2026-09-30
-last_activity_desc: Phase 03 complete, transitioned to Phase 4
-state_head: 997cb174ec6d24a33c25427cb06bf2bb553a7284
+last_activity_desc: Phase 4 execution started
+state_head: ced0adc13999df68c7908901ac4670a6ac041703
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 75
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 ## Current Position
 
-Phase: 4 (CI Gate Enforcement) — READY TO EXECUTE
-Plan: Not started
+Phase: 4 (CI Gate Enforcement) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-30 — Phase 03 complete, transitioned to Phase 4
+Last activity: 2026-09-30 — Phase 4 execution started
 
 Progress: [████████░░] 75%
 
@@ -69,6 +69,7 @@ Progress: [████████░░] 75%
 | Phase 03 P03 | 49 min | 3 tasks | 11 files |
 | Phase 03 P04 | 39 min | 3 tasks | 4 files |
 | Phase 03 P05 | 51 min | 3 tasks | 12 files |
+| Phase 04 P01 | 44 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-05] CLI lazy-import patch rule: patch the ORIGIN package attribute the function-local from-import resolves at invocation time (dnallm.finetune.DNATrainer, dnallm.mcp.server.main, ...) and assert call args; loopback-only hosts; argv-assembling commands assert sys.argv restoration
 - [Phase 03]: [03-05] metrics_for_dnabert2 covered network-free with evaluate.load/combine patched (bare metric names would resolve against the HF hub)
 - [Phase 03]: [03-05] FINAL GATE landed: 96.28% (7124/7399), census 1653 passed / 7 allowlisted skips / audit 0 / pragma exactly 3 / pyproject diff-free vs phase-start cbbebf8 — Phase 3 complete, 5.78 points over the strict >90.5% target
+- [Phase 04]: [04-01] Synthetic-drop proof uses --ignore=tests/models (dir), not single-file: under -m 'not slow' the file covers only 344 stmts (91.65% green); dir ignore = 78.92% red rc=1 — GATE-04 probe in 04-03 likely needs the directory-level deletion, single-file predicted ~91-92% stays green
+- [Phase 04]: [04-01] models.lock dataset entry tagged 'dataset:' (plan verify counts 2 hf/6 ms/1 dataset); pattern map's 'ms dataset:' rendering failed the plan's own awk checks
+- [Phase 04]: [04-01] fail_under=90 live from pyproject alone: census of record green at 96.30% (rc=0), synthetic drop red at 78.92% with 'Coverage failure: total of 79 is less than fail-under=90' (rc=1); nothing pushed in this wave per plan
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T13:20:14.756Z
-Stopped at: Phase 03 complete, ready to plan Phase 4
+Last session: 2026-09-30T16:32:21.024Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
