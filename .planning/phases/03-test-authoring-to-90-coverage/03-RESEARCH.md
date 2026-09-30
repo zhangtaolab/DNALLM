@@ -53,7 +53,7 @@ None — discussion stayed within phase scope.
 
 ## Summary
 
-The gap to >90.5% is 3,292 statements on a 7,383-statement denominator (45.92% baseline, 3,390 covered at the Phase-1 census; ~3,993 missing concentrated in 43 files). The work decomposes into five wave areas plus two small orphans (tasks 51 + configuration 9 lines that need a wave assignment). Every area is testable with the existing stack — no new frameworks — using three verified mechanisms: (1) mock-at-the-load-call for model dispatch (with sys.modules stubbing for the seven special families whose heavy deps are not installed), (2) a LIVE-VERIFIED in-memory MCP client/server pair for `mcp/server.py` connecting the official `streamablehttp_client` to `FastMCP.streamable_http_app()` via `httpx.ASGITransport` (full protocol round trip in 0.65s wall, no sockets), and (3) real-tiny-torch-module tests for captum interpret and the seven `head.py` classes (~28ms per attribution).
+The gap to >90.5% is 3,292 statements on a 7,383-statement denominator (45.92% baseline, 3,390 covered at the Phase-1 census; ~3,993 missing concentrated in 43 files). The work decomposes into five wave areas plus two small orphans (tasks 51 + configuration 9 lines; wave-assigned to the cli/compat wave — see Open Questions (RESOLVED) #1). Every area is testable with the existing stack — no new frameworks — using three verified mechanisms: (1) mock-at-the-load-call for model dispatch (with sys.modules stubbing for the seven special families whose heavy deps are not installed), (2) a LIVE-VERIFIED in-memory MCP client/server pair for `mcp/server.py` connecting the official `streamablehttp_client` to `FastMCP.streamable_http_app()` via `httpx.ASGITransport` (full protocol round trip in 0.65s wall, no sockets), and (3) real-tiny-torch-module tests for captum interpret and the seven `head.py` classes (~28ms per attribution).
 
 The recorded research flag is resolved with two decisive corrections to the CONTEXT's wording. First, the `server.py:1718+` seam is COMPATIBLE with installed mcp 1.30.0 — `sse_app()`, `streamable_http_app()`, and `run(transport=...)` all exist and return/accept what DNALLM expects [VERIFIED: live SDK probe]. But in-memory SSE protocol tests are NOT viable: the SSE GET stream never yields response headers under `httpx.ASGITransport` (deadlock reproduced twice), so SSE coverage comes from construction-shape tests plus the existing typed live-network skips. Second, the "streaming generators" are not generators at all — they are coroutines that report progress via `context.report_progress(progress, total, message)` and return final dicts; the decision's intent (ordered sequence + final status + mid-stream fault injection) is fully implementable by asserting the ordered `report_progress` call list plus the returned dict, with `side_effect` sequences injecting per-item failures.
 
@@ -398,17 +398,22 @@ Projected landing: 3,390 + ~3,475 = ~6,865 / 7,383 ≈ **93.0%** ⇒ ~183 lines 
 | A6 | CI gate (Phase 4) measures on CPU runners, so CUDA-only lines stay uncovered there | Reachability | If GATE-02 ever runs on GPU runners, a few more lines cover — upside only |
 | A7 | Post-Phase-2 covered-baseline drift is upward (more covered than 3,390) | Pitfall 9 | If somehow downward, the +3,292 requirement grows; the pre-wave-1 re-measure resolves this cheaply |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Wave assignment of the 60-line orphans (tasks/metrics 51 + configuration/configs 9)**
+All three questions were resolved at plan time (2026-09-30); each records the adopting plan and task below.
+
+1. **Wave assignment of the 60-line orphans (tasks/metrics 51 + configuration/configs 9)** — RESOLVED
    - What we know: no wave in the locked structure names them; they must land somewhere.
    - Recommendation: attach to the cli/compat wave (smallest marginal planning cost) or distribute to the nearest domain wave.
-2. **Depth of evo handler stubbing**
+   - Resolution: adopted the first option — the orphans ride the cli/compat wave as extensions of tests/tasks/test_metrics.py (51 lines) and tests/configuration/test_configs.py (9 lines) in 03-05 Task 2.
+2. **Depth of evo handler stubbing** — RESOLVED
    - What we know: 168 missing lines behind `evo2`/`evo`/`stripedhyena`/`vortex` function-local imports; stubs must satisfy real attribute reads.
    - Recommendation: timebox; if the stub shapes exceed ~1 plan-task effort, take the documented-uncovered residual and bank the slack elsewhere (inference/models-core are higher-yield per effort).
-3. **Whether `mcp/server.py` health/mutagenesis/interpret tool bodies (missing lines 487-714) need the in-memory pair or AsyncMock model_manager**
+   - Resolution: the timebox is adopted verbatim in 03-02 Task 3 — if it fires, a per-file residual ledger is mandatory in 03-02-SUMMARY.md and the slack banks into models-core.
+3. **Whether `mcp/server.py` health/mutagenesis/interpret tool bodies (missing lines 487-714) need the in-memory pair or AsyncMock model_manager** — RESOLVED
    - What we know: both work; the pair additionally proves registration/schema correctness.
    - Recommendation: one in-memory smoke test asserting ALL 13 registered tools are listable, plus per-tool AsyncMock unit tests for behavior branches.
+   - Resolution: both, as recommended — 03-03 Task 1's in-memory smoke asserts the complete registered-tool set (enumerated from source; research count 13) and 03-03 Task 2's AsyncMock units pin the per-tool behavior branches.
 
 ## Environment Availability
 
