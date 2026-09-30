@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Test Authoring to >90% Coverage
 status: executing
-stopped_at: Phase 02 complete, ready to plan Phase 3
-last_updated: "2026-09-30T08:22:42.590Z"
+stopped_at: "Completed 03-01-PLAN.md (inference wave: area 176/250)"
+last_updated: "2026-09-30T09:47:05.162Z"
 last_activity: 2026-09-30
-last_activity_desc: Phase 02 complete, transitioned to Phase 3
-state_head: cbbebf87d60c4b3e457ee8c79f3407d2bc471ddb
+last_activity_desc: Phase 3 execution started
+state_head: 972ec98282b0a9e17436566591a1bd21fe10fdfa
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 5
+  completed_plans: 6
   percent: 50
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 ## Current Position
 
-Phase: 3 (Test Authoring to >90% Coverage) — READY TO EXECUTE
-Plan: Not started
+Phase: 3 (Test Authoring to >90% Coverage) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-09-30 — Phase 02 complete, transitioned to Phase 3
+Last activity: 2026-09-30 — Phase 3 execution started
 
 Progress: [█████░░░░░] 50%
 
@@ -62,6 +62,7 @@ Progress: [█████░░░░░] 50%
 | Phase 02 P01 | 6 min | 2 tasks | 4 files |
 | Phase 02 P02 | 11 min | 2 tasks | 2 files |
 | Phase 02 P03 | 34 min | 2 tasks | 8 files |
+| Phase 03 P01 | 80 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,9 @@ Recent decisions affecting current work:
 - [Phase 02]: [02-03] FIX-03 typed skips realized with httpx.TransportError (not the decision's requests/urllib3 classes): live probing proved the MCP clients fail through httpx inside ExceptionGroups — the named classes belong to the dead download-model sites; broad except survives only as the unwrapping entry point (all-leaves rule)
 - [Phase 02]: [02-03] Skip enforcement is out-of-process: ci.yml emits pytest-junit.xml, scripts/audit_skips.py matches every junit skip against tests/expected_skips.yaml (11 categorized entries frozen from a verbatim local run), exit 1 on any unmatched skip; audit fails closed on absent/unparseable junit and malformed (empty-matcher) allowlist entries
 - [Phase 02]: [02-03] Dead string-matching skip scaffolding in tests/models/test_model.py deleted (adopted option a): download_model only raises ValueError('Model ... download failed.') which never matched the substring condition, so the skip branch was unreachable; skipif reasons enter the allowlist as reason_like defensive entries, never widened matchers
+- [Phase 03]: [03-01] Inference tests use real collaborators (SimpleDNATokenizer + deterministic TinyDNAModel through the full engine path) instead of Mocks wherever autograd/encode semantics are the behavior
+- [Phase 03]: [03-01] Five latent crashes in plot.py/benchmark.py fixed under Rule 1 (multilabel curve scalars, dict annotations, entropy shape, pydantic code-based Benchmark init, StratifiedKFold y) — each blocked coverage of a real user path
+- [Phase 03]: [03-01] Wave-1 landed: inference-area missing 176 of gate 250 (was 1,575 fast-leg); suite 64.75% (4,791 covered); refreshed post-Phase-2 baseline recorded; census 919 passed / 7 allowlisted skips / audit exit 0
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T01:09:12.322Z
-Stopped at: Phase 02 complete, ready to plan Phase 3
+Last session: 2026-09-30T09:47:05.141Z
+Stopped at: Completed 03-01-PLAN.md (inference wave: area 176/250)
 Resume file: None
