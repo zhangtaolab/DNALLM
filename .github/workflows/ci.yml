@@ -291,11 +291,16 @@ jobs:
     name: coverage-nightly (py3.12, full suite incl. slow)
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    # Per-test timeout ceilings across the census sum to 720min (7 phase marks
-    # = 600min + download/real-inference/MCP marks = 120min). Keep the job kill
-    # at or above that sum: a hung test then fails via its own mark (junit +
-    # skip audit still run) instead of a job kill (no junit, model-cache forfeit).
-    timeout-minutes: 720
+    # Per-test timeout ceilings across the census sum to 840min (7 phase marks
+    # = 600min + download/real-inference/MCP marks = 900+900+5x1800+3600s =
+    # 240min; the 1800s class mark on TestRealModelInference applies to all 5
+    # of its items). Keep the job kill at 900, above that sum, so a hung test
+    # fails via its own mark (junit + skip audit still run) instead of a job
+    # kill (no junit, model-cache forfeit). NOTE: GitHub-hosted runners
+    # hard-cap a single job at 360min, so the platform cap binds before both
+    # numbers; the per-test marks are the primary protection and these
+    # job-level figures are backstops.
+    timeout-minutes: 900
     continue-on-error: false
     steps:
       - name: Checkout code

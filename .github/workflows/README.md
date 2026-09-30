@@ -107,7 +107,7 @@ The workflows are triggered on:
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
-**Timeout**: 720 minutes (per-test `@pytest.mark.timeout` ceilings across the slow suite sum to 720min; the census itself is projected at 4-7.5h on 4-core CPU runners — the headroom exists so a hung test fails via its own timeout mark, with junit and the skip audit still produced)
+**Timeout**: 900 minutes (per-test `@pytest.mark.timeout` ceilings across the slow suite sum to 840min — 600min from the 7 phase marks plus 240min from the download/real-inference/MCP marks, where the 1800s class mark on `TestRealModelInference` applies to all 5 of its items; the kill sits above that sum so a hung test fails via its own mark, with junit and the skip audit still produced. Note that GitHub-hosted runners hard-cap a single job at 360min, so the platform cap binds before this figure — the per-test marks are the primary protection, the job-level number is a backstop, and the census itself is projected at 4-7.5h on 4-core CPU runners, i.e. a slow night can still hit the platform cap)
 
 **Model Caches**: Both hub directories (`~/.cache/huggingface/hub`, `~/.cache/modelscope/hub`) are cached whole, keyed on `hashFiles('models.lock')` — editing a `models.lock` entry rotates the key; the cache saves only on job success.
 
