@@ -91,43 +91,27 @@ class TestDownloadModel:
 
     @pytest.mark.slow
     def test_download_real_huggingface_connection(self):
-        """Test real HuggingFace connection (may be skipped
-        if network unavailable).
-        """
-        try:
-            from huggingface_hub import snapshot_download
+        """Test real HuggingFace connection (requires network)."""
+        from huggingface_hub import snapshot_download
 
-            # Try to download a small test model
-            result = download_model("microsoft/DialoGPT-small", snapshot_download, max_try=1)
-            assert result is not None
-            assert os.path.exists(result)
-        except Exception as e:
-            if "connection" in str(e).lower() or "network" in str(e).lower():
-                pytest.skip(f"Skipping due to network connection issue: {e}")
-            else:
-                raise
+        # Try to download a small test model
+        result = download_model("microsoft/DialoGPT-small", snapshot_download, max_try=1)
+        assert result is not None
+        assert os.path.exists(result)
 
     @pytest.mark.slow
     def test_download_real_modelscope_connection(self):
-        """Test real ModelScope connection (may be skipped if
-        network unavailable).
-        """
-        try:
-            from modelscope.hub.snapshot_download import snapshot_download
+        """Test real ModelScope connection (requires network)."""
+        from modelscope.hub.snapshot_download import snapshot_download
 
-            # Try to download a small test model
-            result = download_model(
-                "ZhejiangLab-LifeScience/DNA_bert_4",
-                snapshot_download,
-                max_try=1,
-            )
-            assert result is not None
-            assert os.path.exists(result)
-        except Exception as e:
-            if "connection" in str(e).lower() or "network" in str(e).lower():
-                pytest.skip(f"Skipping due to network connection issue: {e}")
-            else:
-                raise
+        # Try to download a small test model
+        result = download_model(
+            "ZhejiangLab-LifeScience/DNA_bert_4",
+            snapshot_download,
+            max_try=1,
+        )
+        assert result is not None
+        assert os.path.exists(result)
 
 
 class TestIsFp8Capable:
