@@ -759,13 +759,14 @@ class TestEvaluateSingleModel:
 class TestRunWithoutConfig:
     """k-fold cross-validation without a YAML config."""
 
-    def _benchmark(self, n_rows=8):
+    def _benchmark(self, n_rows=8, with_labels=True):
         from datasets import Dataset as HFDataset
 
-        rows = {
+        rows: dict = {
             "sequence": ["ATCG" if i % 2 == 0 else "GGCC" for i in range(n_rows)],
-            "labels": [i % 2 for i in range(n_rows)],
         }
+        if with_labels:
+            rows["labels"] = [i % 2 for i in range(n_rows)]
         ds = HFDataset.from_dict(rows)
 
         class DSHolder:
@@ -816,6 +817,52 @@ class TestRunWithoutConfig:
     def test_stratified_folds_preserve_count(self):
         """Stratified k-fold produces the same number of fold results."""
         benchmark = self._benchmark(n_rows=8)
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(
+                DNAInference,
+                "batch_infer",
+                side_effect=lambda dl, **kw: (torch.randn(len(dl.dataset), 2), None, None),
+            ),
+            patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 0.5}),
+        ):
+            results = benchmark.run_without_config(k_folds=2, stratified=True)
+
+        assert len(results["m1"]["ds1"]["fold_results"]) == 2
+
+    def test_stratified_folds_balance_classes(self):
+        """With a labels column, each stratified fold keeps the class balance."""
+        benchmark = self._benchmark(n_rows=8)
+        fold_labels = []
+
+        def fake_evaluate(**kwargs):
+            fold_labels.append(list(kwargs["val_data"]["labels"]))
+            return {"accuracy": 0.5}
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(Benchmark, "evaluate_single_model", side_effect=fake_evaluate),
+        ):
+            benchmark.run_without_config(k_folds=2, stratified=True)
+
+        assert len(fold_labels) == 2
+        for labels in fold_labels:
+            assert sorted(labels) == [0, 0, 1, 1]
+
+    def test_stratified_without_labels_falls_back_to_plain_split(self):
+        """stratified=True with no labels column degrades to a plain split.
+
+        Regression: the fallback used to pass y=None to
+        StratifiedKFold.split, which still raised TypeError.
+        """
+        benchmark = self._benchmark(n_rows=8, with_labels=False)
 
         with (
             patch(
