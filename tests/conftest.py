@@ -38,6 +38,7 @@ class SimpleDNATokenizer:
         self.mask_token_id = 4
         self.vocab_size = len(self.vocab)
         self.padding_side = "right"
+        self.all_special_ids = [0, 1, 2, 3, 4]
         self.special_tokens_map = {
             "pad_token": "[PAD]",
             "unk_token": "[UNK]",
@@ -149,8 +150,13 @@ class TinyDNAModel(torch.nn.Module):
             attn_implementation="eager",
         )
 
-    def forward(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
-        emb = self.embedding(input_ids)
+    def forward(
+        self, input_ids=None, attention_mask=None, labels=None, inputs_embeds=None, **kwargs
+    ):
+        if inputs_embeds is not None:
+            emb = inputs_embeds
+        else:
+            emb = self.embedding(input_ids)
         if self.pooled:
             logits = self.head(emb.mean(dim=1))
         else:
