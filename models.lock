@@ -1,0 +1,12 @@
+# models.lock — remote artifacts fetched by the slow test suite.
+# Keys the gated CI job's model cache (actions/cache hashFiles).
+# Edit an entry to rotate the cache key.
+hf  microsoft/DialoGPT-small                         # tests/models/test_model.py::test_download_real_huggingface_connection
+hf  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_inference_real_model.py (from_pretrained, HF route)
+ms  zhangtaolab/plant-dnabert-BPE                    # tests/finetune/test_trainer_real_model.py (12 call sites, source=modelscope)
+ms  zhangtaolab/plant-dnabert-BPE-promoter           # dnallm/mcp/tests/configs/promoter_inference_config.yaml
+ms  zhangtaolab/plant-dnabert-BPE-conservation       # dnallm/mcp/tests/configs/conservation_inference_config.yaml
+ms  zhangtaolab/plant-dnamamba-BPE-open_chromatin    # dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml
+ms  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_inference.py::test_real_model_integration (modelscope route)
+ms  ZhejiangLab-LifeScience/DNA_bert_4               # tests/models/test_model.py::test_download_real_modelscope_connection
+dataset:  zhangtaolab/plant-multi-species-core-promoters  # DNADataset.from_modelscope (trainer tests)
