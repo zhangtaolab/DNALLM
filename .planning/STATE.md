@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: Suite Hygiene & Known-Bug Fixes
 status: executing
-stopped_at: Phase 01 complete, ready to plan Phase 2
-last_updated: "2026-09-30T00:09:27.409Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-09-30T00:20:14.822Z"
 last_activity: 2026-09-30
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
-state_head: 02c0e7225f98d5f78a0e80b0b826da6b52fea72d
+last_activity_desc: Phase 2 execution started
+state_head: e7af353951765492ef1cf35893fb3f56397258a5
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 25
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 ## Current Position
 
-Phase: 2 (Suite Hygiene & Known-Bug Fixes) — READY TO EXECUTE
-Plan: Not started
+Phase: 2 (Suite Hygiene & Known-Bug Fixes) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-30 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-09-30 — Phase 2 execution started
 
 Progress: [███░░░░░░░] 25%
 
@@ -58,6 +58,7 @@ Progress: [███░░░░░░░] 25%
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 min | 3 tasks | 6 files |
 | Phase 01 P02 | 52 min | 2 tasks | 6 files |
+| Phase 02 P01 | 6 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Recent decisions affecting current work:
 - [Phase 01]: AUDIT-04 subprocess coverage: start minimal (no patch) — canary showed child-side execution unmeasured ('No data to report' child-only; parent-import control 7/75 lines) and zero collected tests spawn subprocesses; escalate only when a future test's assertions depend on child-process-side code paths
 - [Phase 01]: Measured baseline 45.92% (3390/7383 stmts, 57 files); gap to 90% = 44.08 points (~3255 stmts) concentrated inference 1505 / models 1210 / mcp 449 — Phase-3 sizing input landed; single-phase Phase 3 viable but near the split threshold
 - [Phase 01]: Cold-leg method boundary recorded: HF_HOME isolates the HF cache only — ModelScope-sourced trainer tests ran warm in both legs; only two slow tests are genuinely HF-cold (+85.5s combined)
+- [Phase 02]: [02-01] FIX-01: presence guard + labels=expected_classes (not labels= alone) — sklearn 1.9.1 silently nans on absent-class batches; guard makes behavior version-independent and no try/except-to-nan anywhere in the multiclass path
+- [Phase 02]: [02-01] FIX-02: guarded first-resolved-wins chain (None-init + disjunctive None-checks), NOT a literal function-level return — post-processing (padding, .to(device), bnb fix) must still run for CrossDNA results; activates previously dead handler path (intended, per REQUIREMENTS)
+- [Phase 02]: [02-01] 12-handler audit verdict: exactly one overwrite bug (CrossDNA, fixed); _handle_gpn_models/_handle_omnidna_models are str|None import-availability gates and must not be converted to early returns; commented-out LucaOne site left as dead code
 
 ### Pending Todos
 
@@ -95,6 +99,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30
-Stopped at: Phase 01 complete, ready to discuss Phase 2
+Last session: 2026-09-30T00:20:14.805Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
