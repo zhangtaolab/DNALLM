@@ -495,7 +495,15 @@ task:
             assert len(result) == 2
 
         except Exception as e:
-            self.skipTest(f"Integration test failed: {e}")
+            print(f"❌ Integration test failed: {e}")
+            import traceback
+
+            traceback.print_exc()
+            # Fail closed: this test only runs in the networked nightly census,
+            # so any failure (download, load, or the asserts above) is a real
+            # regression, not an environment skip — the skip audit has no
+            # allowlist entry for an arbitrary failure message.
+            self.fail(f"Real-model integration workflow failed: {e}")
 
 
 if __name__ == "__main__":
