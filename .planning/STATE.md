@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Test Authoring to >90% Coverage
-status: executing
-stopped_at: "Completed 03-04-PLAN.md (datahandling/finetune wave: area 10/100, suite 91.24%)"
-last_updated: "2026-09-30T12:24:33.518Z"
+status: verifying
+stopped_at: "Completed 03-05-PLAN.md (cli/compat wave + FINAL GATE: suite 96.28%)"
+last_updated: "2026-09-30T13:20:14.777Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 3 execution started
-state_head: 711a3383bc7674f34571dc4ee0d7d671c0cd8d78
+state_head: cb00c50fc58e13fc07009b3b05afb6b8dae463be
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
   percent: 50
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 Phase: 3 (Test Authoring to >90% Coverage) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30 — Phase 3 execution started
 
 Progress: [█████░░░░░] 50%
@@ -67,6 +67,7 @@ Progress: [█████░░░░░] 50%
 | Phase 03 P02 | 46 min | 3 tasks | 8 files |
 | Phase 03 P03 | 49 min | 3 tasks | 11 files |
 | Phase 03 P04 | 39 min | 3 tasks | 4 files |
+| Phase 03 P05 | 51 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Recent decisions affecting current work:
 - [Phase 03]: [03-04] Trainer tests patch the HF boundary at dnallm.finetune.trainer.Trainer/TrainingArguments and inject concrete numerics onto the mocked args for arithmetic paths; the transformers_version module seam executes pre-v5 save branches on installed 5.x
 - [Phase 03]: [03-04] Ruff S105 fires on *_token string literals in test files (only tests/conftest.py exempt): resolved with named PAD_VALUE/... constants, no lint-config edit
 - [Phase 03]: [03-04] Wave-4 landed: datahandling/finetune area missing 10 of gate 100 (was 406); suite 91.24% (6751/7399) - ABOVE the >90.5% milestone target one wave early; census 1531/0/7 allowlisted, audit 0
+- [Phase 03]: [03-05] transformers_compat verified as a behavior contract on the live patched class: assert-only interaction; the transformers-version guard arms covered by monkeypatching transformers.modeling_utils.PreTrainedModel with a bare class (never unpatching the live class)
+- [Phase 03]: [03-05] CLI lazy-import patch rule: patch the ORIGIN package attribute the function-local from-import resolves at invocation time (dnallm.finetune.DNATrainer, dnallm.mcp.server.main, ...) and assert call args; loopback-only hosts; argv-assembling commands assert sys.argv restoration
+- [Phase 03]: [03-05] metrics_for_dnabert2 covered network-free with evaluate.load/combine patched (bare metric names would resolve against the HF hub)
+- [Phase 03]: [03-05] FINAL GATE landed: 96.28% (7124/7399), census 1653 passed / 7 allowlisted skips / audit 0 / pragma exactly 3 / pyproject diff-free vs phase-start cbbebf8 — Phase 3 complete, 5.78 points over the strict >90.5% target
 
 ### Pending Todos
 
@@ -129,6 +134,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-09-30T12:24:33.496Z
-Stopped at: Completed 03-04-PLAN.md (datahandling/finetune wave: area 10/100, suite 91.24%)
+Last session: 2026-09-30T13:20:14.756Z
+Stopped at: Completed 03-05-PLAN.md (cli/compat wave + FINAL GATE: suite 96.28%)
 Resume file: None

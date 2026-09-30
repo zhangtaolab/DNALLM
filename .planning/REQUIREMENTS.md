@@ -34,8 +34,8 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **TEST-02**: Tests for `mcp/server.py` (transports, streaming generators, timeout-wrapper error paths)
 - [x] **TEST-03**: Tests for `inference/*` (engine paths, logits→predictions, interpret/mutagenesis/benchmark)
 - [x] **TEST-04**: Tests for `datahandling`/`finetune` (dataset loading/tokenization/augmentation, trainer wiring)
-- [ ] **TEST-05**: Tests for `cli/` + utils compat shims (CliRunner; `transformers_compat` as behavior contract, not line completion)
-- [ ] **TEST-06**: Coverage >90% on the agreed denominator, with every new test holding at least one observable-behavior assertion; pragma budget held at baseline (3)
+- [x] **TEST-05**: Tests for `cli/` + utils compat shims (CliRunner; `transformers_compat` as behavior contract, not line completion)
+- [x] **TEST-06**: Coverage >90% on the agreed denominator, with every new test holding at least one observable-behavior assertion; pragma budget held at baseline (3)
 
 ### CI Gate
 
@@ -90,8 +90,8 @@ Deferred decay-prevention capabilities (research P2 — after the gate is green)
 | TEST-02 | Phase 3 | Complete |
 | TEST-03 | Phase 3 | Complete |
 | TEST-04 | Phase 3 | Complete |
-| TEST-05 | Phase 3 | Pending |
-| TEST-06 | Phase 3 | Pending |
+| TEST-05 | Phase 3 | Complete |
+| TEST-06 | Phase 3 | Complete |
 | GATE-01 | Phase 4 | Pending |
 | GATE-02 | Phase 4 | Pending |
 | GATE-03 | Phase 4 | Pending |
