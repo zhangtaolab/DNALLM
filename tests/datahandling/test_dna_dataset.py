@@ -296,6 +296,211 @@ class TestDNADatasetLoadLocalData:
         assert "dev" in dna_ds.dataset
 
 
+class TestLocalFormatRoundTrips:
+    """Behavior-verifying round-trips: one real load path per supported format.
+
+    Every test writes a real file under pytest tmp_path, loads it through
+    ``load_local_data`` and asserts the dataset CONTENTS (sequences, labels,
+    column mapping) — not just the row count.
+    """
+
+    def test_csv_round_trip_contents(self, tmp_path):
+        """CSV rows load with exact sequences, labels and mapped columns."""
+        path = tmp_path / "data.csv"
+        path.write_text("sequence,label\nATCG,0\nGCTA,1\nTAGC,0\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), seq_col="sequence", label_col="label")
+
+        assert len(dna_ds) == 3
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA", "TAGC"]
+        assert dna_ds.dataset["labels"] == [0, 1, 0]
+        assert "sequence" in dna_ds.dataset.column_names
+        assert "labels" in dna_ds.dataset.column_names
+
+    def test_tsv_round_trip_with_custom_columns(self, tmp_path):
+        """TSV loads with custom seq/label column names renamed to standard ones."""
+        path = tmp_path / "data.tsv"
+        path.write_text("seq\tcat\nATCG\t0\nGCTA\t1\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), seq_col="seq", label_col="cat")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert dna_ds.dataset["labels"] == [0, 1]
+        assert set(dna_ds.dataset.column_names) == {"sequence", "labels"}
+
+    def test_tsv_default_tab_separator(self, tmp_path):
+        """TSV files auto-select the tab separator when none is passed."""
+        path = tmp_path / "data.tsv"
+        path.write_text("sequence\tlabels\nATCG\t0\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), seq_col="sequence", label_col="labels")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG"]
+        assert dna_ds.dataset["labels"] == [0]
+
+    def test_json_round_trip_contents(self, tmp_path):
+        """JSON records load with exact sequence and label contents."""
+        path = tmp_path / "data.json"
+        records = [
+            {"sequence": "ATCG", "label": 0},
+            {"sequence": "GCTA", "label": 1},
+        ]
+        path.write_text(json.dumps(records))
+
+        dna_ds = DNADataset.load_local_data(str(path), seq_col="sequence", label_col="label")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert dna_ds.dataset["labels"] == [0, 1]
+
+    def test_parquet_round_trip_contents(self, tmp_path):
+        """Parquet files written via pandas round-trip with exact contents."""
+        path = tmp_path / "data.parquet"
+        pd.DataFrame({"seq": ["ATCG", "GCTA", "TAGC"], "target": [1, 0, 1]}).to_parquet(path)
+
+        dna_ds = DNADataset.load_local_data(str(path), seq_col="seq", label_col="target")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA", "TAGC"]
+        assert dna_ds.dataset["labels"] == [1, 0, 1]
+
+    def test_fasta_multi_record_contents(self, tmp_path):
+        """FASTA headers split on fasta_sep yield per-record sequence/label pairs."""
+        path = tmp_path / "data.fa"
+        path.write_text(">seq1|0\nATCG\n>seq2|1\nGCTA\n>seq3|0\nTAGC\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), fasta_sep="|")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA", "TAGC"]
+        assert dna_ds.dataset["labels"] == [0.0, 1.0, 0.0]
+
+    def test_fasta_multiline_sequence_joined(self, tmp_path):
+        """FASTA sequences wrapped across lines concatenate into one record."""
+        path = tmp_path / "data.fa"
+        path.write_text(">seq1|7\nATCG\nGCTA\nTAGC\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), fasta_sep="|")
+
+        assert dna_ds.dataset["sequence"] == ["ATCGGCTATAGC"]
+        assert dna_ds.dataset["labels"] == [7.0]
+
+    def test_fasta_header_without_sep_is_whole_label(self, tmp_path):
+        """A FASTA header without fasta_sep becomes the label verbatim."""
+        path = tmp_path / "data.fa"
+        path.write_text(">promoter_region\nATCG\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), fasta_sep="|")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG"]
+        assert dna_ds.dataset["labels"] == ["promoter_region"]
+
+    def test_txt_round_trip_contents(self, tmp_path):
+        """Whitespace-separated TXT lines load with exact contents."""
+        path = tmp_path / "data.txt"
+        path.write_text("ATCG 0\nGCTA 1\nTAGC 0\n")
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA", "TAGC"]
+        assert dna_ds.dataset["labels"] == [0.0, 1.0, 0.0]
+
+    def test_pkl_round_trip_contents(self, tmp_path):
+        """Pickled dict files load with exact contents and renamed label column."""
+        path = tmp_path / "data.pkl"
+        path.write_bytes(pickle.dumps({"sequence": ["ATCG", "GCTA"], "label": [1, 0]}))
+
+        dna_ds = DNADataset.load_local_data(str(path), label_col="label")
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert dna_ds.dataset["labels"] == [1, 0]
+
+    def test_csv_list_of_files_concatenates(self, tmp_path):
+        """A list of CSV paths loads as one concatenated dataset."""
+        first = tmp_path / "a.csv"
+        first.write_text("sequence,labels\nATCG,0\nGCTA,1\n")
+        second = tmp_path / "b.csv"
+        second.write_text("sequence,labels\nTAGC,0\nAAAA,1\n")
+
+        dna_ds = DNADataset.load_local_data([str(first), str(second)])
+
+        assert len(dna_ds) == 4
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA", "TAGC", "AAAA"]
+        assert dna_ds.dataset["labels"] == [0, 1, 0, 1]
+
+    def test_txt_with_header_routes_through_csv_loader(self, tmp_path):
+        """A txt file whose first line names seq/label columns is parsed as CSV."""
+        path = tmp_path / "data.txt"
+        path.write_text("sequence,labels\nATCG,0\nGCTA,1\n")
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert dna_ds.dataset["labels"] == [0, 1]
+
+    def test_headerless_csv_falls_back_to_txt_parsing(self, tmp_path):
+        """A CSV without column names in its first line is parsed as txt records."""
+        path = tmp_path / "data.csv"
+        path.write_text("ATCG,0\nGCTA,1\n")
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert dna_ds.dataset["labels"] == [0.0, 1.0]
+
+    def test_csv_quoted_field_preserved(self, tmp_path):
+        """Quoted CSV fields survive parsing as a single value."""
+        path = tmp_path / "data.csv"
+        path.write_text('sequence,labels\nATCG,"0,5"\n')
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["sequence"] == ["ATCG"]
+        assert dna_ds.dataset["labels"] == ["0,5"]
+
+    def test_fasta_list_of_files_rejected(self, tmp_path):
+        """FASTA loading rejects a list of file paths."""
+        with pytest.raises(ValueError, match="FASTA files must be single files"):
+            DNADataset.load_local_data([str(tmp_path / "a.fa"), str(tmp_path / "b.fa")])
+
+    def test_txt_list_of_files_rejected(self, tmp_path):
+        """TXT loading rejects a list of file paths."""
+        with pytest.raises(ValueError, match="TXT files must be single files"):
+            DNADataset.load_local_data([str(tmp_path / "a.txt"), str(tmp_path / "b.txt")])
+
+    def test_pkl_list_of_files_rejected(self, tmp_path):
+        """Pickle loading rejects a list of file paths."""
+        with pytest.raises(ValueError, match="must be single files"):
+            DNADataset.load_local_data([str(tmp_path / "a.pkl"), str(tmp_path / "b.pkl")])
+
+    def test_non_numeric_string_labels_stay_strings(self, tmp_path):
+        """Labels that cannot be parsed as floats remain strings."""
+        path = tmp_path / "data.csv"
+        path.write_text("sequence,labels\nATCG,promoter\nGCTA,enhancer\n")
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["labels"] == ["promoter", "enhancer"]
+        assert dna_ds.data_type == "classification"
+
+    def test_multilabel_split_with_bad_part_keeps_original_string(self, tmp_path):
+        """Multi-label strings whose parts are non-numeric keep their raw value."""
+        path = tmp_path / "data.csv"
+        path.write_text("sequence,labels\nATCG,alpha;beta\n")
+
+        dna_ds = DNADataset.load_local_data(str(path), multi_label_sep=";")
+
+        assert dna_ds.dataset["labels"] == ["alpha;beta"]
+
+    def test_missing_label_column_leaves_dataset_without_labels(self, tmp_path):
+        """A file without the label column loads sequences and no labels column."""
+        path = tmp_path / "data.csv"
+        path.write_text("sequence\nATCG\nGCTA\n")
+
+        dna_ds = DNADataset.load_local_data(str(path))
+
+        assert dna_ds.dataset["sequence"] == ["ATCG", "GCTA"]
+        assert "labels" not in dna_ds.dataset.column_names
+        assert dna_ds.data_type == "unknown"
+
+
 class TestDNADatasetOnlineLoading:
     """Test loading datasets from online sources."""
 
