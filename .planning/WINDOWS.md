@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 0
 fixed_count: 0
-total_count: 5
-last_updated: 2026-09-30T11:33:06.961Z
+total_count: 6
+last_updated: 2026-09-30T12:22:58.724Z
 ---
 
 # Broken Windows Ledger
@@ -20,6 +20,7 @@ last_updated: 2026-09-30T11:33:06.961Z
 | 3 | 3 | unmet-truth | dnallm/inference/mutagenesis.py | 429 | evaluate strategy max calls raw_score.index() on an ndarray (AttributeError) — latent bug documented as accepted residual | open |  | 2026-09-30T09:46:44.856Z |  |
 | 4 | 03 | stub | dnallm/models/model.py | 264 | cosine_similarity loss_function constructs CosineEmbeddingLoss but calls it with (logits, labels) — missing target arg raises TypeError for every user selecting it (covered by test_forward_cosine_similarity_loss_crashes; fix deferred, semantics ambiguous) | open |  | 2026-09-30T10:39:17.694Z |  |
 | 5 | 03 | deviation | .planning/phases/03-test-authoring-to-90-coverage/03-03-PLAN.md |  | Wave-3 verify gate 'assert not logs.exists()' is unsatisfiable: dnallm's import-time file sink (utils/logger.py:57-60) creates logs/dnallm.log at the pytest launch cwd on every suite run — waves 4-5 plans must gate on 'no logs/mcp_server.log at repo root' instead (sink also recorded in deferred-items.md) | open |  | 2026-09-30T11:33:06.961Z |  |
+| 6 | 3 | deviation | tests/datahandling/test_dna_dataset.py |  | pytest 9.1.1 --collect-only emits no :: separators - the plan's grep -c :: tripwires were enforced as the equivalent 'N tests collected' counts (66/151 >= 35/55; trainer 38 >= 10), as in waves 1-3 | open |  | 2026-09-30T12:22:58.724Z |  |
 
 ````json
 [
@@ -85,6 +86,19 @@ last_updated: 2026-09-30T11:33:06.961Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-09-30T11:33:06.961Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 6,
+    "kind": "deviation",
+    "phase": "3",
+    "file": "tests/datahandling/test_dna_dataset.py",
+    "line": null,
+    "description": "pytest 9.1.1 --collect-only emits no :: separators - the plan's grep -c :: tripwires were enforced as the equivalent 'N tests collected' counts (66/151 >= 35/55; trainer 38 >= 10), as in waves 1-3",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-09-30T12:22:58.724Z",
     "resolved_at": null,
     "milestone": null
   }
