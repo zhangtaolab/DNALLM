@@ -253,25 +253,18 @@ class TestPrepareData:
             prepare_data(metrics, "unsupported_task")
 
     def test_prepare_data_empty_metrics(self):
-        """Test prepare_data with empty metrics.
+        """prepare_data with empty metrics returns empty, well-formed data.
 
-        Tests edge case handling with graceful error management
-        and proper exception handling validation.
+        No model entries means no bar rows and no curve points; the
+        function returns normally rather than raising.
         """
-        # Test with completely empty metrics dictionary
-        metrics: dict[str, Any] = {}
+        bars, curves = prepare_data({}, "binary")
 
-        # The function should handle empty metrics gracefully
-        # We expect it to fail, but not necessarily with a
-        # specific exception type
-        try:
-            prepare_data(metrics, "binary")
-        except Exception as e:
-            # Expected to fail, but not necessarily with KeyError
-            # This test validates that the function doesn't crash
-            # with empty input
-            print(f"Expected exception in test: {e}")
-            pass
+        assert bars == {"models": []}
+        assert curves["AUROC"] == {}
+        assert curves["AUPRC"] == {}
+        assert curves["ROC"] == {}
+        assert curves["PR"] == {}
 
 
 @pytest.mark.pdf
