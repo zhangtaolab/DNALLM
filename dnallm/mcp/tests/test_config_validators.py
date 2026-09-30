@@ -211,9 +211,7 @@ class TestValidatorEdgeBranches:
             label_names=["a", "b"],
             description="mismatched",
         )
-        inference = InferenceConfig(
-            batch_size=16, device="auto", output_dir="validator-output-dir"
-        )
+        inference = InferenceConfig(batch_size=16, device="auto", output_dir="validator-output-dir")
         model = ModelConfig(
             name="m",
             path="p",

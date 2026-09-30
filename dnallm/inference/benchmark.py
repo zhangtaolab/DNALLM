@@ -512,9 +512,7 @@ class Benchmark:
                             # Degrade to a plain KFold split instead of raising
                             # inside StratifiedKFold.split — StratifiedKFold
                             # requires the labels argument positionally.
-                            plain_kfold = KFold(
-                                n_splits=k_folds, shuffle=True, random_state=42
-                            )
+                            plain_kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
                             kfold_split = plain_kfold.split(indices)
                     else:
                         kfold_split = kfold.split(indices)

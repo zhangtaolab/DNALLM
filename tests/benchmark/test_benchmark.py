@@ -707,9 +707,7 @@ class TestEvaluateSingleModel:
         tokenizer.model_max_length = 10
 
         with (
-            patch.object(
-                DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)
-            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
             patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 0.9}),
             patch("dnallm.inference.benchmark.DNADataset", wraps=DNADataset) as ds_cls,
         ):
