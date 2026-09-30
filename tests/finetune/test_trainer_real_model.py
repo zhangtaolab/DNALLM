@@ -719,8 +719,10 @@ def test_with_config_file():
         # Load configuration
         config_path = os.path.join(test_dir, "test_finetune_config.yaml")
         if not os.path.exists(config_path):
+            # The config fixture is committed with the repo; a missing file is
+            # a real failure, not a skip.
             print(f"❌ Configuration file not found: {config_path}")
-            return False
+            pytest.fail(f"Configuration file not found: {config_path}")
 
         configs = load_config(config_path)
         print("✅ Configuration loaded from test_finetune_config.yaml")
@@ -763,14 +765,16 @@ def test_with_config_file():
         trainer.infer()
 
         print("✅ All operations completed successfully!")
-        return True
 
     except Exception as e:
         print(f"❌ Error during config file testing: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        # pytest.fail raises Failed (a BaseException subclass), so the except
+        # clause above never swallows it and the test reports a real failure
+        # instead of returning a boolean pytest would ignore.
+        pytest.fail(f"Config-file training workflow failed: {e}")
 
 
 if __name__ == "__main__":
@@ -788,7 +792,13 @@ if __name__ == "__main__":
 
             # Test 2: With config file (manual test)
             print("\n2️⃣ Testing with config file...")
-            success = test_with_config_file()
+            # The test now signals failure via pytest.fail instead of a
+            # boolean return; keep the boolean contract for this manual path.
+            success = True
+            try:
+                test_with_config_file()
+            except pytest.fail.Exception:
+                success = False
 
             print("\n" + "=" * 50)
             if success:
