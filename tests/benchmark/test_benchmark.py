@@ -833,6 +833,35 @@ class TestRunWithoutConfig:
 
         assert len(results["m1"]["ds1"]["fold_results"]) == 2
 
+    def test_default_k_folds_single_full_fold(self):
+        """Default args (k_folds=1) run exactly one fold covering every row.
+
+        Regression: the single-fold branch used to build plain-list index
+        pairs whose consumer crashed with AttributeError on ``.tolist()``.
+        """
+        benchmark = self._benchmark(n_rows=8)
+        fold_rows = []
+
+        def fake_evaluate(**kwargs):
+            fold_rows.append(list(kwargs["val_data"]["sequence"]))
+            return {"accuracy": 0.9}
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(Benchmark, "evaluate_single_model", side_effect=fake_evaluate),
+        ):
+            results = benchmark.run_without_config()
+
+        expected = ["ATCG" if i % 2 == 0 else "GGCC" for i in range(8)]
+        assert fold_rows == [expected]
+        entry = results["m1"]["ds1"]
+        assert len(entry["fold_results"]) == 1
+        assert entry["mean_accuracy"] == pytest.approx(0.9)
+        assert entry["std_accuracy"] == pytest.approx(0.0)
+
     def test_unprepared_raises(self, tmp_path, benchmark_csv):
         """Calling cross-validation without prepared models raises."""
         from dnallm.configuration.configs import load_config

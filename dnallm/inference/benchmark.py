@@ -462,7 +462,11 @@ class Benchmark:
         """
         from sklearn.model_selection import KFold, StratifiedKFold
 
-        if stratified:
+        if k_folds <= 1:
+            # Single fold over everything; sklearn KFold rejects n_splits < 2,
+            # so no splitter is constructed on this path.
+            kfold = None
+        elif stratified:
             kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
         else:
             kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
@@ -505,7 +509,10 @@ class Benchmark:
                     else:
                         kfold_split = kfold.split(indices)
                 else:
-                    kfold_split = [(indices, indices)]
+                    # Single fold over every row; wrap in numpy arrays so the
+                    # shared .tolist() below works on this branch too.
+                    idx_array = np.asarray(indices)
+                    kfold_split = [(idx_array, idx_array)]
                 for fold, (_, val_idx) in enumerate(kfold_split):
                     print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 
