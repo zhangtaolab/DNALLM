@@ -178,7 +178,7 @@ class TestValidatorEdgeBranches:
                 device="auto",
                 precision="quantum",  # invalid: precision validation fails first
                 use_fp16=True,
-                output_dir=tempfile.mkdtemp(),
+                output_dir="validator-output-dir",
             )
 
     def test_use_bf16_falls_back_when_precision_invalid(self):
@@ -189,7 +189,7 @@ class TestValidatorEdgeBranches:
                 device="auto",
                 precision="quantum",
                 use_bf16=True,
-                output_dir=tempfile.mkdtemp(),
+                output_dir="validator-output-dir",
             )
 
     def test_precision_drives_fp16_flag(self):
@@ -199,7 +199,7 @@ class TestValidatorEdgeBranches:
             device="auto",
             precision="float16",
             use_fp16=False,
-            output_dir=tempfile.mkdtemp(),
+            output_dir="validator-output-dir",
         )
         assert config.use_fp16 is True
 
@@ -211,7 +211,9 @@ class TestValidatorEdgeBranches:
             label_names=["a", "b"],
             description="mismatched",
         )
-        inference = InferenceConfig(batch_size=16, device="auto", output_dir=tempfile.mkdtemp())
+        inference = InferenceConfig(
+            batch_size=16, device="auto", output_dir="validator-output-dir"
+        )
         model = ModelConfig(
             name="m",
             path="p",
