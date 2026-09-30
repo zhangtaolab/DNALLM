@@ -53,6 +53,7 @@ uv.lock
 .coverage.*
 coverage.xml
 .pytest_cache/
+pytest-junit.xml
 htmlcov/
 
 # Training outputs
