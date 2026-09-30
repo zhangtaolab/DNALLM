@@ -6,12 +6,13 @@ scenarios.
 
 Enhanced test structure with better organization, performance improvements,
 and comprehensive coverage of all edge cases and error conditions.
-Optimized to output PDF files to the tests/inference/pdf/ directory.
+PDF artifacts are written under pytest tmp_path so the repo tree stays clean.
 """
 
 # Group imports by functionality for better organization
 # Standard library imports
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -40,9 +41,9 @@ TEST_F1_VALUES = [0.82, 0.75]
 TEST_MSE_VALUES = [0.15, 0.25]
 TEST_R2_VALUES = [0.85, 0.75]
 
-# Define PDF output directory
+# Define PDF output directory; rebound per test to tmp_path by the pdf_output_dir
+# autouse fixture below. Directory creation happens inside create_pdf_file.
 PDF_OUTPUT_DIR = Path(__file__).parent / "pdf"
-PDF_OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Pre-define test data structures to avoid recreation in each test
 BINARY_CLASSIFICATION_METRICS = {
@@ -150,6 +151,12 @@ def assert_pdf_created(file_path: str) -> None:
     assert os.path.getsize(file_path) > 0, f"PDF file should not be empty: {file_path}"
 
 
+@pytest.fixture(autouse=True)
+def pdf_output_dir(tmp_path, monkeypatch):
+    """Write all PDF artifacts under tmp_path so the repo working tree stays clean."""
+    monkeypatch.setattr(sys.modules[__name__], "PDF_OUTPUT_DIR", tmp_path)
+
+
 class TestPrepareData:
     """Test cases for the prepare_data function.
 
@@ -253,6 +260,7 @@ class TestPrepareData:
             pass
 
 
+@pytest.mark.pdf
 class TestPlotBars:
     """Test cases for the plot_bars function.
 
@@ -412,6 +420,7 @@ class TestPlotBars:
             cleanup_pdf_file(pdf_file_path)
 
 
+@pytest.mark.pdf
 class TestPlotCurve:
     """Test cases for the plot_curve function.
 
@@ -587,6 +596,7 @@ class TestPlotCurve:
             cleanup_pdf_file(pdf_file_path)
 
 
+@pytest.mark.pdf
 class TestPlotScatter:
     """Test cases for the plot_scatter function.
 
@@ -754,6 +764,7 @@ class TestPlotScatter:
             cleanup_pdf_file(pdf_file_path)
 
 
+@pytest.mark.pdf
 class TestPlotAttentionMap:
     """Test cases for the plot_attention_map function.
 
@@ -933,6 +944,7 @@ class TestPlotAttentionMap:
             cleanup_pdf_file(pdf_file_path)
 
 
+@pytest.mark.pdf
 class TestPlotEmbeddings:
     """Test cases for the plot_embeddings function.
 
@@ -1162,6 +1174,7 @@ class TestPlotEmbeddings:
                 cleanup_pdf_file(pdf_file_path)
 
 
+@pytest.mark.pdf
 class TestPlotMuts:
     """Test cases for the plot_muts function.
 
@@ -1504,6 +1517,7 @@ class TestEdgeCases:
         assert_chart_valid(chart)
 
 
+@pytest.mark.pdf
 class TestPerformance:
     """Test performance characteristics and optimization validation.
 
@@ -1646,6 +1660,7 @@ class TestPerformance:
         assert_chart_valid(chart)
 
 
+@pytest.mark.pdf
 class TestPDFOutputQuality:
     """Test PDF output quality and file integrity.
 
@@ -1870,6 +1885,7 @@ class TestPDFOutputQuality:
         print(f"  - {mut_pdf}")
 
 
+@pytest.mark.pdf
 class TestIntegration:
     """Integration tests for plotting functions.
 
