@@ -13,7 +13,7 @@ This milestone turns an untrustworthy 464-test suite into an enforced >90% cover
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Harness Integrity & Measured Baseline** - Make every test result and coverage number trustworthy: one pytest config, real exit codes, agreed denominator, measured baseline (completed 2026-09-30)
-- [ ] **Phase 2: Suite Hygiene & Known-Bug Fixes** - Fix the known code defects hiding behind skips and make every remaining skip typed and intentional
+- [x] **Phase 2: Suite Hygiene & Known-Bug Fixes** - Fix the known code defects hiding behind skips and make every remaining skip typed and intentional (completed 2026-09-30)
 - [ ] **Phase 3: Test Authoring to >90% Coverage** - Close the measured gaps biggest-first with tests that assert observable behavior until coverage exceeds 90%
 - [ ] **Phase 4: CI Gate Enforcement** - Turn 90% into a ratcheted CI hard gate that provably fails when coverage drops
 
@@ -51,7 +51,7 @@ Plans:
   3. Every skip in the suite is typed (specific network exceptions) and matches an expected-skip allowlist; a new unexpected skip fails the run instead of passing silently
   4. Running the PDF-marked tests leaves the git working tree clean (artifacts written under `tmp_path`), and `.gitignore` ignores `tests/inference/pdf/` correctly
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -99,6 +99,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
-| 2. Suite Hygiene & Known-Bug Fixes | 3/3 | In Progress|  |
+| 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
 | 3. Test Authoring to >90% Coverage | 0/? | Not started | - |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
