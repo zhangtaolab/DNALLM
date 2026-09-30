@@ -21,16 +21,30 @@ from unittest.mock import Mock, patch
 import numpy as np
 
 # Third-party imports
+import altair as alt
 import pytest
 
 # Local imports - Import only what's needed
 from dnallm.inference.plot import (
+    _compute_mean_embeddings,
+    _get_dimensionality_reducer,
+    _prepare_annotations,
+    _prepare_classification_data,
+    _prepare_embedding_dataframe,
+    plot_annotations,
     plot_attention_map,
+    plot_attributions_line,
+    plot_attributions_multi,
+    plot_attributions_token,
     plot_bars,
     plot_curve,
     plot_embeddings,
+    plot_line,
     plot_muts,
+    plot_polar_bar,
+    plot_radar,
     plot_scatter,
+    plot_token_scatter,
     prepare_data,
 )
 
@@ -1980,3 +1994,666 @@ if __name__ == "__main__":
             "--pdf-output-dir",
             str(PDF_OUTPUT_DIR),  # Custom PDF output directory
         ])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Chart-contract tests for the remaining plot module surface.
+#
+# These assert altair chart specs (mark types, encodings, titles) without
+# writing files; only classes that actually save PDFs carry the pdf marker.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _default_data_transformer():
+    """Keep the default altair transformer active for spec assertions.
+
+    plot_attention_map and the mutation charts enable the vegafusion
+    transformer globally; to_dict() cannot run under it, so reset before
+    and after every chart-contract test in this section.
+    """
+    alt.data_transformers.enable("default", max_rows=None)
+    yield
+    alt.data_transformers.enable("default", max_rows=None)
+
+
+class TestPrepareDataMultilabel:
+    """Multilabel/token classification data preparation."""
+
+    def _multilabel_metrics(self):
+        """Return per-label metrics shaped like multilabel compute_metrics output."""
+        return {
+            "model1": {
+                "accuracy": 0.8,
+                "curve": {
+                    "label_0": {
+                        "AUROC": 0.91,
+                        "AUPRC": 0.88,
+                        "fpr": [0.0, 0.2, 1.0],
+                        "tpr": [0.0, 0.8, 1.0],
+                        "precision": [0.9, 0.85, 0.8],
+                        "recall": [0.0, 0.8, 1.0],
+                    },
+                },
+            },
+        }
+
+    def test_multilabel_curves_split_by_label(self):
+        """Multilabel curve data lands under each label key with per-label scores."""
+        bars, curves = _prepare_classification_data(
+            self._multilabel_metrics(), task_type="multilabel"
+        )
+
+        assert bars["models"] == ["model1"]
+        assert bars["accuracy"] == [0.8]
+        assert curves["AUROC"] == {"label_0": 0.91}
+        assert curves["AUPRC"] == {"label_0": 0.88}
+        assert curves["ROC"]["models"] == ["label_0"] * 3
+        assert curves["ROC"]["fpr"] == [0.0, 0.2, 1.0]
+        assert curves["PR"]["precision"] == [0.9, 0.85, 0.8]
+
+    def test_scalar_values_extend_tensor_branch(self):
+        """Scatter values exposing .tolist are converted before extension."""
+        import torch
+
+        scatter_data = {"model1": {"predicted": [], "experiment": []}}
+        from dnallm.inference.plot import _process_scatter_data
+
+        _process_scatter_data(
+            {"predicted": torch.tensor([1.0, 2.0]), "experiment": torch.tensor([1.5, 2.5])},
+            scatter_data,
+            "model1",
+        )
+
+        assert scatter_data["model1"]["predicted"] == [1.0, 2.0]
+        assert scatter_data["model1"]["experiment"] == [1.5, 2.5]
+
+
+class TestPrepareAnnotations:
+    """_prepare_annotations list/dict/error contracts."""
+
+    def test_list_input_indexes_positions(self):
+        """A list maps each annotation name to the positions it appears at."""
+        annotations = _prepare_annotations(["A", "B", "A"])
+
+        assert annotations == {"model": {"A": {0, 2}, "B": {1}}}
+
+    def test_dict_input_per_model(self):
+        """A dict maps every model's annotation names to index sets."""
+        annotations = _prepare_annotations({"m1": ["x", "y"], "m2": ["y", "y"]})
+
+        assert annotations == {
+            "m1": {"x": {0}, "y": {1}},
+            "m2": {"x": set(), "y": {0, 1}},
+        }
+
+    def test_invalid_input_raises(self):
+        """Anything but a list or dict raises a matchable TypeError."""
+        with pytest.raises(TypeError, match="Data must be a list or a dictionary"):
+            _prepare_annotations("not-a-container")
+
+
+class TestPlotPolarBar:
+    """Polar bar chart assembly."""
+
+    def test_chart_mark_and_title(self):
+        """The polar chart uses arc marks, radial values and the given title."""
+        chart = plot_polar_bar(
+            {"test_accuracy": 0.8, "test_f1": 0.6, "test_loss": 1.5}, title="Polar"
+        )
+
+        assert chart.title == "Polar"
+        assert "arc" in str(getattr(chart.layer[0].mark, "type", chart.layer[0].mark))
+
+
+class TestPlotRadar:
+    """Radar chart assembly."""
+
+    def test_radar_from_multilabel_curves(self):
+        """Per-label AUROC scores drive the radar spokes for the default model."""
+        data = {"curve": {"label_0": {"AUROC": 0.9}, "label_1": {"AUROC": 0.7}}}
+
+        chart = plot_radar(data, metric="AUROC")
+
+        assert chart.title == "AUROC"
+        assert len(chart.layer) >= 5  # rings, spokes, fill, line, labels
+
+    def test_radar_per_model_scores(self):
+        """Per-model score dicts fan out one polygon per model."""
+        data = {
+            "curve": {
+                "label_0": {"AUROC": {"modelA": 0.9, "modelB": 0.6}},
+                "label_1": {"AUROC": {"modelA": 0.8, "modelB": 0.7}},
+            }
+        }
+
+        chart = plot_radar(data, metric="AUROC", models=["modelA"])
+
+        spokes_df = chart.layer[1].data
+        assert "modelA" in set(spokes_df["model"].unique())
+
+
+class TestPlotCurveScores:
+    """plot_curve score-annotation layers."""
+
+    def _curve_data(self):
+        """Return curve data with AUROC/AUPRC annotations."""
+        return {
+            "ROC": {
+                "models": ["m1", "m1"],
+                "fpr": [0.0, 1.0],
+                "tpr": [0.0, 1.0],
+            },
+            "PR": {
+                "models": ["m1", "m1"],
+                "precision": [0.5, 0.5],
+                "recall": [0.0, 1.0],
+            },
+            "AUROC": {"m1": 0.912},
+            "AUPRC": {"m1": 0.834},
+        }
+
+    def test_score_annotations_added(self):
+        """AUROC/AUPRC score strings appear as text layers."""
+        chart = plot_curve(self._curve_data(), show_score=True)
+
+        assert chart is not None
+
+    def test_separate_returns_roc_and_pr(self):
+        """separate=True returns the ROC and PR charts by name."""
+        charts = plot_curve(self._curve_data(), show_score=False, separate=True)
+
+        assert set(charts.keys()) == {"ROC", "PR"}
+
+    def test_no_score_skips_annotations(self):
+        """show_score=False still builds the combined chart."""
+        chart = plot_curve(self._curve_data(), show_score=False)
+
+        assert chart is not None
+
+
+class TestPlotScatterEdges:
+    """plot_scatter KDE fallback and multi-model layout."""
+
+    def test_kde_failure_falls_back_to_flat_density(self):
+        """Identical points make KDE singular; density falls back to 1.0."""
+        data = {
+            "model1": {
+                "predicted": [1.0, 1.0],
+                "experiment": [1.0, 1.0],
+                "r2": 0.5,
+            }
+        }
+
+        chart = plot_scatter(data, show_score=True)
+
+        assert chart is not None
+
+    def test_multiple_models_combine(self):
+        """Two models produce one combined chart object."""
+        data = {
+            "model1": {"predicted": [1.0, 2.0], "experiment": [1.1, 2.1], "r2": 0.9},
+            "model2": {"predicted": [1.5, 2.5], "experiment": [1.4, 2.4], "r2": 0.8},
+        }
+
+        chart = plot_scatter(data, ncols=1)
+
+        assert chart is not None
+
+
+class TestPlotTokenScatter:
+    """Outlier scatter chart assembly."""
+
+    def test_basic_chart_marks_outliers(self):
+        """The scatter highlights z-score outliers beyond the threshold."""
+        scores = [("A", 0.1), ("B", 0.2), ("C", 3.0)]
+
+        chart = plot_token_scatter(scores, threshold_std=1.0)
+
+        assert chart is not None
+
+    def test_extra_regions_render_as_bands(self):
+        """Region annotations attach as a band layer with derived colors."""
+        scores = [("A", 0.1), ("B", 0.2)]
+        extra = [("domain", 0, 1), ("motif", 1, 2)]
+
+        chart = plot_token_scatter(scores, extra_data=extra)
+
+        assert chart is not None
+
+    def test_show_labels_adds_text_layer(self):
+        """show_labels layers token text over the scatter."""
+        scores = [("A", 0.1), ("B", 5.0)]
+
+        chart = plot_token_scatter(scores, show_labels=True, threshold_std=0.5)
+
+        assert chart is not None
+
+    def test_malformed_scores_return_empty_chart(self):
+        """Unplottable score rows yield an empty chart instead of raising."""
+
+        chart = plot_token_scatter([("only-name",)])
+
+        assert isinstance(chart, alt.Chart)
+
+
+class TestPlotLine:
+    """Line chart for per-position score series."""
+
+    def test_line_chart_types_and_positions(self):
+        """Each key becomes one line with positions 0..n-1."""
+        chart = plot_line({"wildtype": [0.1, 0.2, 0.3], "mutant": [0.2, 0.1, 0.3]})
+
+        source = chart.data
+        assert set(source["type"]) == {"wildtype", "mutant"}
+        assert sorted(source["position"]) == [0, 0, 1, 1, 2, 2]
+
+
+class TestPlotAnnotationsChart:
+    """Annotation track chart assembly."""
+
+    def test_intervals_grouped_into_records(self):
+        """Contiguous positions collapse into single intervals."""
+        data = {"m1": {"domain": {0, 1, 2, 5, 6}, "motif": {3}}}
+
+        chart = plot_annotations(data, start=0, end=10)
+
+        source = chart.data
+        domain_rows = source[source["Type"] == "domain"][["Start", "End"]].values.tolist()
+        assert [0, 3] in domain_rows
+        assert [5, 7] in domain_rows
+        assert [3, 4] in source[source["Type"] == "motif"][["Start", "End"]].values.tolist()
+
+    def test_custom_colors_applied(self):
+        """Custom color mappings override the default palette."""
+        data = {"m1": {"domain": {0, 1}}}
+
+        chart = plot_annotations(data, start=0, end=5, custom_colors={"domain": "#123456"})
+
+        assert chart is not None
+
+    def test_empty_annotations_return_none(self):
+        """With no records the function warns and returns None."""
+        assert plot_annotations({"m1": {}}, start=0, end=5) is None
+
+
+class TestAttentionMapNormalization:
+    """plot_attention_map normalization and token handling."""
+
+    @staticmethod
+    def _fixtures():
+        """Return attention weights, sequences, and a simple tokenizer."""
+        attentions = [np.full((1, 4, 4, 4), 0.25)]
+        sequences = ["ATCG"]
+
+        class Tok:
+            def encode(self, seq):
+                return [5, 6, 7, 8]
+
+            def convert_ids_to_tokens(self, ids):
+                return ["A", "C", "G", "T"]
+
+        return attentions, sequences, Tok()
+
+    @pytest.mark.parametrize(
+        "norm_method",
+        ["softmax", "minmax", "l1", "l2", "log1p", "zscore", "entropy"],
+    )
+    def test_normalization_methods(self, norm_method):
+        """Every supported normalization returns a rect-mark heatmap."""
+        attentions, sequences, tok = self._fixtures()
+
+        chart = plot_attention_map(attentions, sequences, tok, norm_method=norm_method)
+
+        alt.data_transformers.enable("default", max_rows=None)
+        assert "rect" in str(chart.to_dict()["mark"])
+
+    def test_no_normalization(self):
+        """norm_method=None keeps raw values."""
+        attentions, sequences, tok = self._fixtures()
+
+        chart = plot_attention_map(attentions, sequences, tok, norm_method=None)
+
+        assert chart is not None
+
+    def test_average_all_heads(self):
+        """head='all' averages over the head dimension."""
+        attentions, sequences, tok = self._fixtures()
+
+        chart = plot_attention_map(attentions, sequences, tok, head="all")
+
+        assert chart is not None
+
+    def test_special_tokens_trimmed(self):
+        """Leading/trailing CLS/SEP tokens are trimmed from the heatmap."""
+        attentions = [np.full((1, 6, 6, 6), 0.2)]
+        sequences = ["ATCG"]
+
+        class ClsTok:
+            def encode(self, seq):
+                return [2, 5, 6, 7, 8, 3]
+
+            def convert_ids_to_tokens(self, ids):
+                return ["[CLS]", "A", "C", "G", "T", "[SEP]"]
+
+        chart = plot_attention_map(attentions, sequences, ClsTok(), skip_cls=True)
+
+        alt.data_transformers.enable("default", max_rows=None)
+        assert len(chart.data) == 16  # 4 x 4 inner tokens
+
+    def test_tokenizer_fallback_to_decode(self):
+        """A tokenizer without encode falls back to decode().split()."""
+        attentions, sequences, _ = self._fixtures()
+
+        class DecodeTok:
+            def decode(self, seq):
+                return "A C G T"
+
+        chart = plot_attention_map(attentions, sequences, DecodeTok())
+
+        assert len(chart.data) == 16
+
+
+class TestDimensionalityReducer:
+    """_get_dimensionality_reducer parameter presets."""
+
+    @pytest.mark.parametrize("quality", ["fast", "balanced", "high"])
+    def test_tsne_quality_presets(self, quality):
+        """t-SNE quality presets change perplexity and iteration count."""
+        reducer = _get_dimensionality_reducer("t-SNE", n_samples=1000, quality=quality)
+
+        expected = {"fast": 20, "balanced": 30, "high": 40}[quality]
+        assert reducer.perplexity == expected
+
+    def test_tsne_medium_sample_presets(self):
+        """10k-50k samples select the medium perplexity presets."""
+        reducer = _get_dimensionality_reducer("tsne", n_samples=20000, quality="fast")
+
+        assert reducer.perplexity == 30
+
+    def test_tsne_too_many_samples_raises(self):
+        """t-SNE over 50k samples raises a matchable ValueError."""
+        with pytest.raises(ValueError, match="unsupported for samples > 50k"):
+            _get_dimensionality_reducer("tsne", n_samples=60000)
+
+    def test_umap_presets(self):
+        """UMAP quality presets adjust neighbor counts."""
+        reducer = _get_dimensionality_reducer("umap", n_samples=1000, quality="fast")
+
+        assert reducer.n_neighbors == 10
+
+    def test_umap_large_sample_presets(self):
+        """UMAP over 50k samples uses the large presets."""
+        reducer = _get_dimensionality_reducer("umap", n_samples=60000, quality="fast")
+
+        assert reducer.n_neighbors == 20
+
+    def test_pca_with_overrides(self):
+        """PCA honors caller kwargs on top of the defaults."""
+        reducer = _get_dimensionality_reducer("PCA")
+
+        assert reducer.n_components == 2
+
+    def test_unknown_quality_coerced_to_balanced(self):
+        """An unknown quality string falls back to balanced."""
+        reducer = _get_dimensionality_reducer("tsne", n_samples=1000, quality="turbo")
+
+        assert reducer.perplexity == 30
+
+    def test_pacmap_missing_raises_import_error(self):
+        """A missing reducer package raises a matchable ImportError."""
+        with pytest.raises(ImportError, match="Required package not installed"):
+            _get_dimensionality_reducer("pacmap")
+
+    def test_unsupported_reducer_raises(self):
+        """An unknown reducer name raises a matchable ValueError."""
+        with pytest.raises(ValueError, match="Unsupported dim reducer"):
+            _get_dimensionality_reducer("isomap")
+
+
+class TestComputeMeanEmbeddings:
+    """_compute_mean_embeddings pooling strategies."""
+
+    def test_mean_without_mask(self):
+        """Maskless mean pooling averages every position."""
+        hidden = np.ones((2, 4, 3))
+
+        pooled = _compute_mean_embeddings(hidden, None, strategy="mean")
+
+        assert pooled.shape == (2, 3)
+        assert np.allclose(pooled, 1.0)
+
+    def test_last_strategy_selects_last_position(self):
+        """strategy='last' pools only the final position."""
+        hidden = np.arange(12, dtype=float).reshape(1, 4, 3)
+        hidden[:] = 0
+        hidden[0, -1] = 2.0
+
+        pooled = _compute_mean_embeddings(hidden, None, strategy="last")
+
+        assert np.allclose(pooled, 2.0)
+
+    def test_first_strategy_selects_first_position(self):
+        """strategy='first' pools only the first position."""
+        hidden = np.zeros((1, 4, 3))
+        hidden[0, 0] = 3.0
+
+        pooled = _compute_mean_embeddings(hidden, None, strategy="first")
+
+        assert np.allclose(pooled, 3.0)
+
+    def test_int_strategy_selects_center_window(self):
+        """An int strategy pools the centered window of that size."""
+        hidden = np.zeros((1, 8, 1))
+        hidden[0, :, 0] = np.arange(8)
+
+        pooled = _compute_mean_embeddings(hidden, np.ones((1, 8), dtype=int), strategy=4)
+
+        # Center window covers positions 2..5 -> mean of 2,3,4,5.
+        assert pooled[0, 0] == pytest.approx(3.5)
+
+    def test_masked_mean_excludes_padding(self):
+        """Attention-masked pooling ignores padded positions."""
+        hidden = np.zeros((1, 4, 1))
+        hidden[0, :, 0] = np.array([1.0, 3.0, 100.0, 100.0])
+        mask = np.array([[1, 1, 0, 0]])
+
+        pooled = _compute_mean_embeddings(hidden, mask, strategy="mean")
+
+        assert pooled[0, 0] == pytest.approx(2.0)
+
+
+class TestEmbeddingDataFrame:
+    """_prepare_embedding_dataframe label handling."""
+
+    def test_labels_mapped_to_names(self):
+        """Numeric labels map through label_names."""
+        df = _prepare_embedding_dataframe(np.zeros((2, 2)), [0, 1], ["neg", "pos"])
+
+        assert df["labels"].tolist() == ["neg", "pos"]
+
+    def test_none_labels_become_uncategorized(self):
+        """Missing labels fall back to the Uncategorized bucket."""
+        df = _prepare_embedding_dataframe(np.zeros((2, 2)), None, ["neg", "pos"])
+
+        assert df["labels"].tolist() == ["Uncategorized"] * 2
+
+    def test_none_first_label_becomes_uncategorized(self):
+        """A leading None label triggers the Uncategorized bucket."""
+        df = _prepare_embedding_dataframe(np.zeros((2, 2)), [None, 1], ["neg", "pos"])
+
+        assert df["labels"].tolist() == ["Uncategorized"] * 2
+
+    def test_out_of_range_label_falls_back_to_string(self):
+        """Labels beyond label_names render as their string value."""
+        df = _prepare_embedding_dataframe(np.zeros((1, 2)), [5], ["neg", "pos"])
+
+        assert df["labels"].tolist() == ["5"]
+
+
+class TestPlotEmbeddingsVariants:
+    """plot_embeddings input variants."""
+
+    def test_pca_reduced_and_separate(self):
+        """Already-reduced inputs skip pooling and return per-layer charts."""
+        hidden = (np.random.RandomState(0).rand(6, 2),)
+
+        charts = plot_embeddings(
+            hidden,
+            attention_mask=None,
+            reducer="PCA",
+            labels=[0] * 3 + [1] * 3,
+            label_names=["a", "b"],
+            reduced=True,
+            separate=True,
+        )
+
+        assert set(charts.keys()) == {"Layer1"}
+
+    def test_attention_mask_applied_per_layer(self):
+        """Masks flow into the per-layer pooling step."""
+        hidden = (np.random.RandomState(1).rand(4, 3, 2),)
+        mask = (np.array([[1, 1, 0]] * 4),)
+
+        chart = plot_embeddings(
+            hidden,
+            attention_mask=mask,
+            reducer="PCA",
+            labels=None,
+            norm=False,
+        )
+
+        assert chart is not None
+
+    def test_no_norm_path(self):
+        """norm=False skips StandardScaler while still reducing."""
+        hidden = (np.random.RandomState(2).rand(4, 3, 2),)
+
+        chart = plot_embeddings(hidden, None, reducer="PCA", norm=False)
+
+        assert chart is not None
+
+
+class TestMutationChartEdges:
+    """plot_muts data-shape edges."""
+
+    def test_empty_heatmap_returns_empty_chart(self):
+        """No mutation scores short-circuit to an empty chart."""
+        data = {"raw": {"sequence": "A"}}
+
+        chart = plot_muts(data)
+
+        assert chart is not None
+
+    def test_default_width_without_scores(self):
+        """Width defaults from the sequence length when not given."""
+        data = {
+            "raw": {"sequence": "AC"},
+            "mut_0_A_C": {"score": 0.5},
+            "mut_1_C_G": {"score": -0.2},
+        }
+
+        chart = plot_muts(data)
+
+        assert chart is not None
+
+
+class TestAttributionTokenPlot:
+    """plot_attributions_token chart contract."""
+
+    def test_tokens_rendered_as_rects(self):
+        """Non-special tokens render colored rect bands plus text."""
+        chart = plot_attributions_token(["A", "C", "G"], np.array([0.1, -0.2, 0.3]))
+
+        spec = chart.to_dict()
+        assert "rect" in str(spec["layer"][0]["mark"])
+        assert "text" in str(spec["layer"][1]["mark"])
+
+    def test_all_special_tokens_warns_and_returns_placeholder(self):
+        """Filtering away every token yields the no-data placeholder."""
+        chart = plot_attributions_token(["[CLS]", "[SEP]"], np.array([0.1, 0.2]))
+
+        spec = chart.to_dict()
+        assert spec["title"] == "No data to display"
+
+    def test_custom_special_tokens(self):
+        """Caller-provided special token lists are honored."""
+        chart = plot_attributions_token(["X", "Y"], np.array([0.1, 0.2]), special_tokens=["X"])
+
+        source = chart.data
+        assert source["token"].tolist() == ["Y"]
+
+
+class TestAttributionLinePlot:
+    """plot_attributions_line chart contract."""
+
+    def test_line_with_smoothing(self):
+        """A window >1 adds a Smoothed series to the chart data."""
+        chart = plot_attributions_line(["A", "C", "G"], np.array([0.1, 0.2, 0.3]), window_size=3)
+
+        assert chart is not None
+
+    def test_line_without_smoothing(self):
+        """window_size=None plots raw scores only."""
+        chart = plot_attributions_line(["A", "C"], np.array([0.1, 0.2]), window_size=None)
+
+        assert chart is not None
+
+    def test_all_special_tokens_placeholder(self):
+        """Filtering away every token yields the no-data placeholder."""
+        chart = plot_attributions_line(["<pad>"], np.array([0.1]))
+
+        assert chart.to_dict()["title"] == "No data to display"
+
+
+class TestAttributionMultiPlot:
+    """plot_attributions_multi padding and alignment."""
+
+    def test_empty_input_placeholder(self):
+        """An empty attribution list yields the no-data placeholder."""
+        chart = plot_attributions_multi([])
+
+        assert chart.to_dict()["title"] == "No data to display"
+
+    def test_padding_tokens_trimmed(self):
+        """Trailing pad tokens are trimmed before stacking."""
+        chart = plot_attributions_multi([
+            (["A", "[PAD]", "[PAD]"], np.array([0.1, 0.0, 0.0])),
+            (["C", "G", "[PAD]"], np.array([0.2, 0.3, 0.0])),
+        ])
+
+        source = chart.data
+        assert source["position"].max() == 1  # longest trimmed length is 2
+
+    def test_unequal_lengths_padded_with_nan(self):
+        """Unequal trimmed lengths align via NaN padding."""
+        chart = plot_attributions_multi([
+            (["A"], np.array([0.1])),
+            (["C", "G", "T"], np.array([0.2, 0.3, 0.4])),
+        ])
+
+        source = chart.data
+        assert source["score"].isna().any()
+        assert source["position"].max() == 2
+
+    def test_equal_lengths_stack_directly(self):
+        """Equal-length inputs skip the padding branch."""
+        chart = plot_attributions_multi([
+            (["A", "C"], np.array([0.1, 0.2])),
+            (["G", "T"], np.array([0.3, 0.4])),
+        ])
+
+        assert chart is not None
+
+
+class TestPlotBarsNoScore:
+    """plot_bars without score text."""
+
+    def test_no_score_returns_bar_only(self):
+        """show_score=False returns the bar chart without text layers."""
+        data = {"models": ["m1", "m2"], "accuracy": [0.9, 0.8]}
+
+        chart = plot_bars(data, show_score=False)
+
+        spec = chart.to_dict()
+        assert "bar" in str(spec["mark"]) or "layer" not in spec

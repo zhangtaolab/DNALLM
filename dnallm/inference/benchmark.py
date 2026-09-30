@@ -91,8 +91,13 @@ class Benchmark:
             # Code-based initialization (No YAML config)
             self.config = {}
             self.config["inference"] = InferenceConfig()
+            # Only copy fields InferenceConfig actually declares; the raw
+            # setattr loop below crashed on EvaluationConfig-only fields
+            # (e.g. mixed_precision) under pydantic v2 field validation.
+            inference_fields = set(InferenceConfig.model_fields.keys())
             for k, v in dict(EvaluationConfig()).items():
-                setattr(self.config["inference"], k, v)
+                if k in inference_fields:
+                    setattr(self.config["inference"], k, v)
             self.config["inference"].batch_size = batch_size
             self.config["inference"].device = (
                 device if device else "cuda" if torch.cuda.is_available() else "cpu"
@@ -487,7 +492,18 @@ class Benchmark:
                 indices = list(range(len(dataset)))
 
                 if k_folds > 1:
-                    kfold_split = kfold.split(indices)
+                    if stratified:
+                        # StratifiedKFold.split requires the class labels;
+                        # without them it raised TypeError on every call.
+                        inner = getattr(dataset, "dataset", dataset)
+                        y = (
+                            inner["labels"]
+                            if hasattr(inner, "column_names") and "labels" in inner.column_names
+                            else None
+                        )
+                        kfold_split = kfold.split(indices, y)
+                    else:
+                        kfold_split = kfold.split(indices)
                 else:
                     kfold_split = [(indices, indices)]
                 for fold, (_, val_idx) in enumerate(kfold_split):

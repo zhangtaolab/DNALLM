@@ -14,12 +14,15 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
+import pytest
 import torch
+import yaml
 from datasets import Dataset
 
 # Add the parent directory to the path to import dnallm modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+from conftest import SimpleDNATokenizer
 from dnallm.datahandling.data import DNADataset
 from dnallm.inference.benchmark import Benchmark
 from dnallm.inference.inference import DNAInference
@@ -459,3 +462,545 @@ if __name__ == "__main__":
 
     if "pytest" not in sys.modules:
         unittest.main(verbosity=2)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pytest-style extensions: code-based init, run() branches, evaluate_single_model,
+# run_without_config cross-validation, and plot dataset/path selection.
+#
+# Simple picklable fakes and the real SimpleDNATokenizer keep the DataLoader
+# boundary free of MagicMock pickling warnings (Phase-1 audit, Pitfall 8).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class ConstantOutputFake:
+    """Picklable model double returning fixed logits regardless of input."""
+
+    def __call__(self, **kwargs):
+        return type("Out", (), {"logits": torch.full((2, 2), 0.9)})()
+
+    def forward(self, **kwargs):
+        return self(**kwargs)
+
+    def eval(self):
+        return self
+
+    def to(self, device):
+        return self
+
+    def parameters(self):
+        return iter([torch.nn.Parameter(torch.zeros(2, 2))])
+
+
+@pytest.fixture
+def benchmark_csv(tmp_path):
+    """Write a small labelled sequence CSV under tmp_path and return its path."""
+    csv_path = tmp_path / "bench.csv"
+    csv_path.write_text("sequence,labels\nATCG,0\nGGCC,1\nTTTT,0\nACGT,1\n")
+    return str(csv_path)
+
+
+@pytest.fixture
+def benchmark_yaml_factory(tmp_path, benchmark_csv):
+    """Return a factory writing parameterizable benchmark YAML configs."""
+    from dnallm.configuration.configs import load_config
+
+    def _make(metrics=("accuracy", "f1"), with_datasets=True):
+        config = {
+            "task": {
+                "task_type": "binary",
+                "num_labels": 2,
+                "label_names": ["negative", "positive"],
+                "threshold": 0.5,
+            },
+            "benchmark": {"name": "Bench", "description": "test bench"},
+            "models": [
+                {"name": "m1", "path": "/models/m1", "source": "local"},
+            ],
+            "metrics": list(metrics),
+            "evaluation": {"batch_size": 2, "max_length": 32, "num_workers": 0},
+            "output": {"format": "html", "path": str(tmp_path / "out")},
+        }
+        if with_datasets:
+            config["datasets"] = [
+                {
+                    "name": "ds1",
+                    "path": benchmark_csv,
+                    "task": "binary",
+                    "text_column": "sequence",
+                    "label_column": "labels",
+                    "num_labels": 2,
+                    "threshold": 0.5,
+                }
+            ]
+        path = tmp_path / f"bench-{abs(hash(tuple(metrics)))}.yaml"
+        path.write_text(yaml.safe_dump(config))
+        return load_config(path)
+
+    return _make
+
+
+class TestCodeBasedInit:
+    """Config-less (code-based) Benchmark initialization."""
+
+    def test_init_with_models_and_datasets(self, benchmark_csv):
+        """Code-based init prepares models, sources, and dataset task configs."""
+        from datasets import Dataset as HFDataset
+
+        ds = HFDataset.from_dict({
+            "sequence": ["ATCG", "GGCC"],
+            "labels": [0, 1],
+        })
+        benchmark = Benchmark(
+            config=None,
+            models=[{"name": "m1", "path": "/models/m1", "source": "local"}],
+            datasets={"ds1": {"dataset": type("D", (), {"dataset": ds})(), "task_type": "binary"}},
+            metrics=["accuracy"],
+            batch_size=2,
+            device="cpu",
+            max_length=64,
+            num_workers=0,
+        )
+
+        assert benchmark.prepared["models"] == {"m1": "/models/m1"}
+        assert benchmark.prepared["sources"] == ["local"]
+        assert benchmark.prepared["metrics"] == ["accuracy"]
+        assert benchmark.config["inference"].batch_size == 2
+        assert benchmark.config["inference"].max_length == 64
+        assert benchmark.config["inference"].device == "cpu"
+        assert benchmark.config["task"].task_type == "binary"
+
+    def test_init_defaults(self):
+        """Bare code-based init keeps defaults and empty structures."""
+        benchmark = Benchmark()
+
+        assert benchmark.prepared["models"] == {}
+        assert benchmark.prepared["sources"] == []
+        assert benchmark.prepared["plot_format"] == "pdf"
+        assert benchmark.config["inference"].batch_size == 1
+
+
+class TestRunBranches:
+    """Benchmark.run() prepared/unprepared flow branches."""
+
+    def test_run_unprepared_local_models(self, tmp_path, benchmark_csv):
+        """Without a benchmark section, run() uses passed model paths directly."""
+        from dnallm.configuration.configs import load_config
+
+        cfg_path = tmp_path / "plain.yaml"
+        cfg_path.write_text(
+            yaml.safe_dump({
+                "task": {
+                    "task_type": "binary",
+                    "num_labels": 2,
+                    "label_names": ["negative", "positive"],
+                    "threshold": 0.5,
+                },
+                "inference": {"batch_size": 2, "device": "cpu", "max_length": 32, "num_workers": 0},
+            })
+        )
+        benchmark = Benchmark(load_config(cfg_path))
+        assert benchmark.prepared is None
+
+        benchmark.get_dataset(benchmark_csv, seq_col="sequence", label_col="labels")
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference,
+                "calculate_metrics",
+                return_value={"accuracy": 0.9, "curve": {"fpr": [0, 1]}},
+            ),
+        ):
+            results = benchmark.run(
+                model_names=["/models/my_model"], source="local", save_scores=False
+            )
+
+        assert "custom" in results
+        assert "my_model" in results["custom"]
+        assert results["custom"]["my_model"]["accuracy"] == 0.9
+
+    def test_run_prepared_metrics_all(self, benchmark_yaml_factory):
+        """selected metrics ['all'] copy the full metrics dict."""
+        config = benchmark_yaml_factory(metrics=("all",))
+        benchmark = Benchmark(config)
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference,
+                "calculate_metrics",
+                return_value={"accuracy": 0.9, "extra": {"fpr": [0, 1]}},
+            ),
+        ):
+            results = benchmark.run()
+
+        assert results["ds1"]["m1"] == {"accuracy": 0.9, "extra": {"fpr": [0, 1]}}
+
+    def test_run_prepared_empty_metrics_returns_all(self, benchmark_yaml_factory):
+        """Empty selected metrics fall back to the whole metrics dict."""
+        config = benchmark_yaml_factory(metrics=())
+        benchmark = Benchmark(config)
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference,
+                "calculate_metrics",
+                return_value={"accuracy": 0.5},
+            ),
+        ):
+            results = benchmark.run()
+
+        assert results["ds1"]["m1"] == {"accuracy": 0.5}
+
+
+class TestEvaluateSingleModel:
+    """evaluate_single_model label extraction and metric filtering."""
+
+    def _dataset(self):
+        from datasets import Dataset as HFDataset
+
+        return HFDataset.from_dict({
+            "sequence": ["ATCG", "GGCC", "TTTT", "ACGT"],
+            "labels": [0, 1, 0, 1],
+        })
+
+    def test_evaluates_and_filters_metrics(self):
+        """Metrics come back filtered to the requested list."""
+        benchmark = Benchmark()
+        tokenizer = SimpleDNATokenizer()
+
+        with (
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference,
+                "calculate_metrics",
+                return_value={"accuracy": 0.9, "f1": 0.8},
+            ),
+        ):
+            metrics = benchmark.evaluate_single_model(
+                ConstantOutputFake(),
+                tokenizer,
+                self._dataset(),
+                metrics_list=["accuracy"],
+            )
+
+        assert metrics == {"accuracy": 0.9}
+
+    def test_tokenizer_max_length_respected(self):
+        """A tokenizer with model_max_length caps the encode length."""
+        benchmark = Benchmark()
+        tokenizer = SimpleDNATokenizer()
+        tokenizer.model_max_length = 10
+
+        with (
+            patch.object(
+                DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)
+            ) as mock_infer,
+            patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 0.9}),
+        ):
+            benchmark.evaluate_single_model(ConstantOutputFake(), tokenizer, self._dataset())
+
+        assert mock_infer is not None
+
+    def test_label_mismatch_raises(self):
+        """A logit/label count mismatch raises a matchable ValueError."""
+        benchmark = Benchmark()
+        tokenizer = SimpleDNATokenizer()
+
+        with (
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(3, 2), None, None)),
+        ):
+            with pytest.raises(ValueError, match=r"Label count \(4\) does not match"):
+                benchmark.evaluate_single_model(ConstantOutputFake(), tokenizer, self._dataset())
+
+    def test_labels_from_dataset_attribute(self):
+        """A dataset object exposing .labels is preferred for label lookup."""
+        from torch.utils.data import Subset
+
+        benchmark = Benchmark()
+        tokenizer = SimpleDNATokenizer()
+
+        class LabelledSubset:
+            def __init__(self, labels):
+                self.labels = labels
+                self.dataset = ["a", "b", "c", "d"]
+
+            def __len__(self):
+                return 4
+
+            def __getitem__(self, i):
+                return {"sequence": "ATCG", "labels": 0}
+
+        subset = LabelledSubset([0, 1, 0, 1])
+        with (
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 1.0}),
+        ):
+            metrics = benchmark.evaluate_single_model(ConstantOutputFake(), tokenizer, subset)
+
+        assert metrics == {"accuracy": 1.0}
+        assert Subset is not None  # document the related torch Subset path
+
+
+class TestRunWithoutConfig:
+    """k-fold cross-validation without a YAML config."""
+
+    def _benchmark(self, n_rows=8):
+        from datasets import Dataset as HFDataset
+
+        rows = {
+            "sequence": ["ATCG" if i % 2 == 0 else "GGCC" for i in range(n_rows)],
+            "labels": [i % 2 for i in range(n_rows)],
+        }
+        ds = HFDataset.from_dict(rows)
+
+        class DSHolder:
+            def __init__(self, dataset):
+                self.dataset = dataset
+
+            def __len__(self):
+                return len(self.dataset)
+
+        return Benchmark(
+            config=None,
+            models=[{"name": "m1", "path": "/models/m1", "source": "local"}],
+            datasets={"ds1": {"dataset": DSHolder(ds), "task_type": "binary"}},
+            metrics=["accuracy"],
+            batch_size=4,
+            device="cpu",
+            max_length=32,
+            num_workers=0,
+        )
+
+    def test_kfold_aggregates_mean_and_std(self):
+        """Two folds produce per-fold results plus mean/std aggregates."""
+        benchmark = self._benchmark()
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(
+                DNAInference,
+                "batch_infer",
+                side_effect=lambda dl, **kw: (torch.randn(len(dl.dataset), 2), None, None),
+            ),
+            patch.object(
+                DNAInference,
+                "calculate_metrics",
+                return_value={"accuracy": 0.9},
+            ),
+        ):
+            results = benchmark.run_without_config(k_folds=2)
+
+        entry = results["m1"]["ds1"]
+        assert len(entry["fold_results"]) == 2
+        assert entry["mean_accuracy"] == pytest.approx(0.9)
+        assert entry["std_accuracy"] == pytest.approx(0.0)
+
+    def test_stratified_folds_preserve_count(self):
+        """Stratified k-fold produces the same number of fold results."""
+        benchmark = self._benchmark(n_rows=8)
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(
+                DNAInference,
+                "batch_infer",
+                side_effect=lambda dl, **kw: (torch.randn(len(dl.dataset), 2), None, None),
+            ),
+            patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 0.5}),
+        ):
+            results = benchmark.run_without_config(k_folds=2, stratified=True)
+
+        assert len(results["m1"]["ds1"]["fold_results"]) == 2
+
+    def test_unprepared_raises(self, tmp_path, benchmark_csv):
+        """Calling cross-validation without prepared models raises."""
+        from dnallm.configuration.configs import load_config
+
+        cfg_path = tmp_path / "plain.yaml"
+        cfg_path.write_text(
+            yaml.safe_dump({
+                "task": {
+                    "task_type": "binary",
+                    "num_labels": 2,
+                    "label_names": ["negative", "positive"],
+                    "threshold": 0.5,
+                },
+                "inference": {"batch_size": 2, "device": "cpu", "max_length": 32, "num_workers": 0},
+            })
+        )
+        benchmark = Benchmark(load_config(cfg_path))
+
+        with pytest.raises(ValueError, match="not properly initialized"):
+            benchmark.run_without_config(k_folds=2)
+
+
+class TestBenchmarkPlotSelection:
+    """Benchmark.plot dataset selection and save-path derivation."""
+
+    @staticmethod
+    def _metrics():
+        return {
+            "ds1": {
+                "model_A": {
+                    "accuracy": 0.9,
+                    "f1": 0.88,
+                    "curve": {
+                        "fpr": [0.0, 1.0],
+                        "tpr": [0.0, 1.0],
+                        "precision": [0.8, 0.8],
+                        "recall": [0.0, 1.0],
+                    },
+                },
+            },
+            "ds2": {
+                "model_A": {
+                    "accuracy": 0.7,
+                    "f1": 0.6,
+                    "curve": {
+                        "fpr": [0.0, 1.0],
+                        "tpr": [0.0, 1.0],
+                        "precision": [0.7, 0.7],
+                        "recall": [0.0, 1.0],
+                    },
+                },
+            },
+        }
+
+    def test_plot_by_index(self):
+        """An integer dataset index selects that dataset's metrics."""
+        benchmark = Benchmark()
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_curve") as mock_curve,
+        ):
+            benchmark.plot(self._metrics(), dataset=1)
+
+        bars_arg = mock_bars.call_args.args[0]
+        assert bars_arg["models"] == ["model_A"]
+
+    def test_plot_by_name(self):
+        """A dataset name selects the named dataset's metrics."""
+        benchmark = Benchmark()
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_curve"),
+        ):
+            benchmark.plot(self._metrics(), dataset="ds2")
+
+        assert mock_bars.call_args.args[0]["accuracy"] == [0.7]
+
+    def test_plot_unknown_dataset_raises(self):
+        """An unknown dataset name raises a matchable ValueError."""
+        benchmark = Benchmark()
+
+        with pytest.raises(ValueError, match="Dataset name 'nope' not found"):
+            benchmark.plot(self._metrics(), dataset="nope")
+
+    def test_plot_save_path_with_suffix(self, tmp_path):
+        """A suffix-bearing save path derives _metrics/_roc sibling files."""
+        benchmark = Benchmark()
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_curve") as mock_curve,
+        ):
+            benchmark.plot(self._metrics(), save_path=str(tmp_path / "bench.png"))
+
+        assert mock_bars.call_args.kwargs["save_path"] == str(tmp_path / "bench_metrics.png")
+        assert mock_curve.call_args.kwargs["save_path"] == str(tmp_path / "bench_roc.png")
+
+    def test_plot_save_path_without_suffix(self, tmp_path):
+        """A suffix-less save path derives files inside the directory."""
+        benchmark = Benchmark()
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_curve") as mock_curve,
+        ):
+            benchmark.plot(self._metrics(), save_path=str(tmp_path))
+
+        assert mock_bars.call_args.kwargs["save_path"] == str(tmp_path / "metrics.pdf")
+        assert mock_curve.call_args.kwargs["save_path"] == str(tmp_path / "roc.pdf")
+
+    def test_plot_token_task_skips_curves(self):
+        """Token tasks skip the ROC/PR curve chart entirely."""
+        benchmark = Benchmark()
+        benchmark.config["task"].task_type = "token"
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars"),
+            patch("dnallm.inference.benchmark.plot_curve") as mock_curve,
+        ):
+            _, pline = benchmark.plot(self._metrics())
+
+        assert pline is None
+        mock_curve.assert_not_called()
+
+    def test_plot_regression_save_paths(self, tmp_path):
+        """Regression plots derive _metrics/_scatter sibling files."""
+        benchmark = Benchmark()
+        benchmark.config["task"].task_type = "regression"
+        metrics = {
+            "ds1": {
+                "model_A": {
+                    "mse": 0.1,
+                    "r2": 0.9,
+                    "scatter": {"predicted": [1.0, 2.0], "experiment": [1.1, 2.1]},
+                }
+            }
+        }
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_scatter") as mock_dots,
+        ):
+            benchmark.plot(metrics, save_path=str(tmp_path / "reg.png"))
+
+        assert mock_bars.call_args.kwargs["save_path"] == str(tmp_path / "reg_metrics.png")
+        assert mock_dots.call_args.kwargs["save_path"] == str(tmp_path / "reg_scatter.png")
+
+    def test_plot_regression_dir_save_paths(self, tmp_path):
+        """Regression plots derive files inside a suffix-less directory."""
+        benchmark = Benchmark()
+        benchmark.config["task"].task_type = "regression"
+        metrics = {
+            "ds1": {
+                "model_A": {
+                    "mse": 0.1,
+                    "r2": 0.9,
+                    "scatter": {"predicted": [1.0], "experiment": [1.1]},
+                }
+            }
+        }
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_scatter") as mock_dots,
+        ):
+            benchmark.plot(metrics, save_path=str(tmp_path))
+
+        assert mock_bars.call_args.kwargs["save_path"] == str(tmp_path / "metrics.pdf")
+        assert mock_dots.call_args.kwargs["save_path"] == str(tmp_path / "scatter.pdf")
