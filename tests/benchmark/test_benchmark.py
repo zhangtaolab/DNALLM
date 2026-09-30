@@ -709,12 +709,13 @@ class TestEvaluateSingleModel:
         with (
             patch.object(
                 DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)
-            ) as mock_infer,
+            ),
             patch.object(DNAInference, "calculate_metrics", return_value={"accuracy": 0.9}),
+            patch("dnallm.inference.benchmark.DNADataset", wraps=DNADataset) as ds_cls,
         ):
             benchmark.evaluate_single_model(ConstantOutputFake(), tokenizer, self._dataset())
 
-        assert mock_infer is not None
+        assert ds_cls.call_args.kwargs["max_length"] == 10
 
     def test_label_mismatch_raises(self):
         """A logit/label count mismatch raises a matchable ValueError."""
