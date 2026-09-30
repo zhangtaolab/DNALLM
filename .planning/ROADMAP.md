@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Harness Integrity & Measured Baseline** - Make every test result and coverage number trustworthy: one pytest config, real exit codes, agreed denominator, measured baseline (completed 2026-09-30)
 - [x] **Phase 2: Suite Hygiene & Known-Bug Fixes** - Fix the known code defects hiding behind skips and make every remaining skip typed and intentional (completed 2026-09-30)
-- [ ] **Phase 3: Test Authoring to >90% Coverage** - Close the measured gaps biggest-first with tests that assert observable behavior until coverage exceeds 90%
+- [x] **Phase 3: Test Authoring to >90% Coverage** - Close the measured gaps biggest-first with tests that assert observable behavior until coverage exceeds 90% (completed 2026-09-30)
 - [ ] **Phase 4: CI Gate Enforcement** - Turn 90% into a ratcheted CI hard gate that provably fails when coverage drops
 
 ## Phase Details
@@ -73,7 +73,7 @@ Plans:
   4. The `inference`, `datahandling`/`finetune`, and `cli` + compat-shim waves close their ranked gaps, with `transformers_compat` verified as a behavior contract (e.g. idempotent `apply_patches`), not line completion
   5. Every new test holds at least one observable-behavior assertion, and the pragma count stays at the recorded baseline (3)
 
-**Plans**: 5/5 plans executed (one per wave — locked sizing decision)
+**Plans**: 5/5 plans complete (one per wave — locked sizing decision)
 
 Plans:
 **Wave 1**
@@ -116,5 +116,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
-| 3. Test Authoring to >90% Coverage | 5/5 | In Progress|  |
+| 3. Test Authoring to >90% Coverage | 5/5 | Complete    | 2026-09-30 |
 | 4. CI Gate Enforcement | 0/? | Not started | - |
