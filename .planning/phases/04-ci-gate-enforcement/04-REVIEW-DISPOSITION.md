@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: CR-03
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Nightly test-mamba leg ships deterministically red — env lacks the `mcp` extra (and `exceptiongroup`) for 3 fast tests it runs"
   - id: IN-08
     severity: info
@@ -67,16 +67,16 @@ findings:
     severity: warning
     disposition: fixed
     title: "README documents reporting the workflow no longer runs"
-open: 11
+open: 10
 total: 16
-recorded: 2026-10-01T11:43:37.230Z
+recorded: 2026-10-01T12:08:23.938Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-03 | critical | open | - |
+| CR-03 | critical | fixed | 04-REVIEW-FIX.md |
 | IN-08 | info | open | - |
 | IN-09 | info | open | - |
 | IN-10 | info | open | - |
