@@ -896,9 +896,9 @@ class TestMetricsForDnabert2Arms:
 
         def fake_load(path, *args, **kwargs):
             metric = Mock()
-            if path == "r_squared":
+            if "r_squared" in path:
                 metric.compute.return_value = {"r2": 0.8}
-            elif path == "spearmanr":
+            elif "spearmanr" in path:
                 metric.compute.return_value = {"spearmanr": 0.9}
             return metric
 
@@ -949,13 +949,14 @@ class TestMetricsForDnabert2Arms:
         }
 
         def fake_load(path, *args, **kwargs):
-            return {
+            by_name = {
                 "precision": precision,
                 "recall": recall,
                 "f1": f1,
                 "matthews_correlation": mcc,
                 "roc_auc": roc,
-            }.get(path, Mock())
+            }
+            return next((m for n, m in by_name.items() if n in path), Mock())
 
         with (
             patch("evaluate.load", side_effect=fake_load),

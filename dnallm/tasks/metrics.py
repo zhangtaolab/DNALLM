@@ -589,20 +589,20 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
             - compute_metrics: Function for computing task-specific metrics
             - preprocess_logits_for_metrics: Function for preprocessing logits
     """
-    r2_metric = evaluate.load("r_squared")
-    spm_metric = evaluate.load("spearmanr")
+    r2_metric = evaluate.load(metrics_path + "r_squared/r_squared.py")
+    spm_metric = evaluate.load(metrics_path + "spearmanr/spearmanr.py")
     clf_metrics = evaluate.combine([
-        "accuracy",
-        "f1",
-        "precision",
-        "recall",
-        "matthews_correlation",
+        metrics_path + "accuracy/accuracy.py",
+        metrics_path + "f1/f1.py",
+        metrics_path + "precision/precision.py",
+        metrics_path + "recall/recall.py",
+        metrics_path + "matthews_correlation/matthews_correlation.py",
     ])
-    metric1 = evaluate.load("precision")
-    metric2 = evaluate.load("recall")
-    metric3 = evaluate.load("f1")
-    metric4 = evaluate.load("matthews_correlation")
-    roc_metric = evaluate.load("roc_auc", "multiclass")
+    metric1 = evaluate.load(metrics_path + "precision/precision.py")
+    metric2 = evaluate.load(metrics_path + "recall/recall.py")
+    metric3 = evaluate.load(metrics_path + "f1/f1.py")
+    metric4 = evaluate.load(metrics_path + "matthews_correlation/matthews_correlation.py")
+    roc_metric = evaluate.load(metrics_path + "roc_auc/roc_auc.py", "multiclass")
 
     def compute_metrics(eval_pred: tuple) -> dict[str, Any]:
         logits, labels = eval_pred
