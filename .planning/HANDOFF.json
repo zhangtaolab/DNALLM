@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-01T03:50:00Z",
+  "phase": "4",
+  "phase_name": "CI Gate Enforcement",
+  "phase_dir": ".planning/phases/04-ci-gate-enforcement",
+  "plan": 3,
+  "task": null,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "04-01 gate mechanism (fail_under + models.lock + marks)", "status": "done", "commit": "e7e4ae7"},
+    {"id": 2, "name": "04-02 two-job CI live green", "status": "done", "commit": "2d02fff"},
+    {"id": 3, "name": "04-03 GATE-04 probe + README", "status": "done", "commit": "443aa3b"},
+    {"id": 4, "name": "phase-4 code review fixes (3 rounds, clean)", "status": "done", "commit": "6a270e5"},
+    {"id": 5, "name": "branch protection applied (UAT test 2)", "status": "done", "commit": null},
+    {"id": 6, "name": "self-hosted runner + mamba swap + dependabot knowledge", "status": "done", "commit": "bfe4ee8"}
+  ],
+  "remaining_tasks": [
+    {"id": 7, "name": "await nightly 36811033498 verdict; close UAT test 1", "status": "in_progress", "progress": "run dispatched 03:33Z, census ~16min, expected success"},
+    {"id": 8, "name": "close 04-UAT.md; mark VERIFICATION passed; phase.complete 4 + transition", "status": "not_started"},
+    {"id": 9, "name": "milestone lifecycle: audit-milestone -> complete-milestone -> cleanup", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [
+    {"manifest": null, "job_id": "36811033498", "backend": "github-actions (self-hosted runner dnallm-nightly)", "status": "running", "submit_command": "gh workflow run 252295321 --ref dev", "submitted_at": "2026-10-01T03:33:00Z", "expected_artifacts": ["green nightly census: 1656 passed / 7 allowlisted / 0 failed"], "verification_command": "gh run view 36811033498 --json status,conclusion", "resume_command": "gh run view 36811033498 --log-failed (if red)"}
+  ],
+  "human_actions_pending": [
+    {"action": "Optionally install runner as systemd service (sudo ./svc.sh install in ~/actions-runner-dnallm) so it survives reboots; else restart with sanitized env after reboot", "context": "runner currently a setsid-nohup process; fork PRs can never reach it", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "GATE-02 amended: PR gate = fast leg; slow census = nightly on self-hosted GPU runner", "rationale": "hosted 360-min cap killed the 6h CPU census; org cannot use larger hosted runners", "phase": "4"},
+    {"decision": "test open_chromatin model swapped mamba->dnagpt (95c9ba0)", "rationale": "mamba remote code (MambaCache) never loaded under transformers 5.x; was false-passing pre-CR-02", "phase": "4"},
+    {"decision": "transformers bound kept <6 (spurious <5.18 reverted)", "rationale": "MambaCache absence exists in 5.17 too; bound was based on wrong theory; risk documented in dependabot.yml instead", "phase": "4"},
+    {"decision": "dependabot.yml documents mamba-ssm/causal-conv1d ignore + transformers risk", "rationale": "owner: pinned deps are dependency problems, not unwillingness to update", "phase": "4"}
+  ],
+  "uncommitted_files": [" M .planning/config.json", "?? .gsd/", "?? .planning/codebase/", "?? .planning/graphs/", "?? .planning/milestone.lock", "?? .planning/phases/04-ci-gate-enforcement/04-VERIFICATION.md", "?? .planning/state.json", "?? graphify-out/"],
+  "next_action": "gh run view 36811033498 --json status,conclusion -> on success close UAT test 1, complete phase 4, run milestone lifecycle",
+  "context_notes": "See .planning/phases/04-ci-gate-enforcement/.continue-here.md for the full blocking-constraints list (runner env sanitization; .[base] superset). Milestone: 13/13 plans, coverage 96.30%, gate live+proven, branch protection on."
+}
