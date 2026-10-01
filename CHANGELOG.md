@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-01
+
+### Overview
+
+Quality-engineering release: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Every test result and coverage number from this repo is now trustworthy and cannot silently regress.
+
+### Added
+
+- CI: `fail_under = 90` coverage hard gate enforced through the pytest exit code — red-proven end-to-end via a synthetic-drop probe PR (all tests green, only the floor red)
+- CI: two-job gated coverage pipeline — `coverage-gate` fast PR leg (push/PR) + `coverage-nightly` slow full-suite census on a self-hosted GPU runner with `models.lock`-keyed HF model cache; required-check branch protection on `dev` and `main`
+- CI: `test-mamba` job moved to the self-hosted GPU runner on nightly cadence (schedule/workflow-dispatch only) with a 180-minute timeout backstop — it now actually executes instead of no-op skipping on GPU-less hosted runners
+- CI: windows-latest fast-test leg (py3.12)
+- Tests: ~1,000 new behavior-verifying tests (suite grew 464 → 1,657), coverage 45.92% → 96.30% on the agreed denominator (vendored code excluded)
+- Tests: typed network skips with an expected-skip allowlist (`tests/expected_skips.yaml`) and a fail-closed skip audit (`scripts/audit_skips.py`) wired into 4 CI jobs — an unexpected skip fails the run instead of passing silently
+
+### Fixed
+
+- Test harness: removed the root `conftest.py` exit-code mask that made every failing run exit 0 — cleanup now propagates status via `pytest_sessionfinish`, with a permanent CI canary proving failing runs fail the job
+- Test harness: removed `tests/pytest.ini` so both test roots (`tests/` and `dnallm/mcp/tests/`) are collected under the single `pyproject.toml` pytest config
+- `compute_metrics` multiclass AUROC crash on absent-class batches — presence guard plus `labels=expected_classes` anchoring
+- CrossDNA handler result was overwritten in the `load_model_and_tokenizer` dispatch chain — guarded first-resolved-wins chain with a sentinel regression test
+- Five latent crashes in `inference/plot.py` / `inference/benchmark.py` (multilabel curve scalars, dict annotations, entropy shape, pydantic `Benchmark` init, `StratifiedKFold` labels)
+- MCP server `_format_multi_model_results` misclassified every successful dict prediction as a failure
+- PDF-generating tests now write artifacts under `tmp_path` (working tree stays clean); fixed `.gitignore` pdf-path typo
+
+### Known Issues
+
+Latent bugs discovered by the audit, pinned by tests, deferred to the next cycle: `raw_reverse_complement` is a no-op (`datahandling/data.py:983`); `cosine_similarity` loss raises TypeError (`models/model.py:264`); generate-from-DataLoader returns an empty list (`inference/inference.py:1643`); mutagenesis `max` strategy raises AttributeError (`inference/mutagenesis.py:429`).
+
 ## [0.5.2] - 2026-05-15
 
 ### Fixed
