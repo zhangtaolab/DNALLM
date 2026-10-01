@@ -520,13 +520,21 @@ Timeout arithmetic for the pilot: cell_timeout 600 < `@pytest.mark.timeout(1800)
 
 ## Open Questions
 
+> Resolution status after planning (2026-10-02 revision): every question below carries a recorded
+> resolution vehicle — either a Phase 5 plan task that settles it empirically (RESOLVED BY EXECUTION)
+> or an explicit deferral to a later phase with its vehicle named.
+
 1. **evo2-1b tier accuracy on GB10** — the upstream thread covers 7B/20B/40B but not 1B; the notebook variant IS 1b_base.
    - What we know: source-build recipe exists; FP8-on-Blackwell accuracy is tier-dependent.
    - What's unclear: whether `evo2_1b_base` (likely bf16 checkpoint) avoids the FP8 issue entirely.
    - Recommendation: spike tries the dnallm route as-is first (auto FP8 config), then the `-noFA-noFP8` config — both attempts recorded.
+   - **(RESOLVED BY EXECUTION: 05-03 Task 2 — spike_evo2 runs the auto-selected config then the noFA-noFP8 fallback per D-06, both attempts' evidence recorded in 05-FEASIBILITY.md.)**
 2. **Does `python app.py` (marimo) block or exit?** — flavor spot-check decides; if it blocks, script-mode needs a timeout+kill wrapper or export-html wins.
+   - **(RESOLVED BY EXECUTION: 05-03 Task 2 — spike_marimo runs both flavors with subprocess timeout, recording exit codes, wall time, port binding, and artifacts in the matrix; the flavor decision is a matrix deliverable.)**
 3. **Spike workflow placement** — `ci.yml` dispatch-gated job vs separate `feasibility.yml`. Owner taste; dispatch-only either way.
+   - **(RESOLVED BY PLANNING: 05-03 Task 3 commits a separate dispatch-only `.github/workflows/feasibility.yml` cloned from the test-mamba pattern — keeps the runner's PR-unreachable posture independent of ci.yml edits.)**
 4. **evo-1 download size** — 29.7GB repo / ~12.9GB safetensors filtered; whether `allow_patterns` filtering applies to the `1.1_fix` revision path dnallm uses is a Phase 8 (CI-05) detail; the Phase 5 spike just needs disk+time recorded (2.4TB free verified).
+   - **(Phase 5 half RESOLVED BY EXECUTION: 05-03 Task 2 records measured disk_gb (du -sh) and load/download times in the matrix. The `allow_patterns`-on-`1.1_fix` sub-question is DEFERRED to Phase 8 (CI-05 models.lock work) — out of Phase 5 scope per the phase boundary in 05-CONTEXT.md.)**
 
 ## Environment Availability
 
