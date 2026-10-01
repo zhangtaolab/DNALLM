@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Nightly `test-mamba` job reports green while its tests fail (`continue-on-error`)"
   - id: WR-02
     severity: warning
@@ -13,7 +13,7 @@ findings:
     title: "`prepare_data` drops `task_type` — multilabel curve data is silently corrupted through the public API"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Workflow README documents gates and tooling that do not exist"
   - id: IN-01
     severity: info
@@ -67,18 +67,18 @@ findings:
     severity: warning
     disposition: skipped
     title: "Unpinned `curl | sh` installer executed in four CI jobs and the local script"
-open: 12
+open: 10
 total: 16
-recorded: 2026-10-01T09:27:05.766Z
+recorded: 2026-10-01T09:51:10.120Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
 | WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
