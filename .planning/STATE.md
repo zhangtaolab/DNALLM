@@ -153,3 +153,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 Last session: 2026-09-30T18:16:08.699Z
 Stopped at: Completed 04-03-PLAN.md
 Resume file: None
+
+## Deferred Verification
+
+| Phase | State | Resume |
+|-------|-------|--------|
+| 4 | verification_deferred_human | /gsd-verify-work 4 |
