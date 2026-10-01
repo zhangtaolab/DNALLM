@@ -293,7 +293,7 @@ def _numpy_fromstring_shim() -> None:
     if int(np.__version__.split(".")[0]) < 2:
         return
 
-    def _fromstring(text: Any, dtype: Any = np.uint8, **_kwargs: Any):  # noqa: ANN202
+    def _fromstring(text: Any, dtype: Any = np.uint8, **_kwargs: Any):
         data = text.encode("utf-8") if isinstance(text, str) else text
         return np.frombuffer(data, dtype=dtype)
 
