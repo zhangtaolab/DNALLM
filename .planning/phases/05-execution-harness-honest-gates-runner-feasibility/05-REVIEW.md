@@ -1,21 +1,10 @@
 ---
 phase: 05-execution-harness-honest-gates-runner-feasibility
-reviewed: 2026-10-01T19:57:44Z
+reviewed: 2026-10-01T20:27:41Z
 depth: standard
-files_reviewed: 21
+iteration: 3
+files_reviewed: 10
 files_reviewed_list:
-  - docs/example/marimo/finetune/finetune_demo.py
-  - docs/example/marimo/inference/inference_demo.py
-  - docs/example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
-  - docs/example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
-  - docs/example/mcp_pydantic_ai.md
-  - docs/example/notebooks/benchmark/benchmark.ipynb
-  - docs/example/notebooks/data_prepare/finetune/finetune_data.ipynb
-  - docs/example/notebooks/finetune_binary/finetune_binary.ipynb
-  - docs/example/notebooks/finetune_multi_labels/finetune_multi_labels.ipynb
-  - docs/example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb
-  - docs/example/notebooks/finetune_NER_task/finetune_NER_task.ipynb
-  - docs/example/notebooks/finetune_NER_task/generate_bpe_dataset.py
   - .github/workflows/docs-validation.yml
   - .github/workflows/feasibility.yml
   - .github/workflows/README.md
@@ -25,264 +14,205 @@ files_reviewed_list:
   - scripts/feasibility/spike_families.py
   - tests/examples/_execution.py
   - tests/examples/test_notebook_execution.py
+  - tests/expected_skips.yaml
 findings:
-  critical: 1
-  warning: 6
-  info: 4
-  total: 11
+  critical: 0
+  warning: 1
+  info: 5
+  total: 6
 status: issues_found
 ---
 
-# Phase 5: Code Review Report
+# Phase 5: Code Review Report (Iteration 3 — Final Convergence Check)
 
-**Reviewed:** 2026-10-01T19:57:44Z
+**Reviewed:** 2026-10-01T20:27:41Z
 **Depth:** standard
-**Files Reviewed:** 21
+**Files Reviewed:** 10 (narrowed per convergence context: the source/config files the fix passes touched; the `docs/example/**` mirrors were byte-verified twice already and are out of this pass's scope)
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the Phase 5 deliverables: the new notebook-execution harness
-(`tests/examples/_execution.py`, `tests/examples/test_notebook_execution.py`), the
-dispatch-only feasibility workflow and spike runner, the honest-gated
-`docs-validation.yml`, the `check_docs_sync.py` mirror checker, the skip-allowlist
-additions, and the `docs/example/**` mirror resync.
+Iteration-3 convergence re-review after two fix passes (`89b2f63..824b901`,
+then `a5f38ac` + `8fe451b`). Two goals per the convergence criteria: verify the
+WR-07/WR-08 doc fixes hold on current text, and confirm the doc edits
+introduced no new inaccuracies.
 
-Verified, not assumed:
+### Convergence verification — all 9 prior findings hold
 
-- **Mirror fidelity:** all 11 reviewed `docs/example/**` copies are byte-identical
-  (`cmp`) to their `example/` sources; `scripts/check_docs_sync.py` exits 0;
-  `docs/example/mcp_pydantic_ai.md` is a docs-only wrapper (no `example/`
-  counterpart), matching the `DOCS_ONLY_SUFFIXES` design. Mirror findings below are
-  therefore Info, repair deferred to Phase 8 per D-03.
-- **Harness works:** `pytest tests/examples/test_notebook_execution.py` collects 2
-  items (namespace-package import of `tests.examples._execution` resolves via the
-  `tests/conftest.py` basedir mechanism); the deliberate-hang test passes in 4.46s;
-  the fast leg of `tests/examples/` is 94 passed / 1 skipped / 2 deselected.
-- **Honest docs gate:** the three unmasked scripts (`check_docs_sync.py`,
-  `validate_docs_snippets.py`, `validate_yaml.py`) all exit 0 on the current tree —
-  flipping `continue-on-error` off did not create a currently-red pipeline.
-- **Spike runner correctness:** its `hf_revision`, evo2 config-suffix (`-noFA`
-  before `-noFP8`) and `is_fp8_capable` monkeypatch target were cross-checked
-  against `dnallm/models/special/evo.py:220,371` and `dnallm/utils/support.py` —
-  all faithful (the patch binds the module-global the handler actually calls).
+Re-verified independently against current source (not the fix reports). Since
+`824b901` only two commits landed (`a5f38ac`, `8fe451b`), touching only
+`.github/workflows/README.md` and `.github/workflows/feasibility.yml` — every
+Python/config file is byte-identical to its verified fix commit, and the
+strongest gates were re-run live this pass:
 
-One blocker: the committed spike runner fails `ruff check .` repo-wide (unused
-`noqa`), which fails the CI lint step on every push. The remaining findings are
-robustness gaps in the honest-gate machinery itself (a tripwire that can silently
-no-op, a "byte-identical" check that is not byte-level in one window, an exit-code
-mask and a green-no-evidence path in `feasibility.yml`) plus dependency placement.
+- **CR-01:** live `ruff check .` → "All checks passed!", exit 0 repo-wide. **VERIFIED.**
+- **WR-01:** returncode guard present (`tests/examples/_execution.py:196-198`); file unchanged since `f8e0f9f`. **VERIFIED.**
+- **WR-02:** `filecmp.cmpfiles(..., shallow=False)` at `scripts/check_docs_sync.py:62-64`; live run exits 0 (`OK: docs/example/ is in sync`). **VERIFIED.**
+- **WR-03:** `nbclient>=0.10` in the `test` extra (`pyproject.toml:99`); `pytest tests/examples/test_notebook_execution.py --collect-only` collects 2 items. **VERIFIED.**
+- **WR-04:** no `|| true` (`feasibility.yml:91-95`, `set -o pipefail` + `tee` kept); `main()` exits 2 on GPU-guard failure, 1 only when a family crashed pre-evidence, 0 otherwise (`spike_families.py:841-870`). **VERIFIED.**
+- **WR-05:** GPU-absent path writes the `gpu_absent` marker into the artifact path then `exit 1` (`feasibility.yml:43-49`); the `if: always()` upload (line 100) still delivers it. **VERIFIED.**
+- **WR-06:** file-level `permissions: contents: read` (`feasibility.yml:18-19`). **VERIFIED.**
+- **WR-07 (this pass's target):** `.github/workflows/README.md:121` now reads
+  "**GPU Check** (runs BEFORE checkout): … writes a `gpu_absent` marker into
+  the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe
+  no-op …", with **Code Checkout** documented as following, gated on
+  `has_gpu`. Cross-checked against `feasibility.yml:33-54` (check is step 1,
+  checkout gated at line 53) and against `ci.yml:268-294` — `test-mamba`
+  really is a green no-op (`has_gpu=false`, no `exit 1`), so the contrast
+  claim is accurate. **VERIFIED — fix holds.**
+- **WR-08 (this pass's target):** step renamed to "Run the committed spike
+  runner (D-06 fallback variants)" (`feasibility.yml:73`) and the comment
+  (`feasibility.yml:75-78`) now states fallback-variant-only semantics. Code
+  truth re-confirmed at `spike_families.py:792-805`: `--fallback` REPLACES —
+  evo1 → `evo-1-8k-base`, evo2 → notebook id + `noFA-noFP8` override,
+  megadna → notebook id + pinned clone; pybigwig/marimo ignore the flag. The
+  "committed local evidence" claim is real: `git ls-files` shows all 8
+  `spike-logs/*.log` files tracked (including the notebook-variant runs).
+  README §7 step 4 (`.github/workflows/README.md:124`) matches. **VERIFIED —
+  fix holds.**
 
-## Critical Issues
+### Doc-edit diff attribution
 
-### CR-01: Unused `noqa` in spike runner fails `ruff check .` — CI lint gate is red on every push
+`git show 8fe451b` / `a5f38ac`: the edits touched ONLY the step name, the
+first paragraph of the run-step comment, and README §7 step 1 — all three are
+accurate against the code. **The edits introduced no new inaccuracies in the
+text they wrote.** One residual inaccuracy survives in the *untouched*
+adjacent comment text (WR-09 below), which the corrected sentences now make
+internally contradictory.
 
-**File:** `scripts/feasibility/spike_families.py:296`
-**Issue:** `def _fromstring(text: Any, dtype: Any = np.uint8, **_kwargs: Any):  # noqa: ANN202`
-carries a `noqa` for `ANN202`, but the `ANN` rule family is not in `[tool.ruff.lint] select`
-(`pyproject.toml:300-315`), so ruff 0.16.9 flags it as `unused-noqa` (RUF100). Verified:
-`ruff check .` exits 1 with exactly one error in the entire repository, this one. The CI
-`test` job (`.github/workflows/ci.yml:86`) and `test-windows` (line 165) both run
-`ruff check . --statistics` as a hard step — both legs fail on every push until this is
-fixed. The repo was otherwise clean (`ruff format --check .` passes, 272 files).
-**Fix:** delete the inert directive:
+### Checked and cleared this pass (potential findings that did not survive verification)
 
-```python
-    def _fromstring(text: Any, dtype: Any = np.uint8, **_kwargs: Any):
-        data = text.encode("utf-8") if isinstance(text, str) else text
-        return np.frombuffer(data, dtype=dtype)
-```
+- `docs-validation.yml:44` cites "masked-outcome steps removed per WR-08" —
+  this is the **milestone-level** WR-08 (v1.1 scoping: the docs-validation
+  `continue-on-error` false-green; see `REQUIREMENTS.md` CI-01, `STATE.md:99`),
+  not this review's iteration-2 WR-08. Cross-reference is correct; no
+  `continue-on-error` remains in the file. Not a finding.
+- The committed `spike_megadna_fallback.log` shows `disk_human=8.0K` for a
+  ~582MB model; live re-run of `_snapshot_disk_gb("lingxusb/megaDNA_updated")`
+  on the current tree returns **0.5824 GB / 582.4MB** (evo2: 2.70 GB) — the
+  measurement code is correct; the old 8.0K line was an artifact of that
+  throwaway-venv run's cache resolution. This also confirms the workflow
+  comment's "582MB" figure. Not a finding.
+- Spike-only packages (`evo-model`/`stripedhyena`, `MEGABYTE_pytorch`,
+  `pyBigWig`) confirmed absent from every `pyproject.toml` dependency group
+  (only a mypy ignore-list mention), `marimo` present in `notebook` — so the
+  "On this venv" per-family outcome predictions (evo/evo2/megadna/pybigwig
+  FAIL, marimo runs for real) are all correct.
+
+### Live gates re-run
+
+`ruff check .` → 0; `scripts/check_docs_sync.py` → 0; fast leg
+`pytest tests/examples/ -m "not slow"` → **94 passed / 1 skipped /
+2 deselected** (matches the pre-fix baseline exactly).
+
+### New finding this iteration
+
+WR-09: two pre-existing clauses in the run-step comment block of
+`feasibility.yml` (echoed in README §7 step 2) contradict the corrected
+WR-08 text seven lines above them and the committed spike evidence. One
+Warning; the five known-deferred Info findings (IN-01..05) are re-confirmed
+still present and remain Info.
 
 ## Warnings
 
-### WR-01: `assert_tree_clean` passes silently when the `git status` call itself fails
+### WR-09: Two residual clauses in the run-step comment contradict the corrected fallback semantics and the committed evidence
 
-**File:** `tests/examples/_execution.py:186-195`
-**Issue:** The tripwire asserts only on `result.stdout` and passes `check=False`. If git
-errors — not a git repo (source tarball, exported tree), missing `git` binary, or a
-contended `index.lock` — stdout is empty and the guard reports "clean", silently
-disabling the very false-green protection it exists for. Verified live: with
-`REPO_ROOT` pointed at a non-git directory, `assert_tree_clean()` returns without
-raising.
-**Fix:**
+**File:** `.github/workflows/feasibility.yml:79-84` (and `.github/workflows/README.md:122`)
+**Issue:** The WR-08 fix corrected the first paragraph of the comment block,
+but the untouched text below it now contradicts both the corrected sentences
+and the committed spike evidence, in two clauses:
 
-```python
-    result = subprocess.run([...], capture_output=True, text=True, cwd=REPO_ROOT, check=False)
-    assert result.returncode == 0, (
-        f"git status failed (rc={result.returncode}): {result.stderr.strip()}"
-    )
-    assert not result.stdout.strip(), (...)
-```
+1. **"megadna downloads its 582MB checkpoint and fails the unpickle without
+   the pinned clone + MEGABYTE_pytorch"** (`feasibility.yml:82-84`). Under the
+   dispatched `--family all --fallback` command the runner itself PERFORMS the
+   pinned clone (`spike_megadna(..., pinned_clone=fallback)` → clone +
+   hash-verify + `sys.path.insert`, `spike_families.py:517-522,799`), so the
+   clone is not absent. The committed `spike-logs/spike_megadna_fallback.log`
+   (attempt 2a) records the actual mechanism: with the clone present, the
+   unpickle advances past `No module named megaDNA` and fails at
+   `ModuleNotFoundError: No module named 'MEGABYTE_pytorch'`
+   (`megaDNA/megadna.py:9` imports it; the package is in no dependency group).
+   The predicted outcome (FAIL as environment evidence, 582MB download —
+   figure confirmed live at 582.4MB) is right; the causal clause is wrong,
+   and it directly contradicts the just-fixed "pinned megaDNA clone" fallback
+   description at lines 76-77. An operator reading the artifact's
+   `failure_text` (which mentions only `MEGABYTE_pytorch`) against a comment
+   that blames a missing clone could conclude the fallback leg malfunctioned.
+2. **"the spike-only packages stay inside this ephemeral job venv"**
+   (`feasibility.yml:62-63`, echoed in README §7 step 2's parenthetical).
+   Nothing spike-only is installed into the job venv — the install step runs
+   only `uv pip install -e ".[base]"`, and lines 80-81 of the same file state
+   the opposite: "the spike-only packages are intentionally absent". Same
+   term, two contradictory claims about the same venv within one file.
 
-### WR-02: `check_docs_sync.py` claims byte-identity but uses shallow (stat-signature) comparison
+Both clauses pre-date the fix passes (the edits did not introduce them), but
+the WR-08 correction makes the first one internally contradictory within a
+single comment block, and this phase's own standard (WR-07/WR-08) prices
+runbook misdescriptions of runner evidence at Warning.
 
-**File:** `scripts/check_docs_sync.py:74`
-**Issue:** `filecmp.dircmp(str(EXAMPLE_DIR), str(DOCS_EXAMPLE_DIR), ignore=...)` defaults
-to `shallow=True`: `phase3` calls `cmpfiles(..., self.shallow)`, which returns "equal"
-whenever mode + size + mtime match, without reading the bytes. A same-size content
-divergence whose mtimes coincide (e.g., mirrored with mtime-preserving tools, or a
-fresh checkout where mtimes collide) is reported as "OK: docs/example/ is in sync".
-The docstring/module contract says "byte-identical mirror"; the window is narrow but
-it is exactly the false-green class this phase closes.
-**Fix:** Force content comparison:
-
-```python
-dcmp = filecmp.dircmp(str(EXAMPLE_DIR), str(DOCS_EXAMPLE_DIR), ignore=list(IGNORE), shallow=False)
-```
-
-(`dircmp.__init__` accepts `shallow` on Python 3.13+; on older interpreters replace
-`diff_files` handling with `filecmp.cmpfiles(left, right, common_names, shallow=False)`
-inside `check_sync`.)
-
-### WR-03: New test module imports `nbclient` at module scope, but `nbclient` lives only in the `notebook` extra
-
-**File:** `tests/examples/test_notebook_execution.py:20-21` and `pyproject.toml:92-104`
-**Issue:** `from nbclient import NotebookClient` executes at collection time; pytest
-marks do not prevent module import, so even `-m "not slow"` fails with
-`ModuleNotFoundError: nbclient` in any environment that installed only `.[test]`
-(nbclient is not a core dependency and nothing in the `test` extra pulls it —
-`nbstripout` brings only `nbformat`). All current CI legs are safe (they install
-`.[base]`, and docs-validation's `dev` extra chains to `notebook`), but the
-documented self-service path is now broken: `README.md:197`
-(`uv pip install -e '.[test,cpu]'` + "add ,mcp for the MCP example tests") yields a
-collection error for `pytest`/`pytest -m "not slow"`.
-**Fix:** Add the collection-time dependency to the `test` extra in `pyproject.toml`:
-
-```toml
-test = [
-    "pytest>=8.4",
-    "pytest-asyncio>=1.0",
-    "pytest-cov>=7.0",
-    "pytest-progress>=0.1.0",
-    "pytest-timeout>=2.3.1,<2.5",
-    "coverage[toml]>=7.10.6",
-    "nbclient>=0.10",
-]
-```
-
-(and update the README line to mention the requirement is now included). Alternative:
-guard the imports with `pytest.importorskip("nbclient")` — but the extra entry is
-cleaner since CI is meant to run these tests.
-
-### WR-04: `|| true` masks the spike runner's exit code, hiding infrastructure crashes as a green step
-
-**File:** `.github/workflows/feasibility.yml:71-75`
-**Issue:** `python scripts/feasibility/spike_families.py ... | tee ... || true` greens
-the step unconditionally. The in-file rationale (expected family FAILs exit 1 because
-spike-only packages are absent; the matrix, not the exit code, carries the verdict) is
-real, but as written the mask also greens genuine infrastructure failures — the script
-crashing before emitting any evidence (import error, OOM kill, disk full) is
-indistinguishable in job status from a fully-evidenced run. The `|| true` is also
-redundant for its stated purpose: the upload step already has `if: always()`, so a red
-run step would not skip the artifact upload.
-**Fix:** Make the runner honest about the distinction and drop the mask — in
-`spike_families.py:main()`, return 0 when every requested family emitted a complete
-evidence block (OK or FAIL) and return nonzero only on pre-evidence crashes; then in
-the workflow remove `|| true` (keep `set -o pipefail` + `tee`). Interim one-liner:
-replace `|| true` with step-level `continue-on-error: true` so the step is annotated
-failed while the unconditional upload still runs.
-
-### WR-05: GPU-absent path reports a green job with zero evidence produced
-
-**File:** `.github/workflows/feasibility.yml:27-44`
-**Issue:** When `nvidia-smi` is absent, every subsequent step is skipped and the job
-succeeds. The upload step then finds no files (`if-no-files-found: warn` only — the
-`spike-logs/` dir is never created). For an evidence-only deliverable (the owner fills
-the Runner confirmation column from artifacts), a green checkmark meaning "nothing was
-run" is a false green of the class this phase exists to close. The fail-safe no-op is
-documented in `.github/workflows/README.md` as inherited from `test-mamba`, but for a
-test leg a silent skip is merely wasteful — here it silently vouches that a
-confirmation happened.
-**Fix:** In the `gpu-check` step, also write the marker and fail the job:
+**Fix:** One surgical edit to each clause:
 
 ```yaml
-        run: |
-          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
-            echo "has_gpu=true" >> $GITHUB_OUTPUT
-          else
-            mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
-            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" \
-              > .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log
-            echo "No GPU detected — failing: this job's deliverable is evidence"
-            exit 1
-          fi
+        # Single fallback pass per the plan: --fallback runs each family's
+        # D-06 fallback variant (evo-1-8k-base / evo2 noFA-noFP8 config /
+        # pinned megaDNA clone), NOT the notebook variant — notebook-variant
+        # verdicts come from the committed local evidence (spike-logs/).
+        # On this venv the
+        # evo/evo2 families fail fast at their handler ImportErrors (the
+        # spike-only packages are intentionally absent from this venv), megadna
+        # clones the pinned repo (the fallback itself) and downloads its 582MB
+        # checkpoint, but the unpickle still FAILS: the clone provides the
+        # megaDNA package, not the MEGABYTE_pytorch pip package its model file
+        # imports. pybigwig fails its import, and marimo executes for real on
+        # the warm ModelScope cache — every failure text is matrix evidence,
+        # and the runner exits 0 whenever each family EMITTED its evidence
+        # block (the matrix, not this exit code, is the verdict carrier). A
+        # red step therefore means an infrastructure crash with missing
+        # evidence (import error, OOM kill, disk full) — no `|| true` mask;
+        # the upload below still runs via its if: always().
 ```
 
-(at minimum, keep the job green but ensure the artifact carries the `gpu_absent`
-marker).
-
-### WR-06: `feasibility.yml` omits the least-privilege `permissions:` block the repo convention mandates
-
-**File:** `.github/workflows/feasibility.yml` (file level)
-**Issue:** `ci.yml:18-20` sets workflow-wide `permissions: contents: read` with an
-explicit rationale ("every job (including test jobs that run arbitrary test code and
-third-party actions) defaults to read-only"). The new `feasibility.yml` — the workflow
-that executes repo code on the self-hosted GPU box — declares no `permissions:` block,
-so its jobs inherit the repo/organization default token scopes (potentially
-read/write). The dispatch-only trigger limits exposure, but this is precisely the
-workflow where the stated convention matters most.
-**Fix:**
-
-```yaml
-on: workflow_dispatch
-
-permissions:
-  contents: read
-```
+and change the venv-install comment (`feasibility.yml:62-63`) plus README §7
+step 2's parenthetical to e.g. "the spike-only packages stay OUT of this
+ephemeral job venv — their absence is part of the evidence" (README: drop
+"stay inside this ephemeral job venv" for "their absence from this venv is
+deliberate evidence").
 
 ## Info
 
-### IN-01: `test_timeout` spec key is dead config — the timeout mark is hardcoded
+### IN-01 (carried, iterations 1-2 — still present): `test_timeout` / `extra_inputs` spec keys are dead config
 
-**File:** `tests/examples/_execution.py:54-60` and `tests/examples/test_notebook_execution.py:78`
-**Issue:** The spec docstring says values carry "the per-test timeout mark the test
-layer must apply", but the test layer applies a hardcoded `@pytest.mark.timeout(1800)`
-class decorator and never reads `spec["test_timeout"]` (nor wires
-`spec["extra_inputs"]` into the fixture's `seed_sandbox` call). Both are 1800 today, so
-nothing breaks — but the documented spec contract is not implemented, and a Phase 8
-notebook added with a larger `test_timeout` will silently keep the old ceiling.
-**Fix:** Either read the spec in a dynamic mark (e.g., a module-level loop applying
-`pytest.mark.timeout(spec["test_timeout"])` when parametrizing) or delete the unused
-keys from the spec dict until they are wired.
+**File:** `tests/examples/_execution.py:54-60` and `tests/examples/test_notebook_execution.py:53,78`
+**Issue:** Unchanged: spec dict documents `test_timeout`/`extra_inputs`; test layer hardcodes `@pytest.mark.timeout(1800)` and calls `seed_sandbox(pilot_dir, tmp_path)` without `extra_inputs`. Both coincide at 1800/empty today. Known-deferred to Phase 8.
+**Fix:** wire the spec keys when generalizing the fixture, or drop them.
 
-### IN-02: `assert_tree_clean` fails on pre-existing developer WIP under `example/`
+### IN-02 (carried, iterations 1-2 — still present): `assert_tree_clean` fails on pre-existing developer WIP under `example/`
 
-**File:** `tests/examples/_execution.py:173-195`
-**Issue:** The teardown guard asserts absolute cleanliness of `example`/`docs/example`,
-so a developer with uncommitted local edits there gets a harness-attributed failure
-unrelated to the execution. The kernel-count test already solved this pattern with a
-baseline/delta comparison; the tree guard could snapshot `git status --porcelain`
-before the run and assert no new lines after.
-**Fix:** Capture a pre-run baseline in the fixture setup and assert
-`current.splitlines() - baseline.splitlines() == []` in teardown (or document the
-clean-tree precondition in the docstring).
+**File:** `tests/examples/_execution.py:173-201`
+**Issue:** Teardown asserts absolute cleanliness of `example`/`docs/example` rather than a pre-run baseline/delta comparison. Known-deferred.
+**Fix:** snapshot `git status --porcelain --` in fixture setup and assert no new lines in teardown.
 
-### IN-03: Hardcoded developer home path in the mirrored NER dataset generator
+### IN-03 (carried, iterations 1-2 — still present): hardcoded developer home path in the mirrored NER dataset generator
 
-**File:** `docs/example/notebooks/finetune_NER_task/generate_bpe_dataset.py:14`
-**Issue:** `sys.path.insert(0, "/home/forrest/Github/DNALLM")` — machine-specific
-absolute path baked into shipped example/docs code; harmless when `dnallm` is
-pip-installed, misleading (silently stale imports) when it is not, and it leaks a home
-directory path into published docs. Byte-identical in `example/` (mirror is faithful),
-so per the phase scoping this is deferred to the Phase 8 per-notebook repair loop, not
-a Phase 5 defect.
-**Fix (Phase 8):** drop the `sys.path.insert` line (the package is installed via
-`uv pip install -e .`) or replace with a relative
-`Path(__file__).resolve().parents[2]` computation.
+**File:** `example/notebooks/finetune_NER_task/generate_bpe_dataset.py:14` (byte-identical mirror at `docs/example/.../generate_bpe_dataset.py:14`, re-confirmed by grep this pass)
+**Issue:** `sys.path.insert(0, "/home/forrest/Github/DNALLM")` still present; mirror fidelity intact, so per D-03 the content repair is deferred to the Phase 8 per-notebook loop.
+**Fix (Phase 8):** drop the line or derive `Path(__file__).resolve().parents[2]`.
 
-### IN-04: Pinned megaDNA clone uses a fixed shared `/tmp` path
+### IN-04 (carried, iterations 1-2 — still present): pinned megaDNA clone uses a fixed shared `/tmp` path
 
 **File:** `scripts/feasibility/spike_families.py:518`
-**Issue:** `/tmp/megadna-pinned-clone` is a predictable shared location reused across
-runs; the commit-hash verification (`_checkout_pinned_megadna`) checks `HEAD` but not
-untracked files on disk, so pre-existing content at that path from another local user
-would be imported via `sys.path.insert(0, ...)`. Requires local code execution on the
-single-owner runner to exploit, and the blast radius is the verdict matrix only.
-**Fix:** Use `clone_dir = Path(tempfile.mkdtemp(prefix="megadna-pinned-"))` for a
-per-run directory instead of the fixed name.
+**Issue:** `/tmp/megadna-pinned-clone` remains a predictable shared location; hash verification checks `HEAD` only, not untracked on-disk content. Spike-runner blast radius only. Known-deferred.
+**Fix:** `clone_dir = Path(tempfile.mkdtemp(prefix="megadna-pinned-"))`.
+
+### IN-05 (carried, iteration 2 — still present): `# ruff: ignore[rule-name]` comments are inert — not a ruff directive
+
+**File:** `tests/examples/_execution.py:35,185`; `tests/examples/test_notebook_execution.py:13,67`; `scripts/feasibility/spike_families.py:7,259,265,271,635,675`
+**Issue:** All twelve invented-syntax comments still present (re-confirmed on current source this pass); they suppress nothing (ruff uses `# noqa:` / `# ruff: noqa:`). Harmless while the project config does not fire those codes — `ruff check .` exits 0. Known-deferred.
+**Fix:** delete the comments or replace with real `# noqa: S603, S607`-style directives where suppression is genuinely wanted.
 
 ---
 
-_Reviewed: 2026-10-01T19:57:44Z_
+_Reviewed: 2026-10-01T20:27:41Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Iteration: 3 (final convergence check; CR-01 + WR-01..08 all verified holding; WR-09 new; IN-01..05 carried as known-deferred)_
