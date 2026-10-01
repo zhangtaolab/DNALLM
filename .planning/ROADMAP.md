@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Harness Integrity & Measured Baseline** - Make every test result and coverage number trustworthy: one pytest config, real exit codes, agreed denominator, measured baseline (completed 2026-09-30)
 - [x] **Phase 2: Suite Hygiene & Known-Bug Fixes** - Fix the known code defects hiding behind skips and make every remaining skip typed and intentional (completed 2026-09-30)
 - [x] **Phase 3: Test Authoring to >90% Coverage** - Close the measured gaps biggest-first with tests that assert observable behavior until coverage exceeds 90% (completed 2026-09-30)
-- [ ] **Phase 4: CI Gate Enforcement** - Turn 90% into a ratcheted CI hard gate that provably fails when coverage drops
+- [x] **Phase 4: CI Gate Enforcement** - Turn 90% into a ratcheted CI hard gate that provably fails when coverage drops (completed 2026-10-01)
 
 ## Phase Details
 
@@ -105,7 +105,7 @@ Plans:
   4. The coverage reporting step either runs on codecov-action v7 as reporting-only or is removed — no dead or failing reporting step remains
   5. PRs targeting both `dev` and `main` trigger the gated coverage job
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -127,4 +127,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Harness Integrity & Measured Baseline | 2/2 | Complete    | 2026-09-30 |
 | 2. Suite Hygiene & Known-Bug Fixes | 3/3 | Complete    | 2026-09-30 |
 | 3. Test Authoring to >90% Coverage | 5/5 | Complete    | 2026-09-30 |
-| 4. CI Gate Enforcement | 3/3 | In Progress|  |
+| 4. CI Gate Enforcement | 3/3 | Complete    | 2026-10-01 |
