@@ -118,7 +118,7 @@ The workflows are triggered on:
 **Runner**: `self-hosted` GPU box (`dnallm-nightly`), 240-minute timeout (evo-1's cold download alone is ~30GB)
 
 **Steps**:
-1. **Code Checkout** / **GPU Check** (same fail-safe no-op as `test-mamba` if the box loses its GPU)
+1. **GPU Check** (runs BEFORE checkout): on GPU absence writes a `gpu_absent` marker into the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe no-op, this job's deliverable is evidence, so zero-evidence green is forbidden (the `if: always()` upload still delivers the marker). **Code Checkout** follows, gated on the GPU check's `has_gpu` output — the check must precede checkout so the marker survives the skipped checkout
 2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[base]"` (the coverage-nightly-proven extras set; spike-only packages stay inside this ephemeral job venv)
 3. **Runner Identity**: records the `nvidia-smi` identity line (the D-04 parity claim)
 4. **Spike Execution**: `--family all` (notebook variants) then the D-06 fallback legs; expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
