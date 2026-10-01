@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: Execution Harness, Honest Gates & Runner Feasibility
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-10-01T17:47:44.551Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-10-01T18:06:17.193Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: 681be5e704661b92202a22f44a9d76428569d0a3
+state_head: 7dad6a5c55a3d887430a58745ca202936c7ba311
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 5 (Execution Harness, Honest Gates & Runner Feasibility) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 5 execution started
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 05 P01 | 11 min | 3 tasks | 5 files |
+| Phase 05 P02 | 12 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - Carried from v1 (AUDIT-04): kernel subprocesses are unmeasured by design — example execution must not move the 96.30% gate (documented in Phase 9)
 - [Phase 05]: 05-01: nbclient 0.11.0 NotebookClient is not a context manager - harness uses plain execute() with shutdown_kernel=immediate; env overrides via os.environ save/restore (no env trait)
 - [Phase 05]: 05-01: typed-skip prefixes environment-unavailable:/optional-dep: registered in expected_skips.yaml with zero callers - Phase 8 skip decisions inherit the allowlist contract
+- [Phase 05]: 05-02: DOCS_ONLY_SUFFIXES relaxation scoped to right_only only - a both-sides .md (overview.md) must still match byte-for-byte, proven by injected-drift failure
+- [Phase 05]: 05-02: docs-validation flipped honest only after all five workflow commands verified green locally (born green, D-01); mcp extra installed and README install line run verbatim before documenting
+- [Phase 05]: 05-02: pre-existing uv-run resolver failure (mamba x cuda conflicts matrix, pyproject unchanged) logged to deferred-items.md instead of fixing - out of 05-02 scope
 
 ### Pending Todos
 
@@ -102,8 +106,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T17:47:44.535Z
-Stopped at: Completed 05-01-PLAN.md
+Last session: 2026-10-01T18:06:17.177Z
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
 
 ## Deferred Verification

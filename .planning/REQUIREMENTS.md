@@ -19,14 +19,14 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 ### Repair
 
 - [ ] **REPAIR-01**: Every error surfaced by real execution is fixed — notebook/app/script code — each with a regression test; harness-bug vs content-bug triaged explicitly (no cwd false-repairs)
-- [ ] **REPAIR-02**: The already-broken docs/example mirror is closed (sync-script wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and regenerated as part of every subsequent notebook repair
+- [x] **REPAIR-02**: The already-broken docs/example mirror is closed (sync-script wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and regenerated as part of every subsequent notebook repair
 - [ ] **REPAIR-03**: dnallm library bugs exposed by execution are fixed with regression tests (v1 precedent: AUROC, CrossDNA)
 - [ ] **REPAIR-04**: The langchain notebook's `!uv pip install langchain-ollama` shell-magic cell is repaired — dependency declared in the `mcp` extra
 
 ### CI Gating
 
-- [ ] **CI-01**: WR-08 closed — docs-validation `continue-on-error: true` removed in the same reviewable unit as the mirror-drift closure, so the gate is honest without blocking unrelated PRs
-- [ ] **CI-02**: WR-09 closed — docs-validation installs the `mcp` extra; README "Local Testing" install line corrected
+- [x] **CI-01**: WR-08 closed — docs-validation `continue-on-error: true` removed in the same reviewable unit as the mirror-drift closure, so the gate is honest without blocking unrelated PRs
+- [x] **CI-02**: WR-09 closed — docs-validation installs the `mcp` extra; README "Local Testing" install line corrected
 - [ ] **CI-03**: Execution tests are `slow`-marked into the nightly census with zero new fast-leg skips; typed skip prefixes (`network-unavailable:` reuse, `environment-unavailable:`/`optional-dep:` additions) registered in `expected_skips.yaml`; skip audit green with the new categories
 - [ ] **CI-04**: `models.lock` extended with all newly-executed model ids (~8+) with **ModelScope-first prefixes** — `ms` wherever the model exists on ModelScope (owner decision; zhangtaolab models are mirrored there), `hf` only as fallback — each notebook's `source=` route aligned with its lock prefix, revision-pinned (`trust_remote_code` provenance)
 - [ ] **CI-05**: Cache strategy survives the giants — evo-1 fetched via `allow_patterns` (safetensors only, ~12.9GB not 29.7GB), tiered so giant models persist outside the 10GB-quota cache and never evict the existing warm cache
@@ -101,11 +101,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXEC-05 | Phase 8 | Pending |
 | EXEC-06 | Phase 5 | Complete |
 | REPAIR-01 | Phase 8 | Pending |
-| REPAIR-02 | Phase 5 | Pending |
+| REPAIR-02 | Phase 5 | Complete |
 | REPAIR-03 | Phase 8 | Pending |
 | REPAIR-04 | Phase 8 | Pending |
-| CI-01 | Phase 5 | Pending |
-| CI-02 | Phase 5 | Pending |
+| CI-01 | Phase 5 | Complete |
+| CI-02 | Phase 5 | Complete |
 | CI-03 | Phase 9 | Pending |
 | CI-04 | Phase 8 | Pending |
 | CI-05 | Phase 8 | Pending |
