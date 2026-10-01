@@ -212,8 +212,11 @@ mypy dnallm/
 # Run tests
 pytest --cov
 
-# Census of record (what the coverage gate runs; enforces the 90 floor)
+# Census of record (what coverage-nightly runs; enforces the 90 floor)
 pytest -ra --durations=0 --junitxml=/tmp/census-junit.xml --cov
+
+# Fast census (what the coverage gate runs)
+pytest -m "not slow" -ra --durations=0 --junitxml=/tmp/gate-junit.xml --cov
 
 # Scoped runs: coverage is floor-gated, so a scoped --cov run exits 1
 # even with green tests (expected, not a bug). Drop --cov or pass --no-cov:
