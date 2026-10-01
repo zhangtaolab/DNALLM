@@ -190,6 +190,12 @@ def assert_tree_clean(paths: tuple[str, ...] = ("example", "docs/example")) -> N
         cwd=REPO_ROOT,
         check=False,
     )
+    # Fail when the guard itself could not run (not a git repo, missing git
+    # binary, contended index.lock): an empty stdout from a failed call would
+    # otherwise read as "clean" and silently disable this tripwire.
+    assert result.returncode == 0, (
+        f"git status failed (rc={result.returncode}): {result.stderr.strip()}"
+    )
     assert not result.stdout.strip(), (
         f"notebook execution dirtied the repo tree under {paths}:\n{result.stdout}"
     )
