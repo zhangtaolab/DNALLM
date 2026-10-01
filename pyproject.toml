@@ -96,6 +96,7 @@ test = [
     "pytest-progress>=0.1.0",
     "pytest-timeout>=2.3.1,<2.5",
     "coverage[toml]>=7.10.6",
+    "nbclient>=0.10",
 ]
 notebook = [
     "jupyter>=1.1.1",
