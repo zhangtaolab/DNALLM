@@ -1,18 +1,17 @@
 ---
 gsd_state_version: "1.0"
-status: Awaiting next milestone
+status: "Milestone v1 shipped — PR #40 (dev → main, dnallm 0.6.0)"
 stopped_at: Phase 01 complete — all phases complete
-last_updated: "2026-10-01T13:04:24.787Z"
+last_updated: "2026-10-01T14:42:20.399Z"
 last_activity: 2026-10-01
-last_activity_desc: Milestone v1 completed and archived
-state_head: ae5352a13f42aeafff9863ebd70c45e5b3ad0a5f
+state_head: 70e2ce676cf61d8bdf7f3415ee31073db135efdf
+current_phase: 01
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 13
   completed_plans: 13
   percent: 100
-current_phase: 01
 ---
 
 # Project State
@@ -28,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 Phase: Milestone v1 complete
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-01 — Milestone v1 completed and archived
+Status: Milestone v1 shipped — PR #40 (dev → main, dnallm 0.6.0)
+Last activity: 2026-10-01
 
 ## Performance Metrics
 
