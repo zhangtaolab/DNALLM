@@ -27,7 +27,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 **Milestone Goal:** Real-model execution testing for everything under `example/` with every surfaced error fixed; PlantHelixSeek-CRE/-Anno showcase notebooks over committed Arabidopsis loci whose predictions are substantially consistent with experimental truth; and the CI gate false-green (WR-08/WR-09) repaired so example tests run under formal nightly gating.
 
-- [ ] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families
+- [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02)
 - [ ] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist
 - [ ] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror
 - [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
@@ -46,7 +46,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   3. `scripts/check_docs_sync.py` exits 0 (mirror drift closed: wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and the docs-validation workflow runs honestly — `continue-on-error` removed, `mcp` extra installed, README "Local Testing" line corrected — without blocking unrelated PRs
   4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -116,7 +116,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 3/3 | In Progress|  |
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 3/3 | Complete    | 2026-10-02 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 0/TBD | Not started | - |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
