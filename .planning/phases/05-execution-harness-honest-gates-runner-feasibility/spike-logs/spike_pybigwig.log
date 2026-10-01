@@ -1,0 +1,23 @@
+# pyBigWig install attempts (recorded verbatim from this box, 2026-10-01):
+# attempt 1 (default 'pip install pyBigWig'): FAILED — libBigWig/bigWigIO.h:5:10: fatal error: curl/curl.h: 没有那个文件或目录 (curl-config from /home/forrest/miniconda3/bin is on PATH but setup.py consumes only 'curl-config --libs', never --cflags, so the miniconda-base curl headers are not added to the include path)
+# attempt 2 (D-06 smallest documented deviation): CFLAGS=-I/home/forrest/miniconda3/include LDFLAGS=-L/home/forrest/miniconda3/lib pip install pyBigWig --no-build-isolation → Successfully built pybigwig-0.3.26-cp313-cp313-linux_aarch64.whl
+# spike run below executed against the attempt-2 wheel:
+
+All checks passed!
+gpu_device=NVIDIA GB10
+gpu_compute_capability=12.1
+torch_version=2.11.0+cu130
+===== spike pybigwig (notebook variant) =====
+prerequisite=pip install pyBigWig in the throwaway venv (aarch64: sdist compile, needs gcc + zlib/libcurl headers)
+pybigwig_version=0.3.26
+family=pybigwig
+variant=pyBigWig aarch64 sdist build + BigWig round-trip
+pybigwig_version=0.3.26
+round_trip=write 2 entries + read 50 values OK
+load_s=0.0
+forward_s=0.0
+peak_vram_gb=0.00
+disk_gb=0.00
+result=OK
+
+SPIKE_PYBIGWIG_EXIT=0

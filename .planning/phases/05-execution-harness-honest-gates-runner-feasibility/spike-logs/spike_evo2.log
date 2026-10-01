@@ -1,0 +1,135 @@
+### evo2 attempt 1 (notebook variant, AUTO-selected config on GB10 — the FP8 trap, Pitfall 4) ###
+# is_fp8_capable()=True on GB10 (CC 12.1) and flash-attn installed -> handler selected evo2-1b-8k.yml with use_fp8_input_projections=True -> vortex.model.model.py:631 ImportError: This model requires FP8 input projections (use_fp8_input_projections=True) which depends on Transformer Engine, but TE is not installed. Only 7b models (8k, 262k, 1m) can run without Transformer Engine. (transformer-engine was uninstalled: pip pulled the empty TE meta package 2.19.0 whose import raises RuntimeError, breaking 'from evo2 import Evo2' outright — worse than absence, since vortex's ImportError guard cannot catch RuntimeError)
+
+### evo2 attempt 1 (notebook variant, auto-selected config on GB10 = evo2-1b-8k-noFA.yml FP8) ###
+gpu_device=NVIDIA GB10
+gpu_compute_capability=12.1
+torch_version=2.11.0+cu130
+===== spike evo2 (notebook variant) =====
+prerequisite=evo2 package installed in the throwaway venv only (pulls vortex)
+gb10_trap=is_fp8_capable() is True on GB10 (CC >= 9.0), so the auto-selected config is the FP8 variant; --fallback forces the noFA-noFP8 config
+flash_attention_installed=True
+selected_config=evo2-1b-8k.yml
+config_use_fp8_input_projections=True
+03:12:51 - dnallm.utils.support - WARNING - Generation task does not require num_labels, but got 1. Setting to 0.
+[10/02/26 03:12:51] INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/models/a                
+                             rcinstitute/evo2_1b_base/revision/m                
+                             ain "HTTP/1.1 200 OK"                              
+[10/02/26 03:12:52] INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/models/a                
+                             rcinstitute/evo2_1b_base/tree/2279e                
+                             1df422c991037470302360edd40d0d2ea1e                
+                             ?recursive=true&expand=false                       
+                             "HTTP/1.1 200 OK"                                  
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/arcinstitute                
+                             /evo2_1b_base/resolve/2279e1df422c9                
+                             91037470302360edd40d0d2ea1e/.gitatt                
+                             ributes "HTTP/1.1 307 Temporary                    
+                             Redirect"                                          
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+                    WARNING  huggingface_hub.utils._http - WARNING  _http.py:993
+                             - Warning: You are sending                         
+                             unauthenticated requests to the HF                 
+                             Hub. Please set a HF_TOKEN to enable               
+                             higher rate limits and faster                      
+                             downloads.                                         
+                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/.gitattributes?%2Farcinst                
+                             itute%2Fevo2_1b_base%2Fresolve%2F22                
+                             79e1df422c991037470302360edd40d0d2e                
+                             a1e%2F.gitattributes=&etag=%22a6344                
+                             aac8c09253b3b630fb776ae94478aa0275b                
+                             %22 "HTTP/1.1 200 OK"                              
+                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/arcinstitute                
+                             /evo2_1b_base/resolve/2279e1df422c9                
+                             91037470302360edd40d0d2ea1e/config.                
+                             json "HTTP/1.1 307 Temporary                       
+                             Redirect"                                          
+                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/arcinstitute                
+                             /evo2_1b_base/resolve/2279e1df422c9                
+                             91037470302360edd40d0d2ea1e/README.                
+                             md "HTTP/1.1 307 Temporary                         
+                             Redirect"                                          
+                    INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/models/a                
+                             rcinstitute/evo2_1b_base/xet-read-t                
+                             oken/2279e1df422c991037470302360edd                
+                             40d0d2ea1e "HTTP/1.1 200 OK"                       
+                    INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/.gitattributes?%2Farcinst                
+                             itute%2Fevo2_1b_base%2Fresolve%2F22                
+                             79e1df422c991037470302360edd40d0d2e                
+                             a1e%2F.gitattributes=&etag=%22a6344                
+                             aac8c09253b3b630fb776ae94478aa0275b                
+                             %22 "HTTP/1.1 200 OK"                              
+Fetching 4 files:  25%|██▌       | 1/4 [00:00<00:02,  1.40it/s]                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/config.json?%2Farcinstitu                
+                             te%2Fevo2_1b_base%2Fresolve%2F2279e                
+                             1df422c991037470302360edd40d0d2ea1e                
+                             %2Fconfig.json=&etag=%22a6e10d2dc05                
+                             a8edeec10070ba2bd60a34dd5bd69%22                   
+                             "HTTP/1.1 200 OK"                                  
+                    INFO     httpx - INFO - HTTP Request: HEAD   _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/README.md?%2Farcinstitute                
+                             %2Fevo2_1b_base%2Fresolve%2F2279e1d                
+                             f422c991037470302360edd40d0d2ea1e%2                
+                             FREADME.md=&etag=%22f439216f32377d6                
+                             b9fe64a9b9262beb9614b6f2b%22                       
+                             "HTTP/1.1 200 OK"                                  
+[10/02/26 03:12:53] INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/config.json?%2Farcinstitu                
+                             te%2Fevo2_1b_base%2Fresolve%2F2279e                
+                             1df422c991037470302360edd40d0d2ea1e                
+                             %2Fconfig.json=&etag=%22a6e10d2dc05                
+                             a8edeec10070ba2bd60a34dd5bd69%22                   
+                             "HTTP/1.1 200 OK"                                  
+Fetching 4 files:  50%|█████     | 2/4 [00:01<00:01,  1.98it/s]                    INFO     httpx - INFO - HTTP Request: GET    _client.py:1025
+                             https://huggingface.co/api/resolve-                
+                             cache/models/arcinstitute/evo2_1b_b                
+                             ase/2279e1df422c991037470302360edd4                
+                             0d0d2ea1e/README.md?%2Farcinstitute                
+                             %2Fevo2_1b_base%2Fresolve%2F2279e1d                
+                             f422c991037470302360edd40d0d2ea1e%2                
+                             FREADME.md=&etag=%22f439216f32377d6                
+                             b9fe64a9b9262beb9614b6f2b%22                       
+                             "HTTP/1.1 200 OK"                                  
+Fetching 4 files: 100%|██████████| 4/4 [01:45<00:00, 32.80s/it]Fetching 4 files: 100%|██████████| 4/4 [01:45<00:00, 26.28s/it]
+03:14:37 - dnallm.utils.support - INFO - Model files are stored in /home/forrest/.cache/huggingface/hub/models--arcinstitute--evo2_1b_base/snapshots/2279e1df422c991037470302360edd40d0d2ea1e
+[10/02/26 03:14:37] INFO dnallm.utils.support - INFO  logger.py:75
+                                - Model files are stored in                     
+                                /home/forrest/.cache/huggingface/hu             
+                                b/models--arcinstitute--evo2_1b_bas             
+                                e/snapshots/2279e1df422c99103747030             
+                                2360edd40d0d2ea1e                               
+Loading model from /home/forrest/.cache/huggingface/hub/models--arcinstitute--evo2_1b_base/snapshots/2279e1df422c991037470302360edd40d0d2ea1e/evo2_1b_base.pt...
+Loading config from /home/forrest/Github/DNALLM/dnallm/configuration/evo/evo2-1b-8k.yml...
+family=evo2
+variant=arcinstitute/evo2_1b_base
+load_s=109.2
+forward_s=0.0
+peak_vram_gb=0.00
+disk_gb=0.00
+result=FAIL
+failure_text=Traceback (most recent call last): File "/home/forrest/Github/DNALLM/scripts/feasibility/spike_families.py", line 427, in spike_evo2 model, tokenizer = load_model_and_tokenizer(variant, configs["task"], source="huggingface") ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File "/home/forrest/Github/DNALLM/dnallm/models/model.py", line 773, in load_model_and_tokenizer evo2_result = _handle_evo2_models(model_name, source, head_config) # type: ignore File "/home/forrest/Github/DNALLM/dnallm/models/special/evo.py", line 249, in _handle_evo2_models evo2_model.model = evo2_model.load_evo2_model( ~~~~~~~~~~~~~~~~~~~~~~~~~~^ None, ^^^^^ local_path=downloaded_model_path, ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ config_path=config_path, ^^^^^^^^^^^^^^^^^^^^^^^^ ) ^ File "/tmp/feas-venv/lib/python3.13/site-packages/evo2/models.py", line 189, in load_evo2_model model = StripedHyena(config) File "/tmp/feas-venv/lib/python3.13/site-packages/vortex/model/model.py", line 631, in __init__ raise ImportError( ...<3 lines>... ) ImportError: This model requires FP8 input projections (use_fp8_input_projections=True) which depends on Transformer Engine, but TE is not installed. Only 7b models (8k, 262k, 1m) can run without Transformer Engine.
+
+failed_families=evo2
+EVO2_AUTO_EXIT=1

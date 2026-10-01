@@ -1,0 +1,38 @@
+### evo1 D-06 fallback ladder — togethercomputer/evo-1-8k-base (all attempts recorded) ###
+# attempt 1 (transformers 4.57.6, flash-attn 2.8.3.post1, numpy 2.5.3): FAIL — the 8k repo's OLDER remote modeling code CONSTRUCTED the model (12.98GB VRAM on cuda) but stripedhyena/tokenizer.py:157 raised ValueError: The binary mode of fromstring is removed, use frombuffer instead (numpy 2.x removed np.fromstring, which CharLevelTokenizer.tokenize uses); load_s=1031.4 incl. the ~30GB cold download
+# attempt 2 (numpy downgraded 1.26.4): FAIL instantly — the venv's scipy 1.18.1 / ml-dtypes 0.6.0 / jaxlib 0.11.2 are numpy>=2 builds, so 'from transformers import PreTrainedModel' broke during dnallm import; numpy restored to 2.5.3
+# attempt 3 (numpy 2.5.3 + np.fromstring shim applied in the spike, mirroring the transformers_compat patch pattern): result=OK — raw evidence below
+
+### evo1 D-06 fallback attempt 3 (8k): transformers 4.57.6, numpy 2.5.3 restored, np.fromstring shimmed in the spike (stripedhyena 0.2.2 binary-mode call removed in numpy 2) ###
+gpu_device=NVIDIA GB10
+gpu_compute_capability=12.1
+torch_version=2.11.0+cu130
+===== spike evo1 (fallback variant) =====
+prerequisite=evo-model + stripedhyena installed in the throwaway venv only
+hf_revision=main (auto-selected by the dnallm handler)
+flash_attention_installed=True
+selected_config=evo-1-8k-base.yml
+03:39:48 - dnallm.utils.support - WARNING - Generation task does not require num_labels, but got 1. Setting to 0.
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 2940.18it/s]
+03:39:49 - dnallm.utils.support - INFO - Model files are stored in /home/forrest/.cache/huggingface/hub/models--togethercomputer--evo-1-8k-base/snapshots/a9be7b66485080893399ade87c7d34f81ad3e249
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:00<00:00, 282.34it/s]
+03:40:06 - dnallm.utils.support - INFO - Using device: cuda
+Note: Prompts are of different lengths.
+Note: Will not do batched generation.
+Prompt: "@",	Output: "TGCACACTCACGCGGGAGCGGCGGACAGAACAAGGTACGGATTTATATGATTAATTTATTATAAAAGCATAAAAATATTATTTCTTACTATTTCATTTTTTCTTGGTTAGTAAAAGAATGAAATTTGAAAACATTGATCTGTTTAGAGAATATATATAAGCGATATGACAAATCATTTGGTGTCATATAAAGAATATGAATATATAGATAAACTTATATTTCTGTTTTTATTAAAATGGCTCGTTATGTTCGATATATATTATACTATAATAATTATTGTTATTCTCTTGCTTGGGTAGCTTTCACCTCAAAAATATAGGAATAGCGACCATTGGATATTTTTTATTAAAATAAAAATTTTAATTCAATAAATATAATTTACATATAAAATATTTTATTT",	Score: -1.293016791343689
+Prompt: "ACGT",	Output: "CCCCCGCCGCTACCAACACCAGCCCGGTACCCGGGGGAGGGTGGTAAGGATCTCCGGTTTTAGATTTTAGGTTTGACACGGCGAAAACAGCAAAATCCATTGCCGTATCAGTAGTCATGAAAAGTGGCGGGGCGAAAAAACGGGGAATAACTATTTTCTTGCCAAAATCAACTTGTTTTTTCGTTAACAAGCATCCCTCCGGTACGAATAGTAACGAAACCAGTCGCGGACCATGAATATGAACGTCGCGGTTAGGAACTGCCTCGTCTTTATCGTAGTTAAATTATTGTTAAAATTACCCTTTAGGTCTGTGTCAAAATATTGAAACAACTTCTTCTTCTTTTTCTTTTTTCCCAATTATCAATCATAATAATTCCTCCATTCCTGTCCTAGGATGGGG",	Score: -1.4527138471603394
+family=evo1
+variant=togethercomputer/evo-1-8k-base
+logits_shape=(1, 256, 512)
+hf_revision=main
+selected_config=evo-1-8k-base.yml
+generate_s=53.4
+generate_note=OK output[:200]=[{'Prompt': '@', 'Output': 'TGCACACTCACGCGGGAGCGGCGGACAGAACAAGGTACGGATTTATATGATTAATTTATTATAAAAGCATAAAAATATTATTTCTTACTATTTCATTTTTTCTTGGTTAGTAAAAGAATGAAATTTGAAAACATTGATCTGTTTAGAGAATATATATAAGCGATATGACAAA
+disk_human=29.73GB
+load_s=19.3
+forward_s=1.2
+peak_vram_gb=13.88
+disk_gb=29.73
+result=OK
+
+EVO1_8K_ATTEMPT3_EXIT=0
