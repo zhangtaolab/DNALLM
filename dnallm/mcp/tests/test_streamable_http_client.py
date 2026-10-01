@@ -23,6 +23,8 @@ try:
 except ImportError as e:
     pytest.skip(f"MCP client modules not available: {e}", allow_module_level=True)
 
+from dnallm.mcp.tests._network_skip import skip_if_unreachable
+
 
 class TestStreamableHTTPClient:
     """Test Streamable HTTP client connection and functionality."""
@@ -52,7 +54,7 @@ class TestStreamableHTTPClient:
                     assert health is not None
 
         except Exception as e:
-            pytest.skip(f"Streamable HTTP connection failed: {e}")
+            skip_if_unreachable(e, "streamable HTTP connection test")
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -84,7 +86,7 @@ class TestStreamableHTTPClient:
                     assert result is not None
 
         except Exception as e:
-            pytest.skip(f"Streamable HTTP session reuse test failed: {e}")
+            skip_if_unreachable(e, "streamable HTTP session reuse test")
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -109,7 +111,7 @@ class TestStreamableHTTPClient:
                     assert health is not None
 
         except Exception as e:
-            pytest.skip(f"Streamable HTTP custom URL test failed: {e}")
+            skip_if_unreachable(e, "streamable HTTP custom URL test")
 
 
 if __name__ == "__main__":

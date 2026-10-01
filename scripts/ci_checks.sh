@@ -60,6 +60,10 @@ fi
 if ! command -v uv &> /dev/null; then
     print_status "INFO" "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
+    # The installer is a child process and cannot mutate this shell's PATH;
+    # it puts uv in ~/.local/bin, so export it here or `uv venv`/`uv pip
+    # install` below fail with "command not found" on fresh hosts.
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Create venv if missing
@@ -110,10 +114,10 @@ fi
 echo ""
 if [ "$INCLUDE_SLOW" = true ]; then
     print_status "INFO" "4/5: Running full test suite (including slow tests)..."
-    pytest tests/ -v --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
+    pytest -v --cov
 else
     print_status "INFO" "3/4: Running fast tests (excludes slow)..."
-    pytest tests/ -v -m "not slow" --cov=dnallm --cov-report=term-missing --cov-report=xml --tb=short
+    pytest -v -m "not slow" --cov
 fi
 print_status "SUCCESS" "Tests passed"
 

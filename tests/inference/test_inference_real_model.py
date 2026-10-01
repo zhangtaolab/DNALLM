@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(1800)
 class TestRealModelInference(unittest.TestCase):
     """Test class for real model inference."""
 

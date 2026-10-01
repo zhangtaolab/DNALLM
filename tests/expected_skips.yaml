@@ -1,0 +1,59 @@
+# Expected skips: every junit <skipped message> must match exactly one entry.
+# An unmatched skip fails CI (scripts/audit_skips.py exit 1).
+#
+# Matching semantics (one matcher key per entry):
+#   exact:       message equals the string verbatim
+#   prefix:      message starts with the string
+#   reason_like: the string appears in the message (skipif reasons may be
+#                decorated in junit — see RESEARCH Pitfall 6)
+#
+# Seeded from verbatim junit messages captured by a local CI-shaped run
+# (pytest -m "not slow" --junitxml: 602 passed / 1 skipped / 78s) plus
+# census-derived defensive entries. Never add an empty or wildcard entry —
+# this file is a reviewable suppression record, not a silencer.
+
+allowed:
+  # Frozen from the local fast-leg run: the only skip that fires with the
+  # current repo content (tests/examples/test_examples.py:254).
+  - exact: "No import statements found"
+    category: content
+
+  # Deterministic sibling of the entry above (test_examples.py:139); fires
+  # only for notebooks without import cells.
+  - exact: "No import cells found"
+    category: content
+
+  # The 6 slow-marked MCP live-server probes (dnallm/mcp/tests/), rewritten
+  # by FIX-03 to the typed helper skip_if_unreachable. Never collected on
+  # the CI fast leg; serves local/full runs and the Phase-4 slow leg.
+  - prefix: "network-unavailable:"
+    category: network
+
+  # Module-level ImportError guards in the MCP client test files
+  # (allow_module_level=True); never fire in CI where mcp is a core dep.
+  - prefix: "MCP client modules not available:"
+    category: optional-dep
+
+  # tests/utils/test_cuda_compat.py:31 — environment-dependent (which torch
+  # build is installed), fires on legs without CUDA 13 wheels.
+  - exact: "CUDA 13 wheels not installed in this environment"
+    category: environment
+
+  # Defensive entries for the static skipif reasons in
+  # tests/examples/test_examples.py and tests/configuration/test_yaml_load.py.
+  # None fire while the repo content is present; they would only fire on a
+  # content-stripped checkout.
+  - reason_like: "No marimo files found"
+    category: environment
+  - reason_like: "No notebook files found"
+    category: environment
+  - reason_like: "No YAML files found"
+    category: environment
+  - reason_like: "No CSV files found"
+    category: environment
+  - reason_like: "No Excel files found"
+    category: environment
+
+  # tests/utils/test_cuda_compat.py:26 — non-Linux legs only (CI is linux).
+  - reason_like: "SONAME check is Linux-specific"
+    category: environment

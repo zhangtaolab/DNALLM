@@ -53,6 +53,7 @@ uv.lock
 .coverage.*
 coverage.xml
 .pytest_cache/
+pytest-junit.xml
 htmlcov/
 
 # Training outputs
@@ -104,8 +105,7 @@ dnallm/models/downloads/
 dnallm/data/cache/
 dnallm/ui/tmp/
 
-# Planning artifacts (dev branch only, never merged)
-.planning/
+# Claude local artifacts
 .claude/
 
 # Jupyter Notebook tmp files
@@ -130,13 +130,7 @@ results/
 
 .ruff_cache/
 
-test/inference/pdf/
-tests/inference/pdf/demo_attention_pdf.pdf
-tests/inference/pdf/demo_bars_pdf.pdf
-tests/inference/pdf/demo_curves_pdf.pdf
-tests/inference/pdf/demo_embeddings_pdf.pdf
-tests/inference/pdf/demo_scatter_pdf.pdf
-tests/inference/pdf/format_compatibility_test_pdf.pdf
+tests/inference/pdf/
 
 .cache
 __pycache__

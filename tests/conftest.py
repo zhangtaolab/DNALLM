@@ -1,9 +1,229 @@
 """Shared pytest fixtures for DNALLM test suite."""
 
-import pytest
+from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import Mock
-import torch
+import uuid
+
 import pandas as pd
+import pytest
+import torch
+import yaml
+
+
+class SimpleDNATokenizer:
+    """Deterministic character-level DNA tokenizer with real encode/decode behavior.
+
+    Callable like a Hugging Face tokenizer (single or batched), pads and
+    truncates to ``max_length``, and returns ``transformers.BatchEncoding``
+    objects when ``return_tensors="pt"`` so ``.to(device)`` and dict
+    unpacking work exactly like the real API. Maps ``N`` to the mask token id
+    so masked-language-model scoring paths can be exercised deterministically.
+    """
+
+    vocab: ClassVar[list[str]] = ["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]", "A", "C", "G", "T"]
+    char_overrides: ClassVar[dict[str, int]] = {"N": 4}
+
+    def __init__(self, max_length: int = 32) -> None:
+        self.max_length = max_length
+        self.pad_token = "[PAD]"
+        self.unk_token = "[UNK]"
+        self.cls_token = "[CLS]"
+        self.sep_token = "[SEP]"
+        self.mask_token = "[MASK]"
+        self.pad_token_id = 0
+        self.unk_token_id = 1
+        self.cls_token_id = 2
+        self.sep_token_id = 3
+        self.mask_token_id = 4
+        self.vocab_size = len(self.vocab)
+        self.padding_side = "right"
+        self.all_special_ids = [0, 1, 2, 3, 4]
+        self.special_tokens_map = {
+            "pad_token": "[PAD]",
+            "unk_token": "[UNK]",
+            "cls_token": "[CLS]",
+            "sep_token": "[SEP]",
+            "mask_token": "[MASK]",
+        }
+
+    def _encode(self, seq: str) -> list[int]:
+        table = {c: i for i, c in enumerate(self.vocab)}
+        return [self.char_overrides.get(ch.upper(), table.get(ch.upper(), 1)) for ch in seq]
+
+    def __call__(
+        self,
+        sequences,
+        truncation=True,
+        padding=True,
+        padding_side=None,
+        max_length=None,
+        return_tensors=None,
+        **kwargs,
+    ):
+        seqs = [sequences] if isinstance(sequences, str) else list(sequences)
+        ml = max_length or self.max_length
+        ids = [self._encode(s)[:ml] if truncation else self._encode(s) for s in seqs]
+        if padding in (True, "max_length", "longest"):
+            if padding == "max_length":
+                width = ml
+            else:
+                width = max((len(x) for x in ids), default=0)
+            ids = [x + [self.pad_token_id] * (width - len(x)) for x in ids]
+        masks = [[1 if i != self.pad_token_id else 0 for i in x] for x in ids]
+        if return_tensors == "pt":
+            from transformers import BatchEncoding
+
+            return BatchEncoding({
+                "input_ids": torch.tensor(ids, dtype=torch.long),
+                "attention_mask": torch.tensor(masks, dtype=torch.long),
+            })
+        return {"input_ids": ids, "attention_mask": masks}
+
+    def encode(self, seq, **kwargs) -> list[int]:
+        """Encode one sequence to a list of token ids."""
+        return self._encode(seq)
+
+    def decode(self, ids, skip_special_tokens=False, **kwargs) -> str:
+        """Decode token ids (tensor, list, or nested list) back to a string."""
+        if isinstance(ids, torch.Tensor):
+            ids = ids.tolist()
+        if ids and isinstance(ids[0], list):
+            ids = ids[0]
+        toks = [self.vocab[i] for i in ids if 0 <= i < len(self.vocab)]
+        if skip_special_tokens:
+            toks = [t for t in toks if not t.startswith("[")]
+        return "".join(toks)
+
+    def batch_decode(self, batch, **kwargs) -> list[str]:
+        """Decode a batch of id sequences to strings."""
+        return [
+            self.decode(x, skip_special_tokens=kwargs.get("skip_special_tokens", False))
+            for x in batch
+        ]
+
+    def convert_ids_to_tokens(self, ids):
+        """Convert ids (int or list) to token strings."""
+        if isinstance(ids, int):
+            return self.vocab[ids]
+        return [self.vocab[i] for i in ids]
+
+    def convert_tokens_to_ids(self, tokens):
+        """Convert tokens (str or list) to ids."""
+        if isinstance(tokens, str):
+            return self.vocab.index(tokens) if tokens in self.vocab else 1
+        return [self.vocab.index(t) if t in self.vocab else 1 for t in tokens]
+
+    def tokenize(self, seq: str) -> list[int]:
+        """Tokenize a sequence to ids (CustomEvo embedding path contract)."""
+        return self._encode(seq)
+
+
+class TinyDNAModel(torch.nn.Module):
+    """Real embedding+linear torch backbone producing autograd-capable outputs.
+
+    Weights are built from a local ``torch.Generator`` seed so instances are
+    deterministic without touching the global RNG. ``pooled=True`` produces
+    ``(batch, n_classes)`` logits (sequence-level tasks); ``pooled=False``
+    produces ``(batch, seq_len, n_classes)`` (token-level tasks and per-position
+    scoring). Outputs carry ``.logits`` and ``.hidden_states`` like HF models.
+    """
+
+    def __init__(self, vocab_size=9, d_model=16, n_classes=2, pooled=True):
+        super().__init__()
+        gen = torch.Generator().manual_seed(42)
+        emb_weight = torch.empty(vocab_size, d_model).uniform_(-1, 1, generator=gen)
+        head_weight = torch.empty(n_classes, d_model).uniform_(-1, 1, generator=gen)
+        self.pooled = pooled
+        self.embedding = torch.nn.Embedding.from_pretrained(emb_weight, freeze=False)
+        self.head = torch.nn.Linear(d_model, n_classes)
+        self.head.weight.data = head_weight
+        self.head.bias.data = torch.zeros(n_classes)
+        self.config = SimpleNamespace(
+            model_type="tiny_dna",
+            hidden_size=d_model,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+            vocab_size=vocab_size,
+            output_attentions=False,
+            output_hidden_states=False,
+            attn_implementation="eager",
+        )
+
+    def forward(
+        self, input_ids=None, attention_mask=None, labels=None, inputs_embeds=None, **kwargs
+    ):
+        if inputs_embeds is not None:
+            emb = inputs_embeds
+        else:
+            emb = self.embedding(input_ids)
+        if self.pooled:
+            logits = self.head(emb.mean(dim=1))
+        else:
+            logits = self.head(emb)
+        return SimpleNamespace(logits=logits, hidden_states=[emb])
+
+
+@pytest.fixture
+def simple_dna_tokenizer():
+    """Return a real deterministic character-level DNA tokenizer."""
+    return SimpleDNATokenizer()
+
+
+@pytest.fixture
+def tiny_model_factory():
+    """Return the TinyDNAModel class for building shaped variants in tests."""
+    return TinyDNAModel
+
+
+@pytest.fixture
+def tiny_real_model():
+    """Return a default deterministic real torch DNA model (pooled, 2 classes)."""
+    return TinyDNAModel()
+
+
+@pytest.fixture
+def inference_config_factory(tmp_path):
+    """Return a factory building real loaded inference configs under tmp_path.
+
+    The factory writes a YAML file and loads it via ``load_config`` so every
+    test exercises the real Pydantic validation and alias normalization.
+    """
+    from dnallm.configuration.configs import load_config
+
+    def _make(
+        task_type="binary",
+        num_labels=None,
+        label_names=None,
+        threshold=0.5,
+        batch_size=2,
+        device="cpu",
+        max_length=32,
+        num_workers=0,
+        output_dir=None,
+        use_fp16=False,
+        use_bf16=False,
+    ):
+        task = {"task_type": task_type, "threshold": threshold}
+        if num_labels is not None:
+            task["num_labels"] = num_labels
+        if label_names is not None:
+            task["label_names"] = label_names
+        inference = {
+            "batch_size": batch_size,
+            "device": device,
+            "max_length": max_length,
+            "num_workers": num_workers,
+            "use_fp16": use_fp16,
+            "use_bf16": use_bf16,
+        }
+        if output_dir is not None:
+            inference["output_dir"] = str(output_dir)
+        path = tmp_path / f"config-{task_type}-{uuid.uuid4().hex[:8]}.yaml"
+        path.write_text(yaml.safe_dump({"task": task, "inference": inference}))
+        return load_config(path)
+
+    return _make
 
 
 @pytest.fixture(scope="session", autouse=True)

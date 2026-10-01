@@ -19,6 +19,7 @@ from dnallm.tasks.metrics import (
     token_classification_metrics,
     preprocess_logits_for_metrics,
     compute_metrics,
+    metrics_for_dnabert2,
 )
 from dnallm.configuration.configs import TaskConfig
 
@@ -293,9 +294,36 @@ class TestMultiClassificationMetrics:
 
     def test_multi_classification_metrics_with_plot(self):
         """Test multi-class classification metrics with plotting data."""
-        # Skip this test as multi-class plotting with AUROC is complex
-        # and requires proper multi-class AUROC implementation
-        pytest.skip("Multi-class plotting with AUROC requires complex implementation")
+        label_list = ["label1", "label2", "label3"]
+        compute_func = multi_classification_metrics(label_list, plot=True)
+
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])  # every class present
+
+        metrics = compute_func((logits, labels))
+
+        assert "curve" in metrics
+        assert set(metrics["curve"]) == {"fpr", "tpr", "precision", "recall"}
+
+    def test_multi_classification_metrics_missing_class_raises(self):
+        """A batch lacking a class must fail honestly, not return nan metrics."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.8, 0.1, 0.1]])
+        labels = np.array([0, 1, 0])  # class 2 absent
+
+        with pytest.raises(ValueError, match=r"missing class id\(s\)"):
+            compute_func((logits, labels))
+
+    def test_multi_classification_metrics_unexpected_class_id_raises(self):
+        """An out-of-range label id must be named in the error, not masked as missing."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.05, 0.1, 0.85]])
+        labels = np.array([0, 1, 5])  # id 5 is outside the 3-class label list
+
+        with pytest.raises(ValueError, match=r"unexpected id\(s\) \[5\]"):
+            compute_func((logits, labels))
 
 
 class TestMultiLabelsMetrics:
@@ -746,9 +774,9 @@ class TestMetricsIntegration:
         ("binary", 2, ["negative", "positive"]),
         (
             "multiclass",
-            2,
-            ["A", "B"],
-        ),  # Fix: Use 2 classes to avoid AUROC issues
+            3,
+            ["A", "B", "C"],
+        ),  # 3 classes: sklearn's macro-ovr path needs >2 unique target values
         ("multilabel", 2, ["label1", "label2"]),
         ("regression", 1, None),
         ("token", 3, ["O", "B-GENE", "I-GENE"]),
@@ -756,10 +784,6 @@ class TestMetricsIntegration:
 )
 def test_compute_metrics_task_types(task_type, num_labels, label_names):
     """Test compute_metrics with different task types."""
-    # Skip multiclass test due to AUROC implementation issues
-    if task_type == "multiclass":
-        pytest.skip("Multiclass AUROC implementation has issues")
-
     task_config = TaskConfig(task_type=task_type, num_labels=num_labels, label_names=label_names)
 
     compute_func = compute_metrics(task_config)
@@ -780,12 +804,10 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         ])
         labels = np.array([[0, 1], [1, 2]])
     elif task_type == "multiclass":
-        # Fix: Use binary classification for multiclass to
-        # avoid AUROC issues
-        # The actual multiclass implementation has AUROC issues,
-        # so we test with binary
-        logits = np.array([[0.1, 0.9], [0.8, 0.2]])
-        labels = np.array([1, 0])
+        # 3 classes, 3 samples: every class id must appear in labels
+        # (macro-ovr AUROC requires all classes present in the batch)
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])
     else:
         logits = np.array([[0.1, 0.9], [0.8, 0.2]])
         labels = np.array([1, 0])
@@ -828,3 +850,132 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         # All metrics functions should return a dictionary
         assert isinstance(metrics, dict)
         assert len(metrics) > 0
+
+
+class TestRegressionEdgeBranches:
+    """Edge branches of regression_metrics left open after FIX-01."""
+
+    def test_macro_correlations_skip_constant_target_columns(self):
+        """Constant target columns are skipped in the pearson/spearman macros.
+
+        Column 1 of the labels is constant (std 0), so both macro aggregators
+        must compute over column 0 only — hand-computed expectations:
+        pearson from np.corrcoef, spearman ranks give exactly -0.5.
+        """
+        compute_metrics_fn = regression_metrics()
+        labels = np.array([[1.0, 5.0], [2.0, 5.0], [3.0, 5.0]])
+        logits = np.array([[2.0, 0.4], [3.5, 0.6], [1.0, 0.8]])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        expected_pearson = float(np.corrcoef(labels[:, 0], logits[:, 0])[0, 1])
+        assert metrics["pearsonr"] == pytest.approx(expected_pearson)
+        assert metrics["spearmanr"] == pytest.approx(-0.5)  # ranks 1,2,3 vs 2,3,1
+
+    def test_single_output_plot_accepts_tensor_logits(self):
+        """The plot branch handles torch tensors via their .numpy() bridge."""
+        import torch
+
+        compute_metrics_fn = regression_metrics(plot=True)
+        logits = torch.tensor([[1.5], [2.3]])
+        labels = np.array([1.4, 2.1])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        assert metrics["mse"] == pytest.approx(((1.5 - 1.4) ** 2 + (2.3 - 2.1) ** 2) / 2)
+        assert metrics["mae"] == pytest.approx((0.1 + 0.2) / 2)
+        assert np.allclose(metrics["scatter"]["predicted"], [1.5, 2.3])
+        assert np.allclose(metrics["scatter"]["experiment"], [1.4, 2.1])
+
+
+class TestMetricsForDnabert2Arms:
+    """The real metrics_for_dnabert2 task arms (network-free via patched evaluate)."""
+
+    def test_regression_arm_returns_r2_dict_and_spearmanr(self):
+        """task='regression' computes r2 as the whole metric dict plus spearmanr."""
+
+        def fake_load(path, *args, **kwargs):
+            metric = Mock()
+            if "r_squared" in path:
+                metric.compute.return_value = {"r2": 0.8}
+            elif "spearmanr" in path:
+                metric.compute.return_value = {"spearmanr": 0.9}
+            return metric
+
+        with patch("evaluate.load", side_effect=fake_load):
+            compute_fn, preprocess = metrics_for_dnabert2("regression")
+            result = compute_fn((np.array([[1.5], [2.3]]), np.array([1.4, 2.1])))
+
+        assert result == {"r2": {"r2": 0.8}, "spearmanr": 0.9}
+        assert preprocess is preprocess_logits_for_metrics
+
+    def test_classification_arm_uses_torch_argmax_predictions(self):
+        """task='classification' combines sklearn metrics on argmax predictions."""
+        clf_metrics = Mock()
+        clf_metrics.compute.return_value = {
+            "accuracy": 1.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "matthews_correlation": 1.0,
+        }
+        with (
+            patch("evaluate.load", return_value=Mock()),
+            patch("evaluate.combine", return_value=clf_metrics),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("classification")
+            logits = (np.array([[0.9, 0.1], [0.2, 0.8], [0.7, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == clf_metrics.compute.return_value
+        call_kwargs = clf_metrics.compute.call_args.kwargs
+        assert call_kwargs["predictions"].tolist() == [0, 1, 0]
+        assert np.array_equal(call_kwargs["references"], labels)
+
+    def test_generic_arm_merges_micro_metrics_and_both_auroc_modes(self):
+        """Any other task label takes the micro-precision/recall/f1 + ovr/ovo AUROC path."""
+        precision = Mock()
+        precision.compute.return_value = {"precision": 0.7}
+        recall = Mock()
+        recall.compute.return_value = {"recall": 0.6}
+        f1 = Mock()
+        f1.compute.return_value = {"f1": 0.65}
+        mcc = Mock()
+        mcc.compute.return_value = {"matthews_correlation": 0.5}
+        roc = Mock()
+        roc.compute.side_effect = lambda **kwargs: {
+            "roc_auc": 0.7 if kwargs["multi_class"] == "ovr" else 0.8
+        }
+
+        def fake_load(path, *args, **kwargs):
+            by_name = {
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "matthews_correlation": mcc,
+                "roc_auc": roc,
+            }
+            return next((m for n, m in by_name.items() if n in path), Mock())
+
+        with (
+            patch("evaluate.load", side_effect=fake_load),
+            patch("evaluate.combine", return_value=Mock()),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("multiclass")
+            logits = (np.array([[2.0, 0.1], [0.2, 3.0], [1.5, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == {
+            "precision": 0.7,
+            "recall": 0.6,
+            "f1": 0.65,
+            "matthews_correlation": 0.5,
+            "AUROC_ovr": 0.7,
+            "AUROC_ovo": 0.8,
+        }
+        # pred_list comes from argmax(softmax(logits)) == argmax(logits).
+        assert precision.compute.call_args.kwargs["predictions"] == [0, 1, 0]
+        assert precision.compute.call_args.kwargs["average"] == "micro"
+        assert mcc.compute.call_args.kwargs["predictions"] == [0, 1, 0]

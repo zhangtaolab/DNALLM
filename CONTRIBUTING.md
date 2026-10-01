@@ -382,7 +382,6 @@ Tests are organized in the `tests/` directory:
 
 ```
 tests/
-├── pytest.ini              # Test configuration
 ├── TESTING.md              # Detailed testing guide
 ├── inference/              # Inference module tests
 ├── utils/                  # Utility function tests
@@ -390,6 +389,11 @@ tests/
 ├── finetune/               # Training tests
 └── test_data/              # Test data files
 ```
+
+Pytest configuration lives in `[tool.pytest.ini_options]` in the project-root
+`pyproject.toml` — do **not** create a `pytest.ini` (it would take precedence over
+`pyproject.toml` and hijack the suite's settings). See [tests/TESTING.md](tests/TESTING.md)
+for details.
 
 ### Writing Tests
 

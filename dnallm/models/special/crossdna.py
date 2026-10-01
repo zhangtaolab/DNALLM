@@ -503,8 +503,11 @@ def _handle_crossdna_models(
     auto_tokenizer = modules["AutoTokenizer"]
 
     if custom_tokenizer is None:
-        tokenizer = auto_tokenizer.from_pretrained(
+        from ..tokenizer import load_tokenizer_with_fallback
+
+        tokenizer = load_tokenizer_with_fallback(
             checkpoint_dir,
+            auto_tokenizer_cls=auto_tokenizer,
             trust_remote_code=True,
         )
     else:

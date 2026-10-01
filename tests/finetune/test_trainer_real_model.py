@@ -51,6 +51,7 @@ class TestTrainerRealModel(unittest.TestCase):
         if self.configs is None:
             self.skipTest("Configuration not available")
 
+    @pytest.mark.timeout(7200)
     def test_complete_training_workflow(self):
         """Test complete training workflow from start to finish."""
         try:
@@ -309,6 +310,7 @@ class TestTrainerRealModel(unittest.TestCase):
             print(f"❌ Failed to initialize trainer: {e}")
             self.fail(f"Trainer initialization failed: {e}")
 
+    @pytest.mark.timeout(7200)
     def test_training(self):
         """Test training process independently."""
         try:
@@ -401,6 +403,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"Prediction failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_early_stopping_stops_before_full_epochs(self):
         """Test that early stopping stops training before num_train_epochs."""
         try:
@@ -479,6 +482,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"Early stopping test failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_no_early_stopping_runs_full_epochs(self):
         """Test that training runs full epochs when early stopping is disabled."""
         try:
@@ -553,6 +557,7 @@ class TestTrainerRealModel(unittest.TestCase):
             self.fail(f"No early stopping test failed: {e}")
 
     @pytest.mark.slow
+    @pytest.mark.timeout(3600)
     def test_qlora_training(self):
         """Test QLoRA training with 4-bit quantization.
 
@@ -695,6 +700,7 @@ def test_qlora_config_validation():
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(7200)
 def test_with_config_file():
     """Test with the provided finetune config file."""
     try:
@@ -713,8 +719,10 @@ def test_with_config_file():
         # Load configuration
         config_path = os.path.join(test_dir, "test_finetune_config.yaml")
         if not os.path.exists(config_path):
+            # The config fixture is committed with the repo; a missing file is
+            # a real failure, not a skip.
             print(f"❌ Configuration file not found: {config_path}")
-            return False
+            pytest.fail(f"Configuration file not found: {config_path}")
 
         configs = load_config(config_path)
         print("✅ Configuration loaded from test_finetune_config.yaml")
@@ -757,14 +765,16 @@ def test_with_config_file():
         trainer.infer()
 
         print("✅ All operations completed successfully!")
-        return True
 
     except Exception as e:
         print(f"❌ Error during config file testing: {e}")
         import traceback
 
         traceback.print_exc()
-        return False
+        # pytest.fail raises Failed (a BaseException subclass), so the except
+        # clause above never swallows it and the test reports a real failure
+        # instead of returning a boolean pytest would ignore.
+        pytest.fail(f"Config-file training workflow failed: {e}")
 
 
 if __name__ == "__main__":
@@ -782,7 +792,13 @@ if __name__ == "__main__":
 
             # Test 2: With config file (manual test)
             print("\n2️⃣ Testing with config file...")
-            success = test_with_config_file()
+            # The test now signals failure via pytest.fail instead of a
+            # boolean return; keep the boolean contract for this manual path.
+            success = True
+            try:
+                test_with_config_file()
+            except pytest.fail.Exception:
+                success = False
 
             print("\n" + "=" * 50)
             if success:

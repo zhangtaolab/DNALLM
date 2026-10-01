@@ -8,14 +8,21 @@ on:
       - dev
   pull_request:
     branches: [ main, master, dev ]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * *"
 
+# Least privilege: every job (including test jobs that run arbitrary test code
+# and third-party actions) defaults to read-only. Only `deploy` overrides this
+# below, because `mkdocs gh-deploy --force` pushes to the gh-pages branch.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     name: test (py${{ matrix.python-version }}, numpy${{ matrix.numpy-version }})
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13']
@@ -25,6 +32,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/share/dotnet
@@ -78,21 +88,118 @@ jobs:
       - name: Run fast tests
         run: |
           source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --cov=dnallm --cov-report=xml --cov-report=term-missing --tb=short
+          pytest -m "not slow" --cov --junitxml=pytest-junit.xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
+      - name: Skip audit (unexpected skips fail the job)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
+
+      - name: Exit-code canary (a failing test must fail the job)
+        run: |
+          source .venv/bin/activate
+          cat > tests/test_ci_exitcode_canary.py <<'CANARY'
+          def test_ci_exitcode_canary():
+              assert False, "intentional canary failure"
+          CANARY
+          if pytest tests/test_ci_exitcode_canary.py -q -p no:cacheprovider > canary.log 2>&1; then
+            echo "CANARY FAILED: pytest exited 0 despite a failing test (exit-code mask regression)"
+            cat canary.log
+            rm tests/test_ci_exitcode_canary.py
+            exit 1
+          else
+            echo "Canary OK: pytest exited non-zero as expected"
+            cat canary.log | tail -5
+            rm tests/test_ci_exitcode_canary.py
+          fi
 
       - name: Run type checking
         run: |
           source .venv/bin/activate
           mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
           
+  test-windows:
+    # Windows platform leg: the hosted matrix is linux-only today, yet the
+    # package claims "Operating System :: OS Independent" and the primary dev
+    # machine is Windows 11. Fast CPU leg only — the compiled mamba kernels
+    # (.[mamba]) stay on the linux dnallm-nightly box.
+    name: test-windows (py3.12)
+    runs-on: windows-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      # root conftest prints emoji; non-UTF8 pipes on Windows would crash
+      PYTHONUTF8: "1"
+    steps:
+      - name: Disable git autocrlf (keep LF endings for ruff format)
+        run: git config --global core.autocrlf false
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Run linting and code quality checks with Ruff
+        run: |
+          source .venv/Scripts/activate
+          # Check formatting
+          ruff format --check .
+          # Check linting
+          ruff check . --statistics
+
+      - name: Run fast tests
+        run: |
+          source .venv/Scripts/activate
+          pytest -m "not slow" --cov --junitxml=pytest-junit.xml
+
+      - name: Skip audit (unexpected skips fail the job)
+        run: |
+          source .venv/Scripts/activate
+          python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
+
+      - name: Exit-code canary (a failing test must fail the job)
+        run: |
+          source .venv/Scripts/activate
+          cat > tests/test_ci_exitcode_canary.py <<'CANARY'
+          def test_ci_exitcode_canary():
+              assert False, "intentional canary failure"
+          CANARY
+          if pytest tests/test_ci_exitcode_canary.py -q -p no:cacheprovider > canary.log 2>&1; then
+            echo "CANARY FAILED: pytest exited 0 despite a failing test (exit-code mask regression)"
+            cat canary.log
+            rm tests/test_ci_exitcode_canary.py
+            exit 1
+          else
+            echo "Canary OK: pytest exited non-zero as expected"
+            cat canary.log | tail -5
+            rm tests/test_ci_exitcode_canary.py
+          fi
+
+      - name: Run type checking
+        run: |
+          source .venv/Scripts/activate
+          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
+
   test-cuda:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11']
@@ -102,6 +209,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/share/dotnet
@@ -150,7 +260,23 @@ jobs:
           pytest tests/ -v -m "not slow" --tb=short
           
   test-mamba:
-    runs-on: ubuntu-latest
+    # Self-hosted GPU box on nightly cadence per GATE-02 (amended): the .[mamba]
+    # install compiles mamba-ssm/causal_conv1d CUDA kernels from source, which
+    # belongs to the nightly leg — push/PR stays the fast hosted leg.
+    # schedule/dispatch-only preserves the coverage-nightly posture that PR code
+    # (including forks) never executes on this runner. The gpu-check step below
+    # stays as a fail-safe no-op if the box ever loses its GPU.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # The recurring per-run CUDA kernel source build is the long pole
+    # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
+    # the mamba-ssm/causal_conv1d compile repeats every run, not just the
+    # first). 180min covers a worst-case GB10 build plus the .[base]
+    # install plus the `not slow` census with headroom. Self-hosted jobs have
+    # no platform time cap, so this backstop is the only protection against a
+    # hung build monopolizing the single runner that also serves
+    # coverage-nightly.
+    timeout-minutes: 180
     strategy:
       matrix:
         python-version: ['3.11']
@@ -181,31 +307,198 @@ jobs:
 
       - name: Create virtual environment and install mamba dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[base], not .[test,dev]: the not-slow census imports mcp-extra deps
+        # (langchain / langchain_mcp_adapters / pydantic-ai / nest-asyncio in the
+        # mcp_example notebooks, and the exceptiongroup backport at
+        # tests/mcp/test_client_sdk.py, pulled in via pydantic-ai ->
+        # pydantic-ai-slim[mcp] -> fastmcp-slim[client]). Same extras set the
+        # other legs install; coverage-nightly proves .[base] resolves green on
+        # this exact box.
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          uv pip install -e ".[base]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
+      # No continue-on-error here: a failing mamba test must fail the job.
+      # Hung runs are bounded by the per-test --timeout=300 from pytest addopts
+      # and the 180-min job timeout; the artifact step below still fires via
+      # steps.mamba-tests.outcome == 'failure'.
       - name: Run mamba-specific tests
+        id: mamba-tests
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        continue-on-error: true
         run: |
           source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --tb=short
+          set -o pipefail
+          pytest tests/ -v -m "not slow" --tb=short 2>&1 | tee pytest.log
 
       - name: Upload mamba test logs on failure
-        if: steps.gpu-check.outputs.has_gpu == 'true' && failure()
+        if: always() && steps.mamba-tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: mamba-test-logs-${{ matrix.python-version }}
           path: |
             pytest.log
             /tmp/mamba-build.log
-          
-  deploy:
-    needs: [test, test-cuda, test-mamba]
+
+  coverage-gate:
+    name: coverage-gate (py3.12, fast leg)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      - name: Run gated fast census (not slow)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -m "not slow" -ra --durations=0 --junitxml=pytest-junit-gate.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (gated junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
+
+  coverage-nightly:
+    name: coverage-nightly (py3.12, full suite incl. slow)
+    # Self-hosted GPU box (aarch64, warm HF/ModelScope caches in $HOME):
+    # schedule/dispatch events only — fork PRs can never land here; all PR jobs
+    # stay on hosted runners. Hosted runners cap at 360min (run 36747594207 was
+    # killed at exactly 6h00m33s), which a CPU census cannot fit (13x GPU->CPU).
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # Per-test timeout ceilings across the census sum to 840min (7 phase marks
+    # = 600min + download/real-inference/MCP marks = 900+900+5x1800+3600s =
+    # 240min; the 1800s class mark on TestRealModelInference applies to all 5
+    # of its items). Keep the job kill at 900, above that sum, so a hung test
+    # fails via its own mark (junit + skip audit still run) instead of a job
+    # kill (no junit, model-cache forfeit). NOTE: GitHub-hosted runners
+    # hard-cap a single job at 360min, so the platform cap binds before both
+    # numbers; the per-test marks are the primary protection and these
+    # job-level figures are backstops.
+    timeout-minutes: 900
+    continue-on-error: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Restore model caches (keyed on models.lock)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/huggingface/hub
+            ~/.cache/modelscope/hub
+          key: ${{ runner.os }}-models-${{ hashFiles('models.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-models-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      # NOTE: 27 tests carry the slow mark; 21 execute here. The 6 MCP
+      # live-server probes (dnallm/mcp/tests/test_sse_client.py,
+      # test_streamable_http_client.py) target localhost:8000 and no CI job
+      # starts a server there, so they skip deterministically as typed
+      # "network-unavailable:" skips (allowlisted in tests/expected_skips.yaml).
+      # Those probes are local-only.
+      - name: Run gated full census (slow included)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -ra --durations=0 --junitxml=pytest-junit-nightly.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (nightly junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-nightly.xml tests/expected_skips.yaml
+
+  deploy:
+    # test-mamba removed from needs: it is event-gated to schedule/dispatch, so
+    # on every push it is skipped — GitHub skips dependents of skipped needs,
+    # which would silently stop gh-pages deploys on push to main/master.
+    needs: [test, test-cuda]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

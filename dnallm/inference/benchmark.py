@@ -91,8 +91,13 @@ class Benchmark:
             # Code-based initialization (No YAML config)
             self.config = {}
             self.config["inference"] = InferenceConfig()
+            # Only copy fields InferenceConfig actually declares; the raw
+            # setattr loop below crashed on EvaluationConfig-only fields
+            # (e.g. mixed_precision) under pydantic v2 field validation.
+            inference_fields = set(InferenceConfig.model_fields.keys())
             for k, v in dict(EvaluationConfig()).items():
-                setattr(self.config["inference"], k, v)
+                if k in inference_fields:
+                    setattr(self.config["inference"], k, v)
             self.config["inference"].batch_size = batch_size
             self.config["inference"].device = (
                 device if device else "cuda" if torch.cuda.is_available() else "cpu"
@@ -457,7 +462,11 @@ class Benchmark:
         """
         from sklearn.model_selection import KFold, StratifiedKFold
 
-        if stratified:
+        if k_folds <= 1:
+            # Single fold over everything; sklearn KFold rejects n_splits < 2,
+            # so no splitter is constructed on this path.
+            kfold = None
+        elif stratified:
             kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
         else:
             kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
@@ -487,9 +496,31 @@ class Benchmark:
                 indices = list(range(len(dataset)))
 
                 if k_folds > 1:
-                    kfold_split = kfold.split(indices)
+                    if stratified:
+                        # StratifiedKFold.split requires the class labels;
+                        # without them it raised TypeError on every call.
+                        inner = getattr(dataset, "dataset", dataset)
+                        y = (
+                            inner["labels"]
+                            if hasattr(inner, "column_names") and "labels" in inner.column_names
+                            else None
+                        )
+                        if y is not None:
+                            kfold_split = kfold.split(indices, y)
+                        else:
+                            # No labels column: stratification is impossible.
+                            # Degrade to a plain KFold split instead of raising
+                            # inside StratifiedKFold.split — StratifiedKFold
+                            # requires the labels argument positionally.
+                            plain_kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+                            kfold_split = plain_kfold.split(indices)
+                    else:
+                        kfold_split = kfold.split(indices)
                 else:
-                    kfold_split = [(indices, indices)]
+                    # Single fold over every row; wrap in numpy arrays so the
+                    # shared .tolist() below works on this branch too.
+                    idx_array = np.asarray(indices)
+                    kfold_split = [(idx_array, idx_array)]
                 for fold, (_, val_idx) in enumerate(kfold_split):
                     print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 

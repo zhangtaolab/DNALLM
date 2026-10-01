@@ -99,3 +99,27 @@ def test_random_generate_sequences():
     seqs = random_generate_sequences(minl=20, maxl=30, samples=5, padding_size=5, seed=42)
     assert len(seqs) == 5
     assert all(len(seq) % 5 == 0 for seq in seqs)
+
+
+def test_random_generate_sequences_n_ratio_above_one():
+    # Test n_ratio > 1.0 (percent-style weighting): 'N' dominates the basemap
+    seqs = random_generate_sequences(minl=20, samples=5, n_ratio=99.0, seed=42)
+    assert len(seqs) == 5
+    assert all(len(seq) == 20 for seq in seqs)
+    assert all(seq.count("N") >= 15 for seq in seqs)
+
+
+def test_random_generate_sequences_padding_backs_off_to_maxl():
+    # Padded lengths exceeding maxl must be pulled back below the cap:
+    # with minl=16, maxl=20, padding_size=6 every draw (16..20) lands on 18
+    seqs = random_generate_sequences(minl=16, maxl=20, samples=50, padding_size=6, seed=42)
+    assert len(seqs) == 50
+    assert {len(seq) for seq in seqs} == {18}
+
+
+def test_random_generate_sequences_random_length_gc_filter():
+    # Test GC filtering on the random-length branch: kept sequences only
+    seqs = random_generate_sequences(minl=20, maxl=30, samples=8, gc=(0.3, 0.7), seed=42)
+    assert len(seqs) == 8
+    assert all(20 <= len(seq) <= 30 for seq in seqs)
+    assert all(0.3 <= calc_gc_content(seq) <= 0.7 for seq in seqs)

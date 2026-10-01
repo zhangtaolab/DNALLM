@@ -6,7 +6,6 @@ This directory contains the comprehensive test suite for the DNALLM project, org
 
 ```
 tests/
-├── pytest.ini              # Project-level pytest configuration
 ├── README.md               # This file - overall test documentation
 ├── inference/              # Inference module tests
 │   ├── test_plot.py        # Plot functionality tests
@@ -82,38 +81,32 @@ pytest tests/inference/test_plot.py::TestPDFOutputQuality::test_demo_pdf_generat
 
 ## 🔧 Configuration
 
-### Pytest Configuration (`pytest.ini`)
+### Pytest Configuration (`pyproject.toml`)
 
-The project uses a centralized pytest configuration that applies to all test modules:
+Pytest configuration is defined in `[tool.pytest.ini_options]` in the project-root
+`pyproject.toml`. There is intentionally **no** `pytest.ini` (and no `tox.ini`,
+`setup.cfg`, or `.coveragerc`) anywhere in the tree: pytest gives a config file found
+at a test root precedence over `pyproject.toml`, so a stray `tests/pytest.ini` would
+silently hijack the suite's settings.
 
-```ini
-[tool:pytest]
-# Test discovery and execution settings
-testpaths = . inference utils test_data
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
+Never (re)create `tests/pytest.ini` — edit `pyproject.toml` instead. The authoritative
+settings defined there include:
 
-# Output and reporting
-addopts = -v --tb=short --disable-warnings --strict-markers
+- `testpaths = ["tests", "dnallm/mcp/tests"]` — the two collected test roots
+- `python_files = "test_*.py"`, `python_classes = "Test*"`, `python_functions = "test_*"`
+- `addopts = -v --tb=short --strict-markers --strict-config --asyncio-mode=auto --timeout=300`
+- `markers` — `slow`, `pdf`, `performance`, `integration`, `unit`, `inference`, `utils`,
+  `data`, `legacy`
+- `minversion = "8.4"`
 
-# Markers for different test types
-markers =
-    slow: marks tests as slow
-    pdf: marks tests that generate PDF files
-    performance: marks performance-related tests
-    integration: marks integration tests
-    unit: marks unit tests
-    inference: marks inference-related tests
-    utils: marks utility function tests
-    data: marks data handling tests
-```
+Coverage is configured in the same file, under `[tool.coverage.run]` and
+`[tool.coverage.report]`.
 
 ### Key Benefits
 
-- **Unified Configuration**: Single configuration file for all tests
-- **Consistent Behavior**: Same settings across all test modules
-- **Easy Maintenance**: Centralized configuration management
+- **Single Source of Truth**: `pyproject.toml` is the only pytest configuration file
+- **Consistent Behavior**: Same settings across all test modules, local runs, and CI
+- **No Config Hijacking**: No per-directory config file can shadow the project settings
 - **CI/CD Friendly**: Consistent testing behavior in automated environments
 
 ## 🏷️ Test Markers
