@@ -3,6 +3,22 @@ phase: 04
 review: 04-REVIEW.md
 titles: json
 findings:
+  - id: CR-03
+    severity: critical
+    disposition: open
+    title: "Nightly test-mamba leg ships deterministically red — env lacks the `mcp` extra (and `exceptiongroup`) for 3 fast tests it runs"
+  - id: IN-08
+    severity: info
+    disposition: open
+    title: "AUROC/AUPRC optional-guard fix shipped without any test exercising the guarded path"
+  - id: IN-09
+    severity: info
+    disposition: open
+    title: "cuda_compat test raises KeyError on platforms absent from `_LIB_PATTERNS` (e.g. macOS)"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "Residual workflows-README drift after the accuracy rewrite"
   - id: IN-05
     severity: info
     disposition: open
@@ -51,18 +67,22 @@ findings:
     severity: warning
     disposition: fixed
     title: "README documents reporting the workflow no longer runs"
-open: 7
-total: 12
-recorded: 2026-10-01T05:08:28.415Z
+open: 11
+total: 16
+recorded: 2026-10-01T11:43:37.230Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
-| IN-07 | info | open | - |
+| CR-03 | critical | open | - |
+| IN-08 | info | open | - |
+| IN-09 | info | open | - |
+| IN-10 | info | open | - |
+| IN-05 | info | open | - (not in the current review) |
+| IN-06 | info | open | - (not in the current review) |
+| IN-07 | info | open | - (not in the current review) |
 | IN-01 | info | open | - (not in the current review) |
 | IN-02 | info | open | - (not in the current review) |
 | IN-03 | info | open | - (not in the current review) |
