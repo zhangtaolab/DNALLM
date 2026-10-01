@@ -1,5 +1,5 @@
 ---
-status: testing
+status: passed
 phase: 05-execution-harness-honest-gates-runner-feasibility
 source: [05-VERIFICATION.md]
 started: 2026-10-02T04:50:00+08:00
@@ -26,14 +26,15 @@ result: DEFERRED POST-MERGE (platform constraint) — `workflow_dispatch` requir
 
 ### 3. Acknowledge conftest relocation
 expected: Confirm awareness that tests/examples/conftest.py was deleted post-wave (bare `conftest` module-name collision broke test_trainer/test_benchmark/test_dna_dataset); the notebook_sandbox fixture lives at tests/examples/test_notebook_execution.py:40-54. Recreating a conftest.py in tests/examples would re-break the three files.
-result: [pending]
+result: PASS — owner-acknowledged 2026-10-02 at closure (facts independently re-verified by orchestrator: fixture at :42, three files resolve to tests/conftest.py, 322 collected)
 
 ## Summary
 
 total: 3
-passed: 1
+passed: 2
 issues: 0
-pending: 2
+pending: 0
+note: item 2 closed as DEFERRED POST-MERGE (platform constraint, documented in matrix)
 skipped: 0
 blocked: 0
 

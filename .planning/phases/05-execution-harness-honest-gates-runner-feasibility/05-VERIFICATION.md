@@ -1,7 +1,7 @@
 ---
 phase: 05-execution-harness-honest-gates-runner-feasibility
 verified: 2026-10-01T21:56:28Z
-status: human_needed
+status: passed
 score: 18/19 must-haves verified
 covered_files:
   - .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-01-PLAN.md
@@ -196,3 +196,14 @@ No code gaps found. The single previously-unverified truth (partial-failure arti
 _Verified: 2026-10-01T21:56:28Z_
 _Verifier: Claude (gsd-verifier)_
 _Re-verification of: 05-VERIFICATION.md @ 2026-10-01T20:42:25Z (17/19, human_needed)_
+
+
+## Human validation closure (2026-10-02)
+
+Owner delegated the re-verification ("帮我复核"); orchestrator re-checked all items independently:
+D-02 PASS (both protection reads list both contexts), D-04 post-merge sequencing proven
+(dispatch 404 reproduces; feasibility.yml present on phs remote, absent on main registry),
+conftest relocation verified harmless (3 dependent files resolve to tests/conftest.py; 322
+collected across the 4 affected files; fast leg 192 passed). Owner confirmed closure. UAT
+items 1-3 closed accordingly (D-04 recorded as DEFERRED POST-MERGE by platform constraint,
+matrix column marked pending (post-merge)).
