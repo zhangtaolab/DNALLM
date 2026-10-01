@@ -3,6 +3,14 @@ phase: 02
 review: 02-REVIEW.md
 titles: json
 findings:
+  - id: WR-07
+    severity: warning
+    disposition: open
+    title: "README \"Local Testing\" still tells contributors to install the retired `.[test,dev]` extras set — the exact configuration CR-03 just removed from CI for deterministically failing the fast census"
+  - id: WR-08
+    severity: warning
+    disposition: open
+    title: "`docs-validation.yml` still installs `.[test,dev]` and runs `tests/examples/test_examples.py` — the \"Run example tests\" step deterministically fails on every push/PR, masked by `continue-on-error: true` (discovered out-of-increment while verifying WR-07's README claim; file is outside this round's declared scope, disclosed as such)"
   - id: WR-05
     severity: warning
     disposition: open
@@ -75,24 +83,26 @@ findings:
     severity: warning
     disposition: skipped
     title: "\"Inert ruff suppression comments\" in scripts/audit_skips.py"
-open: 13
-total: 18
-unparsed: 3
-recorded: 2026-10-01T10:44:14.989Z
+open: 15
+total: 20
+unparsed: 1
+recorded: 2026-10-01T12:25:13.028Z
 ---
 
 # Phase 02: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-05 | warning | open | - |
-| WR-06 | warning | open | - |
-| IN-07 | info | open | - |
-| IN-08 | info | open | - |
-| IN-09 | info | open | - |
-| IN-10 | info | open | - |
-| IN-11 | info | open | - |
-| IN-12 | info | open | - |
+| WR-07 | warning | open | - |
+| WR-08 | warning | open | - |
+| WR-05 | warning | open | - (not in the current review) |
+| WR-06 | warning | open | - (not in the current review) |
+| IN-07 | info | open | - (not in the current review) |
+| IN-08 | info | open | - (not in the current review) |
+| IN-09 | info | open | - (not in the current review) |
+| IN-10 | info | open | - (not in the current review) |
+| IN-11 | info | open | - (not in the current review) |
+| IN-12 | info | open | - (not in the current review) |
 | IN-02 | info | open | - (not in the current review) |
 | IN-03 | info | open | - (not in the current review) |
 | IN-04 | info | open | - (not in the current review) |
