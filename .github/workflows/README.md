@@ -121,7 +121,7 @@ The workflows are triggered on:
 1. **GPU Check** (runs BEFORE checkout): on GPU absence writes a `gpu_absent` marker into the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe no-op, this job's deliverable is evidence, so zero-evidence green is forbidden (the `if: always()` upload still delivers the marker). **Code Checkout** follows, gated on the GPU check's `has_gpu` output — the check must precede checkout so the marker survives the skipped checkout
 2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[base]"` (the coverage-nightly-proven extras set; spike-only packages stay inside this ephemeral job venv)
 3. **Runner Identity**: records the `nvidia-smi` identity line (the D-04 parity claim)
-4. **Spike Execution**: `--family all` (notebook variants) then the D-06 fallback legs; expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
+4. **Spike Execution**: `--family all --fallback` (D-06 fallback variants only — `--fallback` replaces the notebook variant, it does not run both; notebook-variant verdicts rest on the committed local evidence in `spike-logs/`); expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
 5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)
 
 ### 8. Deploy Job (`deploy`)

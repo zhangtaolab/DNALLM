@@ -70,10 +70,13 @@ jobs:
         run: |
           nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
 
-      - name: Run the committed spike runner (notebook variants + D-06 fallbacks)
+      - name: Run the committed spike runner (D-06 fallback variants)
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        # One --family all --fallback pass per the plan: each family runs its
-        # notebook variant first, then its D-06 fallback. On this venv the
+        # Single fallback pass per the plan: --fallback runs each family's
+        # D-06 fallback variant (evo-1-8k-base / evo2 noFA-noFP8 config /
+        # pinned megaDNA clone), NOT the notebook variant — notebook-variant
+        # verdicts come from the committed local evidence (spike-logs/).
+        # On this venv the
         # evo/evo2 families fail fast at their handler ImportErrors (the
         # spike-only packages are intentionally absent), megadna downloads
         # its 582MB checkpoint and fails the unpickle without the pinned
