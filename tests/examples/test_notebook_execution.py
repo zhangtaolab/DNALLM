@@ -15,10 +15,11 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
+import nbformat
 import nbformat.v4 as nbf
 import pytest
 from nbclient import NotebookClient
-from nbclient.exceptions import CellTimeoutError
+from nbclient.exceptions import CellExecutionError, CellTimeoutError
 
 from tests.examples._execution import (
     EXAMPLE_DIR,
@@ -152,3 +153,40 @@ class TestKernelLifecycle:
         while time.time() < deadline and _kernel_count() > before:
             time.sleep(0.5)
         assert _kernel_count() == before, "hung kernel survived the harness"
+
+
+class TestPartialFailureArtifacts:
+    """A failing notebook leaves its partial-execution artifacts behind (EXEC-01)."""
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(300)
+    def test_cell_error_captures_artifacts_and_reraises(self, tmp_path: Path) -> None:
+        """A raising cell re-raises AND writes the executed node + error text to artifact_dir."""
+        nb_path = tmp_path / "failing.ipynb"
+        nbformat.write(
+            nbf.new_notebook(
+                cells=[
+                    nbf.new_code_cell('marker = "cell-1-ran"'),
+                    nbf.new_code_cell("raise RuntimeError('deliberate failure')"),
+                    nbf.new_code_cell('print("never reached")'),
+                ]
+            ),
+            nb_path,
+        )
+        artifacts = tmp_path / "artifacts"
+        with pytest.raises(CellExecutionError):
+            run_notebook(nb_path, tmp_path, cell_timeout=120, artifact_dir=artifacts)
+
+        executed = artifacts / "failing.executed.ipynb"
+        error_txt = artifacts / "failing.error.txt"
+        assert executed.is_file(), "partial-execution notebook artifact missing"
+        assert error_txt.is_file(), "error text artifact missing"
+        partial = nbformat.read(executed, as_version=4)
+        sources = [
+            "".join(c["source"]) if isinstance(c["source"], list) else c["source"]
+            for c in partial.cells
+            if c.cell_type == "code"
+        ]
+        assert 'marker = "cell-1-ran"' in sources, "pre-error cell missing from partial artifact"
+        assert "deliberate failure" in error_txt.read_text(encoding="utf-8")
+        assert_tree_clean()
