@@ -1,43 +1,42 @@
 ---
 phase: 01-harness-integrity-measured-baseline
-reviewed: 2026-10-01T10:22:26Z
+reviewed: 2026-10-01T12:23:09Z
 depth: standard
 files_reviewed: 2
 files_reviewed_list:
-  - dnallm/inference/plot.py
+  - .github/workflows/ci.yml
   - .github/workflows/README.md
 findings:
   critical: 0
   warning: 1
-  info: 2
-  total: 3
+  info: 1
+  total: 2
 status: issues_found
 ---
 
-# Phase 01: Code Review Report (Incremental Re-Review — Fix Round 3)
+# Phase 01: Code Review Report (Incremental Re-Review — Fix Round 4)
 
-**Reviewed:** 2026-10-01T10:22:26Z
+**Reviewed:** 2026-10-01T12:23:09Z
 **Depth:** standard
 **Files Reviewed:** 2
 **Status:** issues_found
-**Scope:** Incremental re-review scoped to `d4ba942..HEAD`: commit 2dde7c5 (WR-01 guard on multilabel per-label AUROC/AUPRC reads in plot.py), commit bb1540f (IN-01 census/gate command labels in the workflows README), commit 254e4dd (IN-02 nightly-schedule triggers test-mamba in the workflows README). Focus: are the fixes correct and complete, and do they introduce new issues?
+**Scope:** Incremental re-review scoped to `eac58e8..HEAD`, whose only source delta is commit de4b5cc (CR-03 fix): the nightly `test-mamba` leg's install switched from `.[test,dev]` to `.[base]`, plus the matching README step-5 line and a timeout-comment update. Phase 01 harness-integrity lens: does anything here weaken single-config pytest semantics, honest exit codes, or the canary?
 
-Finding IDs continue from the phase ledger (previous rounds reached WR-07 / IN-09) so the disposition record's existing rows are not clobbered by ID reuse.
+Finding IDs continue from the phase ledger (previous rounds reached WR-08 / IN-11) so the disposition record's existing rows are not clobbered by ID reuse.
 
 ## Summary
 
-All three fixes were independently verified against source and are **correct**; no Critical issues were found. One Warning and two Info items remain.
+The CR-03 fix is **correct and complete for the CI leg**; every factual claim in the new ci.yml comment block and the README step-5 line was independently verified against source and installed metadata. No Critical issues. The harness-integrity lens is clear: the pytest invocation (`pytest tests/ -v -m "not slow" --tb=short`), `set -o pipefail`, the absence of `continue-on-error`, the artifact-upload condition (`always() && steps.mamba-tests.outcome == 'failure'`), and the exit-code canary steps are all untouched by this delta — and the change eliminates the last extras-set divergence among the legs that run the not-slow census, which *strengthens* single-config semantics. One Warning and one Info remain, both documentation-accuracy items in the changed files' orbit.
 
-**2dde7c5 (WR-01 guard, plot.py:48-51) — verified correct and downstream-safe.**
-- The two `if "AUROC"/"AUPRC" in metric_data[label]` guards match the previously recommended fix exactly and eliminate the bare `KeyError: 'AUROC'` on per-label curve dicts lacking summary scores.
-- Downstream trace: `curves_data["AUROC"]/["AUPRC"]` are always initialized to `{}` (plot.py:37-38), and `plot_curve` guards on top-level key presence (plot.py:606, 682) then iterates `.items()` — an empty or partial summary dict produces an empty text-annotation layer, not a crash. `_process_curve_data` already skips scalar summaries (plot.py:101-102), so curve points are unaffected either way.
-- Canonical data is unchanged: the multilabel producer (metrics.py:484-494) always emits both keys per label, so standard runs still populate both summaries; the guard only affects hand-built/truncated/custom-`compute_metrics` input, which was the reported defect.
-- New issue found: the fix ships without a regression test — see WR-08.
+**de4b5cc (CR-03, ci.yml:308-320) — verified correct, every claim traced to source:**
 
-**bb1540f (IN-01, README:215-219) — verified accurate.** "Census of record (what coverage-nightly runs)" matches ci.yml:479 (`pytest -ra --durations=0 --junitxml=pytest-junit-nightly.xml --cov`); the new "Fast census (what the coverage gate runs)" line matches ci.yml:389 (`pytest -m "not slow" -ra --durations=0 --junitxml=pytest-junit-gate.xml --cov`). Naming is consistent with the README's own §5/§6 ("Gated Fast Census"). No other stanza in the README still conflates the gate with the full census.
+- **Strict-superset claim holds.** `pyproject.toml:120-123`: `base = ["dnallm[dev,test,notebook,mcp]", "isort>=6.0.1", "types-transformers>=0.1.0"]`, with `dev` (line 81) itself pulling `dnallm[test,notebook]`. So `.[base]` = `.[test,dev]` + the `mcp` extra + two small tools; no dependency is lost. Critically, all plugins required by the shared `[tool.pytest.ini_options]` addopts (`--asyncio-mode=auto`, `--timeout=300`) arrive via the `test` extra (pyproject.toml:92-99: pytest, pytest-asyncio, pytest-cov, pytest-progress, pytest-timeout), so the ci.yml:322-325 claim that hung runs are bounded by the per-test 300s timeout remains true.
+- **The exceptiongroup mechanism is real and the chain is described exactly right.** `tests/mcp/test_client_sdk.py:585` does a function-local `from exceptiongroup import ExceptionGroup` inside `test_connection_failure_surfaces_through_exception_group` — a hard failure (not a skip) because py3.11+ has no importable module of that name. Installed metadata confirms the ci.yml:310-314 chain verbatim: `pydantic-ai 1.102.0` → `pydantic-ai-slim[...,mcp,...]` → `fastmcp-slim[client]>=3.3.0` → `exceptiongroup>=1.2.2; extra == 'client'` — and that fastmcp-slim extras are the **only unconditional** requirers of exceptiongroup on py3.11+ (every other requirer is `python_version < '3.11'`-gated), so the backport genuinely arrives only via the `mcp` extra.
+- **The mcp_example notebook claim is real.** `tests/examples/test_examples.py:63` collects `example/mcp_example/*.ipynb`; `test_notebook_imports` (lines 227-272) `exec`s each extracted import statement and `pytest.fail`s on `ModuleNotFoundError`. Both notebooks (`mcp_client_ollama_langchain_agents.ipynb`, `mcp_client_ollama_pydantic_ai.ipynb`) import exactly the modules the comment names: `langchain`, `langchain_mcp_adapters`, `pydantic_ai`, `nest_asyncio`. Under the old `.[test,dev]` these fail deterministically — matching the CR-03 live log ("3 failed, 1580 passed" with notebook-import failures).
+- **README:78 step-5 line is accurate.** The `(dev,test,notebook,mcp)` enumeration matches the pyproject `base` definition exactly; "the same extras set the other legs use" matches ci.yml:68/157/252-254/386/470 (all census legs install `.[base]`, some with cuda/docs added).
+- **No collateral damage.** ci.yml parses as valid YAML; the timeout-comment edit (ci.yml:274) is consistent — `base` adds only the 5 pure-Python mcp packages plus isort/types-transformers over the old set (jupyter/marimo were already present via `dev → dnallm[test,notebook]`), negligible against the 180-min kernel-build budget.
 
-**254e4dd (IN-02, README:15) — verified accurate.** The nightly schedule triggers exactly the two jobs the bullet now names: `coverage-nightly` (ci.yml:403) and `test-mamba` (ci.yml:270) are both gated on `schedule || workflow_dispatch`; every other job is push/PR-gated (`test`, `test-windows`, `test-cuda`, `coverage-gate`) or push-to-main/master-gated (`deploy`, ci.yml:494). The parenthetical about cron running only from the default branch is correct GitHub behavior.
-- Adjacent inaccuracy survives one bullet below — see IN-10.
+**Residual gap:** the fix corrected the CI leg and its job-section description, but the README's own *Local Testing* section still prescribes the exact `.[test,dev]` setup that CR-03 just proved deterministically fails the census — see WR-09. One comment sentence in ci.yml overstates its evidence — see IN-12.
 
 ## Critical Issues
 
@@ -45,53 +44,27 @@ None.
 
 ## Warnings
 
-### WR-08: The WR-01 fix has no regression test — the guarded path is unreachable from the suite
+### WR-09: README "Local Testing" still prescribes the `.[test,dev]` install that CR-03 just proved fails the documented census commands
 
-**File:** `dnallm/inference/plot.py:48-51` (test gap in `tests/inference/test_plot.py:2016-2063`)
-**Issue:** The two guards added by 2dde7c5 are only ever exercised on their **true** branch. `TestPrepareDataMultilabel._multilabel_metrics()` (tests/inference/test_plot.py:2016-2032) always includes both `AUROC` and `AUPRC` in the per-label curve dict, and no other test in the suite feeds a per-label `curve` dict lacking those keys through `_prepare_classification_data`/`prepare_data` (verified across `tests/inference/test_plot.py` and `tests/benchmark/test_benchmark.py` — no multilabel curve fixture reaches `prepare_data` at all). Consequence: reverting the guard to the unconditional reads keeps the entire suite green, so the exact crash WR-01 was filed against can silently regress. The coverage gate cannot catch this either: `[tool.coverage.run]` (pyproject.toml) has no `branch = true`, and the guard lines are line-covered via the true branch, so both the false branches and the regression they protect against are invisible to every enforcement mechanism this phase built.
+**File:** `.github/workflows/README.md:205`
+**Issue:** The Local Testing section opens with `uv pip install -e ".[test,dev]"` directly above commands framed as CI replication ("Run quality checks (what CI runs)", line 210; "Census of record (what coverage-nightly runs)", line 215; "Fast census (what the coverage gate runs)", line 218). A contributor who follows this verbatim deterministically reproduces the exact CR-03 failure class locally: (a) `tests/examples/test_examples.py` `test_notebook_imports` params for both `example/mcp_example` notebooks `pytest.fail` on missing `langchain`/`langchain_mcp_adapters`/`pydantic_ai`/`nest_asyncio`; (b) `tests/mcp/test_client_sdk.py::test_connection_failure_surfaces_through_exception_group` raises `ModuleNotFoundError: exceptiongroup` on py3.11+ (the backport only arrives transitively via the `mcp` extra, verified against installed dist metadata). No CI leg installs `.[test,dev]` anymore — every census-running leg installs `.[base]` — so the README's local path and its own "what CI runs" framing have diverged from every CI leg. This is the sole stale instance: root `README.md:109,135` already says `.[base]`, and `CONTRIBUTING.md` / `tests/TESTING.md` carry no extras-install line (verified by grep).
 **Fix:**
-```python
-def test_multilabel_curve_without_summary_scores(self):
-    """Per-label curve dicts lacking AUROC/AUPRC no longer raise KeyError."""
-    metrics = {
-        "model1": {
-            "accuracy": 0.8,
-            "curve": {
-                "label_0": {
-                    "fpr": [0.0, 0.5, 1.0],
-                    "tpr": [0.0, 0.6, 1.0],
-                    "precision": [0.9, 0.85, 0.8],
-                    "recall": [0.0, 0.6, 1.0],
-                },
-            },
-        },
-    }
-
-    bars, curves = prepare_data(metrics, "multilabel")
-
-    assert bars["models"] == ["model1"]
-    assert curves["AUROC"] == {}
-    assert curves["AUPRC"] == {}
-    assert curves["ROC"]["fpr"] == [0.0, 0.5, 1.0]
-    assert curves["PR"]["precision"] == [0.9, 0.85, 0.8]
+```bash
+# Install development dependencies (the extras set every CI census leg uses)
+uv pip install -e ".[base]"
 ```
+(Optionally add a one-line note that the nightly mamba leg uses `.[base,mamba]` on the self-hosted GPU box.)
 
 ## Info
 
-### IN-10: Dispatch trigger bullet still omits test-mamba — same defect class as the just-fixed IN-02, one line below it
+### IN-12: New ci.yml comment overstates cross-version evidence — "coverage-nightly proves .[base] resolves green on this exact box"
 
-**File:** `.github/workflows/README.md:16`
-**Issue:** "Manual workflow dispatch — runs the nightly census on demand (e.g. for calibration)" — `workflow_dispatch` also triggers `test-mamba` (ci.yml:270 gates it on `schedule || workflow_dispatch`, the same predicate as `coverage-nightly` at ci.yml:403). The README's own §4 says so (line 69: "Scheduled nightly / manual dispatch only"), so after 254e4dd the Triggers section contradicts the job section on the very next bullet. Practical effect of the omission: a user dispatching the workflow "for calibration" also kicks off a 180-minute kernel-source build on the single self-hosted runner that `coverage-nightly` itself needs (ci.yml:275-279 documents the shared-runner constraint), delaying the calibration run they came for.
-**Fix:** Reword to: "- **Manual workflow dispatch** — runs the nightly census and the `test-mamba` kernel-build leg on demand (e.g. for calibration)".
-
-### IN-11: Optional-summary treatment not applied to `plot_radar` in the same module
-
-**File:** `dnallm/inference/plot.py:420`
-**Issue:** `plot_radar` still reads `item = data[met][label][metric]` unconditionally, so the same data shape 2dde7c5 made `_prepare_classification_data` tolerate (a per-label curve dict without the summary key) raises a bare `KeyError` here instead of degrading gracefully. Impact is bounded: `plot_radar` is not re-exported from `dnallm/inference/__init__.py:5-13` and has no production callers (repo-wide grep finds only the definition and its tests), so this is reachable only by direct `dnallm.inference.plot` users. Related pre-existing robustness debt in the same loop, noted for the record: line 431 `if model in models or models is None` performs substring matching when `models` is a string rather than list membership (a per-model score dict key that is a substring of the `models` string passes the filter incorrectly). No behavioral change is required by this fix round; this is a consistency observation on the module the fix touched.
-**Fix:** If the optional-summary contract is meant to be module-wide, skip missing summaries (e.g. `if metric not in data[met][label]: continue`) or raise a descriptive `ValueError` per project convention instead of a bare `KeyError`; separately, normalize string `models` to a list right after line 413 (`models = [models]`) so the line-431 membership test is well-defined.
+**File:** `.github/workflows/ci.yml:315-316`
+**Issue:** The sentence "coverage-nightly proves .[base] resolves green on this exact box" is interpreter-blind: `coverage-nightly` runs Python 3.12 (ci.yml:439) while `test-mamba` runs Python 3.11 (ci.yml:282), and dependency resolution is per-interpreter. What is proven *on that exact box* is a py3.12 resolve; the py3.11 `.[base]` resolve is proven by the hosted `test` matrix leg (ci.yml:28 python 3.11, ci.yml:68 `.[base]`) — a different box and arch. Practical risk is nil (every package in the delta is a pure-Python wheel, so py3.11/py3.12/aarch64 resolution cannot meaningfully diverge), but the comment hands a future maintainer a stronger guarantee than the evidence supports, in the same accuracy class the ledger has tracked as IN-tier.
+**Fix:** Reword to split the evidence, e.g.: "Same extras set the other legs install; the py3.12 coverage-nightly leg proves .[base] resolves green on this exact box, and the py3.11 hosted test-matrix leg proves the same resolve on 3.11."
 
 ---
 
-_Reviewed: 2026-10-01T10:22:26Z_
+_Reviewed: 2026-10-01T12:23:09Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
