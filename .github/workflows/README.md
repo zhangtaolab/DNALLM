@@ -12,7 +12,7 @@ The workflows are triggered on:
 
 - **Push events** to `main`, `master`, and `dev` branches
 - **Pull request events** targeting `main`, `master`, and `dev` branches
-- **Scheduled nightly run** at 03:00 UTC — triggers the `coverage-nightly` full census (GitHub runs cron schedules only from the default branch)
+- **Scheduled nightly run** at 03:00 UTC — triggers the `coverage-nightly` full census and the `test-mamba` kernel-build leg (GitHub runs cron schedules only from the default branch)
 - **Manual workflow dispatch** — runs the nightly census on demand (e.g. for calibration)
 
 ## 🔧 Jobs
