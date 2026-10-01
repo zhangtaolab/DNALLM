@@ -44,7 +44,12 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   2. A deliberate-hang test proves the harness kills a hung kernel and leaves no `ipykernel_launcher` process behind
   3. `scripts/check_docs_sync.py` exits 0 (mirror drift closed: wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and the docs-validation workflow runs honestly — `continue-on-error` removed, `mcp` extra installed, README "Local Testing" line corrected — without blocking unrelated PRs
   4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Execution harness tracer: nbclient harness + pilot notebook + deliberate-hang kill test + typed-skip prefixes (EXEC-01, EXEC-06)
+- [ ] 05-02-PLAN.md — Honest gates: docs-mirror drift closure + all five masked docs-validation steps flipped + mcp extra/README + branch-protection hand-off (CI-01, CI-02, REPAIR-02)
+- [ ] 05-03-PLAN.md — GB10 feasibility spike: per-family spike runner + verdict matrix + dispatch-only runner confirmation + conditional pyBigWig (FEAS-01)
 
 ### Phase 6: Model Registry & Showcase Data Curation
 **Goal**: Both PlantHelixSeek checkpoints load through the existing generic dnallm route (label order frozen to the checkpoint, transformers-5 compat proven), and the showcase's committed Arabidopsis loci — truth slices, selection rationale, negative control — exist in-repo alongside a shared, unit-tested coordinate/chrom-name normalization helper
@@ -98,7 +103,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 0/TBD | Not started | - |
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 0/3 | Planned | - |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 0/TBD | Not started | - |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
