@@ -3,6 +3,18 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
+  - id: WR-08
+    severity: warning
+    disposition: open
+    title: "The WR-01 fix has no regression test — the guarded path is unreachable from the suite"
+  - id: IN-10
+    severity: info
+    disposition: open
+    title: "Dispatch trigger bullet still omits test-mamba — same defect class as the just-fixed IN-02, one line below it"
+  - id: IN-11
+    severity: info
+    disposition: open
+    title: "Optional-summary treatment not applied to `plot_radar` in the same module"
   - id: WR-01
     severity: warning
     disposition: fixed
@@ -67,18 +79,21 @@ findings:
     severity: warning
     disposition: skipped
     title: "Unpinned `curl | sh` installer executed in four CI jobs and the local script"
-open: 7
-total: 16
-recorded: 2026-10-01T10:08:33.647Z
+open: 10
+total: 19
+recorded: 2026-10-01T10:24:35.368Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | fixed | 01-REVIEW-FIX.md |
-| IN-01 | info | fixed | 01-REVIEW-FIX.md |
-| IN-02 | info | fixed | 01-REVIEW-FIX.md |
+| WR-08 | warning | open | - |
+| IN-10 | info | open | - |
+| IN-11 | info | open | - |
+| WR-01 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| IN-01 | info | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| IN-02 | info | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | WR-02 | warning | fixed | commit 42ada4f (hand-set: fixer re-titled the finding, one-word drift — "data silently" vs "data is silently") (not in the current review) |
 | WR-03 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | IN-03 | info | open | - (not in the current review) |
