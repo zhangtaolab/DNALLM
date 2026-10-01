@@ -3,6 +3,18 @@ phase: 04
 review: 04-REVIEW.md
 titles: json
 findings:
+  - id: IN-05
+    severity: info
+    disposition: open
+    title: "dependabot comment points at a WINDOWS.md entry that does not exist"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "swapped open_chromatin config keeps the old model's semantics and performance metrics"
+  - id: IN-07
+    severity: info
+    disposition: open
+    title: "deploy job pins deprecated `actions/cache@v3` while the rest of the file uses @v4 (pre-existing, outside this cycle's delta)"
   - id: IN-01
     severity: info
     disposition: open
@@ -39,19 +51,22 @@ findings:
     severity: warning
     disposition: fixed
     title: "README documents reporting the workflow no longer runs"
-open: 4
-total: 9
-recorded: 2026-09-30T18:54:45.198Z
+open: 7
+total: 12
+recorded: 2026-10-01T05:08:28.415Z
 ---
 
 # Phase 04: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
+| IN-05 | info | open | - |
+| IN-06 | info | open | - |
+| IN-07 | info | open | - |
+| IN-01 | info | open | - (not in the current review) |
+| IN-02 | info | open | - (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
 | CR-01 | critical | fixed | 04-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-01 | warning | fixed | 04-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-02 | warning | fixed | 04-REVIEW-FIX.iter2.md (not in the current review) |
