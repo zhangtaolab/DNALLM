@@ -194,7 +194,7 @@ uv pip install -e '.[all,cuda130]'
 # Examples:
 uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
 uv pip install -e '.[base,mamba]'     # Dev tools + native Mamba
-uv pip install -e '.[test,cpu]'       # Testing only, no GPU
+uv pip install -e '.[test,cpu]'       # Testing only, no GPU (add ,mcp for the MCP example tests)
 ```
 
 ### Native Mamba Support
@@ -492,6 +492,10 @@ DNALLM-Suite supports the following task types:
 DNALLM-Suite includes a comprehensive test suite with 200+ test cases:
 
 ```bash
+# Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
+# imports needed by the MCP example tests)
+uv pip install -e '.[test,dev,mcp]'
+
 # Run all tests
 uv run pytest
 
