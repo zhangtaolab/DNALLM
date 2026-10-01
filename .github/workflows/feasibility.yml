@@ -65,14 +65,17 @@ jobs:
         # its 582MB checkpoint and fails the unpickle without the pinned
         # clone + MEGABYTE_pytorch, pybigwig fails its import, and marimo
         # executes for real on the warm ModelScope cache — every failure
-        # text is matrix evidence, so the step must not fail the job before
-        # the artifact upload below runs (the matrix, not this exit code,
-        # is the verdict carrier).
+        # text is matrix evidence, and the runner exits 0 whenever each
+        # family EMITTED its evidence block (the matrix, not this exit
+        # code, is the verdict carrier). A red step therefore means an
+        # infrastructure crash with missing evidence (import error, OOM
+        # kill, disk full) — no `|| true` mask; the upload below still
+        # runs via its if: always().
         run: |
           source .venv/bin/activate
           set -o pipefail
           mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
-          python scripts/feasibility/spike_families.py --family all --fallback 2>&1 | tee .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log || true
+          python scripts/feasibility/spike_families.py --family all --fallback 2>&1 | tee .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log
 
       - name: Upload spike logs and matrix
         # Unconditional: the artifacts ARE the deliverable, especially on

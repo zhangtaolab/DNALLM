@@ -94,7 +94,7 @@ def _gpu_guard() -> bool:
     Returns:
         True when the box carries a usable CUDA device, False otherwise
         (``main`` turns False into exit code 2 — distinguishable from a
-        family FAIL, which is exit code 1).
+        pre-evidence crash, which is exit code 1).
     """
     import torch
 
@@ -806,7 +806,15 @@ def _run_family(family: str, fallback: bool) -> int:
 
 
 def main() -> int:
-    """Parse args, guard the GPU, run the requested families fail-closed."""
+    """Parse args, guard the GPU, run the requested families fail-closed.
+
+    Returns:
+        0 when every requested family emitted a complete evidence block — an
+        OK or FAIL verdict is matrix evidence, so FAIL does not turn the run
+        red; 1 when any family crashed before emitting its block (the
+        infrastructure-failure signal for the workflow step); 2 when the GPU
+        guard failed.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "GB10 feasibility spike runner (FEAS-01, D-04/D-05/D-06): loads each "
@@ -835,15 +843,31 @@ def main() -> int:
 
     families = list(FAMILIES) if args.family == "all" else [args.family]
     failed = []
+    crashed = []
     for family in families:
         mode = "fallback variant" if args.fallback else "notebook variant"
         print(f"===== spike {family} ({mode}) =====")
-        if _run_family(family, args.fallback) != 0:
-            failed.append(family)
+        # Every spike_* emits a complete evidence block (OK or FAIL) on both
+        # its success path and its except path, so a normal return means the
+        # block exists. Only an exception escaping the family function — or
+        # the process dying outright — leaves a family unevidenced.
+        try:
+            if _run_family(family, args.fallback) != 0:
+                failed.append(family)
+        except Exception as exc:
+            crashed.append(family)
+            print(f"family={family}")
+            print("result=CRASH")
+            print(f"failure_text={_failure_text(exc)}")
+            print()
     if failed:
         print("failed_families=" + ",".join(failed))
-        return 1
-    return 0
+    if crashed:
+        print("crashed_families=" + ",".join(crashed))
+    # Exit code = evidence completeness, not verdict (WR-04): FAIL verdicts
+    # are matrix evidence and exit 0; only a pre-evidence crash exits 1 so
+    # the workflow step can go red without masking family failures.
+    return 1 if crashed else 0
 
 
 if __name__ == "__main__":
