@@ -1,0 +1,87 @@
+name: feasibility
+
+# GB10 runner confirmation for the Phase 5 feasibility spike (FEAS-01, D-04).
+#
+# Dispatch-ONLY by design: this job runs repo code on the self-hosted
+# `[self-hosted, dnallm-nightly]` GPU box, so it must never trigger on
+# push/pull_request/schedule — PR-authored code (including forks) never
+# executes on that runner. The owner triggers it manually with
+# `gh workflow run feasibility.yml --ref dev` after pushing the workflow
+# commit (the milestone is manual-push-only), then downloads the artifacts
+# to fill the Runner confirmation column of
+# .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-FEASIBILITY.md.
+on: workflow_dispatch
+
+jobs:
+  feas-spike:
+    # Same self-hosted posture as test-mamba (ci.yml): the nightly GPU box.
+    # The event gate below is the security boundary — workflow_dispatch is
+    # reachable only by users with write access to the repo.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'workflow_dispatch'
+    # evo-1's cold download alone is ~30GB plus model loads and the marimo
+    # flavors; 240min bounds a worst-case run without monopolizing the box
+    # that also serves coverage-nightly.
+    timeout-minutes: 240
+    steps:
+      - name: Check for GPU
+        id: gpu-check
+        run: |
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run the feasibility spike"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            echo "No GPU detected, skipping the feasibility spike"
+          fi
+
+      - name: Checkout code
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Create virtual environment and install dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[base] resolves green on this exact box (coverage-nightly precedent);
+        # the spike-only packages stay inside this ephemeral job venv.
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Record runner identity
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
+
+      - name: Run the committed spike runner (notebook variants + D-06 fallbacks)
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # One --family all --fallback pass per the plan: each family runs its
+        # notebook variant first, then its D-06 fallback. On this venv the
+        # evo/evo2 families fail fast at their handler ImportErrors (the
+        # spike-only packages are intentionally absent), megadna downloads
+        # its 582MB checkpoint and fails the unpickle without the pinned
+        # clone + MEGABYTE_pytorch, pybigwig fails its import, and marimo
+        # executes for real on the warm ModelScope cache — every failure
+        # text is matrix evidence, so the step must not fail the job before
+        # the artifact upload below runs (the matrix, not this exit code,
+        # is the verdict carrier).
+        run: |
+          source .venv/bin/activate
+          set -o pipefail
+          mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
+          python scripts/feasibility/spike_families.py --family all --fallback 2>&1 | tee .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log || true
+
+      - name: Upload spike logs and matrix
+        # Unconditional: the artifacts ARE the deliverable, especially on
+        # failure — a red run with artifacts beats a green run without them.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feas-spike-logs
+          path: |
+            .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/*.log
+            .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-FEASIBILITY.md
+          if-no-files-found: warn

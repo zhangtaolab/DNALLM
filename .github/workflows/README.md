@@ -13,7 +13,7 @@ The workflows are triggered on:
 - **Push events** to `main`, `master`, and `dev` branches
 - **Pull request events** targeting `main`, `master`, and `dev` branches
 - **Scheduled nightly run** at 03:00 UTC — triggers the `coverage-nightly` full census and the `test-mamba` kernel-build leg (GitHub runs cron schedules only from the default branch)
-- **Manual workflow dispatch** — runs the nightly census on demand (e.g. for calibration)
+- **Manual workflow dispatch** — runs the nightly census on demand (e.g. for calibration), and is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box)
 
 ## 🔧 Jobs
 
@@ -109,7 +109,22 @@ The workflows are triggered on:
 3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long network-bound tests (trainer, real-download, and MCP integration)
 4. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
 
-### 7. Deploy Job (`deploy`)
+### 7. Feasibility Spike Job (`feas-spike`)
+
+**Purpose**: Runner confirmation for the Phase 5 GB10 feasibility spike (FEAS-01, D-04) — re-runs the committed per-family spike runner (`scripts/feasibility/spike_families.py`) on the same hardware class the local verdicts were taken on and uploads the logs plus the verdict matrix as artifacts. The owner fills the matrix's Runner confirmation column from those artifacts; local verdicts become official only then.
+
+**Trigger**: **manual `workflow_dispatch` ONLY** — never push, PR, or schedule. This job executes repo code on the self-hosted GPU box, so the dispatch-only gate preserves the invariant that PR-authored code (including forks) never reaches that runner.
+
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), 240-minute timeout (evo-1's cold download alone is ~30GB)
+
+**Steps**:
+1. **Code Checkout** / **GPU Check** (same fail-safe no-op as `test-mamba` if the box loses its GPU)
+2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[base]"` (the coverage-nightly-proven extras set; spike-only packages stay inside this ephemeral job venv)
+3. **Runner Identity**: records the `nvidia-smi` identity line (the D-04 parity claim)
+4. **Spike Execution**: `--family all` (notebook variants) then the D-06 fallback legs; expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
+5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)
+
+### 8. Deploy Job (`deploy`)
 
 **Purpose**: Automatic documentation deployment to GitHub Pages.
 
