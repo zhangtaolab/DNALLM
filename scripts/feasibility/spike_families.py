@@ -148,10 +148,19 @@ def _snapshot_disk_gb(repo_id: str, revision: str | None = None) -> tuple[float,
             path = str(matches[-1])
     if not path or not os.path.exists(path):
         return 0.0, "not-found"
+    # HF cache layout: snapshots/<rev> entries are symlinks into blobs/, so a du
+    # of the snapshot dir itself only measures the links — walk up to the
+    # models--<repo> root (fallback: keep the given path) and measure that.
+    target = Path(path).resolve()
+    root = target
+    while root.name and not root.name.startswith("models--"):
+        root = root.parent
+    if root.name.startswith("models--"):
+        target = root
     # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
-    human = subprocess.run(["du", "-sh", path], capture_output=True, text=True)
+    human = subprocess.run(["du", "-sh", str(target)], capture_output=True, text=True)
     # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
-    bytes_used = subprocess.run(["du", "-sb", path], capture_output=True, text=True)
+    bytes_used = subprocess.run(["du", "-sb", str(target)], capture_output=True, text=True)
     human_str = human.stdout.split()[0] if human.returncode == 0 and human.stdout else "?"
     gb = (
         float(bytes_used.stdout.split()[0]) / 1e9
@@ -175,7 +184,15 @@ def _forward_pass(model: Any, tokenizer: Any, prompt: str = "ACGT" * 64) -> tupl
     import torch
 
     encoded = tokenizer([prompt], return_tensors="pt")
-    ids = encoded["input_ids"] if isinstance(encoded, dict) else encoded
+    # transformers BatchEncoding is a UserDict, NOT a dict instance — probe for
+    # the key instead of isinstance-checking, then coerce lists to a tensor.
+    ids = encoded
+    if hasattr(encoded, "__getitem__"):
+        try:
+            ids = encoded["input_ids"]
+        except (KeyError, IndexError):
+            ids = encoded
+    ids = torch.as_tensor(ids)
     core = getattr(model, "model", model)  # CustomEvo wrappers keep the core on .model
     device = next(core.parameters()).device
     ids = ids.to(device)
@@ -543,7 +560,9 @@ def spike_pybigwig() -> int:
             path = os.path.join(tmp, "spike.bw")
             bw = pyBigWig.open(path, "w")
             bw.addHeader([("Chr1", 1000)])
-            bw.addEntries("Chr1", [0, 100], ends=[50, 200], values=[0.5, 1.0])
+            # Explicit-ends form needs chroms as a list (one per start); the
+            # single-string form only pairs with span/step entries.
+            bw.addEntries(["Chr1", "Chr1"], [0, 100], ends=[50, 200], values=[0.5, 1.0])
             bw.close()
             bw = pyBigWig.open(path)
             values = bw.values("Chr1", 0, 50)
