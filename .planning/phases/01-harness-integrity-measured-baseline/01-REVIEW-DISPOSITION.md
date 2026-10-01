@@ -3,62 +3,62 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
+  - id: WR-01
+    severity: warning
+    disposition: open
+    title: "Nightly `test-mamba` job reports green while its tests fail (`continue-on-error`)"
+  - id: WR-02
+    severity: warning
+    disposition: open
+    title: "`prepare_data` drops `task_type` — multilabel curve data is silently corrupted through the public API"
+  - id: WR-03
+    severity: warning
+    disposition: open
+    title: "Workflow README documents gates and tooling that do not exist"
   - id: IN-01
     severity: info
     disposition: open
-    title: "Canary accepts any non-zero pytest exit as \"OK\""
+    title: "Broken-and-unused `mock_dataset` fixture and no-op `global_cleanup` fixture in conftest"
   - id: IN-02
     severity: info
     disposition: open
-    title: "Dead hooks left behind by the exit-mask removal"
+    title: "Stale `models.lock` entry after the open-chromatin model swap"
   - id: IN-03
     severity: info
     disposition: open
-    title: "Redundant asyncio-mode mechanism in `pytest_configure`"
+    title: "Open-chromatin config keeps promoter labels/description after the model swap"
   - id: IN-04
     severity: info
     disposition: open
-    title: "`ci_checks.sh` step-numbering typo and overstated \"exact same checks\" claim"
+    title: "Vacuous isinstance assertions via `__class__` swap in benchmark tests"
   - id: IN-05
     severity: info
     disposition: open
-    title: "CUDA/mamba jobs invoke `pytest tests/` instead of bare `pytest`"
+    title: "Misleading test names/docstrings pinning non-behavior"
   - id: IN-06
     severity: info
     disposition: open
-    title: "Deprecated action majors; coverage-upload failures are silent"
+    title: "`from conftest import ...` relies on pytest's sys.modules side effect"
   - id: IN-07
     severity: info
     disposition: open
-    title: "`rocm` extra and commented-out mamba block are misleading config"
+    title: "Deprecated `actions/cache@v3` in the deploy job"
   - id: IN-08
     severity: info
     disposition: open
-    title: "Deploy-job cache primary key can never exact-hit"
+    title: "Code-based `Benchmark.__init__` aliases one task config across all datasets"
   - id: IN-09
     severity: info
     disposition: open
-    title: "Redundant `filterwarnings` entries under a blanket ignore"
+    title: "`metrics_for_dnabert2` regression arm returns a nested `r2` dict — and the new test cements it"
   - id: WR-07
     severity: warning
     disposition: fixed
     title: "`ci_checks.sh` installs uv but never adds it to PATH — auto-setup aborts on fresh hosts"
-  - id: WR-01
-    severity: warning
-    disposition: fixed
-    title: "Workflow grants `contents: write` to every job, including test jobs"
-  - id: WR-03
-    severity: warning
-    disposition: fixed
-    title: "`continue-on-error` makes the mamba failure-artifact upload step unreachable"
   - id: WR-04
     severity: warning
     disposition: fixed
     title: "Docs still document the `pytest.ini` this phase deleted"
-  - id: WR-02
-    severity: warning
-    disposition: skipped
-    title: "`test-mamba` job is a structural no-op that `deploy` treats as passing"
   - id: WR-05
     severity: warning
     disposition: skipped
@@ -67,15 +67,18 @@ findings:
     severity: warning
     disposition: skipped
     title: "Unpinned `curl | sh` installer executed in four CI jobs and the local script"
-open: 9
+open: 12
 total: 16
-recorded: 2026-09-29T19:23:55.570Z
+recorded: 2026-10-01T09:27:05.766Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
+| WR-01 | warning | open | - |
+| WR-02 | warning | open | - |
+| WR-03 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
@@ -86,10 +89,7 @@ recorded: 2026-09-29T19:23:55.570Z
 | IN-08 | info | open | - |
 | IN-09 | info | open | - |
 | WR-07 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
-| WR-01 | warning | fixed | 01-REVIEW-FIX.iter2.md (not in the current review) |
-| WR-03 | warning | fixed | 01-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-04 | warning | fixed | 01-REVIEW-FIX.iter2.md (not in the current review) |
-| WR-02 | warning | skipped | 01-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-05 | warning | skipped | 01-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-06 | warning | skipped | 01-REVIEW-FIX.iter2.md (not in the current review) |
 
