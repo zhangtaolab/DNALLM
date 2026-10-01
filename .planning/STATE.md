@@ -22,7 +22,7 @@ current_phase: 01
 See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Verification-refresh pass — Phase 01 re-verified 15/15 at HEAD (2026-10-01); phases 02–04 VERIFICATION digests still stale, refresh before milestone closeout
+**Current focus:** v1 shipped and archived 2026-10-01 — next: /gsd-ship triage (10 open windows, tech-debt ledger) or /gsd-new-milestone
 
 ## Current Position
 
