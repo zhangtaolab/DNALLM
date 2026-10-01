@@ -53,8 +53,19 @@ def check_sync(dcmp: filecmp.dircmp, path: str = "") -> list[str]:
                 else f"ONLY in docs/example/: {name}"
             )
 
-    for name in dcmp.diff_files:
+    # Byte-level comparison: dircmp's diff_files uses shallow (stat-signature)
+    # matching, which reports "equal" whenever mode+size+mtime coincide without
+    # reading the bytes — a same-size content divergence whose mtimes match
+    # would slip through. cmpfiles(..., shallow=False) always reads the bytes.
+    # (dircmp's own `shallow=` kwarg is Python 3.13+ only; this repo supports
+    # 3.10+, so re-compare common_files here instead.)
+    _, mismatch, unreadable = filecmp.cmpfiles(
+        dcmp.left, dcmp.right, dcmp.common_files, shallow=False
+    )
+    for name in mismatch:
         errors.append(f"DIFFER: {path}/{name}" if path else f"DIFFER: {name}")
+    for name in unreadable:
+        errors.append(f"UNREADABLE: {path}/{name}" if path else f"UNREADABLE: {name}")
 
     for subdir, sub_dcmp in dcmp.subdirs.items():
         sub_path = f"{path}/{subdir}" if path else subdir
