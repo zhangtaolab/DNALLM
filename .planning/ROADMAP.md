@@ -3,8 +3,13 @@
 ## Milestones
 
 - ✅ **v1 Test Suite Audit & Coverage Hardening** — Phases 1–4 (shipped 2026-10-01) — [archive](milestones/v1-ROADMAP.md)
+- 🚧 **v1.1 Example Execution Testing & Repair** — Phases 5–9 (in progress)
 
 ## Phases
+
+**Phase Numbering:**
+- Integer phases (5–9): planned v1.1 work — numbering continues from v1, which ended at Phase 4
+- Decimal phases (5.1, 5.2): urgent insertions (marked with INSERTED), execute between surrounding integers
 
 <details>
 <summary>✅ v1 Test Suite Audit & Coverage Hardening (Phases 1–4) — SHIPPED 2026-10-01</summary>
@@ -18,6 +23,88 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 </details>
 
+### 🚧 v1.1 Example Execution Testing & Repair (In Progress)
+
+**Milestone Goal:** Real-model execution testing for everything under `example/` with every surfaced error fixed; PlantHelixSeek-CRE/-Anno showcase notebooks over committed Arabidopsis loci whose predictions are substantially consistent with experimental truth; and the CI gate false-green (WR-08/WR-09) repaired so example tests run under formal nightly gating.
+
+- [ ] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families
+- [ ] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist
+- [ ] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror
+- [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
+- [ ] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation
+
+## Phase Details
+
+### Phase 5: Execution Harness, Honest Gates & Runner Feasibility
+**Goal**: A trustworthy private execution harness exists and is proven (including kernel-kill on hang); both false-green CI gates are closed together with the docs-mirror drift they were hiding; and the runner's real capabilities for the environment-gated model families are settled in writing before execution tests are written against them
+**Depends on**: Nothing (first phase of v1.1; builds on the shipped v1 CI gate)
+**Requirements**: EXEC-01, EXEC-06, CI-01, CI-02, REPAIR-02, FEAS-01
+**Success Criteria** (what must be TRUE):
+  1. The pilot execution tests run 1–2 already-healthy notebooks end-to-end via nbclient in tmp-sandbox cwd isolation (kernel cwd = sandbox copy), with per-cell timeout firing inside a per-test timeout mark, context-managed kernel shutdown, and partial-notebook failure artifacts captured on error — and the git tree is clean after the run
+  2. A deliberate-hang test proves the harness kills a hung kernel and leaves no `ipykernel_launcher` process behind
+  3. `scripts/check_docs_sync.py` exits 0 (mirror drift closed: wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and the docs-validation workflow runs honestly — `continue-on-error` removed, `mcp` extra installed, README "Local Testing" line corrected — without blocking unrelated PRs
+  4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
+**Plans**: TBD
+
+### Phase 6: Model Registry & Showcase Data Curation
+**Goal**: Both PlantHelixSeek checkpoints load through the existing generic dnallm route (label order frozen to the checkpoint, transformers-5 compat proven), and the showcase's committed Arabidopsis loci — truth slices, selection rationale, negative control — exist in-repo alongside a shared, unit-tested coordinate/chrom-name normalization helper
+**Depends on**: Nothing hard — independent of Phase 5 (disjoint file sets; the two tracks are parallelizable)
+**Requirements**: REG-01, REG-02, REG-03, SHOW-01, SHOW-02
+**Success Criteria** (what must be TRUE):
+  1. `load_model_and_tokenizer` smoke-loads both `PlantHelixSeek-CRE` (binary, num_labels 2) and `PlantHelixSeek-Anno` (token, num_labels 17) through the generic task-type route on the transformers 5.x dev environment — no special handler — and the Anno execution test asserts `model.config.id2label` exactly equals the frozen 17-BILOU `label_names` order
+  2. Committed in-repo Arabidopsis fragments ≤200kb per region exist with truth slices (CRE ↔ PlantDHS `TAIR10_DHSs.gff`; Anno ↔ TAIR10 GFF3), a selection-rationale doc, and one negative-control locus; the selected loci were verified for substantial prediction-truth agreement, and download intermediates stay gitignored (clean tree)
+  3. The shared coordinate/chrom-name normalization helper (0-based half-open ↔ 1-based closed; `Chr1` ↔ `1`) passes unit tests on tiny fixtures, and every genomics code path uses it with non-emptiness assertions against silent-empty results
+**Plans**: TBD
+
+### Phase 7: PlantHelixSeek Showcase Notebooks
+**Goal**: The two flagship showcase notebooks run real sliding-window inference on the committed loci, present prediction-vs-truth honestly (illustrative-loci framing), assert calibrated agreement floors, and land in the docs mirror with rendered figures
+**Depends on**: Phase 6 (registry entries, committed loci, normalization helper), Phase 5 (harness for executed write-back)
+**Requirements**: SHOW-03, SHOW-04, SHOW-05, SHOW-06, SHOW-07
+**Success Criteria** (what must be TRUE):
+  1. The CRE notebook executes end-to-end: 500bp window / 50bp stride / 50bp bin sliding scan via the dnallm API, altair side-by-side prediction track vs PlantDHS truth, and in-notebook peak calling (mean±1.5σ → BED/narrowPeak) with Jaccard computed on called peaks
+  2. The Anno notebook executes end-to-end: 8192/4096 both-strand scan, BILOU span decode to structurally valid GFF3, nucleotide/exon-level sensitivity/precision/F1 vs TAIR10, and exon/intron gene-model diagrams (altair)
+  3. The example tests assert truth-agreement floors with thresholds calibrated at loci-selection time — recorded observed values and tolerance bands, never exact outputs
+  4. Both executed notebooks with rendered figures are written back into the docs mirror (these two only), presenting "illustrative loci + selection criteria" framing with no genome-wide accuracy claims
+**Plans**: TBD
+
+### Phase 8: Full Execution Rollout & Repair Loop
+**Goal**: Every example artifact executes for real on the nightly GPU runner — all notebooks, the marimo apps, the helper script, every YAML, and the two ollama-backed mcp_example notebooks — and every error that surfaces is fixed with regression tests across example code, the docs mirror, and the dnallm library
+**Depends on**: Phase 5 (proven harness + honest gates); the Phase 7 showcase notebooks join the rollout when present (no hard dependency)
+**Requirements**: EXEC-02, EXEC-03, EXEC-04, EXEC-05, REPAIR-01, REPAIR-03, REPAIR-04, CI-04, CI-05, MCP-01, MCP-02
+**Success Criteria** (what must be TRUE):
+  1. All 21 example notebooks execute all code cells end-to-end with real models on the nightly GPU runner (fail-at-first-error per notebook, fail-soft across notebooks); the 3 marimo apps execute headlessly via subprocess with default-value assertions and exit codes asserted; `generate_bpe_dataset.py` produces its dataset artifact in-sandbox
+  2. Every example YAML config passes real `load_config()` Pydantic validation on the fast leg, with zero new fast-leg skips introduced
+  3. Every error surfaced by real execution is fixed with a regression test — notebook/app/script code, dnallm library bugs (v1 precedent: AUROC, CrossDNA), and the langchain notebook's `!uv pip install langchain-ollama` cell with its dependency declared in the `mcp` extra — with harness-bug vs content-bug triage explicit (no cwd false-repairs) and the docs mirror regenerated as part of each notebook repair
+  4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
+  5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
+**Plans**: TBD
+
+### Phase 9: CI Wiring & Census Verification
+**Goal**: The nightly census formally gates the finished execution-test layer — verified end to end on the real runner for collection, skip audit, runtime budget, hygiene steps, lock consistency, and the documented coverage expectation
+**Depends on**: Phase 8 (census validates the finished execution-test set, including the Phase 7 showcase truth-agreement tests)
+**Requirements**: CI-03, CI-06, CI-07, CI-08, CI-09
+**Success Criteria** (what must be TRUE):
+  1. A nightly census run collects and passes all new `slow`-marked execution tests; `audit_skips.py` exits green with the new typed categories present (`network-unavailable:` reuse, `environment-unavailable:`/`optional-dep:` additions registered in `expected_skips.yaml`), and the fast leg has zero new skips
+  2. Measured runtime budgets are recorded; total execution fits the 900-min nightly job, or a separate example-execution nightly job is split out (owner pre-authorized)
+  3. Nightly hygiene steps are observable in the workflow: kernel `pkill` + VRAM assertion, timeout-arithmetic sum-of-ceilings review, `if: always()` artifact uploads
+  4. The fast-leg models.lock consistency guard fails on drift between model id literals inside notebooks/apps and lock entries
+  5. The coverage expectation is documented: example execution runs in kernel subprocesses and by design does not move the 96.30% coverage gate (AUDIT-04 precedent)
+**Plans**: TBD
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are parallelizable — disjoint file sets)
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 0/TBD | Not started | - |
+| 6. Model Registry & Showcase Data Curation | v1.1 | 0/TBD | Not started | - |
+| 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
+| 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
+| 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
+
 ---
 
-*Next milestone: not yet defined — run `/gsd-new-milestone` to start questioning → research → requirements → roadmap.*
+*Coverage: 32/32 v1.1 requirements mapped (EXEC 6, REPAIR 4, CI 9, FEAS 1, REG 3, SHOW 7, MCP 2) — no orphans, no duplicates.*
+*v1.1 roadmap created 2026-10-01.*

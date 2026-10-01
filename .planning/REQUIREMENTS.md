@@ -94,13 +94,45 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(filled by roadmap)* | | |
+| EXEC-01 | Phase 5 | Pending |
+| EXEC-02 | Phase 8 | Pending |
+| EXEC-03 | Phase 8 | Pending |
+| EXEC-04 | Phase 8 | Pending |
+| EXEC-05 | Phase 8 | Pending |
+| EXEC-06 | Phase 5 | Pending |
+| REPAIR-01 | Phase 8 | Pending |
+| REPAIR-02 | Phase 5 | Pending |
+| REPAIR-03 | Phase 8 | Pending |
+| REPAIR-04 | Phase 8 | Pending |
+| CI-01 | Phase 5 | Pending |
+| CI-02 | Phase 5 | Pending |
+| CI-03 | Phase 9 | Pending |
+| CI-04 | Phase 8 | Pending |
+| CI-05 | Phase 8 | Pending |
+| CI-06 | Phase 9 | Pending |
+| CI-07 | Phase 9 | Pending |
+| CI-08 | Phase 9 | Pending |
+| CI-09 | Phase 9 | Pending |
+| FEAS-01 | Phase 5 | Pending |
+| REG-01 | Phase 6 | Pending |
+| REG-02 | Phase 6 | Pending |
+| REG-03 | Phase 6 | Pending |
+| SHOW-01 | Phase 6 | Pending |
+| SHOW-02 | Phase 6 | Pending |
+| SHOW-03 | Phase 7 | Pending |
+| SHOW-04 | Phase 7 | Pending |
+| SHOW-05 | Phase 7 | Pending |
+| SHOW-06 | Phase 7 | Pending |
+| SHOW-07 | Phase 7 | Pending |
+| MCP-01 | Phase 8 | Pending |
+| MCP-02 | Phase 8 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 32 total
-- Mapped to phases: 0
-- Unmapped: 32 ⚠️ (pending roadmap)
+- Mapped to phases: 32 (Phase 5: 6, Phase 6: 5, Phase 7: 5, Phase 8: 11, Phase 9: 5)
+- Unmapped: 0
+- Duplicated: 0
 
 ---
 *Requirements defined: 2026-10-01*
-*Last updated: 2026-10-01 after initial definition*
+*Last updated: 2026-10-01 after roadmap creation (Phases 5–9)*
