@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: Execution Harness, Honest Gates & Runner Feasibility
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-10-01T17:28:39.477Z"
-last_activity: 2026-10-01
-last_activity_desc: v1.1 roadmap created (Phases 5–9, 32/32 requirements mapped)
-state_head: 64a4dbfae85a3783971234d2e13a15709cabcac5
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-10-01T17:47:44.551Z"
+last_activity: 2026-10-02
+last_activity_desc: Phase 5 execution started
+state_head: 681be5e704661b92202a22f44a9d76428569d0a3
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** v1.1 Phase 5 — Execution Harness, Honest Gates & Runner Feasibility
+**Current focus:** Phase 5 — Execution Harness, Honest Gates & Runner Feasibility
 
 ## Current Position
 
-Phase: 5 (Execution Harness, Honest Gates & Runner Feasibility) — READY TO EXECUTE
-Plan: None yet (phase not planned)
+Phase: 5 (Execution Harness, Honest Gates & Runner Feasibility) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-10-01 — v1.1 roadmap created (Phases 5–9, 32/32 requirements mapped)
+Last activity: 2026-10-02 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -58,6 +58,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: Stable
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 05 P01 | 11 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -72,6 +77,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - Roadmap: GB10 feasibility verdicts (evo-1/evo2/megaDNA/pyBigWig) precede execution-test authoring; `environment-unavailable:` typed skips only with recorded evidence
 - Roadmap: separate example-execution nightly job pre-authorized by owner if total runtime exceeds the 900-min nightly (CI-06)
 - Carried from v1 (AUDIT-04): kernel subprocesses are unmeasured by design — example execution must not move the 96.30% gate (documented in Phase 9)
+- [Phase 05]: 05-01: nbclient 0.11.0 NotebookClient is not a context manager - harness uses plain execute() with shutdown_kernel=immediate; env overrides via os.environ save/restore (no env trait)
+- [Phase 05]: 05-01: typed-skip prefixes environment-unavailable:/optional-dep: registered in expected_skips.yaml with zero callers - Phase 8 skip decisions inherit the allowlist contract
 
 ### Pending Todos
 
@@ -95,9 +102,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T16:04:40.369Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-CONTEXT.md
+Last session: 2026-10-01T17:47:44.535Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
 
 ## Deferred Verification
 
