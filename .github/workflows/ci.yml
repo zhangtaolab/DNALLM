@@ -271,7 +271,7 @@ jobs:
     # The recurring per-run CUDA kernel source build is the long pole
     # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
     # the mamba-ssm/causal_conv1d compile repeats every run, not just the
-    # first). 180min covers a worst-case GB10 build plus the .[test,dev]
+    # first). 180min covers a worst-case GB10 build plus the .[base]
     # install plus the `not slow` census with headroom. Self-hosted jobs have
     # no platform time cap, so this backstop is the only protection against a
     # hung build monopolizing the single runner that also serves
@@ -307,9 +307,16 @@ jobs:
 
       - name: Create virtual environment and install mamba dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[base], not .[test,dev]: the not-slow census imports mcp-extra deps
+        # (langchain / langchain_mcp_adapters / pydantic-ai / nest-asyncio in the
+        # mcp_example notebooks, and the exceptiongroup backport at
+        # tests/mcp/test_client_sdk.py, pulled in via pydantic-ai ->
+        # pydantic-ai-slim[mcp] -> fastmcp-slim[client]). Same extras set the
+        # other legs install; coverage-nightly proves .[base] resolves green on
+        # this exact box.
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          uv pip install -e ".[base]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
       # No continue-on-error here: a failing mamba test must fail the job.

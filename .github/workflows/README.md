@@ -75,7 +75,7 @@ The workflows are triggered on:
 2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
 4. **UV Installation**: Installs the UV package manager
-5. **Mamba Dependency Installation**: Installs `.[test,dev]` plus `.[mamba]` (kernel source build)
+5. **Mamba Dependency Installation**: Installs `.[base]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport) — plus `.[mamba]` (kernel source build)
 6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
