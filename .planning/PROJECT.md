@@ -8,6 +8,17 @@ DNALLM (`dnallm` v0.5.2) is a Python toolkit for fine-tuning, inference, and ben
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
+## Current Milestone: v1.1 Example Execution Testing & Repair
+
+**Goal:** Establish real-model execution testing for everything under `example/` and fix every error it surfaces; add PlantHelixSeek-CRE/-Anno Arabidopsis inference example notebooks; repair the CI gate false-green (WR-08/09) and bring example tests under formal gating.
+
+**Target features:**
+- Real execution of all existing examples — 20 Jupyter notebooks (nbclient), 3 marimo apps (headless), `generate_bpe_dataset.py`, all YAML configs through real `load_config()` validation — using real models on the nightly self-hosted GPU runner
+- Error repair across example/ code, docs/example/ mirror, and any dnallm library bugs the executions expose
+- CI: remove `continue-on-error` false-green in docs-validation, add missing `mcp` extra, fix README (WR-08/WR-09); example execution tests marked `slow` join the nightly census gate
+- New PlantHelixSeek examples: registry entries for `PlantHelixSeek-CRE` (binary) / `PlantHelixSeek-Anno` (token, 17 BILOU); two notebooks using dnallm API with in-notebook sliding-window scanning and BigWig/GFF3 post-processing (mirroring upstream `scripts/cis_regulatory` / `scripts/gene_annotation` pipelines)
+- Arabidopsis showcase data committed in-repo at ≤200kb per region: **guarantee that predictions are substantially consistent with experimental truth on the selected loci** (CRE ↔ PlantDHS TAIR10_DHSs.gff; Anno ↔ TAIR10 GFF3 gene annotation) — agreement verified during loci selection and asserted by the example tests; intermediate full-genome downloads from arabidopsis.org stay gitignored
+
 ## Requirements
 
 ### Validated
@@ -39,7 +50,12 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-None — all milestone requirements delivered (see Validated, Phases 3–4).
+Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREMENTS.md):
+
+- Real-model execution tests for every artifact under `example/` (notebooks, marimo apps, helper script, YAML configs)
+- All errors found by real execution fixed — example code, docs/example/ mirror, and exposed dnallm library bugs
+- CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
+- PlantHelixSeek-CRE and PlantHelixSeek-Anno inference example notebooks with dnallm API support and in-repo Arabidopsis showcase regions (≤200kb, prediction-matching-truth loci)
 
 Shipped in Phase 3 (Coverage Waves, 2026-10-01):
 
@@ -106,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-01 after v1 milestone*
+*Last updated: 2026-10-01 after v1.1 milestone start*
