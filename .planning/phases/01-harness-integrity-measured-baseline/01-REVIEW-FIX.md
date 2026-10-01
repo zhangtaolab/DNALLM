@@ -1,97 +1,69 @@
 ---
 phase: 01-harness-integrity-measured-baseline
-fixed_at: 2026-09-29T19:16:06Z
+fixed_at: 2026-10-01T09:50:01Z
 review_path: .planning/phases/01-harness-integrity-measured-baseline/01-REVIEW.md
-iteration: 2
-findings_in_scope: 1
-fixed: 1
+iteration: 1
+findings_in_scope: 3
+fixed: 3
 skipped: 0
 status: all_fixed
 ---
 
 # Phase 01: Code Review Fix Report
 
-**Fixed at:** 2026-09-29T19:16:06Z
-**Source review:** .planning/phases/01-harness-integrity-measured-baseline/01-REVIEW.md (iteration 2)
-**Iteration:** 2
+**Fixed at:** 2026-10-01T09:50:01Z
+**Source review:** .planning/phases/01-harness-integrity-measured-baseline/01-REVIEW.md (incremental re-review of the phases 02-04 delta)
+**Iteration:** 1 (of this re-review cycle; replaces the September report from the original phase-01 review)
 
-**Summary (this iteration):**
-- Findings in scope: 1 (0 Critical, 1 Warning — WR-07; fix_scope = critical_warning, so IN-01..IN-09
-  were not attempted)
-- Fixed: 1
+**Summary:**
+- Findings in scope: 3 (0 Critical, 3 Warnings — fix_scope = critical_warning, so IN-01..IN-09 were not attempted)
+- Fixed: 3
 - Skipped: 0
-- Status: all_fixed
+
+**Execution mode:** `workflow.use_worktrees = false` — all edits and commits were made directly in the main checkout on branch `dev`. All verification below ran in the main checkout (`/home/forrest/Github/DNALLM`), so the numbers are reproducible from that tree.
 
 ## Fixed Issues
 
-### WR-07: `ci_checks.sh` installs uv but never adds it to PATH — auto-setup aborts on fresh hosts
+### WR-01: Nightly `test-mamba` job reports green while its tests fail (`continue-on-error`)
 
-**Files modified:** `scripts/ci_checks.sh`
-**Commit:** 10476ff
-**Applied fix:** Exactly the review's one-line remedy, adapted only in comment placement. Inside the
-`if ! command -v uv` bootstrap branch, immediately after `curl -LsSf https://astral.sh/uv/install.sh | sh`,
-the script now runs `export PATH="$HOME/.local/bin:$PATH"` (with a three-line comment explaining that
-the installer is a child process that cannot mutate the parent shell's PATH, so without the export
-the subsequent bare `uv venv` / `uv pip install` calls abort with "command not found" under
-`set -euo pipefail` on fresh hosts). The export is scoped to the install branch only — when uv is
-already resolvable nothing changes. The CI jobs are unaffected (they were already healthy: uv's
-installer exports the path via `$GITHUB_PATH` under Actions).
-**Verification:** Tier 1 re-read of the edited block (lines 59-67) confirmed the fix is present and
-surrounding code intact; Tier 2 `bash -n scripts/ci_checks.sh` passed ("SYNTAX OK"); additionally a
-behavioral subshell check on this host — with a PATH stripped of `~/.local/bin`, `command -v uv`
-fails (confirming the install branch would be taken on a fresh host), and after applying the same
-`export PATH="$HOME/.local/bin:$PATH"`, `command -v uv` succeeds ("MECHANISM VERIFIED"). This is a
-functional-environment fix, not a logic change, so no extra human-verification flag is needed.
+**Files modified:** `.github/workflows/ci.yml`
+**Commit:** 8151c09
+**Applied fix:** Removed `continue-on-error: true` from the "Run mamba-specific tests" step (the reviewer's primary option). A pytest failure in the mamba leg now produces a failed job, closing the green-on-failure hole. Hung runs remain bounded by the per-test `--timeout=300` (pytest `addopts`) and the 180-min job timeout; the artifact step keeps its `if: always() && steps.mamba-tests.outcome == 'failure'` condition, which still evaluates correctly now that the step genuinely fails. Added a brief comment documenting the no-continue-on-error intent.
+
+### WR-02: `prepare_data` drops `task_type` — multilabel curve data silently corrupted through the public API
+
+**Files modified:** `dnallm/inference/plot.py`, `tests/inference/test_plot.py`, `tests/benchmark/test_benchmark.py`
+**Commit:** 42ada4f
+**Applied fix:**
+- `plot.py`: `prepare_data` now forwards `task_type` — `return _prepare_classification_data(metrics, task_type=task_type)` — so multilabel (and token) metrics run the per-label branch instead of always hitting the binary branch that `Benchmark.plot()` (benchmark.py:598) feeds.
+- `tests/inference/test_plot.py`: added `test_multilabel_through_public_prepare_data`, exercising the public dispatch (the existing test only pinned the private function). Verified it is a real regression guard: it FAILS against the pre-fix `plot.py` and passes with the fix.
+- `tests/benchmark/test_benchmark.py`: adapted `test_plot_token_task_skips_curves`. Its fixture fed a binary-shaped flat `curve` dict under `task_type="token"` — a shape real token metrics never produce (`token_classification_metrics` returns seqeval scalars with no curve key). With the corrected dispatch that invalid input now raises `AttributeError` instead of being silently processed by the binary branch. The test now uses token-realistic metrics and still asserts its original intent (token tasks skip `plot_curve`, `pline is None`).
+
+**Status:** fixed — requires human verification. This is a dispatch/logic fix with a deliberate behavior change: task-type-inconsistent metric shapes that the old code silently mis-parsed now fail loudly. Verified by execution (`tests/inference/test_plot.py` + `tests/benchmark/test_benchmark.py`: 164 passed; new public-API test proven to fail pre-fix), but the token-path behavior change and the adapted test deserve a human eye.
+
+### WR-03: Workflow README documents gates and tooling that do not exist
+
+**Files modified:** `.github/workflows/README.md`
+**Commit:** 20de879
+**Applied fix:** All four documented corrections, each cross-checked against `ci.yml`:
+1. Triggers now name `dev` (was `develop`) — matches `on.push/pull_request.branches`.
+2. Quality tooling described as ruff (`ruff format --check .`, `ruff check . --statistics`) in the Test Job steps, Quality Standards, Troubleshooting, and Local Testing blocks; Black/isort/Flake8 references removed. Noted Flake8 is not run in CI (local, MCP-module-only via `.flake8`), and MyPy is advisory (`|| true`). Also removed the phantom "Import organization" quality metric.
+3. Deploy job now documents the real gate: `needs: [test, test-cuda]`, explicitly noting `test-windows` and `coverage-gate` are not deploy gates and why `test-mamba` is excluded (skipped-needs semantics).
+4. Added a `test-windows` section (runner, timeout, PYTHONUTF8/autocrlf rationale); jobs renumbered 1-7 in workflow-file order. The `test-mamba` section was also corrected in passing (self-hosted `dnallm-nightly` runner, schedule/dispatch-only, GPU-check fail-safe, failures now fail the job per WR-01) — same file, same class of staleness.
 
 ## Skipped Issues
 
-None this iteration — the single in-scope finding (WR-07) was fixed.
+None — all 3 in-scope findings were fixed. The 9 Info findings (IN-01..IN-09) were out of scope for this run (`fix_scope = critical_warning`).
 
-## Out of Scope (not attempted, per fix_scope and owner decisions)
+## Verification Summary
 
-- **IN-01 .. IN-09 (Info tier):** out of scope for `fix_scope = critical_warning`.
-- **Deferred to owner / Phase-4 CI-gate phase** (re-affirmed by the iteration-2 review, which did not
-  re-count them): WR-02 (`test-mamba`/`test-cuda` structural no-op on GPU-less runners), WR-05
-  (broad `.github/workflows/README.md` staleness), WR-06 (unpinned `curl | sh` uv installer —
-  distinct from WR-07, which fixed only the functional PATH breakage, not the supply-chain pin).
-
-## Iteration-1 Ledger (preserved)
-
-Fixed in iteration 1 and **verified fixed by the iteration-2 review** (checked against the working
-tree, not this report):
-
-- **WR-01 — least-privilege workflow permissions** — `.github/workflows/ci.yml` — commit `b8926d5`.
-  Top-level `permissions` narrowed to `contents: read`; only `deploy` overrides with
-  `contents: write` (needed for `mkdocs gh-deploy --force`). Adaptation: kept a top-level read block
-  so future jobs inherit read-only. Verified via PyYAML parse + per-job assertions.
-- **WR-03 — mamba failure-artifact upload reachable** — `.github/workflows/ci.yml` — commit `9b916e3`.
-  Test step got `id: mamba-tests` + `continue-on-error: true` + `2>&1 | tee pytest.log` +
-  `set -o pipefail`; upload step keys on `if: always() && steps.mamba-tests.outcome == 'failure'`.
-  Verified structurally; needs a GPU runner to observe live.
-- **WR-04 — stale `pytest.ini` docs removed** — `tests/TESTING.md`, `CONTRIBUTING.md` — commit `839b3ef`.
-  Replaced the deleted-ini documentation with a pointer to `[tool.pytest.ini_options]` in
-  `pyproject.toml` plus a "never recreate" warning (HARN-01 regression guard).
-
-Skipped in iteration 1 (deliberate scope discipline; still open as owner/Phase-4 decisions):
-
-- **WR-02 — `test-mamba` structural no-op that `deploy` treats as passing** — deferred: both fix
-  options (GPU self-hosted runner vs deleting the job + `needs` entry) are infrastructure decisions
-  belonging to the Phase-4 CI-gate restructuring.
-- **WR-05 — `.github/workflows/README.md` materially stale** — deferred: broad doc rewrite coupled to
-  the Phase-4 workflow changes; the targeted `README.md:185` correction already landed.
-- **WR-06 — unpinned `curl | sh` uv installer in four CI jobs + local script** — deferred: pin
-  strategy (pinned URL vs `astral-sh/setup-uv`) is an owner toolchain decision with CI-break risk.
+- WR-01: YAML re-parsed (`yaml.safe_load`); `continue-on-error` confirmed absent from the `mamba-tests` step; surrounding steps intact. Full CI YAML job graph unchanged otherwise.
+- WR-02: `ast.parse` on both Python files; `tests/inference/test_plot.py` + `tests/benchmark/test_benchmark.py` full runs: 164 passed. New public-API regression test proven to fail on pre-fix code. `ruff format --check` and `ruff check` clean on all three files.
+- WR-03: full README re-read; every claim cross-checked against the current `ci.yml` (trigger branches, step names/commands, runner labels, timeouts, `needs` graph, event gates).
+- Gates ran in the main checkout (no worktree; `workflow.use_worktrees = false`).
 
 ---
 
-**Verification note (where verification ran):** This iteration worked directly in the main checkout
-at `/home/forrest/Github/DNALLM` (sequential dispatch — no isolated worktree, per orchestrator
-instruction), so all verification results above are reproducible from the main working tree at commit
-`10476ff`. Verification was: `bash -n` syntax check of `scripts/ci_checks.sh`, plus a subshell
-simulation of the fresh-host PATH mechanism. No test suite or live CI run was executed (out of scope
-per fix-loop strategy; the verifier phase covers it). Markdown edits have no syntax checker (Tier 3
-fallback, re-read only). Commit `10476ff` was pushed to `origin/dev`.
-
-_Fixed: 2026-09-29T19:16:06Z_
+_Fixed: 2026-10-01T09:50:01Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 2_
+_Iteration: 1_
