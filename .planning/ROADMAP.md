@@ -46,7 +46,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   3. `scripts/check_docs_sync.py` exits 0 (mirror drift closed: wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and the docs-validation workflow runs honestly — `continue-on-error` removed, `mcp` extra installed, README "Local Testing" line corrected — without blocking unrelated PRs
   4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 **Wave 1**
@@ -54,7 +54,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 05-02-PLAN.md — Honest gates: docs-mirror drift closure + all five masked docs-validation steps flipped + mcp extra/README + branch-protection hand-off (CI-01, CI-02, REPAIR-02)
-- [ ] 05-03-PLAN.md — GB10 feasibility spike: per-family spike runner + verdict matrix + dispatch-only runner confirmation + conditional pyBigWig (FEAS-01)
+- [x] 05-03-PLAN.md — GB10 feasibility spike: per-family spike runner + verdict matrix + dispatch-only runner confirmation + conditional pyBigWig (FEAS-01)
 
 ### Phase 6: Model Registry & Showcase Data Curation
 
@@ -116,7 +116,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 2/3 | In Progress|  |
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 3/3 | In Progress|  |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 0/TBD | Not started | - |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |

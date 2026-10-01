@@ -37,7 +37,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 
 ### Runner Feasibility
 
-- [ ] **FEAS-01**: Phase-1 spike produces a written verdict matrix for evo-1 / evo2 / megaDNA / pyBigWig on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible (owner: spike first, run real models), and `environment-unavailable:` typed skips are used only with recorded infeasibility evidence
+- [x] **FEAS-01**: Phase-1 spike produces a written verdict matrix for evo-1 / evo2 / megaDNA / pyBigWig on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible (owner: spike first, run real models), and `environment-unavailable:` typed skips are used only with recorded infeasibility evidence
 
 ### PlantHelixSeek Registry
 
@@ -113,7 +113,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-07 | Phase 9 | Pending |
 | CI-08 | Phase 9 | Pending |
 | CI-09 | Phase 9 | Pending |
-| FEAS-01 | Phase 5 | Pending |
+| FEAS-01 | Phase 5 | Complete |
 | REG-01 | Phase 6 | Pending |
 | REG-02 | Phase 6 | Pending |
 | REG-03 | Phase 6 | Pending |

@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: Execution Harness, Honest Gates & Runner Feasibility
-status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-10-01T18:06:17.193Z"
+status: verifying
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-10-01T19:45:24.864Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: 7dad6a5c55a3d887430a58745ca202936c7ba311
+state_head: 7b8bf8ab16be889d1b7624d89cfdc09506c71bd1
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 Phase: 5 (Execution Harness, Honest Gates & Runner Feasibility) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-02 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 05 P01 | 11 min | 3 tasks | 5 files |
 | Phase 05 P02 | 12 min | 3 tasks | 15 files |
+| Phase 05 P03 | 94 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: 05-02: DOCS_ONLY_SUFFIXES relaxation scoped to right_only only - a both-sides .md (overview.md) must still match byte-for-byte, proven by injected-drift failure
 - [Phase 05]: 05-02: docs-validation flipped honest only after all five workflow commands verified green locally (born green, D-01); mcp extra installed and README install line run verbatim before documenting
 - [Phase 05]: 05-02: pre-existing uv-run resolver failure (mamba x cuda conflicts matrix, pyproject unchanged) logged to deferred-items.md instead of fixing - out of 05-02 scope
+- [Phase 05]: evo-1 verdict FEASIBLE(small-variant): 131k remote code needs rotary_emb.pos_idx_in_fp32 (absent from every transformers >=4.49) but evo-1-8k-base runs end-to-end - Phase 8 executes the 8k variant and updates the notebook reference per D-06
+- [Phase 05]: evo2 FEASIBLE(notebook-variant) only via the noFP8 config on GB10 - the FP8 auto-selection trap fired live (1b tier requires Transformer Engine; the empty TE meta package must stay absent because its RuntimeError escapes vortex's ImportError guard)
+- [Phase 05]: pyBigWig environment-unavailable: default sdist build fails on the stock box (curl-config present, headers off the include path); CFLAGS deviation builds+round-trips green but a dev-extra line cannot encode it - pyproject untouched
+- [Phase 05]: marimo flavor: export-html for Phase 8 (deterministic exit + HTML artifact); script-mode also terminates cleanly, binds no port (A4 resolved empirically)
 
 ### Pending Todos
 
@@ -106,8 +111,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T18:06:17.177Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-10-01T19:45:24.848Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
 
 ## Deferred Verification
