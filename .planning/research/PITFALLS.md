@@ -1,263 +1,269 @@
 # Pitfalls Research
 
-**Domain:** Coverage hardening (>90% mandate + CI hard gate) of an existing Python ML library wrapping Hugging Face transformers/Trainer, shipping an asyncio MCP server
-**Project:** DNALLM (`dnallm` v0.5.2) — Test Suite Audit & Coverage Hardening
-**Researched:** 2026-09-29
-**Confidence:** HIGH (top findings reproduced empirically in this repo; tool behavior verified against official docs of the exact installed versions: pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, pytest-timeout 2.4.0, pytest-asyncio 1.4.0)
+**Domain:** Adding real-model example-execution testing (nbclient notebooks, headless marimo apps, helper scripts, YAML configs) and PlantHelixSeek Arabidopsis showcase notebooks to an existing mature pytest/CI system (96.30% coverage gate, typed-skip allowlist, self-hosted GPU nightly runner)
+**Project:** DNALLM (`dnallm`) — milestone v1.1 Example Execution Testing & Repair
+**Researched:** 2026-10-01
+**Confidence:** HIGH overall — top findings are grounded in direct inspection of this repo's notebooks/CI/skip-allowlist, plus verification against official docs (nbclient, pyBigWig, marimo, GitHub Actions limits, ollama, W&B). Item-level confidence marked inline.
 
 ## How this was verified
 
-Findings marked **[REPRODUCED]** were reproduced on this repository on 2026-09-29 (commands included). Findings marked **[DOCS]** are verified against the official documentation of the exact tool versions installed in the dev environment. Web-only community findings are marked **[WEB]** and carry lower confidence.
+- **[REPO]** — verified by direct inspection of this repository on 2026-10-01 (file paths quoted).
+- **[DOCS]** — verified against official documentation of the tool in question.
+- **[WEB]** — community/secondary sources only; lower confidence, flagged.
+- The nightly runner is an **aarch64 NVIDIA GB10 (Grace Blackwell)** box — verified locally (`nvidia-smi`: `NVIDIA GB10`); this fact drives several toolchain pitfalls below.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1: The root `conftest.py` `os._exit(0)` atexit hook silently disables any CI gate — the gate that can never fail
+### Pitfall 1: Leaked jupyter kernels after a failed/timed-out notebook test poison the persistent GPU runner
 
-**What goes wrong:** **[REPRODUCED]** The repo-root `conftest.py` registers `atexit.register(force_cleanup_and_exit)` at `pytest_sessionstart`; the handler terminates the process with `os._exit(0)`. Because `atexit` handlers run during interpreter shutdown *after* pytest has raised `SystemExit(exitstatus)`, the hard `os._exit(0)` discards pytest's real exit code and the OS sees 0. Reproduced on 2026-09-29:
+**What goes wrong:** A notebook cell hangs (model download stalls, OOM-thrash, infinite loop). The test times out, the nightly "moves on" — but the `ipykernel_launcher` process survives, still holding VRAM and the ZMQ port range. On an ephemeral hosted runner this is invisible; on the persistent `dnallm-nightly` box the next night's run starts with gigabytes of VRAM already consumed, and failures look like random CUDA OOM in *unrelated* tests. Three leak paths, all real: **[DOCS]** (a) pytest-timeout kills *the pytest process*, never the process group, and skips fixture teardown entirely (pytest-timeout issues [#134](https://github.com/pytest-dev/pytest-timeout/issues/134), [#159](https://github.com/pytest-dev/pytest-timeout/issues/159)); (b) nbclient's graceful kernel shutdown can hang on a busy kernel and must fall back to a kill; (c) a custom kernel-manager path makes *you* responsible for `shutdown_kernel()` (nbclient [#213](https://github.com/jupyter/nbclient/issues/213)).
 
-```
-$ python -m pytest tmp_exitcheck -q          # single test: assert False
-1 failed in 0.02s
-$ echo $?
-0                                            # <-- failure completely masked
-```
-
-Consequence for this milestone: `--cov-fail-under=90`, test failures, and even collection errors (exit 2) all exit 0. The "hard gate" would be permanently green on day one. This also means the *current* `ci.yml` "Run fast tests" step cannot fail on test failures today, and `deploy` gating on `test` is an illusion.
-
-**Why it happens:** The hook was added to kill hanging multiprocessing/CUDA teardown. `os._exit` cannot be interrupted and takes its argument as the final status — someone cargo-culted `0` (the "success" they observed when the hang went away) instead of propagating pytest's status.
+**Why it happens:** Killing a process does not kill its grandchildren. Kernel lifetime spans the test that launched it, but every timeout mechanism in this stack (pytest-timeout signal/thread, job-level `timeout-minutes`) targets the wrong process.
 
 **How to avoid:**
-- Fix before enabling any gate. Preferred: delete the `atexit` registration and move cleanup into a `pytest_sessionfinish(session, exitstatus)` hook (which receives the real status and runs before exit). If a hard exit must stay, capture the status — `atexit.register(lambda: os._exit(saved_status))` where `saved_status` is stashed in `pytest_sessionfinish`.
-- Add a permanent canary: a CI step (or meta-test) that runs pytest on one deliberately failing throwaway test and asserts the shell exit code is non-zero (`pytest ... ; test $? -ne 0`). Cheap, catches any future regression of this class.
+- Execute through `NotebookClient` **as a context manager** (`with NotebookClient(nb, ...) as client: client.execute()`), which installs SIGINT/SIGTERM cleanup and shuts the kernel down on cell errors — nbclient's error path *does* run kernel cleanup before re-raising (`on_notebook_error` fires "before kernel cleanup"). **[DOCS]**
+- Set `shutdown_kernel="immediate"` for hard-realism cases where graceful shutdown hangs.
+- Layer timeouts so **nbclient's own cell timeout fires first** (it raises `CellTimeoutError` in-process, cleanup runs, fixtures tear down normally). Order: nbclient per-cell timeout < `@pytest.mark.timeout(N)` per-test mark < remaining job budget. Never leave nbclient timeout at a wrapper-style 30–60s default with a 300s pytest mark — invert that and pytest-timeout kills the process with the kernel alive.
+- Add a **post-run runner hygiene step** in the nightly job: `pkill -f ipykernel_launcher || true` + `nvidia-smi` VRAM assertion before cache save. Cheap, catches any leak path that evolves.
+- Do not bypass jupyter_client with custom kernel managers.
 
-**Warning signs:**
-- `pytest <anything> ; echo $?` prints 0 while the summary says `N failed`.
-- Coverage gate "passes" on a branch where you know coverage is below threshold.
-- The `🧹 Force cleaning up resources... / 🚪 Forcing exit...` prints at the end of every run.
+**Warning signs:** `nvidia-smi` shows VRAM used before any test runs; nightly failures cluster on the *second* night after a first-night hang; orphan `ipykernel_launcher` processes in `ps aux`.
 
-**Phase to address:** Phase 1 (Audit & Measurement Setup) — must land before any `--cov-fail-under` exists anywhere; the audit's pass/fail counts are themselves unreliable until fixed.
+**Phase to address:** Phase 1 (execution harness bring-up) — the harness must ship with the context-manager pattern, timeout layering, and hygiene step on day one, before any real notebook runs.
 
 ---
 
-### Pitfall 2: Wrong coverage denominator — unimportable adapters counted at 0%, packaged test files counted in the numerator, and no `[tool.coverage.run]` exists at all
+### Pitfall 2: Timeout layering arithmetic breaks the nightly census (300s global vs per-test marks vs nbclient cell timeouts vs 900-min job)
 
-**What goes wrong:** **[REPRODUCED]** Three separate denominator traps, all confirmed by running `--cov=dnallm` on this repo:
+**What goes wrong:** **[REPO]** `pyproject.toml` addopts impose `--timeout=300` globally; the nightly job already documents a delicate arithmetic: per-test ceilings sum to 840 min against a 900-min job kill, tuned so "a hung test fails via its own mark (junit + skip audit still run) instead of a job kill (no junit, model-cache forfeit)". Adding ~20 unbounded real-model executions (finetune notebooks run full training; benchmark runs multi-model × multi-dataset; evo-1 download alone is ~30 GB) without recomputing that arithmetic produces either (a) random job kills that forfeit the junit artifact and the model cache save, or (b) per-cell iopub watchdogs firing during long *silent* model loads (a cell that prints nothing for minutes trips output-inactivity timeouts, not runtime timeouts — different knob). **[DOCS]**
 
-1. `--cov=dnallm` is `source` semantics: coverage.py reports *never-imported* files at 0%. The report contains `dnallm/finetune/megatron.py` (184 stmts, 0%) and `dnallm/models/special/mamba_npu.py` (141 stmts, 0%) — 325 dead statements in an 8,344-statement denominator (~3.9 percentage points that no test can ever reach).
-2. `dnallm/mcp/tests/test_*.py` (the packaged test suite), `dnallm/mcp/run_tests.py`, and `dnallm/mcp/example_sse_usage.py` appear as *source* rows. When the full suite runs, the test modules execute and their lines count toward the numerator — test code inflating the "product coverage" number. PROJECT.md's denominator decision (vendored dirs + adapters) does not yet exclude these.
-3. There is **no `[tool.coverage.run]` section in pyproject.toml** — the `--cov=dnallm` flag lives only in the CI command line. Local runs without the flag measure nothing; runs with different flags measure differently. The decided omit list exists nowhere yet.
-
-A subtlety found on inspection: the vendored `dnallm/tasks/metrics/` subdirectories have **no `__init__.py`** (0 of 55), which is the only reason they don't currently flood the denominator as 0% rows — that protection is accidental. The day a test imports any vendored metric module directly, those files enter the measured set.
-
-**Why it happens:** `source`-style measurement is the correct choice for a package, but every exclusion has to be explicit. People assume `--cov=dnallm` "just measures the code my tests exercise"; it also measures code nothing imports, and code that is itself tests.
+**Why it happens:** Three independent timeout systems (nbclient cell/iopub, pytest-timeout, GitHub job timeout) each default to values tuned for other workloads, and their interaction is only documented in a CI comment nobody re-reads.
 
 **How to avoid:**
-- Create a single source of truth in `pyproject.toml`:
-  ```toml
-  [tool.coverage.run]
-  source = ["dnallm"]
-  omit = [
-    "dnallm/tasks/metrics/*",        # vendored HF evaluate
-    "dnallm/models/special/enformer_model/*",  # ported Enformer
-    "dnallm/finetune/megatron.py",   # unimportable without Megatron-LM
-    "dnallm/models/special/mamba_npu.py",      # unimportable without torch_npu
-    "dnallm/mcp/tests/*",            # packaged test suite is not product code
-    "dnallm/mcp/run_tests.py",
-    "dnallm/mcp/example_sse_usage.py",
-  ]
-  ```
-  Note omit globs are matched against file paths as shown in the report (`dnallm/...` relative form) — verify by grepping the term report, not by assumption.
-- Keep `branch = true` OFF for this milestone. PROJECT.md mandates *line* coverage; branch coverage would silently redefine 90% to something much harder.
-- Add a "denominator contract" CI check: after the coverage run, assert the term report contains zero rows matching `mcp/tests/`, `tasks/metrics/`, `megatron.py`, `mamba_npu.py` (grep on the report output). This prevents both accidental re-inclusion and numerator inflation.
-- Prefer config over CLI flags: `--cov` bare in CI plus pyproject `source`, so local and CI measure identically.
+- Give every execution test an explicit `@pytest.mark.timeout(N)` sized above its nbclient cell timeout plus margin; register any new marker under `--strict-markers` (a `notebook`/`example-exec` marker must be declared in `pyproject.toml` or the run fails).
+- Set nbclient `timeout` and `iopub_timeout` **explicitly per artifact class** (inference vs finetune vs evo) — never rely on defaults; a finetune cell can legitimately be silent for 10+ minutes.
+- Update the ci.yml arithmetic comment and keep `sum(per-test ceilings) < 900 min` verified as a review checklist item whenever a mark changes.
+- Measure actual runtimes in Phase 1 and record per-artifact budgets (mirrors the v1 "audit first" pattern).
 
-**Warning signs:**
-- Coverage % jumps or drops several points with no product-code change.
-- `coverage report` lists any `*/tests/*` file or a file you know cannot import in CI.
-- Team members' local coverage numbers don't match CI (CLI-vs-config split).
+**Warning signs:** Nightly killed at exactly `timeout-minutes` with no junit; `CellTimeoutError`/`Timeout waiting for IOPub output` on cells that are merely slow; census duration creep week over week.
 
-**Phase to address:** Phase 1 (config lands with the audit tooling); verified mechanically in every subsequent phase via the denominator-contract check.
+**Phase to address:** Phase 1 (harness + measured baseline), revisited in the CI-wiring phase when the tests join the census.
 
 ---
 
-### Pitfall 3: Enabling the 90% gate before the suite reaches 90% — permanently-red gate trains bypass behavior
+### Pitfall 3: Notebooks execute with side effects against the repo — dirty git tree, cross-test contamination, and "repaired" notebooks that were never broken
 
-**What goes wrong:** The mandate is "write tests until >90%, *then* enforce." The classic failure is flipping `--cov-fail-under=90` on early (or on a shared branch) while true coverage is far below: every PR is red for reasons unrelated to its diff. Within weeks the team responds by removing the flag "temporarily," scattering `# pragma: no cover`, skipping hard tests, or writing assertion-free tests (Pitfall 7). The gate then measures nothing. **[WEB]** Community practice is consistent: ratchet from a measured baseline, or make the gate blocking only after the target is first reached.
+**What goes wrong:** **[REPO]** The examples are not hermetic, by design (they are user-facing demos): `finetune_generation.ipynb` writes `ath_cds.csv` to cwd and sets `output_dir="./outputs_dnagpt"` (HF Trainer writes checkpoints + **tensorboard event files** — every example finetune config sets `report_to: "tensorboard"`); the NER `data_generation_and_inference.ipynb` runs `!wget -c https://rice.uga.edu/...` shell magics and writes BED files to cwd; `generate_bpe_dataset.py` writes the BPE pkl; kernels create `.ipynb_checkpoints/`. Executing in-place (a) dirties the git tree (Phase 2 of v1 had to fix exactly this class of bug for PDF tests — "autouse tmp_path rebind, gitignore fixed, 9 strays deleted"), (b) lets one notebook's outputs feed the next test, and (c) invites **wrong repairs**: the \#1 false positive is `FileNotFoundError: ./inference_evo_config.yaml` because the harness ran the kernel with cwd = repo root, misread as a notebook bug and "fixed" by editing the notebook.
 
-**Why it happens:** The gate feels like the "enforcement" deliverable, so it gets built first; or a ratchet number is guessed ("we're probably at ~80%") instead of measured.
+**Why it happens:** Every notebook assumes it runs from its own directory (`load_config("./xxx.yaml")` in all of them). A pytest process naturally has cwd = repo root. nbclient only sets the kernel cwd if you pass `resources={"metadata": {"path": ...}}`.
 
 **How to avoid:**
-- Phase 1 must produce the measured number on the agreed denominator (fast suite AND full suite including `slow` — they differ, see Pitfall 4).
-- Sequence per PROJECT.md: audit → fix → author tests past 90% → *then* flip `--cov-fail-under=90` in the final phase. The gate's first day blocking is the first day it's green.
-- If an interim ratchet is wanted, gate at `floor(measured)` via a checked-in threshold file the CI reads, with a rule (or bot) that it may only move up. Never hard-code a guess.
-- Police the escape hatches: baseline `# pragma: no cover` count in `dnallm/` is **3 today** — record it in Phase 1 and require any new pragma to carry a reason + issue link in review. Same for new `pytest.skip` (7 call sites today).
+- **Copy, don't execute in place:** per test, `shutil.copytree` the artifact's example dir (notebook + YAMLs + the marimo app's `plant_DNA_LLMs_finetune_list.xlsx`, verified present at `example/marimo/inference/`) into `tmp_path`, execute with kernel cwd = the copy, and pass `resources={"metadata": {"path": str(tmp_copy)}}`. This is the established repo pattern (v1 Phase 2 PDF fix) generalized.
+- **Never write executed notebooks back** (`--inplace` / overwriting the source `.ipynb`): persist the executed copy as a CI **artifact on failure only** for debugging. 19 of 21 notebooks carry committed outputs **[REPO]** — an in-place rewrite produces a 100k-line diff (the evo notebook is 164 KB) and destroys the curated outputs.
+- Add a **tree-cleanliness guard**: session-scoped check on the nightly that `git status --porcelain` is empty after the census (excluding known cache dirs), so any new side-effect path fails loudly once instead of silently straying.
+- Extend `.gitignore` *before* first execution for the known intermediates: genome archives (`osa1_r7.*`), `*.pkl` BPE datasets, `*.bw`/`*.bigwig`, DHS/GFF downloads, `ath_cds.csv`, `outputs_*`. **[REPO]** Current patterns cover `example/notebooks/*/output*/`, `results*/`, `*.pdf` — but nothing for the showcase-data class. Note `output*/` does match `outputs_dnagpt/` but only under `example/notebooks/*/`.
+- Triage rule for the repair workflow: a failure that reproduces only under the harness (cwd, env, ports) is a harness bug; log it in a harness-vs-content triage list so "fix the example" doesn't mask "fix the harness".
 
-**Warning signs:**
-- PRs whose only change is lowering/removing the threshold or adding pragmas/skips.
-- Coverage graph rises while open bug count doesn't move (coverage theater, Pitfall 7).
-- Developers running `-m "not slow"` locally then being surprised by the gate number.
+**Warning signs:** `git status` noise after a local execution run; diffs containing tensorboard `events.out.tfevents.*` or `ath_cds.csv`; a repaired notebook whose fix is a path change rather than a code change.
 
-**Phase to address:** Phase 1 records baseline; the gate itself is the *last* phase of the milestone.
+**Phase to address:** Phase 1 (harness hermeticity) — the copy-to-tmp isolation and the guard test must exist before the first real execution; gitignore additions land in the same phase.
 
 ---
 
-### Pitfall 4: Flaky network tests (HF/ModelScope downloads) inside a blocking gate — red builds for non-code reasons, and silent skips that make coverage wobble
+### Pitfall 4: Huge model downloads vs actions/cache quota — one 30 GB model evicts the entire existing warm cache
 
-**What goes wrong:** The owner decision is that the gate run *includes* `slow` tests with real model downloads (16 `@pytest.mark.slow` tests; models such as `zhangtaolab/plant-dnabert-BPE`, `ZhejiangLab-LifeScience/DNA_bert_4`, DialoGPT-small). Three failure modes:
+**What goes wrong:** **[DOCS]** GitHub's cache service enforces a **10 GB per-repository** default (LRU eviction + 7-day idle eviction), *regardless of runner type* — the self-hosted box does not exempt you. **[REPO]** The nightly job caches `~/.cache/huggingface/hub` + `~/.cache/modelscope/hub` keyed on `models.lock` (8 models today, comfortably under quota). **[DOCS/WebFetch]** `togethercomputer/evo-1-131k-base` is a **29.7 GB repo** — 3 safetensors shards (~12.9 GB) *plus a redundant* `pytorch_model.pt` (16.8 GB); a plain `snapshot_download` grabs all of it. Adding evo-1 + evo2 + megaDNA to the cached paths blows the quota: GitHub saves the new cache and immediately LRU-evicts the old one — the *existing* slow-suite warm cache disappears, nightly cold-starts (or worse, partially restores), and runtimes explode for reasons nobody connects to the new notebooks. The box itself has 2.4 TB free **[REPO]** — raw disk is not the problem; the cache *service* is.
 
-1. **Transient network failures fail the gate.** Anonymous HF hub downloads get rate-limited (429) and CI runners suffer DNS hiccups; the gate goes red on a Tuesday because of hub load, not code. **[WEB]**
-2. **Skip-on-network-failure hides both bugs and lines.** The suite has 7 `pytest.skip(...)` call sites inside broad `except Exception` blocks (e.g. `tests/models/test_model.py:106,128`). In a coverage gate, a skip removes that test's unique covered lines from the numerator — so coverage percentage *varies run to run* with network weather, and the 90.0% gate flaps around the threshold. The skip also permanently masks real breakage (already documented in CONCERNS.md).
-3. **Cold-cache downloads blow the time budget** (see Pitfall 5).
-
-**Why it happens:** Tests were written to be "polite" (skip on network problems) for a non-gating CI. A hard gate inverts the incentives: now every non-deterministic skip/failure is a build breaker.
+**Why it happens:** The cache path glob is shared by all models, and eviction is silent and cross-entry. Nobody re-reads the quota rule when adding "just one more model".
 
 **How to avoid:**
-- Run the gate in **one dedicated job** (single Python/numpy pin), not across the 6-leg matrix. Cache `~/.cache/huggingface/hub` with `actions/cache` keyed on a hash of the slow-test model list (`restore-keys` fallback); optionally add a warm-up step (`huggingface-cli download` / `snapshot_download`) and set `HF_HOME` explicitly. Consider an `HF_TOKEN` repo secret (higher rate-limit quota; keep it out of logs).
-- Make skips deterministic and typed: replace broad `except Exception: pytest.skip` with catching specific network exceptions (e.g. `requests.ConnectionError`, `huggingface_hub` errors) and *fail* on everything else. In the gate job, treat unexpected skips as failures — assert the `-ra` skip summary matches an expected allowlist (or run with `--strict` skip accounting).
-- Allow one automatic retry of the gate job (re-run on failure) so a single 429 doesn't demand human attention — but never auto-pass.
-- Matrix legs keep running `-m "not slow"` without a coverage threshold; they protect the version matrix, the gate job protects coverage.
+- **Filter the download, not just the cache:** use `allow_patterns` (safetensors + configs, exclude the redundant `.pt`) when fetching evo-1 — 12.9 GB instead of 29.7 GB. **[DOCS/WebFetch]**
+- **Split cache tiers:** keep the small/medium model set in `actions/cache` (bounded, quota-safe) and hold giant artifacts (evo-1, evo2) in a **persistent on-disk directory outside the cached paths** (e.g. `~/models-big`), warm-once and never evicted — a pinned-revision model file is immutable so cache-keying adds nothing.
+- Pin **revisions** in `models.lock` (see Pitfall 8) so a warm on-disk artifact is provably the reviewed one.
+- Add a disk-headroom + cache-size report step to the nightly so growth is visible.
 
-**Warning signs:**
-- Gate green on immediate re-run with zero changes.
-- Skip count differs between two runs of the same commit (`pytest -ra` output).
-- Gate coverage number moves ±0.5pp between runs of identical code.
+**Warning signs:** Nightly log shows `Cache not found` for a key that existed last week; restore step suddenly takes tens of minutes; `gh cache list` shows entries vanishing.
 
-**Phase to address:** Test-hygiene part (typed skips, AUROC/CrossDNA unskips) in the bug-fix phase; caching + retry + single-job design in the CI-gate phase.
+**Phase to address:** Phase 1/2 boundary — cache strategy must be decided before the first evo-class execution test runs on the runner (that first run is the one that evicts everything).
 
 ---
 
-### Pitfall 5: Global `--timeout=300` collides with slow model downloads; the wrong timeout method destroys the whole coverage run
+### Pitfall 5: evo/megaDNA toolchain infeasibility on the aarch64 GB10 runner — tests written for models that cannot ever run there
 
-**What goes wrong:** **[DOCS — pytest-timeout 2.4.0 README]** Two distinct mechanisms:
+**What goes wrong:** **[REPO + DOCS]** The runner is aarch64 GB10 (Blackwell). The evo notebook's own install cell pins `flash_attn<=2.7.4.post1`, `transformer-engine[pytorch]==2.3.0`, `evo2==0.3.0`: flash-attn ships x86_64 CUDA wheels and needs a long source compile on aarch64; **[DOCS]** transformer-engine 2.3.0 predates Blackwell support, and the evo2 package docs state the **1B/20B/40B models require FP8 via Transformer Engine on an NVIDIA *Hopper* GPU** — GB10 is not Hopper (`is_fp8_capable()` in `dnallm/utils/support.py` checks compute capability ≥ 9.0; the evo YAML config selection will downgrade behavior). Separately, the megaDNA notebook instructs `git clone https://github.com/lingxusb/megaDNA && pip install -e .` — an **unpinned, unmaintained third-party repo** compiled against whatever torch shows up (2.11 today). Writing execution tests for these as "will pass once fixed" burns weeks: they are *environment*-gated, not *content*-gated, and no amount of example repair fixes them.
 
-1. **Budget collision:** the ini-level `--timeout=300` applies to every test including `slow` ones. A cold download + first tokenization of a real model on a 2-core GitHub runner can exceed 300s, so the gate fails on runner speed. Today's `slow` tests are deselected in CI, so nobody has ever seen this bind.
-2. **Method collision:** on Linux the default method is `signal` (SIGALRM): on expiry it fails *only that test* and the run (and coverage report) completes — the good case. But if someone "hardens" the config with `--timeout-method=thread` (or runs on a platform where thread is default), a timeout **terminates the entire pytest process with a hard `os._exit`**: no teardown, no report, no coverage data — the gate fails with no diagnostics. Inverse trap: the signal method *cannot interrupt a hang in a non-main thread* (an MCP streamable-HTTP handler stuck in a worker thread, a wedged dataloader), so the run can hang until the job-level timeout.
-
-**Why it happens:** `--timeout=300` was sized for the mocked fast suite. The gate run changes the workload; timeout configuration must change with it.
+**Why it happens:** The notebooks were authored on x86_64 GPU workstations. "The CI box has a GPU" hides that GPU *class* and CPU *arch* differ, and that the evo2 package's hardware requirements are stricter than "has CUDA".
 
 **How to avoid:**
-- Keep the global 300s for fast tests; override per-test on real-download tests with `@pytest.mark.timeout(1800)` (marker priority beats ini — verified in README: ini < env < flag < marker; `timeout=0` disables). Do not raise the global timeout — that hides fast-suite regressions.
-- Keep the `signal` method (Linux default) for the gate job — it preserves the coverage report on timeout.
-- Warm the HF cache (Pitfall 4) so 300s rarely binds even for `slow` tests.
-- Set a job-level `timeout-minutes` (e.g. 60–90) on the gate job as the backstop for non-main-thread hangs; GH Actions default (360 min) wastes six hours of CI when it triggers.
+- **Capability-spike first:** in the earliest phase, empirically determine per-artifact feasibility on the actual box (evo-1 stripedhyena vs the HF-format variant, evo2-1b on Blackwell, megaDNA editable-install against torch 2.11) and record the verdict matrix before writing tests.
+- Introduce a typed **`environment-unavailable:`** skip category (mirroring the existing `network-unavailable:` helper) with a narrow allowlist entry — an honest, audited skip for "this artifact's toolchain cannot exist on this runner", not a silent one.
+- Prefer the smallest viable variant per family for execution (e.g. an evo2 tier that runs without TE, or the hf-format evo-1) and document the deviation from the notebook's as-shipped model name.
+- Never let the megaDNA `git clone` path execute on the runner unpinned; if it must run, vendor a pinned, hash-verified copy or a small shim.
 
-**Warning signs:**
-- `Timeout >300.0s` failures that pass on re-run.
-- Gate job killed at the Actions time limit with no test summary.
-- Coverage report absent after a timeout event.
+**Warning signs:** Multi-hour flash-attn/TE compile steps recurring every run (no wheel cache); `Failed to build transformer_engine_torch` (evo2 [#149](https://github.com/arcinstitute/evo2/issues/149), [#201](https://github.com/arcinstitute/evo2/issues/201)); tests "passing locally" on x86_64 but skipping nightly.
 
-**Phase to address:** Phase 1 audit records wall-clock times of every `slow` test (cold and warm); timeout marks land with the gate job in the final phase.
+**Phase to address:** Phase 1 (feasibility spike + skip taxonomy) — must precede the execution-test rollout phase for these families.
 
 ---
 
-### Pitfall 6: Subprocess/multiprocessing coverage is silently unmeasured — pytest-cov 7 removed subprocess support
+### Pitfall 6: Network flakiness tempts silent skips — reintroducing exactly what the typed-skip discipline was built to kill
 
-**What goes wrong:** **[DOCS — pytest-cov official docs]** Subprocess support was **removed in pytest-cov 7.0**; this repo's dev environment has **pytest-cov 7.1.0** installed (pyproject allows `>=6.0.0`, so CI also resolves 7.x). Code executed in child processes — HF `Trainer` dataloader workers (`num_workers > 0`), `dnallm/mcp/run_tests.py` (`subprocess.run`), any stdio MCP server spawn — is invisible to measurement unless you configure coverage.py's native `patch = subprocess` under `[tool.coverage.run]` (which auto-enables `parallel = true` and per-process `.coverage.*` data files that must be combined).
+**What goes wrong:** Execution tests depend on many more network endpoints than the current slow suite: HF, ModelScope, `rice.uga.edu` (NER genome + GFF), `arabidopsis.org`/`plantdhs.org` (showcase truth data), the ollama model registry. Under flakiness, the path of least resistance is a broad `try/except Exception: pytest.skip()` — which **[REPO]** `scripts/audit_skips.py` will fail CI for (good), pushing developers to the *second* trap: adding an over-broad allowlist entry (`reason_like: "download failed"`) that silences every future network skip, converting the allowlist back into a silencer. A third variant: catching the failure and asserting nothing, so the test "passes" without executing the notebook.
 
-Two ways this bites: (a) you chase "missing" lines that a passing test demonstrably exercises (they ran in a child), burning days; or (b) you enable `patch = subprocess` naively and hit stale-`.coverage.*` inflation (leftover data files from crashed runs get combined in) or fork+threads deadlocks under `concurrency = multiprocessing`.
-
-**Why it happens:** Everyone's mental model of pytest-cov subprocess measurement is from 6.x (cov-core/.pth mechanism). The 7.0 removal is recent and easy to miss; the failure is silent (numbers just look wrong).
+**Why it happens:** The skip audit catches *unlisted* skips, but listing is self-service. Discipline erodes at 2 AM against a flaky mirror.
 
 **How to avoid:**
-- Make an explicit denominator decision in Phase 1: is child-process code in scope? Most of `dnallm`'s logic-under-test runs in the main process; dataloader-worker lines are framework glue. If out of scope, document it and don't chase those lines. If in scope, add `patch = ["subprocess"]` to `[tool.coverage.run]` and verify with a canary (a test that calls a function in a subprocess, asserted covered).
-- Delete stale `.coverage*` files before authoritative runs (`rm -f .coverage .coverage.*` in the CI step) — combine is only trustworthy from a clean slate.
-- Note: `os._exit` anywhere in a child (including copies of the Pitfall 1 pattern) skips the child's atexit flush and loses that child's data file. Fix Pitfall 1 everywhere it appears.
+- Reuse the existing typed helper pattern (`skip_if_unreachable` with a **`network-unavailable:`**-prefixed reason) for every new network gate; add endpoint-specific entries to `tests/expected_skips.yaml` with **narrow matchers** and a category — never wildcards, never empty.
+- Distinguish *deterministic* environment skips (`environment-unavailable:` for toolchain, Pitfall 5) from *transient* network skips; they need different categories so a nightly report can say "3 real skips" instead of muddling them.
+- Retry-with-backoff *inside* the fetch (the repo already does this for model downloads: `download_model(..., max_try=3)`) so transient blips never become skips at all.
+- Keep the audit wired to the **nightly junit** (it already runs there) and treat any growth in skip count as a review-triggering event.
 
-**Warning signs:**
-- Lines reported missing despite a green test that demonstrably executes them.
-- `.coverage.<hostname>.<pid>` files accumulating in the repo root.
-- Coverage numbers differing between `pytest` and `pytest -p xdist` style runs.
+**Warning signs:** Census skip count drifting upward across nights; an allowlist entry whose matcher grows vaguer over time; execution tests with large `try/except` bodies.
 
-**Phase to address:** Phase 1 (decision + config); verification canary in the CI-gate phase.
+**Phase to address:** Phase 1 (skip-taxonomy extension ships with the harness), enforced continuously by the existing audit gate.
 
 ---
 
-### Pitfall 7: Coverage theater — assertion-free and mock-only tests that prove nothing
+### Pitfall 7: marimo `App.run()` executes **in-process** — UI defaults silently decide what runs, and app state leaks into pytest
 
-**What goes wrong:** The pressure of a 90% mandate on a mock-heavy ML-wrapper codebase produces tests that *execute* code without *checking* behavior: call a function with `MagicMock` collaborators, assert nothing (or only `mock.assert_called_once_with`), and collect the lines. This domain is especially prone because real behavior needs real models: the cheapest path to a covered line in `dnallm/models/model.py` is to mock `AutoTokenizer.from_pretrained` and just... run the function. Broad `except Exception` fallback chains (the tokenizer triple-fallback at `model.py:540-568` that can silently degrade to one-hot tokenization) get "fully covered" while the actual degradation behavior is unverified. The current suite is clean by grep (no assertion-free test files found; shared mock fixtures exist in `tests/conftest.py`) — the risk is entirely in the *new* tests this milestone adds.
+**What goes wrong:** **[DOCS]** marimo's `App.run(defs)` returns `(outputs, defs)` and is the sanctioned programmatic entry — but unlike a jupyter kernel it runs **inside the hosting Python process**. Consequences: (a) the app's globals, CUDA allocations, and any `nest_asyncio`-style patches land in the *pytest* process and persist across tests; (b) `mo.ui.dropdown` values come from their `value=` defaults **[REPO]** (`'open chromatin'`, `'Plant DNABERT'` in `example/marimo/inference/inference_demo.py`) — headless runs silently execute whichever model/task the *default* names, so a default pointing at a heavy finetune turns an "execution smoke test" into a full training run; (c) `defs` overrides are all-or-nothing — marimo **skips execution of the cells that would define overridden variables and requires you to supply every definition those cells produced** **[DOCS]**, so partial overrides produce `NameError`s that look like app bugs; (d) the app reads `./plant_DNA_LLMs_finetune_list.xlsx` by relative cwd **[REPO]**.
 
-**Why it happens:** Writing a behavioral assertion requires understanding the behavior; executing a function requires only importing it. Under a numeric gate, the second is 10x cheaper and the gate can't tell the difference.
+**Why it happens:** marimo apps look like scripts but are reactive graphs; the testing instinct "import and call run()" ignores that the runtime model differs fundamentally from nbclient's kernel isolation.
 
 **How to avoid:**
-- Review checklist rule for every new test: at least one *observable-outcome* assertion — returned value/type/shape, config mutation, file written, raised exception with `match=` — not call-count-only. (`call_count` assertions are fine *in addition*, never instead.)
-- Follow the repo's own TESTING.md "What NOT to Mock" section: real Pydantic configs, real `dnallm/utils/sequence.py` values, real MCP wire behavior with mocked transport.
-- For fallback chains, assert *which* fallback was selected (e.g. the returned tokenizer's type), not merely that the log line fired.
-- Unskip the known-broken tests (multiclass AUROC at `tests/tasks/test_metrics.py:761`, CrossDNA at `model.py:873-887`) by *fixing the code* (already in scope per PROJECT.md) — do not write adjacent tests that route around the bug.
-- Optional spot check: run `mutmut` (or hand-mutate a few predicates) on `dnallm/utils/sequence.py` and `dnallm/tasks/metrics.py`; if mutants survive your new tests, the tests are decorative.
-- `pytest.raises(Exception)` without `match=` is a smell — it passes on any error, including the wrong one.
+- Execute marimo apps in a **subprocess** (small wrapper: `python -c "import app_mod; outputs, defs = app_mod.app.run()"` with cwd = tmp copy, or `marimo export html --headless`), enforcing isolation and a clean VRAM/GC story per app — consistent with how jupyter notebooks get kernel isolation.
+- Before running, **assert the default-driven execution plan is the cheap one**: parse the app source for default dropdown values and check them against a allowlist of "small/fast" models, or override via `defs` *completely* (supplying the full set of names the skipped cells define).
+- Copy the app dir (including the xlsx) to tmp and run with cwd there.
+- Assert on returned `defs` keys/shape (e.g. a metrics or engine variable exists and is finite), not merely "no exception".
 
-**Warning signs:**
-- New test files where `grep -c assert` ≈ 0 relative to test count.
-- Coverage climbing steadily on `server.py`/`inference.py` god-files with no new bug discoveries.
-- Tests that never fail during refactors of the code they "cover".
+**Warning signs:** An execution "smoke test" for a marimo app takes 30+ minutes; pytest process RSS/VRAM grows monotonically across app tests; `NameError` on variables the app defines in UI-driven cells.
 
-**Phase to address:** Every test-authoring phase; enforce via review checklist and the pragma/skip police from Pitfall 3.
+**Phase to address:** Phase 2 (marimo execution rollout), with the subprocess harness pattern fixed in Phase 1.
 
 ---
 
-### Pitfall 8: The import-time transformers monkey-patch shim (`transformers_compat.py`) — untestable-by-construction lines and fake version gates
+### Pitfall 8: `trust_remote_code` + unpinned model refs = unreviewed arbitrary code execution on the self-hosted box
 
-**What goes wrong:** `dnallm/utils/__init__.py` imports `transformers_compat`, whose module-level `apply_patches()` runs *once at first import* and patches `PreTrainedModel` methods; the bitsandbytes branches (`_swap_to_fp32`, `_restore_quantized`) import bnb lazily and manipulate `Params4bit` internals (`quant_state`, `_is_hf_initialized`). Under coverage pressure this module produces three failure modes:
+**What goes wrong:** **[DOCS/WebFetch]** `togethercomputer/evo-1-131k-base` is a stripedhyena/custom-code repo that executes repo-hosted Python (`model.py`, `engine.py`, `modeling_hyena.py`, …) via `trust_remote_code=True` — verified in its file listing. **[REPO]** DNALLM's loader passes `trust_remote_code=True` across 35 families, and models arrive from both HF and ModelScope. A notebook's `model_name` string is therefore an **indirect code-execution vector**: if the upstream repo re-pushes code (or a tag moves), the *same passing test* silently executes different code next run. The repo's security posture — PR-authored code never reaches the runner (dispatch/cron-only) — already handles repo content; the remaining hole is *remote* content pulled at runtime by that repo content. megaDNA's `git clone … && pip install -e .` instruction is the same hole one notch worse (arbitrary setup.py execution, unpinned).
 
-1. **Chasing unreachable lines:** the bnb swap/restore lines cannot execute without bitsandbytes + a real 4-bit model in CI. The tempting "fix" is constructing fake `Params4int`-shaped objects just to touch the lines — a test that proves only that Python executes lines.
-2. **Fake version gates:** patches are gated by `hasattr` duck-typing, not version strings. A test that fakes `transformers.__version__` changes *nothing* and can assert nonsense confidently.
-3. **Patch-state pollution:** tests that `mock.patch` the same `PreTrainedModel` methods interact with the already-applied compat patches; a test asserting "patch applied" by re-importing the module is a no-op (module cached) and covers nothing new.
-
-**Why it happens:** The module is *compatibility-contract* code whose essence is "behave differently per environment." Uniform line-coverage targets fit it badly.
+**Why it happens:** Model repos are treated as data, but custom-code repos are data *plus code*. Nothing in a green test tells you the code you executed is the code you reviewed.
 
 **How to avoid:**
-- Treat this module as behavior-contract testing, not line completion: verify the patched method *tolerates nested quantizer keys on a synthetic model* (observable behavior), and that `apply_patches()` is idempotent (safe to call multiple times — its docstring promises this; test it).
-- For bnb-interior and hardware-only lines, prefer an explicit `# pragma: no cover` with a reason comment (counts against the Pitfall 3 police budget — that's what the budget is *for*) over fake-object tests. Same for `megatron.py`/`mamba_npu.py` (already omitted per Pitfall 2).
-- Do not try to force 90% on every file. The gate is on the package; per-file gaps with documented pragmas are the honest outcome for environment-gated code.
+- **Pin revisions (commit hashes) for every model the execution tests fetch** — extend `models.lock` with a revision column and have the harness/notebook resolve through it; rotation of a pin is then a reviewable diff. **[DOCS]** (huggingface_hub `revision=`)
+- Record the provenance chain per artifact in the test (repo id + resolved commit) and print it in the junit log.
+- Never execute the megaDNA git-clone path unpinned; vendor or shim (Pitfall 5).
+- Treat `models.lock` edits as security-relevant review surface, exactly as the dispatch/cron posture is.
 
-**Warning signs:**
-- Tests importing `types`/building `SimpleNamespace` objects shaped like `Params4bit` just to reach lines.
-- `transformers_compat` coverage stuck just below target, driving pragma debates.
-- Tests that mutate `transformers.__version__` expecting gate changes.
+**Warning signs:** A nightly run downloading "the same" model again with no lock change; `revision` absent from fetch calls; new `model_name` literals in notebooks without a lock entry.
 
-**Phase to address:** The utils test-authoring phase; the pragma-budget decision lands with the Phase 1 baseline.
+**Phase to address:** Phase 1 (harness resolves through pinned lock), Phase 2 onward (every new family extends the lock with pins).
 
 ---
 
-### Pitfall 9: Gate on the full CI matrix including slow tests — unusably long CI
+### Pitfall 9: ollama on the self-hosted runner — unauthenticated service, port collision with the MCP live-server probes, and nondeterministic LLM assertions
 
-**What goes wrong:** The existing matrix is 6 legs (py 3.11/3.12/3.13 × numpy 1.26.4/2.2.0). Running the *slow-inclusive, coverage-instrumented* suite on all 6 legs means 6 × (full model downloads + ~20-30% coverage-tracer overhead on torch-heavy tests + long tail). Result: hour-plus queues per PR, `push` builds on `dev` backing up, developers starting to skip CI (`[ci skip]`) — which defeats the gate. **[WEB]** for overhead estimates; the multiplier arithmetic is plain.
+**What goes wrong:** **[REPO]** The two `example/mcp_example` ollama notebooks (`mcp_client_ollama_pydantic_ai.ipynb`, `mcp_client_ollama_langchain_agents.ipynb`) need three live services: ollama REST at `localhost:11434` with model `qwen3.6:latest` pulled, the dnallm MCP server at `localhost:8000/mcp`, and a working agent loop. **[DOCS]** ollama has **zero authentication** on its REST API (default bind `127.0.0.1:11434`; unauthenticated model pull/delete; localhost binding remains reachable from a browser page via DNS rebinding — ollama [#16236](https://github.com/ollama/ollama/issues/16236)). **[REPO]** Port 8000 is *also* the target of the 6 existing MCP live-server probes that currently skip as typed `network-unavailable:` — start a real server on 8000 for the notebook and those probes may un-skip mid-census (ordering-dependent), or collide if anything else binds the port. Finally, asserting on the *agent's prose* is hopeless: the LLM may or may not call tools, and `time.sleep(3)` waits are not synchronization.
 
-**Why it happens:** Copying the existing matrix job and appending `--cov-fail-under` to its pytest line — the one-line-diff version of the gate.
+**Why it happens:** The notebooks were demoed on a developer workstation where ollama, the model, and the server were already up. CI needs all three as *managed, idempotent setup* plus assertions matched to what is actually deterministic.
 
 **How to avoid:**
-- New dedicated `coverage-gate` job: one Python version, one numpy version (pick the combination closest to the dev env — py3.12/numpy 2.2.0), full suite including `slow`, `--cov-fail-under=90`, HF cache (Pitfall 4), `timeout-minutes` backstop (Pitfall 5).
-- Matrix legs keep `-m "not slow"` and no threshold; they answer "does it work on the version matrix", the gate job answers "is coverage ≥90". Two questions, two jobs.
-- Sequence: fast matrix first (fail fast on lint/unit), gate job in parallel or after. Upload the coverage XML as an artifact from the gate job only.
+- Run ollama as a runner-user systemd unit with explicit `OLLAMA_HOST=127.0.0.1:11434`; **pre-pull the pinned model tag in a nightly setup step** (idempotent `ollama pull`), not inside tests; never set `OLLAMA_ORIGINS` to a wildcard.
+- Assign the example's MCP server its **own port** (server supports `--port`); if the notebook hardcodes 8000 (it does — 3 references **[REPO]**), either serialize and use 8000 deliberately or patch the URL cell in the tmp copy (copy-to-tmp from Pitfall 3 makes this clean).
+- Assert the deterministic layers: server started and reachable; `_list_loaded_models` tool returns the configured models; the agent run completes and `result.usage` exists. Do not assert specific prose or that tools were called N times.
+- Keep these tests on the dispatch/nightly-only path (they already will be, being `slow`) — preserving the "PR code never touches the runner" invariant, which now also covers *services the repo depends on*.
 
-**Warning signs:**
-- PR CI wall-clock > 45-60 min.
-- Developers batching merges to avoid CI waits.
-- `timeout-minutes` hit regularly on the gate job.
+**Warning signs:** MCP probes flipping between skip/run across nights; tests failing only when ollama's model list changed; assertions matching English sentences.
 
-**Phase to address:** CI-gate phase (job design is a first-class deliverable there, not an edit to the existing job).
+**Phase to address:** Phase 2/3 (ollama-family execution), with runner service setup landing in the CI-wiring phase.
 
 ---
 
-### Pitfall 10: Relying on codecov (action v3, `fail_ci_if_error`) as the enforcement mechanism
+### Pitfall 10: Executed-notebook nondeterminism turns the suite flaky — sampling, seeds, GPU float drift, tqdm, plotting backends, stale committed outputs
 
-**What goes wrong:** **[WEB]** `ci.yml` pins `codecov/codecov-action@v3` with `fail_ci_if_error: false`. v3 is unsupported (no bug/security fixes; v1's bash uploader was sunset Feb 2022; v4/v5 moved to the CLI uploader and generally require `CODECOV_TOKEN`). Two traps: (a) trying to enforce via codecov's threshold/status checks couples pass/fail of every build to a third-party service — codecov incidents become your red builds; (b) upgrading the action without adding a token silently stops uploads (coverage stats freeze at an old commit and nobody notices for weeks).
+**What goes wrong:** **[REPO]** megaDNA generation runs `temperature=0.95, top_p=0.1`; only some notebooks set seeds (`finetune_generation`, `data_generation_and_inference` seed; most others don't); GPU reductions are float-nondeterministic across runs/devices; tqdm progress and matplotlib rendering differ headlessly; and the committed notebook outputs **cannot be trusted as ground truth** — e.g. `generation_megaDNA/inference.ipynb` says `source="huggingface"` in source but its committed output shows a ModelScope download path, i.e. the notebook was edited after last execution **[REPO]**. Assertions on exact values, exact output text, or "outputs match the committed ones" will flake or encode stale behavior.
 
-**Why it happens:** The upload step *looks* like a coverage gate, so "turn it on" seems like a one-flag change.
+**Why it happens:** Demos optimize for *looking* deterministic (nice printed numbers), and committed outputs create an illusion of a golden master.
 
 **How to avoid:**
-- Enforce locally: the gate job's pytest invocation carries `--cov-fail-under=90` and the *job* fails on the pytest exit code (only trustworthy after Pitfall 1 is fixed — this is why the exit-code fix precedes everything).
-- Keep codecov informational only: upgrade to `@v5` with `CODECOV_TOKEN` secret or drop the step entirely; never let a codecov status be required for merge.
-- If you want trend enforcement beyond the gate, the ratchet file from Pitfall 3 is in-repo and has no external dependency.
+- Assert **structure and invariants**: generated sequence is valid DNA over the model's alphabet and non-empty; scores are finite and in expected ranges; shapes/dtypes of embeddings; metric keys exist and are within `[0, 1]`. Use **tolerance bands** for any numeric agreement (also required for cross-device drift — the showcase assertion must tolerate GB10-vs-x86 float differences).
+- Seed at the harness layer where the notebook API allows (`set_seed` before kernel cells is not possible without editing the notebook — prefer tolerance over edits; if a notebook exposes seed config, set it in the copied YAML).
+- Kernel env hygiene: `MPLBACKEND=Agg`, `WANDB_MODE=disabled` **[DOCS]** (belt-and-braces even though all example configs say `report_to: "tensorboard"` — one config drift to `wandb`/`all` would otherwise hang the nightly on a login prompt; tensorboard event files are a tree-cleanliness issue covered by Pitfall 3), pass via the kernel `env` dict.
+- Treat committed outputs as historical context only; the executed-copy artifact (Pitfall 3) is the debugging record.
+- For the **showcase truth-agreement assertion**, re-verify the threshold at loci-selection time and after any model-revision rotation (Pitfall 8) — the assertion guards regressions of the *pipeline*, not the physics.
 
-**Warning signs:**
-- Codecov badges/comments stale relative to recent commits.
-- Red builds whose only failing step is the codecov upload.
-- Anyone proposing codecov patch/status checks as *required* checks.
+**Warning signs:** The same test failing on a cadence unrelated to commits; assertion diffs that are all float-precision; failures that disappear on re-run.
 
-**Phase to address:** CI-gate phase (one line of intent: gate = pytest exit code; codecov = reporting only).
+**Phase to address:** Phase 1/2 (assertion conventions ship with the harness); tolerance policy for the showcase lands with the PlantHelixSeek phase.
+
+---
+
+### Pitfall 11: BigWig/GFF3 coordinate and chrom-naming traps — systematic off-by-one and *silently empty* results
+
+**What goes wrong:** **[DOCS]** pyBigWig (and the bigWig/bigBed formats) use **0-based half-open** coordinates — "the first base of chr1 is start=0, end=1" — while **GFF3 is 1-based fully-closed**. Converting DHS/gene intervals from GFF3 to BigWig query space without `-1` on start shifts every window by one base. Worse: bigWig chrom names are **case-sensitive and exact-match** — TAIR-family files use `Chr1`…`Chr5` while Ensembl Plants uses `1`…`5` **[WEB, corroborated]** — and a wrong chrom name does not error: `bw.values("1", …)` on a `Chr1`-named file returns an **empty array**. A showcase notebook can "run green" while every signal extraction is vacuous, and the CRE/Anno agreement numbers become garbage that still passes a loose threshold. The repo already contains the correct idiom (`generate_bpe_dataset.py`: `start = int(info[3]) - 1`) — but only in one hand-rolled place. **[REPO]**
+
+**Why it happens:** Three conventions (BED-style 0-based half-open, GFF3 1-based closed, and per-source chrom naming) meet in one notebook, and the failure mode is *silence*, not exceptions.
+
+**How to avoid:**
+- One shared, unit-tested normalization helper (GFF3→0-based, chrom-name mapping table) used by both showcase notebooks; unit-test it against tiny committed fixtures (a 200 bp region, one exon, one DHS).
+- **Assert non-emptiness everywhere signal is extracted** (`assert len(vals) == expected_window_len`, `assert entries` non-empty) so a naming mismatch fails loudly.
+- Pin the naming convention at data-selection time: inspect `bw.chroms()` and the GFF3 first column *once*, record the mapping in the notebook markdown, and assert it in the test.
+- For the Anno 17-BILOU token task: the label set in the notebook, config `num_labels`/label maps, and dataset tags must match exactly — a mismatch crashes or silently trains garbage; add a fixture test asserting the 17-label vocabulary. **[REPO-derived requirement]**
+
+**Warning signs:** Agreement metrics suspiciously flat/zero; `bw.values()` returning `[]`; every window scoring identically; per-base arrays shorter than window length.
+
+**Phase to address:** PlantHelixSeek showcase phase (helper + fixtures first, notebook second).
+
+---
+
+### Pitfall 12: arabidopsis.org programmatic download blockers — HTML saved as `.gz`, login walls, and the showcase data that silently isn't there
+
+**What goes wrong:** **[REPO-context, MEDIUM]** arabidopsis.org serves an SPA shell to non-browser clients (milestone-context knowledge); **[WEB]** TAIR's download infrastructure has shown "Cannot load directory content" states and login/ORCID requirements that break programmatic access; classic symptoms are `wget`/`requests` receiving 200 with an HTML body saved as `TAIR10_*.gz`, which then either crashes the parser or — with a lenient reader — produces nothing. The full-genome intermediates are planned to stay gitignored; the ≤200 kb committed showcase regions are the *only* guaranteed-present truth data. If the selection pipeline depends on a live arabidopsis.org fetch succeeding, loci selection is itself flaky and unauditable.
+
+**Why it happens:** Data portals optimized for browsers; naive HTTP clients don't check content types; `.gz` magic bytes differ from HTML's `<`.
+
+**How to avoid:**
+- **Validate magic bytes** on every download (`gzip` header `1f 8b`, bigWig header `0x888FFC26`, GFF3 = text starting with `##gff-version 3`) before parsing; retry with a browser `User-Agent`; prefer `plantdhs.org/Download` direct file links (verified hosting TAIR10 DHS gff + bigwig) over arabidopsis.org pages. **[WEB]**
+- Make loci selection a **one-time, committed-artifact-producing step**: the selection script may use live downloads, but its outputs (the ≤200 kb region slices + the documented selection rationale) are committed and reviewed — tests then depend only on committed data plus model inference, never on arabidopsis.org being up.
+- Keep the gitignore for full-genome intermediates (Pitfall 3) aligned with the selection script's output paths so the repo can't accidentally absorb GB-scale files.
+
+**Warning signs:** Downloaded "`.gz`" files that `gunzip` rejects; selection scripts that only work on the author's machine; showcase tests skipping whenever the portal is down.
+
+**Phase to address:** PlantHelixSeek showcase phase, first task (data acquisition + validation), before any notebook is written against the data.
+
+---
+
+### Pitfall 13: Showcase overfitting — a cherry-picked locus presented as a benchmark claim
+
+**What goes wrong:** The milestone *requires* selecting loci where predictions are "substantially consistent with experimental truth", then asserting that agreement in tests. Presented carelessly ("our model achieves X% agreement on Arabidopsis"), this is circular: the loci were chosen because they agree. Readers (and downstream docs/marketing) will cite the number as performance. The test itself is fine as a **regression guard**; the framing is the pitfall. Related: the assertion threshold chosen *on the same data it asserts* guarantees it passes at selection time and tells you nothing about generalization — and one model-revision rotation can silently invalidate it.
+
+**Why it happens:** The guarantee ("predictions match truth on selected loci") is a legitimate *demonstration* device that looks structurally like a *benchmark*.
+
+**How to avoid:**
+- Fix the framing in the notebook and docs: "illustrative loci, selected because model output is consistent with experimental data (selection criteria: N regions screened, criterion C)" — never "accuracy/performance".
+- Have the test assert the **documented threshold with a tolerance band**, and treat threshold changes as review-worthy diffs tied to a re-run of the selection rationale.
+- Include at least one *negative-control* region (expected mismatch) so the pipeline demonstrably distinguishes signal from noise — cheap insurance against the everything-is-empty failure of Pitfall 11 masquerading as agreement.
+
+**Warning signs:** Docs/README language drifting toward performance claims; a threshold nobody can re-derive; no record of how many loci were screened.
+
+**Phase to address:** PlantHelixSeek showcase phase (selection-rationale doc is a deliverable), enforced at review.
+
+---
+
+### Pitfall 14: Repair-scope explosion through the `docs/example/` mirror and the WR-08 gate flip
+
+**What goes wrong:** **[REPO]** Every notebook fix must propagate to the `docs/example/` mirror (`scripts/check_docs_sync.py`, `check_notebook_md_sync.py`, `generate_md_from_notebook.py`). Fixing WR-08 (removing `continue-on-error` from docs-validation) **turns the gate honest immediately** — at which point any accumulated mirror drift goes red on the next push, blocking unrelated work until reconciled. Doing mirror-sync as an end-of-milestone batch multiplies merge pain; doing gate-first without a drift inventory strandings the branch.
+
+**Why it happens:** The false-green hid drift for months (that's what WR-08 *is*); an honest gate converts hidden debt into immediate failures.
+
+**How to avoid:**
+- Sequence explicitly: inventory mirror drift **first** (the audit pattern), fix WR-08 **with** the drift-closing changes in one reviewable unit, then keep sync tooling in the loop per notebook repair (regenerate MD as part of each fix) so drift can't re-accumulate.
+- Budget repair work per wave with a visible ledger (the v1 audit-report pattern), so "fix every error execution surfaces" has a bounded, ranked queue rather than an amorphous backlog.
+
+**Warning signs:** Docs-validation red on PRs that never touched docs; the same mirror diff reappearing in multiple PRs.
+
+**Phase to address:** The CI-gate-repair phase (WR-08/09), with the per-fix mirror-sync habit starting in the first repair wave.
 
 ---
 
@@ -265,108 +271,128 @@ Two ways this bites: (a) you chase "missing" lines that a passing test demonstra
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Keeping the `atexit os._exit(0)` and adding the gate anyway | No conftest rework; gate "green" day one | The entire gate is cosmetic; regressions ship silently | Never — this is the one blocker that must be fixed first |
-| `# pragma: no cover` on hard-to-test lines | Fast path to 90% | Pragmas never expire; real gaps hide behind them | Environment-gated code only (bnb internals, NPU/Megatron), each with reason + issue link; budget tracked from baseline of 3 |
-| Skipping flaky tests instead of fixing them | Green build today | Coverage numerator shrinks unpredictably; gate flaps; bugs hide | Never in the gate job; quarantine list with owners and expiry only |
-| Raising the global `--timeout` to make slow tests pass | One-line fix | Real hangs in fast tests no longer fail promptly | Never; use per-test `@pytest.mark.timeout` overrides instead |
-| `filterwarnings` blanket ignores (already present: DeprecationWarning/UserWarning) | Quiet runs | transformers 5.x→6.x deprecation signals invisible; next compat break lands mid-milestone | Acceptable now (out of scope), but do not widen the list during this milestone |
-| Coverage config as CLI flags in CI only | No pyproject edit | Local and CI measure different things; denominator disputes | Never — move to `[tool.coverage.run]` in Phase 1 |
-| Deleting the skipped AUROC/CrossDNA tests instead of fixing the bugs | Smaller suite, faster to 90% | Known defects (PROJECT.md explicitly lists them) remain shipped | Never — fixing them is in scope and required for honest coverage |
+| `try/except: pytest.skip()` around whole notebook executions | Stops nightly flakiness now | Silent skips destroy the census's meaning; audit red-flags force hasty allowlist widening | Never — use the typed helper + narrow allowlist entry |
+| Executing notebooks in-place (no tmp copy) | Harness is 10 lines shorter | Dirty tree, cross-test contamination, wrong "repairs" for cwd bugs, 100k-line diffs | Never |
+| `timeout=None` everywhere "because models are slow" | No false timeouts | One hang kills the job with no junit, cache forfeit, leaked kernels | Only with a per-test pytest mark ceiling above the worst cell and job-budget arithmetic updated |
+| Asserting only "notebook executed without error" | Fast test authoring | Cell-level logic regressions (empty results, silent chrom mismatch) pass | Acceptable as wave-1 smoke; must be upgraded with output/defs assertions |
+| Broad `reason_like` allowlist entries | Quiets the skip audit | Allowlist becomes a silencer — the exact anti-pattern its header warns about | Never |
+| Committing showcase intermediates to make tests pass | Deterministic tests | GB-scale repo bloat, review noise | Only the curated ≤200 kb region slices, by design |
+| Running marimo apps in-process via `App.run()` | No subprocess plumbing | State/CUDA leakage across tests; default-driven surprise training | Only for apps verified light, with explicit default-value assertions |
+| Letting notebooks fetch showcase data live each run | No data-pipeline code | Flaky, unauditable tests dependent on a fragile portal | Never for tests; fine inside the one-time selection script |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Hugging Face Hub | Cold-download in the gate job every run; anonymous requests only | `actions/cache` on `~/.cache/huggingface/hub` keyed on the slow-test model list; `HF_HOME` set explicitly; optional `HF_TOKEN` secret for quota; warm-up step |
-| Hugging Face Hub | Treating every network error as skippable | Catch specific network exceptions; fail on others; expected-skip allowlist enforced in the gate job |
-| ModelScope | Forgetting the `slow` suite also pulls from ModelScope (OSS CDN) — different failure domain than HF | Include ModelScope-backed tests in the audit's flake assessment; same typed-skip rules |
-| GitHub Actions cache | Assuming the 10 GB repo cache always holds all models | Key on the model list; `restore-keys` partial fallback; measure hit rate; prune large models from `slow` tests if evicted |
-| Codecov | v3 + `fail_ci_if_error: true` as "the gate" | pytest `--cov-fail-under` exit code is the gate; codecov v5 + token informational only |
-| pytest-timeout | `--timeout-method=thread` for "reliability" | Keep `signal` (Linux default) in the gate job — thread kills the process and the coverage report |
-| pytest-cov 7 | Assuming 6.x subprocess behavior | `patch = ["subprocess"]` in `[tool.coverage.run]` if child-process code is in the denominator; clean `.coverage*` before runs |
+| actions/cache (model caches) | Adding 30 GB models to the same cached paths as the 8-model warm set | Split tiers: quota-bounded cache for small/medium; persistent on-disk dir for giants; `allow_patterns` to skip redundant `.pt` |
+| arabidopsis.org / TAIR | Trusting a 200 response means you got the file | Magic-byte validation, browser UA retry, prefer plantdhs.org direct links; tests depend only on committed slices |
+| plantdhs.org BigWig + TAIR GFF3 | Mixing `Chr1` vs `1`, or 1-based GFF3 coords into 0-based pyBigWig queries | Normalize once in a tested helper; assert `bw.chroms()` mapping and non-empty extracts |
+| rice.uga.edu (NER example) | `!wget -c` partial files reused across runs; genome fetch inside the test | Validate archives; fetch in setup with retry+timeout; consider a cached fixture path keyed on content hash |
+| HuggingFace / ModelScope | Fetching by mutable ref with `trust_remote_code=True` | Pin revisions in `models.lock`; log resolved commit; rotate pins via review |
+| ollama REST (11434) | Assuming auth, or binding beyond loopback; pulling models inside tests | Loopback-only systemd unit; idempotent pre-pull step; assert deterministic layers only |
+| dnallm MCP server (8000) | Hardcoded 8000 colliding with the 6 live-server probes / other tests | Dedicated port or serialized exclusive use; patch the URL cell in the tmp copy |
+| flash-attn / transformer-engine / evo2 / megaDNA GitHub installs | Assuming "GPU runner" ⇒ these install and run | Capability spike on the actual aarch64 GB10 box; typed `environment-unavailable:` skips for infeasible ones |
+| HF Trainer tensorboard logging | Forgetting event files are side effects | tmp-copy cwd + tree-cleanliness guard (output_dir is cwd-relative in examples) |
+| wandb (latent) | Assuming configs never drift to `report_to: wandb/all` | `WANDB_MODE=disabled` in kernel env as belt-and-braces |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Coverage tracer overhead on torch-heavy tests | Gate job 20-30% slower than the same suite uninstrumented | Accept it in the single gate job; keep matrix legs uninstrumented | 464-test suite + slow tests on 2-core runner |
-| Cold HF cache on first gate run | First run after cache-key change times out or takes 3-5x longer | Warm-up step + generous first-run per-test timeouts; treat cache-miss runs as expected-slow | Every change to the slow-test model list |
-| `--timeout=300` sized for mocks, applied to downloads | `Timeout >300.0s` on `slow` tests, pass on re-run | Per-test `@pytest.mark.timeout(1800)` marks on download tests | First CI run that includes `slow` (ever, in this repo's history) |
-| Job-level GH Actions default timeout (360 min) | Six hours of queued CI burned by one hung non-main-thread test | `timeout-minutes: 60-90` on the gate job | Any MCP streamable-HTTP / dataloader hang (SIGALRM can't reach it) |
-| Matrix × gate multiplication | 6 legs × downloads; PR queues > 1h | Dedicated single gate job (Pitfall 9) | The day the gate is added to the matrix |
+| evo-class downloads in the cached path | Nightly cold-starts; cache evictions | Tiered cache + download filtering | First run that pushes repo cache >10 GB |
+| Unbounded notebook runtimes in census | Job killed at 900 min, no junit | Per-artifact measured budgets; per-test marks; shrink epochs/max_steps for finetune examples (documented deviation) | ~3–4 full finetune notebooks in one census |
+| VRAM accumulation across sequential execution tests | CUDA OOM in later, smaller tests | Per-test model teardown (`del model; torch.cuda.empty_cache()`), subprocess isolation for marimo, kernel-per-notebook | Second heavy model in one pytest process |
+| Per-run flash-attn/TE source builds on aarch64 | Hours of compile per nightly | Prebuilt/warm env or typed environment skip | Any evo-family test on GB10 |
+| Silent-cell iopub watchdog misfires | `Timeout waiting for IOPub output` on legitimate loads | Explicit generous `iopub_timeout` per artifact class | First >4-min silent model-load cell |
+| `!wget -c` resume on corrupt HTML | Parse errors or empty datasets downstream | Magic-byte validation + clean re-fetch | First portal hiccup |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Leaking `HF_TOKEN` into build logs | Token abuse for hub quota | Use `secrets.` context only; never `echo` env in debug steps; token needs read scope only |
-| Gate only on `main` while `dev` merges bypass it (ci.yml triggers on push to dev) | Coverage regressions enter via dev PRs un-gated | Gate job must run on `pull_request` targeting every protected branch, incl. dev→main |
-| Relaxing `trust_remote_code=True` paths in new slow tests to "make them pass" | Arbitrary code execution from a typosquatted model repo (already a documented CONCERNS item) | Slow tests pin exact vetted model IDs; no string-built model names from fixtures |
-| Test subprocess execution expanding scope (`run_tests.py` runs pytest as subprocess) | Command built from test-controlled strings | Keep list-form `subprocess.run`, no shell; no new subprocess tests without fixed argv |
+| Unpinned `trust_remote_code` model refs executed on the self-hosted runner | Upstream repo compromise ⇒ arbitrary code on the box, invisible to review | Revision pins in `models.lock`; resolved-commit logging; lock edits are security review surface |
+| Executing the megaDNA `git clone && pip install -e .` path unpinned | Arbitrary setup.py execution from an unmaintained repo | Vendor a pinned, hash-verified copy or shim; or typed environment skip |
+| Exposing ollama beyond loopback / wildcard `OLLAMA_ORIGINS` | Unauthenticated model pull/delete/inference; DNS-rebinding from browser pages | Keep `127.0.0.1:11434` bind; no origins wildcard; runner user owns the unit |
+| Weakening the dispatch/cron-only runner posture "just this once" for a PR | PR-authored code (incl. forks) executing on the box — the exact invariant v1 established | Never; execution tests are `slow` and live only in the nightly/dispatch census |
+| Notebooks/agents binding servers to all interfaces | Services reachable from LAN on a persistent box | Explicit `--host 127.0.0.1` for any server a test starts; port discipline |
+| Secrets in notebook outputs / committed executed copies | Token leakage into artifacts | Never write executed copies in-place; scrub env before kernel; artifacts on failure only |
 
-## Maintainer-Experience Pitfalls (UX of the test suite)
+## Showcase & Documentation Pitfalls (the "UX" of example notebooks)
 
-| Pitfall | Impact | Better Approach |
-|---------|--------|-----------------|
-| Local coverage command differs from CI (flags vs config) | "Works on my machine" coverage disputes | One command in CONTRIBUTING: `pytest --cov` with all config in pyproject |
-| Fast-suite coverage vs gate coverage (with `slow`) treated as one number | Developers chase gaps that only exist in the other selection | Publish both numbers in the audit; the gate number is authoritative; document both commands |
-| PDF test artifacts written into the repo tree (`tests/inference/pdf/`, .gitignore typo `test/inference/pdf/`) | Dirty working tree mid-milestone; accidental commits muddy the coverage PRs | Point plot tests at `tmp_path`; fix the .gitignore typo while touching tests |
-| Stale docs referencing `tests/pytest.ini` (config actually in pyproject) | New contributors edit the wrong file | Refresh `tests/TESTING.md` + CONTRIBUTING in the same phase as the config work |
+| Pitfall | Reader Impact | Better Approach |
+|---------|---------------|------------------|
+| Cherry-picked locus framed as benchmark | Readers cite a circular number as performance | "Illustrative loci + selection criteria" framing; regression-guard test, not accuracy claim |
+| No reproducibility info (model revision, seeds, tolerance) | "Works differently for me" disputes | Pin revision + state tolerances in notebook markdown; link the selection-rationale doc |
+| Silent-empty signal extraction presented as agreement | Misleads expert readers; hides bugs | Non-emptiness assertions + negative-control region |
+| Repairing notebooks to suit the harness (path edits, hardcoded ports) | Examples stop reflecting real user workflows | Fix the harness (cwd/env), keep examples user-shaped; deviations documented, not smuggled |
+| Committed outputs drifting from source (already true for megaDNA) | Readers trust stale results | Regenerate curated outputs at milestone close; treat executed copies as debug artifacts |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Gate actually gates:** a deliberately failing test / sub-threshold coverage run makes the CI job red (canary from Pitfall 1) — verify, don't assume
-- [ ] **Exit code fixed:** `pytest <failing-test>; echo $?` returns non-zero with the root conftest in place
-- [ ] **Denominator clean:** `coverage report` contains zero rows for `dnallm/mcp/tests/*`, `tasks/metrics/`, `megatron.py`, `mamba_npu.py` — enforced by CI check, not by review memory
-- [ ] **Gate stable:** three consecutive scheduled runs of the gate job green with identical coverage ±0.2pp (network weather proven handled)
-- [ ] **Skips accounted:** `-ra` summary in the gate job shows exactly the expected allowlist; the AUROC and CrossDNA tests are unskipped and asserting correct behavior
-- [ ] **Timeouts sized:** every `@pytest.mark.slow` download test carries a per-test timeout mark; gate job has `timeout-minutes`
-- [ ] **Subprocess decision made:** child-process coverage either configured (`patch = ["subprocess"]` + canary test) or explicitly documented out of the denominator
-- [ ] **Pragma budget intact:** `grep -rc "pragma: no cover" dnallm/` equals baseline (3) + documented additions only
-- [ ] **One command:** local `pytest --cov` reproduces the CI gate number on the same selection
-- [ ] **Matrix vs gate split:** matrix legs still fast and green; the gate runs in exactly one job
+- [ ] **Execution harness:** kernel cleanup verified on a deliberately-hanging notebook (kill test), not just happy path — verify orphan-check `ps`/`nvidia-smi` after
+- [ ] **Timeout layering:** nbclient cell timeout < per-test mark < job budget, arithmetic updated in the ci.yml comment — verify sum still <900 min
+- [ ] **Hermeticity:** full local run leaves `git status --porcelain` empty — verify the session-end guard test exists and would fail
+- [ ] **Honest skips:** every new skip category has a narrow allowlist entry and a typed prefix — verify `audit_skips.py` exit 0 on the nightly junit *with* the new categories present
+- [ ] **Execution ≠ correctness:** executed notebooks assert on outputs/defs (non-empty, in-range), not just "no cell raised" — verify at least one assertion would catch a silent-empty result
+- [ ] **marimo apps:** run via subprocess with cheap verified defaults; `defs` asserted — verify an app test cannot trigger the default heavy finetune
+- [ ] **ollama family:** model pre-pull idempotent; port plan vs the 6 MCP probes resolved — verify probes' skip/run behavior is deterministic under the new setup
+- [ ] **Showcase data:** committed slices validated (magic bytes, chrom names, coordinate convention); downloads blocked ⇒ tests still green — verify by unplugging network once
+- [ ] **Truth agreement:** threshold + tolerance documented and re-derivable; negative control included — verify assertion fails when fed shuffled truth
+- [ ] **Cache strategy:** giants outside the quota-bounded cache; evo-1 fetched without the redundant `.pt` — verify `gh cache list` total after first nightly
+- [ ] **Mirror sync:** WR-08 flipped together with drift closure; each notebook repair regenerates its docs MD — verify docs-validation green on the repair branch
+- [ ] **Coverage expectations:** nobody expects example executions to raise the 96.30% (kernel subprocesses are unmeasured by design, AUDIT-04) — verify the phase plan says so explicitly
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Exit-code masking discovered after gate ships | LOW | Fix conftest (sessionfinish hook); add canary; audit anything merged during the blind period |
-| Wrong denominator discovered late | LOW | Add/fix omit globs; re-measure; the percentage moves but tests need no rework |
-| Gate permanently red (enabled too early) | LOW | Lower `--cov-fail-under` to measured baseline; re-raise via ratchet file |
-| Coverage theater discovered late (assertion-free tests) | HIGH | Identify by grep/mutation spot-check; rewrite tests with behavioral assertions — the lines are already "covered", so tooling won't help; only review finds them |
-| Flaky-network gate (429/skip flapping) | MEDIUM | Add cache + token + typed skips; quarantine genuinely flaky tests with owners and expiry; re-enable |
-| Timeout thread-method data loss | LOW | Revert to signal method; re-run; no code damage (data was simply not written) |
-| Subprocess coverage missing | MEDIUM | Configure `patch = ["subprocess"]`, clean `.coverage*`, verify canary; or formally descoped |
-| CI unusably long | MEDIUM | Split gate job from matrix; warm caches; prune slow tests that duplicate coverage paths |
+| Leaked kernels / VRAM exhaustion | LOW | Hygiene step (pkill + VRAM assert), runner reboot if wedged; add the missing cleanup path as a regression kill-test |
+| Cache evicted by oversized model | MEDIUM | `gh cache delete` the offender; move giant to persistent dir; re-warm next nightly; add size report step |
+| Dirty tree from missed side effect | LOW | `git checkout -- .` + add gitignore pattern + extend the tmp-copy list for that artifact; guard test now catches recurrences |
+| Wrong "repair" applied to a healthy notebook | MEDIUM | Revert the content fix, fix the harness (cwd/env/port), re-run; add the case to the harness-vs-content triage list |
+| Flaky assertion on sampled output | LOW | Convert to invariant/tolerance assertion; keep a debug flag to dump the executed copy |
+| Showcase truth-agreement broke after model rotation | MEDIUM | Re-run selection rationale with pinned new revision; adjust documented threshold via review; never loosen silently |
+| Skip audit red from a new network skip | LOW | Add endpoint-specific typed entry (narrow matcher + category); add fetch retry so it rarely fires |
+| Silent-empty chrom mismatch discovered late | MEDIUM | Introduce the shared normalization helper + fixtures; re-run loci selection; republish showcase numbers with the correction noted |
+| ollama/port collision mid-census | LOW | Serialize or re-port the example server; make the collision loud (port-in-use check in setup) |
 
 ## Pitfall-to-Phase Mapping
 
-Assumes the milestone structure implied by PROJECT.md: **Phase 1 — Audit & Measurement Setup** (fix exit code, coverage config, denominator contract, baseline + ratchet, slow-test timing), **Phase 2 — Suite Hygiene & Bug Fixes** (unskip AUROC/CrossDNA, typed skips, PDF artifacts), **Phase 3 — Test Authoring to >90%**, **Phase 4 — CI Gate Enforcement** (dedicated job, caching, timeouts, codecov demotion).
+Suggested v1.1 phase structure (roadmap not yet written; names are recommendations):
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| 1. Exit-code masking (os._exit) | Phase 1 | Canary step: failing pytest run must exit non-zero |
-| 2. Denominator (omit/tests-in-numerator/config split) | Phase 1 | CI grep of coverage report for forbidden rows; local `pytest --cov` == CI number |
-| 3. Gate enabled too early / ratchet | Phase 1 (baseline) → Phase 4 (flip) | Gate's first blocking run is green; threshold file only moves up |
-| 4. Flaky network in gate | Phase 2 (typed skips) + Phase 4 (cache/retry) | 3 consecutive green scheduled runs; skip allowlist enforced |
-| 5. Timeout vs downloads / method choice | Phase 1 (timing data) + Phase 4 (marks, timeout-minutes) | No `Timeout >300s` failures across scheduled runs; report present after any timeout |
-| 6. Subprocess coverage (pytest-cov 7) | Phase 1 (decision) + Phase 4 (canary) | Canary subprocess test covered (or descope documented) |
-| 7. Assertion-free tests | Phase 3 (+ review gate all phases) | Mutation spot-check on utils/metrics; review checklist enforced |
-| 8. transformers_compat fake-coverage | Phase 3 | Behavior-contract tests present; pragmas documented; no fake bnb objects |
-| 9. Gate on matrix / CI length | Phase 4 | Gate = 1 job; matrix unchanged; PR wall-clock < 60 min |
-| 10. Codecov as gate | Phase 4 | Gate fails only on pytest exit code; codecov informational |
+| 1. Kernel leaks / GPU poisoning | Phase 1 — Harness & Hermeticity | Deliberate-hang kill test; post-run `ps`/VRAM hygiene step in nightly |
+| 2. Timeout arithmetic | Phase 1; recheck in CI phase | ci.yml comment arithmetic; sum(ceilings) < 900 min reviewed per mark change |
+| 3. Side effects / dirty tree / cwd false repairs | Phase 1 | Tree-clean guard test green after full census |
+| 4. Cache quota / 30 GB downloads | Phase 1–2 boundary | `gh cache list` bounded; evo fetch size ≈12.9 GB not 29.7 GB |
+| 5. evo/megaDNA toolchain infeasibility | Phase 1 (feasibility spike) | Verdict matrix per artifact; typed `environment-unavailable:` entries audited |
+| 6. Silent-skip regression | Phase 1 (taxonomy) | `audit_skips.py` exit 0 nightly; skip count stable |
+| 7. marimo in-process traps | Phase 1 (pattern) / Phase 2 (rollout) | Apps run in subprocess; default-plan assertion |
+| 8. trust_remote_code provenance | Phase 1 (pins) + each family | `models.lock` revisions; resolved-commit lines in junit |
+| 9. ollama service/port/assertions | Phase 2–3 + CI phase | Idempotent pre-pull; deterministic port plan; probe behavior stable |
+| 10. Nondeterminism / stale outputs | Phase 1–2 (conventions) | Invariant-style assertions; tolerance bands; no golden-output comparisons |
+| 11. Coordinates / chrom naming | Showcase phase (first task) | Normalization-helper unit tests; non-empty assertions; negative control |
+| 12. arabidopsis.org blockers | Showcase phase (data acquisition) | Magic-byte validation; tests green with network blocked |
+| 13. Showcase overfitting framing | Showcase phase (rationale doc) | Review of notebook/docs language; threshold re-derivable |
+| 14. Mirror drift / WR-08 flip | CI-gate phase | Docs-validation green on the branch that removes `continue-on-error` |
 
 ## Sources
 
-- **[REPRODUCED in-repo, 2026-09-29]** exit-code masking experiment (`pytest` failing run → `EXIT_CODE=0` with root `conftest.py`); coverage denominator analysis (`python -m coverage report` on a `--cov=dnallm` run: megatron.py 184/0%, mamba_npu.py 141/0%, `dnallm/mcp/tests/*` rows present, TOTAL 8344 stmts, vendored metrics dirs have 0 `__init__.py` in 55); installed versions (pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, pytest-timeout 2.4.0, pytest-asyncio 1.4.0); suite counts (16 slow tests, 7 pytest.skip sites, 3 pragmas, no assert-free test files)
-- **[DOCS]** pytest-cov subprocess-support removal in 7.0 and migration to coverage `patch = subprocess`: pytest-cov.readthedocs.io/en/latest/subprocess-support.html (fetched 2026-09-29)
-- **[DOCS]** pytest-timeout method semantics and mark priority: github.com/pytest-dev/pytest-timeout README (fetched 2026-09-29)
-- **[DOCS + REPRODUCED]** coverage.py `source` includes unexecuted files at 0% — coverage.readthedocs.io "Specifying source files"; pytest-cov PyPI notes; empirically confirmed in-repo
-- **[WEB]** HF Hub cache layout and `HF_HOME`: huggingface.co/docs caching docs; HF Hub 429/rate-limit and `HF_HUB_OFFLINE`/token mitigations, actions/cache patterns for `~/.cache/huggingface/hub` (community discussions, Feb 2025+) — MEDIUM confidence
-- **[WEB]** codecov-action v3 unsupported / v1 bash uploader sunset (Feb 2022) / v4-v5 token requirements: github.com/codecov/codecov-action, about.codecov.io January product update, docs.codecov.com/docs/codecov-tokens — MEDIUM confidence
-- **[WEB]** ratchet-vs-big-bang threshold practice and pragma/assertion policing: pytest-with-eric.com coverage guidance (Sep 2024) — LOW confidence (community guidance, directionally consistent)
-- Project context: `.planning/PROJECT.md`, `.planning/codebase/TESTING.md`, `.planning/codebase/CONCERNS.md`, `conftest.py`, `pyproject.toml`, `.github/workflows/ci.yml`, `dnallm/utils/transformers_compat.py`
+- **Repo inspection (2026-10-01):** `example/` notebooks + configs (side-effect greps, committed-output audit, evo/megaDNA/ollama cell sources), `tests/examples/test_examples.py`, `tests/expected_skips.yaml`, `scripts/audit_skips.py`, `.github/workflows/ci.yml` (coverage-nightly/test-mamba jobs), `models.lock`, `pyproject.toml` (extras, pytest config), root `conftest.py`, `.gitignore`, `dnallm/models/special/evo.py`, `dnallm/utils/support.py`, `example/notebooks/finetune_NER_task/generate_bpe_dataset.py` — **HIGH**
+- **nbclient docs** (client/reference pages): timeout/iopub semantics, `shutdown_kernel` graceful/immediate, context-manager cleanup — [nbclient client docs](https://nbclient.readthedocs.io/en/latest/client.html) — **MEDIUM-HIGH**
+- **pytest-timeout** issues [#134](https://github.com/pytest-dev/pytest-timeout/issues/134) (fixtures not torn down), [#159](https://github.com/pytest-dev/pytest-timeout/issues/159) (subprocess survives) — **HIGH**
+- **GitHub Actions limits / cache**: [docs.github.com actions limits](https://docs.github.com/en/actions/reference/limits), [actions/cache](https://github.com/actions/cache), [Nov 2025 changelog (>10 GB opt-in)](https://github.blog/changelog/2025-11-20-github-actions-cache-size-can-now-exceed-10-gb-per-repository) — **HIGH**
+- **pyBigWig README** "A note on coordinates": 0-based half-open; case-sensitive, non-mixable chrom names; empty-on-unknown — [github.com/dpryan79/pyBigWig](https://github.com/dpryan79/pyBigWig) — **HIGH**
+- **TAIR/Ensembl chrom naming**: Biostars/Google-groups evidence of `Chr1` vs `1` harmonization — **MEDIUM** (community; verify against the actual committed files at selection time)
+- **ollama security**: default `127.0.0.1:11434`, no auth, DNS rebinding — [ollama #16236](https://github.com/ollama/ollama/issues/16236), Elastic/CVE-2024-39719 write-ups — **HIGH** (behavior), bind default cross-checked
+- **evo-1-131k-base file listing**: 29.7 GB total, safetensors ~12.9 GB + redundant `pytorch_model.pt` 16.8 GB, trust_remote_code stripedhyena variant — [HF repo tree](https://huggingface.co/togethercomputer/evo-1-131k-base/tree/main) — **HIGH** (fetched)
+- **evo2 package requirements**: 1B/20B/40B need FP8 via Transformer Engine + Hopper; vtx/vortex + flash-attn==2.8.0.post2; build-failure issues — [pypi.org/project/evo2](https://pypi.org/project/evo2), [arcinstitute/evo2](https://github.com/arcinstitute/evo2) (#149, #201) — **HIGH** (requirements), GB10 impact is repo-derived inference — **MEDIUM**
+- **marimo App API**: `run(defs)` semantics, all-or-nothing definition override, headless UI-value behavior via defaults / `set_ui_element_value` — [docs.marimo.io/api/app](https://docs.marimo.io/api/app), marimo discussions #3698 — **MEDIUM** (in-process execution is architectural, verified from the API design)
+- **W&B headless**: `WANDB_MODE=disabled/offline`, set pre-init; Trainer prompting unless `report_to none` — [docs.wandb.ai](https://docs.wandb.ai/support/models/articles/how-do-i-disable-wandb-when-testing-my-code), HF forums — **MEDIUM-HIGH**
+- **arabidopsis.org SPA/login-wall**: repo-internal milestone knowledge (no authoritative public doc found) + TAIR portal state reports — **LOW-MEDIUM**; mitigations valid regardless
+- Prior-milestone artifacts consulted: `.planning/codebase/TESTING.md`, v1 `PITFALLS.md` (os._exit lesson — since fixed in root conftest), PROJECT.md Phase 1 AUDIT-04 note (pytest-cov 7 subprocess measurement removal)
 
 ---
-*Pitfalls research for: DNALLM coverage hardening milestone*
-*Researched: 2026-09-29*
+*Pitfalls research for: DNALLM v1.1 — Example Execution Testing & Repair*
+*Researched: 2026-10-01*

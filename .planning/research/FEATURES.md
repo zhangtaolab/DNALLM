@@ -1,184 +1,200 @@
 # Feature Research
 
-**Domain:** Test-suite audit & coverage hardening for an existing Python ML library (pytest + pytest-cov, 464 tests, slow/network tests, vendored code)
-**Researched:** 2026-09-29
-**Confidence:** HIGH for project-grounded items (read directly from repo); MEDIUM for ecosystem patterns (cross-checked across independent web sources); LOW where individually noted
+**Domain:** Real-execution testing of Jupyter/marimo examples + genomics showcase notebooks (prediction-vs-ground-truth presentation) for an existing pytest/CI-hardened ML toolkit
+**Researched:** 2026-10-01
+**Confidence:** HIGH for project-grounded items (read directly from repo: `tests/examples/test_examples.py`, `tests/expected_skips.yaml`, `scripts/audit_skips.py`, `.github/workflows/ci.yml`, `models.lock`, `dnallm/models/model_info.yaml`); MEDIUM for ecosystem patterns (cross-checked across independent sources); LOW where individually noted
 
-"Users" of this program are the DNALLM maintainer, CI, and future contributors. A feature here is a *capability of the coverage-hardening program*, not a library feature.
+"Users" are the DNALLM maintainer, the CI system, and future contributors. A "feature" here is a capability of the v1.1 example-execution program, not a library feature. Areas are tagged so REQUIREMENTS.md can group them:
+
+- **[EXEC]** notebook/marimo/script execution harness mechanics
+- **[CI]** gating, markers, skips, caching, artifacts
+- **[REPAIR]** error-repair workflow
+- **[REG]** PlantHelixSeek model registry integration
+- **[SHOW]** showcase notebooks: prediction-vs-truth presentation + agreement assertions
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Without these, the 90% gate is dishonest, unenforceable, or unmaintainable.
+How mature ML projects execute notebooks in CI (verified pattern, MEDIUM confidence): a pytest layer over **nbclient** — nbmake is the most popular packaging of it; pytest-notebook/nbval do output-regression instead. The consistent behaviors: **per-cell timeout** inside the executor, each notebook an **independent test** (one failure never halts the others), **fresh kernel per notebook**, executed/partial notebooks **saved and uploaded as artifacts** (`if: always()`), and model downloads satisfied from a **pre-seeded cache**.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Authoritative coverage config in `pyproject.toml` (`[tool.coverage.run]` + `[tool.coverage.report]`: `source = ["dnallm"]`, `omit` for vendored dirs and unimportable adapters, `fail_under`) | No `[tool.coverage]` section exists today; the denominator must be pinned in config or every run measures something different. Whitelisting `source` is preferred over blacklisting everything else | LOW | Confirmed via repo read: zero coverage config exists. `omit`: `dnallm/tasks/metrics/*`, `dnallm/models/special/enformer_model/*`, `dnallm/finetune/megatron.py`, `dnallm/models/special/mamba_npu.py` (per PROJECT.md decision) |
-| Single pytest config source of truth — retire `tests/pytest.ini` | The file exists on disk (contradicting `.planning/codebase/TESTING.md`, which calls references to it stale) with `testpaths = .` and its own marker list missing `legacy`. pytest's rootdir discovery can select it over `pyproject.toml` depending on invocation, silently dropping `--timeout=300`, `--asyncio-mode=auto`, and marker registrations — a config-shadowing hazard that makes any gate unreliable | LOW | Verified by direct read of `/home/forrest/Github/DNALLM/tests/pytest.ini`. Delete it or reduce it to a comment pointing at `pyproject.toml`; add a regression check that `pytest --co` from repo root picks up pyproject settings |
-| Full-suite audit report (pass/fail/skip census, both test roots, `slow` included) | The milestone's first Active requirement. You cannot harden what you have not censused; skips and xfails hide exactly the defects (AUROC crash) this milestone exists to fix | MEDIUM | Long runtime + network model downloads. Produce machine-readable output (JUnit XML or `--json-report`-style) so the census is diffable across runs. Count skips *by reason* |
-| Gap report that drives test-writing priorities: `--cov-report=term-missing` plus a machine-readable artifact (JSON/XML) ranked by missing lines per module | The milestone's explicit deliverable; without a ranked gap list, test authoring is random | LOW | `term-missing` is one flag; the ranking/sorting of modules by uncovered lines is a small script or Codecov file-level view. Store the baseline gap report in `.planning/` as the working checklist |
-| Gate on the *agreed denominator*: CI job running `--cov-fail-under=90` over **both** testpaths **including** `slow` tests | Today's CI coverage run is `pytest tests/ -v -m "not slow" --cov=dnallm` — it excludes the entire `dnallm/mcp/tests` root and all slow tests, so the measured denominator differs from the decided one. A gate on a different denominator than the audit is a dishonest gate | MEDIUM (config LOW, CI runtime MEDIUM) | Verified in `.github/workflows/ci.yml:81`. Requires network + HF model cache (see Differentiators) to be practical. Keep the threshold in exactly one place (config `fail_under` or CLI flag) to avoid divergence |
-| Fix real bugs blocking honest coverage: unskip and fix multiclass AUROC (`dnallm/tasks/metrics.py:283`, skipped at `tests/tasks/test_metrics.py:761`) and CrossDNA handler overwrite (`dnallm/models/model.py:873-887`) | A skipped-because-it-crashes test is a known defect wearing a disguise; coverage numbers that include the skip are dishonest | MEDIUM | In PROJECT.md Active list. Fix code, then unskip — never delete the test or weaken the assertion to make it pass |
-| Skip hygiene policy: every `skip`/`skipif`/`xfail` carries a reason string; audit enumerates them; no bare `except: pass` in tests | Skips silently erode the effective suite; 464 tests minus an uncounted skip set is not 464 tests | LOW | Enforce via review convention + the audit census. `--strict-markers` is already on; consider `xfail_strict = true` so stale xfails fail when they start passing |
-| Assertion standard for every new test: assert observable behavior (values, shapes, keys, ranges, `pytest.raises` with `match=`) | Coverage measures execution, not verification — the canonical coverage failure mode is suites full of "calls it, checks nothing" tests that hit 90% while verifying zero behavior | LOW (convention) | Document in `tests/TESTING.md` + `CONTRIBUTING.md`; reuse the existing `tests/conftest.py` mock fixtures and the canonical TestClass pattern from `.planning/codebase/TESTING.md`. Make "no assertion-free tests" an explicit review rule for this milestone |
-| Working PR coverage feedback | The repo already uploads `coverage.xml` to Codecov on every CI run — contributors expect the PR comment to appear. Today it pins legacy `codecov-action@v3` with `fail_ci_if_error: false` (upload advisory-only) | LOW | Verified in `ci.yml:83-87`. Minimum bar: PRs show project + patch coverage. The wrapper major is outdated (current documented major is v5) — verify wrapper status when touching this (LOW confidence on exact v3 sunset details, not verified this session) |
+| [EXEC] nbclient-based execution of all 20–21 `.ipynb` under `example/`, each notebook one parametrized pytest test | PROJECT.md commits to nbclient. nbclient is the engine nbmake/nbconvert sit on; using it directly in a parametrized suite mirrors the existing `tests/examples/test_examples.py` discovery pattern (module-level `rglob`, `ids=relative path`) and respects the "no new test frameworks" constraint (skip nbmake — it would add a pytest plugin for conveniences we get from pytest itself) | MEDIUM | `NotebookClient(nb, timeout=..., kernel_name=...)`; default `allow_errors=False` stops at the first failing cell with `CellExecutionError` carrying cell source + traceback — exactly the repair signal we want. Do NOT set `allow_errors=True` |
+| [EXEC] Per-notebook (per-test) timeout overrides on top of the per-cell timeout | nbclient `timeout` is **per cell** (default 30s in the API; `None`/`-1` disables) and `startup_timeout` (60s) bounds kernel start. The repo addopts `--timeout=300` is **per test** and will kill any real-model notebook. Both layers are needed: per-cell catches a hung cell; per-test bounds total notebook wall time | LOW | pytest-timeout supports a per-test `@pytest.mark.timeout(N)` marker (MEDIUM confidence — verify against installed pytest-timeout during implementation). Budget: 21 notebooks inside the nightly job's existing 180-min cap → calibrate per-family (finetune notebooks cost most) |
+| [EXEC] Fail-soft across notebooks (continue-on-error at suite level), fail-fast within a notebook | Ecosystem norm: nbmake treats each notebook as an independent pytest item; pytest continues past failures. A full nightly census is worthless if notebook 3 kills the run and notebooks 4–21 never execute — one flaky GPU alloc would blind the census. Within a notebook, stop at first error (default nbclient behavior) so the saved artifact pinpoints the failing cell | LOW | Free from pytest semantics (no `-x` in nightly census command — current nightly line is `pytest -ra` full suite, correct). This is the answer to the orchestrator's continue-on-error question: **yes across notebooks, no within a notebook** |
+| [EXEC] Fresh kernel per notebook + guaranteed kernel shutdown on failure | Kernel bleed (stale globals, GPU memory not released) is the classic flake source across sequential notebook runs. nbclient shuts the kernel down even on error (`on_notebook_error` fires *before* kernel cleanup; `on_notebook_complete` after), so relying on its lifecycle is sufficient | LOW | Add a per-test fixture teardown with `gc.collect()` + `torch.cuda.empty_cache()` between GPU notebooks — cheap insurance for VRAM fragmentation across 20+ model loads |
+| [EXEC] Working-directory isolation per notebook (tmp dir), with copy-in of needed inputs | nbclient sets execution cwd via `resources={'metadata': {'path': <dir>}}`. v1 already paid for this class of bug (Phase 2: PDF tests left 9 stray files in the tree). Notebooks that `mkdir`/write outputs must not dirty the repo or race each other | LOW-MEDIUM | Copy the notebook + its sibling data into `tmp_path`, execute there, then assert the git tree is clean after the suite (reuse the Phase 2 pattern). Resource isolation: **sequential** execution on the single nightly GPU (no xdist) — see Anti-Features |
+| [EXEC/CI] Artifact + log capture on failure: save the (partially) executed notebook and captured cell outputs; upload via `actions/upload-artifact` guarded with `if: always()` | The documented nbclient pattern: wrap `client.execute()` in `try/except CellExecutionError` and in `finally` write the notebook with outputs up to the failing cell. Unguarded artifact uploads are skipped on failure — the exact opposite of when they're needed (documented failure mode, upload-artifact issue #328). The existing nightly job already uploads `pytest.log` on failure; extend with executed-notebook artifacts | LOW | Executed notebooks are the *only* way to debug "which cell died on the GPU box at 3am". Name artifacts by notebook path |
+| [CI] Execution tests marked `slow`, joining the nightly census — never the fast `-m 'not slow'` leg | Real-model execution needs GPU + network + tens of minutes; the fast PR leg must stay fast. Deselection via `-m "not slow"` means the fast leg never even *collects* these tests → **zero new expected-skips entries on the fast leg** (marker deselection is not a skip; `audit_skips.py` sees nothing). Nightly already runs the full suite including slow | LOW | Direct dependency on existing marker system (`slow` registered, `--strict-markers`). Typed local-run skips reuse the existing `prefix: "network-unavailable:"` allowlist entry — no new skip categories needed unless a GPU-availability guard is added (then one new typed prefix, e.g. `gpu-unavailable:`, must be added to `expected_skips.yaml`) |
+| [CI] Preregistered model/dataset dependencies in `models.lock` | The nightly model cache is keyed on `hashFiles('models.lock')`; every remote artifact an execution test touches must be listed or the first run pays full downloads and cache-key drift hides provenance. The lock file is already the reviewable "who fetches what" registry with per-entry test provenance comments | LOW | Add entries for every model each notebook loads (finetune notebooks' backbones, the PlantHelixSeek-CRE/-Anno checkpoints, the PlantHelixSeek-CRE dataset if used). Differentiator below adds the consistency guard |
+| [EXEC] Headless execution of the 3 marimo apps | marimo apps are pure Python: `python app.py` runs cells in topological order headlessly; `marimo export html/script --include-outputs` executes and renders; marimo's own CI (marimo-integration-ci) validates a whitelist of example notebooks via export. Interactivity (`mo.ui`) is the wrinkle — headless runs see uninitialized UI elements, so apps needing interaction may require the export path or small mock/arg handling | MEDIUM | Run in tmp cwd with per-test timeout + artifact capture, same harness discipline as ipynb. Apps already survive `ast.parse` + import-exec structural tests, so real execution is the next rung |
+| [EXEC] Real `load_config()` validation of every example YAML | Structural tests only `yaml.safe_load` them today; the milestone requires every YAML through real Pydantic validation. Cheap (no network), so it can even run unmarked in the fast leg | LOW | Extends `TestYamlConfigs` in `tests/examples/test_examples.py` or a sibling test module. Watch for example YAMLs that are intentionally partial (CLI-fill-in templates) — those need `pytest.raises(ValidationError)`-style expectation or explicit exclusion with a documented reason |
+| [EXEC] Real execution of `generate_bpe_dataset.py` | It is an example artifact like the notebooks; a syntax-checked-but-broken helper is exactly the false confidence this milestone removes | LOW | `runpy.run_path` or subprocess in tmp dir with a tiny input fasta; assert the output dataset file exists and parses |
+| [REPAIR] Fix-everything-it-surfaces loop with regression tests | The milestone's core value: execution errors in `example/` code, `docs/example/` mirror, and dnallm library bugs each get a fix + a test that pins it. v1 precedent: AUROC and CrossDNA bugs found by unskipping tests | HIGH | Inherently open-ended — the unknown-unknowns sink. Timebox per notebook; keep the harness independent of repair progress (a red notebook test is a valid intermediate state only on a branch, never main) |
+| [CI] Close WR-08 (remove `continue-on-error` false-green in docs-validation) and WR-09 (add missing `mcp` extra) | A gate that reports green while steps fail is worse than no gate — this is the same exit-code honesty principle v1 Phase 1 established for pytest | LOW | Direct edits in `.github/workflows/ci.yml`; keep the exit-code canary untouched |
+| [CI] `docs/example/` mirror stays in sync (`scripts/check_docs_sync.py`) including the two new notebooks | Existing enforcement; new notebooks and repaired cells must flow to the mirror or the sync gate fails | LOW | Repo has `scripts/generate_md_from_notebook.py` / `generate_md_from_marimo.py` for regeneration |
+| [REG] Registry entries for `PlantHelixSeek-CRE` (binary sequence classification) and `PlantHelixSeek-Anno` (token classification, 17 BILOU) | Only the base `PlantHelixSeek` (task_type `mask`) exists in `dnallm/models/model_info.yaml` (verified line 152); the two task checkpoints are absent and `modeling_auto.py` has no PlantHelixSeek family map. Without entries, `load_model_and_tokenizer` cannot route them | LOW | Generic loading should suffice (upstream loads via `AutoModelForSequenceClassification` / `AutoModelForTokenClassification` with `trust_remote_code=True`); avoid a `special/` handler unless a quirk forces it. Keep task_type values aligned with existing taxonomy (`binary`, token/NER) so `compute_metrics` dispatch works |
+| [SHOW] CRE notebook: sliding-window scan + per-bin score track, mirroring upstream `scripts/cis_regulatory` | Upstream convention (verified from repo READMEs, MEDIUM-HIGH): 500 bp window / 50 bp stride / 50 bp bins, class-1 probability averaged over covering windows, emitted as BigWig + npy; optional reverse-complement TTA. The notebook should reproduce this on a committed Arabidopsis locus using the dnallm API (`DNAInference`/`load_model_and_tokenizer`), not the upstream standalone scripts | MEDIUM | For ≤200 kb loci the scan is bounded (~4k windows) — feasible in-notebook on the nightly GPU. BigWig writing needs `pyBigWig` (not currently a dependency — see Dependency Notes) |
+| [SHOW] CRE agreement presentation: side-by-side track plot (predicted CRE track vs PlantDHS `TAIR10_DHSs.gff`) + peak-overlap statistic (Jaccard/IoU) | Field convention for prediction-vs-truth at a locus: Enformer's usage Colab plots predicted vs observed tracks stacked on one region; ChromBPNet/AlphaGenome report per-track Pearson on held-out intervals; for *peak-set* agreement, `bedtools jaccard` (intersection/union in bp) is the standard statistic. A showcase notebook that predicts but never overlays truth is decoration, not demonstration | MEDIUM | Compute Jaccard in pure Python/numpy over the two interval sets (avoid a bedtools binary dependency — `pybedtools` is dev-extra and non-Windows). Table-stakes threshold: assert agreement exceeds a calibrated floor in the example test |
+| [SHOW] Anno notebook: sliding-window token-classification scan + BILOU→gene-model decode on a committed locus | Upstream `scripts/gene_annotation` convention (verified, MEDIUM-HIGH): 8192 bp window / 4096 stride (50% overlap), both strands, valid-middle stitching, 17 BILOU labels (O + B/I/L/U for CDS, INTRON, UTR5, UTR3), decoded to GFF3 gene/mRNA/CDS/UTR records (upstream default `viterbi+orf`; simpler heuristic decode acceptable in-notebook). On a ≤200 kb locus this is ~50 windows — tractable | HIGH | In-notebook decode can be simpler than upstream's numba Viterbi (direct BILOU-run extraction is the honest minimum), but the GFF3 output must be structurally valid (ID/Parent hierarchy) for the comparison step |
+| [SHOW] Anno agreement presentation: side-by-side gene-model diagram (predicted vs TAIR10 GFF3) + match statistics | Gene-prediction convention (MEDIUM): gffcompare-style sensitivity/precision/F1 at nucleotide and exon (and gene) level vs reference GFF3; visualization is exon/intron block diagrams for predicted vs annotated models aligned at the same locus (pyGenomeTracks-style stacking is the field standard for track+gene figures; pure matplotlib gene-model rendering is a well-trodden notebook fallback) | HIGH | Compute nucleotide/exon-level precision/recall/F1 in-notebook from the two GFF3 interval sets (no gffcompare binary). Assert F1 exceeds a calibrated floor on the committed loci |
+| [SHOW] In-repo showcase data: committed ≤200 kb Arabidopsis regions (FASTA + PlantDHS GFF + TAIR10 GFF3 slices), gitignored full-genome intermediates | PROJECT.md hard requirement. Loci must be *selected for* substantial prediction-truth agreement and that agreement *asserted by tests* — the curated-loci guarantee is the notebook's credibility | HIGH | Selection is iterative: run predictions across candidate loci, keep those with margin above threshold, commit slices. Add a guard test asserting committed region files exist and are ≤200 kb; `.gitignore` entries for the download scratch dir |
+| [SHOW] Test-asserted agreement thresholds (not exact-output assertions) | Transformers spans 4.49–5.x by constraint; logits shift slightly across minors. Assert `jaccard >= floor` / `F1 >= floor` with margin calibrated at loci-selection time; never assert array equality | MEDIUM | Floors live next to the loci data (or in the test module) with a comment recording the observed value at selection time, so drift is diagnosable |
 
 ### Differentiators (Competitive Advantage)
 
-Not required for an honest gate, but they keep 90% *true over time* instead of decaying the week after the milestone closes.
-
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Enforced diff-based (patch) coverage on PRs — "if you touch it, you must test it" | Project-wide 90% erodes through new code; patch coverage holds the line on every PR with a clear, achievable review standard. diff-cover runs entirely in CI from `coverage.xml` + git diff (no signup/token/external service, listed as a companion tool in coverage.py docs); Codecov patch coverage gives the same metric hosted with status checks and thresholds | LOW-MEDIUM | diff-cover PyPI + Diff Cover Action on GitHub Marketplace; Codecov equivalent documented in Codecov FAQ ("patch coverage = percentage of only the changed lines"). Since Codecov is already wired, enabling patch status there is cheapest; diff-cover is the no-SaaS fallback. Can gate at e.g. patch >= 80% without demanding 100% |
-| Coverage trend tracking + ratchet | A single number proves nothing about direction; trends show drift early and let `fail_under` ratchet upward (90 -> 92 -> ...) instead of being renegotiated | LOW | Codecov already receives uploads — trends/charts are nearly free. Badge optional (shields.io endpoint or marketplace badge action; no third-party service needed). Alternative self-hosted: Codecov is open source (docker-compose) — overkill here |
-| Two-lane CI with HF model caching | Gate must include `slow` tests (owner decision), but nobody will tolerate a 40-minute push-blocking run. Fast lane (`-m "not slow"`) on every push; gated full lane on main/nightly/label with `actions/cache` on `~/.cache/huggingface` keyed by lockfile | MEDIUM | Transforms the gate from aspirational to practical; caching also reduces network flake. The two lanes must use the *same coverage config*; slow lane uses `--cov-append` semantics or a single full invocation so data files combine correctly (pytest-cov plugin manages parallel/combine internally) |
-| Flaky-test management: selective reruns + quarantine lane | Slow tests download models over the network — HF Hub hiccups *will* flake the gated run. pytest-rerunfailures `@pytest.mark.flaky(reruns=N)` (marker priority > CLI > config) with `--rerun-delay`; quarantine = registered marker, merge gate runs `-m "not quarantine"`, scheduled job runs only quarantined tests with an expiry policy | MEDIUM | Consensus pattern (pytest-rerunfailures docs; trunk.io/buildpulse/harness flaky-test guides): quarantine > skip > delete, rerun selectively (blanket `--reruns` masks real bugs). Start simpler: selective flaky markers on known network tests; full quarantine lane only if flakes persist |
-| Per-test coverage contexts (`--cov-context=test`) | During hardening, "which tests already exercise this line?" answers make gap-closing dramatically faster; `coverage json` then shows contexts per missing line | LOW | Documented pytest-cov flag (`Dynamic contexts to use. 'test' for now`). Use ad hoc during the gap-closing phase; consider leaving off in CI (context data is larger) |
-| Branch coverage as stage-2 metric (`branch = true` / `--cov-branch`) | Line coverage misses untaken branches — `if/else` counting one line covered while one path never runs. Raising the honesty bar beyond the milestone's line-coverage target | MEDIUM | Flip on *after* 90% line is green; expect the effective percentage to drop and set a separate, lower branch target. Don't gate on branch in the same phase as the line gate (confounding) |
-| Test duration discipline (`--durations=25` in CI, documented slow-marker grant policy) | Slow tiers rot: everything gets marked slow, fast lane shrinks. Duration reports make marker drift visible | LOW | `--durations` is built into pytest. Add to CI output; review "new slow marker" like you'd review a dependency addition |
-| Nightly full-gate + drift report on main | Catches coverage regressions that slip through PR lanes (e.g. flaky-skipped slow tests that stop running) | MEDIUM | Depends on two-lane CI. The nightly run is also the trend data source |
+| [CI] models.lock consistency guard: a fast test that cross-checks models referenced by execution tests/notebooks against lock entries | Makes the lock self-verifying instead of convention-maintained — a new notebook silently loading an unlocked model becomes a fast-leg failure instead of a surprise nightly download | LOW-MEDIUM | Simplest honest form: parse each execution-test module for model-name literals, or maintain an explicit per-notebook requirement map the test checks. Keep it literal-matching (no notebook execution) so it runs in `-m 'not slow'` |
+| [EXEC] Executed-notebook write-back *option* for docs freshness | nbmake's flagship extra: committing executed outputs speeds docs builds and proves examples run. Here the docs mirror is generated from source notebooks by script, so full write-back duplicates that machinery | MEDIUM | Defer unless the owner wants rendered outputs in docs/example/ (nice showcase value for the PlantHelixSeek notebooks specifically — rendered track plots in the docs mirror are strong marketing). If adopted: write back only showcase notebooks, never all 21 |
+| [EXEC] Per-cell timeout granularity reported per cell (`--durations`-style) | Turns the nightly log into a worklist of which *cells* burn the budget — trims the worst notebooks first during repair | LOW | nbclient hooks (`on_cell_executed` with timing) make this a few lines; purely diagnostic |
+| [SHOW] Rendered agreement figures committed via the docs mirror | The two showcase notebooks' side-by-side track/gene-model plots appearing on the GitHub Pages docs site is the single highest-leverage credibility artifact this milestone can ship | LOW (once write-back exists) MEDIUM (standalone) | Alternative without write-back: save PNGs as CI artifacts and link from the milestone record; or commit pre-rendered figures for the two showcase notebooks only (small, stable binary cost) |
+| [SHOW] Peak-calling reproduction in the CRE notebook (upstream `call_peaks_from_bigwig.py` semantics: mean±k·std, k=1.5; min 50 bp / max 5000 bp; min score 0.6; merge gap 50 bp → BED/narrowPeak) | Elevates the notebook from "score track" to "peaks you can overlap with PlantDHS" — the Jaccard statistic then operates on called peaks, matching how a user would actually validate | MEDIUM | All doable in numpy + interval ops; narrowPeak output is a nice-to-have, BED is the table-stakes subset |
+| [SHOW] Reverse-complement TTA toggle in the CRE scan | Mirrors an upstream option (~2x cost, slight accuracy gain) and demonstrates toolkit maturity | LOW | Off by default in the notebook; a single parameterized cell |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
 | Feature | Why Requested | Why Problematic | Alternative |
-|----------|---------------|-----------------|-------------|
-| 100% coverage mandate / ratchet to 100 | "90 is arbitrary, 100 is honest" | Documented perverse incentives (Optivem, Codecov's own blog, eyas.sh retrospective, jasonrudolph.com): teams game the metric with trivial tests, delete valuable defensive error handling as "untestable", and burn weeks on the long tail. Coverage measures *execution*, not *verification* — 100% executed-and-unverified is worth less than 90% executed-and-asserted | Hold 90% project-wide with assertion standards; enforce *patch* coverage on PRs so new code is well-covered without punishing the existing long tail |
-| Assertion-free / smoke tests to close gaps ("call the function, assert nothing") | Fastest way to move the number | Zero regression protection while consuming the budget; the single most common way coverage programs produce worse-than-nothing suites | Every test asserts observable behavior; error paths via `pytest.raises(..., match=...)`; ranges/shapes/keys on numeric outputs (existing suite already models this — `assert 0 <= metrics["accuracy"] <= 1`) |
-| Deep mocking that severs real behavior | Mock everything to keep tests fast and deterministic | Over-mocked tests verify mock configuration, not the system; they break on every refactor and pass through real bugs (tests the mock, not the code). Also hides exactly the integration defects this suite's `*_real_model.py` lane exists to catch | Mock at boundaries only (model/tokenizer/network/`time.sleep`), reusing `tests/conftest.py` fixtures; keep real Pydantic config objects, real CSV fixtures, real MCP client/server classes with only transport mocked — the suite's documented "What NOT to Mock" list is already correct; follow it |
-| `# pragma: no cover` to erase hard lines | Quick denominator relief | Pragma abuse launders untested code as "uncovered-by-design"; within a milestone it is indistinguishable from cheating | Reserve pragma for genuinely unreachable/platform-specific code only (coverage.py docs guidance: never for "hard to test"); the decided `omit` list handles vendored/unimportable code as *policy*, visible in one config block, reviewable in one place |
-| Excluding `slow` tests from the gated run to keep CI fast | Gate must be fast, right? | The gate then measures a different suite than the one shipped; slow tests exercise the real model-loading paths that give the number meaning. Owner has explicitly decided slow tests are IN | Two-lane CI + HF cache + scheduled full lane (see Differentiators) |
-| Blanket `--reruns=N` on the whole suite | "Flakes fixed, CI green" | Masks real regressions as flakiness; every genuine failure gets N free passes | Selective `@pytest.mark.flaky` on demonstrated-flaky tests + quarantine lane with expiry; measure flake rates, fix root causes |
-| Refactoring production code to make it testable | "We can't reach 90% without restructuring" | Out of scope per PROJECT.md (bug fixes only); refactors during a coverage push churn the diff under the measurement | Test the code as it is; record desired refactors as follow-up issues (e.g. `attn_implementation` hardening — "record, don't fix") |
-| New test frameworks/plugins beyond pytest + pytest-cov | "Property testing / new runner would fix this" | Constraint in PROJECT.md: no new test frameworks; added plugins widen the Python 3.11-3.13 x numpy 1.26/2.2 matrix surface for marginal gain | pytest parametrize, existing fixtures, `--durations`, built-in markers. (pytest-rerunfailures, if adopted for flake mitigation, is the one defensible addition — flag it as a decision) |
+|---------|---------------|-----------------|-------------|
+| [EXEC] `allow_errors=True` notebook execution ("run the whole thing, collect all errors") | Feels like better triage — one pass, every broken cell listed | Cascading noise: cell 4's failure garbles state for cells 5–40; 30 "errors" from one root cause. nbclient's default stop-at-first-error + saved partial notebook gives the precise failing cell with clean traceback | Default `allow_errors=False`; iterate repair notebook-by-notebook |
+| [EXEC] Parallel notebook execution (xdist) on the nightly GPU | "21 notebooks × N minutes is slow" | VRAM contention → flaky OOM on exactly the run that must be trustworthy; model-cache races; nondeterministic reds burn the census's credibility | Sequential execution + per-test timeouts + `torch.cuda.empty_cache()` teardown; parallelism belongs to the future, not the trust-building phase |
+| [EXEC] Mutating notebooks under test (nbmake.mock-style epoch shrinking, cell rewriting) | "Make CI fast by shrinking epochs" | Tests something other than what users run — the false confidence this milestone exists to destroy. Repo examples are already small-config | Run notebooks as-is on the nightly GPU; runtime cost accepted by owner per Constraints |
+| [CI] Committing executed notebooks / outputs for all 21 notebooks back to the repo | "Prove they ran, in-repo" | Diff churn, merge conflicts, repo bloat; the docs mirror already regenerates from source | Executed notebooks as failure artifacts only; optional curated write-back for the 2 showcase notebooks |
+| [SHOW] IDR-based agreement scoring for CRE | "It's the ENCODE reproducibility standard" | IDR scores *replicate concordance* using peak rankings — wrong question for prediction-vs-truth on a single model; also needs scores the showcase may not calibrate | Jaccard/IoU (+ overlap fraction) vs PlantDHS; that is what bedtools-using pipelines do for cross-dataset similarity |
+| [SHOW] Asserting exact model outputs / array equality | "Strongest possible guarantee" | Breaks across transformers 4.49–5.x and torch versions — guaranteed-flaky gate across the compatibility span the project must keep | Thresholded agreement assertions (Jaccard/F1 floors) with recorded selection-time values |
+| [EXEC] Adopting nbmake (or pytest-notebook/nbval) as the harness | "Popular plugin, less code" | Violates the "no new test frameworks" constraint; hides cwd/artifact control we need (tmp-dir execution, partial-notebook save, per-family timeouts); output-regression tools (nbval/pytest-notebook) solve a different problem (they pin outputs — the anti-feature above) | nbclient directly inside parametrized pytest tests in `tests/examples/` |
+| [SHOW] Full-genome inference in the showcase/tests | "Match the upstream genome-wide pipelines exactly" | Upstream CRE/Anno inference is CUDA-mandatory, flash-linear-attention-dependent, hours-scale; blows the 200 kb in-repo rule and the nightly budget | ≤200 kb curated loci; full-genome stays an upstream-scripts concern, referenced by link from the notebook |
+| [CI] New GPU-availability skip category without allowlist discipline | "Skip cleanly when no GPU" | An untyped skip is exactly what `audit_skips.py` exists to fail; a silent GPU skip on the nightly box would hollow the census | Reuse typed `network-unavailable:` prefix for network; if a GPU guard is added, add exactly one new typed prefix + `expected_skips.yaml` entry, fail-closed |
+| [REG] A `special/` handler for PlantHelixSeek | "Consistency with other families" | Upstream loads fine through generic Auto* + `trust_remote_code`; an unnecessary handler adds dispatch surface to maintain (and v1 found the one real bug in exactly that chain) | Generic registry entries; add a handler only on demonstrated need, mirroring the first-resolved-wins contract |
 
 ## Feature Dependencies
 
 ```
-[Coverage config: source/omit/fail_under]
-    └──requires──> [Single pytest config source of truth (retire tests/pytest.ini)]
+[REG] PlantHelixSeek-CRE/-Anno registry entries
+    └──requires──> nothing new (existing model_info.yaml + modeling_auto maps)
 
-[Full-suite audit census] ──enables──> [Per-module gap report]
-        │                                     │
-        └──requires──> [Bug fixes: AUROC + CrossDNA]   gap report ──drives──> [Test authoring to >90%]
-                                                                    │
-[CI gate on full denominator] <──requires──────────────────────────┘
-        ├──requires──> [Coverage config]  (threshold lives here)
-        ├──benefits──> [HF model cache + two-lane CI]
-        └──enables──> [Trend tracking + badge]
+[SHOW] CRE notebook ──────requires──> [REG] CRE entry
+    └──requires──> [SHOW] committed Arabidopsis loci + PlantDHS slices
+    └──requires──> [EXEC] notebook execution harness (to be tested at all)
+    └──enhances──> [SHOW] agreement assertion (Jaccard floor)
 
-[PR coverage feedback] ──requires──> [coverage.xml from CI] ──enhances──> [Patch coverage enforcement]
+[SHOW] Anno notebook ─────requires──> [REG] Anno entry
+    └──requires──> [SHOW] committed loci + TAIR10 GFF3 slices
+    └──requires──> [EXEC] execution harness
+    └──enhances──> [SHOW] agreement assertion (F1 floor)
 
-[Flaky markers/quarantine] ──requires──> [Audit skip/flake census]
-[Nightly drift report] ──requires──> [Two-lane CI + scheduled full run]
-[--cov-context=test] ──enhances──> [Test authoring to >90%] (ad hoc, no CI dependency)
-[Branch coverage gate] ──requires──> [Line gate green first]  (deliberately staged)
+[EXEC] execution harness (nbclient, timeouts, tmp-cwd isolation, artifacts)
+    └──requires──> [CI] slow marker placement (nightly-only)
+    └──requires──> [CI] models.lock entries for every fetched model
+    └──requires──> [CI] typed-skip allowlist entries (reuse network-unavailable)
+
+[REPAIR] error repair loop
+    └──requires──> [EXEC] harness + artifact capture (the failure signals)
+    └──requires──> [CI] WR-08/09 gate repairs (so fixes are actually enforced)
+
+[SHOW] rendered figures in docs mirror ──requires──> [SHOW] both notebooks green
+    └──requires──> [CI] docs sync machinery (exists)
+
+[CI] models.lock consistency guard ──enhances──> [CI] models.lock preregistration
+
+[SHOW] peak calling in CRE notebook ──enhances──> [SHOW] Jaccard-on-peaks assertion
 ```
 
 ### Dependency Notes
 
-- **CI gate requires coverage config + bug fixes:** the gate is meaningless until the denominator is pinned and the suite it measures actually passes; the AUROC fix must precede the gate (a skipped-crashing test inside a gated run is a red gate).
-- **Config-shadowing fix precedes everything:** if `tests/pytest.ini` can hijack rootdir resolution, every downstream measurement is environment-dependent. Cheapest fix in the whole program; do it first.
-- **Gap report enhances/depends on audit:** the census tells you which tests *run*; the gap report tells you what they *reach*. Both derive from the same full-suite invocation.
-- **Patch coverage conflicts with nothing but requires a PR-lane coverage.xml:** today's fast-lane run already produces it — patch coverage from the fast lane is valid PR feedback even while the full gate lives on the slow lane.
-- **Flaky management conflicts with gate strictness:** reruns and hard gates fight each other (a rerun-passed test counts as pass but hides instability). Resolve by policy: reruns allowed only on the slow/network lane, never to make a unit-lane failure green.
-- **Branch coverage deliberately staged after line gate:** enabling both at once makes the initial target unattainable and the failure signal unattributable.
+- **Execution harness → markers/skips:** the `slow` marker and `network-unavailable:` typed-skip prefix already exist; the harness must *use* them (marker on every execution test; typed skip guard at test start) rather than invent new mechanisms — this is what keeps `audit_skips.py` green with zero-to-one new allowlist entries.
+- **Harness → models.lock:** every model the 21 notebooks + 2 new notebooks load becomes a lock entry with provenance comment; the nightly cache key rotates automatically via `hashFiles`.
+- **Showcase → loci selection:** the ≤200 kb committed regions are a *precondition* of the agreement assertions; loci selection (predict across candidates, keep high-agreement ones) is the long pole and gates both notebooks' final form.
+- **Showcase ↔ pyBigWig dependency:** writing a BigWig in-notebook needs `pyBigWig` (wheels exist for linux/mac/win; not currently a dependency). Cleanest: add to the `dev` extra (nightly runner installs it; casual users see a guarded import with install hint). An overlay track *plot* does not require BigWig at all (numpy + matplotlib), so only BigWig *emission* pulls the dependency — the notebook can make it an optional final cell. This is a REQUIREMENTS-level decision to pin.
+- **Repair loop ↔ WR-08/09:** fixing example code without the CI gate repair means fixes ride an unenforced lane — do the gate repair early.
+- **Conflicts:** none structural; the only tension is nightly runtime budget (21 notebooks + showcase scans inside 180 min) versus running notebooks *unmodified* — resolved by per-family timeout calibration and the owner-accepted runtime cost, not by mutation.
 
 ## MVP Definition
 
-### Launch With (v1)
+### Launch With (v1.1)
 
-This *is* the milestone's Active requirement list — the minimum for an honest, enforced 90%.
-
-- [ ] Single pytest config source of truth (retire/neutralize `tests/pytest.ini`) — config-shadowing makes everything else nondeterministic
-- [ ] `[tool.coverage.run]`/`[tool.coverage.report]` in `pyproject.toml` with `source`, `omit` (vendored + unimportable), `fail_under = 90`, `show_missing = true` — pins the denominator
-- [ ] Full-suite audit census (pass/fail/skip by reason, both test roots, `slow` included) — the milestone's first deliverable
-- [ ] Per-module gap report (`term-missing` + JSON artifact, ranked) — the working checklist for test authoring
-- [ ] Bug fixes: multiclass AUROC crash, CrossDNA overwrite; unskip their tests — honesty requirement
-- [ ] New tests to >90% under the assertion standard — the bulk of the effort
-- [ ] CI job enforcing `--cov-fail-under=90` over the full denominator — the gate
-- [ ] Updated `tests/TESTING.md`/`CONTRIBUTING.md` conventions (assertion rule, skip hygiene, marker policy) — keeps 90% maintainable after the push
+- [ ] [CI] WR-08/WR-09 gate repairs — cheap, unblock honest enforcement of everything after
+- [ ] [EXEC] nbclient harness: per-notebook parametrized tests, per-cell + per-test timeouts, tmp-cwd isolation, kernel cleanup, failure artifacts — the spine everything else hangs on
+- [ ] [CI] Execution tests `slow`-marked into the nightly census; models.lock extended; typed skips reused
+- [ ] [EXEC] Real execution: 20–21 notebooks, 3 marimo apps, `generate_bpe_dataset.py`, all YAMLs through `load_config()`
+- [ ] [REPAIR] Every surfaced error fixed (examples, mirror, library) with regression tests
+- [ ] [REG] PlantHelixSeek-CRE/-Anno registry entries
+- [ ] [SHOW] Both showcase notebooks with committed ≤200 kb loci, side-by-side prediction-vs-truth presentation, Jaccard/F1 statistics, and test-asserted agreement floors
+- [ ] [CI] Docs mirror sync for new/repaired notebooks
 
 ### Add After Validation (v1.x)
 
-- [ ] PR patch-coverage enforcement (Codecov status or diff-cover) — trigger: gate green on main for a full week; prevents decay
-- [ ] Two-lane CI + HF model cache — trigger: full-gate CI runtime actually hurting (measure first; cache before splitting if runtime is the only pain)
-- [ ] Selective `@pytest.mark.flaky` on demonstrated network flakes — trigger: first flaky red gate
-- [ ] `--cov-context=test` during any follow-on gap-closing — trigger: next round of test authoring
-- [ ] Coverage badge + trend review habit — trigger: gate stable
+- [ ] models.lock consistency guard — once the lock entry set has stabilized post-repair
+- [ ] Executed-notebook write-back for the two showcase notebooks (rendered docs figures) — after their content has stopped churning
+- [ ] Peak-calling reproduction + narrowPeak emission in CRE notebook — after the score-track version is green
+- [ ] Per-cell timing report — diagnostic nicety once nightly runs are routine
 
 ### Future Consideration (v2+)
 
-- [ ] Quarantine lane with scheduled quarantine-only run + expiry policy — only if flake volume justifies the machinery
-- [ ] Branch coverage target (`branch = true`, separate threshold) — after line target is comfortably held
-- [ ] Nightly drift report / coverage ratchet — when contributor count or PR rate makes PR-lane enforcement insufficient
-- [ ] Test duration budget policy — when the fast lane's runtime starts creeping
+- [ ] TTA toggle and additional species' showcase loci — showcase breadth, not correctness
+- [ ] Any notebook-parallelism — only if a second GPU runner appears
+- [ ] Output-regression testing (nbval-style) for showcase notebooks — only if output stability across transformers versions proves tractable
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Single pytest config (retire `tests/pytest.ini`) | HIGH | LOW | P1 |
-| Coverage config (`source`/`omit`/`fail_under`) | HIGH | LOW | P1 |
-| Full-suite audit census | HIGH | MEDIUM | P1 |
-| Per-module gap report | HIGH | LOW | P1 |
-| Bug fixes (AUROC, CrossDNA) + unskips | HIGH | MEDIUM | P1 |
-| Tests to >90% w/ assertion standard | HIGH | HIGH | P1 |
-| CI gate on full denominator | HIGH | MEDIUM | P1 |
-| Assertion/skip-hygiene conventions documented | MEDIUM | LOW | P1 |
-| Working PR coverage feedback (fix action version) | MEDIUM | LOW | P1/P2 |
-| Patch coverage enforcement | HIGH | LOW-MEDIUM | P2 |
-| Two-lane CI + HF cache | MEDIUM-HIGH | MEDIUM | P2 |
-| Selective flaky reruns | MEDIUM | LOW | P2 |
-| Trend tracking + badge | MEDIUM | LOW | P2 |
-| `--cov-context=test` for authoring | MEDIUM | LOW | P2 |
-| Nightly drift report / ratchet | MEDIUM | MEDIUM | P3 |
-| Branch coverage stage 2 | MEDIUM | MEDIUM | P3 |
-| Quarantine lane | LOW-MEDIUM | MEDIUM | P3 |
-| Duration discipline reports | LOW | LOW | P3 |
+| [CI] WR-08/09 gate repair | HIGH | LOW | P1 |
+| [EXEC] nbclient harness (timeouts, isolation, artifacts) | HIGH | MEDIUM | P1 |
+| [CI] slow-marker nightly integration + models.lock extension | HIGH | LOW | P1 |
+| [EXEC] notebook real execution (21) | HIGH | MEDIUM | P1 |
+| [REPAIR] fix-all loop | HIGH | HIGH | P1 |
+| [REG] CRE/-Anno registry entries | HIGH | LOW | P1 |
+| [SHOW] committed loci + agreement assertions | HIGH | HIGH | P1 |
+| [SHOW] CRE notebook (scan + track + Jaccard) | HIGH | MEDIUM | P1 |
+| [SHOW] Anno notebook (scan + GFF3 + F1) | HIGH | HIGH | P1 |
+| [EXEC] marimo headless execution (3 apps) | MEDIUM | MEDIUM | P1 |
+| [EXEC] YAML load_config validation | MEDIUM | LOW | P1 |
+| [EXEC] generate_bpe_dataset.py execution | MEDIUM | LOW | P1 |
+| [SHOW] rendered figures in docs mirror | MEDIUM | LOW-MEDIUM | P2 |
+| [CI] models.lock consistency guard | MEDIUM | LOW-MEDIUM | P2 |
+| [SHOW] in-notebook peak calling | MEDIUM | MEDIUM | P2 |
+| [EXEC] per-cell timing report | LOW | LOW | P3 |
+| [SHOW] TTA toggle | LOW | LOW | P3 |
 
-**Priority key:**
-- P1: Must have for the milestone (an honest, enforced 90%)
-- P2: Should have — decay prevention once the gate exists
-- P3: Nice to have — operational maturity beyond this milestone
+## Competitor / Prior-Art Feature Analysis
 
-## Reference Program Analysis
-
-How comparable programs handle this, and what DNALLM should take from each.
-
-| Capability | HF transformers (tests tree verified via GitHub API) | Typical Codecov-gated OSS Python lib | DNALLM plan |
-|-----------|--------------------|--------------------|-------------|
-| Suite organization | `tests/models/<family>/` inheriting shared tester base classes (`test_modeling_common.py`, `test_configuration_common.py`, ...) so every model family gets uniform standard-behavior coverage; domain dirs (`pipelines`, `quantization`, `integrations`) | `tests/` mirroring package layout | Already mirrors package layout; keep, and consider common-tester inheritance only if model-family tests show drift (out of scope this milestone) |
-| Slow-tier gating | Slow tests opt-in (marker + env/CLI gate); CI selects suites via parameterized jobs; per-model files runnable directly | Usually `-m "not slow"` fast lane + nightly full | Two-lane CI; gate lane includes slow per owner decision |
-| Coverage % gate | Not enforced repo-wide — relies on breadth of parameterized common tests | `fail_under` + Codecov project/patch statuses | Enforce 90% line on agreed denominator — *stricter* than transformers; justified by smaller codebase |
-| PR feedback | N/A (no hosted patch gate) | Codecov PR comment: project + patch coverage | Keep Codecov (already uploading), verify wrapper version, enable patch status |
-| Flake handling | Decorator-based flaky marking historically used | `pytest-rerunfailures` selective reruns | Selective flaky markers on network tests; quarantine later if needed |
-| Vendored code | N/A | `omit` in coverage config — standard practice for `*/vendor/*` | `omit` for `dnallm/tasks/metrics/`, `enformer_model/`, unimportable adapters (matches lint/mypy exclusions) |
+| Feature | Prior art | Our approach |
+|---------|-----------|---------------|
+| Notebook-as-test packaging | nbmake (pytest plugin over nbclient; per-cell `--nbmake-timeout`, `execution.allow_errors` metadata, `raises-exception`/`skip-execution` cell tags, xdist); pytest-notebook/nbval (output regression); pytest-nb-as-test | nbclient called directly from parametrized pytest tests — same semantics, no new plugin, full control of cwd/artifacts/timeouts per family |
+| Failure artifacts | upload-artifact with `if: always()`/`if: failure()`; nbclient try/except/finally partial-notebook save | Same, integrated into the nightly job's existing artifact step |
+| Headless marimo | marimo: `python app.py`, `marimo export html/script --include-outputs`, `marimo check`; marimo-integration-ci whitelist-and-export pipeline | pytest-driven headless execution in tmp cwd; export path only if `mo.ui` interactivity blocks plain script runs |
+| Prediction-vs-truth track presentation | Enformer usage Colab (side-by-side predicted/observed tracks per locus); ChromBPNet (log-counts Pearson + profile metrics); AlphaGenome (per-track Pearson violins on held-out intervals) | Side-by-side matplotlib track overlay on committed loci + Jaccard/IoU on called peaks vs PlantDHS; no exact-output assertions |
+| Peak-set agreement statistic | `bedtools jaccard` (bp-intersection/bp-union; the standard similarity metric); IDR reserved for replicate concordance | Pure-Python interval Jaccard (no bedtools binary dep), asserted ≥ floor in tests |
+| Gene-model agreement | gffcompare (sensitivity/precision/F1 at nucleotide/exon/gene levels vs reference GFF) | In-notebook nucleotide/exon-level P/R/F1 vs TAIR10 GFF3 slices + exon/intron block diagrams; gffcompare linked, not required |
+| Track/gene figures | pyGenomeTracks (tracks.ini stacking of bigwig + bed/gtf/gff) | matplotlib rendering inside notebooks (keeps deps light); pyGenomeTracks mentioned as the external standard |
+| CRE/Anno inference protocol | Upstream `scripts/cis_regulatory` (500/50/50, mean class-1 prob → BigWig; peak call mean±1.5sd) and `scripts/gene_annotation` (8192/4096, both strands, middle-stitch, BILOU→GFF3 viterbi+orf) | Same window/stride/bin parameters reproduced in-notebook via dnallm API on ≤200 kb loci; simplified decode acceptable if GFF3 stays valid |
 
 ## Sources
 
-Project-grounded (HIGH confidence, direct reads):
-- `/home/forrest/Github/DNALLM/.planning/PROJECT.md` — requirements, decisions, scope
-- `/home/forrest/Github/DNALLM/pyproject.toml` `[tool.pytest.ini_options]` (no `[tool.coverage*]` section exists)
-- `/home/forrest/Github/DNALLM/tests/pytest.ini` — exists on disk; shadowing hazard
-- `/home/forrest/Github/DNALLM/.github/workflows/ci.yml` — coverage command excludes `dnallm/mcp/tests` and slow tests; `codecov-action@v3`, `fail_ci_if_error: false`
-- `/home/forrest/Github/DNALLM/.planning/codebase/TESTING.md` — suite anatomy, mock policy, markers
+Project-grounded (HIGH confidence, read directly):
 
-Ecosystem (MEDIUM confidence, cross-checked across multiple independent sources):
-- coverage.py docs — excluding code (`pragma: no cover`, `exclude_lines`, omit) and config reference: https://coverage.readthedocs.io
-- pytest-cov config docs — `--cov-fail-under`, `--cov-append`, plugin overrides `parallel` option, `--cov-config` subprocess caveat, `--cov-context`, `--cov-reset`: https://pytest-cov.readthedocs.io/en/latest/config.html
-- diff-cover (PyPI) + Diff Cover Action (GitHub Marketplace, "no signup, no token, no external service"); coverage.py docs list diff-cover as companion: https://pypi.org/project/diff_cover , https://github.com/marketplace/actions/diff-cover-action
-- Codecov FAQ (patch coverage definition) and PR-comments docs: https://docs.codecov.com/docs/frequently-asked-questions , https://docs.codecov.com/docs/pull-request-comments
-- pytest-rerunfailures (pytest-dev) — marker/CLI/config priority, reruns/delay: https://github.com/pytest-dev/pytest-rerunfailures
-- Flaky quarantine consensus — trunk.io, buildpulse.io, harness.io flaky-test guides (quarantine > skip > delete; selective retries)
-- Coverage anti-patterns — Optivem journal "Code Coverage Targets: Recipe for Disaster"; Codecov blog "The Case Against 100% Coverage"; blog.eyas.sh "Unexpected Lessons from 100% Test Coverage"; jasonrudolph.com "Testing anti-patterns: how to fail with 100% coverage"; testim.io
-- Badge/trend alternatives — Codecov open-source self-hosting announcement (Aug 2023): https://about.codecov.io ; coverallsapp/github-action; marketplace badge actions
-- HF transformers `tests/` taxonomy — verified via GitHub Contents API (tests/models, tests/pipelines, `test_modeling_common.py` et al., `conftest_tests/`); slow-gating details (RUN_SLOW-era mechanism) from long-standing HF contributing docs — treat exact current flag as MEDIUM/LOW, verify at implementation time
+- `/home/forrest/Github/DNALLM/tests/examples/test_examples.py` — existing structural example tests (discovery pattern, skip reasons already allowlisted)
+- `/home/forrest/Github/DNALLM/tests/expected_skips.yaml`, `/home/forrest/Github/DNALLM/scripts/audit_skips.py` — typed-skip allowlist + fail-closed audit
+- `/home/forrest/Github/DNALLM/.github/workflows/ci.yml` — fast leg `-m "not slow"`, nightly full census on `[self-hosted, dnallm-nightly]` (180-min cap, models.lock-keyed model cache, junit + skip audit, log artifact on failure)
+- `/home/forrest/Github/DNALLM/models.lock` — artifact registry format with provenance comments
+- `/home/forrest/Github/DNALLM/dnallm/models/model_info.yaml` — PlantHelixSeek present only as base/mask entry (line 152)
+- `/home/forrest/Github/DNALLM/pyproject.toml` — pytest addopts (`--timeout=300`), markers, pybedtools/pyfastx dev extras
 
-LOW confidence (flagged, not load-bearing):
-- Exact `codecov-action@v3` sunset status and current recommended major (asserted v5 from memory, not verified this session) — verify when touching CI
-- pytest-cov x sigterm/atexit interaction with DNALLM's root-conftest `os._exit(0)` cleanup — plausible data-loss hazard (coverage writes at process exit), needs a 10-minute empirical check in Phase 1, not web research
+Ecosystem (MEDIUM unless noted):
+
+- [nbclient docs — executing notebooks / client reference](https://nbclient.readthedocs.io/en/latest/client.html) — per-cell `timeout`, `startup_timeout`, `allow_errors`, `CellExecutionError`/`CellTimeoutError`, `resources` metadata `path` (cwd), kernel cleanup ordering (LOW tier per seam, but cross-checked against nbmake's documented mapping of `--nbmake-timeout` to per-cell timeout; treated as MEDIUM jointly)
+- [nbmake (computationalmodelling/nbmake, ex treebeardtech)](https://github.com/computationalmodelling/nbmake) — notebook-as-pytest-test semantics, per-cell timeout flag, `execution.allow_errors` metadata, `raises-exception`/`skip-execution` tags, `nbmake.mock`, xdist parallelism
+- [pytest-notebook](https://pypi.org/project/pytest-notebook), [nbval ecosystem coverage via IQMO blog](https://blog.iqmo.com/blog/python/jupyter_notebook_testing), [Semaphore nbmake CI tutorial](https://semaphore.io/blog/test-jupyter-notebooks-with-pytest-and-nbmake) — the pytest-plugin landscape and CI patterns
+- [GitHub docs — workflow artifacts](https://docs.github.com/en/actions/tutorials/store-and-share-data) + upload-artifact issue #328 (via search) — `if: always()`/`if: failure()` artifact-upload guard pattern
+- [marimo docs — run as scripts](https://docs.marimo.io/guides/scripts), [CLI export](https://docs.marimo.io/cli), [testing guide](https://docs.marimo.io/guides/testing), [marimo-integration-ci](https://github.com/marimo-team/marimo-integration-ci) — headless marimo execution and CI precedent
+- [bedtools jaccard documentation](https://bedtools.readthedocs.io/en/latest/content/tools/jaccard.html), [Quinlan lab tutorial](http://quinlanlab.org/tutorials/bedtools.html), [ENCODE IDR portal](https://www.encodeproject.org/software/idr) — Jaccard as peak-similarity standard; IDR as replicate-only tool
+- [GffCompare (CCB JHU)](https://ccb.jhu.edu/software/stringtie/gffcompare.shtml), [GFF Utilities paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC7222033) — sensitivity/precision/F1 at nucleotide/exon/gene levels for gene-prediction evaluation
+- [pyGenomeTracks docs](https://pygenometracks.readthedocs.io), [Bioinformatics paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC8058774) — stacked track+gene figure standard
+- [ChromBPNet preprint](https://www.biorxiv.org/content/10.1101/2024.12.25.630221v4.full), [Enformer usage Colab](https://github.com/google-deepmind/deepmind-research/blob/master/enformer/enformer-usage.ipynb), [AlphaGenome paper](https://pmc.ncbi.nlm.nih.gov/articles/PMC12851941) — per-track correlation + side-by-side track presentation conventions
+- Upstream PlantHelixSeek (HIGH for pipeline parameters, fetched from the repo's own READMEs): [zhangtaolab/PlantHelixSeek](https://github.com/zhangtaolab/PlantHelixSeek) (`scripts/cis_regulatory`, `scripts/gene_annotation`), HF model cards [PlantHelixSeek](https://huggingface.co/zhangtaolab/PlantHelixSeek), [PlantHelixSeek-CRE](https://huggingface.co/zhangtaolab/PlantHelixSeek-CRE), [PlantHelixSeek-Anno](https://huggingface.co/zhangtaolab/PlantHelixSeek-Anno)
 
 ---
-*Feature research for: pytest coverage hardening of a Python ML library*
-*Researched: 2026-09-29*
+*Feature research for: DNALLM v1.1 — example execution testing + PlantHelixSeek showcase examples*
+*Researched: 2026-10-01*

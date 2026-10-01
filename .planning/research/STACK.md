@@ -1,218 +1,161 @@
 # Stack Research
 
-**Domain:** Test coverage measurement and >90% CI enforcement for a Python ML library (pytest ecosystem)
-**Researched:** 2026-09-29
-**Confidence:** HIGH (versions and config semantics verified against official docs + PyPI registry + local empirical runs on the exact installed toolchain)
+**Domain:** Example-execution testing (real-model .ipynb/marimo execution under pytest) + genomics track I/O and visualization for PlantHelixSeek-CRE/-Anno showcase notebooks, on an existing pytest/torch/HF Python toolkit
+**Researched:** 2026-10-01
+**Confidence:** MEDIUM overall — every recommendation is cross-verified against the installed venv (deterministic local introspection) AND official docs/PyPI JSON; the GSD source-hierarchy seam assigns LOW to single-channel webfetch claims and MEDIUM to websearch-verified ones, so web-only items are flagged inline. Nothing below rests on training-data recall alone.
 
-## Context Snapshot (what exists today, verified)
-
-- `.venv` already runs the current stack: **pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, pytest-asyncio 1.4.0, pytest-timeout 2.4.0** (with pytest-progress). CI resolves the same versions because floors are loose.
-- `pyproject.toml` has **no `[tool.coverage.*]` section at all** and no `.coveragerc`; CI passes `--cov=dnallm` ad hoc with no threshold.
-- CI coverage step uploads to **`codecov/codecov-action@v3`** — that action major is dead on current runners (Node-24 mandate since 2026-06-16; Node 20 removed 2026-09-16). It must be bumped or dropped.
-- CI runs `pytest tests/ -m "not slow"` — the explicit path arg **overrides `testpaths`**, so the packaged suite `dnallm/mcp/tests/` never runs in CI today.
-- Root `conftest.py` registers an `atexit` handler calling `os._exit(0)`; `pyproject.toml [tool.pytest.ini_options]` uses `--strict-markers --strict-config` in `addopts`.
+**Scope guard:** the pre-validated stack (pytest 8.4+/pytest-cov/pytest-timeout/pytest-asyncio, markers, torch 2.11 cu130, transformers 4.49–5.x compat, HF/ModelScope loading, `notebook` extra, self-hosted `dnallm-nightly` GPU runner) is NOT re-researched. This file covers only additions for the three new capabilities.
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (new capabilities)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| coverage.py (`coverage[toml]`) | 7.16.2 (floor `>=7.10.6`) | Measurement engine, config, omit policy, subprocess patches | De-facto standard; already the engine under pytest-cov. 7.10 added the `patch = subprocess/_exit/execv/fork` options that replace pytest-cov's removed `.pth` mechanism; 7.16.2 is the current release (2026-09-27). Supports Py 3.10–3.15 incl. free-threading. |
-| pytest-cov | 7.1.0 (floor `>=7.0`) | pytest integration, `--cov-*` flags, threshold gate | 7.x is required for coverage `patch`-option interop (6.x's `.pth` subprocess support was removed in 7.0.0, 2025-09-09). 7.1.0 (2026-03-21) fixed the `--cov-fail-under` total-computation inconsistency (issue #641) so the gate result no longer depends on which reports are enabled. **Empirically verified locally:** `fail_under` in `[tool.coverage.report]` is enforced with no CLI flag. |
-| pytest | 9.1.1 (floor `>=8.4`) | Runner | 9.1.0 (2026-06-13) fixed a 9.0 regression where `--strict-markers`/`--strict-config` set via `addopts` were **silently ignored** — dnallm uses both in `addopts`, so ≥9.1 restores real enforcement (8.3.5 floor also works; CI already resolves 9.1.1). Do NOT adopt the new native `[tool.pytest]` TOML table — it cannot be combined with the existing `[tool.pytest.ini_options]`. |
-| pytest-asyncio | 1.4.0 (floor `>=1.0`) | async MCP test support | 1.x requires `pytest>=8.4,<10` (Py9-compatible) and keeps `asyncio_mode=auto` (dnallm's mode). Raise the floor from `>=0.21.1` so a fresh resolve can never pair old 0.x asyncio with Py9. |
-| pytest-timeout | 2.4.0 (pin `>=2.3.1,<2.5`) | per-test timeout (300 s) | 2.4.0 (2025-05-05) is the latest usable release; 2.5.0 (Aug 2026) was **yanked** ("accidental breaking change"). Signal method (default on Linux) survives timeouts via `pytest.fail()` so coverage data still gets written. |
-| GitHub Actions `actions/cache@v4` | v4 | HF model cache for the slow-test gate run | Standard pattern for `~/.cache/huggingface`; 10 GB/repo LRU limit is fine for dnallm's small slow-test models (DNA_bert_4, DialoGPT-small class). |
-| codecov/codecov-action | **v7** (v7.1.1) — or drop entirely | optional trend reporting only | v3 is EOL on current runners (Node 24 mandate). If kept, bump `@v3 → @v7` and keep `fail_ci_if_error: false`; the **gate itself must come from pytest-cov's exit code in the job, never from Codecov**. |
+| **nbclient** | 0.11.0 (latest; already installed) | Execute the ~21 `.ipynb` files as pytest tests | It *is* the execution engine under both `nbconvert --execute` and nbmake — use it directly as a library (in-scope per the no-new-test-frameworks constraint). Verified on the installed dist: `NotebookClient` traitlets `allow_errors=False` (raises `CellExecutionError` on the first failing cell = fail-loud, exactly the milestone's "real execution finds real errors" goal), `timeout=None`, `kernel_name=''` (falls back to notebook metadata → `python3`), `startup_timeout=60`. `nbclient.execute(nb, cwd=...)` convenience exists; `resources={"metadata": {"path": nb_dir}}` sets the kernel cwd so notebooks that load `./inference_config.yaml` relative to their own directory work (verified in installed `client.py:431,535`). |
+| **marimo `export html` CLI** | 0.25.0 (latest == installed) | Headless execution of the 3 marimo apps | `marimo export html app.py -o out.html` **runs** the app headlessly (help text: "Run a notebook and export it as an HTML file" — verified locally on the installed CLI). Subprocess invocation from a pytest test gives full engine semantics (marimo runtime, UI elements, app-level `--sandbox`/args), kernel isolation mirroring the nbclient approach, exit-code-based assertion, and an HTML artifact for debugging. `marimo export session` also executes (snapshots; `--continue-on-error` default). Zero new dependencies — marimo is already in the `notebook` extra. |
+| **pyBigWig** | 0.3.26 (latest) | Write BigWig signal tracks from sliding-window CRE scores | The standard write-capable bigWig library (C extension, MIT). **Verified wheel coverage:** manylinux_2_27/2_28 x86_64 wheels for cp310–cp313 on PyPI — no compiler needed on the Linux x86_64 GPU runner. Write API per official README: `bw = pyBigWig.open(p,"w")` → `bw.addHeader([("Chr1", len), ...])` (ordered chrom/length list) → `bw.addEntries(chroms, starts, ends=..., values=...)` (bedGraph-style; sorted order required; `validate=True` default) → `bw.close()` (builds index + up-to-10 zoom levels; `maxZooms=0` produces an IGV-breaking intervals-only file — do not use). numpy arrays accepted for `values`. |
+| **pyfastx** | 2.3.1 (already in `dev` extra) | FASTA region slicing for Arabidopsis genome windows | Already the project's FASTA library (the committed `.fxi` index in `example/notebooks/finetune_generation/` proves the precedent). C extension + sqlite index → indexed random access into the (gitignored) full TAIR10 FASTA without loading it. Killer property for this milestone: `fa.fetch(name, (start, end))` is **1-based inclusive — identical to GFF3 coordinates** — so region extraction and GFF3 comparison share one coordinate convention with no off-by-one translation. `strand="-"` gives reverse complement in the same call. |
+| **stdlib GFF3 reader/writer + interval math** | Python stdlib (no version) | Write predicted Anno gene models; parse predicted + TAIR10 truth; compute agreement | GFF3 is nine tab-separated columns with 1-based inclusive coords, `##gff-version 3` first line, percent-encoded attributes (spec v1.26 verified — see Sources). The showcase scale is ≤200 kb loci → tens-to-hundreds of features; a ~60-line strict reader (dataclass + `str.split("\t", 8)`) plus sorted-list/bisect overlap math does prediction-vs-truth comparison with **zero dependencies**, and the identical parser feeds the agreement metrics *and* the track rendering (see Track Display). Writing is f-string formatting. gffutils/BCBio.GFF add dependency weight for queries this scale never needs. |
+| **altair + vl-convert-python (already present)** | altair 6.3.0 / vl-convert-python 1.9.0 | Static track + gene-model figures inside the showcase notebooks | **Zero new dependency — verified:** dnallm depends on `altair[all]`, whose `all` extra pins `vl-convert-python>=1.9.0`; `vl_convert` 1.9.0 is importable in the dev venv right now, and `dnallm/inference/plot.py:380` already calls `chart.save(...)` — the headless-save code path is already exercised by the suite. `chart.save("track.png")` produces `image/png` outputs that survive nbconvert→HTML and the mkdocs-jupyter docs mirror deterministically (Rust renderer, no browser, no kernel comm). |
+| **ollama (runner service — not a pip package)** | current stable, via official `install.sh` | Local LLM backend for the 2 MCP client notebooks | One-time runner bootstrap: `curl -fsSL https://ollama.com/install.sh | sh` installs the `ollama.service` systemd unit listening on `127.0.0.1:11434`. Verified against official docs: OpenAI-compatible base URL `http://localhost:11434/v1/` supports `/v1/chat/completions` and `/v1/models` with an ignored-but-required API key — exactly the `OllamaProvider(base_url="http://localhost:11434/v1")` + `OpenAIChatModel` path the pydantic-ai notebook already uses. Model provisioning: `ollama pull qwen3.6:latest` (the tag both notebooks reference) or `POST /api/pull`; readiness probe `curl -sf localhost:11434/api/tags`. Keep it out of pyproject — it is runner infrastructure, like the HF cache. |
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| pytest-xdist | 3.8.0 (`>=3.8`) | parallelize the slow gated run (`-n auto`) | **Optional**, only if the full-suite gate run proves unacceptably slow. pytest-cov documents full xdist support (workers need pytest-cov installed — they have it, same venv). Expect modest wins: the run is network/download-bound, and HF's file locks make concurrent first-fetches safe but serial-friendlier. |
-| `hf_transfer` (HF_HUB_ENABLE_HF_TRANSFER=1) | latest | fast model downloads in CI | Optional speed-up for the gated job's first (cold-cache) run. |
-| diff-cover | latest | PR-diff coverage reporting | **Defer.** Nice-to-have after the 90% gate is stable; not needed for the milestone. |
+| **ipykernel** | 7.3.0 installed (latest 7.4.0) | Provides the `python3` kernel nbclient launches | Already transitive via the `jupyter` metapackage in the `notebook` extra. The venv ships its kernelspec at `{sys.prefix}/share/jupyter/kernels/python3` with `argv: ["python", ...]` — correct as long as the venv `bin` is on PATH (CI's `uv run` satisfies this; assert in the test if paranoid). No new pin needed; 7.4.0 requires Python ≥3.11, harmless for the 3.11–3.13 matrix (uv resolves 6.x for 3.10). |
+| **langchain-ollama** | 1.1.0 | The actually-missing import of `mcp_client_ollama_langchain_agents.ipynb` | The notebook currently shell-magics `!uv pip install -U langchain-ollama` in a cell (side-effecting, upgrade-mutating, network-dependent — hostile to hermetic CI). Add `langchain-ollama>=1.1.0` to the `mcp` extra (deps: `langchain-core>=1.2.21,<2` + `ollama>=0.6.1,<1` — compatible with installed langchain 1.4.3) and repair the notebook cell to a plain import. This is the concrete "missing mcp extra" repair (WR-09-adjacent). |
+| **pytest-timeout (existing)** | 2.4.0 | Per-test timeout override for slow execution tests | Verified: `pytest.mark.timeout` marker is available in the installed 2.4.0. The global `--timeout=300` stays; real-model notebook tests get `@pytest.mark.timeout(3600)` (signal method works on the Linux runner). This replaces nbmake's `--nbmake-timeout` entirely. |
+| openai (already installed, 3.20.0) | — | Readiness/assertion calls against ollama's `/v1` endpoint in tests | Only if a test wants to assert the LLM actually answered; plain `curl` in the workflow or stdlib `urllib` on `/api/tags` suffices for the skip-guard. Do not add the `ollama` pip package — no example imports it. |
 
-### Development Tools
+### Development / Runner Tools (environment, not packages)
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| `coverage report` / `pytest --cov-report=term-missing` | per-module gap report driving test-writing order | Add `skip_covered = true` so the report shows only gaps. |
-| `pytest --cov-context=test` | records which test covered which line | Use during the audit phase to find dead-weight tests and orphan code; slight runtime cost, keep out of the gate command. |
-| `coverage json` / `--cov-report=xml` | machine-readable totals | xml only if Codecov is kept. |
+| `MPLBACKEND=Agg` + `MPLCONFIGDIR=$(mktemp -d)` | Deterministic headless matplotlib | Official docs: Agg is the non-interactive backend auto-selected on Linux without X/Wayland; `MPLBACKEND` overrides any matplotlibrc; isolated `MPLCONFIGDIR` avoids font-cache races/writes in `$HOME`. Set in the execution-test fixture (and/or nightly workflow env). matplotlib is 3.11.2 here — no pin interaction. |
+| ollama systemd drop-in | Persistent, re-install-safe model cache | `sudo systemctl edit ollama.service` → `[Service] Environment="OLLAMA_MODELS=/opt/cache/ollama"` then `daemon-reload && systemctl restart ollama`. Direct unit edits are overwritten by re-running `install.sh`; drop-ins are the documented-safe mechanism. Runner-ops memory note applies: restart services with sanitized env (`env -i`) on `dnallm-nightly`. |
+| Typed skip guard for ollama | Keep the skip-audit gate honest | Execution tests for the 2 MCP notebooks gate on `curl -sf localhost:11434/api/tags` and otherwise skip with the project's typed-prefix discipline (e.g. `network-unavailable: ollama service not reachable`) and an `expected_skips.yaml` entry — matching the existing census machinery. Same pattern if VRAM contention with torch models forces ordering constraints. |
 
-## The Exact Configuration (prescriptive)
+## Track Display for PlantHelixSeek Notebooks (owner-added scope)
 
-Add to `pyproject.toml` (there is no `.coveragerc`; keep coverage config co-located with pytest config):
+**Hard gate (owner requirement): the chosen option must support GFF3** — the Anno pipeline outputs GFF3 gene models and truth is TAIR10 GFF3; side-by-side gene-model display is the core showcase.
 
-```toml
-[tool.coverage.run]
-source = ["dnallm"]
-branch = false                      # line coverage for this gate — see rationale below
-relative_files = true               # stable paths across CI/dev; requires `source` in config (it is)
-sigterm = true                      # save .coverage data if the job is cancelled/SIGTERMed
-omit = [
-    # vendored upstream code — mirrors the existing ruff/mypy exclusion policy
-    "dnallm/tasks/metrics/*",                      # nested: metrics/<name>/<name>.py — glob verified recursive
-    "dnallm/models/special/enformer_model/*",
-    # adapters that cannot import in CI (Megatron-LM / Ascend NPU toolchains)
-    "dnallm/finetune/megatron.py",
-    "dnallm/models/special/mamba_npu.py",
-    # packaged test files are tests, not shipped library surface
-    "dnallm/mcp/tests/*",
-]
-# patch = _exit                     # ESCALATION ONLY: root conftest.py calls os._exit(0) in atexit;
-#                                   # uncomment if child-process data goes missing (see Pitfalls)
+Evaluation axes: (a) headless execution under nbclient without hanging; (b) rendered result survives nbconvert→HTML into the mkdocs docs mirror (mkdocs-jupyter); (c) dependency footprint; (d) license compat (dnallm is MIT); (e) interactive value live vs static publication value.
 
-[tool.coverage.report]
-fail_under = 90                     # enforced by pytest-cov even without --cov-fail-under (verified)
-show_missing = true                 # per-module gap report = the audit worklist
-skip_covered = true                 # hide 100% files from the gap report
-precision = 1
-exclude_also = [                    # append-only: keeps the `pragma: no cover` default intact
-    "if TYPE_CHECKING:",
-    "if __name__ == .__main__.:",
-    "@(abc\\.)?abstractmethod",
-    "raise NotImplementedError",
-]
-```
+| Option | GFF3 (gate) | (a) Headless nbclient | (b) mkdocs-mirror survival | (c) Footprint | (d) License | (e) Value | Verdict |
+|---|---|---|---|---|
+| **Static altair from parsed GFF3** (altair 6.3 + vl-convert 1.9, both already installed) | **By construction** — the notebook must parse predicted + TAIR10 GFF3 anyway for the agreement metrics; the same DataFrame draws boxes/arrows | Deterministic: pure Python + Rust vl-convert, no browser, no kernel comm, no hang surface | **Yes** — `chart.save("png")` embeds `image/png`, rendered by any template incl. mkdocs-jupyter | **Zero new deps** | MIT-compatible stack | Interactive in live Jupyter (altair tooltips/zoom), static in docs | **RECOMMENDED PRIMARY** |
+| igv-notebook 0.6.2 (igv.js 3.1.4) | Native — `format: "gff3"` annotation tracks; tabix `.tbi` indexing strongly recommended for anything nontrivial (MEDIUM, websearch-verified) | Unverified — README has no headless/CI guidance; emits frontend JS with no browser present | **No** — `to_svg()` is documented "Jupyter Notebook only" (not JupyterLab); widget/JS output does not survive nbconvert→HTML into the mirror | Light (ipykernel/ipython/requests, MIT) | MIT | Best-in-class interactivity live | **Optional interactive add-on, OUTSIDE gated cells** |
+| jbrowse-anywidget 0.3.0 | Native — bigWig + tabix-GFF3 + DataFrame tracks | Not pytest-proven — README itself: "pytest never opens one"; their headless runner needs puppeteer + a sibling jbrowse-components checkout | No — GPU anywidget needs a live widget frontend | **Not on PyPI** (verified — PyPI lookup fails); git-only `pip install jbrowse-anywidget @ git+...` | Apache-2.0 | Highest (GPU view, region sync) | **RULED OUT this milestone** — no PyPI pin possible = CI non-reproducible; labeled Prototype |
+| pyGenomeTracks 3.9 | **Fails the gate as documented** — track list says "bed/gtf", GFF3 not documented; needs a GFF3→GTF/bed12 conversion step | Yes (matplotlib-based, CI-proven in the community) | Yes (PNG/PDF/SVG) | Heavy: `matplotlib<3.9` pin (**hard conflict** with installed 3.11.2), pysam, hicmatrix, bx-python, pybedtools, gffutils + **external bedtools binary since 3.5** (verified absent from the runner PATH) | **GPL-3.0** — real contamination concern for an MIT project's published extras | Publication-grade static tracks (the field's standard look) | **RULED OUT** — GPL + matplotlib pin + bedtools binary + GFF3 conversion friction |
 
-Notes on deliberate omissions from `[tool.coverage.run]`:
+**Recommendation: primary = static altair rendering; optional add-on = igv-notebook, only in cells excluded from gated execution.**
 
-- **Do not set `parallel`** — pytest-cov's own docs: pointless with pytest-cov (it manages combining internally, including xdist) unless you also run `coverage` standalone.
-- **Do not set `concurrency`** — default `["thread"]` is correct for the current suite. Escalation recipe if HF-Trainer subprocess tests show phantom misses: `concurrency = ["thread", "multiprocessing"]` **plus** `sigterm = true` (already set); children must terminate cleanly or their data is lost. coverage 7.16 tightened option-combination checks around `multiprocessing`, so add it only with evidence.
-- **Do not set `patch` initially** — only if empirically needed (see Pitfalls: os._exit).
-
-### Local / CI commands
-
-```bash
-# Audit gap report (dev): term-missing + which-test contexts
-pytest --cov --cov-context=test --cov-report=term-missing
-
-# The gate (CI + dev parity): bare --cov honors config `source` (verified); threshold from config
-pytest --cov --cov-report=term-missing --cov-report=xml
-```
-
-`--cov` with no value plus `source` in config was verified to measure exactly `dnallm` and honor `fail_under` (local run printed `FAIL Required test coverage of 90.0% not reached` and failed). Put the threshold **only** in `fail_under` — a duplicated `--cov-fail-under=90` on the CLI is a second place to drift.
-
-### CI gate pattern (`.github/workflows/ci.yml`)
-
-Add a dedicated `coverage` job; leave the existing fast matrix untouched:
-
-```yaml
-coverage:
-  runs-on: ubuntu-latest
-  timeout-minutes: 120
-  env:
-    HF_HOME: /home/runner/.cache/huggingface     # pin explicitly; deterministic cache path
-    HF_HUB_DISABLE_TELEMETRY: "1"
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v7
-      with: { python-version: "3.12" }           # one environment only — the gate is not a matrix concern
-    - name: Cache HF models
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/huggingface
-        key: hf-models-${{ hashFiles('.github/models.lock') }}   # model ids + revisions, NOT github.sha
-        restore-keys: hf-models-
-    # ... uv install -e ".[base]" (cpu torch) ...
-    - name: Coverage gate (full suite incl. slow)
-      run: pytest --cov --cov-report=term-missing --cov-report=xml   # exit != 0 if total < 90
-```
-
-Rules baked into this pattern:
-
-1. **Full suite, no path arg.** `pytest` (bare) so `testpaths = ["tests", "dnallm/mcp/tests"]` applies. The current `pytest tests/` habit silently skips `dnallm/mcp/tests` — and once coverage measures `dnallm`, any measured-but-never-run file counts 0% (mitigated for `dnallm/mcp/tests` by the omit, but the full suite must run anyway for honest coverage).
-2. **Gate from the pytest exit code**, in-job, on every push/PR to dev/main. Never delegate enforcement to Codecov.
-3. **Model cache keyed by a `models.lock` file** (list of `repo_id@revision` the slow tests download) — hits across runs; `restore-keys` prefix gives partial hits while models evolve. Optional variant: pre-download in a dedicated step via `hf download` and set `HF_HUB_OFFLINE=1` for the test run to prove the cache is warm.
-4. **Codecov step:** bump `codecov/codecov-action@v3 → @v7` (keep `fail_ci_if_error: false`) or delete it. Reporting only.
-
-### Coverage of network/GPU-dependent paths (policy)
-
-- **Network (`slow`) tests:** run them in the gated job (owner decision). Keep the existing `pytest.skip(...)`-on-connection-error pattern in real-model tests, but the audit must count how often those skips actually fire — a skip storm silently shrinks the exercised denominator (files still count via import, but their deeper code paths don't). HF cache makes the downloads reliable after first warm.
-- **GPU/CUDA-present branches:** CPU CI covers the CUDA-absent branch for free. For CUDA-present logic, prefer mock-based tests (the existing `tests/utils/test_cuda_compat.py` pattern) over pragmas. Reserve `# pragma: no cover` for genuinely unreachable-on-CI hardware/import guards (NPU, `mamba-ssm`, `flash_attn`, Megatron imports) — treat pragmas as a budget: every one is a permanent exclusion from the 90% denominator and needs a comment saying why.
-- **Import-time compat shims** (`dnallm/utils/transformers_compat.py`, registry imports): these execute at collection/import time, so plain test runs cover them — but across the transformers 4.49–5.x span only the installed version is covered. Accept that; do not spin up a second transformers matrix for coverage.
+Rationale: the notebook must already hold predicted-vs-truth GFF3 as DataFrames to compute the "substantially consistent" agreement asserts — rendering gene models (rect marks for genes/exons, arrow/text for strand) and per-bin CRE scores from those DataFrames is incremental code, not a new subsystem. Side-by-side tracks are two `vconcat` charts sharing the x-scale (truth on top, prediction below). The BigWig + GFF3 **files** remain the interchange artifacts for users who want a real genome browser — the visualization is a view, not the product. If interactive browsing is wanted for demos, add an igv-notebook appendix cell (or a companion non-executed markdown snippet) referencing the same BigWig/GFF3 outputs; do not put it in the CI-gated path, and expect tabix-indexed (`bgzip` + `tabix -p gff`) files if it loads the full truth track. Re-evaluate jbrowse-anywidget when it lands on PyPI with a stable tag.
 
 ## Installation
 
 ```bash
-# dev/test extra floors (pyproject.toml [project.optional-dependencies].test) — update to:
-test = [
-    "pytest>=8.4",
-    "pytest-asyncio>=1.0",
-    "pytest-cov>=7.0",              # was >=6.0.0; 7.x required for coverage patch interop
-    "pytest-progress>=0.1.0",
-    "pytest-timeout>=2.3.1,<2.5",   # 2.5.0 yanked
-    "coverage[toml]>=7.10.6",       # implied by pytest-cov 7, made explicit; brings the `patch` options
+# pyproject.toml changes (extras only — no new frameworks, no new runners)
+[project.optional-dependencies]
+notebook = [
+    "jupyter>=1.1.1",
+    "marimo>=0.16.3",
+    "nbclient>=0.10",                      # ADD: make the (today transitive) dep explicit; tests import it
 ]
-# Optional, only if the gate run is too slow:
-#   "pytest-xdist>=3.8",
+mcp = [
+    # ... existing ...
+    "langchain-ollama>=1.1.0",             # ADD: import used by mcp_client_ollama_langchain_agents.ipynb
+]
+dev = [
+    # ... existing ...
+    "pyBigWig>=0.3.26; platform_system != 'Windows'",   # ADD: precedent = pybedtools marker;
+                                                          # wheels are linux x86_64 only (cp310-313)
+]
+
+# One-time GPU-runner bootstrap (NOT pyproject — runner infrastructure)
+curl -fsSL https://ollama.com/install.sh | sh
+sudo systemctl edit ollama.service        # [Service] Environment="OLLAMA_MODELS=/opt/cache/ollama"
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+ollama pull qwen3.6:latest                # tag referenced by both MCP notebooks
 ```
+
+Where each addition lands (quality-gate ask): `nbclient` → `notebook` (used by tests via the dev→notebook chain, but it is a notebook-runtime lib); `pyBigWig` → `dev` (bio tooling lives there per pyfastx/pybedtools precedent; needed at notebook runtime on the runner, which installs dev); `langchain-ollama` → `mcp` (it is the MCP-example import). Nothing goes into `test` — the execution harness is plain pytest + existing plugins.
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| pytest-cov 7 + `[tool.coverage]` config | `coverage run -m pytest` + `coverage combine/report` | Only if subprocess measurement proves stubborn under pytest-cov 7's new patch system — then a `coverage run` wrapper with `patch = subprocess` gives full control at the cost of a second command shape. |
-| `fail_under` in config (exit-code gate in-job) | Codecov `coverage:` status gate | Never for enforcement here — adds an external SPOF and token management; the project already sets `fail_ci_if_error: false`. Codecov stays optional for trend UI. |
-| Dedicated `coverage` job (full suite) | Gate inside the existing 3×2 matrix | Matrix-gating makes 6 slow network runs per PR and couples the gate to every env; a single dedicated job is cheaper and the matrix keeps guarding pass/fail per env. |
-| actions/cache@v4 for HF models | Pre-baked container image / HF_HUB_OFFLINE warm-cache stage | If cache-miss flakiness becomes chronic: build a weekly image job that pre-downloads `models.lock` and have the gate job run `FROM` it / restore from it. |
-| pytest-xdist (optional) | Serial full-suite run | Default serial — network-bound tests gain little and first-fetch races are safer serial. Adopt `-n auto` only with measured wall-time pain. |
+| nbclient as a library | **nbmake / pytest-nbmake 1.5.5** (`pytest --nbmake --nbmake-timeout=N`) | If you wanted zero harness code and per-cell timeouts from a flag. Rejected: it is a pytest *plugin* adding collection semantics on top of a suite that already has strict-markers, a global `--timeout=300`, typed-skip audits, and a coverage denominator — duplicate timeout machinery and a second execution-config surface for no capability nbclient lacks. |
+| nbclient as a library | **`nbconvert --execute` CLI** (nbconvert 7.17.1 installed) | nbconvert's `--execute` is a subprocess CLI around the very same `NotebookClient`; pytest sees only a process exit code, stack traces are buried in converted-notebook output, and per-notebook cwd/resources control is clumsier. Use nbconvert only for *rendering* executed notebooks to HTML for the docs mirror. |
+| nbclient as a library | **papermill 2.7.0** | Parametrized notebook *pipelines* (parameters cell, cloud I/O). No parametrization need here; adds a dependency for nothing. |
+| `marimo export html` subprocess | **In-process `marimo.App.run(defs=None)`** (signature verified on installed 0.25.0: returns `(outputs, defs)`) | If a test must assert on specific marimo defs, `App.run()` after importing the app module works and skips a subprocess. Primary stays the CLI because it exercises marimo's own full runtime path (UI elements, app wiring) and is the documented headless command; the official pytest guide documents only reactive test cells, not `App.run` — so in-process is the less-proven route. |
+| stdlib GFF3 handling | **gffutils 0.14** (pure Python; pulls pyfaidx, argh, argcomplete, simplejson) | If later phases need a sqlite `FeatureDB` with interval queries over whole-genome annotations. At ≤200 kb loci it is dependency weight for nothing. |
+| stdlib GFF3 handling | **BCBio.GFF / bcbio-gff 0.7.1** (pure Python parser/writer) | A reasonable middle ground if hand-parsing is rejected in review; still an external dep for a TSV. |
+| pyfastx | **pyfaidx 0.9.0.4** (pure Python, samtools-compatible `.fai`, 0-based python slicing / 1-based `get_seq`) | If a no-C-extension constraint ever appears (pyfaidx compiles nothing). Otherwise redundant with an existing, already-indexed dependency. |
+| runner ollama service | **`ollama` pip package 0.6.3** | Only if Python-level orchestration of pulls/chats is wanted; the notebooks use OpenAI-compat HTTP + langchain-ollama, and the workflow can `curl`/`ollama pull`. |
+| no action | **`altair_saver`** | Deprecated upstream since altair 5; vl-convert-python (already installed) supersedes it. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `branch = true` (now) | Branch coverage typically reads 5–10 points lower than line coverage; enabling it on a codebase going 0%→90% enforcement moves the goalposts and forces hundreds of extra branch tests before the gate can ever pass. | Line coverage for the 90% gate (matches PROJECT.md's denominator decision). After the gate is green and stable, add `branch = true` as a separate ratchet milestone. |
-| `exclude_lines = [...]` | It **replaces** the default exclusion set — you silently lose `pragma: no cover` unless you re-supply every default regex. | `exclude_also = [...]` (coverage ≥7.2): appends, keeping defaults. |
-| `codecov/codecov-action@v3` | Node-16 era; GitHub forced Node 20 (2025) then Node 24 (2026-06-16) and removed Node 20 from runners 2026-09-16 — the v3 step fails/warns on current `ubuntu-latest`. | Bump to `@v7` for reporting, or drop Codecov; enforce via pytest-cov exit code. |
-| pytest-cov 6.x with old `.pth`-based subprocess expectations | 6.x's always-on `.pth` subprocess measurement was **removed in 7.0.0**; staying on 6.x blocks the `coverage>=7.10.6` patch system and any future subprocess needs. | pytest-cov ≥7.0 + coverage `[run] patch` options if subprocess data is needed. |
-| `--cov-fail-under=90` on the CLI | Two sources of truth (CLI + config) drift; also invites per-job thresholds that diverge from local runs. | `fail_under = 90` in `[tool.coverage.report]` only — verified enforced under bare `--cov`. |
-| Manual `.pth` / `COVERAGE_PROCESS_START` wiring | Legacy recipe superseded by coverage's `patch` options; easy to leave half-configured. | `[run] patch = subprocess` / `patch = _exit` when needed. |
-| `parallel = true` in `[tool.coverage.run]` | Explicitly documented as pointless under pytest-cov, which manages data files/combining itself (including xdist). | Leave unset. |
-| pytest-timeout 2.5.0 | Yanked from PyPI ("accidental breaking change"). | Pin `>=2.3.1,<2.5`. |
-| `thread` timeout method | Kills the whole pytest process on timeout → fixture teardown lost and, worse, coverage data for the run at risk. | Keep default `signal` (SIGALRM) on Linux runners; the process survives via `pytest.fail()`. |
-| New assertion/property/mutation frameworks (Hypothesis, mutmut, cosmic-ray) | PROJECT.md constraint: no new test frameworks; the milestone is audit + coverage of the existing 464-test suite. | Plain assert + existing mock fixtures; revisit mutation testing only after the gate is green. |
-| Native `[tool.pytest]` TOML config (pytest 9) | Cannot be combined with the existing `[tool.pytest.ini_options]`; migrating buys nothing for this milestone. | Keep `[tool.pytest.ini_options]` as is. |
+| pyGenomeTracks as a dependency | GPL-3.0 in an MIT project's published extras; `matplotlib<3.9` pin conflicts with installed 3.11.2 (resolver downgrade would destabilize seaborn/logomaker/dnallm plots); requires external `bedtools` binary (absent from the runner, verified); GFF3 not a documented track type (needs GFF3→GTF/bed12 conversion) | altair static rendering; note in docs that our BigWig/BED/GFF3 outputs render fine in pyGenomeTracks for users who have it |
+| jbrowse-anywidget | Not on PyPI (git-only), labeled Prototype, no pytest-proven headless path, puppeteer + sibling checkout for its own runner | Watchlist; revisit on PyPI release. altair meanwhile |
+| igv-notebook in CI-gated cells | `to_svg()` classic-Notebook-only; output does not survive nbconvert→HTML/mkdocs mirror; no headless guarantees documented | Optional interactive appendix outside gated execution, pointing at the same output files |
+| nbmake/pytest-nbmake | New pytest plugin semantics + duplicate timeout machinery; adds nothing over direct nbclient | nbclient called from parametrized pytest tests |
+| `ollama` pip client | Nothing imports it; REST/OpenAI-compat endpoints already cover readiness + chat | curl / openai client / langchain-ollama |
+| Kernel auto-resolution assumptions in CI | The venv `python3` kernelspec uses bare `python` from PATH; a workflow that runs pytest without the venv on PATH would launch a *different* interpreter's kernel | Ensure `uv run` (or explicit PATH) in the nightly job; optionally pass `kernel_name="python3"` and assert `jupyter kernelspec list` in-test |
+| `maxZooms=0` when writing BigWig | Produces an intervals-only file that breaks IGV and other zoom-dependent viewers | Default zoom levels (built on `close()`) |
+| Notebook cells that shell-install (`!uv pip install -U ...`) | Mutates the env mid-run, upgrades unrelated pins, needs network at cell-execution time | Declare deps in extras; repair the cell to a plain import |
 
 ## Stack Patterns by Variant
 
-**If subprocess coverage comes up short** (HF Trainer spawning dataloader workers / `multiprocessing` children that never report):
-- First diagnose: `pytest --cov ... && coverage debug data` to see which files have data.
-- Then escalate in this order: (1) `concurrency = ["thread", "multiprocessing"]` (keep `sigterm = true`); (2) `patch = subprocess` for `subprocess`/`os.system` children; (3) `patch = _exit` because the root `conftest.py` atexit handler calls `os._exit(0)`, which skips all cleanup — any child exiting that way loses its data without the patch.
-- Because: each layer fixes a distinct loss mechanism (wrong tracer concurrency vs unmeasured exec'd children vs abrupt exit), and enabling all preemptively adds measurement overhead and 7.16's stricter option checks.
+**If the job is the fast PR leg (`coverage-gate`, no GPU):**
+- Execution tests are `slow`-marked and deselected there (existing mechanism). Nothing new needed; pyBigWig/nbclient still install fine.
 
-**If the slow-test network flake rate makes the gate flaky:**
-- Warm the cache in a separate step (`hf download` each `models.lock` entry) then run tests with `HF_HUB_OFFLINE=1`; the job then fails loudly on a cold cache instead of hanging on the hub.
-- Because: it converts the flakiest dependency (network) into a cache-hit assertion.
+**If the job is the nightly GPU census (`coverage-nightly` on `dnallm-nightly`):**
+- Run execution tests with `@pytest.mark.timeout(3600)` overrides, `resources.metadata.path` set per notebook dir, `MPLBACKEND=Agg`, `MPLCONFIGDIR` tmp; HF models from the models.lock-keyed cache; ollama service pre-started with `qwen3.6:latest` pre-pulled into `OLLAMA_MODELS` cache; MCP server fixture bound to `:8000/mcp` for the 2 client notebooks.
+- Sequencing pitfall: ollama and torch models share GPU VRAM — run the 2 MCP notebooks after (or apart from) heavy model tests, or cap ollama parallelism.
 
-**If the full-suite gate run exceeds the job budget:**
-- Add pytest-xdist `-n auto --dist loadfile` (keeps each file's tests in one worker; friendly to module-scoped state), verify totals unchanged, then shrink `timeout-minutes`.
-- Because: `loadfile` minimizes cross-test interference in a suite written for serial execution.
+**If the platform is Windows (ungated matrix leg) or aarch64 Linux:**
+- `pyBigWig` is excluded by the `platform_system != 'Windows'` marker (no wheels → sdist would need MSVC+libcurl); execution tests are skipped there anyway (no GPU/no runner services). GFF3/FASTA/altair paths stay cross-platform.
+
+**If a notebook needs its executed form in the docs mirror:**
+- Execute with nbclient (in-place), then `nbconvert --to html` (or write the nbformat node) for the mirror; embedded `image/png` outputs from matplotlib/vl-convert render everywhere. Widget/JS outputs do not.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| pytest-cov 7.x | coverage[toml] >=7.10.6, pytest >=7, Py 3.9–3.14 | Hard floor on coverage 7.10.6 (7.1.0 changelog) — already satisfied by 7.16.2. |
-| pytest-asyncio 1.4.0 | pytest >=8.4,<10 | Py9-compatible; keeps `asyncio_mode=auto`. Floor bump from 0.21.1 recommended. |
-| pytest 9.1.x | pytest-timeout 2.4.0, pytest-xdist 3.8.0, pytest-cov 7.1.0, pytest-asyncio 1.4.0 | All verified co-installed in the repo venv right now. `--strict-*` via addopts needs ≥9.1 (9.0 regression) or 8.x. |
-| coverage 7.16.2 | Py 3.10–3.15; CI matrix 3.11/3.12/3.13 | sysmon core becomes default on Py 3.14+ (7.9.1+) — CI matrix tops out at 3.13, no action needed. |
-| transformers 4.49–5.x | orthogonal to the coverage stack | Only note: slow tests must not pin a transformers minor; coverage config is version-agnostic. |
+| pyBigWig 0.3.26 | Python 3.9–3.13 via manylinux_2_27/2_28 **x86_64 wheels** | No Windows/aarch64 wheels → platform marker mandatory; numpy support present (README-documented array `values`) — works under the matrix numpy 1.26.4/2.2.0 (C extension is numpy-version-tolerant via its own bindings; flagged MEDIUM — confirm in phase spike if the matrix pins bite) |
+| langchain-ollama 1.1.0 | langchain-core ≥1.2.21,<2 (installed langchain 1.4.3 OK); pulls `ollama` 0.6.x client | Python ≥3.10 — matches requires-python |
+| nbclient 0.10+ | Python ≥3.10; jupyter-client 8.x (installed 8.10.0) | No pinned ceiling needed; 0.11.0 is current |
+| ipykernel 7.4.0 | Python ≥3.11 | Matrix is 3.11–3.13 → fine; 3.10 users resolve 6.x via uv (library baseline unaffected) |
+| marimo 0.25.0 | Python ≥3.10 | `notebook` extra already `>=0.16.3`; runner installs latest — CLI surface verified on 0.25.0 |
+| vl-convert-python 1.9.0 | ships as `altair[all]`/`[save]` extra content | Already installed; Rust binary wheel, no browser/node needed |
+| pytest-timeout 2.4.0 marker | existing `--timeout=300` global | Per-test marker overrides upward for slow notebook tests (signal method on Linux) |
 
 ## Sources
 
-- coverage.py config reference — https://coverage.readthedocs.io/en/latest/config.html — run/report option defaults, `exclude_also` (HIGH, official docs)
-- coverage.py changelog — https://coverage.readthedocs.io/en/latest/changes.html — 7.16.2 current; `patch` options added 7.10.0; sysmon default 3.14+ (HIGH, official docs)
-- coverage.py subprocess support — https://coverage.readthedocs.io/en/latest/subprocess.html — `concurrency = multiprocessing` + `sigterm`, `patch = subprocess/_exit`, clean child termination requirement (HIGH, official docs)
-- pytest-cov docs (overview/config/changelog) — https://pytest-cov.readthedocs.io/en/latest/ — 7.1.0 current; `.pth` removal in 7.0.0; xdist support; `--cov-append`, `--cov-context` (HIGH, official docs + local empirical verification of `fail_under` pickup and bare `--cov` + config `source` on the installed 7.1.0)
-- PyPI registry JSON: pytest 9.1.1, pytest-asyncio 1.4.0 (`pytest>=8.4,<10`), pytest-xdist 3.8.0, pytest-timeout 2.4.0 (2.5.0 yanked) (HIGH, registry metadata)
-- pytest changelog — https://docs.pytest.org/en/stable/changelog.html — 9.0/9.1 breaking changes, strict-markers addopts fix, `[tool.pytest]` exclusivity (HIGH, official docs)
-- codecov-action releases — https://github.com/codecov/codecov-action/releases — v7.1.1 latest, v6+ Node 24 requirement, v5.5.5 mirror (MEDIUM, release page + news search; cross-checked)
-- HF hub environment/caching docs + community patterns — HF_HOME/HF_HUB_CACHE/HF_HUB_OFFLINE semantics, actions/cache@v4 `~/.cache/huggingface` pattern, 10 GB repo cache limit (MEDIUM, official env-var docs + multiple secondary sources)
+- PyPI JSON API (authoritative for versions/wheels; fetched 2026-10-01): nbclient 0.11.0, nbmake 1.5.5, pyBigWig 0.3.26 (+ wheel file list), gffutils 0.14 (+ requires_dist), bcbio-gff 0.7.1, pyfaidx 0.9.0.4, pyfastx 2.3.1, ollama 0.6.3, marimo 0.25.0, ipykernel 7.4.0, vl-convert-python 1.9.0, papermill 2.7.0, langchain-ollama 1.1.0, pygenometracks 3.9 (GPL + matplotlib<3.9 pin + pybedtools dep), igv-notebook 0.6.2 (MIT, ipykernel/ipython/requests), anywidget 0.11.0; jbrowse-anywidget **absent from PyPI** — HIGH (deterministic API check)
+- Local introspection of the installed venv (deterministic — HIGH): nbclient traits (`allow_errors=False`, `timeout=None`, `kernel_name=''`, `startup_timeout=60`) + `resources.metadata.path` handling (`client.py:431,535`) + in-place execute; marimo 0.25.0 CLI help (`export html` "Run a notebook…", `export session`, `run --headless`) + `App.run(defs=None)` signature; venv `share/jupyter/kernels/python3/kernel.json` content; vl-convert-python 1.9.0 importable; altair 6.3.0 `all`-extra contents; `pytest.mark.timeout` available; bedtools NOT on runner PATH; langchain-ollama NOT installed
+- pyBigWig official README (github.com/deeptools/pyBigWig) — write API, zoom levels, validate/sorted-order, close() semantics — MEDIUM (single webfetch channel; API additionally matches upstream deeptools docs convention)
+- altair saving-charts docs (altair-viz.github.io) — vl-convert requirement, ppi/scale_factor, deprecated altair_saver — MEDIUM
+- matplotlib backends FAQ (matplotlib.org, stable) — MPLBACKEND / Agg / matplotlib.use precedence — MEDIUM
+- jupyter_client kernels docs (jupyter-client.readthedocs.io, stable) — kernelspec search paths, kernel.json format — MEDIUM
+- GFF3 spec v1.26 (Sequence Ontology Specifications, gff3.md) — columns, 1-based inclusive, escaping, directives — MEDIUM
+- ollama official docs (docs.ollama.com/openai — verified; install/FAQ via docs.ollama.com/linux + /faq) — `curl -fsSL https://ollama.com/install.sh | sh`, systemd `ollama.service`, `OLLAMA_MODELS` drop-in pattern, `http://localhost:11434/v1/` endpoints — MEDIUM
+- marimo docs (docs.marimo.io/guides/testing/, /pytest/) — reactive test cells; no `App.run` documented there (CLI behavior verified locally instead) — MEDIUM
+- nbmake (github.com/treebeardtech/nbmake via websearch) — `--nbmake`, `--nbmake-timeout`, nbclient-based — MEDIUM
+- pyfastx README (github.com/lmdu/pyfastx) — `fetch` 1-based inclusive, strand, indexing — MEDIUM; pyfaidx README (github.com/mdshw5/pyfaidx) — pure Python, 0-based slicing — MEDIUM
+- pyGenomeTracks (github.com/deeptools/pyGenomeTracks README + readthedocs) — GPL-3.0, bedtools required since 3.5, pdf/png/svg outputs, "bed/gtf" track list — MEDIUM
+- igv-notebook README (github.com/igvteam/igv-notebook) — 0.6.2/igv.js 3.1.4, to_svg "Jupyter Notebook only", JupyterLab local-path restriction — MEDIUM; igv.js GFF3+tabix support via igv.js wiki/issues (websearch) — MEDIUM
+- jbrowse-anywidget README (github.com/GMOD/jbrowse-anywidget) — Prototype label, git-only install, puppeteer headless runner, "pytest never opens one", Apache-2.0 — MEDIUM
+
+Open items for phase-level spikes (flagged, not blockers): pyBigWig under matrix numpy 1.26.4 on the runner; whether marimo demo apps containing `mo.ui` elements behave identically under `marimo export html` vs live `marimo run` (spot-check one app first).
 
 ---
-*Stack research for: pytest coverage hardening of dnallm*
-*Researched: 2026-09-29*
+*Stack research for: example-execution testing + PlantHelixSeek genomics showcases*
+*Researched: 2026-10-01*
