@@ -45,8 +45,10 @@ def _prepare_classification_data(
                 if metric == "curve":
                     for label in metric_data:
                         _process_curve_data(metric_data[label], curves_data, label)
-                        curves_data["AUROC"][label] = metric_data[label]["AUROC"]
-                        curves_data["AUPRC"][label] = metric_data[label]["AUPRC"]
+                        if "AUROC" in metric_data[label]:
+                            curves_data["AUROC"][label] = metric_data[label]["AUROC"]
+                        if "AUPRC" in metric_data[label]:
+                            curves_data["AUPRC"][label] = metric_data[label]["AUPRC"]
                 else:
                     _add_bar_metric(bars_data, metric, metric_data)
         else:
