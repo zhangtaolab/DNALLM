@@ -10,8 +10,8 @@ The CI/CD pipeline automatically runs comprehensive tests and quality checks whe
 
 The workflows are triggered on:
 
-- **Push events** to `main`, `master`, and `develop` branches
-- **Pull request events** targeting `main`, `master`, and `develop` branches
+- **Push events** to `main`, `master`, and `dev` branches
+- **Pull request events** targeting `main`, `master`, and `dev` branches
 - **Scheduled nightly run** at 03:00 UTC — triggers the `coverage-nightly` full census (GitHub runs cron schedules only from the default branch)
 - **Manual workflow dispatch** — runs the nightly census on demand (e.g. for calibration)
 
@@ -30,15 +30,24 @@ The workflows are triggered on:
 1. **Code Checkout**: Clones the repository
 2. **Python Setup**: Installs specified Python version
 3. **UV Installation**: Installs the UV package manager
-4. **Dependency Installation**: Installs test and development dependencies
-5. **Code Quality Checks**:
-   - **Black**: Code formatting validation
-   - **isort**: Import sorting validation
-   - **Flake8**: Linting and style checking
-6. **Type Checking**: Runs MyPy for static type analysis
-7. **Test Execution**: Runs the fast test suite (`pytest -m "not slow" --cov`); the coverage total is enforced against the `fail_under = 90` floor from `pyproject.toml [tool.coverage.report]` — dropping below it fails the job
+4. **Dependency Installation**: Installs base dependencies plus the matrix NumPy pin
+5. **Code Quality Checks** (Ruff):
+   - **Ruff format**: formatting validation (`ruff format --check .`)
+   - **Ruff check**: linting (`ruff check . --statistics`)
+6. **Test Execution**: Runs the fast test suite (`pytest -m "not slow" --cov`); the coverage total is enforced against the `fail_under = 90` floor from `pyproject.toml [tool.coverage.report]` — dropping below it fails the job
+7. **Skip Audit**: `scripts/audit_skips.py` against the junit — unexpected skips fail the job
+8. **Exit-Code Canary**: an intentionally failing test must make pytest exit non-zero (guards against exit-code masking regressions)
+9. **Type Checking**: Runs MyPy for static type analysis (advisory — does not fail the job)
 
-### 2. CUDA Test Job (`test-cuda`)
+### 2. Windows Test Job (`test-windows`)
+
+**Purpose**: Windows platform leg for the fast suite — the package claims "Operating System :: OS Independent" and the primary dev machine is Windows 11. The compiled mamba kernels (`.[mamba]`) stay on the linux nightly box.
+
+**Runner**: `windows-latest` (push/PR only), Python 3.12, 60-minute timeout
+
+**Steps**: mirrors the `test` job — Ruff format/lint checks, fast tests with the coverage floor, skip audit, exit-code canary, advisory MyPy. Sets `PYTHONUTF8=1` (the root conftest prints emoji, which would crash non-UTF8 pipes on Windows) and disables git `autocrlf` so `ruff format` line endings match.
+
+### 3. CUDA Test Job (`test-cuda`)
 
 **Purpose**: GPU-enabled testing for CUDA-specific functionality.
 
@@ -55,36 +64,19 @@ The workflows are triggered on:
 5. **CUDA Dependency Installation**: Installs CUDA-specific dependencies
 6. **GPU Test Execution**: Runs tests excluding slow tests
 
-### 3. Mamba Test Job (`test-mamba`)
+### 4. Mamba Test Job (`test-mamba`)
 
-**Purpose**: Testing for Mamba-specific functionality and dependencies.
+**Purpose**: Compiles and exercises the native mamba-ssm/causal_conv1d CUDA kernels (the `.[mamba]` extra). Scheduled nightly / manual dispatch only — PR code (including forks) never runs on this runner.
 
-**Matrix Strategy**:
-- Python version: 3.11
-- Operating system: Ubuntu Latest
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.11, 180-minute timeout (the recurring kernel source build is the long pole)
 
 **Steps**:
 1. **Code Checkout**: Clones the repository
-2. **Python Setup**: Installs Python 3.11
-3. **UV Installation**: Installs the UV package manager
-4. **Mamba Dependency Installation**: Installs Mamba-specific dependencies
-5. **Mamba Test Execution**: Runs tests excluding slow tests
-
-### 4. Deploy Job (`deploy`)
-
-**Purpose**: Automatic documentation deployment to GitHub Pages.
-
-**Dependencies**: Requires all test jobs to pass
-**Trigger**: Only runs on `main` or `master` branch pushes
-
-**Steps**:
-1. **Code Checkout**: Clones the repository
-2. **Git Configuration**: Sets up GitHub Actions bot credentials
+2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
-4. **MkDocs Cache**: Configures caching for documentation dependencies
-5. **UV Installation**: Installs the UV package manager
-6. **Documentation Dependencies**: Installs MkDocs and related packages
-7. **Documentation Deployment**: Deploys to GitHub Pages
+4. **UV Installation**: Installs the UV package manager
+5. **Mamba Dependency Installation**: Installs `.[test,dev]` plus `.[mamba]` (kernel source build)
+6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
 
@@ -117,6 +109,22 @@ The workflows are triggered on:
 3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long network-bound tests (trainer, real-download, and MCP integration)
 4. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
 
+### 7. Deploy Job (`deploy`)
+
+**Purpose**: Automatic documentation deployment to GitHub Pages.
+
+**Dependencies**: `needs: [test, test-cuda]` — only those two jobs gate the deploy. `test-windows` and `coverage-gate` are **not** deploy gates. (`test-mamba` is deliberately excluded: it is event-gated to schedule/dispatch, and dependents of a skipped `needs` job are skipped, which would silently stop push deploys.)
+**Trigger**: Only runs on `main` or `master` branch pushes
+
+**Steps**:
+1. **Code Checkout**: Clones the repository
+2. **Git Configuration**: Sets up GitHub Actions bot credentials
+3. **Python Setup**: Installs Python 3.11
+4. **MkDocs Cache**: Configures caching for documentation dependencies
+5. **UV Installation**: Installs the UV package manager
+6. **Documentation Dependencies**: Installs MkDocs and related packages
+7. **Documentation Deployment**: Deploys to GitHub Pages
+
 ## 🧪 Testing Strategy
 
 ### Test Categories
@@ -137,10 +145,11 @@ The project uses pytest markers to categorize tests:
 
 ### Quality Standards
 
-- **Code Formatting**: Must pass Black formatting checks
-- **Import Organization**: Must pass isort import sorting
-- **Linting**: Must pass Flake8 style and complexity checks
-- **Type Safety**: Must pass MyPy type checking (with reasonable exceptions)
+- **Code Formatting**: Must pass `ruff format --check .` (ruff's Black-compatible formatter)
+- **Linting**: Must pass `ruff check .` (rule set configured in `pyproject.toml [tool.ruff.lint]`)
+- **Type Safety**: MyPy type checking runs in CI as an advisory step (it does not fail the job)
+
+Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy `.flake8` config.
 
 ## 🔍 Monitoring and Reporting
 
@@ -153,7 +162,6 @@ The project uses pytest markers to categorize tests:
 ### Quality Metrics
 
 - Code formatting compliance
-- Import organization
 - Linting violations count
 - Type checking errors
 - Test coverage percentage
@@ -179,9 +187,8 @@ The project uses pytest markers to categorize tests:
    - Verify test data availability
 
 3. **Quality Check Failures**
-   - Run `black .` to auto-format code
-   - Run `isort .` to organize imports
-   - Fix Flake8 violations manually
+   - Run `ruff format .` to auto-format code
+   - Run `ruff check . --fix` to auto-fix lint violations
    - Address MyPy type annotation issues
 
 4. **CUDA Test Failures**
@@ -197,10 +204,9 @@ Before pushing code, run these commands locally:
 # Install development dependencies
 uv pip install -e ".[test,dev]"
 
-# Run quality checks
-black --check .
-isort --check-only .
-flake8 .
+# Run quality checks (what CI runs)
+ruff format --check .
+ruff check .
 mypy dnallm/
 
 # Run tests
