@@ -3,6 +3,14 @@ phase: 01
 review: 01-REVIEW.md
 titles: json
 findings:
+  - id: WR-09
+    severity: warning
+    disposition: open
+    title: "README \"Local Testing\" still prescribes the `.[test,dev]` install that CR-03 just proved fails the documented census commands"
+  - id: IN-12
+    severity: info
+    disposition: open
+    title: "New ci.yml comment overstates cross-version evidence — \"coverage-nightly proves .[base] resolves green on this exact box\""
   - id: WR-08
     severity: warning
     disposition: open
@@ -79,18 +87,20 @@ findings:
     severity: warning
     disposition: skipped
     title: "Unpinned `curl | sh` installer executed in four CI jobs and the local script"
-open: 10
-total: 19
-recorded: 2026-10-01T10:24:35.368Z
+open: 12
+total: 21
+recorded: 2026-10-01T12:24:07.241Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-08 | warning | open | - |
-| IN-10 | info | open | - |
-| IN-11 | info | open | - |
+| WR-09 | warning | open | - |
+| IN-12 | info | open | - |
+| WR-08 | warning | open | - (not in the current review) |
+| IN-10 | info | open | - (not in the current review) |
+| IN-11 | info | open | - (not in the current review) |
 | WR-01 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | IN-01 | info | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | IN-02 | info | fixed | 01-REVIEW-FIX.md (not in the current review) |
