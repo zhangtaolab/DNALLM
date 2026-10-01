@@ -100,6 +100,7 @@ test = [
 notebook = [
     "jupyter>=1.1.1",
     "marimo>=0.16.3",
+    "nbclient>=0.10",
 ]
 docs = [
     "mkdocs-jupyter>=0.24.0",
