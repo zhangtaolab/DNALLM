@@ -13,7 +13,10 @@ example-notebook tests:
 * :func:`run_notebook` -- execute a notebook via nbclient with per-cell
   timeout, immediate kernel shutdown and partial-failure artifacts;
 * :func:`assert_tree_clean` -- scoped ``git status`` tripwire proving an
-  execution never dirtied ``example/`` or ``docs/example/``.
+  execution never dirtied ``example/`` or ``docs/example/``;
+* :func:`environment_unavailable_skip` / :func:`optional_dep_skip` --
+  the only sanctioned skip paths, emitting stable junit-greppable
+  prefixes registered in ``tests/expected_skips.yaml``.
 
 nbclient 0.11.0 semantics (live-probed, 05-RESEARCH.md Pattern 1):
 ``NotebookClient`` is NOT a context manager; a plain ``execute()`` call
@@ -33,6 +36,7 @@ import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from pathlib import Path
 
 import nbformat
+import pytest
 from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError, CellTimeoutError
 from nbformat import NotebookNode
@@ -189,3 +193,36 @@ def assert_tree_clean(paths: tuple[str, ...] = ("example", "docs/example")) -> N
     assert not result.stdout.strip(), (
         f"notebook execution dirtied the repo tree under {paths}:\n{result.stdout}"
     )
+
+
+def environment_unavailable_skip(action: str, evidence: str) -> None:
+    """Skip with the stable ``environment-unavailable:`` prefix.
+
+    The narrow typed-skip path for execution tests whose environment
+    cannot provide what the notebook needs (per D-06: only after the
+    notebook variant AND the smallest viable variant both failed, with
+    the failure recorded).  Nothing calls this yet in Phase 5; the
+    prefix is registered now so Phase 8 skip decisions already carry an
+    allowlist contract.
+
+    Args:
+        action: stable label naming what the test was attempting.
+        evidence: recorded infeasibility evidence (e.g. the exact error
+            text), so the junit skip message carries the decision basis.
+    """
+    pytest.skip(f"environment-unavailable: {action} ({evidence})")
+
+
+def optional_dep_skip(action: str, evidence: str) -> None:
+    """Skip with the stable ``optional-dep:`` prefix.
+
+    The narrow typed-skip path for execution tests blocked on an
+    optional dependency that is not installed on the executing box.
+    Nothing calls this yet in Phase 5; the prefix is registered now so
+    Phase 8 skip decisions already carry an allowlist contract.
+
+    Args:
+        action: stable label naming what the test was attempting.
+        evidence: the missing-dependency evidence (e.g. ImportError text).
+    """
+    pytest.skip(f"optional-dep: {action} ({evidence})")

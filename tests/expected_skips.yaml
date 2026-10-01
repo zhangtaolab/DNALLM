@@ -29,6 +29,17 @@ allowed:
   - prefix: "network-unavailable:"
     category: network
 
+  # Typed-skip helper environment_unavailable_skip in
+  # tests/examples/_execution.py (Phase 8 skip decisions per D-06:
+  # environment infeasibility with recorded evidence).
+  - prefix: "environment-unavailable:"
+    category: environment
+
+  # Typed-skip helper optional_dep_skip in tests/examples/_execution.py
+  # (Phase 8 skip decisions: optional dependency missing on the box).
+  - prefix: "optional-dep:"
+    category: optional-dep
+
   # Module-level ImportError guards in the MCP client test files
   # (allow_module_level=True); never fire in CI where mcp is a core dep.
   - prefix: "MCP client modules not available:"
