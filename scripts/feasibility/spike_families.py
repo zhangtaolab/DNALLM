@@ -208,7 +208,11 @@ def _forward_pass(model: Any, tokenizer: Any, prompt: str = "ACGT" * 64) -> tupl
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     start = time.perf_counter()
-    out = core(ids)
+    # no_grad: evo2 loads weights under inference_mode, and vortex's compute_filter
+    # saves activations for backward — a plain tracked forward then raises
+    # "Inference tensors cannot be saved for backward" (inference is no-grad).
+    with torch.no_grad():
+        out = core(ids)
     if device.type == "cuda":
         torch.cuda.synchronize(device)
     forward_s = time.perf_counter() - start
