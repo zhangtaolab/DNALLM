@@ -181,8 +181,23 @@ jobs:
           pytest tests/ -v -m "not slow" --tb=short
           
   test-mamba:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    # Self-hosted GPU box on nightly cadence per GATE-02 (amended): the .[mamba]
+    # install compiles mamba-ssm/causal_conv1d CUDA kernels from source, which
+    # belongs to the nightly leg — push/PR stays the fast hosted leg.
+    # schedule/dispatch-only preserves the coverage-nightly posture that PR code
+    # (including forks) never executes on this runner. The gpu-check step below
+    # stays as a fail-safe no-op if the box ever loses its GPU.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # The recurring per-run CUDA kernel source build is the long pole
+    # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
+    # the mamba-ssm/causal_conv1d compile repeats every run, not just the
+    # first). 180min covers a worst-case GB10 build plus the .[test,dev]
+    # install plus the `not slow` census with headroom. Self-hosted jobs have
+    # no platform time cap, so this backstop is the only protection against a
+    # hung build monopolizing the single runner that also serves
+    # coverage-nightly.
+    timeout-minutes: 180
     strategy:
       matrix:
         python-version: ['3.11']
@@ -387,7 +402,10 @@ jobs:
           python scripts/audit_skips.py pytest-junit-nightly.xml tests/expected_skips.yaml
 
   deploy:
-    needs: [test, test-cuda, test-mamba]
+    # test-mamba removed from needs: it is event-gated to schedule/dispatch, so
+    # on every push it is skipped — GitHub skips dependents of skipped needs,
+    # which would silently stop gh-pages deploys on push to main/master.
+    needs: [test, test-cuda]
     permissions:
       contents: write
     runs-on: ubuntu-latest
