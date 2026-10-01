@@ -1021,15 +1021,30 @@ class TestBenchmarkPlotSelection:
         assert mock_curve.call_args.kwargs["save_path"] == str(tmp_path / "roc.pdf")
 
     def test_plot_token_task_skips_curves(self):
-        """Token tasks skip the ROC/PR curve chart entirely."""
+        """Token tasks skip the ROC/PR curve chart entirely.
+
+        Token metrics are seqeval scalars (accuracy/precision/recall/f1) with
+        no binary-style flat curve dict, so prepare_data's token branch accepts
+        them and plot() must not call plot_curve.
+        """
         benchmark = Benchmark()
         benchmark.config["task"].task_type = "token"
+        token_metrics = {
+            "ds1": {
+                "model_A": {
+                    "accuracy": 0.95,
+                    "precision": 0.9,
+                    "recall": 0.88,
+                    "f1": 0.89,
+                },
+            },
+        }
 
         with (
             patch("dnallm.inference.benchmark.plot_bars"),
             patch("dnallm.inference.benchmark.plot_curve") as mock_curve,
         ):
-            _, pline = benchmark.plot(self._metrics())
+            _, pline = benchmark.plot(token_metrics)
 
         assert pline is None
         mock_curve.assert_not_called()

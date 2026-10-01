@@ -173,7 +173,7 @@ def prepare_data(metrics: dict[str, dict], task_type: str = "binary") -> tuple[d
             ValueError: If task type is not supported for plotting
     """
     if task_type in ["binary", "multiclass", "multilabel", "token"]:
-        return _prepare_classification_data(metrics)
+        return _prepare_classification_data(metrics, task_type=task_type)
     elif task_type == "regression":
         return _prepare_regression_data(metrics)
     else:

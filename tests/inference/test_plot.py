@@ -2045,6 +2045,23 @@ class TestPrepareDataMultilabel:
         assert curves["ROC"]["fpr"] == [0.0, 0.2, 1.0]
         assert curves["PR"]["precision"] == [0.9, 0.85, 0.8]
 
+    def test_multilabel_through_public_prepare_data(self):
+        """prepare_data forwards task_type instead of always running the binary branch.
+
+        Regression test: prepare_data used to call _prepare_classification_data
+        without task_type, so multilabel curve dicts (nested per label) were
+        iterated as flat binary score entries and produced garbage curve data.
+        """
+        bars, curves = prepare_data(self._multilabel_metrics(), "multilabel")
+
+        assert bars["models"] == ["model1"]
+        assert bars["accuracy"] == [0.8]
+        assert curves["AUROC"] == {"label_0": 0.91}
+        assert curves["AUPRC"] == {"label_0": 0.88}
+        assert curves["ROC"]["models"] == ["label_0"] * 3
+        assert curves["ROC"]["fpr"] == [0.0, 0.2, 1.0]
+        assert curves["PR"]["precision"] == [0.9, 0.85, 0.8]
+
     def test_scalar_values_extend_tensor_branch(self):
         """Scatter values exposing .tolist are converted before extension."""
         import torch
