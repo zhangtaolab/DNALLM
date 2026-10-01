@@ -6,23 +6,23 @@ findings:
   - id: WR-01
     severity: warning
     disposition: fixed
-    title: "Nightly `test-mamba` job reports green while its tests fail (`continue-on-error`)"
+    title: "Multilabel branch assumes every per-label curve dict carries AUROC/AUPRC"
+  - id: IN-01
+    severity: info
+    disposition: fixed
+    title: "Local-testing comment mislabels the full census as \"what the coverage gate runs\""
+  - id: IN-02
+    severity: info
+    disposition: fixed
+    title: "Trigger section omits that the nightly schedule also runs test-mamba"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`prepare_data` drops `task_type` — multilabel curve data is silently corrupted through the public API"
   - id: WR-03
     severity: warning
     disposition: fixed
     title: "Workflow README documents gates and tooling that do not exist"
-  - id: IN-01
-    severity: info
-    disposition: open
-    title: "Broken-and-unused `mock_dataset` fixture and no-op `global_cleanup` fixture in conftest"
-  - id: IN-02
-    severity: info
-    disposition: open
-    title: "Stale `models.lock` entry after the open-chromatin model swap"
   - id: IN-03
     severity: info
     disposition: open
@@ -67,9 +67,9 @@ findings:
     severity: warning
     disposition: skipped
     title: "Unpinned `curl | sh` installer executed in four CI jobs and the local script"
-open: 10
+open: 7
 total: 16
-recorded: 2026-10-01T09:51:10.120Z
+recorded: 2026-10-01T10:08:33.647Z
 ---
 
 # Phase 01: Code Review Disposition
@@ -77,17 +77,17 @@ recorded: 2026-10-01T09:51:10.120Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-02 | warning | fixed | commit 42ada4f (hand-set: fixer re-titled the finding, one-word drift — "data silently" vs "data is silently") |
-| WR-03 | warning | fixed | 01-REVIEW-FIX.md |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
-| IN-07 | info | open | - |
-| IN-08 | info | open | - |
-| IN-09 | info | open | - |
+| IN-01 | info | fixed | 01-REVIEW-FIX.md |
+| IN-02 | info | fixed | 01-REVIEW-FIX.md |
+| WR-02 | warning | fixed | commit 42ada4f (hand-set: fixer re-titled the finding, one-word drift — "data silently" vs "data is silently") (not in the current review) |
+| WR-03 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
+| IN-05 | info | open | - (not in the current review) |
+| IN-06 | info | open | - (not in the current review) |
+| IN-07 | info | open | - (not in the current review) |
+| IN-08 | info | open | - (not in the current review) |
+| IN-09 | info | open | - (not in the current review) |
 | WR-07 | warning | fixed | 01-REVIEW-FIX.md (not in the current review) |
 | WR-04 | warning | fixed | 01-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-05 | warning | skipped | 01-REVIEW-FIX.iter2.md (not in the current review) |
