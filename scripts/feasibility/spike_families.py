@@ -125,14 +125,19 @@ def _peak_vram_gb() -> float:
 
 
 def _snapshot_disk_gb(repo_id: str, revision: str | None = None) -> tuple[float, str]:
-    """Measure the HF snapshot footprint with ``du`` (D-05 disk evidence).
+    """Measure the HF snapshot footprint in bytes (D-05 disk evidence).
+
+    Sums ``st_size`` (dereferenced, deduped by inode) over the
+    ``models--<repo>`` cache root: snapshot entries are symlinks into
+    ``blobs/``, so lstat would measure link lengths and naive sums would
+    double-count blob + link.
 
     Args:
         repo_id: HuggingFace repo id that was downloaded.
         revision: Revision the dnallm route fetched (None = default branch).
 
     Returns:
-        Tuple of (numeric GB via ``du -sb``, human ``du -sh`` string).
+        Tuple of (numeric GB, human string).
     """
     path = ""
     try:
@@ -148,26 +153,30 @@ def _snapshot_disk_gb(repo_id: str, revision: str | None = None) -> tuple[float,
             path = str(matches[-1])
     if not path or not os.path.exists(path):
         return 0.0, "not-found"
-    # HF cache layout: snapshots/<rev> entries are symlinks into blobs/, so a du
-    # of the snapshot dir itself only measures the links — walk up to the
-    # models--<repo> root (fallback: keep the given path) and measure that.
-    target = Path(path).resolve()
+    # HF cache layout: snapshots/<rev> entries are symlinks into blobs/ — walk
+    # up to the models--<repo> root (fallback: keep the given path) and sum it.
+    target = Path(path)
     root = target
     while root.name and not root.name.startswith("models--"):
         root = root.parent
     if root.name.startswith("models--"):
         target = root
-    # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
-    human = subprocess.run(["du", "-sh", str(target)], capture_output=True, text=True)
-    # ruff: ignore[subprocess-without-shell-equals-true, start-process-with-partial-path]
-    bytes_used = subprocess.run(["du", "-sb", str(target)], capture_output=True, text=True)
-    human_str = human.stdout.split()[0] if human.returncode == 0 and human.stdout else "?"
-    gb = (
-        float(bytes_used.stdout.split()[0]) / 1e9
-        if bytes_used.returncode == 0 and bytes_used.stdout
-        else 0.0
-    )
-    return gb, human_str
+    total = 0
+    seen_inodes: set[tuple[int, int]] = set()
+    for dirpath, _dirnames, filenames in os.walk(target):
+        for name in filenames:
+            try:
+                stat_result = os.stat(os.path.join(dirpath, name))  # follow HF links
+            except OSError:
+                continue
+            inode = (stat_result.st_dev, stat_result.st_ino)
+            if inode in seen_inodes:
+                continue
+            seen_inodes.add(inode)
+            total += stat_result.st_size
+    gb = total / 1e9
+    human = f"{gb:.2f}GB" if gb >= 1 else f"{total / 1e6:.1f}MB"
+    return gb, human
 
 
 def _forward_pass(model: Any, tokenizer: Any, prompt: str = "ACGT" * 64) -> tuple[float, str]:
