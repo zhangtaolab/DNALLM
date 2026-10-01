@@ -12,6 +12,12 @@ name: feasibility
 # .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-FEASIBILITY.md.
 on: workflow_dispatch
 
+# Least privilege, matching the ci.yml convention: this workflow executes
+# repo code on the self-hosted GPU box, so its jobs must never inherit
+# read/write repo-default token scopes.
+permissions:
+  contents: read
+
 jobs:
   feas-spike:
     # Same self-hosted posture as test-mamba (ci.yml): the nightly GPU box.
