@@ -117,11 +117,11 @@ class TestMCPFunctionality:
             logger.info(f"  Scores: {conservation_pred['scores']}")
             logger.info(f"  Confidence: {max(conservation_pred['scores'].values()):.4f}")
 
-            # Test open chromatin prediction (multiclass, 3 labels)
+            # Test open chromatin slot prediction (binary model; slot kept for 3-model E2E)
             logger.info("Testing open chromatin prediction...")
             chromatin_result = await manager.predict_sequence("open_chromatin_model", dna_sequence)
             chromatin_pred = _assert_prediction(
-                chromatin_result, "open_chromatin_model", num_labels=3
+                chromatin_result, "open_chromatin_model", num_labels=2
             )
             logger.info("Open chromatin prediction result:")
             logger.info(f"  Label: {chromatin_pred['label']}")

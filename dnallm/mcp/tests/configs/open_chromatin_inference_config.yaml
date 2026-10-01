@@ -1,10 +1,13 @@
 # Inference Model Configuration for Open Chromatin Prediction
+# NOTE: model swapped from plant-dnamamba-BPE-open_chromatin (mamba remote code
+# incompatible with transformers>=5.x MambaCache removal; never loaded successfully)
+# to the cached non-mamba plant-dnagpt-BPE-promoter to keep the 3-model E2E honest.
 # Individual model configuration file
 
 task:
-  task_type: "multiclass"
-  num_labels: 3
-  label_names: ["Not open", "Full open", "Partial open"]
+  task_type: "binary"
+  num_labels: 2
+  label_names: ["Not promoter", "Core promoter"]
   threshold: 0.5
   description: "Predict whether a DNA sequence is in open chromatin regions in plants"
 
@@ -20,11 +23,11 @@ inference:
   save_attentions: false
 
 model:
-  name: "Plant DNAMamba BPE open chromatin"
-  path: "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+  name: "Plant DNAGPT BPE promoter"
+  path: "zhangtaolab/plant-dnagpt-BPE-promoter"
   source: "modelscope"  # or "huggingface"
   task_info:
-    architecture: "DNAMamba"
+    architecture: "DNAGPT"
     tokenizer: "BPE"
     species: "plant"
     task_category: "chromatin_state_prediction"
