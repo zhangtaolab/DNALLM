@@ -19,10 +19,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-30)
+See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 4 — CI Gate Enforcement
+**Current focus:** Milestone closeout — all 4 phases complete, 13/13 plans, verification 10/10
 
 ## Current Position
 
@@ -31,7 +31,7 @@ Plan: Not started
 Status: All phases complete
 Last activity: 2026-10-01 — Phase 4 complete
 
-Progress: [██████████] 100%
+Progress: [████████████████████] 13/13 plans (100%)
 
 ## Performance Metrics
 
@@ -130,6 +130,7 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 04]: [04-03] GATE-04 evidence: probe PR 39 (base dev) coverage-gate check concluded FAILURE with verbatim line "ERROR: Coverage failure: total of 79 is less than fail-under=90"; 1261 tests green, only the floor red; zero residue (PR closed unmerged, branch deleted, dev clean)
 - [Phase 04]: [Phase 04]: [04-03] Job-level logs API (gh api actions/jobs/<id>/logs) serves completed jobs mid-run — run-level gh --log-failed gates on whole-run completion; harvested evidence before the last test-cuda leg finished
 - [Phase 04]: [Phase 04]: [04-03] GATE-05 proven live on dev side (probe PR triggered the gated job to FAILURE); PRs to main inherit the same pull_request block; branch protection handed to owner as exact gh api PUT commands naming context "coverage-gate (py3.12, fast leg)"
+- [Phase 04]: CLOSEOUT — milestone delivered: verification re-run passed 10/10 with fresh digest after a stale-gate trip (execute-phase tail gates: incremental code review 0 crit/0 warn/3 info committed as disposition; regression fast-leg 1635 green); nightly census green on self-hosted runner (run 36811033498: 1656 passed / 7 allowlisted / 0 failed / 96.30%); branch protection APPLIED on dev+main resolving the 04-02 owner note
 
 ### Pending Todos
 
@@ -137,8 +138,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 sizing: RESOLVED as unknown — measured this cycle (01-02): baseline 45.92%, gap to 90% = 44.08 points (~3,255 statements; inference 1,505 / models 1,210 / mcp 449). Remaining decision: split Phase 3 via `/gsd-phase` at planning time (near the split threshold)
-- Phase 3: MCP transport test pattern (`server.py:1718+` vs pinned `mcp>=1.3.0,<2`) is unverified against the installed SDK — run plan-phase with `--research-phase` for the mcp wave
+None — both carried concerns resolved (Phase 3 sizing measured and closed in 01-02; MCP transport pattern proven by the 03-03 wave landing). Milestone-close follow-ups live with /gsd-ship: stale models.lock entry (mamba line, one-line fix), WINDOWS.md ledger triage (~10 entries + IN-01..07 info findings), optional runner systemd install.
 
 ## Deferred Items
 
@@ -150,12 +150,12 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T03:51Z (resumed via /gsd-resume-work)
-Stopped at: Phase 4 complete — all phases complete
-Resume file: .planning/phases/04-ci-gate-enforcement/.continue-here.md
+Last session: 2026-10-01T05:20Z
+Stopped at: All 4 phases complete — milestone ready to close (audit-milestone → complete-milestone → cleanup)
+Resume file: None
 
 ## Deferred Verification
 
 | Phase | State | Resume |
 |-------|-------|--------|
-| 4 | verification_deferred_human | /gsd-verify-work 4 |
+| *(none — phase 4 verification closed 2026-10-01, passed 10/10)* | | |
