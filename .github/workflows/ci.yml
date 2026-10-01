@@ -279,7 +279,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          uv pip install -e ".[base]"
 
       - name: Install specific numpy version
         run: |
