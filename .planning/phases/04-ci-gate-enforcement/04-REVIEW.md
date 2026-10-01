@@ -1,85 +1,160 @@
 ---
 phase: 04-ci-gate-enforcement
-reviewed: 2026-10-01T05:07:13Z
+reviewed: 2026-10-01T11:41:38Z
 depth: standard
-files_reviewed: 4
+files_reviewed: 10
 files_reviewed_list:
-  - .github/dependabot.yml
+  - dnallm/inference/plot.py
+  - dnallm/tasks/metrics.py
   - .github/workflows/ci.yml
-  - dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml
-  - dnallm/mcp/tests/test_mcp_functionality.py
+  - .github/workflows/README.md
+  - tests/benchmark/test_benchmark.py
+  - tests/inference/test_plot.py
+  - tests/models/test_special/test_evo.py
+  - tests/models/test_special/test_family_handlers.py
+  - tests/tasks/test_metrics.py
+  - tests/utils/test_cuda_compat.py
 findings:
-  critical: 0
+  critical: 1
   warning: 0
   info: 3
-  total: 3
+  total: 4
 status: issues_found
 incremental: true
-diff_base: 8a6c69e477b80c8667af5436b7f10179e49113a6
+diff_base: 84484aa
 ---
 
-# Phase 04: Code Review Report (incremental re-review #3661)
+# Phase 04: Code Review Report (incremental re-review — fix rounds since 84484aa)
 
-**Reviewed:** 2026-10-01T05:07:13Z
+**Reviewed:** 2026-10-01T11:41:38Z
 **Depth:** standard
-**Files Reviewed:** 4
-**Status:** issues_found (0 critical, 0 warning, 3 info)
+**Files Reviewed:** 10
+**Status:** issues_found (1 critical, 0 warning, 3 info)
 
 ## Summary
 
-Incremental re-review of the delta since `8a6c69e` only: (a) the open_chromatin MCP test model
-swap (mamba remote code → cached non-mamba `plant-dnagpt-BPE-promoter`, multiclass/3 → binary/2),
-(b) the `runner.environment == 'github-hosted'` free-disk guards added to all four jobs, (c) the
-`coverage-nightly` move to `[self-hosted, dnallm-nightly]`, and (d) the dependabot comment/ignore
-block documenting the mamba-ssm/causal-conv1d pins and the transformers MambaCache risk.
+Incremental re-review of the delta since `84484aa` only: the `prepare_data` task_type
+forwarding fix + multilabel AUROC/AUPRC guards (`plot.py`), the vendored network-free
+dnabert2 metric loading (`metrics.py`), the test-mamba move to the self-hosted nightly
+box with `continue-on-error` removal plus the new `test-windows` leg and deploy `needs`
+correction (`ci.yml`), the workflows-README accuracy rewrite, and five test-file updates.
+Every changed hunk was verified against source, runtime execution, or live GitHub
+Actions evidence — not just read.
 
-Every changed hunk was verified against source or runtime evidence, not just read:
+**Verified sound (with evidence):**
 
-- **Model swap is sound and consistent.** `Plant DNAGPT BPE promoter` / `zhangtaolab/plant-dnagpt-BPE-promoter`
-  exists in the registry (`dnallm/models/model_info.yaml:173-174`); `binary` + `num_labels: 2` +
-  two `label_names` passes the Pydantic `model_post_init` binary branch
-  (`dnallm/configuration/configs.py:118-136`); the test's `num_labels=2` matches. The stale
-  `model_name: "Plant DNAMamba BPE open chromatin"` in `dnallm/mcp/tests/configs/mcp_server_config.yaml:34`
-  is descriptive only — `MCPConfigManager` consumes just `enabled` and `config_path`
-  (`dnallm/mcp/config_manager.py:63-75`); loading uses `model.path` from the per-model config.
-  `mcp_server_config_2.yaml` shares the swapped inference config; no other test asserts the old
-  multiclass/3-label values (all count/label assertions in `test_config_manager.py` target inline
-  synthetic configs).
-- **Test hardening claims hold.** `_assert_prediction`'s docstring contract ("ModelManager
-  swallows load/predict failures, returns None, never raises") matches
-  `dnallm/mcp/model_manager.py:233-247`; `assert result_map` catches per-model load failure even
-  when `assert manager.loaded_models` passes on a partial load.
-- **CI guards are correct.** `runner.environment` is a documented runner-context property;
-  the guard fails safe (undefined on old runners → step skipped, never a sudo failure on the
-  self-hosted box). The self-hosted nightly is restricted to `schedule`/`workflow_dispatch`, so
-  fork PRs cannot execute test code on it; job permissions remain `contents: read`.
-- **Comment arithmetic re-derived, not trusted.** Timeout marks measured across `tests/` and
-  `dnallm/mcp/tests/`: 3×7200 + 4×3600 = 600 min (phase marks), 2×900 + 5×1800 + 1×3600 =
-  240 min — the 1800 s mark is class-level on `TestRealModelInference`
-  (`tests/inference/test_inference_real_model.py:23-24`) which has exactly 5 test items, matching
-  the comment. 840 min total < 900 min job kill. Accurate.
-- **dependabot factual claims verified.** `pyproject.toml:66` is `transformers>=4.49.0,<6`
-  ("<6" comment accurate); empirically, installed transformers 5.17.0 does **not** export
-  `MambaCache` and the cached ModelScope `modeling_mamba.py` imports it — the "removed as of
-  5.17" claim is correct (the earlier commit message d8130c1 saying "5.18" was the wrong one,
-  and that bound was reverted in 95c9ba0 anyway). The mamba-ssm/causal-conv1d ignore entries
-  without `update-types` are valid YAML with real effect (exact pins would otherwise be bumped).
-- No secrets, no injection, no new untrusted interpolation in the delta.
+- **Gate semantics of the `continue-on-error` removal — structurally correct, but it
+  ships a leg that is now deterministically red (CR-03).** The removal itself does the
+  right thing: the mamba test step's failure now fails its job (default fail-fast), the
+  `Upload mamba test logs` step still fires via `always() && steps.mamba-tests.outcome ==
+  'failure'`, `coverage-nightly` is an independent job whose uv/model `actions/cache`
+  post-job saves cannot be affected by a test-mamba failure, and `deploy` correctly
+  dropped test-mamba from `needs` (a skipped `needs` job skips dependents — the old
+  `needs: [test, test-cuda, test-mamba]` would have silently stopped push deploys, since
+  test-mamba is now schedule/dispatch-only; on schedule, deploy's `if` is false anyway).
+  Branch protection (checked via API on both `dev` and `main`) requires only
+  `coverage-gate (py3.12, fast leg)` — no required check references test-mamba, so PRs
+  cannot wedge. Live evidence: push run 36847288136 shows full event isolation (6 test
+  legs + coverage-gate green; test-mamba/coverage-nightly/deploy skipped); dispatch run
+  36821471332 shows both self-hosted jobs green on the shared runner.
+- **README gate contract is accurate where it matters.** Independently re-derived: 27
+  slow-marked items collected (matches the "27 tests / 21 execute / 6 MCP probes" census
+  scope), `fail_under = 90` at `pyproject.toml:514` with zero threshold literals in the
+  workflow, `models.lock` exists (9 entries) and feeds the nightly cache key, deploy
+  `needs` text matches the yml, the 03:00 UTC schedule and dispatch gating match both
+  jobs' `if` conditions, and the Windows-only `SONAME check is Linux-specific` skip is
+  already allowlisted in `tests/expected_skips.yaml`. Residual doc nits: IN-10.
+- **plot.py fixes are correct and partially tested.** The forwarding bug was real:
+  `benchmark.plot()` (`benchmark.py:598,630`) always passed `task_type`, which
+  `prepare_data` silently ignored for classification — multilabel per-label curve dicts
+  were iterated as flat binary score entries (dict keys like `"label_0"` extended PR
+  curve lists with key strings; garbage output). Executed the new code paths directly:
+  multilabel routing, mixed labels with partial AUROC/AUPRC summaries, and
+  curve-dicts-without-scores all behave correctly; the pre-fix code KeyErrors on a
+  missing `"AUROC"` key. Changed tests ran green (13 passed).
+- **metrics.py vendored dnabert2 loading works network-free.** All eight vendored paths
+  exist under `dnallm/tasks/metrics/`; executed `evaluate.load(metrics_path +
+  "roc_auc/roc_auc.py", "multiclass")` (note: the second positional arg binds to
+  `config_name`, and it instantiates and computes fine), `evaluate.combine` over five
+  local scripts, and the full `metrics_for_dnabert2("multiclass")` arm end-to-end with
+  real vendored metrics — green. The test fakes' substring matching is consistent with
+  the new full paths.
+- **evo/enformer test path assertions** now mirror the sources' `os.path.join`
+  construction (`evo.py:248`, `enformer.py:35`) — correct on both linux and the new
+  Windows leg; ran green (10 passed).
 
-Three Info-level findings below (numbered IN-05.. to avoid colliding with the open IN-01..IN-04
-rows already recorded in 04-REVIEW-DISPOSITION.md — per that file's own rules, reusing an ID
-silently drops the earlier open row).
+**One Critical finding (CR-03):** the only run that ever executed the mamba test step
+(dispatch run 36821471332, step-level log re-fetched this pass) had **3 failed, 1580
+passed** — `continue-on-error: true` (still present at that commit) masked it into a
+green job. The three failures are structural, not flaky: the job installs
+`.[test,dev]`, which does not include the `mcp` extra, so
+`example/mcp_example/mcp_client_ollama_langchain_agents.ipynb` and
+`..._pydantic_ai.ipynb` notebook-import tests fail on missing `langchain` /
+`langchain_mcp_adapters` / `pydantic_ai` / `nest_asyncio`, and
+`tests/mcp/test_client_sdk.py:585` hard-imports the `exceptiongroup` backport, which
+that env does not provide (hosted legs get it transitively via the `mcp`-extra
+dependency chain). Before this delta the job ran on GPU-less hosted runners where every
+post-checkout step skipped — these failures were never visible until the runner move,
+and they are exactly what `continue-on-error` was hiding. Removing the mask without
+fixing the env ships a nightly leg that goes red on its first unsupervised run.
 
-Adjacent out-of-scope context (no finding issued, recorded for awareness): the **production**
-MCP configs still point at mamba models that cannot load under the installed transformers 5.17.0
-(`dnallm/mcp/configs/open_chromatin_inference_config.yaml:24`, `h3k27me3`/`h3k27ac` configs), so
-`dnallm-mcp-server` run with the shipped configs would fail to load those three slots today.
-Owner-accepted this cycle (the transformers bound was deliberately reverted as spurious); worth
-a WINDOWS.md entry of its own (see IN-05).
+Adjacent observations recorded without findings: (a) if the self-hosted box loses its
+GPU, all post-checkout steps skip and test-mamba goes green-empty forever — this is the
+documented "fail-safe no-op" design, but CR-03 shows what a green mamba leg has
+historically concealed; (b) `tests/expected_skips.yaml`'s comment for the SONAME entry
+still says "non-Linux legs only (CI is linux)" — stale now that a Windows CI leg
+exists, though the entry itself matches and the audit passes; (c) pre-existing quirk
+now locked in by test at `tests/tasks/test_metrics.py:909`: the dnabert2 regression arm
+returns `{"r2": {"r2": 0.8}}` (nested metric dict as the `r2` value) — unchanged by
+this delta.
 
 ## Critical Issues
 
-None.
+### CR-03: Nightly test-mamba leg ships deterministically red — env lacks the `mcp` extra (and `exceptiongroup`) for 3 fast tests it runs
+
+**File:** `.github/workflows/ci.yml:308-325`
+**Issue:** The `continue-on-error` removal (8151c09) is semantically correct, but the
+job's environment cannot pass the test command it runs. Live evidence: dispatch run
+36821471332 (job 110237767158, the only run ever to execute this step) ended
+`3 failed, 1580 passed, 1 skipped` — and the then-present `continue-on-error: true`
+recorded the step and job as green (the `Upload mamba test logs on failure` step ran,
+which only happens when `steps.mamba-tests.outcome == 'failure'`, corroborating the
+masked failure). The failures are deterministic dependency gaps, not flakes:
+
+1. `tests/examples/test_examples.py::TestNotebookExamples::test_notebook_imports[mcp_example/mcp_client_ollama_langchain_agents.ipynb]`
+   — `No module named 'langchain'` / `'langchain_mcp_adapters'` / `'nest_asyncio'`
+2. `tests/examples/...[mcp_example/mcp_client_ollama_pydantic_ai.ipynb]` —
+   `No module named 'pydantic_ai'` / `'nest_asyncio'`
+3. `tests/mcp/test_client_sdk.py::test_connection_failure_surfaces_through_exception_group`
+   — `No module named 'exceptiongroup'` (hard `from exceptiongroup import ExceptionGroup`
+   at `tests/mcp/test_client_sdk.py:585`; on py3.11 this needs the backport package,
+   which hosted `.[base]` legs receive transitively through the `mcp`-extra dependency
+   chain — `pyproject.toml`'s `base = ["dnallm[dev,test,notebook,mcp]", ...]` — but
+   `.[test,dev]` does not include that extra).
+
+The install steps are unchanged from 0d5a831 (the commit that run tested) to HEAD, so
+the first schedule/dispatch execution of the current workflow will fail the job with
+these 3 errors. Before this delta the job ran on GPU-less hosted runners where every
+post-checkout step skipped, so these failures were invisible — the `continue-on-error`
+was masking a real environment gap, and removing it without closing the gap converts
+the nightly signal into a standing red (or pressures someone to re-add the mask).
+**Fix:** Install the same extra set the other legs use before adding the kernels
+(`.[base]` already includes `dev,test,notebook,mcp`, and `coverage-nightly` proves
+`.[base]` installs green on this exact box):
+
+```yaml
+      - name: Create virtual environment and install mamba dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+          uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
+```
+
+Then update the README's test-mamba step 5 ("Installs `.[test,dev]` plus `.[mamba]`")
+to match, and re-verify with a `workflow_dispatch` run before the next 03:00 UTC
+schedule fires. (Alternative: scope the step to the mamba-relevant tests only — but
+matching the other legs' env is the smaller, more consistent change.)
 
 ## Warnings
 
@@ -87,54 +162,66 @@ None.
 
 ## Info
 
-### IN-05: dependabot comment points at a WINDOWS.md entry that does not exist
+### IN-08: AUROC/AUPRC optional-guard fix shipped without any test exercising the guarded path
 
-**File:** `.github/dependabot.yml:26`
-**Issue:** The transformers risk comment says the MambaCache breakage is recorded "(see
-`.planning/WINDOWS.md`)". The file exists and is git-tracked, but its Broken Windows Ledger (all
-10 entries read) contains no transformers/MambaCache/mamba-load entry — every row is a phase
-deviation or an inference/mutagenesis bug. The pointer implies the risk is ledgered where
-`/gsd-ship` gates and waiver decisions look; it is not. The risk text itself is co-located in
-the comment (and factually correct — verified against the installed transformers), so no
-information is lost, but the cross-reference misdirects the maintainer evaluating a transformers
-bump.
-**Fix:** Either record the actual entry (`gsd-tools windows add unmet-truth "ModelScope mamba
-remote code imports MambaCache, removed in transformers 5.17 — mamba-family loading broken
-(production MCP configs affected)"`) or repoint the comment at an artifact that does record it
-(e.g. this phase's 04-REVIEW.md / commit 95c9ba0).
+**File:** `dnallm/inference/plot.py:48-51` (fix commit 2dde7c5, `tests/inference/test_plot.py` unchanged)
+**Issue:** Commit 2dde7c5 changed only `plot.py` — no test feeds a multilabel/token
+curve dict that *lacks* `AUROC`/`AUPRC` keys through `_prepare_classification_data`,
+which is precisely the KeyError shape the fix removes (verified by execution: pre-fix
+code raises `KeyError: 'AUROC'`, post-fix tolerates it and stores nothing). The new
+`test_multilabel_through_public_prepare_data` covers only the task_type-forwarding
+regression (WR-02's fix, 42ada4f), not this guard. For a coverage-hardening phase, the
+fixed bug has no regression net.
+**Fix:** Add one test alongside the existing multilabel tests:
 
-### IN-06: swapped open_chromatin config keeps the old model's semantics and performance metrics
+```python
+    def test_multilabel_curve_without_summary_scores(self):
+        """Curve dicts lacking AUROC/AUPRC summaries must not KeyError."""
+        metrics = {"model1": {"curve": {"label_0": {
+            "fpr": [0.0, 1.0], "tpr": [0.0, 1.0],
+            "precision": [0.9], "recall": [1.0],
+        }}}}
+        bars, curves = prepare_data(metrics, "multilabel")
+        assert curves["AUROC"] == {}
+        assert curves["AUPRC"] == {}
+        assert curves["ROC"]["fpr"] == [0.0, 1.0]
+```
 
-**File:** `dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml:12,33-38`
-**Issue:** The swap note documents the model change, but `description` still says "…in open
-chromatin regions in plants" (line 12), `task_category` is still `chromatin_state_prediction`
-(line 33), and the `performance_metrics` block (accuracy 0.82 / f1 0.79 / precision 0.78 /
-recall 0.81, lines 34-38) was carried over unchanged from the removed DNAMamba open-chromatin
-model — those figures are not the promoter model's, yet they are surfaced verbatim through
-`ModelManager.get_model_info` → the MCP `model_info` tool. The label semantics
-("Not promoter"/"Core promoter") now contradict the surrounding open-chromatin description.
-Purely cosmetic in a test fixture (none of these fields gate loading or assertions), but this
-fixture doubles as the MCP example config. The sibling `mcp_server_config.yaml:34`
-`model_name: "Plant DNAMamba BPE open chromatin"` has the same drift (out-of-scope file).
-**Fix:** Either update `description`/`task_category`/`performance_metrics` to the promoter
-model's actual values, or extend the existing NOTE with "slot metadata intentionally left
-open-chromatin; model is a promoter model" so the next reader does not have to diff to find out.
+### IN-09: cuda_compat test raises KeyError on platforms absent from `_LIB_PATTERNS` (e.g. macOS)
 
-### IN-07: deploy job pins deprecated `actions/cache@v3` while the rest of the file uses @v4 (pre-existing, outside this cycle's delta)
+**File:** `tests/utils/test_cuda_compat.py:62`
+**Issue:** `len(cuda_compat._LIB_PATTERNS[sys.platform])` uses direct dict indexing.
+`_LIB_PATTERNS` (`dnallm/utils/cuda_compat.py:39-47`) defines only `"linux"` and
+`"win32"`, so on `darwin` the test raises `KeyError` instead of passing or failing —
+the suite errors on a platform the package claims to support (macOS/MPS in the README
+device list). The rewrite correctly fixed the Windows case (the old hardcoded `== 1`
+would have failed against the 4 win32 patterns on the new test-windows leg) but moved
+the blind spot one platform over; the source module itself uses
+`.get(sys.platform, ())` for exactly this reason.
+**Fix:** Use the same defensive lookup in the assertion:
 
-**File:** `.github/workflows/ci.yml:410`
-**Issue:** Every other cache use in this workflow is `actions/cache@v4`; the deploy job alone
-pins `@v3`, the deprecated major of the action. Latent, not hypothetical-broken: deploy only
-runs on push to `main`/`master` and this branch is `dev`, so the step has not executed since the
-divergence and a v3 failure/brownout would surface only at the next release docs deploy. Not
-introduced by this delta (pre-dates `8a6c69e`); recorded because it is a real robustness defect
-in a reviewed file and the new github-actions dependabot lane will not necessarily catch a
-major pin it is told to group only minor/patch.
-**Fix:** Bump to `actions/cache@v4` (the `key`/`path`/`restore-keys` syntax in use is
-compatible as-is).
+```python
+    assert failing.call_count == len(cuda_compat._LIB_PATTERNS.get(sys.platform, ()))
+```
+
+### IN-10: Residual workflows-README drift after the accuracy rewrite
+
+**File:** `.github/workflows/README.md:16,29-40`
+**Issue:** Two small inaccuracies remain in a round whose purpose was README accuracy:
+(a) the "Manual workflow dispatch" trigger bullet says it "runs the nightly census on
+demand" — a dispatch also runs the test-mamba kernel-build leg (live: dispatch run
+36821471332 executed both; the schedule bullet already mentions test-mamba, so only the
+dispatch bullet is incomplete — and once CR-03 is fixed this matters operationally,
+since dispatch is the rehearsal surface for both nightly legs); (b) the `test` job's
+numbered step list omits the "Free disk space" and "Cache uv dependencies" steps the
+workflow actually runs (ci.yml lines 34-60), while the coverage-gate section lists its
+equivalents — the asymmetry makes the `test` job look unguarded and uncached.
+**Fix:** Extend the dispatch bullet ("runs the nightly census and the test-mamba
+kernel-build leg on demand") and add the two missing steps to the `test` job list
+(free-disk guard + shared uv cache, mirroring the coverage-gate wording).
 
 ---
 
-_Reviewed: 2026-10-01T05:07:13Z_
+_Reviewed: 2026-10-01T11:41:38Z_
 _Reviewer: Claude (gsd-code-reviewer)_
-_Depth: standard (incremental, diff_base 8a6c69e477b80c8667af5436b7f10179e49113a6)_
+_Depth: standard (incremental, diff_base 84484aa)_
