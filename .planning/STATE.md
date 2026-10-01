@@ -22,7 +22,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Milestone closeout — all 4 phases complete, 13/13 plans, verification 10/10
+**Current focus:** Verification-refresh pass — Phase 01 re-verified 15/15 at HEAD (2026-10-01); phases 02–04 VERIFICATION digests still stale, refresh before milestone closeout
 
 ## Current Position
 
@@ -131,6 +131,7 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 04]: [04-03] Job-level logs API (gh api actions/jobs/<id>/logs) serves completed jobs mid-run — run-level gh --log-failed gates on whole-run completion; harvested evidence before the last test-cuda leg finished
 - [Phase 04]: [Phase 04]: [04-03] GATE-05 proven live on dev side (probe PR triggered the gated job to FAILURE); PRs to main inherit the same pull_request block; branch protection handed to owner as exact gh api PUT commands naming context "coverage-gate (py3.12, fast leg)"
 - [Phase 04]: CLOSEOUT — milestone delivered: verification re-run passed 10/10 with fresh digest after a stale-gate trip (execute-phase tail gates: incremental code review 0 crit/0 warn/3 info committed as disposition; regression fast-leg 1635 green); nightly census green on self-hosted runner (run 36811033498: 1656 passed / 7 allowlisted / 0 failed / 96.30%); branch protection APPLIED on dev+main resolving the 04-02 owner note
+- [Phase 01]: Stale-digest refresh pass (2026-10-01): post-milestone commits (ci.yml mamba-runner migration, windows leg) staled all 4 VERIFICATION.md digests; Phase 01 re-verified 15/15 at HEAD 087172b with regenerated digest; incremental code review over the 55-file phases-02–04 delta found 0 crit / 3 warn / 9 info (REVIEW 75bad54 + disposition 087172b; WR-01 ci.yml test-mamba continue-on-error, WR-02 plot.py prepare_data drops task_type, WR-03 workflows README stale) — open for triage
 
 ### Pending Todos
 
@@ -138,7 +139,7 @@ None yet.
 
 ### Blockers/Concerns
 
-None — both carried concerns resolved (Phase 3 sizing measured and closed in 01-02; MCP transport pattern proven by the 03-03 wave landing). Milestone-close follow-ups live with /gsd-ship: stale models.lock entry (mamba line, one-line fix), WINDOWS.md ledger triage (~10 entries + IN-01..07 info findings), optional runner systemd install.
+None — both carried concerns resolved (Phase 3 sizing measured and closed in 01-02; MCP transport pattern proven by the 03-03 wave landing). Milestone-close follow-ups live with /gsd-ship: stale models.lock entry (mamba line, one-line fix), WINDOWS.md ledger triage (~10 entries + IN-01..07 info findings), optional runner systemd install. Phase-01 re-review (2026-10-01) left 3 warnings open in 01-REVIEW-DISPOSITION.md — WR-01 nightly test-mamba continue-on-error swallows failures; WR-02 plot.py prepare_data drops task_type (multilabel curves corrupted via public API); WR-03 .github/workflows/README.md documents gates/tooling that don't exist — triage during ship.
 
 ## Deferred Items
 
@@ -150,8 +151,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T05:20Z
-Stopped at: Phase 01 complete — all phases complete
+Last session: 2026-10-01T09:40Z
+Stopped at: Phase 01 stale-verification refresh complete (re-verified 15/15, fresh digest); phases 02–04 verifications still stale — refresh, then milestone closeout (audit-milestone → complete-milestone → cleanup)
 Resume file: None
 
 ## Deferred Verification
