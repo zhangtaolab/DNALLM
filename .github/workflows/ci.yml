@@ -289,7 +289,11 @@ jobs:
 
   coverage-nightly:
     name: coverage-nightly (py3.12, full suite incl. slow)
-    runs-on: ubuntu-latest
+    # Self-hosted GPU box (aarch64, warm HF/ModelScope caches in $HOME):
+    # schedule/dispatch events only — fork PRs can never land here; all PR jobs
+    # stay on hosted runners. Hosted runners cap at 360min (run 36747594207 was
+    # killed at exactly 6h00m33s), which a CPU census cannot fit (13x GPU->CPU).
+    runs-on: [self-hosted, dnallm-nightly]
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     # Per-test timeout ceilings across the census sum to 840min (7 phase marks
     # = 600min + download/real-inference/MCP marks = 900+900+5x1800+3600s =
