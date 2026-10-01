@@ -280,6 +280,26 @@ def _checkout_pinned_megadna(clone_dir: Path) -> str:
     return got
 
 
+def _numpy_fromstring_shim() -> None:
+    """Restore ``np.fromstring`` binary mode for stripedhyena on numpy >= 2.
+
+    stripedhyena 0.2.2's CharLevelTokenizer calls ``np.fromstring(text,
+    dtype=np.uint8)``, whose binary mode numpy 2.x removed ("use frombuffer
+    instead"). Shimming it here mirrors the repo's ``transformers_compat``
+    monkeypatch pattern and is the Phase 8 recipe for the same break.
+    """
+    import numpy as np
+
+    if int(np.__version__.split(".")[0]) < 2:
+        return
+
+    def _fromstring(text: Any, dtype: Any = np.uint8, **_kwargs: Any):  # noqa: ANN202
+        data = text.encode("utf-8") if isinstance(text, str) else text
+        return np.frombuffer(data, dtype=dtype)
+
+    np.fromstring = _fromstring  # type: ignore[attr-defined]
+
+
 def spike_evo1(variant: str) -> int:
     """Spike the EVO-1 family through the dnallm route.
 
@@ -296,6 +316,7 @@ def spike_evo1(variant: str) -> int:
     print("prerequisite=evo-model + stripedhyena installed in the throwaway venv only")
     print(f"hf_revision={revision} (auto-selected by the dnallm handler)")
     try:
+        _numpy_fromstring_shim()
         from dnallm.models.special.evo import evo_models
         from dnallm.utils.support import is_flash_attention_capable
 
