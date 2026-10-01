@@ -77,7 +77,7 @@ recorded: 2026-10-01T09:51:10.120Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | fixed | 01-REVIEW-FIX.md |
-| WR-02 | warning | open | - |
+| WR-02 | warning | fixed | commit 42ada4f (hand-set: fixer re-titled the finding, one-word drift — "data silently" vs "data is silently") |
 | WR-03 | warning | fixed | 01-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
