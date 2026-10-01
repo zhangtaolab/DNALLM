@@ -60,7 +60,8 @@ jobs:
       - name: Create virtual environment and install dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
         # .[base] resolves green on this exact box (coverage-nightly precedent);
-        # the spike-only packages stay inside this ephemeral job venv.
+        # the spike-only packages stay OUT of this ephemeral job venv — their
+        # absence is part of the evidence.
         run: |
           uv venv
           uv pip install -e ".[base]"
@@ -78,16 +79,17 @@ jobs:
         # verdicts come from the committed local evidence (spike-logs/).
         # On this venv the
         # evo/evo2 families fail fast at their handler ImportErrors (the
-        # spike-only packages are intentionally absent), megadna downloads
-        # its 582MB checkpoint and fails the unpickle without the pinned
-        # clone + MEGABYTE_pytorch, pybigwig fails its import, and marimo
-        # executes for real on the warm ModelScope cache — every failure
-        # text is matrix evidence, and the runner exits 0 whenever each
-        # family EMITTED its evidence block (the matrix, not this exit
-        # code, is the verdict carrier). A red step therefore means an
-        # infrastructure crash with missing evidence (import error, OOM
-        # kill, disk full) — no `|| true` mask; the upload below still
-        # runs via its if: always().
+        # spike-only packages are intentionally absent from this venv), megadna
+        # clones the pinned repo (the fallback itself) and downloads its 582MB
+        # checkpoint, but the unpickle still FAILS: the clone provides the
+        # megaDNA package, not the MEGABYTE_pytorch pip package its model file
+        # imports. pybigwig fails its import, and marimo executes for real on
+        # the warm ModelScope cache — every failure text is matrix evidence,
+        # and the runner exits 0 whenever each family EMITTED its evidence
+        # block (the matrix, not this exit code, is the verdict carrier). A
+        # red step therefore means an infrastructure crash with missing
+        # evidence (import error, OOM kill, disk full) — no `|| true` mask;
+        # the upload below still runs via its if: always().
         run: |
           source .venv/bin/activate
           set -o pipefail
