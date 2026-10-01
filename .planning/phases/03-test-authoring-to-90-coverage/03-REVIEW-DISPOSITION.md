@@ -3,6 +3,22 @@ phase: 03
 review: 03-REVIEW.md
 titles: json
 findings:
+  - id: WR-05
+    severity: warning
+    disposition: open
+    title: "The multilabel AUROC/AUPRC guard added in this delta has no test — the guarded (absent-summary) path is never exercised"
+  - id: IN-06
+    severity: info
+    disposition: open
+    title: "models.lock keeps a dead entry attributed to the swapped-out open_chromatin config"
+  - id: IN-07
+    severity: info
+    disposition: open
+    title: "cuda_compat test indexes `_LIB_PATTERNS[sys.platform]` directly — KeyErrors on platforms the project supports"
+  - id: IN-08
+    severity: info
+    disposition: open
+    title: "coverage-nightly timeout notes still argue from the hosted-runner 360-min cap the job no longer runs under"
   - id: IN-01
     severity: info
     disposition: open
@@ -39,20 +55,23 @@ findings:
     severity: warning
     disposition: fixed
     title: "New `tempfile.mkdtemp()` calls leaked temp directories"
-open: 4
-total: 9
-unparsed: 1
-recorded: 2026-09-30T13:55:07.454Z
+open: 8
+total: 13
+recorded: 2026-10-01T11:06:16.311Z
 ---
 
 # Phase 03: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
+| WR-05 | warning | open | - |
+| IN-06 | info | open | - |
+| IN-07 | info | open | - |
+| IN-08 | info | open | - |
+| IN-01 | info | open | - (not in the current review) |
+| IN-02 | info | open | - (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
+| IN-05 | info | open | - (not in the current review) |
 | CR-01 | critical | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-01 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
 | WR-02 | warning | fixed | 03-REVIEW-FIX.md (not in the current review) |
