@@ -152,6 +152,16 @@ None - no external service configuration required.
 - Typed-skip prefixes already allowlisted; Phase 8 skip decisions (per D-06 evidence ordering) emit through the helpers
 - Plans 05-02 (honest gates) and 05-03 (GB10 feasibility spike) proceed independently in this phase
 
+### Post-wave integration fix (orchestrator, post-merge gate)
+
+The post-merge test gate caught a collection conflict: `tests/examples/conftest.py` won the
+bare `conftest` module-name race (tests/ is not a package) and broke
+`from conftest import ...` in test_trainer/test_benchmark/test_dna_dataset. Fix: the
+`notebook_sandbox` fixture moved into `test_notebook_execution.py` (its sole in-phase
+consumer) and the conftest was deleted. Full fast leg green (1636 passed / 88.55s), slow
+execution tests green (2 passed / 15.71s). Commit: `fix: resolve post-merge conftest name
+collision from wave 1`.
+
 ## Self-Check: PASSED
 
 - tests/examples/_execution.py, tests/examples/conftest.py, tests/examples/test_notebook_execution.py exist on disk
