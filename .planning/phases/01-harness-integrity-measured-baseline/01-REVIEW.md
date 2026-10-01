@@ -1,116 +1,279 @@
 ---
 phase: 01-harness-integrity-measured-baseline
-reviewed: 2026-09-29T19:21:29Z
+reviewed: 2026-10-01T09:23:19Z
 depth: standard
-files_reviewed: 5
+files_reviewed: 55
 files_reviewed_list:
-  - conftest.py
-  - pyproject.toml
+  - dnallm/inference/benchmark.py
+  - dnallm/inference/plot.py
+  - dnallm/mcp/server.py
+  - dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml
+  - dnallm/mcp/tests/_network_skip.py
+  - dnallm/mcp/tests/test_config_manager.py
+  - dnallm/mcp/tests/test_config_validators.py
+  - dnallm/mcp/tests/test_mcp_functionality.py
+  - dnallm/mcp/tests/test_network_skip.py
+  - dnallm/mcp/tests/test_sse_client.py
+  - dnallm/mcp/tests/test_streamable_http_client.py
+  - dnallm/models/model.py
+  - dnallm/tasks/metrics.py
+  - .github/dependabot.yml
   - .github/workflows/ci.yml
-  - scripts/ci_checks.sh
   - .github/workflows/README.md
+  - .gitignore
+  - models.lock
+  - pyproject.toml
+  - scripts/audit_skips.py
+  - tests/benchmark/test_benchmark.py
+  - tests/cli/test_cli.py
+  - tests/configuration/test_configs.py
+  - tests/conftest.py
+  - tests/datahandling/test_dna_dataset.py
+  - tests/expected_skips.yaml
+  - tests/finetune/test_trainer.py
+  - tests/finetune/test_trainer_real_model.py
+  - tests/inference/test_inference.py
+  - tests/inference/test_inference_real_model.py
+  - tests/inference/test_interpret.py
+  - tests/inference/test_mutagenesis.py
+  - tests/inference/test_plot.py
+  - tests/mcp/test_client_sdk.py
+  - tests/mcp/test_interpret_tool.py
+  - tests/mcp/test_model_manager.py
+  - tests/mcp/test_mutagenesis_tool.py
+  - tests/mcp/test_server_streaming.py
+  - tests/mcp/test_server_transports.py
+  - tests/mcp/test_start_server.py
+  - tests/models/test_head.py
+  - tests/models/test_losses.py
+  - tests/models/test_model.py
+  - tests/models/test_special/test_crossdna.py
+  - tests/models/test_special/test_evo.py
+  - tests/models/test_special/test_family_handlers.py
+  - tests/models/test_tokenizer.py
+  - tests/scripts/test_audit_skips.py
+  - tests/tasks/test_metrics.py
+  - tests/utils/test_cuda_compat.py
+  - tests/utils/test_logger.py
+  - tests/utils/test_sequence.py
+  - tests/utils/test_support.py
+  - tests/utils/test_training_plots.py
+  - tests/utils/test_transformers_compat.py
 findings:
   critical: 0
-  warning: 0
+  warning: 3
   info: 9
-  total: 9
-status: clean
-iteration: 3
+  total: 12
+status: issues_found
 ---
 
-# Phase 01: Code Review Report (Iteration 3 — Final)
+# Phase 01: Code Review Report (incremental re-review, cumulative through phases 02-04)
 
-**Reviewed:** 2026-09-29T19:21:29Z
+**Reviewed:** 2026-10-01T09:23:19Z
 **Depth:** standard
-**Files Reviewed:** 5
-**Status:** clean (no Critical or Warning findings in current file state; Info-only, non-blocking)
+**Files Reviewed:** 55
+**Status:** issues_found
+**Diff base:** 0ca5f1c53d9dd3a30c2380ef962b4b1b0c487400
 
 ## Summary
 
-Final re-review of the five harness files after the iteration-2 fix loop (WR-07 fix in commit `10476ff`). Every fix was verified directly against the working tree and by execution/parsing, not taken from fix reports.
+Re-reviewed the 55 files this phase's harness integrity depends on, covering the cumulative
+phases 02-04 changes (roughly +16,300 lines, overwhelmingly new/expanded tests plus five
+surgical source fixes in `benchmark.py`, `plot.py`, `model.py`, `metrics.py`, `mcp/server.py`,
+the CI workflow hardening, the skip-audit gate, and the `fail_under = 90` ratchet).
 
-**All warnings from this review's lineage are resolved or explicitly deferred:**
+**Verified as correct** (each traced to source and, where load-bearing, executed):
+- The guarded dispatch chain in `model.py:856-878` (crossdna -> dnabert2 -> generic; both
+  handlers return `(None, None)` tuples, so no unpack crash) with a dedicated regression test
+  (`test_load_model_crossdna_result_not_overwritten`).
+- The multiclass metrics presence guard in `metrics.py:283-306` — the check matches what
+  `roc_auc_score(multi_class="ovr")` requires (0-based contiguous ids in `labels`); datasets
+  that previously computed metrics used 0-based ids or already crashed inside sklearn.
+- The network-free `metrics_for_dnabert2` vendored loading (`metrics.py:592-605`) — executed
+  offline end-to-end against the vendored scripts, including the `"multiclass"` config_name
+  path (`evaluate.load`'s second positional arg is `config_name`, not `module_type`; the
+  vendored `roc_auc.py` handles `config_name == "multiclass"` internally).
+- The MCP multi-model success/failure counting fix (`server.py:1190-1199`), the k-fold/
+  StratifiedKFold fixes in `benchmark.py`, the `_prepare_annotations` / scalar-skip /
+  attention-entropy fixes in `plot.py`, and `pyproject.toml`'s `fail_under = 90`
+  (pytest-cov 7.1.0 demonstrably reads it from `[tool.coverage.report]`, CI green on legs
+  run after commit ae5c8ba, so the fast-leg total is above the floor).
+- `scripts/audit_skips.py` fail-closed semantics and its test suite; the `# ruff: ignore[code]`
+  pragmas are honored by the pinned ruff 0.16.9 (empirically confirmed).
 
-- **WR-07 (uv bootstrap PATH) — VERIFIED FIXED.** `scripts/ci_checks.sh:60-67`: inside the `if ! command -v uv` branch, immediately after the `curl | sh` install, the script now runs `export PATH="$HOME/.local/bin:$PATH"` with an explanatory comment. `bash -n scripts/ci_checks.sh` passes; the export is scoped to the install branch only, so nothing changes when uv is already resolvable; `set -euo pipefail` will no longer abort the run between a successful install and the first bare `uv venv` call.
-- **WR-01 (least-privilege permissions) — still fixed.** PyYAML parse of `ci.yml`: top-level `permissions: {contents: read}`; `test`, `test-cuda`, `test-mamba` inherit read-only; only `deploy` overrides with `contents: write` for the `gh-pages` push.
-- **WR-03 (mamba failure-artifact upload) — still fixed.** Parsed step wiring: test step has `id: mamba-tests` + `continue-on-error: true`, runs `set -o pipefail` and `pytest ... 2>&1 | tee pytest.log`; upload step gates on `if: always() && steps.mamba-tests.outcome == 'failure'` with paths `pytest.log` + `/tmp/mamba-build.log`. With `continue-on-error`, `outcome` records the real failure, so the upload is reachable; when the job is skipped the outcome is `skipped` and no spurious upload fires.
-- **WR-04 (stale `pytest.ini` docs) — still fixed.** Repo grep finds `pytest.ini` only in the deliberate "never recreate" warnings (`tests/TESTING.md:86-92`, `CONTRIBUTING.md:393-394`) and the correct pointer at `.github/workflows/README.md:185`. No `pytest.ini`/`tox.ini`/`setup.cfg`/`.coveragerc` exists anywhere in the tree (find verified), so `pyproject.toml` remains the sole pytest/coverage config source.
+The new test corpus is unusually strong (fault-injection dispatch tests, in-memory ASGI MCP
+protocol round trips, honest fail-closed network skips). The findings below are CI-gate and
+latent-defect issues, not regressions introduced by the fixes themselves.
 
-**Additional empirical checks this iteration (all passed):**
+## Warnings
 
-- Every action major referenced in `ci.yml` exists as a real upstream tag (verified via `git ls-remote`): `actions/setup-python@v7`, `actions/checkout@v4`, `actions/cache@v3`/`@v4`, `actions/upload-artifact@v4`, `codecov/codecov-action@v3`. No unresolvable action references.
-- The exit-code canary heredoc still dedents correctly through the YAML block scalar (PyYAML render: `def test_ci_exitcode_canary():` and terminator `CANARY` at column 0), producing a valid failing test; the `if pytest; then exit 1` inversion fails the job exactly when the exit-code mask regresses.
-- `ruff check conftest.py --statistics` and `ruff format --check conftest.py` pass with the pinned ruff 0.16.9 — the name-form entries in `[tool.ruff.lint] ignore` (`"print"`, etc.) are honored by the pinned version (conftest's root-level `print()` calls are not flagged), so they are not a defect under the pinned toolchain.
-- No secrets, no `eval`, no TODO/FIXME markers in any of the five files.
-- `scripts/check_notebook_md_sync.py` and `tests/TESTING.md` (linked from `.github/workflows/README.md:184`) both exist.
+### WR-01: Nightly `test-mamba` job reports green while its tests fail (`continue-on-error`)
 
-**Open but deferred (owner / Phase-4 CI-gate decisions — deliberately not re-counted as findings):**
+**File:** `.github/workflows/ci.yml:315-322`
+**Issue:** The mamba test step is marked `continue-on-error: true`. Any pytest failure in the
+mamba leg produces a **successful** job conclusion; the only signal is an uploaded artifact
+(`Upload mamba test logs on failure`). The nightly `coverage-nightly` census runs on the same
+self-hosted runner and IS gating (`continue-on-error: false`), so the mamba leg is the one part
+of the suite whose failures are structurally invisible in checks. For a milestone whose core
+value is "a fully passing suite ... enforced by a CI hard gate", a green-on-failure test job is
+a harness-integrity hole: mamba-family loading can regress indefinitely without a red build.
+**Fix:** Remove `continue-on-error: true` (the per-test `--timeout=300` from `addopts` and the
+180-min job timeout already bound a hung run; the artifact step keeps its
+`if: always() && ...outcome == 'failure'` condition), or add a final step:
+```yaml
+      - name: Fail job on mamba test failures
+        if: steps.mamba-tests.outcome == 'failure'
+        run: exit 1
+```
 
-- **WR-02:** `test-mamba` gates every meaningful step on an `nvidia-smi` probe that never succeeds on `ubuntu-latest`, and `test-cuda` likewise runs on GPU-less runners, so the GPU leg is a structural no-op that `deploy: needs: [...]` treats as passing. (Residual detail: nothing in the job ever writes `/tmp/mamba-build.log`; it is an aspirational path in the upload list, harmless because `pytest.log` always matches.)
-- **WR-05:** broad `.github/workflows/README.md` staleness — Black/isort/Flake8 instructions (lines 31-35, 107-110, 163-180), Python 3.10-3.12 matrix claim (line 23), `develop` branch name (lines 13-14), undocumented canary step.
-- **WR-06:** unpinned `curl -LsSf https://astral.sh/uv/install.sh | sh` in four CI jobs (`ci.yml:45,146,202,258`) and the local script (`scripts/ci_checks.sh:62`) — supply-chain pinning decision deferred.
+### WR-02: `prepare_data` drops `task_type` — multilabel curve data is silently corrupted through the public API
 
-No Critical issues and no open Warnings remain in the current state of these files. The nine Info items below were re-verified against current line numbers and stay open (fix_scope for the loop was critical/warning-only); they are recorded for future cleanup and do not block.
+**File:** `dnallm/inference/plot.py:175-176`
+**Issue:** `prepare_data` routes classification task types to
+`_prepare_classification_data(metrics)` **without forwarding `task_type`**, so the private
+function always runs its binary branch. For multilabel metrics (whose `curve` dict is nested
+per label), the binary branch iterates the label dict as flat score entries and produces
+garbage. Verified by execution:
+```python
+bars, curves = prepare_data(ml_metrics, "multilabel")
+curves["PR"] == {"label_0": ["AUROC", "fpr", "tpr", "precision", "recall"]}  # dict KEYS, not floats
+curves["ROC"] == {}
+```
+`Benchmark.plot()` on a multilabel task feeds this corrupted structure into `plot_curve`.
+The defect is pre-existing, but this phase's new tests (`test_multilabel_curves_split_by_label`)
+call the **private** `_prepare_classification_data(metrics, task_type="multilabel")` directly,
+which pins the correct private behavior while leaving the public dispatch broken — so the gap
+will not be caught by the suite.
+**Fix:**
+```python
+    if task_type in ["binary", "multiclass", "multilabel", "token"]:
+        return _prepare_classification_data(metrics, task_type=task_type)
+```
+and extend the test to go through `prepare_data`.
+
+### WR-03: Workflow README documents gates and tooling that do not exist
+
+**File:** `.github/workflows/README.md:13-14, 33-39, 77, 140-143, 181-184, 201-203`
+**Issue:** The CI documentation of record is wrong on multiple load-bearing points:
+1. Lines 35-37, 140-143, 182-184, 201-203 claim the suite enforces **Black / isort / Flake8**;
+   the workflow runs **ruff format / ruff check** (Flake8 applies only to the MCP module via
+   `.flake8`). Contributors following the "Local Testing" block will run the wrong tools.
+2. Line 77 claims deploy "**Requires all test jobs to pass**", but `deploy` declares
+   `needs: [test, test-cuda]` (ci.yml:487) — `test-windows` and `coverage-gate` are not deploy
+   gates, so a failing coverage gate or Windows leg does not block a gh-pages deploy.
+3. Lines 13-14 say push/PR triggers include the **`develop`** branch; the workflow triggers on
+   `dev`.
+4. The jobs list omits the newly added `test-windows` job entirely.
+**Fix:** Update the README to describe ruff, the actual `needs` graph, the `dev` branch name,
+and add a `test-windows` section (or note the deploy `needs` set explicitly).
 
 ## Info
 
-### IN-01: Canary accepts any non-zero pytest exit as "OK"
+### IN-01: Broken-and-unused `mock_dataset` fixture and no-op `global_cleanup` fixture in conftest
 
-**File:** `.github/workflows/ci.yml:100-109`
-**Issue:** `if pytest ...; then` only distinguishes exit 0 from "anything else". Exit codes 2 (interrupted), 4 (usage error), or 5 (no tests collected) — e.g. from a future bad `addopts` entry — would print "Canary OK: pytest exited non-zero as expected" while validating nothing. Low residual risk because the earlier `Run fast tests` step would usually fail first on the same config error.
-**Fix:** Capture `$?` and require exactly `1` (test failure): `set +e; pytest ... > canary.log 2>&1; rc=$?; set -e; if [ "$rc" -ne 1 ]; then ... exit 1; fi`.
+**File:** `tests/conftest.py:229-233, 384-409`
+**Issue:** (a) `mock_dataset` assigns `mock_ds.__len__` and `mock_ds.__getitem__` on a plain
+`Mock` **instance** — dunder lookup goes through the type, so `len(mock_ds)` and `mock_ds[0]`
+would raise `TypeError`. The fixture is currently unused (grep confirms no consumer), making it
+dead code and a trap for the next user. (b) `global_cleanup` is a session-scoped autouse
+fixture whose body is `return` followed by an unreachable comment — dead scaffolding.
+**Fix:** Delete both, or convert `mock_dataset` to a working double
+(`MagicMock(spec=...)`/dataclass) if it is ever needed.
 
-### IN-02: Dead hooks left behind by the exit-mask removal
+### IN-02: Stale `models.lock` entry after the open-chromatin model swap
 
-**File:** `conftest.py:80-92`
-**Issue:** The `global_cleanup` autouse session fixture does nothing (returns with a comment deferring to `pytest_sessionfinish`) and `pytest_unconfigure` is a `pass` stub — inert leftovers of the deleted atexit design. The module docstring (line 3) still claims the module "provides global pytest fixtures".
-**Fix:** Delete `global_cleanup` and `pytest_unconfigure`; adjust the docstring to describe the `pytest_sessionfinish` cleanup only.
+**File:** `models.lock:9`
+**Issue:** `ms zhangtaolab/plant-dnamamba-BPE-open_chromatin` is annotated as the model for
+`dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml`, but that config was swapped
+to `zhangtaolab/plant-dnagpt-BPE-promoter` (which is already covered by the
+`ms plant-dnagpt-BPE-promoter` entry). The dnamamba entry is no longer fetched by any test and
+its provenance comment is misleading; it also unnecessarily rotates the nightly cache key.
+**Fix:** Delete the entry (or re-point its comment) the next time `models.lock` is touched.
 
-### IN-03: Redundant asyncio-mode mechanism in `pytest_configure`
+### IN-03: Open-chromatin config keeps promoter labels/description after the model swap
 
-**File:** `conftest.py:14-17` (duplicates `pyproject.toml:474`)
-**Issue:** `config.option.asyncio_mode = "auto"` duplicates `--asyncio-mode=auto` already in `pyproject.toml` `addopts`. Two sources for one setting invite drift (someone flips the ini flag and the conftest silently re-forces auto), contrary to this phase's single-source-of-truth goal.
-**Fix:** Delete the assignment and the then-empty `pytest_configure` hook; keep the pyproject `addopts` as the sole source.
+**File:** `dnallm/mcp/tests/configs/open_chromatin_inference_config.yaml:10-12`
+**Issue:** The slot named `open_chromatin_model` (and asserted in
+`test_mcp_functionality.py:120-129` as "open chromatin prediction") now runs a promoter
+classifier: `description` says open chromatin while `label_names` are
+`["Not promoter", "Core promoter"]`. The header comment discloses the swap, but the E2E log
+summary still reports "Open Chromatin Prediction" over promoter labels — confusing for anyone
+debugging the nightly census.
+**Fix:** Align the description/label semantics (e.g. "promoter model standing in for the
+open-chromatin slot") or rename the slot.
 
-### IN-04: `ci_checks.sh` step-numbering typo and overstated "exact same checks" claim
+### IN-04: Vacuous isinstance assertions via `__class__` swap in benchmark tests
 
-**File:** `scripts/ci_checks.sh:119` (header lines 2-3)
-**Issue:** The fast-test branch prints "3/4: Running fast tests..." inside a flow labeled 1/5..5/5 (should be "4/5"). Separately, the header claims the script "Runs the exact same checks as the GitHub Actions CI pipeline", but it does not mirror the CI `test` job: it omits the exit-code canary and `coverage xml` substeps, and it runs `check_notebook_md_sync.py`, which no workflow executes. It also installs `.[test,dev]` where CI installs `.[base]`.
-**Fix:** Fix the label to "4/5"; reword the header (e.g. "mirrors the CI lint/test/mypy steps; the canary and codecov upload run in CI only; notebook-sync is a local-only check"), or add the canary block and drop the local-only check for true parity.
+**File:** `tests/benchmark/test_benchmark.py:161, 195`
+**Issue:** `mock_dataset.__class__ = DNADataset` / `mock_inference_instance.__class__ =
+DNAInference` followed by `isinstance(new_dataset_obj, DNADataset)` /
+`isinstance(inference_engine, DNAInference)` validates the test's own forced class, not any
+production behavior (the production constructor is patched out at those call sites).
+**Fix:** Assert on the mock interaction instead (e.g. `generate_dataset` call args), or drop
+the isinstance asserts.
 
-### IN-05: CUDA/mamba jobs invoke `pytest tests/` instead of bare `pytest`
+### IN-05: Misleading test names/docstrings pinning non-behavior
 
-**File:** `.github/workflows/ci.yml:172, 218`
-**Issue:** With `tests/pytest.ini` gone these invocations now correctly resolve the pyproject config, but the explicit `tests/` path still excludes the `dnallm/mcp/tests` root that the consolidated `test` job collects via `testpaths` (`pyproject.toml:465`) — the same invocation-shape inconsistency (bare vs. pathed) that produced the original HARN-01 hijack.
-**Fix:** Use bare `pytest -m "not slow"` in both jobs, or document why the GPU jobs intentionally collect one root only.
+**File:** `tests/tasks/test_metrics.py:494-547`; `dnallm/mcp/tests/test_streamable_http_client.py:93`;
+`tests/configuration/test_configs.py:941-946`
+**Issue:**
+- `TestMetricsForDnabert2.test_metrics_for_dnabert2_regression` and
+  `..._classification` never call `metrics_for_dnabert2` — they exercise
+  `regression_metrics()`/`classification_metrics()` (real coverage now exists in
+  `TestMetricsForDnabert2Arms`; the old names misdirect).
+- `test_streamable_http_custom_url` uses the same default `localhost:8000/mcp` URL; nothing
+  "custom" is tested.
+- `test_token_classification_alias_constructs_without_defaults` docstring says "normalizes to
+  token" while the test asserts `task_type == "token_classification"` stored verbatim — a
+  value that `compute_metrics`/`prepare_data` later **reject** (`Unsupported task type`). The
+  alias inconsistency lives in `configs.py:125-126` (out of this diff's scope), but the test
+  docstring should describe the stored-verbatim reality rather than the intended normalization.
+**Fix:** Rename/rewrite the docstrings; ideally note the downstream incompatibility in the
+token alias test.
 
-### IN-06: Deprecated action majors; coverage-upload failures are silent
+### IN-06: `from conftest import ...` relies on pytest's sys.modules side effect
 
-**File:** `.github/workflows/ci.yml:88, 250`
-**Issue:** `codecov/codecov-action@v3` is a deprecated major (current is v4+; every other action in the file is @v4 or @v7), and `fail_ci_if_error: false` means that when the aging v3 endpoint stops working, coverage reporting silently disappears while CI stays green — no signal that the phase's `coverage.xml` output is going nowhere, which matters for a "measured baseline" milestone. `actions/cache@v3` in the `deploy` job is likewise a deprecated major alongside `cache@v4` elsewhere in the same file.
-**Fix:** Upgrade both to current majors; keep `fail_ci_if_error: false` if desired, but consider a log-side assertion that the upload reported success.
+**File:** `tests/finetune/test_trainer.py:17`; `tests/benchmark/test_benchmark.py:25`
+**Issue:** These modules import `SimpleDNATokenizer` from `tests/conftest.py` without any
+`sys.path` entry for `tests/` in the trainer file; it resolves only because pytest has already
+imported `tests/conftest.py` as top-level module `conftest`. Running the file outside pytest
+(or under a different import mode) breaks.
+**Fix:** Import from a non-conftest helper module (e.g. `tests/_fakes.py`) or add the same
+guarded `sys.path.insert` used in `tests/benchmark/test_benchmark.py:23`.
 
-### IN-07: `rocm` extra and commented-out mamba block are misleading config
+### IN-07: Deprecated `actions/cache@v3` in the deploy job
 
-**File:** `pyproject.toml:146-148, 155-158, 209, 219, 230-232`
-**Issue:** The `rocm` extra installs `torch` with no index mapping — every `torch-rocm` entry in `[tool.uv.sources]` and `[tool.uv] conflicts` is commented out — so `uv pip install '.[rocm]'` resolves plain PyPI (CUDA) wheels despite the README advertising a ROCm install path. The `#mamba = [...]` block (155-158) is dead commented-out config. Pre-existing, but it sits in the file this phase edits for dependency hygiene.
-**Fix:** Either restore the `torch-rocm` source/conflict entries or remove the `rocm` extra; delete the commented-out mamba block.
+**File:** `.github/workflows/ci.yml:506-510`
+**Issue:** The deploy job pins `actions/cache@v3` while every other job in the file uses `@v4`;
+v3 is sunset on github.com and generates deprecation warnings (dependabot will keep proposing
+the bump).
+**Fix:** Bump to `actions/cache@v4`.
 
-### IN-08: Deploy-job cache primary key can never exact-hit
+### IN-08: Code-based `Benchmark.__init__` aliases one task config across all datasets
 
-**File:** `.github/workflows/ci.yml:252`
-**Issue:** The mkdocs cache key is `mkdocs-material-${{ github.run_number }}`. `run_number` strictly increases per workflow run, so the primary key never matches a previously saved entry — every run takes the `restore-keys: mkdocs-material-` prefix fallback (partial restore) and then saves a fresh unique entry, steadily evicting older caches under GitHub's 10 GB limit. The cache step never works as designed.
-**Fix:** Key on stable content, e.g. `key: mkdocs-material-${{ hashFiles('pyproject.toml', 'mkdocs.yml') }}`, keeping the current `restore-keys` as fallback.
+**File:** `dnallm/inference/benchmark.py:120-129` (pre-existing)
+**Issue:** The loop reuses `self.config["task"]` and appends the **same object** once per
+dataset, so with multiple datasets of different task types every `task_configs` entry holds the
+last dataset's values. Relatedly, `run_without_config` indexes `tasks[mi]` with the **model**
+index (`benchmark.py:486`) although the list was built per dataset. Works today only because
+callers use one model/one homogeneous task set.
+**Fix:** Build a fresh `TaskConfig(...)` per dataset inside the loop and index tasks by dataset
+where they are consumed.
 
-### IN-09: Redundant `filterwarnings` entries under a blanket ignore
+### IN-09: `metrics_for_dnabert2` regression arm returns a nested `r2` dict — and the new test cements it
 
-**File:** `pyproject.toml:490-497`
-**Issue:** Line 491 blanket-ignores all `DeprecationWarning`, which already covers the three specific SwigPy/co_lnotab `DeprecationWarning` ignores on lines 494-496 — they are dead entries. More broadly for this milestone, blanket-ignoring `UserWarning` and `DeprecationWarning` suppresses exactly the numpy/transformers deprecation signal that the 1.26.4-vs-2.2.0 matrix exists to surface, weakening the harness this phase is hardening.
-**Fix:** Drop lines 494-496 (covered by line 491). Optionally, narrow lines 490-493 to module-scoped ignores so the numpy matrix legs can still surface deprecations.
+**File:** `dnallm/tasks/metrics.py:610-612`; `tests/tasks/test_metrics.py:909`
+**Issue:** `r2 = r2_metric.compute(...)` yields `{"r2": 0.8}`, and the return is
+`{"r2": r2, ...}` → `{"r2": {"r2": 0.8}}`. `regression_metrics` has the same shape convention
+(`metrics["r2"]` is a dict), which downstream `plot_bars` would choke on via
+`astype(float)`. The new `test_regression_arm_returns_r2_dict_and_spearmanr` asserts the
+nested shape verbatim, making the cleanup harder later. (Pre-existing shape; not introduced
+by this phase.)
+**Fix:** Unwrap to a scalar (`r2["r2"]`) in both producers, or at minimum record the wart in
+the test rather than presenting the nested dict as the contract.
 
 ---
 
-_Reviewed: 2026-09-29T19:21:29Z_
+_Reviewed: 2026-10-01T09:23:19Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
-_Iteration: 3 (final) — WR-07 verified fixed; WR-01/WR-03/WR-04 re-confirmed fixed; WR-02/WR-05/WR-06 deferred by owner decision; no Critical or Warning findings remain_
