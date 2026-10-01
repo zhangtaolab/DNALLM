@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 01
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 01 complete — all phases complete
-last_updated: "2026-10-01T12:34:43.550Z"
+last_updated: "2026-10-01T13:04:24.787Z"
 last_activity: 2026-10-01
-last_activity_desc: Phase 01 complete
-state_head: 80324a1cbe1dda8fac179286daca25d082aa5e86
+last_activity_desc: Milestone v1 completed and archived
+state_head: ae5352a13f42aeafff9863ebd70c45e5b3ad0a5f
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 13
   completed_plans: 13
   percent: 100
+current_phase: 01
 ---
 
 # Project State
@@ -26,12 +26,10 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 ## Current Position
 
-Phase: 01
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-01 — Phase 01 complete
-
-Progress: [████████████████████] 13/13 plans (100%)
+Phase: Milestone v1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-01 — Milestone v1 completed and archived
 
 ## Performance Metrics
 
@@ -147,7 +145,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| *(none)* | | | | |
+| deferred_items | 03/deferred-items.md: import-time `logs/dnallm.log` sink recreated under pytest cwd every run (`DNALLMLogger._setup_handlers`, logger.py:57-60) | acknowledged | 2026-10-01 | v1 |
+| deferred_items | 03/deferred-items.md: test_timeout.py fixed ~60s cost from two full-30s-timeout waits (shorten `_tool_timeout_seconds` like `test_timeout_configurable` does) | acknowledged | 2026-10-01 | v1 |
+| deferred_items | 03/deferred-items.md: `DNADataset.raw_reverse_complement` no-op — `ds.map` result discarded (data.py:983), latent bug pinned as-is by test | acknowledged | 2026-10-01 | v1 |
 
 ## Session Continuity
 
@@ -160,3 +160,7 @@ Resume file: None
 | Phase | State | Resume |
 |-------|-------|--------|
 | *(none — phase 4 verification closed 2026-10-01, passed 10/10)* | | |
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-DNALLM (`dnallm` v0.5.2) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. This cycle is a quality-engineering milestone on that existing codebase: audit the pytest suite end to end, close test gaps, and drive code coverage above 90% with a CI-enforced gate.
+DNALLM (`dnallm` v0.5.2) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate.
 
 ## Core Value
 
@@ -59,12 +59,14 @@ Shipped in Phase 4 (CI Gate Enforcement, 2026-10-01):
 
 ## Context
 
-- Current test config lives in `pyproject.toml [tool.pytest.ini_options]` (NOT pytest.ini): `--asyncio-mode=auto`, `--timeout=300`, `--strict-markers`; markers `slow`, `pdf`, `performance`, `integration`; testpaths `tests/` + `dnallm/mcp/tests/`
-- `pytest-cov>=6.0.0` is a dev dependency; since Phase 4 the enforcement surface is `fail_under = 90` in `[tool.coverage.report]` (pyproject.toml) — a bare `--cov` on any invocation activates it; CI census jobs run exactly that
-- Coverage measurement must include `slow` tests (real model downloads) per owner decision; CI gate run therefore needs network access and accepts long runtimes
-- Known skip: multiclass AUROC test explicitly skipped (`tests/tasks/test_metrics.py:761`) because `compute_metrics` crashes — fixing this is in scope
+Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% line coverage** (7,133/7,407 stmts) on a denominator byte-stable since Phase 1, `fail_under = 90` enforced through the pytest exit code and required-check branch protection on dev+main.
+
+- Test config lives solely in `pyproject.toml [tool.pytest.ini_options]` (`--asyncio-mode=auto`, `--timeout=300`, `--strict-markers`; markers `slow`, `pdf`, `performance`, `integration`; testpaths `tests/` + `dnallm/mcp/tests/`)
+- Enforcement surface is `fail_under = 90` in `[tool.coverage.report]` — a bare `--cov` on any invocation activates it; CI census jobs run exactly that
+- CI shape: `coverage-gate` (fast PR leg, push/PR) + `coverage-nightly` (slow census, self-hosted `dnallm-nightly` GPU runner, models.lock-keyed cache) + `test-mamba` (same runner, schedule/dispatch-only); matrix legs + windows leg stay ungated
+- Skip discipline: every skip is typed and matched against `tests/expected_skips.yaml` by `scripts/audit_skips.py` in 4 CI jobs — an unexpected skip fails the run
 - transformers compatibility spans 4.49–5.x via `dnallm/utils/transformers_compat.py`; installed dev env uses transformers 5.17, torch 2.11 cu130
-- Shared mock fixtures exist in `tests/conftest.py` (mock_model/mock_tokenizer/mock_config) — reuse these patterns for new tests
+- Known tech debt (reviewed, dispositioned, non-blocking): see `.planning/v1-MILESTONE-AUDIT.md` tech-debt ledger — 7 warning-tier + ~31 info-tier review findings, 3 acknowledged deferred engineering items (STATE.md), concentrated in the `/gsd-ship` triage path
 - Codebase map with full concerns list: `.planning/codebase/` (STACK, ARCHITECTURE, TESTING, CONCERNS)
 
 ## Constraints
@@ -84,6 +86,7 @@ Shipped in Phase 4 (CI Gate Enforcement, 2026-10-01):
 | GATE-02 amended: PR gate = fast leg; slow census = nightly on self-hosted GPU runner | Hosted 360-min cap killed the 6h CPU census; org cannot use larger hosted runners | ✓ Landed Phase 4 (census ~15 min warm on `dnallm-nightly`; dispatch/cron only, fork PRs can't reach it) |
 | Fix real code bugs encountered during audit (AUROC, CrossDNA) | Skipped-crash tests hide real defects; unskipping them is required for honest coverage | ✓ Landed Phase 2 (both fixed, regression-tested, unskipped) |
 | Subprocess coverage: start minimal, escalate only on canary evidence (Phase 1) | pytest-cov 7 removed `.pth` subprocess auto-measurement; no collected test spawns subprocesses | ✓ Landed Phase 1 (AUDIT-04; escalation trigger recorded) |
+| test-mamba on the self-hosted GPU runner at nightly cadence (schedule/dispatch-only), not push/PR | Per-run CUDA kernel source build is too heavy for per-push cadence (GATE-02 amended); PR-authored code (incl. forks) must never execute on the self-hosted box | ✓ Landed v1 closeout (quick task 261001-ith; dispatch run 36821471332 green) |
 
 ## Evolution
 
@@ -103,4 +106,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-01 after Phase 4*
+*Last updated: 2026-10-01 after v1 milestone*
