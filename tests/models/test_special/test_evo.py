@@ -7,6 +7,7 @@ never a direct sys.modules assignment).
 """
 
 import json
+import os
 import sys
 import types
 from types import SimpleNamespace
@@ -364,7 +365,7 @@ class TestHandleEvo2Models:
             _model, _tokenizer = _handle_evo2_models("evo2_7b_base", "huggingface")
 
         load_kwargs = FakeEvo2.load_calls[-1]
-        assert load_kwargs["local_path"] == "/downloaded/evo2_7b_base.pt"
+        assert load_kwargs["local_path"] == os.path.join("/downloaded", "evo2_7b_base.pt")
         assert load_kwargs["config_path"].endswith("evo2-7b-8k.yml")
 
     def test_head_config_wraps_in_sequence_classifier(self, monkeypatch, tmp_path):

@@ -5,6 +5,7 @@ monkeypatch.setitem (auto-restored — never a direct sys.modules assignment);
 families importing only installed packages run against real modules.
 """
 
+import os
 import sys
 import types
 from types import SimpleNamespace
@@ -174,7 +175,7 @@ class TestEnformerHandler:
         assert model == "cls-model"
         assert isinstance(tokenizer, DNAOneHotTokenizer)
         config_path = mock_config.call_args[0][0]
-        assert config_path == "/downloaded/model/config.json"
+        assert config_path == os.path.join("/downloaded/model", "config.json")
         assert mock_cls_load.call_args.kwargs["config"] is mock_config.return_value
         assert mock_config.return_value.num_labels == 2
 
