@@ -26,13 +26,21 @@ jobs:
     steps:
       - name: Check for GPU
         id: gpu-check
+        # Evidence-only deliverable: a silent skip would green the job with
+        # zero evidence produced (WR-05). On GPU absence, write a gpu_absent
+        # marker into the artifact path and FAIL — the upload step below still
+        # runs (if: always()) so the marker reaches the owner.
         run: |
           if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
             echo "has_gpu=true" >> $GITHUB_OUTPUT
             echo "GPU detected, will run the feasibility spike"
           else
             echo "has_gpu=false" >> $GITHUB_OUTPUT
-            echo "No GPU detected, skipping the feasibility spike"
+            mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
+            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" \
+              > .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log
+            echo "No GPU detected — failing: this job's deliverable is evidence"
+            exit 1
           fi
 
       - name: Checkout code
