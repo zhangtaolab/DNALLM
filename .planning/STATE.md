@@ -6,10 +6,10 @@ current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
 stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
-last_updated: "2026-10-02T08:36:21.875Z"
+last_updated: "2026-10-02T12:43:55.670Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: bf504e1cc34f1fae732814ee301eafe62dbe5443
+state_head: fdc4915563f681902556ad736aad0af9f7666329
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
 Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-10-02 — Phase 5 execution started
+Last activity: 2026-10-02 — Completed quick task 261002-se3: Fix transformers 5.x remote-code compat (get_extended_attention_mask shim)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -108,6 +108,12 @@ None yet.
 - Runtime budget risk: ~24 new slow tests with naive serial ceilings 14–48h vs the 900-min nightly job — measure per-artifact budgets during the Phase 5 pilot and Phase 8 rollout; escalation pre-authorized (CI-06)
 - From v1 ship triage (still open, live in /gsd-ship ledger): WR-01 nightly test-mamba continue-on-error; WR-02 plot.py prepare_data drops task_type; WR-03 workflows README stale — note WR-08/09 are v1.1 Phase 5 scope, these three are not
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261002-se3 | Fix transformers 5.x remote-code compat: restore get_extended_attention_mask for trust_remote_code ESM models (benchmark notebook AttributeError), with pytest coverage | 2026-10-02 | fdc4915 | [261002-se3-fix-transformers-5-x-remote-code-compat-](./quick/261002-se3-fix-transformers-5-x-remote-code-compat-/) |
 
 ## Deferred Items
 
