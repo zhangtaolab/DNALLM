@@ -71,6 +71,18 @@ class TestExampleScriptExecution:
         for name, url in RICE_INPUT_URLS.items():
             try:
                 _download(url, sandbox / name)
+            except urllib.error.HTTPError as exc:
+                # A permanent 4xx (reorganized URLs, gone dataset) is NOT
+                # network unavailability: skipping would convert a broken
+                # input contract into an ever-green typed skip that
+                # audit_skips.py unconditionally allows (05 review WR-04).
+                # Only server-side 5xx joins the skip path; 4xx re-raises.
+                if exc.code >= 500:
+                    pytest.skip(
+                        f"network-unavailable: fetch {url} for generate_bpe_dataset.py "
+                        f"(HTTP {exc.code})"
+                    )
+                raise
             except (urllib.error.URLError, TimeoutError) as exc:
                 pytest.skip(
                     f"network-unavailable: fetch {url} for generate_bpe_dataset.py "
