@@ -3,14 +3,18 @@
 Census-driven rollout layer of the v1.1 example execution (D-08): the
 parametrized test runs whole notebooks through the private nbclient
 harness inside a tmp sandbox, and the kill test proves a hung kernel is
-cleaned up (EXEC-06).  Every test here is slow-marked so hosted fast
-legs never spawn kernels.  :data:`NOTEBOOK_EXEC_SPECS` carries budgets
-for all 21 notebooks; the :data:`ACTIVE_NOTEBOOKS` list below holds
-exactly the 05-06 census-green notebooks, and
-:class:`TestGatedNotebookExecution` covers the environment-gated set
+cleaned up (EXEC-06).  Every kernel-spawning test here is slow-marked so
+hosted fast legs never spawn kernels (the :class:`TestSeedSandbox`
+unit tests below run kernel-free in the fast lane).  :data:`NOTEBOOK_EXEC_SPECS`
+carries budgets for all 21 notebooks; the :data:`ACTIVE_NOTEBOOKS` list
+below holds the census-green notebooks (8 from the 05-06 campaign plus
+the 5 repaired by quick task 261002-sl7: benchmark, finetune_data,
+embedding_attention, finetune_NER_task, inference_for_tRNA -- 13 total),
+and :class:`TestGatedNotebookExecution` covers the environment-gated set
 with probe-then-execute typed skips -- the rollout never widens
 silently (census FAIL items stay census rows and the Phase 8 repair
-queue).
+queue; finetune_generation joined the gated lane with the megaDNA gate,
+its data-prep half repaired and evidenced 261002-sl7).
 """
 
 from __future__ import annotations
@@ -43,6 +47,9 @@ from tests.examples._execution import (
 # every entry PASSED real end-to-end execution in the 05-06 campaign
 # (manifest evidence under .scratch/census-out/).  Census FAIL items stay
 # census rows and the Phase 8 repair queue -- never silently rolled in.
+# 261002-sl7 appended the five repaired census failures (owner
+# instruction 2026-10-02): each PASSED a fresh post-repair execution in
+# the 261002-sl7 campaign (evidence under .scratch/sl7/).
 ACTIVE_NOTEBOOKS = [
     EXAMPLE_DIR / "notebooks" / "inference" / "inference.ipynb",
     EXAMPLE_DIR / "notebooks" / "generation" / "inference.ipynb",
@@ -52,7 +59,28 @@ ACTIVE_NOTEBOOKS = [
     EXAMPLE_DIR / "notebooks" / "finetune_binary" / "finetune_binary.ipynb",
     EXAMPLE_DIR / "notebooks" / "finetune_multi_labels" / "finetune_multi_labels.ipynb",
     EXAMPLE_DIR / "notebooks" / "finetune_NER_task" / "data_generation_and_inference.ipynb",
+    EXAMPLE_DIR / "notebooks" / "benchmark" / "benchmark.ipynb",
+    EXAMPLE_DIR / "notebooks" / "data_prepare" / "finetune" / "finetune_data.ipynb",
+    EXAMPLE_DIR / "notebooks" / "embedding_attention.ipynb",
+    EXAMPLE_DIR / "notebooks" / "finetune_NER_task" / "finetune_NER_task.ipynb",
+    EXAMPLE_DIR / "notebooks" / "inference_for_tRNA" / "inference.ipynb",
 ]
+
+
+# Cross-directory sandbox inputs (261002-sl7): notebooks whose configs or
+# code reach outside their own directory via cwd-relative paths.  Keys are
+# POSIX ids relative to EXAMPLE_DIR (the parametrization id form); values
+# are seed_sandbox (src, dest-relative-to-sandbox) tuples.  The benchmark
+# config's ``path: ../inference/test.csv`` is the root cause this table
+# fixes: without the sibling seeding, DNAInference.generate_dataset
+# silently treats the missing path STRING as one "sequence", building a
+# labels-less one-row dataset that crashes Benchmark.run at
+# dnallm/inference/benchmark.py:296 (KeyError on the label column).
+_NOTEBOOK_EXTRA_INPUTS: dict[str, list[tuple[Path, str]]] = {
+    "notebooks/benchmark/benchmark.ipynb": [
+        (EXAMPLE_DIR / "notebooks" / "inference" / "test.csv", "../inference/test.csv"),
+    ],
+}
 
 
 # The sandbox fixture lives in this module (not a tests/examples/conftest.py):
@@ -68,9 +96,12 @@ def notebook_sandbox(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator
     beyond the in-test guard.  Generalized over the expanded spec dict
     (05-05): the seeded directory follows ``nb_path`` from the test's
     parametrization, so every census notebook gets a faithful sandbox.
+    Cross-directory inputs ride along through the per-notebook
+    :data:`_NOTEBOOK_EXTRA_INPUTS` table (261002-sl7).
     """
     nb_path = Path(request.node.callspec.params["nb_path"])
-    yield seed_sandbox(nb_path.parent, tmp_path)
+    extras = _NOTEBOOK_EXTRA_INPUTS.get(nb_path.relative_to(EXAMPLE_DIR).as_posix(), [])
+    yield seed_sandbox(nb_path.parent, tmp_path, extra_inputs=extras)
     assert_tree_clean()
 
 
@@ -211,6 +242,73 @@ class TestPartialFailureArtifacts:
         assert_tree_clean()
 
 
+class TestSeedSandbox:
+    """Kernel-free unit contract for :func:`seed_sandbox` extra inputs (261002-sl7).
+
+    Covers both accepted shapes -- a bare ``Path`` copying into the sandbox
+    root (the unchanged pilot contract) and a ``(src, dest-relative)``
+    tuple copying to a cwd-relative sibling position (the benchmark
+    ``../inference/test.csv`` root-cause fix) -- plus the T-sl7-03 guard:
+    a destination escaping the pytest ``tmp_path`` is rejected with
+    ``ValueError`` before anything is written outside the sandbox tree.
+    """
+
+    @staticmethod
+    def _seed_dir(tmp_path: Path) -> Path:
+        """Create a tiny fake example dir holding one notebook and one sibling input."""
+        src_dir = tmp_path / "fake_example"
+        src_dir.mkdir()
+        (src_dir / "tiny.ipynb").write_text("{}", encoding="utf-8")
+        (src_dir / "sibling.csv").write_text("sequence,label\nAT,1\n", encoding="utf-8")
+        return src_dir
+
+    def test_bare_path_extra_copies_into_sandbox_root(self, tmp_path: Path):
+        """A bare Path extra lands beside the notebook inside the sandbox."""
+        src_dir = self._seed_dir(tmp_path)
+        extra = tmp_path / "outside.csv"
+        extra.write_text("sequence\nAT\n", encoding="utf-8")
+
+        sandbox = seed_sandbox(src_dir, tmp_path / "run", extra_inputs=[extra])
+
+        assert (sandbox / "tiny.ipynb").is_file()
+        assert (sandbox / "sibling.csv").is_file()
+        assert (sandbox / "outside.csv").read_text(encoding="utf-8") == "sequence\nAT\n"
+
+    def test_tuple_extra_copies_to_relative_sibling_position(self, tmp_path: Path):
+        """A (src, '../inference/test.csv') tuple seeds the cwd-relative cross-dir input."""
+        src_dir = self._seed_dir(tmp_path)
+        extra_src = tmp_path / "repo_side_test.csv"
+        extra_src.write_text("sequence,label\nGC,0\n", encoding="utf-8")
+
+        sandbox = seed_sandbox(
+            src_dir,
+            tmp_path / "run",
+            extra_inputs=[(extra_src, "../inference/test.csv")],
+        )
+
+        seeded = tmp_path / "run" / "inference" / "test.csv"
+        assert seeded.is_file(), "the sibling-position destination must exist after seeding"
+        assert seeded.read_text(encoding="utf-8") == "sequence,label\nGC,0\n"
+        # the sandbox cwd itself is unchanged by the sibling seeding
+        assert not (sandbox / "test.csv").exists()
+
+    def test_tuple_extra_escape_beyond_tmp_path_is_rejected(self, tmp_path: Path):
+        """A destination resolving outside tmp_path raises ValueError before any write."""
+        src_dir = self._seed_dir(tmp_path)
+        extra_src = tmp_path / "escape.csv"
+        extra_src.write_text("x\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="outside the pytest tmp dir"):
+            seed_sandbox(
+                src_dir,
+                tmp_path / "run",
+                extra_inputs=[(extra_src, "../../../etc/evil.csv")],
+            )
+
+        escaped = (tmp_path.parent / "etc" / "evil.csv").resolve()
+        assert not escaped.exists(), "the guard must reject before anything is written outside"
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
@@ -317,6 +415,10 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
         "notebooks/finetune_custom_head/finetune.ipynb",
         _gate_megadna,
     ),
+    (
+        "notebooks/finetune_generation/finetune_generation.ipynb",
+        _gate_megadna,
+    ),
     ("notebooks/lora_finetune_inference/lora_finetune.ipynb", _gate_mamba),
     ("notebooks/lora_finetune_inference/lora_inference.ipynb", _gate_mamba),
 ]
@@ -329,6 +431,7 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
 # class-level 3600s mark.
 _TIMEOUT_7200_GATED: frozenset[str] = frozenset({
     "notebooks/finetune_custom_head/finetune.ipynb",
+    "notebooks/finetune_generation/finetune_generation.ipynb",
     "notebooks/lora_finetune_inference/lora_finetune.ipynb",
 })
 

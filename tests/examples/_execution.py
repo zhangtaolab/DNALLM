@@ -200,7 +200,11 @@ _ENV_OVERRIDES: dict[str, str] = {
 }
 
 
-def seed_sandbox(src_dir: Path, tmp_path: Path, extra_inputs: list[Path] | None = None) -> Path:
+def seed_sandbox(
+    src_dir: Path,
+    tmp_path: Path,
+    extra_inputs: list[Path | tuple[Path, str]] | None = None,
+) -> Path:
     """Copy an example directory into a pytest tmp sandbox for execution.
 
     Whole-dir copy, not just the ``.ipynb``: the example notebooks read
@@ -212,11 +216,21 @@ def seed_sandbox(src_dir: Path, tmp_path: Path, extra_inputs: list[Path] | None 
         src_dir: example directory holding the notebook and its siblings.
         tmp_path: pytest function-scoped tmp dir; the sandbox is created
             under it as ``tmp_path / src_dir.name``.
-        extra_inputs: optional out-of-dir inputs copied into the sandbox
-            (none exist for the pilot; kept for Phase 8 generality).
+        extra_inputs: optional out-of-dir inputs. A bare ``Path`` copies
+            into the sandbox root (the pilot contract, unchanged). A
+            ``(src_path, dest_relative_to_sandbox)`` tuple copies to an
+            arbitrary position RELATIVE to the sandbox -- including
+            sibling-directory escapes like ``../inference/test.csv``, which
+            the benchmark config resolves from its own cwd -- as long as
+            the resolved destination stays under ``tmp_path`` (T-sl7-03:
+            a ``../`` escape beyond the pytest tmp dir is rejected with
+            ``ValueError`` rather than writing outside the sandbox tree).
 
     Returns:
         The sandbox path the kernel should use as its cwd.
+
+    Raises:
+        ValueError: a tuple extra input resolves outside ``tmp_path``.
     """
     sandbox = tmp_path / src_dir.name
     shutil.copytree(
@@ -230,10 +244,24 @@ def seed_sandbox(src_dir: Path, tmp_path: Path, extra_inputs: list[Path] | None 
             "*.gz",
         ),
     )
+    sandbox_root = tmp_path.resolve()
     for extra in extra_inputs or []:
-        dest = sandbox / extra.name
+        if isinstance(extra, Path):
+            dest = sandbox / extra.name
+            if not dest.exists():
+                shutil.copy2(extra, dest)
+            continue
+        src, dest_relative = extra
+        dest = (sandbox / dest_relative).resolve()
+        if dest != sandbox_root and sandbox_root not in dest.parents:
+            raise ValueError(
+                f"seed_sandbox extra input {dest_relative!r} resolves to {dest}, "
+                f"outside the pytest tmp dir {sandbox_root} -- refusing to write "
+                "outside the sandbox tree"
+            )
         if not dest.exists():
-            shutil.copy2(extra, dest)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
     return sandbox
 
 
