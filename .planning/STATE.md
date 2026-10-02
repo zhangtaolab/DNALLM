@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
-stopped_at: Completed 05-04-PLAN.md (GAP-1 shim + ladder-terminal typed skip)
-last_updated: "2026-10-02T05:13:32.522Z"
+stopped_at: Completed 05-05-PLAN.md (marimo/script lanes + census inventory)
+last_updated: "2026-10-02T05:50:32.792Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: 50e32ba6e1efce58670b005e561e95cd27624058
+state_head: 311d9a69831235ab699aac0baab29d529935fa59
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 5 execution started
 
@@ -66,6 +66,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 05 P02 | 12 min | 3 tasks | 15 files |
 | Phase 05 P03 | 94 min | 3 tasks | 12 files |
 | Phase 05-04 P04 | 23 min | 2 tasks | 3 files |
+| Phase 05-05 P05 | 29 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: marimo flavor: export-html for Phase 8 (deterministic exit + HTML artifact); script-mode also terminates cleanly, binds no port (A4 resolved empirically)
 - [Phase 05]: 05-04: D-07 ladder terminated at its designed rung - remote NT code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention), not vendored-pure-helper territory; shim kept for the import fix, smoke = evidence-backed typed skip, benchmark notebook flagged census FAIL (REPAIR-03 stays PARTIAL, owner disposition per D-09)
 - [Phase 05]: 05-04: native-ESM route (trust_remote_code=False) probed and refuted - FFN weight-shape mismatch (ckpt 4096x512 vs config.json 2048x512); remote esm_config.py is load-bearing, so no drop-in transformers-5 fix exists for this checkpoint
+- [Phase 05]: 05-05: assert_tree_clean converted to delta-zero vs import-time baseline (owner's live IDE churn in tracked notebooks is not harness business; clean-checkout behavior identical to the original absolute check)
+- [Phase 05]: 05-05: generate_bpe_dataset.py standalone defect (reads rice_annotation.bed it never wrote) repaired verbatim from the notebook; docs mirror resynced
+- [Phase 05]: 05-05: GAP-1-class gap extends to plant-nucleotide-transformer-BPE (NER script + notebook; same EsmConfig.is_decoder rung after the import shim) — 05-04 ladder honored, script lane = self-healing typed skip; one owner disposition now covers three census items (D-09 hand-off)
 
 ### Pending Todos
 
@@ -114,8 +118,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T05:13:32.505Z
-Stopped at: Completed 05-04-PLAN.md (GAP-1 shim + ladder-terminal typed skip)
+Last session: 2026-10-02T05:50:32.772Z
+Stopped at: Completed 05-05-PLAN.md (marimo/script lanes + census inventory)
 Resume file: None
 
 ## Deferred Verification
