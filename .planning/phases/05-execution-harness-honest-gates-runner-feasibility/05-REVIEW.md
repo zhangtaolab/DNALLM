@@ -1,218 +1,255 @@
 ---
 phase: 05-execution-harness-honest-gates-runner-feasibility
-reviewed: 2026-10-01T20:27:41Z
+reviewed: 2026-10-02T08:50:38Z
 depth: standard
-iteration: 3
-files_reviewed: 10
+files_reviewed: 9
 files_reviewed_list:
-  - .github/workflows/docs-validation.yml
-  - .github/workflows/feasibility.yml
-  - .github/workflows/README.md
-  - pyproject.toml
-  - README.md
-  - scripts/check_docs_sync.py
-  - scripts/feasibility/spike_families.py
+  - .gitignore
+  - dnallm/utils/transformers_compat.py
+  - example/notebooks/finetune_NER_task/generate_bpe_dataset.py
   - tests/examples/_execution.py
+  - tests/examples/test_marimo_execution.py
   - tests/examples/test_notebook_execution.py
-  - tests/expected_skips.yaml
+  - tests/examples/test_script_execution.py
+  - tests/models/test_model_remote_code.py
+  - tests/utils/test_transformers_compat.py
 findings:
   critical: 0
-  warning: 1
+  warning: 4
   info: 5
-  total: 6
+  total: 9
 status: issues_found
 ---
 
-# Phase 5: Code Review Report (Iteration 3 — Final Convergence Check)
+# Phase 5 (incremental 05-04/05-05/05-06): Code Review Report
 
-**Reviewed:** 2026-10-01T20:27:41Z
+**Reviewed:** 2026-10-02T08:50:38Z
 **Depth:** standard
-**Files Reviewed:** 10 (narrowed per convergence context: the source/config files the fix passes touched; the `docs/example/**` mirrors were byte-verified twice already and are out of this pass's scope)
+**Files Reviewed:** 9 (diff base `debf813b`)
 **Status:** issues_found
 
 ## Summary
 
-Iteration-3 convergence re-review after two fix passes (`89b2f63..824b901`,
-then `a5f38ac` + `8fe451b`). Two goals per the convergence criteria: verify the
-WR-07/WR-08 doc fixes hold on current text, and confirm the doc edits
-introduced no new inaccuracies.
+Incremental review of Phase 5's post-closure gap-closure work: the vendored
+pruning-helper shim in `dnallm/utils/transformers_compat.py` (+109 lines of
+tests), the marimo/script execution lanes, the generalized notebook-execution
+harness (`tests/examples/_execution.py` grew from 1 to 21 notebook specs plus
+marimo/script runners), and the one-line `rice_annotation.bed` writer restore
+in `generate_bpe_dataset.py`.
 
-### Convergence verification — all 9 prior findings hold
+Verified against ground truth, not just the diff:
 
-Re-verified independently against current source (not the fix reports). Since
-`824b901` only two commits landed (`a5f38ac`, `8fe451b`), touching only
-`.github/workflows/README.md` and `.github/workflows/feasibility.yml` — every
-Python/config file is byte-identical to its verified fix commit, and the
-strongest gates were re-run live this pass:
+- The vendored `_find_pruneable_heads_and_indices` / `_prune_linear_layer`
+  are behavior-identical to upstream transformers v4.49.0 (checked line by
+  line against the reference implementation; the `heads` rebinding rename is
+  semantics-preserving). Live-probed on transformers 5.17.0: the patch
+  attaches both helpers to `transformers.modeling_utils` on dnallm import,
+  and the known checkpoint's import site is fixed.
+- The restored `rice_annotation.bed` block is verbatim from
+  `data_generation_and_inference.ipynb` cell 10 (extracted and compared);
+  `gene_info[gene]` is populated for every gene before use, so no KeyError
+  path exists.
+- All 21 `NOTEBOOK_EXEC_SPECS` keys and all 3 `MARIMO_EXEC_SPECS` keys exist
+  on disk; all 8 ACTIVE and 7 GATED notebook ids resolve to spec entries;
+  `tests/expected_skips.yaml` registers all three typed-skip prefixes used;
+  `MCP_ENDPOINT` port 8000 matches the MCP server config; `ruff check .`
+  (CI invocation) passes; the new tests collect cleanly on the fast leg
+  (26/31, 5 slow deselected) including the Windows-style import path
+  (`base` extra carries `test`+`notebook`, so `nbclient` resolves).
+- Coverage rule (dnallm/ change ships with pytest): satisfied —
+  `TestRemoteCodePruningHelpers` is fast-lane and covers the helper
+  arithmetic, live attachment, idempotence, and 4.x/5.x version awareness;
+  `tests/models/test_model_remote_code.py` exercises the real load route.
+  Note the real-model smoke currently terminates in the documented D-07
+  typed skip on transformers 5.17 (remote code's `config.is_decoder` read),
+  so the forward-pass assertions are environment-gated; the unit tests carry
+  the shim itself.
 
-- **CR-01:** live `ruff check .` → "All checks passed!", exit 0 repo-wide. **VERIFIED.**
-- **WR-01:** returncode guard present (`tests/examples/_execution.py:196-198`); file unchanged since `f8e0f9f`. **VERIFIED.**
-- **WR-02:** `filecmp.cmpfiles(..., shallow=False)` at `scripts/check_docs_sync.py:62-64`; live run exits 0 (`OK: docs/example/ is in sync`). **VERIFIED.**
-- **WR-03:** `nbclient>=0.10` in the `test` extra (`pyproject.toml:99`); `pytest tests/examples/test_notebook_execution.py --collect-only` collects 2 items. **VERIFIED.**
-- **WR-04:** no `|| true` (`feasibility.yml:91-95`, `set -o pipefail` + `tee` kept); `main()` exits 2 on GPU-guard failure, 1 only when a family crashed pre-evidence, 0 otherwise (`spike_families.py:841-870`). **VERIFIED.**
-- **WR-05:** GPU-absent path writes the `gpu_absent` marker into the artifact path then `exit 1` (`feasibility.yml:43-49`); the `if: always()` upload (line 100) still delivers it. **VERIFIED.**
-- **WR-06:** file-level `permissions: contents: read` (`feasibility.yml:18-19`). **VERIFIED.**
-- **WR-07 (this pass's target):** `.github/workflows/README.md:121` now reads
-  "**GPU Check** (runs BEFORE checkout): … writes a `gpu_absent` marker into
-  the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe
-  no-op …", with **Code Checkout** documented as following, gated on
-  `has_gpu`. Cross-checked against `feasibility.yml:33-54` (check is step 1,
-  checkout gated at line 53) and against `ci.yml:268-294` — `test-mamba`
-  really is a green no-op (`has_gpu=false`, no `exit 1`), so the contrast
-  claim is accurate. **VERIFIED — fix holds.**
-- **WR-08 (this pass's target):** step renamed to "Run the committed spike
-  runner (D-06 fallback variants)" (`feasibility.yml:73`) and the comment
-  (`feasibility.yml:75-78`) now states fallback-variant-only semantics. Code
-  truth re-confirmed at `spike_families.py:792-805`: `--fallback` REPLACES —
-  evo1 → `evo-1-8k-base`, evo2 → notebook id + `noFA-noFP8` override,
-  megadna → notebook id + pinned clone; pybigwig/marimo ignore the flag. The
-  "committed local evidence" claim is real: `git ls-files` shows all 8
-  `spike-logs/*.log` files tracked (including the notebook-variant runs).
-  README §7 step 4 (`.github/workflows/README.md:124`) matches. **VERIFIED —
-  fix holds.**
-
-### Doc-edit diff attribution
-
-`git show 8fe451b` / `a5f38ac`: the edits touched ONLY the step name, the
-first paragraph of the run-step comment, and README §7 step 1 — all three are
-accurate against the code. **The edits introduced no new inaccuracies in the
-text they wrote.** One residual inaccuracy survives in the *untouched*
-adjacent comment text (WR-09 below), which the corrected sentences now make
-internally contradictory.
-
-### Checked and cleared this pass (potential findings that did not survive verification)
-
-- `docs-validation.yml:44` cites "masked-outcome steps removed per WR-08" —
-  this is the **milestone-level** WR-08 (v1.1 scoping: the docs-validation
-  `continue-on-error` false-green; see `REQUIREMENTS.md` CI-01, `STATE.md:99`),
-  not this review's iteration-2 WR-08. Cross-reference is correct; no
-  `continue-on-error` remains in the file. Not a finding.
-- The committed `spike_megadna_fallback.log` shows `disk_human=8.0K` for a
-  ~582MB model; live re-run of `_snapshot_disk_gb("lingxusb/megaDNA_updated")`
-  on the current tree returns **0.5824 GB / 582.4MB** (evo2: 2.70 GB) — the
-  measurement code is correct; the old 8.0K line was an artifact of that
-  throwaway-venv run's cache resolution. This also confirms the workflow
-  comment's "582MB" figure. Not a finding.
-- Spike-only packages (`evo-model`/`stripedhyena`, `MEGABYTE_pytorch`,
-  `pyBigWig`) confirmed absent from every `pyproject.toml` dependency group
-  (only a mypy ignore-list mention), `marimo` present in `notebook` — so the
-  "On this venv" per-family outcome predictions (evo/evo2/megadna/pybigwig
-  FAIL, marimo runs for real) are all correct.
-
-### Live gates re-run
-
-`ruff check .` → 0; `scripts/check_docs_sync.py` → 0; fast leg
-`pytest tests/examples/ -m "not slow"` → **94 passed / 1 skipped /
-2 deselected** (matches the pre-fix baseline exactly).
-
-### New finding this iteration
-
-WR-09: two pre-existing clauses in the run-step comment block of
-`feasibility.yml` (echoed in README §7 step 2) contradict the corrected
-WR-08 text seven lines above them and the committed spike evidence. One
-Warning; the five known-deferred Info findings (IN-01..05) are re-confirmed
-still present and remain Info.
+No Critical findings. The four Warnings are: (1) the shim patches only
+`transformers.modeling_utils` while live-verified transformers 5.17 still
+ships a `pytorch_utils` that partially lacks the helpers — the other common
+4.x remote-code import site stays broken; (2) the gated
+`lora_finetune.ipynb` entry gets an outer pytest timeout equal to its
+per-cell timeout, violating the harness's own strictly-below invariant;
+(3) the spec dicts' `test_timeout`/`flavor` fields are dead data that
+contradict their documented "the test layer must apply" contract — the root
+cause that let (2) slip through; (4) a permanent HTTP 4xx on the rice input
+URLs converts to an ever-green `network-unavailable` skip.
 
 ## Warnings
 
-### WR-09: Two residual clauses in the run-step comment contradict the corrected fallback semantics and the committed evidence
+### WR-01: Pruning shim patches only `modeling_utils`; `transformers.pytorch_utils` still lacks `find_pruneable_heads_and_indices` on 5.x
 
-**File:** `.github/workflows/feasibility.yml:79-84` (and `.github/workflows/README.md:122`)
-**Issue:** The WR-08 fix corrected the first paragraph of the comment block,
-but the untouched text below it now contradicts both the corrected sentences
-and the committed spike evidence, in two clauses:
+**File:** `dnallm/utils/transformers_compat.py:293-333`
+**Issue:** `_patch_remote_code_pruning_helpers` attaches the vendored helpers
+only to `transformers.modeling_utils`. Live-verified on the installed
+transformers 5.17.0: `transformers.pytorch_utils` still EXISTS and still
+exports `prune_linear_layer`, but `find_pruneable_heads_and_indices` is absent
+from it (and remains absent after the dnallm patch — re-probed). 4.x-era
+`trust_remote_code` checkpoints canonically copy HF's own 4.x model files,
+which import `from transformers.pytorch_utils import
+find_pruneable_heads_and_indices, prune_linear_layer`. Any such checkpoint
+still crashes with ImportError on transformers 5.x even with dnallm imported,
+so the module docstring's general claim ("4.x-era trust_remote_code
+checkpoints ... still import both names") is only honored for the
+`modeling_utils` import site used by the one known checkpoint.
+**Fix:** Extend the patch to also attach the missing name(s) to
+`transformers.pytorch_utils` when that module exists, gated per name (on 5.17
+only `find_pruneable_heads_and_indices` is missing there — do not overwrite
+upstream's own `prune_linear_layer`):
 
-1. **"megadna downloads its 582MB checkpoint and fails the unpickle without
-   the pinned clone + MEGABYTE_pytorch"** (`feasibility.yml:82-84`). Under the
-   dispatched `--family all --fallback` command the runner itself PERFORMS the
-   pinned clone (`spike_megadna(..., pinned_clone=fallback)` → clone +
-   hash-verify + `sys.path.insert`, `spike_families.py:517-522,799`), so the
-   clone is not absent. The committed `spike-logs/spike_megadna_fallback.log`
-   (attempt 2a) records the actual mechanism: with the clone present, the
-   unpickle advances past `No module named megaDNA` and fails at
-   `ModuleNotFoundError: No module named 'MEGABYTE_pytorch'`
-   (`megaDNA/megadna.py:9` imports it; the package is in no dependency group).
-   The predicted outcome (FAIL as environment evidence, 582MB download —
-   figure confirmed live at 582.4MB) is right; the causal clause is wrong,
-   and it directly contradicts the just-fixed "pinned megaDNA clone" fallback
-   description at lines 76-77. An operator reading the artifact's
-   `failure_text` (which mentions only `MEGABYTE_pytorch`) against a comment
-   that blames a missing clone could conclude the fallback leg malfunctioned.
-2. **"the spike-only packages stay inside this ephemeral job venv"**
-   (`feasibility.yml:62-63`, echoed in README §7 step 2's parenthetical).
-   Nothing spike-only is installed into the job venv — the install step runs
-   only `uv pip install -e ".[base]"`, and lines 80-81 of the same file state
-   the opposite: "the spike-only packages are intentionally absent". Same
-   term, two contradictory claims about the same venv within one file.
-
-Both clauses pre-date the fix passes (the edits did not introduce them), but
-the WR-08 correction makes the first one internally contradictory within a
-single comment block, and this phase's own standard (WR-07/WR-08) prices
-runbook misdescriptions of runner evidence at Warning.
-
-**Fix:** One surgical edit to each clause:
-
-```yaml
-        # Single fallback pass per the plan: --fallback runs each family's
-        # D-06 fallback variant (evo-1-8k-base / evo2 noFA-noFP8 config /
-        # pinned megaDNA clone), NOT the notebook variant — notebook-variant
-        # verdicts come from the committed local evidence (spike-logs/).
-        # On this venv the
-        # evo/evo2 families fail fast at their handler ImportErrors (the
-        # spike-only packages are intentionally absent from this venv), megadna
-        # clones the pinned repo (the fallback itself) and downloads its 582MB
-        # checkpoint, but the unpickle still FAILS: the clone provides the
-        # megaDNA package, not the MEGABYTE_pytorch pip package its model file
-        # imports. pybigwig fails its import, and marimo executes for real on
-        # the warm ModelScope cache — every failure text is matrix evidence,
-        # and the runner exits 0 whenever each family EMITTED its evidence
-        # block (the matrix, not this exit code, is the verdict carrier). A
-        # red step therefore means an infrastructure crash with missing
-        # evidence (import error, OOM kill, disk full) — no `|| true` mask;
-        # the upload below still runs via its if: always().
+```python
+try:
+    import transformers.pytorch_utils as _pu
+except Exception:
+    _pu = None
+if _pu is not None and not hasattr(_pu, "find_pruneable_heads_and_indices"):
+    setattr(_pu, "find_pruneable_heads_and_indices", _find_pruneable_heads_and_indices)
+    if not hasattr(_pu, "prune_linear_layer"):
+        setattr(_pu, "prune_linear_layer", _prune_linear_layer)
 ```
 
-and change the venv-install comment (`feasibility.yml:62-63`) plus README §7
-step 2's parenthetical to e.g. "the spike-only packages stay OUT of this
-ephemeral job venv — their absence is part of the evidence" (README: drop
-"stay inside this ephemeral job venv" for "their absence from this venv is
-deliberate evidence").
+### WR-02: Gated `lora_finetune.ipynb` runs with outer timeout == cell timeout, violating the harness's strictly-below invariant
+
+**File:** `tests/examples/test_notebook_execution.py:311-322, 325-326` (spec at `tests/examples/_execution.py:156-160`)
+**Issue:** The spec for `notebooks/lora_finetune_inference/lora_finetune.ipynb`
+declares `cell_timeout: 3600, test_timeout: 7200`, but the gated parametrize
+applies the 7200 mark override only to
+`notebooks/finetune_custom_head/finetune.ipynb`; `lora_finetune.ipynb` falls
+through to the class-level `@pytest.mark.timeout(3600)`. Result: a cell may
+legitimately run up to 3600 s under nbclient while pytest-timeout kills the
+whole test at 3600 s. The outer kill preempts nbclient's clean
+`CellTimeoutError` handling (and the harness's partial-failure artifact
+capture), converting a budget-managed hang into a hard, artifact-less test
+abort. `run_notebook`'s own contract (`_execution.py:280-281`) requires
+cell_timeout to stay *strictly below* the per-test mark — this is the only
+entry across all three lanes where the invariant is broken (verified against
+every ACTIVE/GATED/marimo budget).
+**Fix:** Add the override for this entry as well (or generate the marks from
+the spec, see WR-03):
+
+```python
+_TIMEOUT_7200 = {"notebooks/finetune_custom_head/finetune.ipynb",
+                 "notebooks/lora_finetune_inference/lora_finetune.ipynb"}
+[
+    pytest.param(nb_id, marks=pytest.mark.timeout(7200)) if nb_id in _TIMEOUT_7200 else nb_id
+    for nb_id, _gate in GATED_NOTEBOOKS
+]
+```
+
+### WR-03: `test_timeout` (and marimo `flavor`) spec fields are dead data contradicting their documented contract
+
+**File:** `tests/examples/_execution.py:63-75, 75-181, 183-211`
+**Issue:** The `NOTEBOOK_EXEC_SPECS` comment says values carry "the per-test
+timeout mark the test layer must apply", and `MARIMO_EXEC_SPECS` likewise
+documents `test_timeout`/`flavor` per app. Grep-verified: no consumer reads
+`spec["test_timeout"]` or `spec["flavor"]` anywhere in `tests/` or `scripts/`.
+Every lane applies static class marks instead (7200 / 3600; marimo gets 7200
+where its spec says 1500), and `run_marimo_app` hardcodes `"export html"`
+while the spec carries a `flavor` field. Consequences: the documented budgets
+mislead (inference spec says 1800 s, actual bound is 7200 s), and budget
+mistakes of the WR-02 kind are invisible because the enforcement data exists
+but is never consulted.
+**Fix:** Either enforce the fields — parametrize with
+`pytest.param(..., marks=pytest.mark.timeout(spec["test_timeout"]))`
+generated from the spec dicts and pass `spec["flavor"]` into
+`run_marimo_app` — or amend the spec-dict docstrings to state the fields are
+advisory documentation only and delete `flavor` until a second flavor exists.
+
+### WR-04: Permanent HTTP 4xx on the rice input URLs converts to an ever-green `network-unavailable` skip
+
+**File:** `tests/examples/test_script_execution.py:70-78`
+**Issue:** `except (urllib.error.URLError, TimeoutError)` also catches
+`urllib.error.HTTPError` (its subclass). If rice.uga.edu ever reorganizes the
+download URLs (permanent 404/410), every run of the script lane records a
+`network-unavailable:` typed skip — a prefix `scripts/audit_skips.py`
+unconditionally allows — so the lane goes green-forever while the script is
+actually unrunnable and the input contract is broken. A 4xx is not network
+unavailability; the harness's own philosophy ("non-qualifying execution
+failures always re-raise") argues for loud failure on permanent client
+errors.
+**Fix:** Skip only on transport failures and 5xx; fail loudly on 4xx:
+
+```python
+except urllib.error.HTTPError as exc:
+    if exc.code >= 500:
+        pytest.skip(f"network-unavailable: fetch {url} (HTTP {exc.code})")
+    raise
+except (urllib.error.URLError, TimeoutError) as exc:
+    pytest.skip(f"network-unavailable: fetch {url} ({type(exc).__name__}: {exc})")
+```
 
 ## Info
 
-### IN-01 (carried, iterations 1-2 — still present): `test_timeout` / `extra_inputs` spec keys are dead config
+### IN-01: Patch gate checks only one of the two helper names
 
-**File:** `tests/examples/_execution.py:54-60` and `tests/examples/test_notebook_execution.py:53,78`
-**Issue:** Unchanged: spec dict documents `test_timeout`/`extra_inputs`; test layer hardcodes `@pytest.mark.timeout(1800)` and calls `seed_sandbox(pilot_dir, tmp_path)` without `extra_inputs`. Both coincide at 1800/empty today. Known-deferred to Phase 8.
-**Fix:** wire the spec keys when generalizing the fixture, or drop them.
+**File:** `dnallm/utils/transformers_compat.py:313-315`
+**Issue:** The 4.x no-op gate is
+`hasattr(transformers.modeling_utils, "find_pruneable_heads_and_indices")`
+alone. If a future transformers version kept that name but dropped
+`prune_linear_layer` (or the reverse — note upstream 5.17 already removed
+them asymmetrically from `pytorch_utils`), the patch silently no-ops and
+remote code importing the missing name still crashes. Both names were
+removed together from `modeling_utils` so this is hypothetical today.
+**Fix:** Gate on both names being present:
+`if hasattr(mu, "find_pruneable_heads_and_indices") and hasattr(mu, "prune_linear_layer"): return`.
 
-### IN-02 (carried, iterations 1-2 — still present): `assert_tree_clean` fails on pre-existing developer WIP under `example/`
+### IN-02: Direct `pytest.skip("network-unavailable: ...")` bypasses the `network_unavailable_skip` helper
 
-**File:** `tests/examples/_execution.py:173-201`
-**Issue:** Teardown asserts absolute cleanliness of `example`/`docs/example` rather than a pre-run baseline/delta comparison. Known-deferred.
-**Fix:** snapshot `git status --porcelain --` in fixture setup and assert no new lines in teardown.
+**File:** `tests/examples/test_script_execution.py:74-78`
+**Issue:** The harness defines `network_unavailable_skip` precisely to emit
+the registered stable prefix, and this file already imports
+`environment_unavailable_skip` from the same module — but the rice-download
+path hand-builds the prefix inline. If the prefix ever changes in
+`_execution.py`, this site silently diverges (caught only later by
+`audit_skips.py` failing the job).
+**Fix:** Import and call
+`network_unavailable_skip(f"fetch {url} for generate_bpe_dataset.py", evidence=f"{type(exc).__name__}: {exc}")`.
 
-### IN-03 (carried, iterations 1-2 — still present): hardcoded developer home path in the mirrored NER dataset generator
+### IN-03: Hardcoded dev-box `sys.path` in the script the new lane executes
 
-**File:** `example/notebooks/finetune_NER_task/generate_bpe_dataset.py:14` (byte-identical mirror at `docs/example/.../generate_bpe_dataset.py:14`, re-confirmed by grep this pass)
-**Issue:** `sys.path.insert(0, "/home/forrest/Github/DNALLM")` still present; mirror fidelity intact, so per D-03 the content repair is deferred to the Phase 8 per-notebook loop.
-**Fix (Phase 8):** drop the line or derive `Path(__file__).resolve().parents[2]`.
+**File:** `example/notebooks/finetune_NER_task/generate_bpe_dataset.py:13-14`
+**Issue:** `sys.path.insert(0, "/home/forrest/Github/DNALLM")` (pre-existing,
+not introduced by this diff — but the new test lane now executes this script
+in CI-shaped environments where that path does not exist; it survives only
+because dnallm is pip-installed in the venv). On a box without the editable
+install the script crashes at import.
+**Fix:** Drop the `sys.path` hack (the installed package suffices), or derive
+the root from `Path(__file__).resolve().parents[3]`.
 
-### IN-04 (carried, iterations 1-2 — still present): pinned megaDNA clone uses a fixed shared `/tmp` path
+### IN-04: No isolated test for the pruning patch's attach branch (unlike the sibling patches)
 
-**File:** `scripts/feasibility/spike_families.py:518`
-**Issue:** `/tmp/megadna-pinned-clone` remains a predictable shared location; hash verification checks `HEAD` only, not untracked on-disk content. Spike-runner blast radius only. Known-deferred.
-**Fix:** `clone_dir = Path(tempfile.mkdtemp(prefix="megadna-pinned-"))`.
+**File:** `tests/utils/test_transformers_compat.py:418-496`
+**Issue:** `_patch_get_parameter_or_buffer` /
+`_patch_initialize_weights_for_quantized_missing` have
+`test_patch_skips_when_target_method_absent` exercising their early-return
+arms against a synthetic class. `_patch_remote_code_pruning_helpers` has no
+synthetic-module equivalent: its attach path is only proven via the
+already-applied live-module state (import-time), and its 4.x `hasattr` no-op
+branch only implicitly through the identity test. The vendored functions
+themselves are well covered (arithmetic, shapes, idempotence, identity), so
+this is a minor gap against the "dnallm changes ship with tests" rule, not a
+hole.
+**Fix:** Add a test that monkeypatches
+`sys.modules["transformers.modeling_utils"]` with a `types.ModuleType`
+lacking both names and the sentinel, calls `_patch_remote_code_pruning_helpers()`,
+and asserts both names were attached (restore via `monkeypatch` undo — the
+live class patches are never touched).
 
-### IN-05 (carried, iteration 2 — still present): `# ruff: ignore[rule-name]` comments are inert — not a ruff directive
+### IN-05: Timeout path skips the documented "always/failed" run artifacts
 
-**File:** `tests/examples/_execution.py:35,185`; `tests/examples/test_notebook_execution.py:13,67`; `scripts/feasibility/spike_families.py:7,259,265,271,635,675`
-**Issue:** All twelve invented-syntax comments still present (re-confirmed on current source this pass); they suppress nothing (ruff uses `# noqa:` / `# ruff: noqa:`). Harmless while the project config does not fire those codes — `ruff check .` exits 0. Known-deferred.
-**Fix:** delete the comments or replace with real `# noqa: S603, S607`-style directives where suppression is genuinely wanted.
+**File:** `tests/examples/_execution.py:324-414, 417-482`
+**Issue:** `run_example_script`'s docstring says the run log is "ALWAYS
+written" and `run_marimo_app`'s says the error artifact is written "on
+failure" — but on `subprocess.TimeoutExpired` the exception propagates before
+either artifact write, so the census evidence for a timed-out run is missing
+exactly when the run was most anomalous (`TimeoutExpired` does carry
+stdout/stderr attributes that could be persisted).
+**Fix:** Wrap the `subprocess.run` call in try/except TimeoutExpired, write
+the log/error artifact from `exc.stdout`/`exc.stderr`, then re-raise.
 
 ---
 
-_Reviewed: 2026-10-01T20:27:41Z_
+_Reviewed: 2026-10-02T08:50:38Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
-_Iteration: 3 (final convergence check; CR-01 + WR-01..08 all verified holding; WR-09 new; IN-01..05 carried as known-deferred)_
