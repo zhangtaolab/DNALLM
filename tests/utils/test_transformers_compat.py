@@ -20,9 +20,12 @@ from transformers.modeling_utils import PreTrainedModel
 
 from dnallm.utils.transformers_compat import (
     _QuantStatProxy,
+    _find_pruneable_heads_and_indices,
     _iter_uninitialized_quantized_weights,
     _patch_get_parameter_or_buffer,
     _patch_initialize_weights_for_quantized_missing,
+    _patch_remote_code_pruning_helpers,
+    _prune_linear_layer,
     _restore_quantized,
     _swap_to_fp32,
     apply_patches,
@@ -410,3 +413,109 @@ class TestInitializeWeightsWrapper:
 
         assert module._parameters["weight"] is weight
         assert weight._is_hf_initialized is True
+
+
+class TestRemoteCodePruningHelpers:
+    """Contract for the vendored v4.49.0 pruning helpers re-attached on transformers 5.x.
+
+    Covers the helper arithmetic (head-pruning index math, linear-layer
+    pruning shapes/values) and the live-module attachment contract on
+    ``transformers.modeling_utils`` — presence, idempotence, and version
+    awareness: on transformers 5.x the exposed helpers ARE the vendored
+    functions; on 4.x they are upstream natives and the patch is an
+    absence-gated no-op (the identity assertions invert rather than skip,
+    so the file collects and passes cleanly across the whole CI matrix).
+    """
+
+    def test_find_pruneable_heads_and_indices_basic_head_removal(self):
+        """Pruning head 1 of 4 heads (head_size 2) keeps 6 of 8 rows, removing 2 and 3."""
+        heads, index = _find_pruneable_heads_and_indices([1], 4, 2, set())
+
+        assert heads == {1}, f"expected heads {{1}}, got {heads}"
+        assert isinstance(index, torch.Tensor)
+        assert index.numel() == 6, f"expected 6 kept rows, got {index.numel()}"
+        kept = set(index.tolist())
+        assert kept == {0, 1, 4, 5, 6, 7}, f"positions 2 and 3 must be removed, got {sorted(kept)}"
+
+    def test_find_pruneable_heads_and_indices_respects_already_pruned_heads(self):
+        """An already-pruned head is not double-counted and shifts the index arithmetic.
+
+        ``already_pruned_heads`` is the pruned-heads container the attention
+        module passes — a set (the remote EsmAttention keeps
+        ``self.pruned_heads = set()``), matching the v4.49.0 ``Set[int]``
+        contract; the plan's ``{0: 0}`` dict literal would TypeError inside
+        the mandated-verbatim ``set - already_pruned_heads`` subtraction.
+        """
+        heads, index = _find_pruneable_heads_and_indices([0, 1], 4, 2, {0})
+
+        assert heads == {1}, f"already-pruned head 0 must not re-prune, got {heads}"
+        kept = set(index.tolist())
+        assert kept == {2, 3, 4, 5, 6, 7}, (
+            f"head 1 shifts down by the prior pruning of head 0 (mask row 0 "
+            f"cleared), expected rows 2-7 kept, got {sorted(kept)}"
+        )
+
+    def test_prune_linear_layer_dim1_prunes_input_features(self):
+        """dim=1 keeps 2 of 8 input features: weight (4, 2) equal to index_select."""
+        layer = torch.nn.Linear(8, 4)
+        index = torch.tensor([3, 7])
+
+        pruned = _prune_linear_layer(layer, index, dim=1)
+
+        assert isinstance(pruned, torch.nn.Linear)
+        assert tuple(pruned.weight.shape) == (4, 2), (
+            f"expected weight (4, 2), got {tuple(pruned.weight.shape)}"
+        )
+        assert torch.equal(pruned.weight, layer.weight.index_select(1, index))
+        assert torch.equal(pruned.bias, layer.bias), "dim=1 keeps all outputs, bias untouched"
+
+    def test_prune_linear_layer_dim0_prunes_outputs_and_slices_bias(self):
+        """dim=0 keeps 2 of 4 outputs: weight (2, 8) and the same bias rows sliced."""
+        layer = torch.nn.Linear(8, 4)
+        index = torch.tensor([1, 3])
+
+        pruned = _prune_linear_layer(layer, index, dim=0)
+
+        assert tuple(pruned.weight.shape) == (2, 8), (
+            f"expected weight (2, 8), got {tuple(pruned.weight.shape)}"
+        )
+        assert torch.equal(pruned.weight, layer.weight.index_select(0, index))
+        assert torch.equal(pruned.bias, layer.bias[index]), "dim=0 slices the bias the same way"
+
+    def test_live_module_exposes_helpers_and_repeat_patch_is_idempotent(self):
+        """Import-time apply_patches() exposes both helpers; repeat calls keep them callable."""
+        modeling_utils = transformers.modeling_utils
+        assert callable(modeling_utils.find_pruneable_heads_and_indices)
+        assert callable(modeling_utils.prune_linear_layer)
+
+        apply_patches()
+        _patch_remote_code_pruning_helpers()  # already-flagged guard must return early
+
+        heads, index = modeling_utils.find_pruneable_heads_and_indices([1], 4, 2, set())
+        assert heads == {1}
+        assert index.numel() == 6
+        pruned = modeling_utils.prune_linear_layer(
+            torch.nn.Linear(8, 4), torch.tensor([0, 1]), dim=1
+        )
+        assert tuple(pruned.weight.shape) == (4, 2)
+
+    def test_attachment_identity_is_version_agnostic(self):
+        """On transformers 5.x the exposed helpers ARE the vendored ones; on 4.x upstream's."""
+        major = int(transformers.__version__.split(".")[0])
+        modeling_utils = transformers.modeling_utils
+
+        if major >= 5:
+            assert (
+                modeling_utils.find_pruneable_heads_and_indices is _find_pruneable_heads_and_indices
+            ), "5.x attachment must be the vendored function"
+            assert modeling_utils.prune_linear_layer is _prune_linear_layer, (
+                "5.x attachment must be the vendored function"
+            )
+        else:
+            assert (
+                modeling_utils.find_pruneable_heads_and_indices
+                is not _find_pruneable_heads_and_indices
+            ), "4.x no-op gate must leave upstream's own helper in place"
+            assert modeling_utils.prune_linear_layer is not _prune_linear_layer, (
+                "4.x no-op gate must leave upstream's own helper in place"
+            )
