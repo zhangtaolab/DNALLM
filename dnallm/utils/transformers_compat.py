@@ -73,12 +73,16 @@ def _restore_quantized(swapped):
 
 # The two pruning helpers below are vendored with semantics and docstrings kept
 # verbatim from the upstream transformers reference implementation: tag v4.49.0,
-# file src/transformers/pytorch_utils.py. transformers 5.x removed both helpers,
-# but 4.x-era trust_remote_code checkpoints (e.g. the remote modeling_esm.py of
+# file src/transformers/pytorch_utils.py. transformers 5.x removed both helpers
+# from modeling_utils (and find_pruneable_heads_and_indices from pytorch_utils,
+# which keeps its own prune_linear_layer), but 4.x-era trust_remote_code
+# checkpoints (e.g. the remote modeling_esm.py of
 # zhangtaolab/nucleotide-transformer-v2-100m-promoter) still import them from
-# transformers.modeling_utils; the patch below re-attaches these implementations
-# under their upstream names. The only adaptation is import locality into this
-# module (modern builtin-generic annotations; behavior is unchanged).
+# transformers.modeling_utils and transformers.pytorch_utils; the patch below
+# re-attaches these implementations under their upstream names on both modules,
+# per name only where the module does not already expose it. The only
+# adaptation is import locality into this module (modern builtin-generic
+# annotations; behavior is unchanged).
 
 
 def _find_pruneable_heads_and_indices(
@@ -290,47 +294,75 @@ class _QuantStatProxy:
         setattr(object.__getattribute__(self, "_tensor"), name, value)
 
 
+def _attach_remote_code_pruning_helpers(module: object) -> None:
+    """Attach the vendored pruning helpers to *module* wherever missing.
+
+    Absence-gated per name and per module: a name the module already exposes
+    natively is never overwritten (transformers 4.x exposes both helpers;
+    transformers 5.x ``pytorch_utils`` keeps its own ``prune_linear_layer``
+    while lacking ``find_pruneable_heads_and_indices``). A module-level
+    sentinel keeps repeat attachment idempotent.
+    """
+    if getattr(module, "_dnallm_remote_code_pruning_patch", False):
+        return
+
+    attached = False
+    # setattr with a literal name is invisible to static attribute resolution,
+    # keeping mypy AND ty/pyright clean without dialect-specific ignore
+    # comments (ruff B010 is silenced because the dynamic form is deliberate).
+    if not hasattr(module, "find_pruneable_heads_and_indices"):
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "find_pruneable_heads_and_indices",
+            _find_pruneable_heads_and_indices,
+        )
+        attached = True
+    if not hasattr(module, "prune_linear_layer"):
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module,
+            "prune_linear_layer",
+            _prune_linear_layer,
+        )
+        attached = True
+    if attached:
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+            module, "_dnallm_remote_code_pruning_patch", True
+        )
+
+
 def _patch_remote_code_pruning_helpers():
     """Re-attach the 4.x pruning helpers removed from transformers 5.x.
 
     transformers 5.x removed ``find_pruneable_heads_and_indices`` and
-    ``prune_linear_layer`` from ``transformers.modeling_utils`` (and from
-    ``pytorch_utils``), but 4.x-era ``trust_remote_code`` checkpoints (e.g.
-    the remote ``modeling_esm.py`` of the nucleotide-transformer-v2 promoter
-    mirror) still import both names from ``transformers.modeling_utils``.
-    This patch attaches the vendored v4.49.0 implementations under their
-    upstream names so remote code keeps resolving them.
+    ``prune_linear_layer`` from ``transformers.modeling_utils``, and dropped
+    ``find_pruneable_heads_and_indices`` from ``transformers.pytorch_utils``
+    (which keeps its own ``prune_linear_layer``), but 4.x-era
+    ``trust_remote_code`` checkpoints (e.g. the remote ``modeling_esm.py`` of
+    the nucleotide-transformer-v2 promoter mirror) still import the names from
+    ``transformers.modeling_utils`` and from ``transformers.pytorch_utils`` --
+    the two canonical import sites of HF's own 4.x model files. This patch
+    attaches the vendored v4.49.0 implementations under their upstream names
+    to both modules, per name only where the module does not already expose
+    it.
 
-    On transformers 4.x the names already exist and the patch no-ops
-    (absence-gated per decision D-07); a module-level sentinel keeps repeat
-    calls idempotent.
+    On transformers 4.x both modules already expose the helpers natively and
+    the patch no-ops (absence-gated per decision D-07); per-module sentinels
+    keep repeat calls idempotent.
     """
     try:
         import transformers.modeling_utils
     except Exception:  # pragma: no cover - transformers not installed
         return
+    _attach_remote_code_pruning_helpers(transformers.modeling_utils)
 
-    # transformers 4.x still exposes the helpers natively - leave it untouched.
-    if hasattr(transformers.modeling_utils, "find_pruneable_heads_and_indices"):
+    # 4.x remote code canonically imports the helpers from pytorch_utils as
+    # well; transformers 5.x still ships that module, but (as of 5.17) only
+    # with its own prune_linear_layer -- only the missing name is attached.
+    try:
+        import transformers.pytorch_utils
+    except Exception:  # pragma: no cover - module absent from this transformers
         return
-
-    if getattr(transformers.modeling_utils, "_dnallm_remote_code_pruning_patch", False):
-        return
-
-    # setattr with a literal name is invisible to static attribute resolution,
-    # keeping mypy AND ty/pyright clean without dialect-specific ignore
-    # comments (ruff B010 is silenced because the dynamic form is deliberate).
-    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
-        transformers.modeling_utils,
-        "find_pruneable_heads_and_indices",
-        _find_pruneable_heads_and_indices,
-    )
-    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
-        transformers.modeling_utils, "prune_linear_layer", _prune_linear_layer
-    )
-    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
-        transformers.modeling_utils, "_dnallm_remote_code_pruning_patch", True
-    )
+    _attach_remote_code_pruning_helpers(transformers.pytorch_utils)
 
 
 def apply_patches():

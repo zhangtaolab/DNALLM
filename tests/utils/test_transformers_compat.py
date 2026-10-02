@@ -10,16 +10,19 @@ depend on the patched state).
 from __future__ import annotations
 
 import sys
+import types
 from unittest.mock import Mock
 
 import bitsandbytes.functional as bnb_functional
 import pytest
 import torch
 import transformers.modeling_utils
+import transformers.pytorch_utils
 from transformers.modeling_utils import PreTrainedModel
 
 from dnallm.utils.transformers_compat import (
     _QuantStatProxy,
+    _attach_remote_code_pruning_helpers,
     _find_pruneable_heads_and_indices,
     _iter_uninitialized_quantized_weights,
     _patch_get_parameter_or_buffer,
@@ -419,12 +422,14 @@ class TestRemoteCodePruningHelpers:
     """Contract for the vendored v4.49.0 pruning helpers re-attached on transformers 5.x.
 
     Covers the helper arithmetic (head-pruning index math, linear-layer
-    pruning shapes/values) and the live-module attachment contract on
-    ``transformers.modeling_utils`` — presence, idempotence, and version
-    awareness: on transformers 5.x the exposed helpers ARE the vendored
-    functions; on 4.x they are upstream natives and the patch is an
-    absence-gated no-op (the identity assertions invert rather than skip,
-    so the file collects and passes cleanly across the whole CI matrix).
+    pruning shapes/values) and the live-module attachment contract on BOTH
+    import sites 4.x remote code uses — ``transformers.modeling_utils`` and
+    ``transformers.pytorch_utils`` — presence, idempotence, per-name absence
+    gating (a native symbol is never overwritten), and version awareness:
+    on transformers 5.x the exposed helpers ARE the vendored functions; on
+    4.x they are upstream natives and the patch is an absence-gated no-op
+    (the identity assertions invert rather than skip, so the file collects
+    and passes cleanly across the whole CI matrix).
     """
 
     def test_find_pruneable_heads_and_indices_basic_head_removal(self):
@@ -519,3 +524,102 @@ class TestRemoteCodePruningHelpers:
             assert modeling_utils.prune_linear_layer is not _prune_linear_layer, (
                 "4.x no-op gate must leave upstream's own helper in place"
             )
+
+    def test_live_pytorch_utils_exposes_helpers_and_repeat_patch_is_idempotent(self):
+        """Import-time apply_patches() also covers the pytorch_utils import site."""
+        pytorch_utils = transformers.pytorch_utils
+        assert callable(pytorch_utils.find_pruneable_heads_and_indices)
+        assert callable(pytorch_utils.prune_linear_layer)
+
+        apply_patches()
+        _patch_remote_code_pruning_helpers()  # already-flagged guard must return early
+
+        heads, index = pytorch_utils.find_pruneable_heads_and_indices([1], 4, 2, set())
+        assert heads == {1}
+        assert index.numel() == 6
+        pruned = pytorch_utils.prune_linear_layer(
+            torch.nn.Linear(8, 4), torch.tensor([0, 1]), dim=1
+        )
+        assert tuple(pruned.weight.shape) == (4, 2)
+
+    def test_pytorch_utils_attachment_identity_is_version_agnostic(self):
+        """5.x pytorch_utils receives the vendored find-helper; 4.x keeps upstream's own.
+
+        ``prune_linear_layer`` gets no identity assertion on 5.x on purpose:
+        5.17 pytorch_utils keeps its native implementation (which the patch
+        must leave in place), while a future 5.x that drops it would receive
+        the vendored one — both are the per-name absence-gated contract.
+        """
+        major = int(transformers.__version__.split(".")[0])
+        pytorch_utils = transformers.pytorch_utils
+
+        if major >= 5:
+            assert (
+                pytorch_utils.find_pruneable_heads_and_indices is _find_pruneable_heads_and_indices
+            ), "5.x pytorch_utils attachment must be the vendored function"
+        else:
+            assert (
+                pytorch_utils.find_pruneable_heads_and_indices
+                is not _find_pruneable_heads_and_indices
+            ), "4.x no-op gate must leave upstream's own helper in place"
+
+    def test_attach_helper_attaches_only_missing_names_and_never_overwrites(self):
+        """A module keeping a native prune_linear_layer (the 5.x pytorch_utils
+        shape) receives only the missing find-helper; the native symbol survives."""
+        fake = types.ModuleType("fake_pruning_module")
+        native_prune = object()
+        fake.prune_linear_layer = native_prune
+
+        _attach_remote_code_pruning_helpers(fake)
+
+        assert fake.find_pruneable_heads_and_indices is _find_pruneable_heads_and_indices
+        assert fake.prune_linear_layer is native_prune
+        assert fake._dnallm_remote_code_pruning_patch is True
+
+    def test_attach_helper_noops_when_both_names_already_native(self):
+        """A module exposing both names natively (the 4.x shape) is left
+        untouched and does not even receive the sentinel."""
+        fake = types.ModuleType("fake_pruning_module")
+        native_find, native_prune = object(), object()
+        fake.find_pruneable_heads_and_indices = native_find
+        fake.prune_linear_layer = native_prune
+
+        _attach_remote_code_pruning_helpers(fake)
+
+        assert fake.find_pruneable_heads_and_indices is native_find
+        assert fake.prune_linear_layer is native_prune
+        assert not hasattr(fake, "_dnallm_remote_code_pruning_patch")
+
+    def test_attach_helper_sentinel_short_circuits_repeat_calls(self):
+        """A module already carrying the sentinel is never revisited."""
+        fake = types.ModuleType("fake_pruning_module")
+        fake._dnallm_remote_code_pruning_patch = True
+
+        _attach_remote_code_pruning_helpers(fake)
+
+        assert not hasattr(fake, "find_pruneable_heads_and_indices")
+        assert not hasattr(fake, "prune_linear_layer")
+
+    def test_patch_routes_synthetic_pytorch_utils_module(self, monkeypatch):
+        """_patch_remote_code_pruning_helpers routes into pytorch_utils: a
+        synthetic stand-in missing both names receives both vendored helpers
+        (the live modules keep their already-patched state untouched).
+
+        The shim's function-local ``import transformers.pytorch_utils`` binds
+        whatever ``sys.modules["transformers"]`` holds at call time -- on
+        transformers 5.x importing dnallm re-executes the lazy
+        ``transformers/__init__`` and swaps that entry for a fresh
+        ``_LazyModule``, so the module object this file's top-level
+        ``import transformers`` bound can be a STALE parent the shim never
+        sees.  Patch the CURRENT sys.modules parent (raising=False: the lazy
+        parent exposes submodules through __getattr__, not instance attrs).
+        """
+        parent = sys.modules["transformers"]
+        fake_pu = types.ModuleType("transformers.pytorch_utils")
+        monkeypatch.setattr(parent, "pytorch_utils", fake_pu, raising=False)
+
+        _patch_remote_code_pruning_helpers()
+
+        assert fake_pu.find_pruneable_heads_and_indices is _find_pruneable_heads_and_indices
+        assert fake_pu.prune_linear_layer is _prune_linear_layer
+        assert fake_pu._dnallm_remote_code_pruning_patch is True
