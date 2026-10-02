@@ -125,6 +125,9 @@ Counts at planning time (2026-10-02, plan 05-05):
 | git-tracked files under example/ | 57 | `git ls-files example \| wc -l` |
 | untracked on-disk files | 2 at planning time (gitignored logs/dnallm.log runtime artifacts) — transient: a local notebook run can add one under any example dir; the live gates below are logs-tolerant | `git status --porcelain example` |
 | on-disk files total | 59 at planning time = 25 + 34 (57 tracked + 2 logs) | `find example -type f \| wc -l` |
+| PASS verdicts (05-06 final) | 11 | Table A grep |
+| FAIL verdicts (05-06 final) | 12 | Table A grep |
+| deferred-owner verdicts (05-06 final) | 2 (the ollama mcp pair) | Table A grep |
 
 The nothing-silently-omitted gate: Table A + Table B enumerate every file the tree holds —
 the 57 tracked files plus the known-transient gitignored log artifacts. Re-prove from the
@@ -172,3 +175,107 @@ imports re-proven absent, pyproject porcelain-empty):
 | megaDNA pinned clone `cb2f5ab4` + MEGABYTE_pytorch 0.2.1 (spike/megadna-pinned-fallback) | PASS (load 4.0s, forward 0.3s) with the known dnallm-side generate failure reproduced: `GENERATE_FAILED` megadna tokenizer single-string encode error (Phase 8 repair candidate) | .scratch/census-out/logs/spike__megadna-pinned-fallback.log |
 
 *Inventory committed by plan 05-05 (2026-10-02); verdicts filled by the 05-06 census campaign per D-08.*
+
+## Hand-off to owner (D-09 — flagged, not re-scoped)
+
+**Campaign summary (2026-10-02, GB10 dev box):** 25 census items executed through the 05-05
+harness lanes — **11 PASS / 12 FAIL / 2 deferred-owner**; every FAIL carries the exact terminal
+traceback + log path in its Table A row; the gated ladder walked variant-first everywhere and
+the throwaway-venv fallback legs re-proved all three spike families (evo1-8k, evo2-noFP8,
+megaDNA-pinned). The project environment is provably untouched (pyproject porcelain-empty;
+stripedhyena/evo2/MEGABYTE_pytorch/pyBigWig/langchain_ollama all absent from `.venv`).
+
+### 1. Phase 7-9 overlap flag (owner rescoping requested)
+
+D-08's "entire example/ tree executes" bar landed HERE, pulling forward work the Phase 7-9
+charters still carry verbatim: **Phase 7** showcase-notebook write-back (its notebook set is
+now census-executed); **Phase 8** full-green rollout + `models.lock` + REPAIR-04 + MCP-01
+ollama infra (its repair queue is now concretely this census's FAIL list); **Phase 9** nightly
+census wiring (the durable execution layer now exists: 8 active notebooks + 7 gated + 3 marimo
+apps + script lane; full `tests/examples` run measured at ~50 min on GB10 — well inside the
+900-min nightly, but the runtime note belongs to Phase 9's budget planning; owner floated
+pytest-notebook/xdist — decision: keep the nbclient harness, xdist does not help a
+GPU-bottlenecked lane). Roadmap rescoping is an owner action; this plan did not rewrite any
+Phase 7-9 scope.
+
+### 2. FAIL repair queue (the transformers-5 adaptation worklist, class-tagged)
+
+**NT-REMOTE-STRUCTURAL (one disposition covers three items — 05-04 options: structural
+PretrainedConfig default patch / transformers pin for this consumer / checkpoint re-export):**
+- `notebooks/finetune_NER_task/finetune_NER_task.ipynb` — `ValueError: Failed to load model:
+  'EsmConfig' object has no attribute 'is_decoder'` (remote modeling_esm.py; model.py:888)
+- `notebooks/finetune_NER_task/generate_bpe_dataset.py` — same terminal rung (05-05 bed repair
+  confirmed working; durable test = self-healing typed skip)
+- benchmark third model (NT) — blocked BEHIND the benchmark.py bug below; proven separately by
+  the 05-04 smoke. Cache note: the local ModelScope NT snapshot is PATCHED (config.json
+  is_decoder/add_cross_attention + modeling_esm.py init_weights→post_init; `*.dnallm-bak`
+  backups) — on this box an NT load would fail at the forward-stage
+  `get_extended_attention_mask` rung instead
+
+**BPE-TOKENIZER (zhangtaolab BPE-family tokenizer artifacts on transformers 5.x):**
+- `notebooks/data_prepare/finetune/finetune_data.ipynb` — raw
+  `AutoTokenizer.from_pretrained("zhangtaolab/plant-dnabert-BPE")` demo cell dies in the
+  DebertaV2Tokenizer slow path (`tokenization_deberta_v2.py:112`,
+  `TypeError: 'dict' object is not an instance of 'Sequence' while processing 'vocab'`).
+  Scope note: the defect is the REPO's tokenizer artifacts (tokenizer_class declaration +
+  tokenizer.json missing [UNK] per the orchestrator's probe), NOT dnallm — the dnallm loader
+  route tokenizes the same family fine (finetune_binary trains on plant-dnabert-BPE). All
+  cached zhangtaolab BPE repos declare DebertaV2Tokenizer; repair belongs upstream or via a
+  dnallm-side tokenizer fallback (Phase 8 decision)
+
+**OTHER (each described precisely — this is the new-findings class):**
+- `notebooks/inference_for_tRNA/inference.ipynb` — tRNADetector remote code imports
+  `MambaCache` from `transformers.cache_utils` (removed in 5.x) — second remote-API-removal
+  family, distinct from the NT class
+- `notebooks/embedding_attention.ipynb` — InstaDeepAI NT-v2-50m remote modeling_esm.py:40
+  imports `find_pruneable_heads_and_indices` from `transformers.pytorch_utils` (the 05-04 shim
+  attaches to modeling_utils only, and this notebook uses raw AutoModelForMaskedLM so the shim
+  is not in its import path anyway) — shim-scope question for Phase 8
+- `notebooks/benchmark/benchmark.ipynb` — **dnallm-side bug, fails before any model loads**:
+  `dnallm/inference/benchmark.py:296` hardcodes `self.datasets[di]["labels"]` while
+  benchmark_config.yaml declares `label_column: label` (KeyError: Column labels)
+- `notebooks/finetune_custom_head/finetune.ipynb` — training fully green (417/417 steps); only
+  the megaDNA alternative-model demo cell is install-gated (megadna.py:146); ALSO the
+  dnallm-side megadna generate tokenizer bug reproduced in the fallback leg (Phase 8 repair
+  candidate)
+- `notebooks/finetune_generation/finetune_generation.ipynb` — expects
+  `Arabidopsis_thaliana.TAIR10.cds.all.fa.gz` (root-gitignored external input, no download
+  cell; only derived artifacts tracked)
+- `notebooks/lora_finetune_inference/lora_finetune.ipynb` + `lora_inference.ipynb` — PlantCAD2
+  remote code requires `mamba_ssm` (`[mamba]` extra / native CUDA build absent); durable gated
+  tests self-heal when the extra lands
+- `notebooks/generation_megaDNA/inference.ipynb` + `notebooks/generation_evo_models/inference.ipynb`
+  — install-gated handlers (prerequisites deliberately absent from the project venv); durable
+  optional-dep gated tests + proven fallback legs
+
+### 3. evo notebook model-reference update (D-06 — Phase 8, not done here)
+
+D-06 says Phase 8 executes the small variant and updates the notebook's model reference. The
+05-06 ladder re-proved `evo-1-8k-base` end-to-end (load 21.3s, forward, generate OK) and evo2
+via `evo2-1b-8k-noFP8.yml` — the update question (switch the reference vs install-gate +
+models.lock entries carrying the prerequisites) is the owner's Phase 8 call.
+
+### 4. EXEC-03 / EXEC-04 status
+
+- **EXEC-03 (marimo apps, dev-box leg): COMPLETE** — all three apps census-green
+  (inference_demo 8.2s, benchmark_demo 5.9s, finetune_demo 4.9s; MARIMO_EXEC_SPECS grown to
+  all three; export-html executes each app's module-level graph, model actions are
+  button-gated by app design).
+- **EXEC-04 (example script, dev-box leg): PARTIAL** — the script runs standalone (05-05 bed
+  repair proven in-campaign) but terminates at the NT structural rung; its durable test is the
+  self-healing typed skip. REQ stays open for Phase 8 pending the NT owner disposition.
+
+### 5. deferred-owner rows
+
+Both `mcp_example` notebooks: ollama probe GREEN on this box (qwen3.8:latest present) —
+execution deferred to the Phase-8 ollama/VRAM coexistence plan per T-05-16 (the uv pip install
+cells must never run against the project venv; the dnallm MCP server endpoint is also not
+running). Manifest outcome strings carry the probe evidence; the durable gated tests skip
+network-unavailable with both live probe results in the message and fail loudly (owner
+decision) if both endpoints ever come up before Phase 8 lands.
+
+### 6. Unpushed phs range (manual-push-only rule)
+
+`git log origin/dev..phs --oneline | wc -l` = 71 commits at campaign start (tip `2c70aad`),
+growing with the 05-06 commits (census verdicts `330134a`, `147ea9a`, + Task 3 wiring/docs).
+No pushes performed (D-09).

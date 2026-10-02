@@ -43,7 +43,7 @@ def marimo_sandbox(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[P
 
 
 @pytest.mark.slow
-@pytest.mark.timeout(1500)
+@pytest.mark.timeout(7200)
 class TestMarimoAppExecution:
     """Real headless marimo-app execution through the private harness."""
 
@@ -52,7 +52,7 @@ class TestMarimoAppExecution:
         [Path(key) for key in MARIMO_EXEC_SPECS],
         ids=lambda p: str(p.relative_to(EXAMPLE_DIR)),
     )
-    def test_inference_demo_exports_html(
+    def test_app_exports_html(
         self,
         app_path: Path,
         tmp_path: Path,

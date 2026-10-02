@@ -20,9 +20,10 @@ example-notebook tests:
   venv interpreter inside a sandbox cwd, always leaving a run log;
 * :func:`assert_tree_clean` -- scoped ``git status`` tripwire proving an
   execution never dirtied ``example/`` or ``docs/example/``;
-* :func:`environment_unavailable_skip` / :func:`optional_dep_skip` --
-  the only sanctioned skip paths, emitting stable junit-greppable
-  prefixes registered in ``tests/expected_skips.yaml``.
+* :func:`environment_unavailable_skip` / :func:`optional_dep_skip` /
+  :func:`network_unavailable_skip` -- the only sanctioned skip paths,
+  emitting stable junit-greppable prefixes registered in
+  ``tests/expected_skips.yaml``.
 
 nbclient 0.11.0 semantics (live-probed, 05-RESEARCH.md Pattern 1):
 ``NotebookClient`` is NOT a context manager; a plain ``execute()`` call
@@ -192,6 +193,20 @@ MARIMO_EXEC_SPECS: dict[str, dict] = {
         "flavor": "export-html",
         "timeout_s": 1200,
         "test_timeout": 1500,
+    },
+    # 05-06 census-green apps (both export in <10s: config/dataset load runs
+    # at module level; the model actions are button-gated by app design).
+    # 3600s wall leaves headroom for a cold model fetch behind a future
+    # button-triggered flavor; the 7200 test mark matches the class ladder.
+    str(EXAMPLE_DIR / "marimo" / "benchmark" / "benchmark_demo.py"): {
+        "flavor": "export-html",
+        "timeout_s": 3600,
+        "test_timeout": 7200,
+    },
+    str(EXAMPLE_DIR / "marimo" / "finetune" / "finetune_demo.py"): {
+        "flavor": "export-html",
+        "timeout_s": 3600,
+        "test_timeout": 7200,
     },
 }
 
@@ -558,3 +573,22 @@ def optional_dep_skip(action: str, evidence: str) -> None:
         evidence: the missing-dependency evidence (e.g. ImportError text).
     """
     pytest.skip(f"optional-dep: {action} ({evidence})")
+
+
+def network_unavailable_skip(action: str, evidence: str) -> None:
+    """skip with the stable ``network-unavailable:`` prefix.
+
+    The narrow typed-skip path for execution tests blocked on a local
+    network service the notebook needs (the MCP-01 convention from
+    ``dnallm/mcp/tests/_network_skip.py``; the prefix has been registered
+    in ``tests/expected_skips.yaml`` since 05-01).  Used by the 05-06
+    gated layer for the ollama/mcp-server example notebooks: the skip
+    fires only when a required endpoint is genuinely unreachable, with
+    the live probe results recorded in the message.
+
+    Args:
+        action: stable label naming what the test was attempting.
+        evidence: the live probe evidence (endpoint URLs + results), so
+            the junit skip message carries the decision basis.
+    """
+    pytest.skip(f"network-unavailable: {action} ({evidence})")
