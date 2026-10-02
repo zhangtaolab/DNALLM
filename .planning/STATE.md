@@ -6,10 +6,10 @@ current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
 stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
-last_updated: "2026-10-02T15:58:38.162Z"
+last_updated: "2026-10-02T17:04:29.913Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: fa0386eb873211906921f19aae78b8d499c7094d
+state_head: a0220d535ac81a180b90b1c7556a5e9e90d95e26
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
 Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-10-02 — Completed quick tasks 261002-se3 (get_extended_attention_mask shim) + 261002-sl7 (6 non-gated notebooks: 5 to ACTIVE 8→13, finetune_generation gated; 5 shims + 34 tests; D-07 record superseded — reconcile at next STATE update)
+Last activity: 2026-10-02 — Completed quick tasks 261002-se3 (get_extended_attention_mask shim), 261002-sl7 (6 non-gated notebooks: 5 to ACTIVE 8→13, finetune_generation gated; 5 shims + 34 tests), gsd-fast plot annotation fix (d352c0e), 261003-0p0 typing special (ty 570→165, TypedDict, E-family triage list at .planning/research/ty-triage-next-batch-2026-10-03.md)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -117,6 +117,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 |---|-------------|------|--------|-----------|
 | 261002-se3 | Fix transformers 5.x remote-code compat: restore get_extended_attention_mask for trust_remote_code ESM models (benchmark notebook AttributeError), with pytest coverage | 2026-10-02 | fdc4915 | [261002-se3-fix-transformers-5-x-remote-code-compat-](./quick/261002-se3-fix-transformers-5-x-remote-code-compat-/) |
 | 261002-sl7 | Run and fix the 6 non-gated census-failing notebooks to green: 5 promoted to ACTIVE lane (8-13), finetune_generation data-prep fixed + megaDNA half honestly gated; 5 transformers-5.x shims + 34 contract tests | 2026-10-02 | fa0386e | [261002-sl7-run-and-fix-the-5-non-gated-census-faili](./quick/261002-sl7-run-and-fix-the-5-non-gated-census-faili/) |
+| 3 | gsd-fast: fix Benchmark.plot return annotation lie (-> None vs actual 2-tuple), kills ty not-iterable in benchmark notebook | 2026-10-02 | d352c0e | — |
+| 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
 
 ## Deferred Items
 
