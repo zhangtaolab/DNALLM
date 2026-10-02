@@ -24,7 +24,9 @@ from dnallm.utils.transformers_compat import (
     _QuantStatProxy,
     _attach_remote_code_pruning_helpers,
     _find_pruneable_heads_and_indices,
+    _get_extended_attention_mask,
     _iter_uninitialized_quantized_weights,
+    _patch_get_extended_attention_mask,
     _patch_get_parameter_or_buffer,
     _patch_initialize_weights_for_quantized_missing,
     _patch_remote_code_pruning_helpers,
@@ -623,3 +625,148 @@ class TestRemoteCodePruningHelpers:
         assert fake_pu.find_pruneable_heads_and_indices is _find_pruneable_heads_and_indices
         assert fake_pu.prune_linear_layer is _prune_linear_layer
         assert fake_pu._dnallm_remote_code_pruning_patch is True
+
+
+class TestGetExtendedAttentionMask:
+    """Contract for the vendored v4.49.0 mask-expansion method re-attached on transformers 5.x.
+
+    Covers the shape/value semantics of
+    ``ModuleUtilsMixin.get_extended_attention_mask`` as 4.x-era remote code
+    (``EsmModel.forward``) consumes it — 2D/3D broadcast expansion, the
+    0.0 / dtype-min value mapping, dtype fallback and override — plus the
+    live-class attachment contract: callable presence, idempotent
+    absence-gated attachment, and version awareness: on transformers 5.x the
+    exposed method IS the vendored function; on 4.x it is upstream's native
+    one and the patch is an absence-gated no-op (the identity assertions
+    invert rather than skip, so the file collects and passes cleanly across
+    the whole CI matrix).
+    """
+
+    def test_2d_encoder_mask_expands_to_broadcastable_shape(self):
+        """A 2D (2, 4) encoder mask expands to (2, 1, 1, 4) with 0.0 / dtype-min values."""
+        fake = types.SimpleNamespace(dtype=torch.float32, config=types.SimpleNamespace())
+        mask = torch.tensor([[1.0, 1.0, 0.0, 1.0], [1.0, 0.0, 1.0, 1.0]])
+
+        extended = _get_extended_attention_mask(fake, mask, (2, 4))
+
+        assert tuple(extended.shape) == (2, 1, 1, 4)
+        assert float(extended[0, 0, 0, 0]) == 0.0, "attended position must become 0.0"
+        assert float(extended[0, 0, 0, 2]) == torch.finfo(torch.float32).min, (
+            "masked position must become the dtype minimum"
+        )
+        assert float(extended[1, 0, 0, 1]) == torch.finfo(torch.float32).min
+
+    def test_3d_mask_expands_to_batched_pairwise_shape(self):
+        """A 3D (2, 3, 4) mask expands to (2, 1, 3, 4) with the same value mapping."""
+        fake = types.SimpleNamespace(dtype=torch.float32, config=types.SimpleNamespace())
+        mask = torch.ones(2, 3, 4)
+        mask[0, 1, 2] = 0.0
+
+        extended = _get_extended_attention_mask(fake, mask, (2, 4))
+
+        assert tuple(extended.shape) == (2, 1, 3, 4)
+        assert float(extended[0, 0, 0, 0]) == 0.0, "attended position must become 0.0"
+        assert float(extended[0, 0, 1, 2]) == torch.finfo(torch.float32).min
+
+    def test_explicit_dtype_controls_output_dtype_and_fill_value(self):
+        """dtype=torch.float16 yields float16 output masked with the float16 minimum."""
+        fake = types.SimpleNamespace(dtype=torch.float32, config=types.SimpleNamespace())
+        mask = torch.tensor([[1.0, 0.0]])
+
+        extended = _get_extended_attention_mask(fake, mask, (1, 2), dtype=torch.float16)
+
+        assert extended.dtype == torch.float16
+        assert float(extended[0, 0, 0, 0]) == 0.0
+        assert float(extended[0, 0, 0, 1]) == torch.finfo(torch.float16).min
+
+    def test_dtype_none_falls_back_to_receiver_dtype(self):
+        """With no dtype kwarg the output takes the receiver's own dtype."""
+        fake = types.SimpleNamespace(dtype=torch.float64, config=types.SimpleNamespace())
+        mask = torch.tensor([[1.0, 1.0, 1.0]])
+
+        extended = _get_extended_attention_mask(fake, mask, (1, 3))
+
+        assert extended.dtype == torch.float64
+        assert float(extended[0, 0, 0, 2]) == 0.0
+
+    def test_config_without_is_decoder_attribute_takes_encoder_branch(self):
+        """A config lacking is_decoder entirely (the 05-04 D-07 next rung) still expands."""
+        fake = types.SimpleNamespace(dtype=torch.float32, config=types.SimpleNamespace())
+        assert not hasattr(fake.config, "is_decoder"), "fixture must exercise the missing case"
+
+        extended = _get_extended_attention_mask(fake, torch.tensor([[1.0, 0.0]]), (1, 2))
+
+        assert tuple(extended.shape) == (1, 1, 1, 2)
+        assert float(extended[0, 0, 0, 1]) == torch.finfo(torch.float32).min
+
+    def test_wrong_dimensionality_raises_value_error(self):
+        """A 1D mask raises upstream's Wrong shape ValueError."""
+        fake = types.SimpleNamespace(dtype=torch.float32, config=types.SimpleNamespace())
+
+        with pytest.raises(ValueError, match="Wrong shape"):
+            _get_extended_attention_mask(fake, torch.tensor([1.0, 0.0, 1.0]), (1, 3))
+
+    def test_decoder_config_raises_not_implemented(self):
+        """is_decoder=True fails loudly instead of returning a non-causal mask."""
+        fake = types.SimpleNamespace(
+            dtype=torch.float32, config=types.SimpleNamespace(is_decoder=True)
+        )
+
+        with pytest.raises(NotImplementedError, match="decoder"):
+            _get_extended_attention_mask(fake, torch.tensor([[1.0, 1.0]]), (1, 2))
+
+    def test_live_class_attachment_identity_is_version_agnostic(self):
+        """On transformers 5.x the live method IS the vendored one; on 4.x it is NOT."""
+        major = int(transformers.__version__.split(".")[0])
+
+        assert callable(PreTrainedModel.get_extended_attention_mask)
+
+        if major >= 5:
+            assert PreTrainedModel.get_extended_attention_mask is _get_extended_attention_mask, (
+                "5.x attachment must be the vendored function"
+            )
+        else:
+            assert (
+                PreTrainedModel.get_extended_attention_mask is not _get_extended_attention_mask
+            ), "4.x no-op gate must leave upstream's native method in place"
+
+    def test_apply_patches_rebind_is_idempotent_with_sentinel(self):
+        """A second apply_patches() leaves the bound method identical and the sentinel stable."""
+        major = int(transformers.__version__.split(".")[0])
+        before = PreTrainedModel.get_extended_attention_mask
+
+        apply_patches()
+
+        assert PreTrainedModel.get_extended_attention_mask is before, "no rebind may happen"
+        if major >= 5:
+            assert PreTrainedModel._dnallm_extended_mask_patch is True
+        else:
+            assert not hasattr(PreTrainedModel, "_dnallm_extended_mask_patch"), (
+                "4.x absence gate must not even set the sentinel"
+            )
+
+    def test_patch_attaches_only_where_class_lacks_the_method(self, monkeypatch):
+        """A bare stand-in class receives the vendored method and sentinel; a class already
+        exposing a native method is left untouched and gets no sentinel."""
+
+        class _BareModel:
+            """Stand-in for a PreTrainedModel without get_extended_attention_mask."""
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _BareModel)
+        _patch_get_extended_attention_mask()
+
+        assert _BareModel.get_extended_attention_mask is _get_extended_attention_mask
+        assert _BareModel._dnallm_extended_mask_patch is True
+
+        class _NativeModel:
+            """Stand-in whose class already carries a native method (the 4.x shape)."""
+
+            def get_extended_attention_mask(self, attention_mask, input_shape):
+                """Native placeholder that must never be overwritten."""
+                return attention_mask
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _NativeModel)
+        _patch_get_extended_attention_mask()
+
+        assert _NativeModel.get_extended_attention_mask is not _get_extended_attention_mask
+        assert not hasattr(_NativeModel, "_dnallm_extended_mask_patch")

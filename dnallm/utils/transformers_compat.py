@@ -365,11 +365,122 @@ def _patch_remote_code_pruning_helpers():
     _attach_remote_code_pruning_helpers(transformers.pytorch_utils)
 
 
+# The extended-attention-mask helper below is vendored with semantics and
+# docstring kept verbatim from the upstream transformers reference
+# implementation: tag v4.49.0, file src/transformers/modeling_utils.py
+# (ModuleUtilsMixin.get_extended_attention_mask). transformers 5.x removed
+# the method from modeling_utils and PreTrainedModel, but 4.x-era
+# trust_remote_code checkpoints (the remote modeling_esm.py of
+# zhangtaolab/nucleotide-transformer-v2-100m-promoter and its sibling NT/ESM
+# caches) call it as a method inside EsmModel.forward
+# (self.get_extended_attention_mask(attention_mask, input_shape)); the patch
+# re-attaches it under its upstream name on the PreTrainedModel class only
+# where the class does not already expose it. Three documented deviations
+# from upstream: (1) is_decoder is read as
+# getattr(self.config, "is_decoder", False) because transformers 5.x
+# PretrainedConfig dropped the 4.x defaults and a remote 4.x config object
+# may lack the attribute outright (the documented next rung of the 05-04
+# D-07 ladder); (2) the decoder branch raises NotImplementedError instead of
+# delegating to create_extended_attention_mask_for_decoder, which 5.x also
+# removed, rather than returning a silently non-causal mask (every
+# ESM-family remote checkpoint is an encoder); (3) upstream's cosmetic
+# FutureWarning about the deprecated `device` argument is dropped, while the
+# argument itself is kept in the signature for call compatibility.
+
+
+def _get_extended_attention_mask(
+    self,
+    attention_mask: torch.Tensor,
+    input_shape: tuple[int, ...],
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
+) -> torch.Tensor:
+    """
+    Makes broadcastable attention and causal masks so that future and masked tokens are ignored.
+
+    Arguments:
+        attention_mask (`torch.Tensor`):
+            Mask with ones indicating tokens to attend to, zeros for tokens to ignore.
+        input_shape (`Tuple[int]`):
+            The shape of the input to the model.
+
+    Returns:
+        `torch.Tensor` The extended attention mask, with the same dtype as `dtype`.
+    """
+    if dtype is None:
+        dtype = self.dtype
+
+    if attention_mask.dim() == 3:
+        extended_attention_mask = attention_mask[:, None, :, :]
+    elif attention_mask.dim() == 2:
+        if getattr(self.config, "is_decoder", False):
+            # Deviation (2) from upstream v4.49.0: the decoder branch there
+            # delegated to ModuleUtilsMixin.create_extended_attention_mask_for_decoder,
+            # which transformers 5.x also removed. Fail loudly instead of
+            # returning a silently non-causal mask.
+            raise NotImplementedError(
+                "get_extended_attention_mask does not implement the decoder branch: upstream "
+                "transformers 4.49 delegated it to create_extended_attention_mask_for_decoder, "
+                "which transformers 5.x removed; dnallm's transformers-5 remote-code shim "
+                "refuses to return a silently non-causal mask for a decoder config"
+            )
+        extended_attention_mask = attention_mask[:, None, None, :]
+    else:
+        raise ValueError(
+            f"Wrong shape for input_ids (shape {input_shape}) or "
+            f"attention_mask (shape {attention_mask.shape})"
+        )
+
+    # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
+    # masked positions, this operation will create a tensor which is 0.0 for
+    # positions we want to attend and the dtype's minimum value for masked
+    # positions. Since we are adding it to the raw scores before the softmax,
+    # this is effectively the same as removing these entirely.
+    extended_attention_mask = extended_attention_mask.to(dtype=dtype)  # fp16 compatibility
+    extended_attention_mask = (1.0 - extended_attention_mask) * torch.finfo(dtype).min
+    return extended_attention_mask
+
+
+def _patch_get_extended_attention_mask():
+    """Re-attach the 4.x ``get_extended_attention_mask`` removed from transformers 5.x.
+
+    transformers 5.x removed ``get_extended_attention_mask`` from both
+    ``transformers.modeling_utils`` and ``PreTrainedModel``, but 4.x-era
+    ``trust_remote_code`` checkpoints (e.g. the remote ``modeling_esm.py`` of
+    the nucleotide-transformer-v2 promoter mirror) call it as a METHOD
+    (``self.get_extended_attention_mask(attention_mask, input_shape)``)
+    inside ``EsmModel.forward``. The patch therefore attaches the vendored
+    v4.49.0 implementation under its upstream name onto the
+    ``PreTrainedModel`` class, which every remote ``EsmPreTrainedModel``
+    subclass reaches through normal MRO.
+
+    On transformers 4.x the class already exposes the native method and the
+    patch no-ops (absence-gated per name, never overwrite); a class sentinel
+    keeps repeat calls idempotent.
+    """
+    try:
+        from transformers.modeling_utils import PreTrainedModel
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    if hasattr(PreTrainedModel, "get_extended_attention_mask"):
+        return
+
+    if getattr(PreTrainedModel, "_dnallm_extended_mask_patch", False):
+        return
+
+    PreTrainedModel.get_extended_attention_mask = (  # type: ignore[method-assign]
+        _get_extended_attention_mask
+    )
+    PreTrainedModel._dnallm_extended_mask_patch = True  # type: ignore[attr-defined]
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times."""
     _patch_get_parameter_or_buffer()
     _patch_initialize_weights_for_quantized_missing()
     _patch_remote_code_pruning_helpers()
+    _patch_get_extended_attention_mask()
 
 
 # Apply patches on module import so they are active before any
