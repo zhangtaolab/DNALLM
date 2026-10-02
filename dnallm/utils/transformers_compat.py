@@ -98,14 +98,17 @@ def _find_pruneable_heads_and_indices(
         into account and the indices of rows/columns to keep in the layer weight.
     """
     mask = torch.ones(n_heads, head_size)
-    heads = set(heads) - already_pruned_heads  # Convert to set and remove already pruned heads
-    for head in heads:
+    # Convert to set and remove already pruned heads (upstream rebinding of the
+    # `heads` parameter is renamed here only so the annotation flow stays sound;
+    # the returned set and the mask arithmetic are unchanged).
+    pruned_heads = set(heads) - already_pruned_heads
+    for head in pruned_heads:
         # Compute how many pruned heads are before the head and move the index accordingly
         head = head - sum(1 if h < head else 0 for h in already_pruned_heads)
         mask[head] = 0
     mask = mask.view(-1).contiguous().eq(1)
     index: torch.Tensor = torch.arange(len(mask))[mask].long()
-    return heads, index
+    return pruned_heads, index
 
 
 def _prune_linear_layer(
