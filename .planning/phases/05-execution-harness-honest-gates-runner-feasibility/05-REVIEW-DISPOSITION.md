@@ -95,3 +95,15 @@ Set `deferred` by hand and put the reason in the Source cell; both are preserved
 Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently. ONE exception: when a finding id is REUSED by a different finding, the earlier decision cannot keep a row — the id is taken — and it is dropped. A RECORDED decision (anything but `open`) is named on the console when that happens; a row still at `open` is replaced silently, because `open` records no decision to lose.
 
 Note: this ledger was rendered by the orchestrator following the canonical schema (the embedded renderer's heading parser does not match the iteration-3 review's `### IN-01 (carried, ...):` heading suffix shape, which would have produced an unparsed-shortfall row set). Every disposition above is grounded in the git commits cited; WR-09's fix (bb57709) applied the reviewer's verbatim replacement text after the 3-iteration --auto cap.
+
+## Gap-Closure Incremental Review Disposition (2026-10-02, review @ 774aa61, fixes @ 265dcec..6453ece)
+
+| ID | Severity | Finding (short) | Disposition |
+|---|---|---|---|
+| WR-01 | Warning | Shim attached helpers only to transformers.modeling_utils; pytorch_utils-importing remote checkpoints still crash on 5.x | fixed (265dcec) — per-name absence-gated attach to both modules + 6 new contract tests (32 total) |
+| WR-02 | Warning | lora_finetune gated entry fell to class mark 3600 == cell timeout, violating strictly-below invariant | fixed (d7493f5) — _TIMEOUT_7200_GATED frozenset; effective mark verified (7200,) |
+| WR-03 | Warning | Spec fields test_timeout/flavor were dead data contradicting docstrings | fixed (eb55cff) — removed fields, corrected docs; zero runtime change; 21+3 entries re-validated |
+| WR-04 | Warning | URLError catch swallowed HTTP 4xx into ever-green network-unavailable skip | fixed (6453ece) — 4xx re-raises, 5xx/URLError/timeout keep typed skip; flagged human-verify (slow network lane) |
+| IN-01..IN-05 | Info | gate checks one name / hand-built skip prefix / pre-existing hardcoded path / no synthetic-module attach test / timeout artifact gap | open (out of scope per fix_scope=critical_warning); IN-01 incidentally improved by WR-01's per-name structure |
+
+Verification: fast leg 1648 passed + 1 pre-existing skip; ruff clean on all touched files; live probe confirms pytorch_utils attach on 5.17.
