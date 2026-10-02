@@ -1,8 +1,10 @@
 ---
 phase: 05-execution-harness-honest-gates-runner-feasibility
 verified: 2026-10-01T22:12:12Z
-status: passed
-score: 19/19 must-haves verified
+status: gaps_found
+reopened_at: 2026-10-02T10:22:00+08:00
+reopen_command: "/gsd-plan-phase 5 --gaps --force — closed-phase gate #3569 overridden by owner decision"
+score: 19/19 must-haves verified (prior closure; see Post-closure Gap Addendum)
 covered_files:
   - .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-01-PLAN.md
   - .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-01-SUMMARY.md
@@ -208,3 +210,54 @@ No gaps. All 19 truths verified (truth 13 closed by live API read this round; tr
 _Verified: 2026-10-01T22:12:12Z_
 _Verifier: Claude (gsd-verifier)_
 _Re-verification of: 05-VERIFICATION.md @ 894f17a (18/19, human_needed, digest 317a3b48); closure commits 1168e0e + 59d7f30_
+
+## Post-closure Gap Addendum (2026-10-02)
+
+**Status flipped: `passed` → `gaps_found`.** Phase reopened by owner decision under
+`/gsd-plan-phase 5 --gaps --force`. The prior 19/19 closure remains historically accurate for what
+it examined; the gaps below were invisible to it by scope, not by misverification.
+
+### GAP-1 — registry checkpoint broken on the pinned dev environment (transformers 5.17)
+
+- **Repro:** `example/notebooks/benchmark/benchmark.ipynb` cell 4 (`benchmark.run()`) →
+  `ValueError: Failed to load model: cannot import name 'find_pruneable_heads_and_indices' from
+  'transformers.modeling_utils'` (raised through `dnallm/models/model.py:888`).
+- **Root cause (verified 2026-10-02):** `zhangtaolab/nucleotide-transformer-v2-100m-promoter`
+  (`dnallm/models/model_info.yaml:214`; third model of `example/notebooks/benchmark/benchmark_config.yaml`,
+  ModelScope source) ships a transformers-4.x-era remote-code `modeling_esm.py`. transformers 5.17.0
+  removed `find_pruneable_heads_and_indices` and `prune_linear_layer` from
+  `transformers.modeling_utils` (hasattr-verified False) AND from `transformers.pytorch_utils`
+  (import fails) — the remote module's `from transformers.modeling_utils import (...)` therefore
+  crashes inside `get_class_in_module` under `trust_remote_code=True`. `dnallm/` itself references
+  neither symbol (grep-verified zero hits) — this is a third-party-remote-code × transformers-4→5
+  span gap, not a dnallm import.
+- **Environment delta:** transformers 5.17.0 installed 2026-09-17 (dist-info mtime); the last green
+  benchmark run whose outputs are committed dates 2026-05-17 (commit 936ef04) — it predates the
+  upgrade and proves nothing about 5.17.
+- **Why the 19/19 closure did not catch it:** zero test references to this checkpoint (grep across
+  `tests/` + `dnallm/mcp/tests/`); real-model tests cover `plant-dnagpt-BPE-promoter` only; the
+  Phase 5 execution-harness pilot was `example/notebooks/inference/inference.ipynb` alone
+  (`tests/examples/test_notebook_execution.py:34`).
+- **Fix direction (planner input, not a locked design):** compat shim in
+  `dnallm/utils/transformers_compat.py` — vendor the two pruning helpers, attach them to
+  `transformers.modeling_utils` when absent, no-op on transformers 4.x — plus a real-model
+  load+forward smoke test covering this checkpoint. **Residual risk to plan for:** the import shim
+  may expose deeper 5.x breakage inside `modeling_esm.py`; the smoke test must perform load +
+  forward (import-only proof is insufficient).
+
+### GAP-2 — example/ execution coverage closed on a pilot only (owner-directed scope expansion)
+
+- **Owner ruling 2026-10-02:** Phase 5 gap closure must execute the ENTIRE `example/` tree — all
+  notebooks, marimo apps, scripts and programs, 一项不漏. Acceptance standard (owner-selected):
+  every census item carries either a real-execution result or an evidence-backed typed
+  `environment-unavailable:` skip (D-05/D-06 variant rules apply). Deliverable includes a committed
+  full census inventory with per-item verdict. Nothing silently omitted.
+- **Overlap with Phase 7/8 charters is acknowledged and deferred:** roadmap rescoping is an owner
+  action AFTER this closure, flagged at plan hand-off — the gap-closure plans must not silently
+  rewrite Phases 7–9 scope.
+- **Standing constraints carried into gap-closure plans:**
+  - Never recreate `tests/examples/conftest.py` (frontmatter `overrides:` entry 1 — module-name race
+    broke 3 test files; the fixture lives module-locally in `tests/examples/test_notebook_execution.py`).
+  - One-off scripts (census generators, shim probes, anything throwaway) stay in gitignored
+    `.scratch/` — never committed/pushed (owner rule, also recorded in Phase 6 context).
+  - dev+main are read-only for this milestone; all work lands on `phs`; pushes are manual-only.
