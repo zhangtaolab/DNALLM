@@ -5,17 +5,17 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
-stopped_at: Phase 5 complete, ready to plan Phase 6
-last_updated: "2026-10-02T03:04:19.663Z"
+stopped_at: Completed 05-04-PLAN.md (GAP-1 shim + ladder-terminal typed skip)
+last_updated: "2026-10-02T05:13:32.522Z"
 last_activity: 2026-10-02
-last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 9f5f87a247a0e6f67d53d81abd5cf19e69295bdf
+last_activity_desc: Phase 5 execution started
+state_head: 50e32ba6e1efce58670b005e561e95cd27624058
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 20
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 5 — Execution Harness, Honest Gates & Runner Feasibility
+**Current focus:** Phase 5 — execution-harness-honest-gates-runner-feasibility
 
 ## Current Position
 
-Phase: 5 (execution-harness-honest-gates-runner-feasibility) — READY TO EXECUTE
-Plan: Not started
+Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-10-02 — Phase 5 complete, transitioned to Phase 6
+Last activity: 2026-10-02 — Phase 5 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 11 min | 3 tasks | 5 files |
 | Phase 05 P02 | 12 min | 3 tasks | 15 files |
 | Phase 05 P03 | 94 min | 3 tasks | 12 files |
+| Phase 05-04 P04 | 23 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: evo2 FEASIBLE(notebook-variant) only via the noFP8 config on GB10 - the FP8 auto-selection trap fired live (1b tier requires Transformer Engine; the empty TE meta package must stay absent because its RuntimeError escapes vortex's ImportError guard)
 - [Phase 05]: pyBigWig environment-unavailable: default sdist build fails on the stock box (curl-config present, headers off the include path); CFLAGS deviation builds+round-trips green but a dev-extra line cannot encode it - pyproject untouched
 - [Phase 05]: marimo flavor: export-html for Phase 8 (deterministic exit + HTML artifact); script-mode also terminates cleanly, binds no port (A4 resolved empirically)
+- [Phase 05]: 05-04: D-07 ladder terminated at its designed rung - remote NT code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention), not vendored-pure-helper territory; shim kept for the import fix, smoke = evidence-backed typed skip, benchmark notebook flagged census FAIL (REPAIR-03 stays PARTIAL, owner disposition per D-09)
+- [Phase 05]: 05-04: native-ESM route (trust_remote_code=False) probed and refuted - FFN weight-shape mismatch (ckpt 4096x512 vs config.json 2048x512); remote esm_config.py is load-bearing, so no drop-in transformers-5 fix exists for this checkpoint
 
 ### Pending Todos
 
@@ -111,9 +114,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T21:58:02.417Z
-Stopped at: Phase 5 complete, ready to plan Phase 6
-Resume file: .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-UAT.md
+Last session: 2026-10-02T05:13:32.505Z
+Stopped at: Completed 05-04-PLAN.md (GAP-1 shim + ladder-terminal typed skip)
+Resume file: None
 
 ## Deferred Verification
 
