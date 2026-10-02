@@ -9,7 +9,7 @@ including performance evaluation, metrics calculation, and
 import os
 import numpy as np
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch.utils.data import DataLoader, Subset
@@ -23,6 +23,9 @@ from ..configuration.configs import (
 )
 from .inference import DNAInference, save_metrics
 from .plot import prepare_data, plot_bars, plot_curve, plot_scatter
+
+if TYPE_CHECKING:  # altair is only needed for the plot() return annotation
+    import altair as alt
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
@@ -561,7 +564,7 @@ class Benchmark:
         save_path: str | None = None,
         separate: bool = False,
         dataset: int | str = 0,
-    ) -> None:
+    ) -> "tuple[alt.Chart | dict[str, alt.Chart], alt.Chart | dict[str, alt.Chart]]":
         """Plot the benchmark results.
 
         This method generates various types of plots based on the task type:
@@ -624,7 +627,7 @@ class Benchmark:
                     save_path=line_chart,
                     separate=separate,
                 )
-            return pbar, pline  # type: ignore
+            return pbar, pline
         elif task_type == "regression":
             # Prepare data for plotting
             bars_data, scatter_data = prepare_data(metrics, task_type=task_type)
@@ -653,4 +656,4 @@ class Benchmark:
                 save_path=scatter_plot,
                 separate=separate,
             )
-            return pbar, pdot  # type: ignore
+            return pbar, pdot
