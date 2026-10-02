@@ -1,11 +1,13 @@
 """Real end-to-end execution tests for example notebooks.
 
-Pilot layer of the v1.1 execution rollout: the parametrized test runs
-whole notebooks through the private nbclient harness inside a tmp
-sandbox, and the kill test proves a hung kernel is cleaned up (EXEC-06).
-Every test here is slow-marked so hosted fast legs never spawn kernels.
-Phase 8 expands :data:`NOTEBOOK_EXEC_SPECS` and this parametrization to
-the full notebook census.
+Census-driven rollout layer of the v1.1 example execution (D-08): the
+parametrized test runs whole notebooks through the private nbclient
+harness inside a tmp sandbox, and the kill test proves a hung kernel is
+cleaned up (EXEC-06).  Every test here is slow-marked so hosted fast
+legs never spawn kernels.  :data:`NOTEBOOK_EXEC_SPECS` carries budgets
+for all 21 notebooks; the :data:`ACTIVE_NOTEBOOKS` list below gates
+which ones actually execute -- 05-06 grows it with census-green
+notebooks (and gated entries), never by silently widening.
 """
 
 from __future__ import annotations
@@ -29,9 +31,11 @@ from tests.examples._execution import (
     seed_sandbox,
 )
 
-# Pilot notebooks -- Phase 8 replaces this list with the expanded
-# NOTEBOOK_EXEC_SPECS-driven rollout.
-PILOTS = [EXAMPLE_DIR / "notebooks" / "inference" / "inference.ipynb"]
+# Census rollout list: every notebook here executes for real on each run.
+# Initially exactly the pilot; 05-06 adds census-green notebooks one by
+# one (entries must exist in NOTEBOOK_EXEC_SPECS, which already carries
+# budgets for all 21).
+ACTIVE_NOTEBOOKS = [EXAMPLE_DIR / "notebooks" / "inference" / "inference.ipynb"]
 
 
 # The sandbox fixture lives in this module (not a tests/examples/conftest.py):
@@ -39,19 +43,17 @@ PILOTS = [EXAMPLE_DIR / "notebooks" / "inference" / "inference.ipynb"]
 # ``conftest`` module-name race and break the three existing test files that
 # do ``from conftest import ...`` (test_trainer/test_benchmark/test_dna_dataset).
 @pytest.fixture
-def notebook_sandbox(tmp_path: Path) -> Iterator[Path]:
+def notebook_sandbox(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[Path]:
     """Yield a seeded tmp sandbox of the executed notebook's directory.
 
-    Seeds the sole :data:`NOTEBOOK_EXEC_SPECS` entry's parent directory
-    (the pilot notebook's dir) over ``tmp_path`` and asserts the repo
-    tree stayed clean on teardown -- belt-and-braces beyond the
-    in-test guard.  Phase 8 generalizes this fixture over the expanded
-    spec dict.
+    Seeds the parametrized notebook's parent directory over ``tmp_path``
+    and asserts the repo tree stayed clean on teardown -- belt-and-braces
+    beyond the in-test guard.  Generalized over the expanded spec dict
+    (05-05): the seeded directory follows ``nb_path`` from the test's
+    parametrization, so every census notebook gets a faithful sandbox.
     """
-    spec_paths = list(NOTEBOOK_EXEC_SPECS)
-    assert len(spec_paths) == 1, "single pilot spec expected; generalize fixture before expanding"
-    pilot_dir = Path(spec_paths[0]).parent
-    yield seed_sandbox(pilot_dir, tmp_path)
+    nb_path = Path(request.node.callspec.params["nb_path"])
+    yield seed_sandbox(nb_path.parent, tmp_path)
     assert_tree_clean()
 
 
@@ -76,13 +78,13 @@ def _kernel_count() -> int:
 
 
 @pytest.mark.slow
-@pytest.mark.timeout(1800)
+@pytest.mark.timeout(7200)
 class TestNotebookExecution:
     """Real end-to-end notebook execution through the private harness."""
 
     @pytest.mark.parametrize(
         "nb_path",
-        PILOTS,
+        ACTIVE_NOTEBOOKS,
         ids=lambda p: str(p.relative_to(EXAMPLE_DIR)),
     )
     def test_notebook_executes_end_to_end(
