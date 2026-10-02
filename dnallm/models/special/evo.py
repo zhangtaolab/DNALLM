@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PretrainedConfig, BatchEncoding  # type: ignore[attr-defined]
+from transformers import PreTrainedConfig, BatchEncoding  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
@@ -188,8 +188,8 @@ def _handle_evo2_models(
     for m in evo2_models:
         if m in model_name.lower():
             try:
-                from evo2 import Evo2  # pyright: ignore[reportMissingImports]
-                from vortex.model.tokenizer import CharLevelTokenizer
+                from evo2 import Evo2  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from vortex.model.tokenizer import CharLevelTokenizer  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 # Overwrite Evo2 to avoid init errors
                 class CustomEvo2(Evo2):
@@ -206,7 +206,7 @@ def _handle_evo2_models(
                     "https://github.com/ArcInstitute/evo2"
                 ) from e
 
-            class Evo2Config(PretrainedConfig):
+            class Evo2Config(PreTrainedConfig):
                 model_type = "evo2"
 
                 def __init__(self, **kwargs):
@@ -295,10 +295,10 @@ def _handle_evo1_models(
         if m in model_name.lower():
             try:
                 import yaml
-                from evo import Evo  # pyright: ignore[reportMissingImports]
-                from stripedhyena.utils import dotdict
-                from stripedhyena.model import StripedHyena
-                from stripedhyena.tokenizer import CharLevelTokenizer
+                from evo import Evo  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.utils import dotdict  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.model import StripedHyena  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.tokenizer import CharLevelTokenizer  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 # Overwrite Evo2 to avoid init errors
                 class CustomEvo1(Evo):
@@ -345,7 +345,7 @@ def _handle_evo1_models(
                     "https://github.com/evo-design/evo"
                 ) from e
 
-            class EvoConfig(PretrainedConfig):
+            class EvoConfig(PreTrainedConfig):
                 model_type = "evo"
 
                 def __init__(self, **kwargs):

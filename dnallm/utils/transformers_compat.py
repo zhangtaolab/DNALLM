@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import
-    from transformers import PretrainedConfig
+    from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
 
 
 def _iter_uninitialized_quantized_weights(model):
@@ -51,6 +51,7 @@ def _iter_uninitialized_quantized_weights(model):
 def _swap_to_fp32(candidates):
     """Temporarily replace packed 4-bit params with dequantized fp tensors."""
     import bitsandbytes as bnb
+    import bitsandbytes.functional  # explicit submodule: makes bnb.functional below statically resolved
 
     swapped = []
     for module, weight in candidates:
@@ -63,6 +64,7 @@ def _swap_to_fp32(candidates):
 def _restore_quantized(swapped):
     """Re-quantize the fp tensors written by initialization and restore Params4bit."""
     import bitsandbytes as bnb
+    import bitsandbytes.functional  # explicit submodule: makes bnb.functional below statically resolved
 
     for module, weight in swapped:
         fp_value = module._parameters.pop("weight").data
@@ -665,7 +667,7 @@ class _MambaCache:
     # TODO (joao): remove `=None` in non-optional arguments in v4.46. Remove from `OBJECTS_TO_IGNORE` as well.
     def __init__(
         self,
-        config: PretrainedConfig,
+        config: PreTrainedConfig,
         batch_size: int | None = None,
         dtype: torch.dtype = torch.float16,
         device: torch.device | str | None = None,
@@ -801,7 +803,9 @@ def _patch_deberta_vocab_dict():
     the hook is absent (transformers 4.x has no ``convert_to_native_format``).
     """
     try:
-        from transformers.models.deberta_v2.tokenization_deberta_v2 import DebertaV2Tokenizer
+        from transformers.models.deberta_v2.tokenization_deberta_v2 import (  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            DebertaV2Tokenizer,
+        )
     except Exception:  # pragma: no cover - transformers not installed / module renamed
         return
 
@@ -957,9 +961,9 @@ def _post_init_computes_tied_weights_keys() -> bool:
     try:
         import transformers.modeling_utils
 
-        from transformers import PretrainedConfig
+        from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
 
-        probe = transformers.modeling_utils.PreTrainedModel(PretrainedConfig())
+        probe = transformers.modeling_utils.PreTrainedModel(PreTrainedConfig())
         probe.post_init()
         return hasattr(probe, "all_tied_weights_keys")
     except Exception:

@@ -16,7 +16,7 @@ def _handle_gpn_models(model_name: str, extra: str | None = None) -> str | None:
     for m in gpn_models:
         if m in model_name:
             try:
-                import gpn.model
+                import gpn.model  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 _ = gpn.model
 

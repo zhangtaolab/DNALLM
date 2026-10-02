@@ -12,7 +12,7 @@ from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -57,7 +57,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
     def __init__(self, config, custom_model=None):
         super().__init__(config)
-        from transformers import AutoModel  # type: ignore[attr-defined]
+        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
@@ -69,7 +69,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 base_model=custom_model,
             )
         elif "lucaone" in self.config.head_config.get("head", "").lower():
-            from lucagplm import LucaGPLMModel
+            from lucagplm import LucaGPLMModel  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             self.backbone = LucaGPLMModel(config)
             transformer_output_dim = self.config.hidden_size
@@ -111,7 +111,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel  # type: ignore[attr-defined]
+        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -465,13 +465,13 @@ def _get_model_path_and_imports(
     # Import transformers modules for local and huggingface sources
     try:
         from transformers import (  # type: ignore[attr-defined]
-            AutoConfig,
-            AutoModel,
-            AutoModelForMaskedLM,
-            AutoModelForCausalLM,
-            AutoModelForSequenceClassification,
-            AutoModelForTokenClassification,
-            AutoTokenizer,
+            AutoConfig,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModel,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoTokenizer,  # ty: ignore[unresolved-import]  # lazy export, resolves live
         )
     except ImportError as e:
         raise ImportError(

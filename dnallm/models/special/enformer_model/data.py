@@ -109,7 +109,7 @@ class FastaInterval:
         if not fasta_file.exists():
             raise FileNotFoundError("path to fasta file must exist")
 
-        from pyfaidx import Fasta
+        from pyfaidx import Fasta  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
         self.seqs = Fasta(str(fasta_file))
         self.return_seq_indices = return_seq_indices
@@ -200,7 +200,7 @@ class GenomeIntervalDataset(Dataset):
         if not bed_path.exists():
             raise FileNotFoundError("path to .bed file must exist")
 
-        import polars as pl
+        import polars as pl  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
         df = pl.read_csv(str(bed_path), separator="\t", has_header=False)
         df = filter_df_fn(df)

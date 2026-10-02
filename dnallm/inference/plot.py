@@ -1544,7 +1544,7 @@ def _get_dimensionality_reducer(
             return UMAP(**params)
 
         elif reducer == "pacmap":
-            from pacmap import PaCMAP
+            from pacmap import PaCMAP  # ty: ignore[unresolved-import]  # optional dep, guarded
 
             params = pacmap_params()
             params.update(kwargs)

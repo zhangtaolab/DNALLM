@@ -46,7 +46,7 @@ from collections.abc import Callable
 import math
 import torch
 from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]
+from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 import transformers
 from packaging.version import Version
 from peft import get_peft_model, LoraConfig
@@ -262,7 +262,7 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
@@ -272,7 +272,7 @@ class DNATrainer:
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]
+            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]

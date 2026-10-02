@@ -8,7 +8,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_space import SpaceConfig
 
-from transformers import PreTrainedModel  # type: ignore[attr-defined]
+from transformers import PreTrainedModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from .modules import (

@@ -1671,7 +1671,7 @@ class DNAInference:
                 })
             return formatted_outputs  # type: ignore
         elif "evo1" in str(self.model).lower():
-            from evo import generate
+            from evo import generate  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             model = self.model.model
             tokenizer = self.tokenizer
@@ -1788,7 +1788,7 @@ class DNAInference:
             outputs = [{"Input": score_seqs[i], "Score": s} for i, s in enumerate(outputs)]
             return outputs  # type: ignore
         elif "evo1" in model_name:
-            from evo import score_sequences
+            from evo import score_sequences  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             model = self.model.model
             tokenizer = self.tokenizer

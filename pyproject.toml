@@ -372,6 +372,17 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 
+# ty (astral) — mirror the ruff/mypy vendored-code excludes so flagless
+# `uvx ty check dnallm/` reports first-party diagnostics only. Gitignore-style
+# globs anchored at the project root. Deliberately no [[tool.ty.overrides]]
+# severity changes: every remaining diagnostic must stay visible signal.
+[tool.ty.src]
+exclude = [
+    "dnallm/tasks/metrics/**",
+    "dnallm/models/special/mamba_npu.py",
+    "dnallm/finetune/megatron.py",
+]
+
 # MyPy configuration
 [tool.mypy]
 python_version = "3.10"

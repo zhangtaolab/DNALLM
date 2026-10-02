@@ -294,14 +294,14 @@ def load_tokenizer_with_fallback(
             logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
     else:
         try:
-            from transformers import AutoTokenizer
+            from transformers import AutoTokenizer  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
             return AutoTokenizer.from_pretrained(model_name, **kwargs)
         except Exception as e:
             logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
 
     try:
-        from transformers import PreTrainedTokenizerFast
+        from transformers import PreTrainedTokenizerFast  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         tokenizer = PreTrainedTokenizerFast.from_pretrained(model_name, **kwargs)
         logger.warning(

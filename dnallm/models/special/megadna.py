@@ -27,9 +27,9 @@ def _handle_megadna_models(
 
     for m in megadna_models:
         if m in model_name:
-            from transformers import PretrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]
+            from transformers import PreTrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
-            class MegaDNAConfig(PretrainedConfig):
+            class MegaDNAConfig(PreTrainedConfig):
                 model_type = "megadna"
 
                 def __init__(self, **kwargs):

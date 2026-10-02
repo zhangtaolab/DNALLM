@@ -31,7 +31,7 @@ def is_flash_attention_capable():
             False otherwise
     """
     try:
-        import flash_attn  # pyright: ignore[reportMissingImports]
+        import flash_attn  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]
 
         _ = flash_attn
         return True
