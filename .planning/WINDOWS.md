@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 1
+open_count: 2
 waived_count: 3
 fixed_count: 7
-total_count: 11
-last_updated: 2026-10-02T05:12:38.864Z
+total_count: 12
+last_updated: 2026-10-02T05:48:40.008Z
 ---
 
 # Broken Windows Ledger
@@ -26,6 +26,7 @@ last_updated: 2026-10-02T05:12:38.864Z
 | 9 | 04 | deviation | .planning/phases/04-ci-gate-enforcement/04-03-PLAN.md |  | Plan arithmetic defect: single-file tests/models/test_model.py deletion cannot clear the 90 floor under -m 'not slow' (91.64% green); probe target re-planned to directory deletion (78.92% red local, 78.91% CI) per the plan own rehearsal gate — resolved in 04-03 | fixed |  | 2026-09-30T18:17:11.661Z | 2026-10-01T14:32:27.683Z |
 | 10 | 04 | deviation | .planning/phases/04-ci-gate-enforcement/04-03-PLAN.md |  | Verify mechanics: gh run view --job --log-failed gates on whole-run completion; evidence harvested via job-level logs API (gh api actions/jobs/<id>/logs) which serves completed jobs mid-run — resolved in 04-03 | fixed |  | 2026-09-30T18:17:11.751Z | 2026-10-01T14:32:27.771Z |
 | 11 | 05 | deviation | example/notebooks/benchmark/benchmark.ipynb |  | Census FAIL row (05-04, D-07 ladder terminal): third registry model zhangtaolab/nucleotide-transformer-v2-100m-promoter not loadable on transformers 5.17 - remote code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention); native-ESM route refuted (FFN shape mismatch); owner disposition pending per D-09 | open |  | 2026-10-02T05:12:38.864Z |  |
+| 12 | 05 | stub | tests/examples/test_script_execution.py |  | environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending | open |  | 2026-10-02T05:48:40.008Z |  |
 
 ````json
 [
@@ -169,6 +170,19 @@ last_updated: 2026-10-02T05:12:38.864Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-02T05:12:38.864Z",
+    "resolved_at": null,
+    "milestone": "v1.1"
+  },
+  {
+    "id": 12,
+    "kind": "stub",
+    "phase": "05",
+    "file": "tests/examples/test_script_execution.py",
+    "line": null,
+    "description": "environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-02T05:48:40.008Z",
     "resolved_at": null,
     "milestone": "v1.1"
   }
