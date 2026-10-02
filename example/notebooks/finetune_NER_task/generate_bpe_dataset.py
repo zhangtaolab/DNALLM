@@ -121,6 +121,16 @@ gene_info = get_gene_annotation(gene_anno)
 
 # Build annotation bed
 annotation_bed = "rice_annotation.bed"
+with open(annotation_bed, "w") as outf:
+    for gene in sorted(gene_anno, key=lambda x: (gene_anno[x]["chrom"], gene_anno[x]["start"])):
+        chrom = gene_anno[gene]["chrom"]
+        strand = gene_anno[gene]["strand"]
+        if strand == "+":
+            for item in gene_info[gene]:
+                print(item[0], item[1], item[2], gene, item[3], item[4], sep="\t", file=outf)
+        else:
+            for item in gene_info[gene][::-1]:
+                print(item[0], item[1], item[2], gene, item[3], item[4], sep="\t", file=outf)
 
 # Generate ext_list
 min_ext = 50

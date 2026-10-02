@@ -16,6 +16,8 @@ example-notebook tests:
   timeout, immediate kernel shutdown and partial-failure artifacts;
 * :func:`run_marimo_app` -- execute a marimo app headlessly through the
   venv ``marimo`` CLI (export-html flavor) inside a sandbox cwd;
+* :func:`run_example_script` -- run an example helper script with the
+  venv interpreter inside a sandbox cwd, always leaving a run log;
 * :func:`assert_tree_clean` -- scoped ``git status`` tripwire proving an
   execution never dirtied ``example/`` or ``docs/example/``;
 * :func:`environment_unavailable_skip` / :func:`optional_dep_skip` --
@@ -288,6 +290,74 @@ def run_marimo_app(
             f"last stderr lines:\n{stderr_tail}"
         )
     return html_out
+
+
+def run_example_script(
+    script_path: Path,
+    sandbox: Path,
+    timeout: int = 3000,
+    artifact_dir: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run an example helper script with the venv interpreter in a sandbox.
+
+    The script runs as ``[sys.executable, script_path.name]`` with
+    ``cwd=sandbox`` -- a seeded tmp copy of its directory -- so sibling
+    inputs (configs, downloaded data) resolve inside the sandbox and the
+    repo tree is never touched.
+
+    Args:
+        script_path: script to run (read from the repo tree; never
+            modified) -- its basename is the argv, so the script must
+            also exist inside the sandbox copy.
+        sandbox: working directory for the subprocess.
+        timeout: wall budget in seconds; must stay strictly below the
+            per-test pytest timeout mark.
+        artifact_dir: when given, the combined stdout/stderr run log is
+            ALWAYS written here (success evidence for the census, not
+            only failure artifacts).
+
+    Returns:
+        The completed process (returncode is 0 -- non-zero exits raise).
+
+    Raises:
+        subprocess.TimeoutExpired: the script exceeded ``timeout``; the
+            child is killed first (``subprocess.run`` semantics).
+        AssertionError: non-zero exit; the message carries the script
+            name, the returncode and the tail of stderr.
+    """
+    cmd = [sys.executable, script_path.name]
+    saved_env = {key: os.environ.get(key) for key in _ENV_OVERRIDES}
+    os.environ.update(_ENV_OVERRIDES)
+    try:
+        # ruff: ignore[subprocess-without-shell-equals-true]
+        proc = subprocess.run(
+            cmd,
+            cwd=str(sandbox),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    finally:
+        for key, value in saved_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+    if artifact_dir is not None:
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        (artifact_dir / f"{script_path.stem}.run.log").write_text(
+            f"returncode={proc.returncode}\n\n"
+            f"--- stdout ---\n{proc.stdout}\n--- stderr ---\n{proc.stderr}\n",
+            encoding="utf-8",
+        )
+    if proc.returncode != 0:
+        stderr_tail = "\n".join((proc.stderr or "").strip().splitlines()[-10:])
+        raise AssertionError(
+            f"example script failed: {script_path.name} returncode={proc.returncode}; "
+            f"last stderr lines:\n{stderr_tail}"
+        )
+    return proc
 
 
 def _scoped_dirty_lines(paths: tuple[str, ...]) -> frozenset[str]:
