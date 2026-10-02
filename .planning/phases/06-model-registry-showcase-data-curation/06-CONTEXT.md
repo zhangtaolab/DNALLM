@@ -41,6 +41,12 @@ Not in scope: the CRE/Anno notebooks themselves (Phase 7), track rendering (Phas
 ### Claude's Discretion
 - Exact scan-window internals of select_loci.py (stride, candidate ranking), the normalization helper's API shape and module location, test file layout, YAML field phrasing within the established entry shape
 
+
+### Post-research decisions (2026-10-02, owner-confirmed)
+- 200kb budget unit = SEQUENCE BASES per region (REQUIREMENTS wording; ~308KB total committed files acceptable)
+- Anno floor calibration uses simple ARGMAX decode (self-contained); upstream viterbi+ORF porting belongs to Phase 7 notebooks
+- Research corrections absorbed (06-RESEARCH.md is authoritative over earlier assumptions): checkpoint config.id2label are transformers PLACEHOLDERS — freeze from upstream train_token_cls.py:78-96 order with placeholder+head-shape assertions; committed fragments use `.fas` suffix (root .gitignore ignores *.fa/*.fasta); PlantDHS URL is plantdhs.org (CONTEXT earlier "plantdps.org" was a typo); GFF3 parser must tolerate 197,160 CDS rows with trailing `;` after Parent
+
 </decisions>
 
 <code_context>
