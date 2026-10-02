@@ -27,7 +27,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 **Milestone Goal:** Real-model execution testing for everything under `example/` with every surfaced error fixed; PlantHelixSeek-CRE/-Anno showcase notebooks over committed Arabidopsis loci whose predictions are substantially consistent with experimental truth; and the CI gate false-green (WR-08/WR-09) repaired so example tests run under formal nightly gating.
 
-- [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02)
+- [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02; **REOPENED 2026-10-02** for post-closure gap closure — GAP-1 NT x transformers-5.17 compat shim + GAP-2 full example/ census bar, plans 05-04..06)
 - [ ] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist
 - [ ] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror
 - [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
@@ -39,14 +39,15 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 **Goal**: A trustworthy private execution harness exists and is proven (including kernel-kill on hang); both false-green CI gates are closed together with the docs-mirror drift they were hiding; and the runner's real capabilities for the environment-gated model families are settled in writing before execution tests are written against them
 **Depends on**: Nothing (first phase of v1.1; builds on the shipped v1 CI gate)
-**Requirements**: EXEC-01, EXEC-06, CI-01, CI-02, REPAIR-02, FEAS-01
+**Requirements**: EXEC-01, EXEC-06, CI-01, CI-02, REPAIR-02, FEAS-01 — gap closure (05-04+, reopened 2026-10-02): EXEC-01 (full-tree census), EXEC-03/EXEC-04 (dev-box legs), REPAIR-03 (partial: NT remote-code shim)
 **Success Criteria** (what must be TRUE):
   1. The pilot execution tests run 1–2 already-healthy notebooks end-to-end via nbclient in tmp-sandbox cwd isolation (kernel cwd = sandbox copy), with per-cell timeout firing inside a per-test timeout mark, context-managed kernel shutdown, and partial-notebook failure artifacts captured on error — and the git tree is clean after the run
   2. A deliberate-hang test proves the harness kills a hung kernel and leaves no `ipykernel_launcher` process behind
   3. `scripts/check_docs_sync.py` exits 0 (mirror drift closed: wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and the docs-validation workflow runs honestly — `continue-on-error` removed, `mcp` extra installed, README "Local Testing" line corrected — without blocking unrelated PRs
   4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
+  5. *(Gap closure, D-07/D-08)* `zhangtaolab/nucleotide-transformer-v2-100m-promoter` loads and forwards on transformers 5.17.0 through a gated compat shim with a real-model smoke regression test; and the committed full census inventory (`05-CENSUS.md`) gives every item under `example/` (21 notebooks, 3 marimo apps, 1 script) either a real-execution result or an evidence-backed typed skip — nothing silently omitted
 
-**Plans**: 3/3 plans complete
+**Plans**: 6 plans (3 complete + 3 gap closure, reopened 2026-10-02)
 
 Plans:
 **Wave 1**
@@ -55,6 +56,14 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 05-02-PLAN.md — Honest gates: docs-mirror drift closure + all five masked docs-validation steps flipped + mcp extra/README + branch-protection hand-off (CI-01, CI-02, REPAIR-02)
 - [x] 05-03-PLAN.md — GB10 feasibility spike: per-family spike runner + verdict matrix + dispatch-only runner confirmation + conditional pyBigWig (FEAS-01)
+
+**Gap closure (reopened 2026-10-02, `gap_closure: true`)**
+**Wave 1** *(parallel — disjoint files)*
+- [ ] 05-04-PLAN.md — GAP-1: gated pruning-helper shim in transformers_compat.py + real-model load+FORWARD smoke on transformers 5.17 (EXEC-01, REPAIR-03 partial)
+- [ ] 05-05-PLAN.md — GAP-2 foundations: marimo/script execution lanes + all-21 NOTEBOOK_EXEC_SPECS + committed 05-CENSUS.md skeleton + .scratch/ ignore (EXEC-01)
+
+**Wave 2** *(blocked on 05-04 + 05-05)*
+- [ ] 05-06-PLAN.md — GAP-2 census campaign: full example/ execution on the dev box + per-item verdicts + durable wiring + owner overlap hand-off (EXEC-01, EXEC-03/04 dev-box legs)
 
 ### Phase 6: Model Registry & Showcase Data Curation
 
@@ -124,7 +133,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 3/3 | Complete    | 2026-10-02 |
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 3/6 | Reopened (gap closure) | — |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 0/3 | Planning complete | - |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
