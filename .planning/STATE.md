@@ -6,10 +6,10 @@ current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
 stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
-last_updated: "2026-10-02T12:43:55.670Z"
+last_updated: "2026-10-02T15:58:38.162Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: fdc4915563f681902556ad736aad0af9f7666329
+state_head: fa0386eb873211906921f19aae78b8d499c7094d
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
 Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-10-02 — Completed quick task 261002-se3: Fix transformers 5.x remote-code compat (get_extended_attention_mask shim)
+Last activity: 2026-10-02 — Completed quick tasks 261002-se3 (get_extended_attention_mask shim) + 261002-sl7 (6 non-gated notebooks: 5 to ACTIVE 8→13, finetune_generation gated; 5 shims + 34 tests; D-07 record superseded — reconcile at next STATE update)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -116,6 +116,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261002-se3 | Fix transformers 5.x remote-code compat: restore get_extended_attention_mask for trust_remote_code ESM models (benchmark notebook AttributeError), with pytest coverage | 2026-10-02 | fdc4915 | [261002-se3-fix-transformers-5-x-remote-code-compat-](./quick/261002-se3-fix-transformers-5-x-remote-code-compat-/) |
+| 261002-sl7 | Run and fix the 6 non-gated census-failing notebooks to green: 5 promoted to ACTIVE lane (8-13), finetune_generation data-prep fixed + megaDNA half honestly gated; 5 transformers-5.x shims + 34 contract tests | 2026-10-02 | fa0386e | [261002-sl7-run-and-fix-the-5-non-gated-census-faili](./quick/261002-sl7-run-and-fix-the-5-non-gated-census-faili/) |
 
 ## Deferred Items
 
