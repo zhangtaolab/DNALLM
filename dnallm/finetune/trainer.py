@@ -267,7 +267,7 @@ class DNATrainer:
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,  # type: ignore
+                tokenizer=self.datasets.tokenizer,
                 mlm=True,
                 mlm_probability=mlm_probability,
             )

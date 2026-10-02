@@ -167,7 +167,7 @@ def _build_crossdna_sequence_classification_class(
             classifier_dropout = getattr(config, "classifier_dropout", None)
             if classifier_dropout is None:
                 classifier_dropout = getattr(config, "dropout", 0.1)
-            classifier_dropout = float(classifier_dropout)  # type: ignore
+            classifier_dropout = float(classifier_dropout)
             if not 0.0 <= classifier_dropout <= 1.0:
                 raise ValueError(f"classifier_dropout must be in [0, 1], got {classifier_dropout}")
 

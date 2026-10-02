@@ -353,7 +353,7 @@ class Benchmark:
                 # Perform the prediction
                 logits, _, _ = inference_engine.batch_infer(dataloader, do_pred=False)
                 if len(labels) == len(logits):
-                    metrics = inference_engine.calculate_metrics(logits, labels, plot=True)  # type: ignore
+                    metrics = inference_engine.calculate_metrics(logits, labels, plot=True)
                     all_results[dname][model_name] = metrics
                     # keep selected metrics
                     if selected_metrics:
@@ -440,7 +440,7 @@ class Benchmark:
         elif isinstance(val_data, Subset) and hasattr(val_data.dataset, "labels"):
             labels = [val_data.dataset.labels[i] for i in val_data.indices]
         else:
-            labels = [item.get("labels", item.get("label")) for item in dataset]  # type: ignore
+            labels = [item.get("labels", item.get("label")) for item in dataset]
 
         if len(labels) == len(logits):
             calculated_metrics = inference_engine.calculate_metrics(logits, labels, plot=False)

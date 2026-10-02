@@ -7,12 +7,13 @@ error handling, and edge cases.
 
 import os
 import tempfile
+import typing
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from dnallm.configuration.configs import (
     BenchmarkConfig,
@@ -21,6 +22,7 @@ from dnallm.configuration.configs import (
     EarlyStoppingConfig,
     EvaluationConfig,
     InferenceConfig,
+    LoraConfig,
     ModelConfig,
     OutputConfig,
     TaskConfig,
@@ -976,6 +978,99 @@ class TestTrainingConfigReportToEdges:
         """'all' mixed with a concrete tracker is rejected."""
         with pytest.raises(ValidationError, match="'all' cannot be combined"):
             TrainingConfig(report_to=["all", "wandb"])
+
+
+class TestLoadConfigTypedDict:
+    """Pin the per-key DNALLMConfig TypedDict return contract of load_config()."""
+
+    FULL_CONFIG_YAML = """\
+task:
+  task_type: binary
+  num_labels: 2
+inference:
+  batch_size: 8
+model:
+  name: dummy-model
+  source: huggingface
+finetune:
+  num_train_epochs: 1
+lora:
+  r: 8
+"""
+
+    def test_return_annotation_is_dnallmconfig_typed_dict(self):
+        """get_type_hints(load_config)['return'] is the per-key DNALLMConfig TypedDict."""
+        from dnallm.configuration.configs import DNALLMConfig
+
+        return_hint = typing.get_type_hints(load_config)["return"]
+        assert return_hint is DNALLMConfig
+
+        annotations = dict(return_hint.__annotations__)
+        assert annotations["task"] is TaskConfig
+        assert annotations["inference"] is InferenceConfig
+        assert annotations["finetune"] is TrainingConfig
+        assert annotations["lora"] is LoraConfig
+        assert annotations["benchmark"] is BenchmarkConfig
+        # model stays a plain dict (spelling-tolerant: any dict[...] annotation form)
+        assert typing.get_origin(annotations["model"]) is dict
+
+    def test_typed_dict_is_total_false(self):
+        """DNALLMConfig is total=False: every key optional, none required."""
+        from dnallm.configuration.configs import DNALLMConfig
+
+        assert DNALLMConfig.__required_keys__ == frozenset()
+        assert DNALLMConfig.__optional_keys__ == frozenset({
+            "task",
+            "inference",
+            "model",
+            "finetune",
+            "lora",
+            "benchmark",
+        })
+
+    def test_loaded_fixture_yields_per_key_instances(self, tmp_path):
+        """A full fixture YAML loads to per-key config classes; model stays a dict."""
+        cfg_path = tmp_path / "full_config.yaml"
+        cfg_path.write_text(self.FULL_CONFIG_YAML, encoding="utf-8")
+
+        configs = load_config(str(cfg_path))
+
+        assert isinstance(configs["task"], TaskConfig)
+        assert isinstance(configs["inference"], InferenceConfig)
+        assert isinstance(configs["finetune"], TrainingConfig)
+        assert isinstance(configs["lora"], LoraConfig)
+        assert isinstance(configs["model"], dict)
+        assert not isinstance(configs["model"], BaseModel)
+        assert "benchmark" not in configs
+
+    def test_benchmark_fixture_yields_benchmark_config(self):
+        """The example benchmark YAML produces a BenchmarkConfig under 'benchmark'."""
+        benchmark_yaml = (
+            Path(__file__).parent.parent.parent
+            / "example"
+            / "notebooks"
+            / "benchmark"
+            / "benchmark_config.yaml"
+        )
+
+        configs = load_config(str(benchmark_yaml))
+
+        assert isinstance(configs["benchmark"], BenchmarkConfig)
+
+    def test_minimal_task_model_yaml_loads(self, tmp_path):
+        """total=False semantics: a YAML with only task+model loads without KeyError."""
+        cfg_path = tmp_path / "minimal_config.yaml"
+        cfg_path.write_text(
+            "task:\n  task_type: binary\nmodel:\n  name: dummy-model\n",
+            encoding="utf-8",
+        )
+
+        configs = load_config(str(cfg_path))
+
+        assert isinstance(configs["task"], TaskConfig)
+        assert isinstance(configs["model"], dict)
+        for absent_key in ("inference", "finetune", "lora", "benchmark"):
+            assert absent_key not in configs
 
 
 if __name__ == "__main__":

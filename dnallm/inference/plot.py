@@ -131,7 +131,7 @@ def _prepare_annotations(data: list | dict) -> dict:
     if isinstance(data, list):
         label_names = set(data)
         # label_dict = {name: i for i, name in enumerate(label_names)}
-        annotations = {"model": {name: set() for name in label_names}}  # type: ignore
+        annotations = {"model": {name: set() for name in label_names}}
         for i, name in enumerate(data):
             annotations["model"][name].add(i)
         return annotations
@@ -235,7 +235,7 @@ def plot_bars(
         if metric in ["mae", "mse"]:
             domain_use = [0, dbar[metric].max() * 1.1]
         else:
-            domain_use = domain  # type: ignore
+            domain_use = domain
 
         # Create bar chart with optimized encoding
         if height is None:
@@ -1011,15 +1011,15 @@ def plot_token_scatter(
         if len(extra_data[0]) == 4:
             color_map = {item[0]: item[3] for item in extra_data}  # type: ignore[unreachable]
         else:
-            color_map: dict[str, str] = {}  # type: ignore
+            color_map: dict[str, str] = {}
         for i, item in enumerate(extra_data):
             region_type, start, end = item[:3]
             extra_data[i] = (region_type, start - start_pos, end - start_pos)
         extra_df = pd.DataFrame(extra_data, columns=["Type", "Start", "End"])
         # assign colors if provided
-        if color_map:  # type: ignore
-            domain = list(color_map.keys())  # type: ignore
-            range_colors = [color_map[k] for k in domain]  # type: ignore
+        if color_map:
+            domain = list(color_map.keys())
+            range_colors = [color_map[k] for k in domain]
         else:
             # assign default colors based on region type
             # Use Set3 color palette (12 colors)
@@ -1199,7 +1199,7 @@ def plot_annotations(
             "#f781bf",
             "#999999",
         ]
-        color_map: dict[str, str] = {}  # type: ignore
+        color_map: dict[str, str] = {}
         for i, t in enumerate(type_list):
             if custom_colors and t in custom_colors:
                 color_map[t] = custom_colors[t]
@@ -1515,7 +1515,7 @@ def _get_dimensionality_reducer(
         if isinstance(quality, dict):
             base.update(quality)
         else:
-            base.update(presets[quality])  # type: ignore
+            base.update(presets[quality])
         return base
 
     # -----------------------
@@ -1936,7 +1936,7 @@ def _build_mutation_datasets(
 
         # Update bar chart data
         dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
-        dbar["score"].append(maxscore)  # type: ignore
+        dbar["score"].append(maxscore)
         dbar["base"].append(maxabs_index)
 
         # Process indel mutations

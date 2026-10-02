@@ -1,6 +1,6 @@
 import os
 import yaml
-from typing import Any
+from typing import Any, TypedDict
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -492,7 +492,25 @@ class BenchmarkConfig(BaseModel):
     config_path: str | None = None
 
 
-def load_config(config_path: str) -> dict[str, BaseModel]:
+class DNALLMConfig(TypedDict, total=False):
+    """Per-section configuration map returned by ``load_config``.
+
+    Every key is optional (``total=False``): ``load_config`` fills a key only
+    when the YAML file carries that section, and a minimal task+model YAML is
+    legal. ``model`` intentionally stays a plain dict — the loader passes it
+    through unvalidated. ``config_path`` is NOT a configs key; it is injected
+    only into the raw YAML dict consumed by ``BenchmarkConfig``.
+    """
+
+    task: TaskConfig
+    inference: InferenceConfig
+    model: dict[str, Any]
+    finetune: TrainingConfig
+    lora: LoraConfig
+    benchmark: BenchmarkConfig
+
+
+def load_config(config_path: str) -> DNALLMConfig:
     """Load configuration from a YAML file and return a dictionary of
     configuration objects.
     Args:
@@ -503,7 +521,7 @@ def load_config(config_path: str) -> dict[str, BaseModel]:
         config_dict = yaml.safe_load(f)
         config_dict["config_path"] = os.path.abspath(config_path)
 
-    configs: dict[str, BaseModel] = {}
+    configs: DNALLMConfig = {}
 
     # Configurations for tasks
     if "task" in config_dict:

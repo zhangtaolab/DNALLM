@@ -167,7 +167,7 @@ class Mutagenesis:
         if len(sequences["sequence"]) > 0:
             ds = Dataset.from_dict(sequences)
             dataset = DNADataset(ds, self.tokenizer, max_length=pred_config.max_length)
-            self.sequences = sequences  # type: ignore
+            self.sequences = sequences
         # Encode sequences
         if do_encode:
             dataset.encode_sequences(remove_unused_columns=True)
@@ -304,7 +304,7 @@ class Mutagenesis:
             if return_sum:
                 all_logprobs.append(total)
             else:
-                all_logprobs.append(p_values)  # type: ignore
+                all_logprobs.append(p_values)
         return all_logprobs
 
     @torch.no_grad()
@@ -341,7 +341,7 @@ class Mutagenesis:
                 seq_logp = float(token_logps.sum().item())
             else:
                 # Get all token logp
-                seq_logp = [float(token_logps[0, i].item()) for i in range(len(token_logps[0]))]  # type: ignore
+                seq_logp = [float(token_logps[0, i].item()) for i in range(len(token_logps[0]))]
             all_logprobs.append(seq_logp)
         return all_logprobs
 
@@ -398,9 +398,9 @@ class Mutagenesis:
             mut_preds = [score["Score"] for score in scores[1:]]
         else:
             if self.config["task"].task_type == "mask":
-                scores = self.mlm_evaluate()  # type: ignore
+                scores = self.mlm_evaluate()
             elif self.config["task"].task_type == "generation":
-                scores = self.clm_evaluate()  # type: ignore
+                scores = self.clm_evaluate()
             else:
                 outputs = inference_engine.batch_infer(
                     self.dataloader,

@@ -20,6 +20,7 @@ import torch
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import
     from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
+    from transformers import PreTrainedModel  # ty: ignore[unresolved-import]  # lazy export, resolves live
 
 
 def _iter_uninitialized_quantized_weights(model):
@@ -718,10 +719,10 @@ class _MambaCache:
             )
 
         conv_state = self.conv_states[layer_idx]
-        cache_position = cache_position.clamp(0, self.conv_kernel_size - 1)
+        clamped_position = cache_position.clamp(0, self.conv_kernel_size - 1)
 
         conv_state = conv_state.roll(shifts=-1, dims=-1)
-        conv_state[:, :, cache_position] = new_conv_state.to(
+        conv_state[:, :, clamped_position] = new_conv_state.to(
             device=conv_state.device, dtype=conv_state.dtype
         )
         self.conv_states[layer_idx].zero_()
@@ -844,15 +845,21 @@ def _patch_deberta_vocab_dict():
 # call sites across the cached zhangtaolab/InstaDeepAI remote modeling
 # files); the patch re-attaches the vendored v4.49.0 implementations under
 # their upstream names on the PreTrainedModel class, per name only where the
-# class does not already expose it. Two documented deviations from upstream:
+# class does not already expose it. Three documented deviations from upstream:
 # (1) modern builtin-generic annotations; (2) upstream's bare
 # `assert head_mask.dim() == 5` is re-raised as an explicit
 # `raise AssertionError` with the identical message because repo lint (S101)
 # forbids bare asserts in dnallm/ -- the exception type and text are
-# unchanged.
+# unchanged; (3) get_head_mask's tail is an early return instead of a
+# reassigned `head_mask = [None] * num_hidden_layers` (the reassignment lies
+# about the local's Tensor type; the early return is behavior-identical) and
+# the `self` parameters are typed `PreTrainedModel` instead of upstream's
+# implicit ModuleUtilsMixin receiver so attribute access checks honestly.
 
 
-def _convert_head_mask_to_5d(self: object, head_mask: torch.Tensor, num_hidden_layers: int):
+def _convert_head_mask_to_5d(
+    self: PreTrainedModel, head_mask: torch.Tensor, num_hidden_layers: int
+):
     """-> [num_hidden_layers x batch x num_heads x seq_length x seq_length]"""
     if head_mask.dim() == 1:
         head_mask = head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
@@ -868,7 +875,7 @@ def _convert_head_mask_to_5d(self: object, head_mask: torch.Tensor, num_hidden_l
 
 
 def _get_head_mask(
-    self: object,
+    self: PreTrainedModel,
     head_mask: torch.Tensor | None,
     num_hidden_layers: int,
     is_attention_chunked: bool = False,
@@ -892,10 +899,9 @@ def _get_head_mask(
         head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
         if is_attention_chunked is True:
             head_mask = head_mask.unsqueeze(-1)
-    else:
-        head_mask = [None] * num_hidden_layers
+        return head_mask
 
-    return head_mask
+    return [None] * num_hidden_layers
 
 
 def _patch_get_head_mask():

@@ -597,7 +597,7 @@ class DNAInference:
             if task_type == "regression":
                 scores = {label_names[0]: prob}
             elif task_type == "token":
-                scores = [max(x) for x in prob]  # type: ignore
+                scores = [max(x) for x in prob]
             else:
                 scores = {label_names[j]: p for j, p in enumerate(prob)}
             formatted_predictions[i] = {
@@ -1041,7 +1041,7 @@ class DNAInference:
         if do_pred and len(all_logits) > 0:
             predictions = self.logits_to_preds(all_logits)  # type: ignore
             if return_dict:
-                predictions = self.format_output(predictions)  # type: ignore
+                predictions = self.format_output(predictions)
 
         return all_logits, predictions, embeddings  # type: ignore
 
@@ -1356,7 +1356,7 @@ class DNAInference:
             logger.warning("No attention weights available to plot.")
             return None
 
-    def plot_hidden_states(  # type: ignore
+    def plot_hidden_states(
         self,
         reducer: str = "t-SNE",
         reduced: bool = False,
@@ -1723,7 +1723,7 @@ class DNAInference:
             # Tokenize prompt sequences
             for seq in prompt_seqs:
                 inputs = self.tokenizer(seq, return_tensors="pt").to(self.device)
-                output = self.model.generate(  # type: ignore
+                output = self.model.generate(
                     **inputs,
                     max_new_tokens=n_tokens,
                     temperature=temperature,
@@ -2043,7 +2043,7 @@ class DNAInference:
                     if layer not in layers:
                         layers.append(layer)
             # Get embeddings
-            all_embeddings = [[] for _ in layers]  # type: ignore
+            all_embeddings = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
                     torch
@@ -2071,7 +2071,7 @@ class DNAInference:
         elif is_special == "MEGADNA":
             model = self.model
             tokenizer = self.tokenizer
-            all_embeddings = [None] * 3  # type: ignore
+            all_embeddings = [None] * 3
             out_embeddings = []
             for sequence in tqdm(sequences):
                 input_ids = tokenizer(sequence, return_tensors="pt").to(self.device)["input_ids"]

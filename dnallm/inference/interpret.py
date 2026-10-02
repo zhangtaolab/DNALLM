@@ -244,7 +244,7 @@ class DNAInterpret:
         elif hasattr(self.tokenizer, "decode_token"):
             tokens = [self.tokenizer.decode_token(tid) for tid in token_ids]  # type: ignore
         elif hasattr(self.tokenizer, "tokenize") and input_seq is not None:
-            tokens = self.tokenizer.tokenize(input_seq)  # type: ignore
+            tokens = self.tokenizer.tokenize(input_seq)
         else:
             tokens = input_seq.split()  # type: ignore
         return tokens  # type: ignore[return-value]
@@ -265,14 +265,14 @@ class DNAInterpret:
         if task_type in ["binary", "multiclass", "multilabel", "regression"]:
             # Sequence classification/regression: target is class index (int)
             # logits shape: [batch, num_classes]
-            return target  # type: ignore
+            return target
 
         elif task_type == "token":
             # Token classification (NER): target is (token_index, class_index)
             # logits shape: [batch, seq_len, num_classes]
             if token_index is None:
                 raise ValueError("`token_index` must be provided.")
-            return (token_index, target)  # type: ignore
+            return (token_index, target)
 
         elif task_type == "generation":
             # CausalLM (Generation): target is (token_index, vocab_id)
@@ -281,7 +281,7 @@ class DNAInterpret:
                 token_index = -1  # last token's prediction
 
             # At this point, 'target' is interpreted as *vocab_id*
-            return (token_index, target)  # type: ignore
+            return (token_index, target)
         else:
             raise ValueError(f"Unknown task_type: {task_type}.")
 
@@ -825,7 +825,7 @@ class DNAInterpret:
         if plot:
             self.attributions = (tokens, attr_scores)
         else:
-            self.attributions = None  # type: ignore
+            self.attributions = None
 
         return tokens, attr_scores
 
@@ -879,9 +879,9 @@ class DNAInterpret:
             )
             results.append((tokens, scores))
         if plot:
-            self.attributions = results  # type: ignore
+            self.attributions = results
         else:
-            self.attributions = None  # type: ignore
+            self.attributions = None
 
         return results
 

@@ -661,7 +661,7 @@ class DNADataset:
         all_masks = [1] * len(all_ids) + [0] * pad_len
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
-        if isinstance(example_tokens, str):  # type: ignore
+        if isinstance(example_tokens, str):
             example_tokens = list(example_tokens)  # type: ignore[unreachable]
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
