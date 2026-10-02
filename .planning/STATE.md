@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
-stopped_at: Completed 05-05-PLAN.md (marimo/script lanes + census inventory)
-last_updated: "2026-10-02T05:50:32.792Z"
+stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
+last_updated: "2026-10-02T08:36:21.875Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: 311d9a69831235ab699aac0baab29d529935fa59
+state_head: bf504e1cc34f1fae732814ee301eafe62dbe5443
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 5 execution started
 
@@ -67,6 +67,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 05 P03 | 94 min | 3 tasks | 12 files |
 | Phase 05-04 P04 | 23 min | 2 tasks | 3 files |
 | Phase 05-05 P05 | 29 min | 3 tasks | 8 files |
+| Phase 05-06 P06 | 151min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: 05-05: assert_tree_clean converted to delta-zero vs import-time baseline (owner's live IDE churn in tracked notebooks is not harness business; clean-checkout behavior identical to the original absolute check)
 - [Phase 05]: 05-05: generate_bpe_dataset.py standalone defect (reads rice_annotation.bed it never wrote) repaired verbatim from the notebook; docs mirror resynced
 - [Phase 05]: 05-05: GAP-1-class gap extends to plant-nucleotide-transformer-BPE (NER script + notebook; same EsmConfig.is_decoder rung after the import shim) — 05-04 ladder honored, script lane = self-healing typed skip; one owner disposition now covers three census items (D-09 hand-off)
+- [Phase 05]: 05-06 census complete: 25/25 example items executed — 11 PASS / 12 FAIL (class-tagged repair queue: NT-REMOTE-STRUCTURAL x3-behind-one-disposition, BPE-TOKENIZER upstream artifacts, OTHER incl. benchmark.py:296 labels bug) / 2 deferred-owner (ollama probe green; Phase-8 plan required)
+- [Phase 05]: 05-06 durable rollout: ACTIVE_NOTEBOOKS x8 (two real trainings included), 7 probe-then-execute gated tests with honest typed skips (mcp pair skips on the genuinely-down MCP endpoint with ollama-GREEN evidence in-message; both-up state fails loudly per T-05-16), 3 marimo apps; full tests/examples 107 passed/9 audit-matched skips in 47:26
 
 ### Pending Todos
 
@@ -118,8 +121,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T05:50:32.772Z
-Stopped at: Completed 05-05-PLAN.md (marimo/script lanes + census inventory)
+Last session: 2026-10-02T08:36:21.856Z
+Stopped at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
 Resume file: None
 
 ## Deferred Verification

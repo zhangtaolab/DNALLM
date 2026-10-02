@@ -47,7 +47,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   4. A written verdict matrix exists for evo-1 / evo2 / megaDNA / pyBigWig (and the marimo execution flavor) on the aarch64 GB10 runner; smallest viable real variants are enabled wherever feasible, and every `environment-unavailable:` typed skip carries recorded infeasibility evidence
   5. *(Gap closure, D-07/D-08)* `zhangtaolab/nucleotide-transformer-v2-100m-promoter` loads and forwards on transformers 5.17.0 through a gated compat shim with a real-model smoke regression test; and the committed full census inventory (`05-CENSUS.md`) gives every item under `example/` (21 notebooks, 3 marimo apps, 1 script) either a real-execution result or an evidence-backed typed skip — nothing silently omitted
 
-**Plans**: 5/6 plans executed (3 complete + 3 gap closure, reopened 2026-10-02)
+**Plans**: 6/6 plans executed (3 complete + 3 gap closure, reopened 2026-10-02)
 
 Plans:
 **Wave 1**
@@ -63,7 +63,7 @@ Plans:
 - [x] 05-05-PLAN.md — GAP-2 foundations: marimo/script execution lanes + all-21 NOTEBOOK_EXEC_SPECS + committed 05-CENSUS.md skeleton + .scratch/ ignore (EXEC-01)
 
 **Wave 2** *(blocked on 05-04 + 05-05)*
-- [ ] 05-06-PLAN.md — GAP-2 census campaign: full example/ execution on the dev box + per-item verdicts + durable wiring + owner overlap hand-off (EXEC-01, EXEC-03/04 dev-box legs)
+- [x] 05-06-PLAN.md — GAP-2 census campaign: full example/ execution on the dev box + per-item verdicts + durable wiring + owner overlap hand-off (EXEC-01, EXEC-03/04 dev-box legs)
 
 ### Phase 6: Model Registry & Showcase Data Curation
 
@@ -133,7 +133,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 5/6 | In Progress|  |
+| 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | In Progress|  |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 0/3 | Planning complete | - |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
