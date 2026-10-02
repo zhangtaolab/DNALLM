@@ -305,9 +305,9 @@ def _gate_mamba(nb_name: str) -> None:
 
 
 # Gated parametrization: notebook id (POSIX relative to EXAMPLE_DIR) plus
-# its gate.  Budgets come from NOTEBOOK_EXEC_SPECS as everywhere else;
-# the custom_head entry carries the 7200s mark matching its spec (the
-# class mark is the plan's 3600 default for the rest).
+# its gate.  Budgets come from NOTEBOOK_EXEC_SPECS as everywhere else; the
+# per-test timeout marks come from the class ladder plus the explicit
+# overrides below (the class mark is the plan's 3600s default).
 GATED_NOTEBOOKS: list[tuple[str, object]] = [
     ("mcp_example/mcp_client_ollama_langchain_agents.ipynb", _gate_ollama_stack),
     ("mcp_example/mcp_client_ollama_pydantic_ai.ipynb", _gate_ollama_stack),
@@ -320,6 +320,17 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
     ("notebooks/lora_finetune_inference/lora_finetune.ipynb", _gate_mamba),
     ("notebooks/lora_finetune_inference/lora_inference.ipynb", _gate_mamba),
 ]
+
+# Gated entries whose per-cell budget (NOTEBOOK_EXEC_SPECS cell_timeout) is
+# 3600s: the outer pytest-timeout mark must stay strictly ABOVE the cell
+# timeout (run_notebook's contract -- an outer kill at the cell budget would
+# preempt nbclient's clean CellTimeoutError handling and the partial-failure
+# artifact capture), so these carry the 7200s override instead of the
+# class-level 3600s mark.
+_TIMEOUT_7200_GATED: frozenset[str] = frozenset({
+    "notebooks/finetune_custom_head/finetune.ipynb",
+    "notebooks/lora_finetune_inference/lora_finetune.ipynb",
+})
 
 
 @pytest.mark.slow
@@ -338,7 +349,7 @@ class TestGatedNotebookExecution:
         "gated_id",
         [
             pytest.param(nb_id, marks=pytest.mark.timeout(7200))
-            if nb_id == "notebooks/finetune_custom_head/finetune.ipynb"
+            if nb_id in _TIMEOUT_7200_GATED
             else nb_id
             for nb_id, _gate in GATED_NOTEBOOKS
         ],
