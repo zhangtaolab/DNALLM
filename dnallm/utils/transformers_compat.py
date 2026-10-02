@@ -11,7 +11,15 @@ relevant libraries (bitsandbytes) are not installed, so importing
 DNALLM never breaks an otherwise working environment.
 """
 
+from __future__ import annotations
+
+import warnings
+from typing import TYPE_CHECKING
+
 import torch
+
+if TYPE_CHECKING:  # pragma: no cover - typing-only import
+    from transformers import PretrainedConfig
 
 
 def _iter_uninitialized_quantized_weights(model):
@@ -475,12 +483,361 @@ def _patch_get_extended_attention_mask():
     PreTrainedModel._dnallm_extended_mask_patch = True  # type: ignore[attr-defined]
 
 
+# The legacy config defaults below restore READ behavior that transformers 4.x
+# provided by setting both attributes on every PretrainedConfig instance in
+# ``__init__`` (upstream tag v4.49.0, src/transformers/configuration_utils.py:
+# ``self.is_decoder = kwargs.pop("is_decoder", False)`` and the matching
+# ``add_cross_attention`` line). transformers 5.x removed both defaults, and
+# 4.x-era trust_remote_code checkpoints read them at model build (the remote
+# modeling_esm.py lines 335/584-585 of the zhangtaolab NER/promoter mirrors:
+# ``config.is_decoder`` and ``config.add_cross_attention``), which now raises
+# ``AttributeError: 'EsmConfig' object has no attribute 'is_decoder'``. The
+# patch installs a ``PretrainedConfig.__getattr__`` over a CLOSED default map
+# instead of re-adding instance attributes, so serialization (``to_dict``
+# iterates the instance dict) and every explicitly-set value stay exactly as
+# transformers 5.x produces them. This rung SUPERSEDES the 05-04 D-07 rung
+# termination (STATE.md had typed it "not vendored-pure-helper territory") per
+# the owner instruction of 2026-10-02: fix all non-gated census failures now.
+# If execution surfaces another removed 4.x config default that remote code
+# reads, extend the closed map -- never a catch-all.
+
+_LEGACY_PRETRAINED_CONFIG_DEFAULTS: dict[str, object] = {
+    "is_decoder": False,
+    "add_cross_attention": False,
+}
+
+
+def _legacy_config_defaults_missing(config_cls: type) -> bool:
+    """Gate predicate: fresh instances of *config_cls* cannot resolve a legacy default.
+
+    Args:
+        config_cls: the config class to probe with a no-argument construction.
+
+    Returns:
+        True when at least one closed-map name fails to resolve on a freshly
+        constructed instance (the transformers 5.x shape); False when every
+        name resolves natively (the 4.x shape, or an already-patched class).
+    """
+    try:
+        probe = config_cls()
+    except Exception:
+        # A config class that cannot be constructed bare cannot be probed
+        # safely; leave it untouched rather than guessing.
+        return False
+    return any(not hasattr(probe, name) for name in _LEGACY_PRETRAINED_CONFIG_DEFAULTS)
+
+
+def _pretrained_config_getattr(self: object, name: str) -> object:
+    """Answer the closed map of removed 4.x config defaults; else AttributeError."""
+    try:
+        return _LEGACY_PRETRAINED_CONFIG_DEFAULTS[name]
+    except KeyError:
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'") from None
+
+
+def _patch_pretrained_config_legacy_defaults():
+    """Restore the 4.x ``is_decoder``/``add_cross_attention`` config reads on 5.x.
+
+    Installs ``PretrainedConfig.__getattr__`` answering the CLOSED default map
+    above only when a freshly constructed ``PretrainedConfig()`` actually fails
+    to resolve ``is_decoder`` (verified live: transformers 5.17 defines no
+    ``__getattr__`` and no class-level defaults, while 4.x sets both names on
+    every instance). An existing ``__getattr__`` is never overwritten; a class
+    sentinel keeps repeat calls idempotent. Unknown attributes keep raising
+    plain ``AttributeError``, and explicitly-set instance values shadow the
+    defaults through normal attribute precedence.
+    """
+    import transformers.configuration_utils
+
+    config_cls = transformers.configuration_utils.PretrainedConfig
+
+    if getattr(config_cls, "_dnallm_config_legacy_defaults_patch", False):
+        return
+
+    if "__getattr__" in vars(config_cls):
+        return
+
+    if not _legacy_config_defaults_missing(config_cls):
+        return
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch
+        config_cls,
+        "__getattr__",
+        _pretrained_config_getattr,
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch
+        config_cls,
+        "_dnallm_config_legacy_defaults_patch",
+        True,
+    )
+
+
+# The vendored MambaCache below is copied with semantics, docstring and
+# deprecation warnings kept verbatim from the upstream transformers reference
+# implementation: tag v4.49.0, file src/transformers/cache_utils.py. transformers
+# 5.x removed MambaCache from cache_utils entirely (verified live on 5.17: the
+# name exists in neither transformers.cache_utils nor
+# transformers.models.mamba.modeling_mamba), but 4.x-era trust_remote_code
+# checkpoints still import it from transformers.cache_utils and construct it
+# with the 4.x signature (the tRNADetector remote modeling_mamba.py line 27
+# ``from transformers.cache_utils import MambaCache``, constructed at its line
+# 670 as ``MambaCache(config, batch_size, device=..., dtype=...)``); the patch
+# below re-attaches the vendored class under its upstream name on the module,
+# per name only where the module does not already expose it. The only
+# adaptations are import locality into this module (modern builtin-generic
+# annotations, typing-only PretrainedConfig import) and the upstream
+# ``logger.warning_once`` deprecation notices re-emitted through a local
+# warn-once helper over the ``warnings`` module; behavior is unchanged.
+
+_MAMBA_CACHE_WARNED: set[str] = set()
+
+
+def _warning_once(message: str) -> None:
+    """Emit *message* as a UserWarning at most once per process.
+
+    Stand-in for the upstream transformers ``logger.warning_once`` used by the
+    vendored MambaCache deprecation paths (upstream logs each message once);
+    the pytest suite ignores UserWarnings, so remote-code construction paths
+    stay quiet under test.
+
+    Args:
+        message: the deprecation text to warn about exactly once.
+    """
+    if message in _MAMBA_CACHE_WARNED:
+        return
+    _MAMBA_CACHE_WARNED.add(message)
+    warnings.warn(message, UserWarning, stacklevel=2)
+
+
+class _MambaCache:
+    """
+    Cache for mamba model which does not have attention mechanism and key value states.
+
+    Arguments:
+        config (`PretrainedConfig):
+            The configuration file defining the shape-related attributes required to initialize the static cache.
+        batch_size (`int`):
+            The batch size with which the model will be used. Note that a new instance must be instantiated if a
+            smaller batch size is used.
+        dtype (`torch.dtype`, *optional*, defaults to `torch.float16`):
+            The default `dtype` to use when initializing the layer.
+        device (`torch.device` or `str`, *optional*):
+            The device on which the cache should be initialized. Should be the same as the layer.
+            The recommended way however is not not indicate any `device`, in that case cache will be initialized on `meta`
+            device by default, and then moved to input device when updating.
+
+    Attributes:
+        dtype: (`torch.dtype`):
+            The default `dtype` used to initializing the cache.
+        device (`torch.device`):
+            The default device on which the cache was initialized.
+        intermediate_size: (`int`):
+            Model's intermediate_size taken from config.
+        ssm_state_size: (`int`):
+            Model's state_size taken from config.
+        conv_kernel_size: (`int`):
+            Model's convolution kernel size taken from config
+        conv_states: (`torch.Tensor`):
+            A tensor of shape `[layer_idx, batch_size, intermediate_size, conv_kernel_size]` that holds convolutional states.
+        ssm_states: (`torch.Tensor`):
+            A tensor of shape `[layer_idx, batch_size, intermediate_size, ssm_state_size]` that holds ssm states
+
+    Example:
+
+        ```python
+        >>> from transformers import AutoTokenizer, MambaForCausalLM, MambaCache
+
+        >>> model = MambaForCausalLM.from_pretrained("state-spaces/mamba-130m-hf")
+        >>> tokenizer = AutoTokenizer.from_pretrained("state-spaces/mamba-130m-hf")
+
+        >>> inputs = tokenizer(text="My name is Mamba", return_tensors="pt")
+
+        >>> # Prepare a cache class and pass it to model's forward
+        >>> past_key_values = MambaCache(config=model.config, batch_size=1, device=model.device, dtype=model.dtype)
+        >>> outputs = model(**inputs, past_key_values=past_key_values, use_cache=True)
+        >>> outputs.past_key_values
+        MambaCache()
+        ```
+    """
+
+    is_compileable = True
+
+    # TODO (joao): remove `=None` in non-optional arguments in v4.46. Remove from `OBJECTS_TO_IGNORE` as well.
+    def __init__(
+        self,
+        config: PretrainedConfig,
+        batch_size: int | None = None,
+        dtype: torch.dtype = torch.float16,
+        device: torch.device | str | None = None,
+        max_batch_size: int | None = None,
+    ):
+        if batch_size is not None:
+            _warning_once(
+                f"The 'batch_size' argument of {self.__class__.__name__} is deprecated and will be removed in "
+                "v4.49. Use the more precisely named 'max_batch_size' argument instead."
+            )
+        self.dtype = dtype
+        self.max_batch_size = batch_size or max_batch_size
+        self.intermediate_size = config.intermediate_size
+        self.ssm_state_size = config.state_size
+        self.conv_kernel_size = config.conv_kernel
+        self.device = torch.device(device) if device is not None else torch.device("meta")
+
+        self.conv_states: list[torch.Tensor] = []
+        self.ssm_states: list[torch.Tensor] = []
+        for _ in range(config.num_hidden_layers):
+            conv_state: torch.Tensor = torch.zeros(
+                self.max_batch_size,
+                self.intermediate_size,
+                self.conv_kernel_size,
+                device=self.device,
+                dtype=dtype,
+            )
+            ssm_state: torch.Tensor = torch.zeros(
+                self.max_batch_size,
+                self.intermediate_size,
+                self.ssm_state_size,
+                device=self.device,
+                dtype=dtype,
+            )
+
+            torch._dynamo.mark_static_address(conv_state)
+            torch._dynamo.mark_static_address(ssm_state)
+            self.conv_states.append(conv_state)
+            self.ssm_states.append(ssm_state)
+
+    def update_conv_state(
+        self, layer_idx: int, new_conv_state: torch.Tensor, cache_position: torch.LongTensor
+    ) -> torch.Tensor:
+        if self.conv_states[layer_idx].device.type == "meta":
+            self.conv_states[layer_idx] = torch.zeros_like(
+                self.conv_states[layer_idx],
+                device=new_conv_state.device,
+            )
+
+        conv_state = self.conv_states[layer_idx]
+        cache_position = cache_position.clamp(0, self.conv_kernel_size - 1)
+
+        conv_state = conv_state.roll(shifts=-1, dims=-1)
+        conv_state[:, :, cache_position] = new_conv_state.to(
+            device=conv_state.device, dtype=conv_state.dtype
+        )
+        self.conv_states[layer_idx].zero_()
+        self.conv_states[layer_idx] += conv_state
+        return self.conv_states[layer_idx]
+
+    def update_ssm_state(self, layer_idx: int, new_ssm_state: torch.Tensor):
+        self.ssm_states[layer_idx] = new_ssm_state.to(self.ssm_states[layer_idx].device)
+        return self.ssm_states[layer_idx]
+
+    def reset(self):
+        for layer_idx in range(len(self.conv_states)):
+            if self.conv_states[layer_idx].device.type != "meta":
+                # In-place ops prevent breaking the static address
+                self.conv_states[layer_idx].zero_()
+                self.ssm_states[layer_idx].zero_()
+
+    @property
+    def batch_size(self):
+        _warning_once(
+            f"The 'batch_size' attribute of {self.__class__.__name__} is deprecated and will be removed in "
+            "v4.49. Use the more precisely named 'self.max_batch_size' attribute instead."
+        )
+        return self.max_batch_size
+
+
+def _patch_mamba_cache():
+    """Re-attach the 4.x ``MambaCache`` removed from transformers 5.x cache_utils.
+
+    transformers 5.x removed ``MambaCache`` from ``transformers.cache_utils``
+    (verified live on 5.17: present in neither cache_utils nor
+    transformers.models.mamba.modeling_mamba), but 4.x-era trust_remote_code
+    checkpoints import it from there (the tRNADetector remote
+    modeling_mamba.py line 27). The patch attaches the vendored v4.49.0
+    implementation under its upstream name onto the module, only where the
+    module does not already expose it; a module-level sentinel keeps repeat
+    calls idempotent.
+    """
+    import transformers.cache_utils
+
+    module = transformers.cache_utils
+
+    if hasattr(module, "MambaCache"):
+        return
+
+    if getattr(module, "_dnallm_mamba_cache_patch", False):
+        return
+
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch
+        module,
+        "MambaCache",
+        _MambaCache,
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch
+        module,
+        "_dnallm_mamba_cache_patch",
+        True,
+    )
+
+
+def _patch_deberta_vocab_dict():
+    """Normalize a dict ``vocab`` for the 5.x Unigram ``DebertaV2Tokenizer``.
+
+    transformers 5.17 hands ``DebertaV2Tokenizer`` a ``vocab`` dict
+    (``{token: score}``, insertion-ordered -- proven live with the
+    zhangtaolab/plant-dnabert-BPE checkpoint: 8000 entries with ``<unk>: 0``
+    first) through ``convert_to_native_format``, the exact classmethod hook
+    ``PreTrainedTokenizerBase.from_pretrained`` calls immediately before
+    ``cls(*init_inputs, **init_kwargs)``, while the 5.x Unigram backend only
+    accepts a sequence of ``(token, score)`` pairs and fails with
+    ``TypeError: 'dict' object is not an instance of 'Sequence'``. 4.x loaded
+    the same checkpoint through a sentencepiece ``spm.model`` file and never
+    saw a dict vocab. The patch wraps the hook on ``DebertaV2Tokenizer`` only
+    and normalizes a surviving dict vocab to ``list(vocab.items())`` --
+    insertion order IS the rank order the backend expects, and tuple equality
+    keeps the ``vocab.index((str(unk_token), 0.0))`` lookup working with int
+    scores. A pair-list vocab passes through unchanged; a class sentinel keeps
+    repeat calls idempotent, and the patch no-ops when the tokenizer class or
+    the hook is absent (transformers 4.x has no ``convert_to_native_format``).
+    """
+    try:
+        from transformers.models.deberta_v2.tokenization_deberta_v2 import DebertaV2Tokenizer
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
+
+    if getattr(DebertaV2Tokenizer, "convert_to_native_format", None) is None:
+        return
+
+    if getattr(DebertaV2Tokenizer, "_dnallm_deberta_vocab_patch", False):
+        return
+
+    # The bound classmethod resolves through the MRO (defined on the 5.x
+    # TokenizersBackend base); capturing it here keeps subclass calls bound
+    # to DebertaV2Tokenizer semantics.
+    original = DebertaV2Tokenizer.convert_to_native_format
+
+    def convert_to_native_format(cls, trust_remote_code=False, **kwargs):
+        native = original(trust_remote_code=trust_remote_code, **kwargs)
+        vocab = native.get("vocab")
+        if isinstance(vocab, dict):
+            native["vocab"] = list(vocab.items())
+        return native
+
+    DebertaV2Tokenizer.convert_to_native_format = classmethod(  # type: ignore[method-assign]
+        convert_to_native_format
+    )
+    DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True  # type: ignore[attr-defined]
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times."""
     _patch_get_parameter_or_buffer()
     _patch_initialize_weights_for_quantized_missing()
     _patch_remote_code_pruning_helpers()
     _patch_get_extended_attention_mask()
+    _patch_pretrained_config_legacy_defaults()
+    _patch_mamba_cache()
+    _patch_deberta_vocab_dict()
 
 
 # Apply patches on module import so they are active before any

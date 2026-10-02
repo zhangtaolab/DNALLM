@@ -9,17 +9,25 @@ depend on the patched state).
 
 from __future__ import annotations
 
+import copy
 import sys
 import types
+from typing import ClassVar
 from unittest.mock import Mock
 
 import bitsandbytes.functional as bnb_functional
 import pytest
 import torch
+import transformers.cache_utils
+import transformers.configuration_utils
 import transformers.modeling_utils
+import transformers.models.deberta_v2.tokenization_deberta_v2
 import transformers.pytorch_utils
+from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_utils import PreTrainedModel
+from transformers.models.deberta_v2.tokenization_deberta_v2 import DebertaV2Tokenizer
 
+from dnallm.utils import transformers_compat
 from dnallm.utils.transformers_compat import (
     _QuantStatProxy,
     _attach_remote_code_pruning_helpers,
@@ -770,3 +778,288 @@ class TestGetExtendedAttentionMask:
 
         assert _NativeModel.get_extended_attention_mask is not _get_extended_attention_mask
         assert not hasattr(_NativeModel, "_dnallm_extended_mask_patch")
+
+
+class TestPretrainedConfigLegacyDefaults:
+    """Contract for the restored 4.x ``PretrainedConfig`` legacy defaults.
+
+    transformers 5.x removed the 4.x instance defaults ``is_decoder=False``
+    and ``add_cross_attention=False`` (4.x set both in ``__init__``), which
+    4.x-era ``trust_remote_code`` checkpoints read at model build (the remote
+    ``modeling_esm.py`` lines 335/584-585 of the NER/promoter mirrors).  The
+    shim restores READ behavior through a ``PretrainedConfig.__getattr__``
+    over a CLOSED default map -- explicitly set values, unknown attributes
+    and deepcopy round-trips behave exactly as before.  This supersedes the
+    05-04 D-07 rung termination per the owner instruction of 2026-10-02
+    (fix all non-gated census failures now).
+    """
+
+    def test_bare_config_answers_legacy_defaults(self):
+        """After apply_patches() a fresh config answers both legacy defaults with False."""
+        config = PretrainedConfig()
+        missing = [
+            name for name in ("is_decoder", "add_cross_attention") if not hasattr(config, name)
+        ]
+        assert not missing, f"legacy config defaults missing after apply_patches(): {missing}"
+        assert config.is_decoder is False
+        assert config.add_cross_attention is False
+
+    def test_explicitly_set_value_wins_over_default(self):
+        """An explicitly set instance value shadows the restored default."""
+        config = PretrainedConfig()
+        config.is_decoder = True
+        config.add_cross_attention = True
+
+        apply_patches()  # a repeat application must not shadow explicit instance values
+
+        assert config.is_decoder is True
+        assert config.add_cross_attention is True
+
+    def test_unknown_attribute_still_raises_attribute_error(self):
+        """Attributes outside the closed map keep raising plain AttributeError."""
+        config = PretrainedConfig()
+        with pytest.raises(AttributeError, match="has no attribute"):
+            config.definitely_not_a_real_attribute  # ruff: ignore[useless-expression]
+
+    def test_deepcopy_round_trips_the_defaults(self):
+        """A deepcopied config still answers both legacy defaults."""
+        clone = copy.deepcopy(PretrainedConfig())
+        assert clone.is_decoder is False
+        assert clone.add_cross_attention is False
+
+    def test_repeat_apply_is_idempotent(self):
+        """A second apply_patches() never rebinds the class __getattr__."""
+        major = int(transformers.__version__.split(".")[0])
+        before = vars(PretrainedConfig).get("__getattr__")
+
+        apply_patches()
+
+        assert vars(PretrainedConfig).get("__getattr__") is before, "no rebind may happen"
+        if major >= 5:
+            assert getattr(PretrainedConfig, "_dnallm_config_legacy_defaults_patch", False) is True
+        else:
+            assert not hasattr(PretrainedConfig, "_dnallm_config_legacy_defaults_patch"), (
+                "4.x native defaults must not even set the sentinel"
+            )
+
+    def test_patch_skips_when_defaults_resolve_natively(self, monkeypatch):
+        """A config class resolving both names natively (the 4.x shape) is left untouched."""
+
+        class _NativeConfig:
+            is_decoder = False
+
+            add_cross_attention = False
+
+        monkeypatch.setattr(transformers.configuration_utils, "PretrainedConfig", _NativeConfig)
+        transformers_compat._patch_pretrained_config_legacy_defaults()
+
+        assert "__getattr__" not in vars(_NativeConfig)
+        assert not hasattr(_NativeConfig, "_dnallm_config_legacy_defaults_patch")
+
+    def test_patch_never_overwrites_existing_getattr(self, monkeypatch):
+        """A config class already carrying its own __getattr__ keeps it verbatim."""
+
+        def _existing_getattr(self, name):
+            raise AttributeError(name)
+
+        class _GuardedConfig:
+            pass
+
+        _GuardedConfig.__getattr__ = _existing_getattr
+        monkeypatch.setattr(transformers.configuration_utils, "PretrainedConfig", _GuardedConfig)
+        transformers_compat._patch_pretrained_config_legacy_defaults()
+
+        assert vars(_GuardedConfig)["__getattr__"] is _existing_getattr
+        assert not hasattr(_GuardedConfig, "_dnallm_config_legacy_defaults_patch")
+
+    def test_patch_installs_on_config_missing_defaults(self, monkeypatch):
+        """A bare config class missing both names receives the closed-map __getattr__."""
+
+        class _BareConfig:
+            pass
+
+        monkeypatch.setattr(transformers.configuration_utils, "PretrainedConfig", _BareConfig)
+        transformers_compat._patch_pretrained_config_legacy_defaults()
+
+        probe = _BareConfig()
+        assert probe.is_decoder is False
+        assert probe.add_cross_attention is False
+        with pytest.raises(AttributeError, match="has no attribute"):
+            probe.something_else  # ruff: ignore[useless-expression]
+        assert _BareConfig._dnallm_config_legacy_defaults_patch is True
+
+
+class TestVendoredMambaCache:
+    """Contract for the vendored v4.49.0 ``MambaCache`` re-attached on transformers 5.x.
+
+    transformers 5.x removed ``MambaCache`` from ``cache_utils`` entirely, but
+    4.x-era ``trust_remote_code`` checkpoints (the tRNADetector remote
+    ``modeling_mamba.py`` line 27) import it from there and construct it with
+    the 4.x signature ``MambaCache(config, batch_size, device=..., dtype=...)``.
+    Covers construction shapes on a stub config, the update/reset semantics the
+    remote forward calls, and the live-module attachment contract (absence
+    gating per name, idempotent sentinel, version-aware identity).
+    """
+
+    @staticmethod
+    def _stub_config() -> types.SimpleNamespace:
+        """Two-layer mamba-shaped config with the attributes MambaCache reads."""
+        return types.SimpleNamespace(
+            num_hidden_layers=2, intermediate_size=8, conv_kernel=4, state_size=16
+        )
+
+    def test_cache_utils_exposes_mamba_cache_after_patches(self):
+        """Import-time apply_patches() exposes MambaCache; on 5.x it IS the vendored class."""
+        major = int(transformers.__version__.split(".")[0])
+        assert hasattr(transformers.cache_utils, "MambaCache"), (
+            "transformers.cache_utils must expose MambaCache after apply_patches()"
+        )
+        if major >= 5:
+            assert transformers.cache_utils.MambaCache is transformers_compat._MambaCache, (
+                "5.x attachment must be the vendored class"
+            )
+
+    def test_construction_shapes_dtype_and_device(self):
+        """batch_size=3 on a 2-layer stub yields per-layer [3, 8, 4] / [3, 8, 16] states."""
+        cache = transformers_compat._MambaCache(
+            self._stub_config(), batch_size=3, device="cpu", dtype=torch.float32
+        )
+        assert cache.max_batch_size == 3
+        assert cache.intermediate_size == 8
+        assert cache.ssm_state_size == 16
+        assert cache.conv_kernel_size == 4
+        assert cache.device == torch.device("cpu")
+        assert cache.dtype == torch.float32
+        assert len(cache.conv_states) == 2
+        assert len(cache.ssm_states) == 2
+        for conv_state in cache.conv_states:
+            assert tuple(conv_state.shape) == (3, 8, 4)
+            assert conv_state.dtype == torch.float32
+            assert conv_state.device.type == "cpu"
+        for ssm_state in cache.ssm_states:
+            assert tuple(ssm_state.shape) == (3, 8, 16)
+            assert ssm_state.dtype == torch.float32
+            assert ssm_state.device.type == "cpu"
+
+    def test_update_conv_state_rolls_and_ssm_state_replaces(self):
+        """update_conv_state writes the new column after rolling; ssm update replaces; reset zeros."""
+        cache = transformers_compat._MambaCache(
+            self._stub_config(), max_batch_size=2, device="cpu", dtype=torch.float32
+        )
+        out = cache.update_conv_state(0, torch.ones(2, 8, 1), torch.tensor([0]))
+        assert torch.equal(out[:, :, 0], torch.ones(2, 8)), "new column must land at position 0"
+        assert torch.equal(out[:, :, 1:], torch.zeros(2, 8, 3)), "rolled-away columns stay zero"
+
+        ssm_state = torch.full((2, 8, 16), 2.0)
+        assert cache.update_ssm_state(1, ssm_state) is cache.ssm_states[1]
+        assert torch.equal(cache.ssm_states[1], ssm_state)
+
+        cache.reset()
+        assert torch.equal(cache.conv_states[0], torch.zeros(2, 8, 4))
+        assert torch.equal(cache.ssm_states[1], torch.zeros(2, 8, 16))
+
+    def test_deprecated_batch_size_argument_maps_to_max_batch_size(self):
+        """The 4.x positional batch_size construction path keeps working (remote signature)."""
+        cache = transformers_compat._MambaCache(self._stub_config(), batch_size=5, device="cpu")
+        assert cache.max_batch_size == 5
+        assert cache.batch_size == 5  # deprecated property mirrors max_batch_size
+
+    def test_repeat_apply_is_idempotent(self):
+        """A second apply_patches() leaves the attached class identity unchanged."""
+        before = getattr(transformers.cache_utils, "MambaCache", None)
+
+        apply_patches()
+
+        assert transformers.cache_utils.MambaCache is before, "no re-attach may happen"
+
+    def test_patch_leaves_native_mamba_cache_untouched(self, monkeypatch):
+        """A cache_utils already exposing MambaCache natively (4.x shape) is left alone."""
+        parent = sys.modules["transformers"]
+        fake_cache_utils = types.ModuleType("transformers.cache_utils")
+        native = object()
+        fake_cache_utils.MambaCache = native
+        monkeypatch.setattr(parent, "cache_utils", fake_cache_utils, raising=False)
+
+        transformers_compat._patch_mamba_cache()
+
+        assert fake_cache_utils.MambaCache is native
+        assert not hasattr(fake_cache_utils, "_dnallm_mamba_cache_patch")
+
+    def test_patch_attaches_vendored_cache_where_absent(self, monkeypatch):
+        """A cache_utils lacking the name (5.x shape) receives the vendored class + sentinel."""
+        parent = sys.modules["transformers"]
+        fake_cache_utils = types.ModuleType("transformers.cache_utils")
+        monkeypatch.setattr(parent, "cache_utils", fake_cache_utils, raising=False)
+
+        transformers_compat._patch_mamba_cache()
+
+        assert fake_cache_utils.MambaCache is transformers_compat._MambaCache
+        assert fake_cache_utils._dnallm_mamba_cache_patch is True
+
+
+class TestDebertaVocabDictNormalization:
+    """Contract for the dict-vocab normalization on ``DebertaV2Tokenizer``.
+
+    transformers 5.17 hands ``DebertaV2Tokenizer`` a ``vocab`` dict
+    (``{token: score}``, insertion-ordered; proven live with the
+    plant-dnabert-BPE checkpoint) through ``convert_to_native_format`` --
+    the exact hook ``from_pretrained`` calls immediately before
+    ``cls(*init_inputs, **init_kwargs)`` -- while the 5.x Unigram backend
+    only accepts a sequence of ``(token, score)`` pairs.  The shim wraps
+    that hook and normalizes dict vocabularies to ``list(vocab.items())``
+    (insertion order = rank order; tuple equality keeps the
+    ``vocab.index((str(unk_token), 0.0))`` lookup working with int scores).
+    On transformers 4.x the hook does not exist and the patch no-ops.
+    """
+
+    VOCAB: ClassVar[dict[str, float]] = {"[PAD]": 0, "A": 1, "T": 2, "[UNK]": 0}
+
+    def test_hook_normalizes_dict_vocab_to_ordered_pairs(self):
+        """A dict vocab comes out of the hook as the insertion-ordered pair list."""
+        converted = DebertaV2Tokenizer.convert_to_native_format(vocab=dict(self.VOCAB))
+        assert converted["vocab"] == [("[PAD]", 0), ("A", 1), ("T", 2), ("[UNK]", 0)], (
+            "dict vocab must be normalized to list(vocab.items()) in insertion order"
+        )
+
+    def test_tokenizer_builds_from_dict_vocab_and_tokenizes(self):
+        """The normalized vocab builds a working tokenizer with rank order preserved."""
+        converted = DebertaV2Tokenizer.convert_to_native_format(vocab=dict(self.VOCAB))
+        tokenizer = DebertaV2Tokenizer(**converted)
+
+        tokens = tokenizer.tokenize("AT")
+        assert isinstance(tokens, list), "tokenization must work without TypeError"
+        assert tokens, "tokenize('AT') must produce real pieces"
+        ids = [tokenizer.convert_tokens_to_ids(token) for token in ["[PAD]", "A", "T", "[UNK]"]]
+        assert ids == [0, 1, 2, 3], "dict insertion order must be preserved as rank order"
+
+    def test_list_vocab_passes_through_unchanged(self):
+        """A pair-list vocab already in native form is never reordered."""
+        pairs = [("[PAD]", 0.0), ("A", 1.0), ("T", 2.0)]
+        converted = DebertaV2Tokenizer.convert_to_native_format(vocab=list(pairs))
+        assert converted["vocab"] == pairs
+
+    def test_repeat_apply_does_not_wrap_twice(self):
+        """A second apply_patches() keeps the same bound hook (sentinel idempotence)."""
+        before = vars(DebertaV2Tokenizer).get("convert_to_native_format")
+
+        apply_patches()
+
+        assert vars(DebertaV2Tokenizer).get("convert_to_native_format") is before
+        converted = DebertaV2Tokenizer.convert_to_native_format(vocab=dict(self.VOCAB))
+        assert isinstance(converted["vocab"], list)
+
+    def test_patch_noops_when_hook_absent(self, monkeypatch):
+        """A DebertaV2Tokenizer without the hook (the 4.x shape) is left untouched."""
+
+        class _HooklessTokenizer:
+            """Stand-in for the 4.x sentencepiece-based DebertaV2Tokenizer."""
+
+        monkeypatch.setattr(
+            transformers.models.deberta_v2.tokenization_deberta_v2,
+            "DebertaV2Tokenizer",
+            _HooklessTokenizer,
+        )
+        transformers_compat._patch_deberta_vocab_dict()
+
+        assert not hasattr(_HooklessTokenizer, "convert_to_native_format")
+        assert not hasattr(_HooklessTokenizer, "_dnallm_deberta_vocab_patch")
