@@ -829,6 +829,179 @@ def _patch_deberta_vocab_dict():
     DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True  # type: ignore[attr-defined]
 
 
+# The head-mask helpers below are vendored with semantics and docstrings kept
+# verbatim from the upstream transformers reference implementation: tag
+# v4.49.0, file src/transformers/modeling_utils.py
+# (ModuleUtilsMixin.get_head_mask and its private _convert_head_mask_to_5d
+# helper). transformers 5.x removed both from modeling_utils and
+# PreTrainedModel, but 4.x-era trust_remote_code checkpoints call
+# get_head_mask as a METHOD inside EsmModel.forward
+# (self.get_head_mask(head_mask, self.config.num_hidden_layers) -- five live
+# call sites across the cached zhangtaolab/InstaDeepAI remote modeling
+# files); the patch re-attaches the vendored v4.49.0 implementations under
+# their upstream names on the PreTrainedModel class, per name only where the
+# class does not already expose it. Two documented deviations from upstream:
+# (1) modern builtin-generic annotations; (2) upstream's bare
+# `assert head_mask.dim() == 5` is re-raised as an explicit
+# `raise AssertionError` with the identical message because repo lint (S101)
+# forbids bare asserts in dnallm/ -- the exception type and text are
+# unchanged.
+
+
+def _convert_head_mask_to_5d(self: object, head_mask: torch.Tensor, num_hidden_layers: int):
+    """-> [num_hidden_layers x batch x num_heads x seq_length x seq_length]"""
+    if head_mask.dim() == 1:
+        head_mask = head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+        head_mask = head_mask.expand(num_hidden_layers, -1, -1, -1, -1)
+    elif head_mask.dim() == 2:
+        head_mask = (
+            head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)
+        )  # We can specify head_mask for each layer
+    if head_mask.dim() != 5:
+        raise AssertionError(f"head_mask.dim != 5, instead {head_mask.dim()}")
+    head_mask = head_mask.to(dtype=self.dtype)  # switch to float if need + fp16 compatibility
+    return head_mask
+
+
+def _get_head_mask(
+    self: object,
+    head_mask: torch.Tensor | None,
+    num_hidden_layers: int,
+    is_attention_chunked: bool = False,
+) -> torch.Tensor | list[None]:
+    """
+    Prepare the head mask if needed.
+
+    Args:
+        head_mask (`torch.Tensor` with shape `[num_heads]` or `[num_hidden_layers x num_heads]`, *optional*):
+            The mask indicating if we should keep the heads or not (1.0 for keep, 0.0 to discard).
+        num_hidden_layers (`int`):
+            The number of hidden layers in the model.
+        is_attention_chunked (`bool`, *optional*, defaults to `False`):
+            Whether or not the attentions scores are computed by chunks or not.
+
+    Returns:
+        `torch.Tensor` with shape `[num_hidden_layers x batch x num_heads x seq_length x seq_length]` or list with
+        `[None]` for each layer.
+    """
+    if head_mask is not None:
+        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
+        if is_attention_chunked is True:
+            head_mask = head_mask.unsqueeze(-1)
+    else:
+        head_mask = [None] * num_hidden_layers
+
+    return head_mask
+
+
+def _patch_get_head_mask():
+    """Re-attach the 4.x ``get_head_mask`` removed from transformers 5.x.
+
+    transformers 5.x removed ``get_head_mask`` and ``_convert_head_mask_to_5d``
+    from ``transformers.modeling_utils`` and ``PreTrainedModel``, but 4.x-era
+    ``trust_remote_code`` checkpoints call the method inside
+    ``EsmModel.forward``. The patch attaches the vendored v4.49.0
+    implementations under their upstream names onto the ``PreTrainedModel``
+    class (which every remote ``EsmPreTrainedModel`` subclass reaches through
+    normal MRO), per name only where the class does not already expose it; a
+    class sentinel keeps repeat calls idempotent.
+    """
+    try:
+        from transformers.modeling_utils import PreTrainedModel
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    attached = False
+    if not hasattr(PreTrainedModel, "get_head_mask"):
+        PreTrainedModel.get_head_mask = _get_head_mask  # type: ignore[method-assign]
+        attached = True
+    if not hasattr(PreTrainedModel, "_convert_head_mask_to_5d"):
+        PreTrainedModel._convert_head_mask_to_5d = (  # type: ignore[method-assign]
+            _convert_head_mask_to_5d
+        )
+        attached = True
+    if attached:
+        PreTrainedModel._dnallm_head_mask_patch = True  # type: ignore[attr-defined]
+
+
+# The init_weights wrapper below restores the bookkeeping that transformers
+# 5.x moved into PreTrainedModel.post_init (which ENDS by calling
+# init_weights), while 4.x-era trust_remote_code checkpoints end their
+# __init__ with the bare `self.init_weights()` entry (the remote
+# EsmForMaskedLM / EsmForTokenClassification classes of the InstaDeepAI
+# nucleotide-transformer-v2, zhangtaolab/plant-nucleotide-transformer-BPE and
+# zhangtaolab/tRNAPointer mirrors -- 3 call sites each). With the bookkeeping
+# skipped, from_pretrained crashes at _move_missing_keys_from_meta_to_device
+# (modeling_utils) reading `self.all_tied_weights_keys` with
+# AttributeError: 'EsmForMaskedLM' object has no attribute
+# 'all_tied_weights_keys'. The wrapper routes a receiver MISSING the
+# bookkeeping through the real self.post_init() first -- which sets the
+# attribute and then calls this same wrapped init_weights again (bounded
+# depth 2, never recursive) -- so weights are still initialized and tied
+# exactly once, in the same order as a native 5.x model. On transformers 4.x,
+# whose post_init computes no such attribute, a one-time probe keeps the
+# wrapper from being installed at all (bare init_weights stays native).
+
+
+def _post_init_computes_tied_weights_keys() -> bool:
+    """Probe whether this transformers' ``post_init`` assigns the 5.x bookkeeping.
+
+    Builds a bare ``PreTrainedModel`` and runs its own ``post_init``; True
+    means the 5.x bookkeeping (``all_tied_weights_keys``) is produced there
+    and the legacy-entry wrapper is meaningful. Any construction or probe
+    failure safely maps to False (patch not installed).
+
+    Returns:
+        True when ``post_init`` assigns ``all_tied_weights_keys`` (5.x shape).
+    """
+    try:
+        import transformers.modeling_utils
+
+        from transformers import PretrainedConfig
+
+        probe = transformers.modeling_utils.PreTrainedModel(PretrainedConfig())
+        probe.post_init()
+        return hasattr(probe, "all_tied_weights_keys")
+    except Exception:
+        return False
+
+
+def _patch_legacy_init_weights_bookkeeping():
+    """Run the 5.x post_init bookkeeping behind the bare 4.x ``init_weights()`` entry.
+
+    Wraps ``PreTrainedModel.init_weights`` so a receiver lacking
+    ``all_tied_weights_keys`` (the signature of the bare 4.x-style entry that
+    skipped ``post_init``) is routed through the real ``self.post_init()``
+    before the original body runs. Install is gated on the
+    :func:`_post_init_computes_tied_weights_keys` probe (no-op on
+    transformers 4.x) and on a class sentinel for idempotency; an existing
+    init_weights is only ever wrapped once, never replaced.
+    """
+    import transformers.modeling_utils
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_init_weights_patch", False):
+        return
+
+    original = vars(model_cls).get("init_weights")
+    if original is None:
+        return
+
+    if not _post_init_computes_tied_weights_keys():
+        return
+
+    def init_weights(self):
+        if not hasattr(self, "all_tied_weights_keys"):
+            # 4.x remote entry: run the full post_init (bookkeeping, then this
+            # same wrapped init_weights with the attribute now present).
+            return self.post_init()
+        return original(self)
+
+    model_cls.init_weights = init_weights  # type: ignore[method-assign]
+    model_cls._dnallm_init_weights_patch = True  # type: ignore[attr-defined]
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times."""
     _patch_get_parameter_or_buffer()
@@ -838,6 +1011,8 @@ def apply_patches():
     _patch_pretrained_config_legacy_defaults()
     _patch_mamba_cache()
     _patch_deberta_vocab_dict()
+    _patch_get_head_mask()
+    _patch_legacy_init_weights_bookkeeping()
 
 
 # Apply patches on module import so they are active before any

@@ -1063,3 +1063,229 @@ class TestDebertaVocabDictNormalization:
 
         assert not hasattr(_HooklessTokenizer, "convert_to_native_format")
         assert not hasattr(_HooklessTokenizer, "_dnallm_deberta_vocab_patch")
+
+
+class TestVendoredGetHeadMask:
+    """Contract for the vendored v4.49.0 ``get_head_mask`` re-attached on transformers 5.x.
+
+    transformers 5.x removed ``get_head_mask`` (and its private
+    ``_convert_head_mask_to_5d`` helper) from ``ModuleUtilsMixin`` /
+    ``PreTrainedModel``, but 4.x-era trust_remote_code checkpoints call it as
+    a METHOD inside ``EsmModel.forward``
+    (``self.get_head_mask(head_mask, self.config.num_hidden_layers)`` --
+    five live call sites across the cached zhangtaolab/InstaDeepAI remote
+    modeling files). Covers the None / 1D / 2D mask semantics and the
+    live-class attachment contract (absence gating per name, idempotent
+    sentinel, version-aware identity), mirroring
+    :class:`TestGetExtendedAttentionMask`.
+    """
+
+    @staticmethod
+    def _receiver() -> type:
+        """A minimal receiver class exposing the two attributes the vendored method reads."""
+
+        class _HeadMaskReceiver:
+            dtype = torch.float32
+            _convert_head_mask_to_5d = transformers_compat._convert_head_mask_to_5d
+
+        return _HeadMaskReceiver
+
+    def test_none_mask_returns_none_per_layer(self):
+        """A None head mask expands to [None] * num_hidden_layers (the forward default)."""
+        result = transformers_compat._get_head_mask(self._receiver()(), None, 3)
+        assert result == [None, None, None]
+
+    def test_1d_mask_expands_to_broadcastable_5d(self):
+        """A [num_heads] mask expands to (layers, 1, heads, 1, 1) in the receiver dtype."""
+        mask = torch.tensor([1.0, 0.0, 1.0])
+        result = transformers_compat._get_head_mask(self._receiver()(), mask, 2)
+        assert isinstance(result, torch.Tensor)
+        assert tuple(result.shape) == (2, 1, 3, 1, 1)
+        assert result.dtype == torch.float32
+        assert float(result[0, 0, 1, 0, 0]) == 0.0, "masked head must carry the 0.0 entry"
+
+    def test_2d_mask_expands_per_layer(self):
+        """A [layers x heads] mask expands to (layers, 1, heads, 1, 1)."""
+        mask = torch.tensor([[1.0, 0.0], [0.0, 1.0]])
+        result = transformers_compat._get_head_mask(self._receiver()(), mask, 2)
+        assert tuple(result.shape) == (2, 1, 2, 1, 1)
+        assert float(result[0, 0, 1, 0, 0]) == 0.0
+        assert float(result[1, 0, 0, 0, 0]) == 0.0
+
+    def test_is_attention_chunked_adds_trailing_dim(self):
+        """is_attention_chunked=True unsqueezes one more trailing dimension."""
+        mask = torch.tensor([1.0, 1.0])
+        result = transformers_compat._get_head_mask(
+            self._receiver()(), mask, 2, is_attention_chunked=True
+        )
+        assert tuple(result.shape) == (2, 1, 2, 1, 1, 1)
+
+    def test_wrong_dimensionality_raises_assertion_error(self):
+        """A 3D mask hits upstream's head_mask.dim != 5 AssertionError."""
+        with pytest.raises(AssertionError, match=r"head_mask\.dim != 5"):
+            transformers_compat._get_head_mask(self._receiver()(), torch.zeros(2, 2, 2), 2)
+
+    def test_live_class_attachment_identity_is_version_agnostic(self):
+        """On transformers 5.x the live method IS the vendored one; on 4.x it is NOT."""
+        major = int(transformers.__version__.split(".")[0])
+        assert callable(PreTrainedModel.get_head_mask)
+        if major >= 5:
+            assert PreTrainedModel.get_head_mask is transformers_compat._get_head_mask, (
+                "5.x attachment must be the vendored function"
+            )
+        else:
+            assert PreTrainedModel.get_head_mask is not transformers_compat._get_head_mask, (
+                "4.x no-op gate must leave upstream's native method in place"
+            )
+
+    def test_apply_patches_rebind_is_idempotent_with_sentinel(self):
+        """A second apply_patches() leaves the bound method identical and the sentinel stable."""
+        major = int(transformers.__version__.split(".")[0])
+        before = PreTrainedModel.get_head_mask
+        apply_patches()
+        assert PreTrainedModel.get_head_mask is before, "no rebind may happen"
+        if major >= 5:
+            assert PreTrainedModel._dnallm_head_mask_patch is True
+        else:
+            assert not hasattr(PreTrainedModel, "_dnallm_head_mask_patch"), (
+                "4.x absence gate must not even set the sentinel"
+            )
+
+    def test_patch_attaches_only_where_class_lacks_the_method(self, monkeypatch):
+        """A bare stand-in class receives the vendored method and sentinel; a class already
+        exposing a native method is left untouched and gets no sentinel."""
+
+        class _BareModel:
+            """Stand-in for a PreTrainedModel without get_head_mask."""
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _BareModel)
+        transformers_compat._patch_get_head_mask()
+        assert _BareModel.get_head_mask is transformers_compat._get_head_mask
+        assert _BareModel._dnallm_head_mask_patch is True
+
+        class _NativeModel:
+            """Stand-in whose class already carries both native methods (the 4.x shape)."""
+
+            def get_head_mask(self, head_mask, num_hidden_layers, is_attention_chunked=False):
+                """Native placeholder that must never be overwritten."""
+                return head_mask
+
+            def _convert_head_mask_to_5d(self, head_mask, num_hidden_layers):
+                """Native placeholder helper that must never be overwritten."""
+                return head_mask
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _NativeModel)
+        transformers_compat._patch_get_head_mask()
+        assert _NativeModel.get_head_mask is not transformers_compat._get_head_mask
+        assert _NativeModel._convert_head_mask_to_5d is not (
+            transformers_compat._convert_head_mask_to_5d
+        )
+        assert not hasattr(_NativeModel, "_dnallm_head_mask_patch")
+
+
+class TestLegacyInitWeightsBookkeeping:
+    """Contract for the post_init bookkeeping restored behind bare ``init_weights()``.
+
+    transformers 5.x moved the tied-weights/parallel-plan bookkeeping into
+    ``PreTrainedModel.post_init`` (which ends by calling ``init_weights``),
+    but 4.x-era trust_remote_code checkpoints end their ``__init__`` with the
+    bare ``self.init_weights()`` entry (the remote ``EsmForMaskedLM`` /
+    ``EsmForTokenClassification`` of the zhangtaolab NER and tRNAPointer
+    mirrors -- 3 call sites each), skipping the bookkeeping entirely;
+    ``from_pretrained`` then crashes at
+    ``_move_missing_keys_from_meta_to_device`` reading
+    ``self.all_tied_weights_keys``. The shim wraps ``init_weights`` so a
+    receiver missing the bookkeeping first runs the real ``post_init``
+    (which sets it, then calls this same wrapped ``init_weights`` again --
+    bounded depth 2, never recursive). On transformers 4.x, where
+    ``post_init`` computes no such attribute, the wrapper is never
+    installed (probed once at patch time).
+    """
+
+    @staticmethod
+    def _legacy_init_model(config=None):
+        """Build a remote-shaped model whose __init__ ends with bare init_weights()."""
+
+        class _LegacyInitModel(PreTrainedModel):
+            """Remote-code shape: submodules built, then bare init_weights() (no post_init)."""
+
+            def __init__(self, config):
+                super().__init__(config)
+                self.linear = torch.nn.Linear(4, 2)
+                self.init_weights()
+
+        return _LegacyInitModel(config or PretrainedConfig())
+
+    def test_bare_init_weights_ends_with_post_init_bookkeeping(self):
+        """A bare init_weights() receiver gains all_tied_weights_keys (a dict)."""
+        model = self._legacy_init_model()
+        assert isinstance(model.all_tied_weights_keys, dict), (
+            "the post_init bookkeeping must run behind the bare init_weights() entry"
+        )
+
+    def test_bare_init_weights_still_initializes_weights(self):
+        """The original init_weights body still runs exactly once (finite initialized weights)."""
+        model = self._legacy_init_model()
+        assert torch.isfinite(model.linear.weight).all(), "weights must be initialized"
+        # a repeat explicit call takes the original path directly (attribute now present)
+        model.init_weights()
+        assert torch.isfinite(model.linear.weight).all()
+
+    def test_native_post_init_flow_is_unchanged(self):
+        """A model ending with post_init() (the 5.x-native shape) behaves identically."""
+
+        class _NativeInitModel(PreTrainedModel):
+            """Modern shape: post_init() at the end (bookkeeping + init_weights)."""
+
+            def __init__(self, config):
+                super().__init__(config)
+                self.linear = torch.nn.Linear(4, 2)
+                self.post_init()
+
+        model = _NativeInitModel(PretrainedConfig())
+        assert isinstance(model.all_tied_weights_keys, dict)
+        assert torch.isfinite(model.linear.weight).all()
+
+    def test_repeat_apply_is_idempotent(self):
+        """A second apply_patches() never re-wraps init_weights."""
+        before = vars(PreTrainedModel).get("init_weights")
+        apply_patches()
+        assert vars(PreTrainedModel).get("init_weights") is before
+
+    def test_wrapper_delegates_via_post_init_exactly_once(self, monkeypatch):
+        """The delegation path runs the REAL post_init exactly once per bare entry."""
+        calls = []
+        original_post_init = PreTrainedModel.post_init
+
+        def counting_post_init(self):
+            calls.append(type(self).__name__)
+            return original_post_init(self)
+
+        monkeypatch.setattr(PreTrainedModel, "post_init", counting_post_init)
+        model = self._legacy_init_model()
+        assert calls.count("_LegacyInitModel") == 1, (
+            f"post_init must run exactly once for the bare entry, got {calls}"
+        )
+        assert isinstance(model.all_tied_weights_keys, dict)
+
+    def test_patch_noops_when_post_init_computes_nothing(self, monkeypatch):
+        """A transformers whose post_init computes no bookkeeping (the 4.x shape)
+        never gets the wrapper installed (probe gate), so bare init_weights stays native."""
+
+        class _FourXStyleModel:
+            """Stand-in for a 4.x PreTrainedModel (no all_tied_weights_keys anywhere)."""
+
+            def init_weights(self):
+                """Native 4.x body that must stay bound verbatim."""
+                self.marker = "native"
+
+            def post_init(self):
+                """4.x post_init computes no 5.x bookkeeping."""
+
+        monkeypatch.setattr(transformers.modeling_utils, "PreTrainedModel", _FourXStyleModel)
+        transformers_compat._patch_legacy_init_weights_bookkeeping()
+
+        probe = _FourXStyleModel()
+        probe.init_weights()
+        assert probe.marker == "native", "4.x-shape classes must keep their native init_weights"
+        assert not hasattr(_FourXStyleModel, "_dnallm_init_weights_patch")
