@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-02T01:54:27.860Z",
+  "phase": "6",
+  "phase_name": "Model Registry & Showcase Data Curation",
+  "phase_dir": ".planning/phases/06-model-registry-showcase-data-curation",
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 8,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 0, "name": "Phase 5 complete (3 plans, review --auto 10/10, verification 19/19 passed, D-02 executed, D-04 deferred post-merge)", "status": "done", "commit": "4f2e6cd"},
+    {"id": 0, "name": "Phase 6 smart discuss (3 areas)", "status": "done", "commit": "2d0aec9"},
+    {"id": 0, "name": "Phase 6 research", "status": "done", "commit": "69edd46"},
+    {"id": 0, "name": "Phase 6 pattern mapping", "status": "done", "commit": "(untracked — committed with this handoff)"},
+    {"id": 0, "name": "Phase 6 planning (3 plans, 2 waves)", "status": "done", "commit": "f733219"},
+    {"id": 0, "name": "Phase 6 plan-checker", "status": "in_progress", "progress": "subagent in flight at pause; probes pre-computed at /tmp/verify-paths-6.json + /tmp/failing-directions-6.json; verdict not yet recorded"}
+  ],
+  "remaining_tasks": [
+    {"id": 1, "name": "Phase 6 checker verdict + coverage gates + state.planned-phase", "status": "not_started"},
+    {"id": 2, "name": "Phase 6 execute wave 1 (06-01 registry tracer + 06-02 genomic_coords helper, parallel)", "status": "not_started"},
+    {"id": 3, "name": "Phase 6 execute wave 2 (06-03 locus selection, 40-60min GPU)", "status": "not_started"},
+    {"id": 4, "name": "Phase 7 PlantHelixSeek showcase notebooks", "status": "not_started"},
+    {"id": 5, "name": "Phase 8 full execution rollout + repair loop", "status": "not_started"},
+    {"id": 6, "name": "Phase 9 CI wiring + census verification", "status": "not_started"},
+    {"id": 7, "name": "Milestone lifecycle (audit → complete → cleanup)", "status": "not_started"},
+    {"id": 8, "name": "Post-merge: feasibility.yml dispatch + 05-FEASIBILITY.md runner column", "status": "not_started"}
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "PR #40 (v1.0 dev→main) merge decision", "context": "still open; phs integrates via phs→dev PR after v1.0 ships", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Development on branch phs; dev/main protected, never direct-push", "rationale": "keep 45+ v1.1 commits off the v1.0 release PR", "phase": "5-6"},
+    {"decision": "Push restriction lifted for phs (2026-10-02)", "rationale": "owner instruction", "phase": "6"},
+    {"decision": "Intermediate/one-shot tooling never committed (select_loci.py, freeze scripts live in gitignored .scratch/)", "rationale": "owner instruction; repo carries outcomes only", "phase": "6"},
+    {"decision": "200kb budget = sequence bases per region; Anno calibration decode = argmax", "rationale": "owner-confirmed", "phase": "6"},
+    {"decision": "Registry label order frozen from upstream train_token_cls.py:78-96 (checkpoint id2label are placeholders)", "rationale": "research-verified live", "phase": "6"}
+  ],
+  "uncommitted_files": [
+    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-PATTERNS.md",
+    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW.iter2.md",
+    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW.iter3.md",
+    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW-FIX.iter2.md",
+    "?? .planning/phases/06-model-registry-showcase-data-curation/06-PATTERNS.md",
+    "?? .gsd/ (tool dir — leave untracked)",
+    "?? .planning/codebase/ .planning/graphs/ .planning/state.json graphify-out/ (pre-existing untracked tooling state)"
+  ],
+  "next_action": "Re-run /gsd-plan-phase 6 to complete the checker loop (plans committed at f733219; probes at /tmp/verify-paths-6.json + /tmp/failing-directions-6.json if still present), then coverage gates, then /gsd-execute-phase 6",
+  "context_notes": "Autonomous run (/gsd-autonomous) in progress; sequential per-platform (dispatch-should-flatten=true). Phase-5 closure durable. The plan-checker was mid-flight at pause — its verdict may arrive as a late agent message next session; treat the absence of a recorded verdict as 're-check needed'."
+}
