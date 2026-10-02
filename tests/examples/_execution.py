@@ -7,9 +7,9 @@ ships in the wheel.  It carries the whole execution machinery for the
 example-notebook tests:
 
 * :data:`NOTEBOOK_EXEC_SPECS` -- per-notebook execution budgets
-  (per-cell timeout, per-test timeout, extra sandbox inputs);
-* :data:`MARIMO_EXEC_SPECS` -- per-marimo-app execution specs (export
-  flavor, wall timeout, per-test timeout);
+  (per-cell timeout, extra sandbox inputs);
+* :data:`MARIMO_EXEC_SPECS` -- per-marimo-app execution specs (wall
+  timeout for the export subprocess);
 * :func:`seed_sandbox` -- copy an example directory into a pytest
   ``tmp_path`` sandbox so the kernel cwd never touches the repo tree;
 * :func:`run_notebook` -- execute a notebook via nbclient with per-cell
@@ -62,11 +62,16 @@ EXAMPLE_DIR = REPO_ROOT / "example"
 
 # Per-notebook execution budgets.  Keys are str() of the absolute
 # notebook paths so parametrized lookups stay exact; values carry the
-# per-cell timeout, the per-test timeout mark the test layer must
-# apply, and any out-of-dir sandbox inputs.  All 21 example notebooks
-# carry starter budgets (05-05, D-08 census); the execution test's
-# ACTIVE_NOTEBOOKS list gates which ones actually run -- 05-06 grows
-# it with census-green notebooks.  Budgets follow the per-class ladder
+# per-cell timeout and any out-of-dir sandbox inputs.  The per-test
+# pytest-timeout marks are enforced in the TEST modules (class-ladder
+# marks plus explicit per-entry overrides) and are deliberately NOT
+# duplicated here: a spec-side copy of the outer budget was never
+# consulted by the test layer and went stale enough to hide a
+# strictly-below violation once (05 review WR-02/WR-03), so the specs
+# carry only budgets this harness itself enforces.  All 21 example
+# notebooks carry starter budgets (05-05, D-08 census); the execution
+# test's ACTIVE_NOTEBOOKS list gates which ones actually run -- 05-06
+# grows it with census-green notebooks.  Budgets follow the per-class ladder
 # of the existing real-model precedents (tests/models/test_model.py
 # 900s downloads; tests/finetune/test_trainer_real_model.py 3600-7200s
 # real training): 600-900 inference, 1800 evo/generation-LoRA-inference,
@@ -75,138 +80,112 @@ EXAMPLE_DIR = REPO_ROOT / "example"
 NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "notebooks" / "inference" / "inference.ipynb"): {
         "cell_timeout": 600,
-        "test_timeout": 1800,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "inference_for_tRNA" / "inference.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "generation" / "inference.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "generation_evo_models" / "inference.ipynb"): {
         "cell_timeout": 1800,
-        "test_timeout": 3600,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "generation_megaDNA" / "inference.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "in_silico_mutagenesis" / "in_silico_mutagenesis.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "interpretation" / "interpretation.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "embedding_attention.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "data_prepare" / "finetune" / "finetune_data.ipynb"): {
         "cell_timeout": 1800,
-        "test_timeout": 3600,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "data_prepare" / "predict" / "predict_data.ipynb"): {
         "cell_timeout": 900,
-        "test_timeout": 2700,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_binary" / "finetune_binary.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_generation" / "finetune_generation.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_multi_labels" / "finetune_multi_labels.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_NER_task" / "data_generation_and_inference.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_NER_task" / "finetune_NER_task.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_finetune.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_inference.ipynb"): {
         "cell_timeout": 1800,
-        "test_timeout": 3600,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "benchmark" / "benchmark.ipynb"): {
         "cell_timeout": 3600,
-        "test_timeout": 7200,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_langchain_agents.ipynb"): {
         "cell_timeout": 600,
-        "test_timeout": 1800,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_pydantic_ai.ipynb"): {
         "cell_timeout": 600,
-        "test_timeout": 1800,
         "extra_inputs": [],
     },
 }
 
 # Per-marimo-app execution specs.  Keys are str() of the absolute app
 # paths in the same literal form as the notebook keys above; values
-# carry the export flavor, the wall timeout for the export subprocess
-# (strictly below the per-test timeout) and the per-test timeout mark
-# the test layer must apply.  Flavor: export-html per 05-FEASIBILITY.md
-# (spike export ~40s warm; 1200s leaves headroom for a cold model fetch
-# while staying strictly below the 1500s outer mark -- the
-# MARIMO_FLAVOR_TIMEOUT_S=1200 precedent from the spike).
+# carry the wall timeout for the export subprocess, which must stay
+# strictly below the per-test pytest-timeout mark the test module
+# applies (its 7200s class mark).  The export flavor is NOT spec data:
+# run_marimo_app hardcodes ``marimo export html`` -- the 05-FEASIBILITY.md
+# decision (spike export ~40s warm; 1200s wall leaves headroom for a cold
+# model fetch, the MARIMO_FLAVOR_TIMEOUT_S=1200 precedent) -- until a
+# second flavor actually exists.
 MARIMO_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "marimo" / "inference" / "inference_demo.py"): {
-        "flavor": "export-html",
         "timeout_s": 1200,
-        "test_timeout": 1500,
     },
     # 05-06 census-green apps (both export in <10s: config/dataset load runs
     # at module level; the model actions are button-gated by app design).
     # 3600s wall leaves headroom for a cold model fetch behind a future
     # button-triggered flavor; the 7200 test mark matches the class ladder.
     str(EXAMPLE_DIR / "marimo" / "benchmark" / "benchmark_demo.py"): {
-        "flavor": "export-html",
         "timeout_s": 3600,
-        "test_timeout": 7200,
     },
     str(EXAMPLE_DIR / "marimo" / "finetune" / "finetune_demo.py"): {
-        "flavor": "export-html",
         "timeout_s": 3600,
-        "test_timeout": 7200,
     },
 }
 
