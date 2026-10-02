@@ -42,6 +42,11 @@ Not in scope: the CRE/Anno notebooks themselves (Phase 7), track rendering (Phas
 - Exact scan-window internals of select_loci.py (stride, candidate ranking), the normalization helper's API shape and module location, test file layout, YAML field phrasing within the established entry shape
 
 
+
+### Owner constraint — intermediate tooling never enters the repo (2026-10-02, supersedes Area-3 Q1)
+- One-shot/intermediate code (select_loci.py, the registry freeze script) must NOT be committed or pushed: executors write them into the gitignored scratch dir, run them, and only the OUTCOMES are committed (registry yaml entries, ≤200kb .fas fragments, GFF3 truth slices, selection.md rationale doc, tests, and the production normalization helper)
+- The methodology is documented in selection.md, never shipped as code; tree-clean checks expect the scratch dir gitignored and untracked
+
 ### Post-research decisions (2026-10-02, owner-confirmed)
 - 200kb budget unit = SEQUENCE BASES per region (REQUIREMENTS wording; ~308KB total committed files acceptable)
 - Anno floor calibration uses simple ARGMAX decode (self-contained); upstream viterbi+ORF porting belongs to Phase 7 notebooks
