@@ -317,11 +317,20 @@ def _patch_remote_code_pruning_helpers():
     if getattr(transformers.modeling_utils, "_dnallm_remote_code_pruning_patch", False):
         return
 
-    transformers.modeling_utils.find_pruneable_heads_and_indices = (  # type: ignore[attr-defined]
-        _find_pruneable_heads_and_indices
+    # setattr with a literal name is invisible to static attribute resolution,
+    # keeping mypy AND ty/pyright clean without dialect-specific ignore
+    # comments (ruff B010 is silenced because the dynamic form is deliberate).
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        transformers.modeling_utils,
+        "find_pruneable_heads_and_indices",
+        _find_pruneable_heads_and_indices,
     )
-    transformers.modeling_utils.prune_linear_layer = _prune_linear_layer  # type: ignore[attr-defined]
-    transformers.modeling_utils._dnallm_remote_code_pruning_patch = True  # type: ignore[attr-defined]
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        transformers.modeling_utils, "prune_linear_layer", _prune_linear_layer
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
+        transformers.modeling_utils, "_dnallm_remote_code_pruning_patch", True
+    )
 
 
 def apply_patches():
