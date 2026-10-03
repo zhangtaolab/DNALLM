@@ -1654,5 +1654,5 @@ finetuned:
       describe: "Predict gene structure (CDS/intron/5'UTR/3'UTR) per nucleotide by using PlantHelixSeek model."
       task_type: "token"
       num_labels: 17
-      label_names: ['O', 'B-CDS', 'I-CDS', 'L-CDS', 'U-CDS', 'B-INTRON', 'I-INTRON', 'L-INTRON', 'U-INTRON', 'B-UTR5', 'I-UTR5', 'L-UTR5', 'U-UTR5', 'B-UTR3', 'I-UTR3', 'L-UTR3', 'U-UTR3']
+      label_names: ["O", "B-CDS", "I-CDS", "L-CDS", "U-CDS", "B-INTRON", "I-INTRON", "L-INTRON", "U-INTRON", "B-UTR5", "I-UTR5", "L-UTR5", "U-UTR5", "B-UTR3", "I-UTR3", "L-UTR3", "U-UTR3"]
       threshold: 0.5
