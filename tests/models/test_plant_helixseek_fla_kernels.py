@@ -9,6 +9,7 @@ fla 0.5.2). These tests keep the dependency declared, wired into ``all``, and
 the import path stable across fla upgrades.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -19,12 +20,55 @@ if sys.version_info >= (3, 11):
 else:  # tomllib is stdlib-only from 3.11; pyproject-declaration tests skip on 3.10
     tomllib = None
 
+_META_EXTRA_RE = re.compile(r"^dnallm\[([^\]]*)\]$")
+
+
+def _meta_extra_names(spec: str) -> list[str]:
+    """Parse a self-referential ``dnallm[...]`` extra spec into its member names.
+
+    Members are comma-split and whitespace-stripped; empty members are dropped.
+    A spec that is not the ``dnallm[...]`` shape (e.g. a plain dependency
+    constraint or a bare extra name) returns an empty list.
+    """
+    match = _META_EXTRA_RE.match(spec.strip())
+    if match is None:
+        return []
+    return [member.strip() for member in match.group(1).split(",") if member.strip()]
+
 
 def _load_pyproject() -> dict:
     """Load the repo pyproject.toml as a dict."""
     root = Path(__file__).resolve().parents[2]
     with (root / "pyproject.toml").open("rb") as f:
         return tomllib.load(f)
+
+
+class TestMetaExtraParser:
+    """The bracket-spec parser must match members exactly, never by substring."""
+
+    def test_parses_members_with_whitespace_tolerance(self):
+        assert _meta_extra_names("dnallm[base,dev,test,notebook,docs,ui,mcp,fla]") == [
+            "base",
+            "dev",
+            "test",
+            "notebook",
+            "docs",
+            "ui",
+            "mcp",
+            "fla",
+        ]
+        # Whitespace inside the brackets is cosmetic, not semantic
+        assert "fla" in _meta_extra_names("dnallm[base, fla ]")
+
+    def test_substring_colliding_names_are_not_members(self):
+        # IN-05 regression: a future "flash-attn"-style spec must not satisfy
+        # a fla-membership check the way it satisfied the old substring match
+        assert "fla" not in _meta_extra_names("dnallm[base,flash-attn]")
+        assert "fla" not in _meta_extra_names("dnallm[base,fla-core,mamba-fla]")
+
+    def test_non_meta_specs_return_empty_list(self):
+        assert _meta_extra_names("fla") == []
+        assert _meta_extra_names("torch>=2.4.0,<2.12") == []
 
 
 class TestFlaExtraDeclared:
@@ -49,7 +93,9 @@ class TestFlaExtraDeclared:
     )
     def test_fla_reachable_from_all(self):
         extras = _load_pyproject()["project"]["optional-dependencies"]
-        assert any("fla" in spec for spec in extras["all"]), "all must include the fla extra"
+        assert any("fla" in _meta_extra_names(spec) for spec in extras["all"]), (
+            "all must include the fla extra as an exact bracket member"
+        )
 
 
 class TestChunkKdaImportPath:
