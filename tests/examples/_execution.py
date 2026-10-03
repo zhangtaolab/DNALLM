@@ -175,7 +175,11 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_langchain_agents.ipynb"): {
-        "cell_timeout": 600,
+        # Agent-loop budget: the qwen3.8 (17GB) ollama turns plus real MCP
+        # tool round-trips exceed the 600s starter (261003-csd campaign
+        # evidence: pydantic cell-6 analysis passed 600s with working
+        # tools); 1800s stays strictly under the gated class's 3600s mark.
+        "cell_timeout": 1800,
         "extra_inputs": [],
         # Isolated lane (261003-csd): routes this notebook away from the
         # project-venv python3 kernel so its install cells cannot touch
@@ -183,7 +187,8 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "kernel_name": LANGCHAIN_KERNEL_NAME,
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_pydantic_ai.ipynb"): {
-        "cell_timeout": 600,
+        # Same agent-loop budget as the langchain sibling (261003-csd).
+        "cell_timeout": 1800,
         "extra_inputs": [],
     },
 }
