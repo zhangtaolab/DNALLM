@@ -599,13 +599,20 @@ bin_scores = np.divide(score_sum, coverage, where=coverage > 0)
 | A7 | Upstream GitHub `train_token_cls.py` LABEL_NAMES reflects the released checkpoints' training order (evidence: class-weight indexing `train_counts[LABEL_NAMES[i]]`, pred_to_gff3 genic_mask `!= 0`, both fetched this session; both checkpoints' remote code + upstream scripts are same-org, same-date) | Pattern 2 | If wrong, the behavioral backstop (Anno exon-F1 on the selected locus) collapses → selection would fail visibly, forcing a label-order investigation; no silent failure path remains |
 | A8 | ModelScope repos stay in sync with HF for these checkpoints (both verified published 2026-10-02; owner-controlled org) | Pattern 3 | Route divergence would surface as load failure at smoke time; HF fallback is the one-line `source=` change |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five resolved by the owner on 2026-10-02 — recorded in 06-CONTEXT.md § "Post-research decisions (2026-10-02)". Per-question outcomes:
 
 1. **The 200kb budget unit (A1)** — What we know: full-200kb locus ≈ 308 KB of committed files (202.5 KB FASTA + 5 KB DHS + 101 KB TAIR10, measured on a real gene-dense example); REQUIREMENTS says "fragments ≤200kb per region" (sequence reading). What's unclear: whether the owner also cares about total bytes. Recommendation: sequence reading; record byte totals in `selection.md`; if the owner wants a byte cap, select a 120-150 kb locus — all thresholds still attainable (more genes than needed at Chr1 front-20Mb density).
+   → RESOLVED: budget unit = sequence bases; byte totals recorded in `selection.md` (owner decision, absorbed in fdcccb3).
 2. **Anno decode for floor calibration (A2)** — simple argmax (free, self-contained) vs porting upstream viterbi (74KB file port + `transition_probs.npz` provenance/license question). Recommendation: simple decode, documented; viterbi can appear in Phase 7 as an *illustrative* improvement beyond the asserted floor.
+   → RESOLVED: simple argmax decode for calibration; viterbi deferred to Phase 7 as illustrative only.
 3. **Shared-data layout** — the negative-control set and `selection.md` serve both notebooks. Options: (a) a shared `example/notebooks/plant_helixseek_shared/data/` dir; (b) duplicate copies per task dir; (c) keep everything under the CRE dir and reference from Anno. Recommendation: (a) — one source of truth, matches "one shared negative-control set" in the locked decisions.
+   → RESOLVED: option (a) shared `plant_helixseek_shared/data/` dir.
 4. **Smoke-test sourcing route on the slow leg** — ModelScope-first is the locked model-sourcing decision and both routes are proven; the smoke test could run `source="modelscope"` only, or both. Recommendation: modelscope-only for the nightly budget (the HF route differing only in cache path), HF fallback attempt only if MS fails.
+   → RESOLVED: ModelScope-only smoke with one HF fallback attempt on MS failure.
 5. **Freeze-script placement** — standalone `scripts/showcase/freeze_registry.py` vs a `--freeze-registry` mode of `select_loci.py`. Recommendation: standalone (registry work is dependency-free and parallelizable; the selection script stays data-only).
+   → RESOLVED: standalone script — and per the binding intermediate-tooling constraint it lives under the gitignored scratch home, never `scripts/`.
 
 ## Environment Availability
 
