@@ -6,10 +6,10 @@ current_phase: 5
 current_phase_name: execution-harness-honest-gates-runner-feasibility
 status: executing
 stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
-last_updated: "2026-10-02T17:04:29.913Z"
+last_updated: "2026-10-03T03:13:24.103Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 5 execution started
-state_head: a0220d535ac81a180b90b1c7556a5e9e90d95e26
+state_head: 9453d237295a62a3ec60d33e9bc0f78ef14fd351
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
 Plan: 4 of 6
 Status: Ready to execute
-Last activity: 2026-10-02 — Completed quick tasks 261002-se3 (get_extended_attention_mask shim), 261002-sl7 (6 non-gated notebooks: 5 to ACTIVE 8→13, finetune_generation gated; 5 shims + 34 tests), gsd-fast plot annotation fix (d352c0e), 261003-0p0 typing special (ty 570→165, TypedDict, E-family triage list at .planning/research/ty-triage-next-batch-2026-10-03.md)
+Last activity: 2026-10-03 — Completed quick task 261003-csd: both mcp client notebooks GREEN in gated lane (isolated langchain kernel, both-direction honest gate, 2 serving bugs fixed: single-flight deadlock + mamba interpret SIGKILL). 21/21 notebooks now executed at least once; remaining: 5 gated family notebooks (next round) + E-family ty triage + verify-work Test 2 (D-04 dispatch)
 
 Progress: [██░░░░░░░░] 20%
 
@@ -119,6 +119,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261002-sl7 | Run and fix the 6 non-gated census-failing notebooks to green: 5 promoted to ACTIVE lane (8-13), finetune_generation data-prep fixed + megaDNA half honestly gated; 5 transformers-5.x shims + 34 contract tests | 2026-10-02 | fa0386e | [261002-sl7-run-and-fix-the-5-non-gated-census-faili](./quick/261002-sl7-run-and-fix-the-5-non-gated-census-faili/) |
 | 3 | gsd-fast: fix Benchmark.plot return annotation lie (-> None vs actual 2-tuple), kills ty not-iterable in benchmark notebook | 2026-10-02 | d352c0e | — |
 | 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
+| 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
+| 261003-csd | Execute both owner-deferred mcp client notebooks to green (gated lane, live ollama+MCP stack, isolated langchain kernel); 2 real serving bugs fixed (single-flight deadlock, mamba interpret SIGKILL); both-direction honest gate; D-08 2-of-21 gap closed | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
 
 ## Deferred Items
 
