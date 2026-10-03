@@ -8,8 +8,12 @@ silent-permutation guard: the assert target is the hard-coded upstream constant 
 into the load, so a permuted registry entry fails here.
 
 Fallback contract (CONTEXT): on ModelScope failure each load retries once with
-``source="huggingface"``; if both routes fail the test skips with the registered
-``environment-unavailable:`` prefix carrying version + exception evidence. Before any
+``source="huggingface"``; if both routes fail with environment-class errors
+(network/hub outage, missing repo, absent optional dependency, classified by
+``_is_environment_error``) the test skips with the registered
+``environment-unavailable:`` prefix carrying version + exception evidence; a
+dnallm-side load regression propagates and fails the test instead of surfacing
+as a whitelisted green skip (WR-02). Before any
 such skip is accepted, the documented response procedure is one manual
 transformers-4.57 venv attempt (Phase-5 /tmp/feas-venv precedent) recorded as
 evidence. Do not assert on stderr or captured warnings — the runs emit benign
@@ -52,8 +56,63 @@ def _registry_task(repo_id: str) -> dict:
     return entries[0]["task"]
 
 
+def _is_environment_error(exc: BaseException) -> bool:
+    """Classify a load exception as environment-caused or a dnallm regression.
+
+    Rules, derived from the exception ladder in ``dnallm/models/model.py``:
+
+    - ``ConnectionError`` / ``TimeoutError`` / ``OSError`` anywhere in the
+      ``__cause__``/``__context__`` chain is environmental: requests'
+      ``RequestException``, huggingface_hub HTTP errors, and socket errors all
+      subclass ``OSError``, and the load block wraps everything as
+      ``ValueError(f"Failed to load model: {e}") from e`` (model.py:887-888),
+      so hub/network causes are visible only in the chain.
+    - ``ImportError`` anywhere in the chain is environmental (the
+      modelscope/transformers guards at model.py:444-448 and 476-480, or
+      remote code importing an absent optional dependency such as fla).
+    - The bare unchained ``ValueError(f"Model {name} download failed.")`` from
+      ``download_model`` (model.py:375) is environmental: it is the single
+      terminal signal covering network failures, hub outages, and missing
+      repos on both sources, and it is raised outside the boundary wrap (the
+      ``_get_model_path_and_imports`` call at model.py:834), so it arrives at
+      the caller unchained and must be recognized by message shape.
+
+    Anything else — a ``TypeError``/``AttributeError``/``KeyError`` from
+    dnallm's dispatch or config plumbing, a boundary ``ValueError`` chained
+    from a non-network cause, a CUDA-OOM ``RuntimeError`` — is NOT
+    environmental and must propagate so the test fails with the real
+    traceback.
+
+    Args:
+        exc: The exception raised by ``load_model_and_tokenizer``.
+
+    Returns:
+        bool: True when the failure is environment-class (the typed skip is
+        legitimate); False when it is a dnallm-side regression.
+    """
+    environmental = (ConnectionError, TimeoutError, OSError, ImportError)
+    seen: set[int] = set()
+    node: BaseException | None = exc
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        if isinstance(node, environmental):
+            return True
+        if (
+            isinstance(node, ValueError)
+            and str(node).startswith("Model ")
+            and str(node).endswith(" download failed.")
+        ):
+            return True
+        node = node.__cause__ or node.__context__
+    return False
+
+
 def _load_with_fallback(repo_id: str, cfg: TaskConfig):
     """Load via ModelScope first, retry once on HuggingFace, else typed-skip.
+
+    Only environment-class failures (per :func:`_is_environment_error`) record
+    evidence and continue to the next source; a dnallm-side load regression
+    propagates and fails the test instead of whitelisting as a green skip.
 
     Args:
         repo_id: Owner-org checkpoint repo id (never a floating third-party id).
@@ -67,12 +126,82 @@ def _load_with_fallback(repo_id: str, cfg: TaskConfig):
         try:
             return load_model_and_tokenizer(repo_id, cfg, source=source)
         except Exception as exc:
+            if not _is_environment_error(exc):
+                raise
             errors.append(f"{source}: {type(exc).__name__}: {exc}")
     pytest.skip(
         "environment-unavailable: PlantHelixSeek checkpoint load failed on both the "
         f"ModelScope and HuggingFace routes (transformers {transformers.__version__}, "
         f"torch {torch.__version__}; {' | '.join(errors)})"
     )
+
+
+class TestLoadWithFallbackClassification:
+    """WR-02: only environment-class failures may produce the typed skip.
+
+    A dnallm regression inside ``load_model_and_tokenizer`` (a TypeError from
+    the dispatch chain, config plumbing KeyError, ...) must FAIL the test,
+    never surface as a whitelisted ``environment-unavailable:`` skip. All
+    tests here are fast: no network, no model downloads, not slow-marked.
+    """
+
+    def test_network_and_import_classes_are_environmental(self):
+        for exc in (
+            ConnectionError("connection refused"),
+            TimeoutError("timed out"),
+            OSError("socket error"),
+            ImportError("fla kernels absent"),
+        ):
+            assert _is_environment_error(exc), type(exc).__name__
+
+    def test_terminal_download_value_error_is_environmental(self):
+        # download_model's sole terminal signal (model.py:375), raised unchained
+        assert _is_environment_error(ValueError(f"Model {CRE_REPO_ID} download failed."))
+
+    def test_wrapped_value_error_from_connection_error_is_environmental(self):
+        # Boundary wrap (model.py:887-888): the network cause lives in the chain.
+        # Setting __cause__ directly is exactly what ``raise ... from ...`` does.
+        wrapped = ValueError("Failed to load model: hub unreachable")
+        wrapped.__cause__ = ConnectionError("hub unreachable")
+        assert _is_environment_error(wrapped)
+
+    def test_bare_type_error_is_not_environmental(self):
+        assert not _is_environment_error(TypeError("dispatch bug"))
+
+    def test_wrapped_value_error_from_type_error_is_not_environmental(self):
+        wrapped = ValueError("Failed to load model: unexpected keyword argument")
+        wrapped.__cause__ = TypeError("unexpected keyword argument")
+        assert not _is_environment_error(wrapped)
+
+    def test_dnallm_regression_propagates_instead_of_skipping(self, monkeypatch):
+        def _regression(repo_id, cfg, source):
+            try:
+                raise TypeError("unexpected keyword argument")
+            except TypeError as cause:
+                raise ValueError(f"Failed to load model: {cause}") from cause
+
+        # Patch the module object that actually owns _load_with_fallback: the
+        # repo's tests/ tree has no __init__.py, so under pytest's prepend
+        # import mode a dotted-string target resolves to a second, lazily
+        # created namespace-package module and the patch silently misses.
+        smoke = sys.modules[_load_with_fallback.__module__]
+        monkeypatch.setattr(smoke, "load_model_and_tokenizer", _regression)
+        cfg = TaskConfig(task_type="binary", num_labels=2)
+        with pytest.raises(ValueError, match="Failed to load model"):
+            _load_with_fallback(CRE_REPO_ID, cfg)
+
+    def test_environment_failure_on_both_routes_skips_typed(self, monkeypatch):
+        def _network_down(repo_id, cfg, source):
+            try:
+                raise ConnectionError("hub unreachable")
+            except ConnectionError as cause:
+                raise ValueError(f"Failed to load model: {cause}") from cause
+
+        smoke = sys.modules[_load_with_fallback.__module__]
+        monkeypatch.setattr(smoke, "load_model_and_tokenizer", _network_down)
+        cfg = TaskConfig(task_type="binary", num_labels=2)
+        with pytest.raises(pytest.skip.Exception, match=r"environment-unavailable: PlantHelixSeek"):
+            _load_with_fallback(CRE_REPO_ID, cfg)
 
 
 @pytest.mark.slow
