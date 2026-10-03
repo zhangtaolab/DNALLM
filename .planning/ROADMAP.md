@@ -96,7 +96,14 @@ Plans:
   3. The example tests assert truth-agreement floors with thresholds calibrated at loci-selection time — recorded observed values and tolerance bands, never exact outputs
   4. Both executed notebooks with rendered figures are written back into the docs mirror (these two only), presenting "illustrative loci + selection criteria" framing with no genome-wide accuracy claims
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+**Wave 1**
+- [ ] 07-01-PLAN.md — CRE showcase vertical slice (tracer): executed CRE notebook on GB10 + harness/floors-parsing nightly test + fast structure tests + CRE docs write-back incl. shared-dir mirror (SHOW-03, SHOW-05, SHOW-06, SHOW-07)
+
+**Wave 2** *(blocked on 07-01 — extends its test module, harness specs, wrapper pattern, and Showcase nav group)*
+- [ ] 07-02-PLAN.md — Anno showcase slice: executed Anno notebook (both-strand scan, BILOU decode, GFF3, exon-F1) + Anno test lane + Anno docs write-back completing SHOW-06 (SHOW-04, SHOW-05, SHOW-06, SHOW-07)
 
 ### Phase 8: Full Execution Rollout & Repair Loop
 
@@ -135,7 +142,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 |-------|-----------|----------------|--------|-----------|
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
-| 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
+| 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/2 | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 
