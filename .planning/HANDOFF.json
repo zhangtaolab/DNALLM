@@ -1,52 +1,45 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-02T01:54:27.860Z",
-  "phase": "6",
-  "phase_name": "Model Registry & Showcase Data Curation",
-  "phase_dir": ".planning/phases/06-model-registry-showcase-data-curation",
-  "plan": 0,
-  "task": 0,
-  "total_tasks": 8,
+  "timestamp": "2026-10-03T03:21:56.922Z",
+  "phase": "05",
+  "phase_name": "execution-harness-honest-gates-runner-feasibility",
+  "phase_dir": ".planning/phases/05-execution-harness-honest-gates-runner-feasibility",
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
   "status": "paused",
   "completed_tasks": [
-    {"id": 0, "name": "Phase 5 complete (3 plans, review --auto 10/10, verification 19/19 passed, D-02 executed, D-04 deferred post-merge)", "status": "done", "commit": "4f2e6cd"},
-    {"id": 0, "name": "Phase 6 smart discuss (3 areas)", "status": "done", "commit": "2d0aec9"},
-    {"id": 0, "name": "Phase 6 research", "status": "done", "commit": "69edd46"},
-    {"id": 0, "name": "Phase 6 pattern mapping", "status": "done", "commit": "(untracked — committed with this handoff)"},
-    {"id": 0, "name": "Phase 6 planning (3 plans, 2 waves)", "status": "done", "commit": "f733219"},
-    {"id": 0, "name": "Phase 6 plan-checker", "status": "in_progress", "progress": "subagent in flight at pause; probes pre-computed at /tmp/verify-paths-6.json + /tmp/failing-directions-6.json; verdict not yet recorded"}
+    {"id": 1, "name": "quick 261002-se3: transformers-5.x get_extended_attention_mask shim", "status": "done", "commit": "fdc4915"},
+    {"id": 2, "name": "quick 261002-sl7: 6 non-gated notebooks to green (ACTIVE 8->13; 5 shims + 34 tests; 2 discovered rungs)", "status": "done", "commit": "6073f72"},
+    {"id": 3, "name": "gsd-fast: Benchmark.plot annotation lie fix", "status": "done", "commit": "d352c0e"},
+    {"id": 4, "name": "quick 261003-0p0: typing special (ty 570->165, DNALLMConfig TypedDict, E-family triage list)", "status": "done", "commit": "a0220d5"},
+    {"id": 5, "name": "quick 261003-csd: both mcp client notebooks GREEN in gated lane (2 serving bugs fixed, both-direction honest gate, D-08 closed)", "status": "done", "commit": "9453d23"}
   ],
   "remaining_tasks": [
-    {"id": 1, "name": "Phase 6 checker verdict + coverage gates + state.planned-phase", "status": "not_started"},
-    {"id": 2, "name": "Phase 6 execute wave 1 (06-01 registry tracer + 06-02 genomic_coords helper, parallel)", "status": "not_started"},
-    {"id": 3, "name": "Phase 6 execute wave 2 (06-03 locus selection, 40-60min GPU)", "status": "not_started"},
-    {"id": 4, "name": "Phase 7 PlantHelixSeek showcase notebooks", "status": "not_started"},
-    {"id": 5, "name": "Phase 8 full execution rollout + repair loop", "status": "not_started"},
-    {"id": 6, "name": "Phase 9 CI wiring + census verification", "status": "not_started"},
-    {"id": 7, "name": "Milestone lifecycle (audit → complete → cleanup)", "status": "not_started"},
-    {"id": 8, "name": "Post-merge: feasibility.yml dispatch + 05-FEASIBILITY.md runner column", "status": "not_started"}
+    {"id": 6, "name": "Gated family round: generation_evo_models, generation_megaDNA, finetune_custom_head, lora x2 (+finetune_generation megaDNA half) — evo2 0.3.0+vtx+flash-attn sm_120 source build ~50min (noFP8 config mandatory), megaDNA pinned clone cb2f5ab + MEGABYTE_pytorch==0.2.1 (chain-fires 3 notebooks), mamba env", "status": "not_started"},
+    {"id": 7, "name": "E-family ty fixes (~165 residual, triaged at .planning/research/ty-triage-next-batch-2026-10-03.md; includes real-bug candidates: MambaCache torch.zeros(None), dnabert2.py:30 torch.dot trans_b, benchmark.py:299 labels)", "status": "not_started"},
+    {"id": 8, "name": "verify-work Test 2 (D-04 runner confirmation): push phs (49 ahead) -> merge phs->dev -> merge PR #40 (dev->main, OPEN/MERGEABLE) -> gh workflow run feasibility.yml --ref dev -> download spike-logs artifact -> fill 05-FEASIBILITY.md Runner column -> /gsd-verify-work 05 test 2 pass -> canonicalize VERIFICATION -> phase transition", "status": "blocked_on_push_merge"},
+    {"id": 9, "name": "MCP server deferred bugs: --host/--port CLI flags dead (start_server overrides from yaml, server.py:1696-1700; port change = yaml edit ONLY); dna_interpret runs captum inline on event loop (172s observed, blocks all traffic)", "status": "not_started"},
+    {"id": 10, "name": "Residue disposal: example/notebooks/benchmark/benchmark.ipynb + inference.ipynb uncommitted local run outputs (owner decide: restore or refresh-commit; currently only thing reddening local docs-sync)", "status": "owner_decision"},
+    {"id": 11, "name": "STATE housekeeping: reconcile 05-04 D-07 record (superseded by NER is_decoder shim); review unknown quick-task dir .planning/quick/261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1/ (not created this session); placeholder-grep hits in 05-02/05-03-SUMMARY + VERIFICATION to eyeball", "status": "not_started"}
   ],
-  "blockers": [],
+  "blockers": [
+    {"description": "D-04 workflow_dispatch requires feasibility.yml on default branch (main); phs has 49 unpushed commits; PR #40 (dev->main) unmerged", "type": "human_action", "workaround": "push + merge chain, then dispatch"}
+  ],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "PR #40 (v1.0 dev→main) merge decision", "context": "still open; phs integrates via phs→dev PR after v1.0 ships", "blocking": false}
+    {"action": "git push origin phs (49 commits; push restriction lifted 2026-10-02, but owner reserved push/merge timing)", "context": "unblocks D-04 + PR #40 chain", "blocking": true},
+    {"action": "decide PR #40 (dev->main milestone merge) + phs->dev merge order", "context": "feasibility.yml must land on main for dispatch", "blocking": true},
+    {"action": "disposition of 2 residue notebooks (restore vs refresh-commit)", "context": "only remaining local docs-sync red", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Development on branch phs; dev/main protected, never direct-push", "rationale": "keep 45+ v1.1 commits off the v1.0 release PR", "phase": "5-6"},
-    {"decision": "Push restriction lifted for phs (2026-10-02)", "rationale": "owner instruction", "phase": "6"},
-    {"decision": "Intermediate/one-shot tooling never committed (select_loci.py, freeze scripts live in gitignored .scratch/)", "rationale": "owner instruction; repo carries outcomes only", "phase": "6"},
-    {"decision": "200kb budget = sequence bases per region; Anno calibration decode = argmax", "rationale": "owner-confirmed", "phase": "6"},
-    {"decision": "Registry label order frozen from upstream train_token_cls.py:78-96 (checkpoint id2label are placeholders)", "rationale": "research-verified live", "phase": "6"}
+    {"decision": "load_config TypedDict via option A (typing special) rather than notebook-side suppression", "rationale": "owner chose A 2026-10-02; landed with zero consumer edits (all consumers take bare dict)", "phase": "05"},
+    {"decision": "mcp_example x2 executed BEFORE gated families", "rationale": "owner directive 2026-10-03 '先处理 mcp 的两个'", "phase": "05"},
+    {"decision": "port 8005 fallback authorized but never fired; yaml is the ONLY working port mechanism (CLI flags dead)", "rationale": "owner directive; measured free port 8000 bound cleanly", "phase": "05"},
+    {"decision": "finetune_generation moved to GATED with _gate_megadna (data-prep fixed, DNAGPT half green, megaDNA half gated)", "rationale": "installing megaDNA would chain-force 2 other deferred notebooks; owner deferral stands", "phase": "05"},
+    {"decision": "NER is_decoder shim supersedes 05-04 D-07 rung-termination record", "rationale": "owner instruction 'fix all non-gated now' overrides D-09 typed-skip disposition", "phase": "05"}
   ],
-  "uncommitted_files": [
-    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-PATTERNS.md",
-    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW.iter2.md",
-    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW.iter3.md",
-    "?? .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-REVIEW-FIX.iter2.md",
-    "?? .planning/phases/06-model-registry-showcase-data-curation/06-PATTERNS.md",
-    "?? .gsd/ (tool dir — leave untracked)",
-    "?? .planning/codebase/ .planning/graphs/ .planning/state.json graphify-out/ (pre-existing untracked tooling state)"
-  ],
-  "next_action": "Re-run /gsd-plan-phase 6 to complete the checker loop (plans committed at f733219; probes at /tmp/verify-paths-6.json + /tmp/failing-directions-6.json if still present), then coverage gates, then /gsd-execute-phase 6",
-  "context_notes": "Autonomous run (/gsd-autonomous) in progress; sequential per-platform (dispatch-should-flatten=true). Phase-5 closure durable. The plan-checker was mid-flight at pause — its verdict may arrive as a late agent message next session; treat the absence of a recorded verdict as 're-check needed'."
+  "uncommitted_files": [" M .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-UAT.md", " M example/notebooks/benchmark/benchmark.ipynb", " M example/notebooks/inference.ipynb", "?? .gsd/", "?? .jupyter/", "?? .planning/codebase/", "?? .planning/graphs/", "?? .planning/milestone.lock", "?? .planning/quick/261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1/", "?? .planning/quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/261003-csd-PLAN.md", "?? .planning/state.json", "?? .planning/tmp/", "?? graphify-out/", "?? transformers5-npu-compat-plan.html"],
+  "next_action": "Ask owner which of A (gated family round), B (MCP server deferred bugs), C (push->merge->PR#40->dispatch chain closing verify-work Test 2) to run; then /gsd-quick or /gsd-verify-work 05 accordingly",
+  "context_notes": "Session was a verify-work session (/gsd-verify-work 05, test 2 D-04 deferred post-merge) that grew 5 side quick tasks, all closed with independent verification. UAT 05-UAT.md still has Current Test = test 2 awaiting user response. Fast lane now 1716 passed/1 skipped; slow lane 15 passed/8 typed-skips; ty 165; 21/21 notebooks executed at least once. All executors terminated; MCP server killed by PID; monitors expired. ollama still up (qwen3.8:latest)."
 }

@@ -3,16 +3,16 @@ status: passed
 phase: 05-execution-harness-honest-gates-runner-feasibility
 source: [05-VERIFICATION.md]
 started: 2026-10-02T04:50:00+08:00
-updated: 2026-10-02T04:50:00+08:00
+updated: 2026-10-02T20:16:00+08:00
 ---
 
 ## Current Test
 
-number: 1
-name: D-02 branch-protection PUT on dev+main (after push)
+number: 2
+name: D-04 runner confirmation (feasibility.yml dispatch)
 expected: |
-  Owner pushes dev, then runs the two `gh api -X PUT repos/zhangtaolab/DNALLM/branches/{dev,main}/protection --input -` commands verbatim from 05-02-SUMMARY §"D-02 Owner Hand-Off" (each payload names BOTH "coverage-gate (py3.12, fast leg)" AND "docs-validation" — the PUT REPLACES the contexts array). Both verification reads then list both contexts.
-awaiting: resolved 2026-10-02 — executed and verified (see Test 1)
+  Push → dispatch feasibility.yml → download evidence → fill the matrix Runner confirmation column.
+awaiting: user response
 
 ## Tests
 
