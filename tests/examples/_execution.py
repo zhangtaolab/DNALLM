@@ -191,6 +191,18 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "cell_timeout": 1800,
         "extra_inputs": [],
     },
+    str(EXAMPLE_DIR / "notebooks" / "plant_helixseek_cre" / "plant_helixseek_cre.ipynb"): {
+        # Phase-7 showcase lane (07-01, D-14): the Phase-6 selection runs
+        # measured ~10-20 min for the whole CRE notebook (500/50/50 scan at
+        # batch 4 through the eager-attention route); the long pole is the
+        # scan cell (~6 min), so 1200s per cell leaves ~2x headroom while
+        # staying strictly below the showcase test's 2400s pytest-timeout
+        # mark. The showcase tests seed their own shared-data extras
+        # (tests/examples/test_plant_helixseek_showcase.py) -- this entry
+        # carries only the budget.
+        "cell_timeout": 1200,
+        "extra_inputs": [],
+    },
 }
 
 # Per-marimo-app execution specs.  Keys are str() of the absolute app
