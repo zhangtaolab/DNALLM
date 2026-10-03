@@ -9,6 +9,8 @@ dispatch, executor bridge, and status routing under test are all real.
 from __future__ import annotations
 
 import asyncio
+import threading
+import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -339,6 +341,76 @@ class TestPredictionRouting:
             result = await manager.predict_multi_model(["model-a"], "ATCG")
 
         assert result == {"model-a": {"error": "transport gone"}}
+
+
+class TestSingleFlightInference:
+    """Single-flight contract for executor-submitted inference (261003-csd).
+
+    Real traffic from the mcp client notebooks surfaced a serving hazard:
+    ``predict_multi_model`` gathers concurrent ``predict_sequence`` calls,
+    each submitting ``infer_seqs`` to the default executor, and each
+    ``infer_seqs`` builds a ``DataLoader(num_workers=4)`` whose worker
+    spawn forks.  Concurrent forks from several threads while a hub-cache
+    ``filelock`` is changing descriptor ownership raise ``os.fork is
+    unsafe ...`` in one thread and hang another (stuck ``pt_data_worker``
+    children holding the uvicorn socket).  All predict traffic must
+    therefore execute single-flight: at most one ``infer_seqs`` in the
+    process at any instant.
+    """
+
+    @staticmethod
+    def _counting_engine(registry: dict[str, Any]) -> Mock:
+        """Build an engine whose infer_seqs tracks live/max concurrency."""
+
+        def infer_seqs(sequences: Any, **kwargs: Any) -> dict[str, Any]:
+            with registry["lock"]:
+                registry["active"] += 1
+                registry["max_active"] = max(registry["max_active"], registry["active"])
+            time.sleep(0.05)  # widen the window so unsynchronized runs overlap
+            with registry["lock"]:
+                registry["active"] -= 1
+            return {"probabilities": [0.5, 0.5]}
+
+        engine = Mock()
+        engine.infer_seqs = Mock(side_effect=infer_seqs)
+        return engine
+
+    @staticmethod
+    def _registry() -> dict[str, Any]:
+        return {"lock": threading.Lock(), "active": 0, "max_active": 0}
+
+    @pytest.mark.asyncio
+    async def test_multi_model_predicts_execute_single_flight(self, manager):
+        """Gathered multi-model predicts never overlap executor inference."""
+        registry = self._registry()
+        for name in ("model-a", "model-b", "model-c"):
+            manager.loaded_models[name] = self._counting_engine(registry)
+
+        result = await manager.predict_multi_model(["model-a", "model-b", "model-c"], "ATCG")
+
+        assert registry["max_active"] == 1, (
+            f"concurrent infer_seqs calls observed (max {registry['max_active']})"
+        )
+        assert set(result) == {"model-a", "model-b", "model-c"}
+        assert all(r == {"probabilities": [0.5, 0.5]} for r in result.values())
+
+    @pytest.mark.asyncio
+    async def test_sequence_and_batch_predicts_share_the_flight(self, manager):
+        """A sequence predict and a batch predict also serialize together."""
+        registry = self._registry()
+        manager.loaded_models["model-a"] = self._counting_engine(registry)
+        manager.loaded_models["model-b"] = self._counting_engine(registry)
+
+        seq_result, batch_result = await asyncio.gather(
+            manager.predict_sequence("model-a", "ATCG"),
+            manager.predict_batch("model-b", ["ATCG", "GGCC"]),
+        )
+
+        assert registry["max_active"] == 1, (
+            f"concurrent infer_seqs calls observed (max {registry['max_active']})"
+        )
+        assert seq_result == {"probabilities": [0.5, 0.5]}
+        assert batch_result == {"probabilities": [0.5, 0.5]}
 
 
 class TestModelInfo:

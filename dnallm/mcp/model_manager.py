@@ -32,6 +32,12 @@ class ModelManager:
         self.loaded_models: dict[str, DNAInference] = {}
         self.model_loading_status: dict[str, str] = {}  # "loading", "loaded", "error"
         self._loading_lock = asyncio.Lock()
+        # Single-flight inference (261003-csd): infer_seqs builds a
+        # DataLoader(num_workers>0) whose worker spawn forks; concurrent
+        # forks from several executor threads while a hub-cache filelock
+        # changes descriptor ownership raise "os.fork is unsafe ..." in one
+        # thread and hang another, so all predict traffic serializes here.
+        self._infer_lock = asyncio.Lock()
 
     async def load_model(self, model_name: str) -> bool:
         """Load a specific model asynchronously.
@@ -236,11 +242,14 @@ class ModelManager:
             return None
 
         try:
-            # Run prediction in thread pool to avoid blocking
+            # Run prediction in thread pool to avoid blocking, single-flight:
+            # concurrent DataLoader worker forks are unsafe under threaded
+            # serving (see _infer_lock), so only one infer_seqs runs at a time.
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, inference_engine.infer_seqs, sequence, **kwargs
-            )
+            async with self._infer_lock:
+                result = await loop.run_in_executor(
+                    None, inference_engine.infer_seqs, sequence, **kwargs
+                )
             return result  # type: ignore
         except Exception as e:
             logger.error(f"Prediction failed for model {model_name}: {e}")
@@ -265,11 +274,13 @@ class ModelManager:
             return None
 
         try:
-            # Run prediction in thread pool to avoid blocking
+            # Run prediction in thread pool to avoid blocking, single-flight
+            # (same _infer_lock contract as predict_sequence)
             loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(
-                None, inference_engine.infer_seqs, sequences, **kwargs
-            )
+            async with self._infer_lock:
+                result = await loop.run_in_executor(
+                    None, inference_engine.infer_seqs, sequences, **kwargs
+                )
             return result  # type: ignore
         except Exception as e:
             logger.error(f"Batch prediction failed for model {model_name}: {e}")
