@@ -133,7 +133,7 @@ print(f"exon_f1={exon_f1_value:.4f}")
 print(f"genes_above_floor={genes_above_floor_value}")
 ```
 
-The notebook also prints per-gene exon F1 (genes = mRNAs with CDS rows in the slice; the floor counts genes with per-gene exon-F1 >= 0.8) and nucleotide-level sensitivity / precision / F1 as `key=value` stream lines, plus a transparent observed-vs-contract comparison table parsed at runtime from the frozen selection contract ([selection.md](https://github.com/zhangtaolab/DNALLM/blob/main/example/notebooks/plant_helixseek_shared/data/selection.md)). The nightly test suite re-executes the whole notebook and asserts the tolerance bands from that same document:
+The notebook also computes per-gene exon F1 (genes = mRNAs with CDS rows in the slice; the floor counts genes with per-gene exon-F1 >= 0.8) and prints the count of genes meeting the 0.8 floor (`genes_above_floor=`) and nucleotide-level sensitivity / precision / F1 as `key=value` stream lines, plus a transparent observed-vs-contract comparison table parsed at runtime from the frozen selection contract ([selection.md](https://github.com/zhangtaolab/DNALLM/blob/main/example/notebooks/plant_helixseek_shared/data/selection.md)). The nightly test suite re-executes the whole notebook and asserts the tolerance bands from that same document:
 
 | Metric | Tolerance band | Observed (selection run) |
 |---|---|---|
