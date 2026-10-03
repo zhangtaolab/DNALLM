@@ -48,7 +48,8 @@ def normalize_chrom(name: str, *, style: str = "tair") -> str:
         name: Chromosome name. Accepted forms: TAIR-style ``Chr1`` (the
             ``chr`` prefix is case-insensitive; the token is a number or
             the organelle letter ``C``/``M``, preserved verbatim) and bare
-            Ensembl-style numerics (``1``). The organelle names
+            Ensembl-style numerics (``1``; ASCII digits only — lookalike
+            Unicode digits raise). The organelle names
             ``ChrC``/``ChrM`` pass through untouched in both styles.
         style: Target style: ``"tair"`` (default, e.g. ``Chr1``) or
             ``"ensembl"`` (e.g. ``1``).
@@ -70,7 +71,7 @@ def normalize_chrom(name: str, *, style: str = "tair") -> str:
         if style == "ensembl" and token.isdigit():
             return token
         return f"Chr{token}"  # TAIR target, or an organelle pass-through
-    if name.isdigit():
+    if name.isascii() and name.isdigit():
         return name if style == "ensembl" else f"Chr{name}"
     raise ValueError(f"Unrecognized chromosome name {name!r}.")
 

@@ -79,6 +79,20 @@ def test_normalize_chrom_rejects_unknown_forms():
         normalize_chrom("Chr1", style="ucsc")
 
 
+def test_normalize_chrom_rejects_non_ascii_digits():
+    # IN-02: full-width/superscript/Arabic-Indic digits satisfy str.isdigit()
+    # but are NOT bare Ensembl numerics — accepting them would silently rename
+    # to a lookalike chromosome. They must raise in BOTH styles, never be renamed.
+    for bad in ("１", "２", "²", "٣"):  # ruff: ignore[ambiguous-unicode-character-string] — the lookalikes ARE the fixture
+        with pytest.raises(ValueError, match=r"Unrecognized chromosome"):
+            normalize_chrom(bad)
+        with pytest.raises(ValueError, match=r"Unrecognized chromosome"):
+            normalize_chrom(bad, style="ensembl")
+    # Positive control: ASCII bare numerics keep working in both styles
+    assert normalize_chrom("1") == "Chr1"
+    assert normalize_chrom("1", style="ensembl") == "1"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Coordinate conversions (GFF3 1-based closed <-> BED 0-based half-open)
 # ─────────────────────────────────────────────────────────────────────────────
