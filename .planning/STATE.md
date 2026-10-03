@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Example Execution Testing & Repair
 current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
-status: executing
-stopped_at: "06-03 Task 2 blocked at package-approval checkpoint: flash-linear-attention needed (see scratch fla-fallback-diagnosis.md)"
-last_updated: "2026-10-03T08:13:50.984Z"
+status: verifying
+stopped_at: Completed 06-03-PLAN.md (showcase data committed; fla 0.5.2 decision recorded)
+last_updated: "2026-10-03T09:19:11.791Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 06 execution started
-state_head: 1f9efcf3261836f31e94a232d5d2f9d75a13fe6f
+state_head: b68e1a56139c711dd903d243382a9baff15371b0
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 20
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 Phase: 06 (Model Registry & Showcase Data Curation) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-03 — Phase 06 execution started
 
 Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
@@ -70,6 +70,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase 05-06 P06 | 151min | 3 tasks | 5 files |
 | Phase 06 P01 | 19 min | 2 tasks | 4 files |
 | Phase 06 P02 | 16 min | 2 tasks | 3 files |
+| Phase 06 P03 | 125 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -109,6 +110,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 06]: [06-02] RED evidence via NotImplementedError stub committed in the test commit: suite fails at test level (RED_EVIDENCE_OK, 20 failed/exit 1) instead of collection-level ImportError (INVALID_RED per #3770)
 - [Phase 06]: [06-02] normalize_chrom vocabulary: numeric token or organelle C/M after case-insensitive chr prefix, else bare digits; anything else raises (first draft over-accepted 'chromosome1' — caught by RED-authored tests)
 - [Phase 06]: [06-02] fetch_sequence takes an open pyfastx.Fasta OR a path (function-local pyfastx import is load-bearing); half_open_to_gff1 rejects zero-width intervals — no 1-based closed form exists
+- [Phase 06]: Owner decision B+ (06-03 Task-2 package checkpoint): flash-linear-attention 0.5.2 installed bare into .venv (no backend extra - may downgrade torch); 16-window probe through the unmodified dnallm route proved healthy DHS separation (0.7673 in-DHS vs 0.2230 non-DHS; dead fallback 0.0073/0.0087) - evidence in scratch fla-probe-0.5.2.md
+- [Phase 06]: Owner upgraded the fla follow-up at 17:03 CST 2026-10-03 (no longer deferred): flash-linear-attention becomes a declared pyproject dependency + documented, landed as an in-phase quick task after 06-03; version direction 0.5.2, bounded range under discussion - 06-03 itself made no pyproject change
+- [Phase 06]: 06-01 smoke tests validate shapes only - they passed with positionally-dead PlantHelixSeek outputs; value-level discrimination assertions (e.g. the DHS probe) are the CI follow-up class so silent semantic degradation is caught (06-03 checkpoint evidence)
+- [Phase 06]: 06-03 selection: first-ranked tile Chr1:5100001-5300000 passed both floors on the first candidate (CRE jaccard 0.3247 >= 0.3; Anno pooled exon-F1 0.7522, 59/91 genes >= 0.8); intergenic negative asserts Anno genic fraction only (0.0000) - its CRE fraction 0.1200 is evidence-only, never jaccard-vs-empty
 
 ### Pending Todos
 
@@ -123,7 +128,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
 - [Phase 05] D-04 feasibility dispatch deferred post-merge — `workflow_dispatch` needs feasibility.yml on the default branch; fires after phs→dev→main integration (phs range unpushed, manual-push rule)
 - [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 and WR-01 both FIXED (261003-hhj commit 032b308; 261003-ij4 commit 3fe80bf) — no open critical/warning findings from the Phase 05 incremental review remain
-- 06-03 Task 2 blocked: PlantHelixSeek delta layers (9/39) run a non-KDA pure-torch fallback because flash-linear-attention is absent - both checkpoints produce positionally-uninformative outputs (proven: CRE p(in-DHS)=0.0073 vs p(non-DHS)=0.0087 with fallback; 0.84 vs 0.19 with faithful KDA patch). Owner decision needed: install fla (0.4.1 upstream-pinned / 0.5.2) into .venv - package install is human-gated. Evidence: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md
+- RESOLVED 2026-10-03 (owner decision B+): 06-03 Task 2 fla blocker — flash-linear-attention 0.5.2 installed into .venv; 16-window probe through the unmodified dnallm route confirmed healthy separation (0.7673/0.2230 vs dead fallback 0.0073/0.0087); 06-03 completed (commits e9d00df, b68e1a5). Follow-up upgraded by owner 17:03 CST: fla becomes a declared pyproject dependency (in-phase quick task after 06-03). Original evidence: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md + fla-probe-0.5.2.md
 
 ### Quick Tasks Completed
 
@@ -150,9 +155,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T08:13:50.961Z
-Stopped at: 06-03 Task 2 blocked at package-approval checkpoint: flash-linear-attention needed (see scratch fla-fallback-diagnosis.md)
-Resume file: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md
+Last session: 2026-10-03T09:19:11.768Z
+Stopped at: Completed 06-03-PLAN.md (showcase data committed; fla 0.5.2 decision recorded)
+Resume file: None
 
 ## Deferred Verification
 
