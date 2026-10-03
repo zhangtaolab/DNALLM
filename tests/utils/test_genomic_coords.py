@@ -250,6 +250,36 @@ def test_slice_gff_rows_rejects_invalid_input():
         slice_gff_rows(["Chr1\ttoo\tfew"], "Chr1", 1, 10)
 
 
+def test_slice_gff_rows_crlf_and_cr_terminators_match_lf_results():
+    # Windows (\r\n) and old-Mac (\r) GFF files carry no information in their
+    # line endings: terminator twins must slice identically to LF input, and
+    # no terminator may survive into the returned rows.
+    expected = [GFF_ROWS[3], GFF_ROWS[4], GFF_ROWS[5], GFF_ROWS[6]]
+    assert slice_gff_rows(GFF_ROWS, "Chr1", 3000, 6000) == expected  # LF twin
+    for term in ("\n", "\r\n", "\r"):
+        twin = [row + term if isinstance(row, str) and row else row for row in GFF_ROWS]
+        rows = slice_gff_rows(twin, "Chr1", 3000, 6000)
+        assert rows == expected
+        assert all("\r" not in row for row in rows)
+    # Column-9 attribute values from a returned CRLF row parse clean
+    crlf_twin = [row + "\r\n" if isinstance(row, str) and row else row for row in GFF_ROWS]
+    cds = slice_gff_rows(crlf_twin, "Chr1", 3000, 6000)[3]
+    attrs = parse_gff_attributes(cds.split("\t")[8])
+    assert attrs["Parent"] == ["AT1G01010.1", "AT1G01010.1-Protein"]
+    assert all("\r" not in value for values in attrs.values() for value in values)
+
+
+def test_slice_gff_rows_rejects_embedded_carriage_return():
+    # A mid-row \r is not a terminator — it would silently corrupt whichever
+    # column contains it, so the parser raises instead (loud-error contract),
+    # regardless of whether the row's chromosome matches the query.
+    poisoned = "Chr1\tTAIR10\tgene\t3631\t5899\t.\t+\t.\tID=AT1G01010\rNote=corrupt\n"
+    with pytest.raises(ValueError, match=r"Carriage return embedded"):
+        slice_gff_rows([poisoned], "Chr1", 3000, 6000)
+    with pytest.raises(ValueError, match=r"Carriage return embedded"):
+        slice_gff_rows([poisoned], "Chr2", 3000, 6000)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Import purity (pyfastx is a dev extra)
 # ─────────────────────────────────────────────────────────────────────────────

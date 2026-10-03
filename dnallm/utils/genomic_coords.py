@@ -202,7 +202,9 @@ def slice_gff_rows(
     Args:
         rows: Iterable of raw GFF3/GFF line strings. Comment (``#``), blank,
             and non-string entries are skipped; remaining rows need at
-            least 5 tab-separated columns.
+            least 5 tab-separated columns. Line terminators (``\\n``,
+            ``\\r\\n`` CRLF, and old-Mac ``\\r``) are stripped from each row
+            before parsing and from the returned strings.
         chrom: Chromosome name in any documented style; both it and each
             row's name are normalized before exact comparison.
         start: 1-based inclusive locus start.
@@ -211,12 +213,14 @@ def slice_gff_rows(
             result (the silent-empty guard for locus slicing).
 
     Returns:
-        list[str]: The matching raw row strings, input order preserved —
-        never re-sorted.
+        list[str]: The matching raw row strings, terminator-stripped, input
+            order preserved, never re-sorted.
 
     Raises:
-        ValueError: If the coordinates are invalid, a row is malformed, or
-            ``require_nonempty`` is set and no row matches.
+        ValueError: If the coordinates are invalid, a row is malformed, a
+            row carries a carriage return that is not a line terminator
+            (an embedded ``\\r`` would silently corrupt whichever column
+            contains it), or ``require_nonempty`` is set and no row matches.
     """
     start, end = _validate_gff1(start, end)
     chrom = normalize_chrom(chrom)
@@ -224,14 +228,19 @@ def slice_gff_rows(
     for row in rows:
         if not isinstance(row, str) or not row.strip() or row.startswith("#"):
             continue
-        columns = row.rstrip("\n").split("\t")
+        stripped = row.rstrip("\r\n")
+        if "\r" in stripped:
+            raise ValueError(
+                f"Carriage return embedded in GFF3 row (not a line terminator): {row!r}"
+            )
+        columns = stripped.split("\t")
         if len(columns) < 5:
             raise ValueError(f"Malformed GFF3 row (fewer than 5 columns): {row!r}")
         if normalize_chrom(columns[0]) != chrom:
             continue
         row_start, row_end = int(columns[3]), int(columns[4])
         if row_start <= end and row_end >= start:  # closed-interval overlap
-            matched.append(row.rstrip("\n"))
+            matched.append(stripped)
     if require_nonempty and not matched:
         raise ValueError(f"No GFF3 rows found for {chrom} [{start}, {end}].")
     return matched
