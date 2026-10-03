@@ -29,7 +29,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 - [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02; **REOPENED 2026-10-02** for post-closure gap closure — GAP-1 NT x transformers-5.17 compat shim + GAP-2 full example/ census bar, plans 05-04..06)
 - [x] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist (completed 2026-10-03)
-- [ ] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror
+- [x] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror (completed 2026-10-04)
 - [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
 - [ ] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation
 
@@ -96,7 +96,7 @@ Plans:
   3. The example tests assert truth-agreement floors with thresholds calibrated at loci-selection time — recorded observed values and tolerance bands, never exact outputs
   4. Both executed notebooks with rendered figures are written back into the docs mirror (these two only), presenting "illustrative loci + selection criteria" framing with no genome-wide accuracy claims
 
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -142,7 +142,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 |-------|-----------|----------------|--------|-----------|
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
-| 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | In Progress|  |
+| 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 

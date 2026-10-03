@@ -2,46 +2,46 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 7
-current_phase_name: PlantHelixSeek Showcase Notebooks
-status: verifying
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-10-03T15:25:39.383Z"
-last_activity: 2026-10-03
-last_activity_desc: Phase 7 execution started
-state_head: 33b8da6b0b9329fca77e7eb114b82f8fd02b0836
+current_phase: 8
+current_phase_name: Full Execution Rollout & Repair Loop
+status: planning
+stopped_at: Phase 7 complete, ready to plan Phase 8
+last_updated: "2026-10-03T19:48:03.215Z"
+last_activity: 2026-10-04
+last_activity_desc: Phase 7 complete, transitioned to Phase 8
+state_head: d4c19d24612db9f2b4c54429b392c969920094ae
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
   completed_plans: 11
-  percent: 40
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-03)
+See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 7 — PlantHelixSeek Showcase Notebooks
+**Current focus:** Phase 8 — Full Execution Rollout & Repair Loop
 
 ## Current Position
 
-Phase: 7 (PlantHelixSeek Showcase Notebooks) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-10-03 — Phase 7 execution started
+Phase: 8 — Full Execution Rollout & Repair Loop
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-04 — Phase 7 complete, transitioned to Phase 8
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
-Progress: [█████████████░░░░░░░] 6/9 plans ([████░░░░░░] 40%)
+Progress: [████████████████████] 11/11 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (v1.1 Phase 05; v1 plans archived with the milestone)
+- Total plans completed: 11 (v1.1 Phase 05; v1 plans archived with the milestone)
 - Average duration: ~53 min (Phase 05: 320 min across 6 plans)
 - Total execution time: ~9.1 hours (v1) + ~5.3 hours (v1.1 Phase 05)
 
@@ -51,7 +51,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 |-------|-------|-------|----------|
 | 05 | 6 | 320 min | ~53 min |
 | 06 | 3 | - | - |
-| 07 | TBD | - | - |
+| 7 | 2 | - | - |
 | 08 | TBD | - | - |
 | 09 | TBD | - | - |
 
@@ -133,6 +133,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 
 ### Blockers/Concerns
 
+- [Phase 07] Advisory review findings open in 07-REVIEW-DISPOSITION.md (8 of 8 open; none failing a must-have): WR-01 check_docs_sync IGNORE still misses gitignored benchmark runtime dirt (local-only red, CI clean); WR-02 CRE cell-18 band-loop can raise bare KeyError if selection.md changes shape; 6 info (stale lock comment, _execution docstring count, anno.md per-gene-F1 prose, unused locus_key params, bedtools not in nightly CI image, Anno label-index assert suggestion) — `/gsd-code-review 7 --fix` addresses them if wanted
 - Runtime budget risk: ~24 new slow tests with naive serial ceilings 14–48h vs the 900-min nightly job — measure per-artifact budgets during the Phase 5 pilot and Phase 8 rollout; escalation pre-authorized (CI-06)
 - From v1 ship triage (still open, live in /gsd-ship ledger): WR-01 nightly test-mamba continue-on-error; WR-02 plot.py prepare_data drops task_type; WR-03 workflows README stale — note WR-08/09 are v1.1 Phase 5 scope, these three are not
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
@@ -167,8 +168,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T15:25:39.356Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-10-04T04:05:00+08:00
+Stopped at: Phase 7 complete, ready to plan Phase 8
 Resume file: None
 
 ## Deferred Verification

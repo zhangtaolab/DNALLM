@@ -55,7 +55,12 @@ Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREME
 - Real-model execution tests for every artifact under `example/` (notebooks, marimo apps, helper script, YAML configs)
 - All errors found by real execution fixed — example code, docs/example/ mirror, and exposed dnallm library bugs
 - CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
-- PlantHelixSeek-CRE and PlantHelixSeek-Anno inference example notebooks with dnallm API support and in-repo Arabidopsis showcase regions (≤200kb, prediction-matching-truth loci)
+
+Shipped in Phase 6 + Phase 7 (PlantHelixSeek Showcase, 2026-10-03/04):
+
+- ✓ Registry entries for `PlantHelixSeek-CRE`/`-Anno` (owner-org ModelScope repos, frozen label order, provenance comments) + `dnallm.utils.genomic_coords` coordinate helpers + committed Arabidopsis showcase loci (≤200kb/set, selection.md frozen contract with observed values and tolerance bands) — Phase 6
+- ✓ Two flagship showcase notebooks executed for real on GB10 and committed with embedded vega figures: CRE 500/50/50 scan + mean+1.5σ peaks + `bedtools jaccard` (0.3247, band [0.3, 1.00]); Anno 8192/4096 both-strand + argmax BILOU decode → valid GFF3 (exon_f1=0.7522, 59 genes ≥0.8) — every selection.md value reproduced exactly — Phase 7
+- ✓ Nightly execution lane asserting the truth-agreement floors parsed from selection.md (never literals; D-08 named-cause failures; parse-guard) + fast structure tests; docs-mirror write-back with wrapper pages, byte-identical mirrors, Showcase nav, models.lock — Phase 7
 
 Shipped in Phase 5 (Execution Harness, Honest Gates & Runner Feasibility, 2026-10-03):
 
@@ -114,6 +119,8 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Harness: nbclient plain `execute()` + `shutdown_kernel=immediate` in a tmp sandbox; tree-clean check is delta-zero vs an import-time baseline | nbclient 0.11 NotebookClient is not a context manager; the owner's live IDE churn on tracked notebooks is not harness business | ✓ Landed Phase 5 (05-01/05-05) |
 | Gated lane is probe-then-execute with live probe results carried in skip messages (both directions proven) | An ever-green skip is the same dishonesty class as the false-green CI gates this milestone closes | ✓ Landed Phase 5 + 261003-csd (ollama/MCP gates) |
 | Census before repair: full-tree real execution with class-tagged exact tracebacks ranks the repair queue | Phase 8 repair must be evidence-ranked, not anecdotal | ✓ Landed Phase 5 (05-CENSUS.md: 11 PASS / 12 FAIL / 2 deferred) |
+| Showcase honesty: illustrative-loci framing is dual (full provenance-cell disclaimer + per-figure captions) and enforced by a genome-wide denylist structure test | Single-locus results must never read as genome-wide accuracy; SHOW-07 intent is mechanical plus judgment, both covered | ✓ Landed Phase 7 (UAT-verified on GitHub blob rendering and wording) |
+| Assertion ownership is two-layer: notebooks print metrics + floors comparison; the authoritative band assertions live in `tests/examples/` and parse selection.md at test startup | Transparent in-notebook numbers without brittle in-kernel asserts; single source of truth for thresholds (D-05/D-06) | ✓ Landed Phase 7 (`_parse_floors`/`_parse_bands`, parse-guard, 4/4 band rows) |
 
 ## Evolution
 
@@ -133,4 +140,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-03 after Phase 5*
+*Last updated: 2026-10-04 after Phase 7*
