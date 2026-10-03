@@ -13,7 +13,13 @@ example-notebook tests:
 * :func:`seed_sandbox` -- copy an example directory into a pytest
   ``tmp_path`` sandbox so the kernel cwd never touches the repo tree;
 * :func:`run_notebook` -- execute a notebook via nbclient with per-cell
-  timeout, immediate kernel shutdown and partial-failure artifacts;
+  timeout, immediate kernel shutdown and partial-failure artifacts
+  (kernel selectable via ``kernel_name``; default ``python3``);
+* :func:`ensure_isolated_kernel` -- idempotent provisioning of the
+  ``dnallm-mcp-langchain`` kernelspec whose kernel.json env pins
+  ``VIRTUAL_ENV`` to the throwaway ``.scratch/mcp-example-venvs/langchain``
+  venv, keeping the langchain mcp notebook's install cells away from the
+  project venv (261003-csd, T-mcp1-01);
 * :func:`run_marimo_app` -- execute a marimo app headlessly through the
   venv ``marimo`` CLI (export-html flavor) inside a sandbox cwd;
 * :func:`run_example_script` -- run an example helper script with the
@@ -43,6 +49,7 @@ binds no port) remains the sanctioned fallback flavor.
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
@@ -59,6 +66,19 @@ from nbformat import NotebookNode
 # tests/examples/test_examples.py (its EXAMPLE_DIR line).
 REPO_ROOT = Path(__file__).parent.parent.parent
 EXAMPLE_DIR = REPO_ROOT / "example"
+
+# Isolated kernel lane for the langchain mcp example (261003-csd,
+# T-mcp1-01): the notebook's own documented install cells (``!uv pip
+# install -U ...``) must never mutate the project venv hosting the pytest
+# kernel.  The notebook executes under a dedicated user-level kernelspec
+# whose kernel.json env pins ``VIRTUAL_ENV`` to a throwaway gitignored
+# venv (.gitignore covers ``.scratch/``); uv honors VIRTUAL_ENV when no
+# --python is given, so the cells install into the throwaway by
+# construction.  nbclient resolves the kernelspec by name at kernel
+# spawn and raises NoSuchKernel BEFORE any cell runs when it is missing
+# -- fail-safe: the project venv is unreachable either way.
+LANGCHAIN_KERNEL_NAME = "dnallm-mcp-langchain"
+LANGCHAIN_VENV_DIR = REPO_ROOT / ".scratch" / "mcp-example-venvs" / "langchain"
 
 # Per-notebook execution budgets.  Keys are str() of the absolute
 # notebook paths so parametrized lookups stay exact; values carry the
@@ -157,6 +177,10 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_langchain_agents.ipynb"): {
         "cell_timeout": 600,
         "extra_inputs": [],
+        # Isolated lane (261003-csd): routes this notebook away from the
+        # project-venv python3 kernel so its install cells cannot touch
+        # the venv hosting pytest.
+        "kernel_name": LANGCHAIN_KERNEL_NAME,
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_pydantic_ai.ipynb"): {
         "cell_timeout": 600,
@@ -270,6 +294,7 @@ def run_notebook(
     sandbox: Path,
     cell_timeout: int = 600,
     artifact_dir: Path | None = None,
+    kernel_name: str = "python3",
 ) -> NotebookNode:
     """Execute a notebook inside *sandbox* and return the executed node.
 
@@ -289,6 +314,11 @@ def run_notebook(
         artifact_dir: directory for partial-failure artifacts.  When
             given, a cell error or timeout writes the executed notebook
             node plus the exception text here before re-raising.
+        kernel_name: jupyter kernelspec name to spawn.  The default
+            keeps every pre-existing caller on the project-venv
+            ``python3`` kernel; the isolated langchain lane passes
+            ``LANGCHAIN_KERNEL_NAME`` (provisioned via
+            :func:`ensure_isolated_kernel` by the caller first).
 
     Returns:
         The executed notebook node with every cell's outputs collected.
@@ -304,7 +334,7 @@ def run_notebook(
         nb,
         timeout=cell_timeout,
         allow_errors=False,  # fail at first error -- the repair signal this milestone exists for
-        kernel_name="python3",
+        kernel_name=kernel_name,
         startup_timeout=120,
         shutdown_kernel="immediate",
         resources={"metadata": {"path": str(sandbox)}},
@@ -326,6 +356,144 @@ def run_notebook(
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+
+
+def _resolve_kernelspec_dir(name: str) -> Path | None:
+    """Return the installed kernelspec directory for *name*, or ``None``.
+
+    Uses jupyter_client's own resolution (user-level first), so the
+    idempotency check in :func:`ensure_isolated_kernel` matches exactly
+    what nbclient resolves at kernel-spawn time; any resolution failure
+    counts as "missing" rather than crashing the check.
+    """
+    try:
+        from jupyter_client.kernelspec import KernelSpecManager
+
+        specs = KernelSpecManager().find_kernel_specs()
+    except Exception:  # resolution itself broken -> treat as missing
+        return None
+    path = specs.get(name)
+    return Path(path) if path else None
+
+
+def _run_provision_step(step: str, cmd: list[str], timeout_s: int = 600) -> None:
+    """Run one provisioning command, raising RuntimeError with the stderr tail on failure."""
+    # ruff: ignore[subprocess-without-shell-equals-true]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout_s, check=False)
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"ensure_isolated_kernel step {step!r} failed (rc={proc.returncode}): "
+            f"{' '.join(cmd)}\nstderr tail: {proc.stderr[-2000:]}"
+        )
+
+
+def ensure_isolated_kernel() -> Path:
+    """Provision the isolated langchain kernelspec; idempotent (261003-csd).
+
+    Creates, when not already resolvable with a live interpreter:
+
+    1. the throwaway venv ``.scratch/mcp-example-venvs/langchain``
+       (``uv venv`` when uv sits next to the running interpreter or on
+       PATH, else ``python -m venv``);
+    2. ``ipykernel`` + ``nest-asyncio`` inside it (nest-asyncio is
+       pre-seeded because notebook cell 4 imports it while the
+       notebook's own install cells never install it);
+    3. the user-level ``dnallm-mcp-langchain`` kernelspec via
+       ``ipykernel install --user``;
+    4. a post-install ``kernel.json`` edit adding ``env.VIRTUAL_ENV``
+       pinned to the throwaway venv (ipykernel's installer has no env
+       flag) -- uv honors VIRTUAL_ENV, so the notebook's own
+       ``!uv pip install -U`` cells target the throwaway venv by
+       construction.
+
+    Returns:
+        The kernelspec directory (the pre-existing one when it was
+        already valid).
+
+    Raises:
+        RuntimeError: any provisioning step failed.  This helper is only
+            called after the stack gate is GREEN, so an environment that
+            claims readiness but cannot provision is an owner-visible
+            failure -- never a skip.
+    """
+    spec_dir = _resolve_kernelspec_dir(LANGCHAIN_KERNEL_NAME)
+    if spec_dir is not None:
+        kernel_json = spec_dir / "kernel.json"
+        try:
+            argv0 = json.loads(kernel_json.read_text(encoding="utf-8"))["argv"][0]
+        except (OSError, ValueError, KeyError, IndexError):
+            argv0 = None
+        if argv0 and Path(argv0).is_file():
+            return spec_dir  # idempotent no-op: spec resolves, interpreter lives
+
+    # Broken/partial state from an earlier attempt: clear both halves so
+    # provisioning starts from scratch (both live under scratch/user land).
+    if spec_dir is not None and spec_dir.is_dir():
+        shutil.rmtree(spec_dir)
+
+    uv_next_to_py = Path(sys.executable).with_name("uv")
+    uv_bin = uv_next_to_py if uv_next_to_py.is_file() else shutil.which("uv")
+    uv_bin_str = str(uv_bin) if uv_bin else None
+
+    venv_python = LANGCHAIN_VENV_DIR / "bin" / "python"
+    if not venv_python.is_file():
+        if LANGCHAIN_VENV_DIR.exists():
+            shutil.rmtree(LANGCHAIN_VENV_DIR)  # partial venv from an earlier attempt
+        LANGCHAIN_VENV_DIR.parent.mkdir(parents=True, exist_ok=True)
+        if uv_bin_str is not None:
+            _run_provision_step(
+                "uv venv", [uv_bin_str, "venv", "--python", sys.executable, str(LANGCHAIN_VENV_DIR)]
+            )
+        else:
+            _run_provision_step(
+                "python -m venv", [sys.executable, "-m", "venv", str(LANGCHAIN_VENV_DIR)]
+            )
+
+    if uv_bin_str is not None:
+        _run_provision_step(
+            "uv pip install ipykernel nest-asyncio",
+            [
+                uv_bin_str,
+                "pip",
+                "install",
+                "--python",
+                str(venv_python),
+                "ipykernel",
+                "nest-asyncio",
+            ],
+        )
+    else:
+        _run_provision_step(
+            "venv pip install ipykernel nest-asyncio",
+            [str(venv_python), "-m", "pip", "install", "ipykernel", "nest-asyncio"],
+        )
+
+    _run_provision_step(
+        "ipykernel install --user",
+        [
+            str(venv_python),
+            "-m",
+            "ipykernel",
+            "install",
+            "--user",
+            "--name",
+            LANGCHAIN_KERNEL_NAME,
+            "--display-name",
+            "Python (dnallm mcp langchain isolated)",
+        ],
+    )
+
+    spec_dir = _resolve_kernelspec_dir(LANGCHAIN_KERNEL_NAME)
+    if spec_dir is None:
+        raise RuntimeError(
+            f"kernelspec {LANGCHAIN_KERNEL_NAME!r} still unresolvable after "
+            "ipykernel install --user"
+        )
+    kernel_json = spec_dir / "kernel.json"
+    spec = json.loads(kernel_json.read_text(encoding="utf-8"))
+    spec.setdefault("env", {})["VIRTUAL_ENV"] = str(LANGCHAIN_VENV_DIR)
+    kernel_json.write_text(json.dumps(spec, indent=1) + "\n", encoding="utf-8")
+    return spec_dir
 
 
 def run_marimo_app(

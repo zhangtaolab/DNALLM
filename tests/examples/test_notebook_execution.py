@@ -14,16 +14,27 @@ and :class:`TestGatedNotebookExecution` covers the environment-gated set
 with probe-then-execute typed skips -- the rollout never widens
 silently (census FAIL items stay census rows and the Phase 8 repair
 queue; finetune_generation joined the gated lane with the megaDNA gate,
-its data-prep half repaired and evidenced 261002-sl7).
+its data-prep half repaired and evidenced 261002-sl7).  The mcp client
+pair moved to its owner-approved EXECUTE state 261003-csd (D-08: both
+endpoints up executes for real, the langchain sibling routed through
+the isolated ``dnallm-mcp-langchain`` kernelspec, any endpoint down
+typed-skips with both live probe results -- the T-05-16
+never-auto-execute sentinel is retired).
 """
 
 from __future__ import annotations
 
 import importlib.util
+import inspect
+import socket
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
+import threading
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import nbformat
@@ -34,8 +45,10 @@ from nbclient.exceptions import CellExecutionError, CellTimeoutError
 
 from tests.examples._execution import (
     EXAMPLE_DIR,
+    LANGCHAIN_KERNEL_NAME,
     NOTEBOOK_EXEC_SPECS,
     assert_tree_clean,
+    ensure_isolated_kernel,
     network_unavailable_skip,
     optional_dep_skip,
     run_notebook,
@@ -309,6 +322,141 @@ class TestSeedSandbox:
         assert not escaped.exists(), "the guard must reject before anything is written outside"
 
 
+class TestProbeHonesty:
+    """4xx-honesty contract for :func:`_probe_http` (261003-csd, fact 4).
+
+    MCP streamable-http endpoints answer a bare GET with a 4xx (session /
+    method semantics) and urllib raises ``HTTPError`` on 4xx, so folding
+    any 4xx into "down" made a genuinely-up server probe unreachable
+    forever.  Any HTTP answer below 500 must count as reachable;
+    transport failures stay verbatim down evidence.
+    """
+
+    def test_http_405_answer_counts_as_reachable(self) -> None:
+        """A local 405-returning http.server probes (True, evidence citing 405)."""
+
+        class _Always405(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # http.server API name
+                self.send_response(405)
+                self.end_headers()
+
+            def log_message(self, format: str, *args: object) -> None:
+                return  # keep the test output silent
+
+        server = HTTPServer(("127.0.0.1", 0), _Always405)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            url = f"http://127.0.0.1:{server.server_address[1]}/mcp"
+            ok, evidence = _probe_http(url, timeout_s=5.0)
+        finally:
+            server.shutdown()
+            server.server_close()
+        assert ok is True, (
+            f"a 405 answer proves a server is bound there (got evidence {evidence!r})"
+        )
+        assert "405" in evidence
+
+    def test_unbound_port_probes_down_with_verbatim_evidence(self) -> None:
+        """A freed local port probes (False, non-empty transport evidence)."""
+        sock = socket.socket()
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+        sock.close()
+        ok, evidence = _probe_http(f"http://127.0.0.1:{port}/", timeout_s=5.0)
+        assert ok is False
+        assert evidence, "the down direction must carry verbatim transport evidence"
+
+
+class TestGateMatrix:
+    """Execute-state gate semantics for the ollama/mcp stack (D-08, 261003-csd).
+
+    Owner decision D-08/T-05-16 (2026-10-03) retired the never-auto-execute
+    sentinel: both endpoints up is now the owner-approved EXECUTE state
+    (ollama/VRAM coexistence sanctioned).  Any endpoint down stays an
+    honest typed skip carrying BOTH live probe results, with no
+    deferred-coexistence clause and no pytest.fail path anywhere.
+    """
+
+    OLLAMA_UP = (True, "ollama-fake-evidence")
+    OLLAMA_DOWN = (False, "ollama-down-evidence")
+    SERVER_UP = (True, "server-fake-evidence")
+    SERVER_DOWN = (False, "server-down-evidence")
+
+    @staticmethod
+    def _patch_probes(
+        monkeypatch: pytest.MonkeyPatch,
+        ollama: tuple[bool, str],
+        server: tuple[bool, str],
+    ) -> None:
+        """Point both gate probes at canned (reachable, evidence) pairs."""
+
+        def fake_probe(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
+            return ollama if url == OLLAMA_URL else server
+
+        # Patch the RUNNING module object, not a re-imported copy: tests/
+        # is not a regular package, so a dotted-string target would import
+        # a second module object and leave the gate reading real probes.
+        monkeypatch.setattr(sys.modules[__name__], "_probe_http", fake_probe)
+
+    def test_both_up_executes_with_plain_return(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Both probes green -> the gate returns None (the caller executes)."""
+        self._patch_probes(monkeypatch, self.OLLAMA_UP, self.SERVER_UP)
+        assert _gate_ollama_stack("nb.ipynb") is None
+
+    @pytest.mark.parametrize(
+        ("ollama", "server"),
+        [(OLLAMA_UP, SERVER_DOWN), (OLLAMA_DOWN, SERVER_UP), (OLLAMA_DOWN, SERVER_DOWN)],
+        ids=["server-down", "ollama-down", "both-down"],
+    )
+    def test_any_down_skips_typed_with_both_probe_evidence(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        ollama: tuple[bool, str],
+        server: tuple[bool, str],
+    ) -> None:
+        """Any endpoint down -> network-unavailable skip carrying both evidence strings."""
+        self._patch_probes(monkeypatch, ollama, server)
+        with pytest.raises(pytest.skip.Exception) as excinfo:
+            _gate_ollama_stack("nb.ipynb")
+        message = str(excinfo.value.args[0])
+        assert message.startswith("network-unavailable:"), message
+        assert "ollama-fake-evidence" in message or "ollama-down-evidence" in message, message
+        assert "server-fake-evidence" in message or "server-down-evidence" in message, message
+        assert "deferred pending" not in message, (
+            "the retired Phase-8 coexistence-deferral clause must not appear"
+        )
+
+
+class TestKernelPlumbing:
+    """Spec-level kernel routing for the isolated langchain lane (261003-csd).
+
+    The langchain notebook executes under the dedicated ``dnallm-mcp-langchain``
+    kernelspec (kernel.json env ``VIRTUAL_ENV`` pinned to the throwaway
+    ``.scratch/mcp-example-venvs/langchain`` venv, so the notebook's own
+    ``!uv pip install -U`` cells never touch the project venv); the
+    pydantic_ai sibling has no install cells and keeps the project-venv
+    ``python3`` kernel; ``run_notebook`` defaults to ``python3`` so every
+    existing caller is unchanged.
+    """
+
+    LANGCHAIN_SPEC = str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_langchain_agents.ipynb")
+    PYDANTIC_SPEC = str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_pydantic_ai.ipynb")
+
+    def test_langchain_spec_pins_isolated_kernel(self) -> None:
+        """The langchain mcp spec routes execution to the isolated kernelspec."""
+        assert NOTEBOOK_EXEC_SPECS[self.LANGCHAIN_SPEC]["kernel_name"] == "dnallm-mcp-langchain"
+
+    def test_pydantic_ai_spec_keeps_default_project_kernel(self) -> None:
+        """The pydantic_ai mcp spec carries no kernel override (python3 default)."""
+        assert "kernel_name" not in NOTEBOOK_EXEC_SPECS[self.PYDANTIC_SPEC]
+
+    def test_run_notebook_kernel_name_defaults_to_python3(self) -> None:
+        """run_notebook exposes kernel_name with the project-kernel default."""
+        params = inspect.signature(run_notebook).parameters
+        assert params["kernel_name"].default == "python3"
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
@@ -316,20 +464,34 @@ class TestSeedSandbox:
 # dnallm/mcp/tests/_network_skip.py: the probe runs at TEST time and the
 # typed skip carries the live probe evidence; when the environment does
 # provide the prerequisites the notebook executes for real (D-05
-# execute-first), and a probe-green-but-forbidden state fails loudly
-# instead of skipping.  Non-qualifying execution failures always
-# re-raise -- never converted to skips.
+# execute-first).  The mcp pair's probe-green-but-forbidden sentinel
+# (T-05-16) was retired by owner decision D-08 of 2026-10-03: both-up is
+# now the owner-approved execute state, with the langchain sibling
+# running under its isolated kernelspec.  Non-qualifying execution
+# failures always re-raise -- never converted to skips.
 
 OLLAMA_URL = "http://localhost:11434/api/tags"
 MCP_ENDPOINT = "http://localhost:8000/mcp"
 
 
 def _probe_http(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
-    """GET *url*; return (reachable, evidence) without side effects."""
+    """GET *url*; return (reachable, evidence) without side effects.
+
+    Any HTTP answer below 500 counts as REACHABLE (261003-csd): MCP
+    streamable-http endpoints answer a bare GET with a 4xx (session /
+    method semantics) and urllib raises ``HTTPError`` on 4xx, so folding
+    4xx into "down" made a genuinely-up server probe unreachable forever.
+    URLError / timeout / generic exceptions remain (False, verbatim
+    evidence).
+    """
     try:
         # ruff: ignore[suspicious-url-open-usage]  # probe constants only
         with urllib.request.urlopen(url, timeout=timeout_s) as response:
             return True, f"HTTP {response.status}"
+    except urllib.error.HTTPError as exc:
+        if exc.code < 500:
+            return True, f"HTTP {exc.code} ({exc.reason})"
+        return False, f"{type(exc).__name__}: {exc}"
     except Exception as exc:  # probe reports any transport failure verbatim
         return False, f"{type(exc).__name__}: {exc}"
 
@@ -341,35 +503,34 @@ def _probe_module(name: str) -> tuple[bool, str]:
 
 
 def _gate_ollama_stack(nb_name: str) -> None:
-    """Gate for the two mcp client notebooks (T-05-16: never auto-execute).
+    """Gate for the two mcp client notebooks (D-08 execute state, 261003-csd).
 
     The notebooks talk to ollama at :11434 AND the dnallm MCP server at
-    :8000/mcp; the langchain sibling additionally begins with ``uv pip
-    install`` cells that must never run against the project venv.  Any
-    unreachable endpoint is an honest network-unavailable skip carrying
-    both live probe results; both endpoints up is the Phase-8-only state
-    (ollama/VRAM coexistence plan + isolated install env), which fails
-    loudly as an owner decision rather than silently skipping.
+    :8000/mcp; the langchain sibling runs under the isolated
+    ``dnallm-mcp-langchain`` kernelspec so its ``uv pip install`` cells
+    never touch the project venv.  Both endpoints up -> plain return: the
+    notebook executes for real (owner decision D-08/T-05-16 of 2026-10-03
+    retired the never-auto-execute sentinel; ollama/VRAM coexistence is
+    owner-sanctioned).  Any unreachable endpoint is an honest
+    network-unavailable skip carrying both live probe results.
     """
     ollama_ok, ollama_ev = _probe_http(OLLAMA_URL)
     server_ok, server_ev = _probe_http(MCP_ENDPOINT)
+    if ollama_ok and server_ok:
+        return
     evidence = (
         f"ollama probe {OLLAMA_URL}: {'GREEN' if ollama_ok else 'down'} ({ollama_ev}); "
         f"dnallm MCP server {MCP_ENDPOINT}: {'up' if server_ok else 'unreachable'} "
         f"({server_ev})"
     )
+    missing = []
     if not server_ok:
-        network_unavailable_skip(
-            f"execute {nb_name} (mcp client notebook)",
-            evidence=evidence + "; execution additionally deferred pending the Phase-8 ollama/VRAM "
-            "coexistence plan (owner decision, D-08/T-05-16)",
-        )
+        missing.append(f"dnallm MCP server {MCP_ENDPOINT} unreachable")
     if not ollama_ok:
-        network_unavailable_skip(f"execute {nb_name} (mcp client notebook)", evidence=evidence)
-    pytest.fail(
-        f"{nb_name}: both local endpoints are up, but executing the mcp notebooks in "
-        "Phase 5 is forbidden (uv pip install cells would mutate the project venv, "
-        "T-05-16) -- needs the Phase-8 ollama coexistence plan (owner decision)"
+        missing.append(f"ollama {OLLAMA_URL} unreachable")
+    network_unavailable_skip(
+        f"execute {nb_name} (mcp client notebook)",
+        evidence=f"{'; '.join(missing)}; {evidence}",
     )
 
 
@@ -469,10 +630,18 @@ class TestGatedNotebookExecution:
         gate(gated_id)
         nb_path = EXAMPLE_DIR / gated_id
         spec = NOTEBOOK_EXEC_SPECS[str(nb_path)]
+        kernel = spec.get("kernel_name", "python3")
+        if kernel == LANGCHAIN_KERNEL_NAME:
+            # Provision (idempotent) BEFORE spawning; a failure here raises
+            # -- and an unprovisioned spec would raise NoSuchKernel before
+            # any cell runs, so the project venv is unreachable by
+            # construction (T-mcp1-01).
+            ensure_isolated_kernel()
         run_notebook(
             nb_path,
             gated_sandbox,
             cell_timeout=spec["cell_timeout"],
             artifact_dir=tmp_path / "artifacts",
+            kernel_name=kernel,
         )
         assert_tree_clean()
