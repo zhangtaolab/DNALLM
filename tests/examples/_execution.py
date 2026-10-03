@@ -88,8 +88,10 @@ LANGCHAIN_VENV_DIR = REPO_ROOT / ".scratch" / "mcp-example-venvs" / "langchain"
 # duplicated here: a spec-side copy of the outer budget was never
 # consulted by the test layer and went stale enough to hide a
 # strictly-below violation once (05 review WR-02/WR-03), so the specs
-# carry only budgets this harness itself enforces.  All 21 example
-# notebooks carry starter budgets (05-05, D-08 census); the execution
+# carry only budgets this harness itself enforces.  All 21 census example
+# notebooks carry starter budgets (05-05, D-08); the two Phase-7
+# showcase-lane entries below are budget-only (their tests live in
+# tests/examples/test_plant_helixseek_showcase.py).  The execution
 # test's ACTIVE_NOTEBOOKS list gates which ones actually run -- 05-06
 # grows it with census-green notebooks.  Budgets follow the per-class ladder
 # of the existing real-model precedents (tests/models/test_model.py
