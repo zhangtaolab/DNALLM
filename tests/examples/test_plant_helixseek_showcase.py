@@ -28,6 +28,7 @@ from __future__ import annotations
 import ast
 import json
 import re
+import shutil
 from pathlib import Path
 
 import pytest
@@ -326,6 +327,16 @@ class TestPlantHelixSeekShowcaseStructure:
 @pytest.mark.timeout(CRE_TEST_TIMEOUT_S)
 def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
     """Re-execute the committed CRE notebook in-sandbox; assert parsed bands (D-13/D-14)."""
+    # The notebook's `bedtools jaccard` agreement cell runs subprocess.run
+    # (check=True); nothing in the nightly job provisions bedtools, so a
+    # rebuilt runner would die inside the kernel with a bare FileNotFoundError.
+    # Fail loud up front instead, pointing at the wrapper's prerequisites.
+    assert shutil.which("bedtools") is not None, (
+        "bedtools is not on PATH -- the CRE notebook's jaccard agreement step "
+        "requires bedtools v2.31+ (see 'Prerequisites' in "
+        "docs/example/notebooks/plant_helixseek_cre.md)"
+    )
+
     spec = NOTEBOOK_EXEC_SPECS[str(CRE_NB)]
     # Pitfall 6: the harness contract requires cell_timeout < the outer mark,
     # else pytest-timeout preempts nbclient's clean CellTimeoutError handling.
