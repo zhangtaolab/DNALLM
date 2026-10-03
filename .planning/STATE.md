@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Example Execution Testing & Repair
 current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
-status: planning
-stopped_at: Phase 05 complete, ready to plan Phase 06
-last_updated: "2026-10-03T06:25:44.804Z"
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-10-03T07:08:29.942Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 05 complete, transitioned to Phase 06
-state_head: 56a72c91be633b48c200bc6d7a9deb84b4524062
+last_activity_desc: Phase 06 execution started
+state_head: 695a79c2b8dbc4c752128342f3d41d97b0497b04
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 ## Current Position
 
-Phase: 06 — Model Registry & Showcase Data Curation
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-03 — Completed quick task 261003-jpr: IN-01 fixed (transformers_compat absence guards on the three sl7 installers + dynamic absence-contract test class; commits cad7370/56a72c9)
+Phase: 06 (Model Registry & Showcase Data Curation) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-10-03 — Phase 06 execution started
 
 Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
 
@@ -68,6 +68,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase 05-04 P04 | 23 min | 2 tasks | 3 files |
 | Phase 05-05 P05 | 29 min | 3 tasks | 8 files |
 | Phase 05-06 P06 | 151min | 3 tasks | 5 files |
+| Phase 06 P01 | 19 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [quick 261003-csd]: D-08 closed — mcp client pair moved to the owner-approved EXECUTE state (T-05-16 sentinel retired 2026-10-03): both-up executes, any-down typed-skips with both live probe results, proven in both directions; langchain notebook runs under isolated kernelspec dnallm-mcp-langchain (VIRTUAL_ENV pinned to .scratch throwaway venv — project venv provably untouched)
 - [quick 261003-csd]: two real MCP serving bugs fixed with same-change tests: single-flight inference (concurrent DataLoader forks + filelock = fork-unsafe deadlock; every multi-model predict used to time out) and dna_interpret mamba guard (captum backward on DNAMamba SIGKILLs the whole server, exit 137 repro); also discovered CLI --host/--port are dead flags (yaml always wins, deferred-items.md)
 - [Phase 05 close 2026-10-03]: stale-digest re-verification passed 25/25 at 80b40a5 — NT smoke real-green (se3+sl7 shims), WR-04 rice network lane executed by the verifier; incremental review of the quick-task delta recorded 1C/1W/3I open (CR-01: single-flight asyncio lock releases on timeout cancellation → concurrent infer_seqs possible)
+- [Phase 06]: 06-01: PlantHelixSeek label order frozen from upstream train_token_cls.py:78-96 (checkpoint configs carry none — Anno id2label is LABEL_i placeholders, CRE absent; re-proven live by the freeze run)
+- [Phase 06]: 06-01: smoke-test forwards run under torch.no_grad() — autograd over the 8192 bp Anno eager-attention window OOM-kills the box; research memory budgets were measured no-grad
+- [Phase 06]: 06-01: one-shot freeze tooling lives uncommitted in example/notebooks/plant_helixseek_shared/.scratch/ (owner constraint); only outcome artifacts committed (yaml + 2 tests + scratch-home .gitignore)
 
 ### Pending Todos
 
@@ -141,8 +145,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T13:47:00+08:00
-Stopped at: Quick task 261003-ij4 (WR-01) complete; ready to plan Phase 06
+Last session: 2026-10-03T07:08:29.921Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
 
 ## Deferred Verification

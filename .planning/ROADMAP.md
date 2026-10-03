@@ -75,11 +75,11 @@ Plans:
   2. Committed in-repo Arabidopsis fragments ≤200kb per region exist with truth slices (CRE ↔ PlantDHS `TAIR10_DHSs.gff`; Anno ↔ TAIR10 GFF3), a selection-rationale doc, and one negative-control locus; the selected loci were verified for substantial prediction-truth agreement, and download intermediates stay gitignored (clean tree)
   3. The shared coordinate/chrom-name normalization helper (0-based half-open ↔ 1-based closed; `Chr1` ↔ `1`) passes unit tests on tiny fixtures, and every genomics code path uses it with non-emptiness assertions against silent-empty results
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
-- [ ] 06-01-PLAN.md — Registry tracer: one-shot scratch freeze run (constraint proof + provenance) + two model_info.yaml entries + fast-leg structure test + slow-leg ModelScope smoke with id2label equality (REG-01, REG-02, REG-03)
+- [x] 06-01-PLAN.md — Registry tracer: one-shot scratch freeze run (constraint proof + provenance) + two model_info.yaml entries + fast-leg structure test + slow-leg ModelScope smoke with id2label equality (REG-01, REG-02, REG-03)
 - [ ] 06-02-PLAN.md — SHOW-02 helper: dnallm/utils/genomic_coords.py (coordinate/chrom normalization, non-emptiness guards) + unit tests + package re-export (SHOW-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -134,7 +134,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
-| 6. Model Registry & Showcase Data Curation | v1.1 | 0/3 | Planning complete | - |
+| 6. Model Registry & Showcase Data Curation | v1.1 | 1/3 | In Progress|  |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |

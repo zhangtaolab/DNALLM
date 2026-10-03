@@ -41,9 +41,9 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 
 ### PlantHelixSeek Registry
 
-- [ ] **REG-01**: `model_info.yaml` finetuned-section entries for `PlantHelixSeek-CRE` (binary, num_labels 2) and `PlantHelixSeek-Anno` (token, num_labels 17) loadable through the existing generic task-type route (no special handler)
-- [ ] **REG-02**: Anno `label_names` frozen to the checkpoint's exact `config.id2label` order; the execution test asserts `model.config.id2label` equality after load (silent-permutation guard)
-- [ ] **REG-03**: Smoke-load of both checkpoints via the dnallm route succeeds on the transformers 5.x dev environment (compat risk gate before any showcase work freezes)
+- [x] **REG-01**: `model_info.yaml` finetuned-section entries for `PlantHelixSeek-CRE` (binary, num_labels 2) and `PlantHelixSeek-Anno` (token, num_labels 17) loadable through the existing generic task-type route (no special handler)
+- [x] **REG-02**: Anno `label_names` frozen to the checkpoint's exact `config.id2label` order; the execution test asserts `model.config.id2label` equality after load (silent-permutation guard)
+- [x] **REG-03**: Smoke-load of both checkpoints via the dnallm route succeeds on the transformers 5.x dev environment (compat risk gate before any showcase work freezes)
 
 ### Showcase
 
@@ -114,9 +114,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-08 | Phase 9 | Pending |
 | CI-09 | Phase 9 | Pending |
 | FEAS-01 | Phase 5 | Complete |
-| REG-01 | Phase 6 | Pending |
-| REG-02 | Phase 6 | Pending |
-| REG-03 | Phase 6 | Pending |
+| REG-01 | Phase 6 | Complete |
+| REG-02 | Phase 6 | Complete |
+| REG-03 | Phase 6 | Complete |
 | SHOW-01 | Phase 6 | Pending |
 | SHOW-02 | Phase 6 | Pending |
 | SHOW-03 | Phase 7 | Pending |
