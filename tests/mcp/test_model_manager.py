@@ -379,6 +379,32 @@ class TestSingleFlightInference:
     def _registry() -> dict[str, Any]:
         return {"lock": threading.Lock(), "active": 0, "max_active": 0}
 
+    @staticmethod
+    def _blocking_engine(
+        registry: dict[str, Any], started: threading.Event, release: threading.Event
+    ) -> Mock:
+        """Build an engine whose infer_seqs blocks until released.
+
+        The controllable stand-in for a slow real predict: a minutes-long
+        ``infer_seqs`` with DataLoader worker forks that the tool timeout
+        cancels mid-flight.  The bounded ``release.wait(timeout=10)`` keeps a
+        failing run from wedging pytest-timeout.
+        """
+
+        def infer_seqs(sequences: Any, **kwargs: Any) -> dict[str, Any]:
+            with registry["lock"]:
+                registry["active"] += 1
+                registry["max_active"] = max(registry["max_active"], registry["active"])
+            started.set()
+            release.wait(timeout=10)
+            with registry["lock"]:
+                registry["active"] -= 1
+            return {"probabilities": [0.5, 0.5]}
+
+        engine = Mock()
+        engine.infer_seqs = Mock(side_effect=infer_seqs)
+        return engine
+
     @pytest.mark.asyncio
     async def test_multi_model_predicts_execute_single_flight(self, manager):
         """Gathered multi-model predicts never overlap executor inference."""
@@ -411,6 +437,57 @@ class TestSingleFlightInference:
         )
         assert seq_result == {"probabilities": [0.5, 0.5]}
         assert batch_result == {"probabilities": [0.5, 0.5]}
+
+    @pytest.mark.asyncio
+    async def test_timeout_cancellation_does_not_release_single_flight(self, manager):
+        """Timeout-cancelling a predict's await must not release the flight (CR-01).
+
+        The tool timeout wrapper (``_with_timeout_wrapper``, server.py) cancels
+        the awaiting coroutine via ``asyncio.wait_for`` while the uncancellable
+        executor thread keeps running the orphaned ``infer_seqs``.  A client
+        that immediately retries then starts a second ``infer_seqs``
+        concurrently unless single-flight spans the worker-thread lifetime —
+        reopening the fork-unsafe / hung-server window the 261003-csd fix
+        closed.
+
+        The two tests above missed this because they only exercise
+        well-behaved concurrent awaits: an ``asyncio.Lock`` serializes those
+        correctly and only misbehaves when the await itself is cancelled
+        (the ``async with`` block exits, releasing the lock, while the
+        executor thread lives on).
+        """
+        registry = self._registry()
+        orphan_started = threading.Event()
+        release = threading.Event()
+        manager.loaded_models["model-a"] = self._blocking_engine(registry, orphan_started, release)
+        retry_engine = self._counting_engine(registry)
+        manager.loaded_models["model-b"] = retry_engine
+
+        # Predict #1 hits the tool timeout — the same cancellation
+        # _with_timeout_wrapper delivers — abandoning its infer_seqs to the
+        # executor thread.
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(manager.predict_sequence("model-a", "ATCG"), timeout=0.2)
+        assert orphan_started.is_set()
+
+        # The client's immediate retry must stay OUT of infer_seqs while the
+        # orphan is still inside it.  This assertion is what fails on the
+        # pre-fix asyncio.Lock code (call_count 1: the retry ran concurrently).
+        retry_task = asyncio.create_task(manager.predict_sequence("model-b", "ATCG"))
+        await asyncio.sleep(0.2)
+        assert retry_engine.infer_seqs.call_count == 0, (
+            "retry entered infer_seqs while the orphaned predict was still "
+            "running — single-flight was released by the timeout cancellation"
+        )
+
+        release.set()
+        retry_result = await asyncio.wait_for(retry_task, timeout=5)
+        assert retry_result == {"probabilities": [0.5, 0.5]}
+        assert retry_engine.infer_seqs.call_count == 1
+        assert registry["max_active"] == 1, (
+            f"concurrent infer_seqs calls observed across the cancellation "
+            f"boundary (max {registry['max_active']})"
+        )
 
 
 class TestModelInfo:

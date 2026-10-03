@@ -5,6 +5,7 @@ including model loading, caching, and prediction orchestration.
 """
 
 import asyncio
+import threading
 from typing import Any
 from loguru import logger as loguru_logger
 import torch
@@ -32,12 +33,20 @@ class ModelManager:
         self.loaded_models: dict[str, DNAInference] = {}
         self.model_loading_status: dict[str, str] = {}  # "loading", "loaded", "error"
         self._loading_lock = asyncio.Lock()
-        # Single-flight inference (261003-csd): infer_seqs builds a
+        # Single-flight inference (261003-csd), hardened across the
+        # cancellation boundary (CR-01, 261003-hhj): infer_seqs builds a
         # DataLoader(num_workers>0) whose worker spawn forks; concurrent
         # forks from several executor threads while a hub-cache filelock
         # changes descriptor ownership raise "os.fork is unsafe ..." in one
         # thread and hang another, so all predict traffic serializes here.
-        self._infer_lock = asyncio.Lock()
+        # The lock is acquired INSIDE the executor-submitted callable, so
+        # cancelling the awaiting coroutine (tool timeout via
+        # _with_timeout_wrapper in server.py) abandons only the result —
+        # the orphaned executor thread keeps the flight until infer_seqs
+        # returns, and the next predict waits in the executor until the
+        # fork-unsafe window closes.  Single-flight thus spans the
+        # worker-thread lifetime, not the coroutine lifetime.
+        self._infer_thread_lock = threading.Lock()
 
     async def load_model(self, model_name: str) -> bool:
         """Load a specific model asynchronously.
@@ -242,14 +251,17 @@ class ModelManager:
             return None
 
         try:
-            # Run prediction in thread pool to avoid blocking, single-flight:
-            # concurrent DataLoader worker forks are unsafe under threaded
-            # serving (see _infer_lock), so only one infer_seqs runs at a time.
+            # Run prediction in thread pool to avoid blocking, single-flight
+            # across worker-thread lifetimes (see _infer_thread_lock): the
+            # lock is held inside the executor closure, so a cancelled await
+            # cannot release the flight while the orphaned infer_seqs runs.
             loop = asyncio.get_event_loop()
-            async with self._infer_lock:
-                result = await loop.run_in_executor(
-                    None, inference_engine.infer_seqs, sequence, **kwargs
-                )
+
+            def _single_flight_infer() -> Any:
+                with self._infer_thread_lock:
+                    return inference_engine.infer_seqs(sequence, **kwargs)
+
+            result = await loop.run_in_executor(None, _single_flight_infer)
             return result  # type: ignore
         except Exception as e:
             logger.error(f"Prediction failed for model {model_name}: {e}")
@@ -275,12 +287,17 @@ class ModelManager:
 
         try:
             # Run prediction in thread pool to avoid blocking, single-flight
-            # (same _infer_lock contract as predict_sequence)
+            # across worker-thread lifetimes (same _infer_thread_lock
+            # contract as predict_sequence: the lock is held inside the
+            # executor closure, so a cancelled await cannot release the
+            # flight while the orphaned infer_seqs runs).
             loop = asyncio.get_event_loop()
-            async with self._infer_lock:
-                result = await loop.run_in_executor(
-                    None, inference_engine.infer_seqs, sequences, **kwargs
-                )
+
+            def _single_flight_infer() -> Any:
+                with self._infer_thread_lock:
+                    return inference_engine.infer_seqs(sequences, **kwargs)
+
+            result = await loop.run_in_executor(None, _single_flight_infer)
             return result  # type: ignore
         except Exception as e:
             logger.error(f"Batch prediction failed for model {model_name}: {e}")
