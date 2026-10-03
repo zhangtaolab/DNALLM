@@ -18,6 +18,7 @@ conversion code is silence (empty results, off-by-one bases), never a loud
 error, so silent-empty results are structurally impossible here.
 """
 
+import contextlib
 import re
 from pathlib import Path
 
@@ -133,6 +134,9 @@ def fetch_sequence(fa, chrom: str, start: int, end: int, *, uppercase: bool = Tr
         fa: An open ``pyfastx.Fasta`` index, or a path to a FASTA file
             (opened lazily — pyfastx is a dev extra, imported only inside
             this function so importing the module never requires it).
+            The path branch is read-only: it releases the index and removes
+            a ``.fxi`` sidecar it created, preserves a pre-existing one,
+            and never closes a caller-owned index.
         chrom: Chromosome name in any documented style; normalized (TAIR)
             before the lookup.
         start: 1-based inclusive start (GFF3 convention).
@@ -149,14 +153,32 @@ def fetch_sequence(fa, chrom: str, start: int, end: int, *, uppercase: bool = Tr
     """
     start, end = _validate_gff1(start, end)
     chrom = normalize_chrom(chrom)
-    if isinstance(fa, (str, Path)):
+    from_path = isinstance(fa, (str, Path))
+    created_index: Path | None = None
+    if from_path:
         import pyfastx
 
+        # pyfastx builds (or reuses) a <fasta>.fxi index beside the file; one
+        # that already exists belongs to the caller and is never removed.
+        sidecar = Path(f"{fa}.fxi")
+        if not sidecar.exists():
+            created_index = sidecar
         fa = pyfastx.Fasta(fa)
     try:
         seq = fa.fetch(chrom, (start, end))
     except (KeyError, NameError) as e:  # pyfastx signals unknown names with NameError
         raise ValueError(f"Unknown chromosome {chrom!r} in FASTA index.") from e
+    finally:
+        if from_path:
+            # pyfastx.Fasta has no close()/context manager: dropping the last
+            # reference releases its file descriptors, deterministically and
+            # also on the error path (where a traceback would keep the frame
+            # alive). Cleanup must never mask the fetch result or the
+            # documented ValueError, hence the suppressed unlink.
+            fa = None
+            if created_index is not None:
+                with contextlib.suppress(OSError):
+                    created_index.unlink()
     if not seq:
         raise ValueError(f"Empty sequence fetched for {chrom!r} [{start}, {end}].")
     return seq.upper() if uppercase else seq

@@ -1,7 +1,9 @@
 """Tests for dnallm.utils.genomic_coords — shared coordinate/chrom-name helpers."""
 
 import importlib
+import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -213,6 +215,44 @@ def test_fetch_sequence_empty_result_guard():
     # SHOW-02: a silently-empty fetch is structurally impossible
     with pytest.raises(ValueError, match=r"[Ee]mpty sequence"):
         fetch_sequence(_EmptyFetch(), "Chr1", 10, 20)
+
+
+def test_fetch_sequence_path_branch_creates_no_fxi_sidecar(tmp_path):
+    # IN-01: the path branch is read-only — after fetching from a fresh FASTA
+    # no pyfastx .fxi index sidecar is left beside it, and the FASTA itself
+    # is untouched.
+    fa_path = _write_fasta(tmp_path)
+    original = fa_path.read_bytes()
+    assert fetch_sequence(str(fa_path), "Chr1", 10, 20) == FASTA_SEQ[9:20]
+    assert not (tmp_path / "mini.fas.fxi").exists()
+    assert fa_path.read_bytes() == original
+
+
+def test_fetch_sequence_path_branch_preserves_preexisting_fxi(tmp_path):
+    # IN-01: a .fxi sidecar that existed before the call belongs to the
+    # caller (or the user); it is reused and never deleted by the path branch.
+    import pyfastx
+
+    fa_path = _write_fasta(tmp_path)
+    index = pyfastx.Fasta(str(fa_path))  # builds mini.fas.fxi
+    del index  # release the handle; the sidecar stays on disk (caller-owned)
+    sidecar = tmp_path / "mini.fas.fxi"
+    assert sidecar.exists()
+    assert fetch_sequence(str(fa_path), "Chr1", 10, 20) == FASTA_SEQ[9:20]
+    assert sidecar.exists()
+
+
+@pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(), reason="fd accounting needs /proc (Linux only)"
+)
+def test_fetch_sequence_path_branch_leaks_no_file_descriptors(tmp_path):
+    # IN-01: pyfastx.Fasta has no close()/context manager; the path branch
+    # must drop its reference so the held file descriptors are released
+    # before the function returns.
+    fa_path = _write_fasta(tmp_path)
+    before = len(os.listdir("/proc/self/fd"))
+    assert fetch_sequence(str(fa_path), "Chr1", 10, 20) == FASTA_SEQ[9:20]
+    assert len(os.listdir("/proc/self/fd")) == before
 
 
 # ─────────────────────────────────────────────────────────────────────────────
