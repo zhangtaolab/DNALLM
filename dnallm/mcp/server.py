@@ -1516,6 +1516,28 @@ class DNALLMMCPServer:
             tokenizer = inference_engine.tokenizer
             config = inference_engine.config
 
+            # Mamba guard (261003-csd): captum gradient backward on
+            # Mamba-family models (pure-PyTorch fallback backend when the
+            # CUDA selective-scan kernels are absent) exhausts memory and
+            # the whole serving process is SIGKILLed at driver level --
+            # repro: lig and layer_conductance on the open_chromatin
+            # DNAMamba model exit 137 in-process.  Refuse cleanly instead
+            # of killing the server for every connected client.
+            try:
+                guard_config = self.model_manager.config_manager.get_model_config(model_name)
+                architecture = str(guard_config.model.task_info.architecture or "")
+            except Exception:
+                architecture = ""
+            if "mamba" in architecture.lower():
+                return {
+                    "error": (
+                        f"Interpretation is not supported for model {model_name} "
+                        f"(architecture '{architecture}'): Mamba-family gradient "
+                        "backward passes exhaust memory and would kill the server"
+                    ),
+                    "isError": True,
+                }
+
             # Auto-select target class if not provided
             if target_class is None:
                 pred_result = await self.model_manager.predict_sequence(model_name, sequence)

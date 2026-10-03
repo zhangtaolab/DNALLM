@@ -139,6 +139,56 @@ class TestDNAInterpretTool:
             assert "attributions" in result
             assert result["method"] == "deeplift"
 
+    async def test_mamba_architecture_guard_returns_clean_error(self, mock_server):
+        """Mamba-family models refuse interpretation instead of dying (261003-csd).
+
+        Captum gradient backward on Mamba-family models (pure-PyTorch
+        fallback backend) exhausts memory and the whole serving process is
+        SIGKILLed at driver level (repro: lig and layer_conductance on the
+        open_chromatin DNAMamba model exit 137 in-process), so the tool must
+        return a typed error and never instantiate the interpreter.
+        """
+        cfg = Mock()
+        cfg.model.task_info.architecture = "DNAMamba"
+        mock_server.model_manager.config_manager.get_model_config.return_value = cfg
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            result = await mock_server._dna_interpret(
+                sequence="ATGC",
+                model_name="mamba-model",
+                method="lig",
+                target_class=0,
+            )
+
+        assert result.get("isError") is True
+        assert "not supported" in result["error"]
+        assert "mamba-model" in result["error"]
+        mock_interp_cls.assert_not_called()
+
+    async def test_non_mamba_architecture_interprets_normally(self, mock_server):
+        """Non-mamba architectures are unaffected by the guard."""
+        cfg = Mock()
+        cfg.model.task_info.architecture = "DNABERT"
+        mock_server.model_manager.config_manager.get_model_config.return_value = cfg
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret.return_value = (
+                ["A", "T", "G", "C"],
+                np.array([0.1, -0.2, 0.3, -0.1]),
+            )
+
+            result = await mock_server._dna_interpret(
+                sequence="ATGC",
+                model_name="bert-model",
+                method="lig",
+                target_class=1,
+            )
+
+        assert "isError" not in result or result.get("isError") is False
+        mock_interp_cls.assert_called_once()
+
     async def test_occlusion_method(self, mock_server):
         """Test Occlusion method."""
         with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
