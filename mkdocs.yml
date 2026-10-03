@@ -209,6 +209,8 @@ nav:
         - Mutagenesis: example/notebooks/mutagenesis.md
         - Interpretation: example/notebooks/interpretation.md
         - Embedding: example/notebooks/embedding_attention.md
+      - Showcase:
+        - PlantHelixSeek CRE Scan: example/notebooks/plant_helixseek_cre.md
       - Benchmarking:
         - Benchmark: example/notebooks/benchmark.md
       - Data Preparation:

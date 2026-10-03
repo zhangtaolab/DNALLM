@@ -12,6 +12,7 @@ IGNORE = {
     "outputs_multilabel",
     ".ipynb_checkpoints",
     ".gitignore",
+    ".scratch",
 }
 IGNORE_SUFFIXES = (".gz", ".log")
 # Files that exist ONLY in docs/example/ by design: the .md tutorial wrappers
