@@ -550,7 +550,10 @@ def _patch_pretrained_config_legacy_defaults():
     plain ``AttributeError``, and explicitly-set instance values shadow the
     defaults through normal attribute precedence.
     """
-    import transformers.configuration_utils
+    try:
+        import transformers.configuration_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
 
     config_cls = transformers.configuration_utils.PretrainedConfig
 
@@ -761,7 +764,10 @@ def _patch_mamba_cache():
     module does not already expose it; a module-level sentinel keeps repeat
     calls idempotent.
     """
-    import transformers.cache_utils
+    try:
+        import transformers.cache_utils
+    except Exception:  # pragma: no cover - transformers not installed / module renamed
+        return
 
     module = transformers.cache_utils
 
@@ -987,7 +993,10 @@ def _patch_legacy_init_weights_bookkeeping():
     transformers 4.x) and on a class sentinel for idempotency; an existing
     init_weights is only ever wrapped once, never replaced.
     """
-    import transformers.modeling_utils
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
 
     model_cls = transformers.modeling_utils.PreTrainedModel
 

@@ -1289,3 +1289,93 @@ class TestLegacyInitWeightsBookkeeping:
         probe.init_weights()
         assert probe.marker == "native", "4.x-shape classes must keep their native init_weights"
         assert not hasattr(_FourXStyleModel, "_dnallm_init_weights_patch")
+
+
+def _collect_patch_installers():
+    """Collect the sorted names of every ``_patch_*`` installer in the module.
+
+    Collection from ``vars(transformers_compat)`` is dynamic on purpose: a
+    future installer lands inside the absence-contract parametrization
+    automatically, so a forgotten guard fails loudly in CI instead of
+    surviving to the next code review (the exact IN-01 failure mode).
+
+    Returns:
+        A sorted list of the module's installer function names.
+    """
+    return sorted(
+        name
+        for name, value in vars(transformers_compat).items()
+        if name.startswith("_patch_") and callable(value)
+    )
+
+
+EXPECTED_PATCH_INSTALLERS = frozenset({
+    "_patch_get_parameter_or_buffer",
+    "_patch_initialize_weights_for_quantized_missing",
+    "_patch_remote_code_pruning_helpers",
+    "_patch_get_extended_attention_mask",
+    "_patch_pretrained_config_legacy_defaults",
+    "_patch_mamba_cache",
+    "_patch_deberta_vocab_dict",
+    "_patch_get_head_mask",
+    "_patch_legacy_init_weights_bookkeeping",
+})
+
+
+class TestTransformersAbsenceContract:
+    """Every installer degrades to a no-op when transformers is unimportable.
+
+    The module contract at transformers_compat.py:7-11 promises that every
+    patch no-ops when the relevant libraries are not installed, so importing
+    DNALLM never breaks an otherwise working environment. ``apply_patches()``
+    runs eagerly from the module body (reached at ``import dnallm`` through
+    dnallm/utils/__init__.py), so one unguarded installer crashes the whole
+    package import in a stripped environment or after a future transformers
+    renames a submodule (IN-01, 05-REVIEW.md:234).
+
+    The mechanism: a ``None`` entry for ``"transformers"`` in ``sys.modules``
+    makes every import form the installers use raise ``ModuleNotFoundError``
+    via parent-first resolution (live-probed at planning time) --
+    ``import transformers.<submodule>`` fails with "'transformers' is not a
+    package" and ``from transformers... import ...`` fails with "import of
+    transformers halted; None in sys.modules". The guards' broad
+    ``except Exception`` returning ``None`` is the behavior this contract
+    requires. monkeypatch restores the sys.modules entry on teardown, and
+    every installer is sentinel-gated, so the live patched classes on
+    transformers 5.17 are never disturbed.
+    """
+
+    @pytest.mark.parametrize("installer_name", _collect_patch_installers())
+    def test_installer_noops_when_transformers_unimportable(self, installer_name, monkeypatch):
+        """Under a None transformers sys.modules entry each installer returns None.
+
+        Each installer must honor the absence contract individually: the
+        try-import guard turns the ModuleNotFoundError into a plain ``None``
+        return, never a raise out of ``import dnallm``.
+        """
+        # None in sys.modules makes every transformers import form raise
+        # ModuleNotFoundError (see class docstring).
+        monkeypatch.setitem(sys.modules, "transformers", None)
+        assert getattr(transformers_compat, installer_name)() is None
+
+    def test_installer_roster_is_pinned(self):
+        """The installer roster changes only through conscious extension here.
+
+        Adding or renaming a ``_patch_*`` installer must fail this pin until
+        the roster (and, through dynamic collection, the absence contract
+        itself) is deliberately extended -- a silent roster drift is how an
+        unguarded installer would sneak in.
+        """
+        assert set(_collect_patch_installers()) == EXPECTED_PATCH_INSTALLERS
+
+    def test_apply_patches_survives_unimportable_transformers(self, monkeypatch):
+        """apply_patches() returns None, never raises, when transformers is absent.
+
+        ``apply_patches()`` executes eagerly at ``import dnallm`` time, so a
+        single unguarded installer (on the current code the first unguarded
+        one, ``_patch_pretrained_config_legacy_defaults``, is the fifth call
+        in its body) crashes the whole package import instead of degrading to
+        stock-transformers behavior.
+        """
+        monkeypatch.setitem(sys.modules, "transformers", None)
+        assert apply_patches() is None
