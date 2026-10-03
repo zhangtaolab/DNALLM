@@ -2,14 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 5
-current_phase_name: execution-harness-honest-gates-runner-feasibility
-status: executing
-stopped_at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
-last_updated: "2026-10-03T03:13:24.103Z"
-last_activity: 2026-10-02
-last_activity_desc: Phase 5 execution started
-state_head: 9453d237295a62a3ec60d33e9bc0f78ef14fd351
+current_phase: 06
+current_phase_name: Model Registry & Showcase Data Curation
+status: planning
+stopped_at: Phase 05 complete, ready to plan Phase 06
+last_updated: "2026-10-03T04:05:51.904Z"
+last_activity: 2026-10-03
+last_activity_desc: Phase 05 complete, transitioned to Phase 06
+state_head: 80b40a58aa9e61c44890e1f9f4603f170349715d
 progress:
   total_phases: 5
   completed_phases: 1
@@ -25,21 +25,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-01)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 5 — execution-harness-honest-gates-runner-feasibility
+**Current focus:** Phase 05 — Execution Harness, Honest Gates & Runner Feasibility
 
 ## Current Position
 
-Phase: 5 (execution-harness-honest-gates-runner-feasibility) — EXECUTING
-Plan: 4 of 6
-Status: Ready to execute
-Last activity: 2026-10-03 — Completed quick task 261003-csd: both mcp client notebooks GREEN in gated lane (isolated langchain kernel, both-direction honest gate, 2 serving bugs fixed: single-flight deadlock + mamba interpret SIGKILL). 21/21 notebooks now executed at least once; remaining: 5 gated family notebooks (next round) + E-family ty triage + verify-work Test 2 (D-04 dispatch)
+Phase: 06 — Model Registry & Showcase Data Curation
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-03 — Phase 05 complete, transitioned to Phase 06
 
 Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (all in v1)
+- Total plans completed: 6 (all in v1)
 - Average duration: ~39 min
 - Total execution time: ~9.1 hours
 
@@ -47,7 +47,7 @@ Progress: [██░░░░░░░░] 20%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 5 | 3 | - | - |
+| 05 | 6 | - | - |
 | 06 | TBD | - | - |
 | 07 | TBD | - | - |
 | 08 | TBD | - | - |
@@ -136,7 +136,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-03T03:15:00.000Z
-Stopped at: Completed quick task 261003-csd (both owner-deferred MCP client notebooks green in the gated lane; D-08 closed)
+Stopped at: Phase 05 complete, ready to plan Phase 06
 Resume file: None
 
 ## Deferred Verification
