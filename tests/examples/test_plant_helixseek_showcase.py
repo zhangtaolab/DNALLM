@@ -58,7 +58,11 @@ CRE_TEST_TIMEOUT_S = 2400
 ANNO_TEST_TIMEOUT_S = 5400
 
 # Parametrized structure-test surface: both showcase notebooks, each with the
-# locus key its provenance cell pins (D-01).
+# locus key its provenance cell pins (D-01).  Every structure test takes the
+# uniform (nb_path, locus_key) signature against this one shared list even
+# where it reads only nb_path -- single-source parametrization beats five
+# bespoke argument lists; only test_provenance_markdown_cell consumes
+# locus_key.
 SHOWCASE_NOTEBOOKS = [
     pytest.param(CRE_NB, "cre_locus=Chr1:5100001-5300000", id="cre"),
     pytest.param(ANNO_NB, "anno_locus=Chr1:5100001-5300000", id="anno"),
