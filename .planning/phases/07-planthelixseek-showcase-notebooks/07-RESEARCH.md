@@ -519,18 +519,23 @@ threshold = bin_scores.mean() + 1.5 * bin_scores.std()   # LOCUS-calibrated
 | A5 | Notebook filenames `plant_helixseek_cre.ipynb` / `plant_helixseek_anno.ipynb` in their existing dirs | Project Structure | Cosmetic; wrapper frontmatter, specs keys, nav all follow whatever name is chosen |
 | A6 | The CRE negative recompute (~391 windows, <1 min) and Anno intergenic recompute (~14 forwards, ~2 min) fit inside the D-14 budgets trivially | Pitfall 6 | None material; both are lightweight by design (20 kb windows) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where do the showcase tests live — extend `test_notebook_execution.py` or a sibling module?**
+All three questions are resolved by the phase plans; none remains open. Dispositions name the adopting plan/task.
+
+1. **Where do the showcase tests live — extend `test_notebook_execution.py` or a sibling module?** (RESOLVED)
    - What we know: CONTEXT integration point says `test_notebook_execution.py` gains the two slow tests; the parametrized `notebook_sandbox` fixture there is callspec-bound to `ACTIVE_NOTEBOOKS`/`GATED_NOTEBOOKS` parametrizations, and the showcase tests need their own extras-laden seeding + output parsing + per-test marks (2400/5400).
    - What's unclear: whether they also join `ACTIVE_NOTEBOOKS` (structure-only assert) or only run as dedicated tests.
    - Recommendation: dedicated test class/functions in `test_notebook_execution.py` (or a new `tests/examples/test_plant_helixseek_showcase.py`) with explicit `seed_sandbox(..., extra_inputs=...)`; do NOT add to `ACTIVE_NOTEBOOKS` (its census semantics would double-execute ~40-90 min per notebook).
-2. **models.lock entries for the two checkpoints in Phase 7 or Phase 8?**
+   - Disposition: adopted by 07-01 Task 2 — dedicated new sibling module `tests/examples/test_plant_helixseek_showcase.py` with explicit `seed_sandbox(..., extra_inputs=...)`; the showcase notebooks never join ACTIVE_NOTEBOOKS/GATED_NOTEBOOKS (07-01 T2 acceptance criterion). 07-02 Task 2 extends the same module.
+2. **models.lock entries for the two checkpoints in Phase 7 or Phase 8?** (RESOLVED)
    - What we know: CI-04 (Phase 8) owns lock extension; nightly stays warm via the physical self-hosted cache (verified 1.8G × 2 present).
    - Recommendation: optional one-line-each addition in the Phase-7 write-back commit; defer to Phase 8 if the owner prefers strict phase boundaries.
-3. **`.scratch` addition to check_docs_sync IGNORE — in scope?**
+   - Disposition: adopted in Phase 7 — 07-01 Task 3 item 5 adds the two `ms`-prefixed models.lock lines in the write-back commit.
+3. **`.scratch` addition to check_docs_sync IGNORE — in scope?** (RESOLVED)
    - What we know: local mirror verification hits gitignored runtime dirt (Pitfall 2); the IGNORE list exists for exactly this class.
    - Recommendation: include as a small same-phase change (keeps `check_docs_sync.py` green locally, which SHOW-6 verification wants to demonstrate).
+   - Disposition: adopted in scope — 07-01 Task 3 item 4 adds `.scratch` to the IGNORE set as a one-line change.
 
 ## Environment Availability
 
