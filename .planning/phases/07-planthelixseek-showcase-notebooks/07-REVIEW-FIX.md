@@ -26,7 +26,7 @@ status: all_fixed
 
 All verification for this iteration ran in the MAIN CHECKOUT at `/home/forrest/Github/DNALLM`, branch `phs` — `workflow.use_worktrees=false`, so no isolated worktree was created and every number below is reproducible from this tree.
 
-## Fixed Issues (iteration 2)
+## Fixed Issues
 
 ### IN-01: models.lock comment still describes the Anno test as future work
 
@@ -74,7 +74,7 @@ All verification for this iteration ran in the MAIN CHECKOUT at `/home/forrest/G
 - Notebook size after edit: 290,416 bytes per mirror (budget 2,097,152).
 - An initial full-module pytest invocation (without `-m "not slow"`) was intentionally stopped: it had started the two nightly GPU re-execution tests (~40-80 min), which are the verifier phase's job, not per-fix verification.
 
-## Fixed Issues (iteration 1, preserved)
+## Fixed Issues
 
 ### WR-01: docs-sync gate ignores some sanctioned runtime artifacts, fails red on any tree where the benchmark example ran
 
