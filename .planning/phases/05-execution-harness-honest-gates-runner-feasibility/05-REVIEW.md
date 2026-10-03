@@ -1,255 +1,282 @@
 ---
 phase: 05-execution-harness-honest-gates-runner-feasibility
-reviewed: 2026-10-02T08:50:38Z
+reviewed: 2026-10-03T12:30:00Z
 depth: standard
-files_reviewed: 9
+iteration: 5
+files_reviewed: 56
 files_reviewed_list:
-  - .gitignore
+  - dnallm/configuration/configs.py
+  - dnallm/datahandling/data.py
+  - dnallm/finetune/trainer.py
+  - dnallm/inference/benchmark.py
+  - dnallm/inference/inference.py
+  - dnallm/inference/interpret.py
+  - dnallm/inference/mutagenesis.py
+  - dnallm/inference/plot.py
+  - dnallm/mcp/model_manager.py
+  - dnallm/mcp/server.py
+  - dnallm/models/model.py
+  - dnallm/models/special/borzoi.py
+  - dnallm/models/special/crossdna.py
+  - dnallm/models/special/enformer_model/configuration_enformer.py
+  - dnallm/models/special/enformer_model/configuration_space.py
+  - dnallm/models/special/enformer_model/data.py
+  - dnallm/models/special/enformer_model/modeling_enformer.py
+  - dnallm/models/special/enformer_model/modeling_space.py
+  - dnallm/models/special/enformer_model/modules.py
+  - dnallm/models/special/evo.py
+  - dnallm/models/special/gpn.py
+  - dnallm/models/special/lucaone.py
+  - dnallm/models/special/megadna.py
+  - dnallm/models/special/mutbert.py
+  - dnallm/models/special/omnidna.py
+  - dnallm/models/tokenizer.py
+  - dnallm/utils/support.py
   - dnallm/utils/transformers_compat.py
-  - example/notebooks/finetune_NER_task/generate_bpe_dataset.py
+  - docs/example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
+  - docs/example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+  - docs/example/notebooks/benchmark/benchmark.ipynb
+  - docs/example/notebooks/data_prepare/finetune/dev.csv
+  - docs/example/notebooks/data_prepare/finetune/finetune_data.ipynb
+  - docs/example/notebooks/data_prepare/finetune/test.csv
+  - docs/example/notebooks/data_prepare/finetune/train.csv
+  - docs/example/notebooks/embedding_attention.ipynb
+  - docs/example/notebooks/finetune_generation/finetune_generation.ipynb
+  - docs/example/notebooks/inference/inference.ipynb
+  - example/mcp_example/mcp_client_ollama_langchain_agents.ipynb
+  - example/mcp_example/mcp_client_ollama_pydantic_ai.ipynb
+  - example/notebooks/benchmark/benchmark.ipynb
+  - example/notebooks/data_prepare/finetune/dev.csv
+  - example/notebooks/data_prepare/finetune/finetune_data.ipynb
+  - example/notebooks/data_prepare/finetune/test.csv
+  - example/notebooks/data_prepare/finetune/train.csv
+  - example/notebooks/embedding_attention.ipynb
+  - example/notebooks/finetune_generation/finetune_generation.ipynb
+  - example/notebooks/inference/inference.ipynb
+  - pyproject.toml
+  - tests/configuration/test_configs.py
   - tests/examples/_execution.py
-  - tests/examples/test_marimo_execution.py
   - tests/examples/test_notebook_execution.py
   - tests/examples/test_script_execution.py
-  - tests/models/test_model_remote_code.py
+  - tests/mcp/test_interpret_tool.py
+  - tests/mcp/test_model_manager.py
   - tests/utils/test_transformers_compat.py
 findings:
-  critical: 0
-  warning: 4
-  info: 5
-  total: 9
+  critical: 1
+  warning: 1
+  info: 3
+  total: 5
 status: issues_found
 ---
 
-# Phase 5 (incremental 05-04/05-05/05-06): Code Review Report
+# Phase 5 (incremental, post-iter4 quick tasks): Code Review Report
 
-**Reviewed:** 2026-10-02T08:50:38Z
+**Reviewed:** 2026-10-03T12:30:00Z
 **Depth:** standard
-**Files Reviewed:** 9 (diff base `debf813b`)
+**Files Reviewed:** 56 (diff base `774aa61`)
 **Status:** issues_found
 
 ## Summary
 
-Incremental review of Phase 5's post-closure gap-closure work: the vendored
-pruning-helper shim in `dnallm/utils/transformers_compat.py` (+109 lines of
-tests), the marimo/script execution lanes, the generalized notebook-execution
-harness (`tests/examples/_execution.py` grew from 1 to 21 notebook specs plus
-marimo/script runners), and the one-line `rice_annotation.bed` writer restore
-in `generate_bpe_dataset.py`.
+Incremental review of the five quick tasks landed since the iter4 report
+(diff base `774aa61`): the transformers-5.x compat rungs in
+`dnallm/utils/transformers_compat.py` (+743 lines: get_head_mask,
+init_weights bookkeeping, config legacy defaults, MambaCache, DebertaV2
+dict-vocab), the typing/ty-suppression pass across 27 `dnallm/` files
+(`load_config` `DNALLMConfig` TypedDict, `PretrainedConfig` →
+`PreTrainedConfig` renames, dead `# type: ignore` removals), the two MCP
+serving fixes (single-flight inference in `ModelManager`, mamba interpret
+refusal in `server.py`), the execution-harness changes (timeout/flavor
+spec-field removal — the iter4 WR-02/WR-03 fixes — plus tuple extra
+inputs, 4xx-honest probes, the ollama/MCP execute-state gate, and the
+isolated langchain kernelspec lane), and the committed notebook run
+outputs with `docs/` mirrors.
 
 Verified against ground truth, not just the diff:
 
-- The vendored `_find_pruneable_heads_and_indices` / `_prune_linear_layer`
-  are behavior-identical to upstream transformers v4.49.0 (checked line by
-  line against the reference implementation; the `heads` rebinding rename is
-  semantics-preserving). Live-probed on transformers 5.17.0: the patch
-  attaches both helpers to `transformers.modeling_utils` on dnallm import,
-  and the known checkpoint's import site is fixed.
-- The restored `rice_annotation.bed` block is verbatim from
-  `data_generation_and_inference.ipynb` cell 10 (extracted and compared);
-  `gene_info[gene]` is populated for every gene before use, so no KeyError
-  path exists.
-- All 21 `NOTEBOOK_EXEC_SPECS` keys and all 3 `MARIMO_EXEC_SPECS` keys exist
-  on disk; all 8 ACTIVE and 7 GATED notebook ids resolve to spec entries;
-  `tests/expected_skips.yaml` registers all three typed-skip prefixes used;
-  `MCP_ENDPOINT` port 8000 matches the MCP server config; `ruff check .`
-  (CI invocation) passes; the new tests collect cleanly on the fast leg
-  (26/31, 5 slow deselected) including the Windows-style import path
-  (`base` extra carries `test`+`notebook`, so `nbclient` resolves).
-- Coverage rule (dnallm/ change ships with pytest): satisfied —
-  `TestRemoteCodePruningHelpers` is fast-lane and covers the helper
-  arithmetic, live attachment, idempotence, and 4.x/5.x version awareness;
-  `tests/models/test_model_remote_code.py` exercises the real load route.
-  Note the real-model smoke currently terminates in the documented D-07
-  typed skip on transformers 5.17 (remote code's `config.is_decoder` read),
-  so the forward-pass assertions are environment-gated; the unit tests carry
-  the shim itself.
+- Every transformers-5.x shim claim was re-checked against the LIVE
+  installed transformers 5.17.0: `post_init` sets `all_tied_weights_keys`
+  BEFORE calling `init_weights` (so the wrapper's depth-2 delegation is
+  sound, not recursive); `TokenizersBackend.convert_to_native_format` has
+  exactly the `(cls, trust_remote_code=False, **kwargs)` signature the
+  wrapper mirrors and is called keyword-only from `from_pretrained`;
+  `PretrainedConfig` on 5.17 has no `__getattr__` and no `is_decoder`
+  default (gate works), and after `import dnallm` all nine patches attach,
+  `to_dict()` stays free of the injected defaults, deepcopy round-trips,
+  and the dict vocab normalizes to a pair list. No
+  `hasattr(config, "is_decoder")` branch exists anywhere in transformers
+  5.17 that the restored default could flip (only `getattr(..., False)`
+  reads, which return the same value).
+- All changed test files pass on the live env: 76 (compat), 129
+  (configs + MCP), 12 fast-lane execution tests — all green; `ruff check`
+  and `ruff format --check` clean; the 166 remaining `ty` diagnostics
+  match the owner-accepted baseline from the typing triage, none
+  attributable to these hunks.
+- Harness invariants hold: every ACTIVE (7200 class mark vs max 3600
+  cell) and GATED (incl. the three `_TIMEOUT_7200_GATED` overrides — the
+  iter4 WR-02 fix) entry keeps the outer mark strictly above the cell
+  budget; no consumer of the removed `flavor`/`test_timeout` spec fields
+  remains; `example/notebooks/inference/test.csv` exists for the new
+  tuple seeding; `.scratch/` is gitignored and outside
+  `assert_tree_clean`'s watched paths; all `example/` ↔ `docs/example/`
+  mirrors are byte-identical; the committed CSVs are synthetic
+  sequence/label data with no credentials; no secret-like strings in any
+  changed notebook.
+- The `seed_sandbox` traversal guard blocks absolute destinations and
+  symlink escapes too (`Path / absolute` → absolute, caught by the same
+  `resolve()`-under-`tmp_path` check).
 
-No Critical findings. The four Warnings are: (1) the shim patches only
-`transformers.modeling_utils` while live-verified transformers 5.17 still
-ships a `pytorch_utils` that partially lacks the helpers — the other common
-4.x remote-code import site stays broken; (2) the gated
-`lora_finetune.ipynb` entry gets an outer pytest timeout equal to its
-per-cell timeout, violating the harness's own strictly-below invariant;
-(3) the spec dicts' `test_timeout`/`flavor` fields are dead data that
-contradict their documented "the test layer must apply" contract — the root
-cause that let (2) slip through; (4) a permanent HTTP 4xx on the rice input
-URLs converts to an ever-green `network-unavailable` skip.
+One Critical finding. The single-flight inference fix serializes
+`infer_seqs` behind an asyncio lock around the `run_in_executor` await —
+but `_with_timeout_wrapper` cancels that await on timeout
+(`asyncio.wait_for`, default `tool_timeout_seconds` = 30s, max 300s),
+cancellation releases the asyncio lock, and the executor THREAD keeps
+running the orphaned `infer_seqs` (threads are not cancellable). The next
+request then acquires the lock and forks DataLoader workers concurrently
+with the orphan — the exact `os.fork is unsafe` / hung-server incident
+the fix ships to prevent, reachable through the server's own default
+timeout on any predict slower than 30s. Demonstrated empirically in this
+review (max concurrent infer_seqs = 2 under timeout+retry). One Warning
+(interpret tool blocks the event loop, making its own timeout wrapper
+dead) and three Info items follow.
+
+## Critical Issues
+
+### CR-01: Single-flight inference lock releases on tool timeout while the orphaned infer_seqs thread keeps running
+
+**File:** `dnallm/mcp/model_manager.py:249-252` (and `280-283`)
+**Issue:** `_infer_lock` is an `asyncio.Lock` held around
+`await loop.run_in_executor(None, inference_engine.infer_seqs, ...)`.
+The tool wrapper cancels the awaiting coroutine on timeout
+(`dnallm/mcp/server.py:301`, `asyncio.wait_for(..., timeout=
+self._tool_timeout_seconds)`, default 30s per
+`dnallm/mcp/config_validators.py:180` — the shipped
+`mcp_server_config.yaml` does not override it). Cancellation exits the
+`async with self._infer_lock` block and releases the lock, but the
+default-executor thread cannot be cancelled and keeps running the
+orphaned `infer_seqs` — including its `DataLoader(num_workers>0)` worker
+forks. The client's immediate retry (or any concurrent client) acquires
+the lock and starts a second `infer_seqs` concurrently. The single-flight
+invariant ("at most one ``infer_seqs`` in the process at any instant" —
+the test docstring and the fix rationale) is therefore violated exactly
+on the slow-predict-then-retry path, which is the realistic serving case
+for DNA models whose inference routinely exceeds the 30s default (the
+campaign's own notebook cell budgets are 600–1800s). This was
+demonstrated empirically during this review with a reproduction of the
+lock/timeout/thread pattern: max concurrent infer_seqs = 2. Consequence
+is the original failure mode: concurrent forks under threaded serving
+raise `os.fork is unsafe ...` / hang `pt_data_worker` children holding
+the serving socket.
+**Fix:** Hold the single-flight guarantee for the lifetime of the worker
+thread, not the coroutine — acquire a `threading.Lock` inside the
+executor-submitted callable:
+
+```python
+import threading  # module top
+
+# __init__:
+self._infer_thread_lock = threading.Lock()
+
+# predict_sequence / predict_batch:
+def _single_flight_infer():
+    with self._infer_thread_lock:
+        return inference_engine.infer_seqs(sequence, **kwargs)
+
+result = await loop.run_in_executor(None, _single_flight_infer)
+```
+
+Coroutine cancellation then only abandons the result; the orphaned
+thread still holds the thread lock until `infer_seqs` returns, so the
+next predict blocks in the executor until the fork window closes. Add a
+regression test that asserts serialization survives a
+`asyncio.wait_for`-cancelled predict (the current
+`TestSingleFlightInference` exercises only well-behaved concurrent
+awaits, which is why this hole was invisible).
 
 ## Warnings
 
-### WR-01: Pruning shim patches only `modeling_utils`; `transformers.pytorch_utils` still lacks `find_pruneable_heads_and_indices` on 5.x
+### WR-01: dna_interpret runs blocking captum work on the event-loop thread — its timeout wrapper can never fire
 
-**File:** `dnallm/utils/transformers_compat.py:293-333`
-**Issue:** `_patch_remote_code_pruning_helpers` attaches the vendored helpers
-only to `transformers.modeling_utils`. Live-verified on the installed
-transformers 5.17.0: `transformers.pytorch_utils` still EXISTS and still
-exports `prune_linear_layer`, but `find_pruneable_heads_and_indices` is absent
-from it (and remains absent after the dnallm patch — re-probed). 4.x-era
-`trust_remote_code` checkpoints canonically copy HF's own 4.x model files,
-which import `from transformers.pytorch_utils import
-find_pruneable_heads_and_indices, prune_linear_layer`. Any such checkpoint
-still crashes with ImportError on transformers 5.x even with dnallm imported,
-so the module docstring's general claim ("4.x-era trust_remote_code
-checkpoints ... still import both names") is only honored for the
-`modeling_utils` import site used by the one known checkpoint.
-**Fix:** Extend the patch to also attach the missing name(s) to
-`transformers.pytorch_utils` when that module exists, gated per name (on 5.17
-only `find_pruneable_heads_and_indices` is missing there — do not overwrite
-upstream's own `prune_linear_layer`):
+**File:** `dnallm/mcp/server.py:1565-1571`
+**Issue:** `_dna_interpret` calls `interpreter.interpret(...)`
+(synchronous captum attribution, potentially minutes) directly inside the
+async tool. `asyncio.wait_for` in `_with_timeout_wrapper`
+(`server.py:301`) can only fire at an `await` point; while the single
+loop thread executes the blocking interpretation, the timeout timer
+cannot run and every other client on every transport is frozen. The
+`dna_interpret` timeout wrapper is therefore effectively dead code, and
+for non-mamba models an unbounded attribution blocks the whole server —
+the same serving-liveness class of failure the mamba guard added in this
+diff (server.py:1519-1539) exists to prevent, and the guard only covers
+the mamba case. (Pre-existing behavior, but the function was modified in
+this diff to address exactly this liveness hazard.)
+**Fix:** Route the blocking call through the executor like the predict
+paths:
 
 ```python
-try:
-    import transformers.pytorch_utils as _pu
-except Exception:
-    _pu = None
-if _pu is not None and not hasattr(_pu, "find_pruneable_heads_and_indices"):
-    setattr(_pu, "find_pruneable_heads_and_indices", _find_pruneable_heads_and_indices)
-    if not hasattr(_pu, "prune_linear_layer"):
-        setattr(_pu, "prune_linear_layer", _prune_linear_layer)
+tokens, attr_scores = await asyncio.get_event_loop().run_in_executor(
+    None,
+    lambda: interpreter.interpret(
+        input_seq=sequence,
+        method=mapped_method,
+        target=target_class,
+        max_length=max_length,
+        **kwargs,
+    ),
+)
 ```
 
-### WR-02: Gated `lora_finetune.ipynb` runs with outer timeout == cell timeout, violating the harness's strictly-below invariant
-
-**File:** `tests/examples/test_notebook_execution.py:311-322, 325-326` (spec at `tests/examples/_execution.py:156-160`)
-**Issue:** The spec for `notebooks/lora_finetune_inference/lora_finetune.ipynb`
-declares `cell_timeout: 3600, test_timeout: 7200`, but the gated parametrize
-applies the 7200 mark override only to
-`notebooks/finetune_custom_head/finetune.ipynb`; `lora_finetune.ipynb` falls
-through to the class-level `@pytest.mark.timeout(3600)`. Result: a cell may
-legitimately run up to 3600 s under nbclient while pytest-timeout kills the
-whole test at 3600 s. The outer kill preempts nbclient's clean
-`CellTimeoutError` handling (and the harness's partial-failure artifact
-capture), converting a budget-managed hang into a hard, artifact-less test
-abort. `run_notebook`'s own contract (`_execution.py:280-281`) requires
-cell_timeout to stay *strictly below* the per-test mark — this is the only
-entry across all three lanes where the invariant is broken (verified against
-every ACTIVE/GATED/marimo budget).
-**Fix:** Add the override for this entry as well (or generate the marks from
-the spec, see WR-03):
-
-```python
-_TIMEOUT_7200 = {"notebooks/finetune_custom_head/finetune.ipynb",
-                 "notebooks/lora_finetune_inference/lora_finetune.ipynb"}
-[
-    pytest.param(nb_id, marks=pytest.mark.timeout(7200)) if nb_id in _TIMEOUT_7200 else nb_id
-    for nb_id, _gate in GATED_NOTEBOOKS
-]
-```
-
-### WR-03: `test_timeout` (and marimo `flavor`) spec fields are dead data contradicting their documented contract
-
-**File:** `tests/examples/_execution.py:63-75, 75-181, 183-211`
-**Issue:** The `NOTEBOOK_EXEC_SPECS` comment says values carry "the per-test
-timeout mark the test layer must apply", and `MARIMO_EXEC_SPECS` likewise
-documents `test_timeout`/`flavor` per app. Grep-verified: no consumer reads
-`spec["test_timeout"]` or `spec["flavor"]` anywhere in `tests/` or `scripts/`.
-Every lane applies static class marks instead (7200 / 3600; marimo gets 7200
-where its spec says 1500), and `run_marimo_app` hardcodes `"export html"`
-while the spec carries a `flavor` field. Consequences: the documented budgets
-mislead (inference spec says 1800 s, actual bound is 7200 s), and budget
-mistakes of the WR-02 kind are invisible because the enforcement data exists
-but is never consulted.
-**Fix:** Either enforce the fields — parametrize with
-`pytest.param(..., marks=pytest.mark.timeout(spec["test_timeout"]))`
-generated from the spec dicts and pass `spec["flavor"]` into
-`run_marimo_app` — or amend the spec-dict docstrings to state the fields are
-advisory documentation only and delete `flavor` until a second flavor exists.
-
-### WR-04: Permanent HTTP 4xx on the rice input URLs converts to an ever-green `network-unavailable` skip
-
-**File:** `tests/examples/test_script_execution.py:70-78`
-**Issue:** `except (urllib.error.URLError, TimeoutError)` also catches
-`urllib.error.HTTPError` (its subclass). If rice.uga.edu ever reorganizes the
-download URLs (permanent 404/410), every run of the script lane records a
-`network-unavailable:` typed skip — a prefix `scripts/audit_skips.py`
-unconditionally allows — so the lane goes green-forever while the script is
-actually unrunnable and the input contract is broken. A 4xx is not network
-unavailability; the harness's own philosophy ("non-qualifying execution
-failures always re-raise") argues for loud failure on permanent client
-errors.
-**Fix:** Skip only on transport failures and 5xx; fail loudly on 4xx:
-
-```python
-except urllib.error.HTTPError as exc:
-    if exc.code >= 500:
-        pytest.skip(f"network-unavailable: fetch {url} (HTTP {exc.code})")
-    raise
-except (urllib.error.URLError, TimeoutError) as exc:
-    pytest.skip(f"network-unavailable: fetch {url} ({type(exc).__name__}: {exc})")
-```
+This both unblocks the loop and makes the tool's timeout wrapper
+functional.
 
 ## Info
 
-### IN-01: Patch gate checks only one of the two helper names
+### IN-01: Three new patch installers omit the try/except transformers-import guard the module contract promises
 
-**File:** `dnallm/utils/transformers_compat.py:313-315`
-**Issue:** The 4.x no-op gate is
-`hasattr(transformers.modeling_utils, "find_pruneable_heads_and_indices")`
-alone. If a future transformers version kept that name but dropped
-`prune_linear_layer` (or the reverse — note upstream 5.17 already removed
-them asymmetrically from `pytorch_utils`), the patch silently no-ops and
-remote code importing the missing name still crashes. Both names were
-removed together from `modeling_utils` so this is hypothetical today.
-**Fix:** Gate on both names being present:
-`if hasattr(mu, "find_pruneable_heads_and_indices") and hasattr(mu, "prune_linear_layer"): return`.
+**File:** `dnallm/utils/transformers_compat.py:553` (`_patch_pretrained_config_legacy_defaults`), `:764` (`_patch_mamba_cache`), `:990` (`_patch_legacy_init_weights_bookkeeping`)
+**Issue:** Every other patch in this module wraps its transformers
+import in `try/except ... return` ("so importing DNALLM never breaks an
+otherwise working environment" per the module docstring); the three new
+installers import `transformers.configuration_utils` /
+`transformers.cache_utils` / `transformers.modeling_utils` bare, so a
+future transformers that renames one of these submodules would crash
+`import dnallm` at `apply_patches()` instead of no-oping. transformers
+is a hard dependency today, so this is consistency/robustness, not an
+active bug.
+**Fix:** Wrap each import in the same `try: import ... except Exception:
+return` guard used by `_patch_remote_code_pruning_helpers` (lines
+363-375).
 
-### IN-02: Direct `pytest.skip("network-unavailable: ...")` bypasses the `network_unavailable_skip` helper
+### IN-02: Port bind-close-probe race in TestProbeHonesty unbound-port test
 
-**File:** `tests/examples/test_script_execution.py:74-78`
-**Issue:** The harness defines `network_unavailable_skip` precisely to emit
-the registered stable prefix, and this file already imports
-`environment_unavailable_skip` from the same module — but the rice-download
-path hand-builds the prefix inline. If the prefix ever changes in
-`_execution.py`, this site silently diverges (caught only later by
-`audit_skips.py` failing the job).
-**Fix:** Import and call
-`network_unavailable_skip(f"fetch {url} for generate_bpe_dataset.py", evidence=f"{type(exc).__name__}: {exc}")`.
+**File:** `tests/examples/test_notebook_execution.py:360-370`
+**Issue:** `test_unbound_port_probes_down_with_verbatim_evidence` binds
+a socket to an ephemeral port, closes it, then probes — another process
+on the machine can bind that port inside the window, making the probe
+see a live server and the `ok is False` assertion flake. Rare on a
+loopback ephemeral port but a real TOCTOU in a test that runs in the
+fast lane.
+**Fix:** Retry once on an unexpected `ok is True`, or assert on the
+evidence shape (transport-error prefix) instead of the boolean when a
+server answers.
 
-### IN-03: Hardcoded dev-box `sys.path` in the script the new lane executes
+### IN-03: langchain notebook ensure-cell spawns a detached MCP server that is never shut down
 
-**File:** `example/notebooks/finetune_NER_task/generate_bpe_dataset.py:13-14`
-**Issue:** `sys.path.insert(0, "/home/forrest/Github/DNALLM")` (pre-existing,
-not introduced by this diff — but the new test lane now executes this script
-in CI-shaped environments where that path does not exist; it survives only
-because dnallm is pip-installed in the venv). On a box without the editable
-install the script crashes at import.
-**Fix:** Drop the `sys.path` hack (the installed package suffices), or derive
-the root from `Path(__file__).resolve().parents[3]`.
-
-### IN-04: No isolated test for the pruning patch's attach branch (unlike the sibling patches)
-
-**File:** `tests/utils/test_transformers_compat.py:418-496`
-**Issue:** `_patch_get_parameter_or_buffer` /
-`_patch_initialize_weights_for_quantized_missing` have
-`test_patch_skips_when_target_method_absent` exercising their early-return
-arms against a synthetic class. `_patch_remote_code_pruning_helpers` has no
-synthetic-module equivalent: its attach path is only proven via the
-already-applied live-module state (import-time), and its 4.x `hasattr` no-op
-branch only implicitly through the identity test. The vendored functions
-themselves are well covered (arithmetic, shapes, idempotence, identity), so
-this is a minor gap against the "dnallm changes ship with tests" rule, not a
-hole.
-**Fix:** Add a test that monkeypatches
-`sys.modules["transformers.modeling_utils"]` with a `types.ModuleType`
-lacking both names and the sentinel, calls `_patch_remote_code_pruning_helpers()`,
-and asserts both names were attached (restore via `monkeypatch` undo — the
-live class patches are never touched).
-
-### IN-05: Timeout path skips the documented "always/failed" run artifacts
-
-**File:** `tests/examples/_execution.py:324-414, 417-482`
-**Issue:** `run_example_script`'s docstring says the run log is "ALWAYS
-written" and `run_marimo_app`'s says the error artifact is written "on
-failure" — but on `subprocess.TimeoutExpired` the exception propagates before
-either artifact write, so the census evidence for a timed-out run is missing
-exactly when the run was most anomalous (`TimeoutExpired` does carry
-stdout/stderr attributes that could be persisted).
-**Fix:** Wrap the `subprocess.run` call in try/except TimeoutExpired, write
-the log/error artifact from `exc.stdout`/`exc.stderr`, then re-raise.
+**File:** `example/mcp_example/mcp_client_ollama_langchain_agents.ipynb` cell 3 (source line ~632, `subprocess.Popen(..., start_new_session=True)`)
+**Issue:** The probe-then-ensure guard starts `dnallm-mcp-server` on
+port 8000 detached, with cwd inside the (later deleted) pytest tmp
+sandbox, and no cell ever terminates it. Deliberate by design ("If the
+server is already running ... this cell only detects it"), but in the
+gated test lane the leaked process outlives the run with a vanished
+cwd, and subsequent runs silently reuse it. The `docs/` mirror carries
+the same cell.
+**Fix:** Track the PID in the log/notebook state and offer a shutdown
+cell (`mcp_server_proc.terminate()` when this cell started it), or have
+the gated lane's teardown kill servers it spawned.
 
 ---
 
-_Reviewed: 2026-10-02T08:50:38Z_
+_Reviewed: 2026-10-03T12:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+_Previous iterations: 05-REVIEW.iter2.md, 05-REVIEW.iter3.md, 05-REVIEW.iter4.md_
