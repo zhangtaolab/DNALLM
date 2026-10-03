@@ -230,13 +230,9 @@ def test_slice_gff_rows_filters_and_preserves_order():
 
 
 def test_slice_gff_rows_closed_interval_boundaries():
-    # Closed-interval edges: features merely touching the locus are included
-    assert slice_gff_rows(GFF_ROWS, "Chr1", 5899, 6788) == [
-        GFF_ROWS[4],
-        GFF_ROWS[5],
-        GFF_ROWS[6],
-        GFF_ROWS[7],
-    ]
+    # Closed-interval edges: features merely touching the locus are included;
+    # an interior CDS (3760-3913) outside the locus is not
+    assert slice_gff_rows(GFF_ROWS, "Chr1", 5899, 6788) == [GFF_ROWS[4], GFF_ROWS[5], GFF_ROWS[7]]
 
 
 def test_slice_gff_rows_require_nonempty():
