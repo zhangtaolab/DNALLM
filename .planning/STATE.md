@@ -8,7 +8,7 @@ status: verifying
 stopped_at: Completed 06-03-PLAN.md (showcase data committed; fla 0.5.2 decision recorded)
 last_updated: "2026-10-03T09:19:11.791Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 06 execution started
+last_activity_desc: quick-261003-fla dependency landed; phase 06 tail gates next
 state_head: b68e1a56139c711dd903d243382a9baff15371b0
 progress:
   total_phases: 5
@@ -32,7 +32,9 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 Phase: 06 (Model Registry & Showcase Data Curation) — EXECUTING
 Plan: 3 of 3
 Status: Phase complete — ready for verification
-Last activity: 2026-10-03 — Phase 06 execution started
+Last activity: 2026-10-03 — Quick task 261003-fla: flash-linear-attention declared as
+documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
+commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
 Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
 
