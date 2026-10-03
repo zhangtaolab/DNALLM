@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 06
-current_phase_name: Model Registry & Showcase Data Curation
-status: verifying
-stopped_at: Completed 06-03-PLAN.md (showcase data committed; fla 0.5.2 decision recorded)
-last_updated: "2026-10-03T09:19:11.791Z"
+current_phase: 7
+current_phase_name: PlantHelixSeek Showcase Notebooks
+status: planning
+stopped_at: Phase 06 complete, ready to plan Phase 7
+last_updated: "2026-10-03T11:06:19.748Z"
 last_activity: 2026-10-03
-last_activity_desc: quick-261003-fla dependency landed; phase 06 tail gates next
-state_head: b68e1a56139c711dd903d243382a9baff15371b0
+last_activity_desc: Phase 06 complete, transitioned to Phase 7
+state_head: 5cc2be4ebcd7ba71d50057dc3c14bb0a2529dd81
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
   completed_plans: 9
-  percent: 20
+  percent: 40
 ---
 
 # Project State
@@ -29,19 +29,19 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 ## Current Position
 
-Phase: 06 (Model Registry & Showcase Data Curation) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-10-03 — Quick task 261003-fla: flash-linear-attention declared as
+Phase: 7 — PlantHelixSeek Showcase Notebooks
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-03 — Phase 06 complete, transitioned to Phase 7
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
-Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
+Progress: [█████████████░░░░░░░] 6/9 plans ([████░░░░░░] 40%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v1.1 Phase 05; v1 plans archived with the milestone)
+- Total plans completed: 9 (v1.1 Phase 05; v1 plans archived with the milestone)
 - Average duration: ~53 min (Phase 05: 320 min across 6 plans)
 - Total execution time: ~9.1 hours (v1) + ~5.3 hours (v1.1 Phase 05)
 
@@ -50,7 +50,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 05 | 6 | 320 min | ~53 min |
-| 06 | TBD | - | - |
+| 06 | 3 | - | - |
 | 07 | TBD | - | - |
 | 08 | TBD | - | - |
 | 09 | TBD | - | - |
@@ -158,7 +158,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-03T09:19:11.768Z
-Stopped at: Completed 06-03-PLAN.md (showcase data committed; fla 0.5.2 decision recorded)
+Stopped at: Phase 06 complete, ready to plan Phase 7
 Resume file: None
 
 ## Deferred Verification

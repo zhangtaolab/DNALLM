@@ -28,7 +28,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 **Milestone Goal:** Real-model execution testing for everything under `example/` with every surfaced error fixed; PlantHelixSeek-CRE/-Anno showcase notebooks over committed Arabidopsis loci whose predictions are substantially consistent with experimental truth; and the CI gate false-green (WR-08/WR-09) repaired so example tests run under formal nightly gating.
 
 - [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02; **REOPENED 2026-10-02** for post-closure gap closure — GAP-1 NT x transformers-5.17 compat shim + GAP-2 full example/ census bar, plans 05-04..06)
-- [ ] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist
+- [x] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist (completed 2026-10-03)
 - [ ] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror
 - [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
 - [ ] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation
@@ -75,7 +75,7 @@ Plans:
   2. Committed in-repo Arabidopsis fragments ≤200kb per region exist with truth slices (CRE ↔ PlantDHS `TAIR10_DHSs.gff`; Anno ↔ TAIR10 GFF3), a selection-rationale doc, and one negative-control locus; the selected loci were verified for substantial prediction-truth agreement, and download intermediates stay gitignored (clean tree)
   3. The shared coordinate/chrom-name normalization helper (0-based half-open ↔ 1-based closed; `Chr1` ↔ `1`) passes unit tests on tiny fixtures, and every genomics code path uses it with non-emptiness assertions against silent-empty results
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -134,7 +134,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
-| 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | In Progress|  |
+| 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 0/TBD | Not started | - |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 0/TBD | Not started | - |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |

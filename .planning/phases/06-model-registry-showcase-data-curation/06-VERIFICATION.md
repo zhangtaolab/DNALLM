@@ -1,7 +1,7 @@
 ---
 phase: 06-model-registry-showcase-data-curation
 verified: 2026-10-03T09:48:13Z
-status: human_needed
+status: passed
 score: 21/21 must-haves verified
 covered_files:
   - .planning/phases/06-model-registry-showcase-data-curation/06-01-PLAN.md
@@ -32,6 +32,7 @@ covered_files:
   - tests/models/test_plant_helixseek_registry.py
   - tests/models/test_plant_helixseek_smoke.py
   - tests/utils/test_genomic_coords.py
+
 covered_digest: "v2:sha256:2bcf9868d94ae8efe8b3eca9e4a17cf31cd29321ea07a08daa73ed1ba246f4fc"
 behavior_unverified: 0
 overrides_applied: 0
