@@ -49,7 +49,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 
 - [x] **SHOW-01**: Loci selection produces committed in-repo Arabidopsis fragments ≤200kb per region where predictions are substantially consistent with experimental truth (CRE ↔ PlantDHS `TAIR10_DHSs.gff`; Anno ↔ TAIR10 GFF3), plus truth slices, a selection-rationale doc, and one negative-control locus; all download intermediates gitignored
 - [x] **SHOW-02**: A shared, unit-tested coordinate/chrom-name normalization helper (0-based half-open ↔ 1-based closed; `Chr1` ↔ `1`) is used by all genomics code paths, with non-emptiness assertions against silent-empty results
-- [ ] **SHOW-03**: CRE notebook — 500bp window/50bp stride/50bp bin sliding scan via dnallm API, altair side-by-side prediction track vs PlantDHS truth, in-notebook peak calling (mean±1.5σ → BED/narrowPeak) with Jaccard computed on called peaks
+- [x] **SHOW-03**: CRE notebook — 500bp window/50bp stride/50bp bin sliding scan via dnallm API, altair side-by-side prediction track vs PlantDHS truth, in-notebook peak calling (mean±1.5σ → BED/narrowPeak) with Jaccard computed on called peaks
 - [ ] **SHOW-04**: Anno notebook — 8192/4096 both-strand scan, BILOU span decode to structurally valid GFF3, nucleotide/exon-level sensitivity/precision/F1 vs TAIR10, exon/intron gene-model diagrams (altair)
 - [ ] **SHOW-05**: Truth-agreement floors are asserted by the example tests — thresholds calibrated at loci-selection time with recorded observed values and tolerance bands, never exact outputs
 - [ ] **SHOW-06**: Executed showcase notebooks with rendered figures are written back into the docs mirror (these two only — the credibility artifact)
@@ -119,7 +119,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REG-03 | Phase 6 | Complete |
 | SHOW-01 | Phase 6 | Complete |
 | SHOW-02 | Phase 6 | Complete |
-| SHOW-03 | Phase 7 | Pending |
+| SHOW-03 | Phase 7 | Complete |
 | SHOW-04 | Phase 7 | Pending |
 | SHOW-05 | Phase 7 | Pending |
 | SHOW-06 | Phase 7 | Pending |

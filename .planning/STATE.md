@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 7
 current_phase_name: PlantHelixSeek Showcase Notebooks
 status: executing
-stopped_at: Phase 07 context gathered
-last_updated: "2026-10-03T13:44:54.698Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-10-03T14:23:39.196Z"
 last_activity: 2026-10-03
-last_activity_desc: Phase 06 complete, transitioned to Phase 7
-state_head: 641cb06dc62a608b13d63cc5db640020ba022282
+last_activity_desc: Phase 7 execution started
+state_head: 92726de7a8368a89441c6efd9009cd1858168198
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 40
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-03)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 06 — Model Registry & Showcase Data Curation
+**Current focus:** Phase 7 — PlantHelixSeek Showcase Notebooks
 
 ## Current Position
 
-Phase: 7 (PlantHelixSeek Showcase Notebooks) — READY TO EXECUTE
-Plan: Not started
+Phase: 7 (PlantHelixSeek Showcase Notebooks) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-10-03 — Phase 06 complete, transitioned to Phase 7
+Last activity: 2026-10-03 — Phase 7 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
@@ -73,6 +73,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase 06 P01 | 19 min | 2 tasks | 4 files |
 | Phase 06 P02 | 16 min | 2 tasks | 3 files |
 | Phase 06 P03 | 125 min | 3 tasks | 11 files |
+| Phase 07 P01 | 38 min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 06]: Owner upgraded the fla follow-up at 17:03 CST 2026-10-03 (no longer deferred): flash-linear-attention becomes a declared pyproject dependency + documented, landed as an in-phase quick task after 06-03; version direction 0.5.2, bounded range under discussion - 06-03 itself made no pyproject change
 - [Phase 06]: 06-01 smoke tests validate shapes only - they passed with positionally-dead PlantHelixSeek outputs; value-level discrimination assertions (e.g. the DHS probe) are the CI follow-up class so silent semantic degradation is caught (06-03 checkpoint evidence)
 - [Phase 06]: 06-03 selection: first-ranked tile Chr1:5100001-5300000 passed both floors on the first candidate (CRE jaccard 0.3247 >= 0.3; Anno pooled exon-F1 0.7522, 59/91 genes >= 0.8); intergenic negative asserts Anno genic fraction only (0.0000) - its CRE fraction 0.1200 is evidence-only, never jaccard-vs-empty
+- [Phase 07]: 07-01: PlantHelixSeek truth GFF rows are already genomic — the FASTA-header offset applies to predictions only; found via the Pitfall-8 jaccard=0.0 signature while the local-coordinate flanking control reproduced 0.0325 exactly
+- [Phase 07]: 07-01: showcase figures embed as compiled vega v6 object under application/vnd.vega.v6+json plus native vegalite v6 JSON string (nbformat rejects objects under bare .json mimes; altair 6.3's default and mimetype renderers both fail the D-10 requirement)
+- [Phase 07]: 07-01: plant_helixseek_anno data dir mirrored in 07-01 (Pitfall 1 mirror-all-dirs + the plant_helixseek-scoped sync gate) ahead of 07-02's notebook; SHOW-07 denylist = every genome-wide line must carry the negated disclaimer
 
 ### Pending Todos
 
@@ -159,9 +163,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T12:50:11.573Z
-Stopped at: Phase 07 context gathered
-Resume file: .planning/phases/07-planthelixseek-showcase-notebooks/07-CONTEXT.md
+Last session: 2026-10-03T14:23:39.170Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
 
 ## Deferred Verification
 
