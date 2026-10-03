@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Example Execution Testing & Repair
 current_phase: 7
 current_phase_name: PlantHelixSeek Showcase Notebooks
-status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-10-03T14:23:39.196Z"
+status: verifying
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-10-03T15:25:39.383Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 7 execution started
-state_head: 92726de7a8368a89441c6efd9009cd1858168198
+state_head: 33b8da6b0b9329fca77e7eb114b82f8fd02b0836
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 40
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 Phase: 7 (PlantHelixSeek Showcase Notebooks) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-03 — Phase 7 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
@@ -74,6 +74,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase 06 P02 | 16 min | 2 tasks | 3 files |
 | Phase 06 P03 | 125 min | 3 tasks | 11 files |
 | Phase 07 P01 | 38 min | 3 tasks | 19 files |
+| Phase 07 P02 | 56 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 07]: 07-01: PlantHelixSeek truth GFF rows are already genomic — the FASTA-header offset applies to predictions only; found via the Pitfall-8 jaccard=0.0 signature while the local-coordinate flanking control reproduced 0.0325 exactly
 - [Phase 07]: 07-01: showcase figures embed as compiled vega v6 object under application/vnd.vega.v6+json plus native vegalite v6 JSON string (nbformat rejects objects under bare .json mimes; altair 6.3's default and mimetype renderers both fail the D-10 requirement)
 - [Phase 07]: 07-01: plant_helixseek_anno data dir mirrored in 07-01 (Pitfall 1 mirror-all-dirs + the plant_helixseek-scoped sync gate) ahead of 07-02's notebook; SHOW-07 denylist = every genome-wide line must carry the negated disclaimer
+- [Phase 07]: 07-02: A4 closed — the B-L permutation was transcribed from the Phase-6 scratch select_loci.py (the code that produced the floors, citing upstream predict_genome_multigpu.py:97-101), cross-checked against 06-RESEARCH and BILOU semantics, and proven by exact reproduction of every selection.md value (exon_f1=0.7522, 59 genes, tp=346 fp=48 fn=180)
+- [Phase 07]: 07-02: Anno nucleotide metrics are per-strand CDS base masks pooled across strands (evidence-only, unbanded); emitted GFF3 rows carry per-segment placeholder Parent ids since the frozen argmax decode does not group segments into genes
+- [Phase 07]: 07-02: timeout-arithmetic hand-off for Phase 9 CI-07 — +2400s (CRE) + 5400s (Anno) marks push the coverage-nightly sum-of-ceilings comment past the 900-min job cap on paper (~970 min); D-14 budgets NOT shrunk, actuals ~15 min for both slow showcase tests; CI-06 pre-authorizes a separate example-execution nightly job if actuals overflow
 
 ### Pending Todos
 
@@ -163,8 +167,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T14:23:39.170Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-10-03T15:25:39.356Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None
 
 ## Deferred Verification
