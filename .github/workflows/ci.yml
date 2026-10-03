@@ -307,16 +307,19 @@ jobs:
 
       - name: Create virtual environment and install mamba dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        # .[base], not .[test,dev]: the not-slow census imports mcp-extra deps
-        # (langchain / langchain_mcp_adapters / pydantic-ai / nest-asyncio in the
-        # mcp_example notebooks, and the exceptiongroup backport at
-        # tests/mcp/test_client_sdk.py, pulled in via pydantic-ai ->
-        # pydantic-ai-slim[mcp] -> fastmcp-slim[client]). Same extras set the
-        # other legs install; coverage-nightly proves .[base] resolves green on
-        # this exact box.
+        # .[base] plus the fla extra, not .[test,dev]: the not-slow census
+        # imports mcp-extra deps (langchain / langchain_mcp_adapters /
+        # pydantic-ai / nest-asyncio in the mcp_example notebooks, and the
+        # exceptiongroup backport at tests/mcp/test_client_sdk.py, pulled in
+        # via pydantic-ai -> pydantic-ai-slim[mcp] -> fastmcp-slim[client]).
+        # fla rides along (WR-01) so the not-slow chunk_kda import guard
+        # actually exercises the import here instead of skipping typed; per
+        # pyproject.toml:157 the bare fla spec rides the already-installed
+        # torch/triton (no backend extras). Same extras set coverage-nightly
+        # installs; it proves they resolve green on this exact box.
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          uv pip install -e ".[base,fla]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
       # No continue-on-error here: a failing mamba test must fail the job.
@@ -467,7 +470,10 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          # fla included (WR-01): this is the only leg running the full suite
+          # with the two slow PlantHelixSeek checkpoint smokes — without fla
+          # those loads exercise the remote code's silent non-KDA fallback.
+          uv pip install -e ".[base,fla]"
 
       - name: Install specific numpy version
         run: |
