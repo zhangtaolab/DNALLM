@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+import dnallm.utils
+
 from dnallm.utils.genomic_coords import (
     fetch_sequence,
     gff1_to_half_open,
@@ -344,6 +346,7 @@ def test_module_import_is_pyfastx_free():
     # helper module (and therefore dnallm.utils) must never import it.
     saved_pyfastx = sys.modules.get("pyfastx")
     saved_module = sys.modules.get("dnallm.utils.genomic_coords")
+    saved_pkg_attr = getattr(dnallm.utils, "genomic_coords", None)
     sys.modules.pop("pyfastx", None)
     sys.modules.pop("dnallm.utils.genomic_coords", None)
     sys.modules["pyfastx"] = None  # any import attempt now raises ImportError
@@ -356,3 +359,19 @@ def test_module_import_is_pyfastx_free():
             sys.modules["pyfastx"] = saved_pyfastx
         if saved_module is not None:
             sys.modules["dnallm.utils.genomic_coords"] = saved_module
+        # import_module rebinds the package attribute to the re-executed
+        # module object (dnallm.utils.__init__ re-exports it); restore it so
+        # no second live module object survives the purity check (IN-03).
+        if saved_pkg_attr is not None:
+            dnallm.utils.genomic_coords = saved_pkg_attr
+        else:
+            del dnallm.utils.genomic_coords
+
+
+def test_import_purity_leaves_single_live_module():
+    # IN-03: import_module rebinds the package attribute to the re-executed
+    # module object; after the purity test runs there must be exactly one
+    # live genomic_coords module — the package attribute and the sys.modules
+    # entry point at the same object.
+    test_module_import_is_pyfastx_free()
+    assert dnallm.utils.genomic_coords is sys.modules["dnallm.utils.genomic_coords"]
