@@ -22,10 +22,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-01)
+See: .planning/PROJECT.md (updated 2026-10-03)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 05 — Execution Harness, Honest Gates & Runner Feasibility
+**Current focus:** Phase 06 — Model Registry & Showcase Data Curation
 
 ## Current Position
 
@@ -34,20 +34,20 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-10-03 — Phase 05 complete, transitioned to Phase 06
 
-Progress: [██░░░░░░░░] 20%
+Progress: [█████████████░░░░░░░] 6/9 plans (67%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (all in v1)
-- Average duration: ~39 min
-- Total execution time: ~9.1 hours
+- Total plans completed: 6 (v1.1 Phase 05; v1 plans archived with the milestone)
+- Average duration: ~53 min (Phase 05: 320 min across 6 plans)
+- Total execution time: ~9.1 hours (v1) + ~5.3 hours (v1.1 Phase 05)
 
 **By Phase (v1.1):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 05 | 6 | - | - |
+| 05 | 6 | 320 min | ~53 min |
 | 06 | TBD | - | - |
 | 07 | TBD | - | - |
 | 08 | TBD | - | - |
@@ -100,6 +100,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: 05-06 durable rollout: ACTIVE_NOTEBOOKS x8 (two real trainings included), 7 probe-then-execute gated tests with honest typed skips (mcp pair skips on the genuinely-down MCP endpoint with ollama-GREEN evidence in-message; both-up state fails loudly per T-05-16), 3 marimo apps; full tests/examples 107 passed/9 audit-matched skips in 47:26
 - [quick 261003-csd]: D-08 closed — mcp client pair moved to the owner-approved EXECUTE state (T-05-16 sentinel retired 2026-10-03): both-up executes, any-down typed-skips with both live probe results, proven in both directions; langchain notebook runs under isolated kernelspec dnallm-mcp-langchain (VIRTUAL_ENV pinned to .scratch throwaway venv — project venv provably untouched)
 - [quick 261003-csd]: two real MCP serving bugs fixed with same-change tests: single-flight inference (concurrent DataLoader forks + filelock = fork-unsafe deadlock; every multi-model predict used to time out) and dna_interpret mamba guard (captum backward on DNAMamba SIGKILLs the whole server, exit 137 repro); also discovered CLI --host/--port are dead flags (yaml always wins, deferred-items.md)
+- [Phase 05 close 2026-10-03]: stale-digest re-verification passed 25/25 at 80b40a5 — NT smoke real-green (se3+sl7 shims), WR-04 rice network lane executed by the verifier; incremental review of the quick-task delta recorded 1C/1W/3I open (CR-01: single-flight asyncio lock releases on timeout cancellation → concurrent infer_seqs possible)
 
 ### Pending Todos
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - Runtime budget risk: ~24 new slow tests with naive serial ceilings 14–48h vs the 900-min nightly job — measure per-artifact budgets during the Phase 5 pilot and Phase 8 rollout; escalation pre-authorized (CI-06)
 - From v1 ship triage (still open, live in /gsd-ship ledger): WR-01 nightly test-mamba continue-on-error; WR-02 plot.py prepare_data drops task_type; WR-03 workflows README stale — note WR-08/09 are v1.1 Phase 5 scope, these three are not
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
+- [Phase 05] D-04 feasibility dispatch deferred post-merge — `workflow_dispatch` needs feasibility.yml on the default branch; fires after phs→dev→main integration (phs range unpushed, manual-push rule)
+- [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 single-flight lock hole (critical) + WR-01 dna_interpret event-loop blocking — quick-task candidates before/during Phase 8 rollout
 
 ### Quick Tasks Completed
 
@@ -135,7 +138,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T03:15:00.000Z
+Last session: 2026-10-03T12:10:00+08:00
 Stopped at: Phase 05 complete, ready to plan Phase 06
 Resume file: None
 

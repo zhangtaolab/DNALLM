@@ -57,6 +57,14 @@ Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREME
 - CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
 - PlantHelixSeek-CRE and PlantHelixSeek-Anno inference example notebooks with dnallm API support and in-repo Arabidopsis showcase regions (≤200kb, prediction-matching-truth loci)
 
+Shipped in Phase 5 (Execution Harness, Honest Gates & Runner Feasibility, 2026-10-03):
+
+- ✓ Private nbclient execution harness proven end-to-end, including a deliberate-hang kernel-kill test; typed-skip prefixes (`environment-unavailable:`/`optional-dep:`) behind a zero-caller allowlist gate
+- ✓ Both false-green CI gates closed together with the docs-mirror drift they hid (docs-validation masking flags removed over a byte-identical mirror resync; mcp extra installed; README proven; branch protection live on dev+main)
+- ✓ GB10 runner feasibility settled in writing with real-forward evidence (evo-1 8k variant, evo2 noFP8 config, megaDNA pinned clone, pyBigWig environment-unavailable, marimo export-html) — 05-FEASIBILITY.md
+- ✓ Entire example/ tree executed for real (25-item census: 11 PASS / 12 class-tagged FAIL → Phase-8 repair queue / 2 deferred-owner, since executed green via 261003-csd); durable wiring ACTIVE×13 / GATED×8 / 3 marimo apps; fast lane 1716 passed
+- ✓ Reopened 5th success criterion (D-07/D-08/D-09) closed; verification re-passed 25/25 at 80b40a5 (2026-10-03) with the NT remote-code smoke real-green through the shim set
+
 Shipped in Phase 3 (Coverage Waves, 2026-10-01):
 
 - ✓ Write new tests until coverage exceeds 90% on the agreed denominator — **96.30%** (7,131/7,405 stmts, verifier-reproduced at HEAD d152d12; ~1,000 behavior tests across 5 ranked-worklist waves; pragma held at 3; 7 allowlisted skips; 8 latent source bugs fixed en route)
@@ -103,6 +111,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Fix real code bugs encountered during audit (AUROC, CrossDNA) | Skipped-crash tests hide real defects; unskipping them is required for honest coverage | ✓ Landed Phase 2 (both fixed, regression-tested, unskipped) |
 | Subprocess coverage: start minimal, escalate only on canary evidence (Phase 1) | pytest-cov 7 removed `.pth` subprocess auto-measurement; no collected test spawns subprocesses | ✓ Landed Phase 1 (AUDIT-04; escalation trigger recorded) |
 | test-mamba on the self-hosted GPU runner at nightly cadence (schedule/dispatch-only), not push/PR | Per-run CUDA kernel source build is too heavy for per-push cadence (GATE-02 amended); PR-authored code (incl. forks) must never execute on the self-hosted box | ✓ Landed v1 closeout (quick task 261001-ith; dispatch run 36821471332 green) |
+| Harness: nbclient plain `execute()` + `shutdown_kernel=immediate` in a tmp sandbox; tree-clean check is delta-zero vs an import-time baseline | nbclient 0.11 NotebookClient is not a context manager; the owner's live IDE churn on tracked notebooks is not harness business | ✓ Landed Phase 5 (05-01/05-05) |
+| Gated lane is probe-then-execute with live probe results carried in skip messages (both directions proven) | An ever-green skip is the same dishonesty class as the false-green CI gates this milestone closes | ✓ Landed Phase 5 + 261003-csd (ollama/MCP gates) |
+| Census before repair: full-tree real execution with class-tagged exact tracebacks ranks the repair queue | Phase 8 repair must be evidence-ranked, not anecdotal | ✓ Landed Phase 5 (05-CENSUS.md: 11 PASS / 12 FAIL / 2 deferred) |
 
 ## Evolution
 
@@ -122,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-01 after v1.1 milestone start*
+*Last updated: 2026-10-03 after Phase 5*
