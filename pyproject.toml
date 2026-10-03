@@ -467,6 +467,7 @@ module = [
     "vortex.*",
     "stripedhyena.*",
     "pyfaidx.*",
+    "pyfastx.*",
     "polars.*",
     "pacmap.*",
     "olmo.*",
