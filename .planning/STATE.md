@@ -98,10 +98,12 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 05]: 05-05: GAP-1-class gap extends to plant-nucleotide-transformer-BPE (NER script + notebook; same EsmConfig.is_decoder rung after the import shim) — 05-04 ladder honored, script lane = self-healing typed skip; one owner disposition now covers three census items (D-09 hand-off)
 - [Phase 05]: 05-06 census complete: 25/25 example items executed — 11 PASS / 12 FAIL (class-tagged repair queue: NT-REMOTE-STRUCTURAL x3-behind-one-disposition, BPE-TOKENIZER upstream artifacts, OTHER incl. benchmark.py:296 labels bug) / 2 deferred-owner (ollama probe green; Phase-8 plan required)
 - [Phase 05]: 05-06 durable rollout: ACTIVE_NOTEBOOKS x8 (two real trainings included), 7 probe-then-execute gated tests with honest typed skips (mcp pair skips on the genuinely-down MCP endpoint with ollama-GREEN evidence in-message; both-up state fails loudly per T-05-16), 3 marimo apps; full tests/examples 107 passed/9 audit-matched skips in 47:26
+- [quick 261003-csd]: D-08 closed — mcp client pair moved to the owner-approved EXECUTE state (T-05-16 sentinel retired 2026-10-03): both-up executes, any-down typed-skips with both live probe results, proven in both directions; langchain notebook runs under isolated kernelspec dnallm-mcp-langchain (VIRTUAL_ENV pinned to .scratch throwaway venv — project venv provably untouched)
+- [quick 261003-csd]: two real MCP serving bugs fixed with same-change tests: single-flight inference (concurrent DataLoader forks + filelock = fork-unsafe deadlock; every multi-model predict used to time out) and dna_interpret mamba guard (captum backward on DNAMamba SIGKILLs the whole server, exit 137 repro); also discovered CLI --host/--port are dead flags (yaml always wins, deferred-items.md)
 
 ### Pending Todos
 
-- Next notebook round (owner-scoped 2026-10-02, "门控的留在下一轮"): gated families — generation_evo_models, generation_megaDNA, finetune_custom_head, lora_finetune ×2 (evo2/megaDNA/mamba prerequisites per 05-FEASIBILITY.md); mcp_example ×2 stay pending-owner (D-08/T-05-16 ollama+MCP coexistence plan); finetune_generation megaDNA half (now honestly gated via _gate_megadna)
+- Next notebook round (owner-scoped 2026-10-02, "门控的留在下一轮"): gated families — generation_evo_models, generation_megaDNA, finetune_custom_head, lora_finetune ×2 (evo2/megaDNA/mamba prerequisites per 05-FEASIBILITY.md); mcp_example ×2 DONE 261003-csd (both green in the gated lane); finetune_generation megaDNA half (now honestly gated via _gate_megadna)
 - TypedDict pass for `load_config` (owner chose option A, 2026-10-02): `dnallm/configuration/configs.py:495` returns `dict[str, BaseModel]` → per-key TypedDict (task→TaskConfig etc.); coordinated update of `dict[str, BaseModel]` consumers (DNAInference/DNATrainer/cli) + tests in same change; kills IDE pyrefly `invalid-argument-type` on notebook `configs['task']` calls
 - Typing special (merge with the TypedDict pass): ty baseline report at `.planning/research/ty-check-dnallm-2026-10-02.txt` (568 diagnostics, proven false positives in unresolved-import class, vendored files unexcluded) — configure `[tool.ty.src]` excludes, triage, polish the 15 shim annotations; CI stays mypy-advisory until then
 
@@ -120,7 +122,6 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 3 | gsd-fast: fix Benchmark.plot return annotation lie (-> None vs actual 2-tuple), kills ty not-iterable in benchmark notebook | 2026-10-02 | d352c0e | — |
 | 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
 | 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
-| 261003-csd | Execute both owner-deferred mcp client notebooks to green (gated lane, live ollama+MCP stack, isolated langchain kernel); 2 real serving bugs fixed (single-flight deadlock, mamba interpret SIGKILL); both-direction honest gate; D-08 2-of-21 gap closed | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
 
 ## Deferred Items
 
@@ -134,8 +135,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T08:36:21.856Z
-Stopped at: Completed 05-06-PLAN.md (full-tree census + durable rollout)
+Last session: 2026-10-03T03:15:00.000Z
+Stopped at: Completed quick task 261003-csd (both owner-deferred MCP client notebooks green in the gated lane; D-08 closed)
 Resume file: None
 
 ## Deferred Verification
