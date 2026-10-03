@@ -12,7 +12,7 @@
   **Evidence (2026-10-03):** launched with `--host 127.0.0.1`, log line `_start_http_server:1819 - Streamable HTTP endpoint: http://0.0.0.0:8000/mcp`; `ss -tlnp` shows `0.0.0.0:8000`; main() did pass `args.host` through (`Host: 127.0.0.1` logged at server.py:1995).
   **Fix shape (product decision, not this task's scope):** make CLI args win over config when explicitly provided (argparse sentinel defaults), or document that config always wins and drop the misleading flags. Note the server is short-lived behind loopback consumers either way in this workflow.
 - MCP server `dna_interpret` runs captum work inline on the event loop (no executor), so a long interpretation blocks all concurrent tool traffic and the 30s `_with_timeout_wrapper` cannot fire while blocked (observed 172s lig call completing "past" the timeout).
-  status: open
+  status: RESOLVED 2026-10-03 — quick task 261003-ij4 (commit 3fe80bf) moved the interpret body into the default executor behind a dedicated `_interpret_thread_lock` (CR-01 pattern); 3 red-then-green regression tests in tests/mcp/test_interpret_tool.py
   **What:** observed 261003-csd; mamba models are now guarded (fa19675) but non-mamba interpretations still block the loop for their full duration.
   **Evidence (2026-10-03):** `.scratch/mcp-server-bringup.log` — `Tool dna_interpret completed [duration=172...]` while the wrapper cap is 30s.
   **Fix shape:** run `_dna_interpret` body via `run_in_executor` (pattern already used by ModelManager) — owner-scope server change.
