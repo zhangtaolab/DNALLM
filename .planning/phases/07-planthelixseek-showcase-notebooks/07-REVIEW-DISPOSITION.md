@@ -5,11 +5,11 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "docs-sync gate ignores some sanctioned runtime artifacts, fails red on any tree where the benchmark example ran"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "CRE notebook band-table parse fails as a bare KeyError instead of the documented parse guard"
   - id: IN-01
     severity: info
@@ -35,17 +35,17 @@ findings:
     severity: info
     disposition: open
     title: "Anno label-order usage mixes registry-derived and hardcoded indexes"
-open: 8
+open: 6
 total: 8
-recorded: 2026-10-03T15:44:55.115Z
+recorded: 2026-10-03T21:07:01.976Z
 ---
 
 # Phase 07: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
+| WR-01 | warning | fixed | 07-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 07-REVIEW-FIX.md |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
