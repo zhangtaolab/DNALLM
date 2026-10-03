@@ -123,3 +123,31 @@ Budget unit = sequence bases per region set (owner decision 2026-10-02; cap 200,
 | Chr1:5050001-5250000 | 99 | 71 | 1.750054 |
 | Chr1:5150001-5350000 | 87 | 79 | 1.728801 |
 
+
+<!-- gsd:audit-section -->
+## Audit summary (committed-artifact audit)
+
+Re-derived from the committed files on disk after the emit (budget math
+via `dnallm.utils.genomic_coords` semantics; never eyeballed). The audit
+tooling is scratch - absent from a fresh clone - so these RESULTS are the
+committed record.
+
+| Check | Result |
+|---|---|
+| Budget: CRE region set | 200000 / 200000 bases |
+| Budget: Anno region set | 200000 / 200000 bases |
+| Budget: negative-control set | 40000 / 200000 bases |
+| Inventory (committed files) | 11 present, none unexpectedly empty |
+| Truth-integrity (rows re-parsed in-bounds) | 1696 rows OK |
+| Zero-row intergenic truth slices | TAIR10_DHSs_chr1_14953292_14973291.gff, TAIR10_GFF3_chr1_14953292_14973291.gff3 (rendered as zero, never dropped) |
+
+```
+audit_budget_ok=true
+cre_set_bases=200000 cap=200000
+anno_set_bases=200000 cap=200000
+negative_set_bases=40000 cap=200000
+audit_inventory_files=11
+audit_truth_rows_checked=1696
+audit_zero_row_slices=2 (TAIR10_DHSs_chr1_14953292_14973291.gff, TAIR10_GFF3_chr1_14953292_14973291.gff3)
+audit_bytes=580204
+```
