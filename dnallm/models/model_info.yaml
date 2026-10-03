@@ -1623,3 +1623,36 @@ finetuned:
       task_type: "classification"
       num_labels: 2
       label_names: ["off", "on"]
+# PlantHelixSeek finetuned checkpoints (Phase 06-01 registry freeze, 2026-10-03).
+# Label-order source: zhangtaolab/PlantHelixSeek GitHub,
+#   scripts/gene_annotation/train_token_cls.py:78-96 (LABEL_NAMES), fetched 2026-10-02.
+#   CRE class order: class-1 == CRE per upstream scripts/cis_regulatory/README.md
+#   (bin score = arithmetic mean of class-1 probabilities).
+# Checkpoint constraints proven by the one-shot freeze run: Anno config.id2label is
+#   the 17-entry transformers identity-placeholder pattern and its classifier head is
+#   [17, 512] with bias [17]; CRE config carries no id2label/label2id and its score
+#   head is [2, 512] - the configs hold no label-ordering semantics, so the upstream
+#   training script is the frozen semantic source (REG-02).
+# Checkpoint commit shas (trust_remote_code provenance):
+#   PlantHelixSeek-CRE  7093de3baf64bf59ac147be3971482a13238aabd
+#   PlantHelixSeek-Anno 6d39386ab562b2a9a3d3581ebe28e235383c8d3c
+# Freeze tooling is intentionally uncommitted (owner constraint 2026-10-02): it ran
+#   once from the gitignored example/notebooks/plant_helixseek_shared/.scratch/ home.
+  - name: "PlantHelixSeek CRE"
+    model: "zhangtaolab/PlantHelixSeek-CRE"
+    base_model: "zhangtaolab/PlantHelixSeek"
+    task:
+      describe: "Predict cis-regulatory elements (open chromatin) in plant genomes by using PlantHelixSeek model."
+      task_type: "binary"
+      num_labels: 2
+      label_names: ["Not CRE", "CRE"]
+      threshold: 0.5
+  - name: "PlantHelixSeek Anno"
+    model: "zhangtaolab/PlantHelixSeek-Anno"
+    base_model: "zhangtaolab/PlantHelixSeek"
+    task:
+      describe: "Predict gene structure (CDS/intron/5'UTR/3'UTR) per nucleotide by using PlantHelixSeek model."
+      task_type: "token"
+      num_labels: 17
+      label_names: ['O', 'B-CDS', 'I-CDS', 'L-CDS', 'U-CDS', 'B-INTRON', 'I-INTRON', 'L-INTRON', 'U-INTRON', 'B-UTR5', 'I-UTR5', 'L-UTR5', 'U-UTR5', 'B-UTR3', 'I-UTR3', 'L-UTR3', 'U-UTR3']
+      threshold: 0.5
