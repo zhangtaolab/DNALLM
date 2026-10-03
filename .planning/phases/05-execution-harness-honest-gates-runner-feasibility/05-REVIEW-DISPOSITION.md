@@ -13,7 +13,7 @@ findings:
     title: "dna_interpret runs blocking captum work on the event-loop thread — its timeout wrapper can never fire"
   - id: IN-01
     severity: info
-    disposition: open
+    disposition: fixed
     title: "Three new patch installers omit the try/except transformers-import guard the module contract promises"
   - id: IN-02
     severity: info
@@ -63,7 +63,7 @@ findings:
     severity: info
     disposition: deferred
     title: "# ruff: ignore[rule-name] comments are inert — not a ruff directive (harmless under preview config)"
-open: 3
+open: 2
 total: 15
 recorded: 2026-10-03T03:50:22.056Z
 ---
@@ -74,7 +74,7 @@ recorded: 2026-10-03T03:50:22.056Z
 |---------|----------|-------------|--------|
 | CR-01 | critical | fixed | 032b308 fix(quick-261003-hhj) |
 | WR-01 | warning | fixed | 3fe80bf fix(quick-261003-ij4) |
-| IN-01 | info | open | - |
+| IN-01 | info | fixed | cad7370 fix(quick-261003-jpr) |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
 | WR-02 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
