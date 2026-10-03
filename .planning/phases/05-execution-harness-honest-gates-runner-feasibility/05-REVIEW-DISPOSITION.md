@@ -5,32 +5,44 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: fixed
-    title: "Unused noqa (ANN202) makes ruff check . exit 1 repo-wide — CI lint red on every push"
+    disposition: open
+    title: "Single-flight inference lock releases on tool timeout while the orphaned infer_seqs thread keeps running"
   - id: WR-01
     severity: warning
-    disposition: fixed
-    title: "assert_tree_clean only asserts on stdout with check=False — a failing git status passes silently"
+    disposition: open
+    title: "dna_interpret runs blocking captum work on the event-loop thread — its timeout wrapper can never fire"
+  - id: IN-01
+    severity: info
+    disposition: open
+    title: "Three new patch installers omit the try/except transformers-import guard the module contract promises"
+  - id: IN-02
+    severity: info
+    disposition: open
+    title: "Port bind-close-probe race in TestProbeHonesty unbound-port test"
+  - id: IN-03
+    severity: info
+    disposition: open
+    title: "langchain notebook ensure-cell spawns a detached MCP server that is never shut down"
   - id: WR-02
     severity: warning
     disposition: fixed
-    title: "filecmp.dircmp defaults to shallow=True — byte-identical mirror contract not byte-verified"
+    title: "Gated `lora_finetune.ipynb` runs with outer timeout == cell timeout, violating the strictly-below invariant"
   - id: WR-03
     severity: warning
     disposition: fixed
-    title: "Module-scope nbclient import fails collection under bare .[test] install — add nbclient to test extra"
+    title: "`test_timeout` (and marimo `flavor`) spec fields are dead data contradicting their documented contract"
   - id: WR-04
     severity: warning
     disposition: fixed
-    title: "|| true greens the spike step unconditionally, masking pre-evidence crashes"
+    title: "Permanent HTTP 4xx on the rice input URLs converts to an ever-green `network-unavailable` skip"
   - id: WR-05
     severity: warning
     disposition: fixed
-    title: "GPU-absent path skips everything and reports a green job with zero evidence"
+    title: "GPU-absent path reports a green job with zero evidence produced"
   - id: WR-06
     severity: warning
     disposition: fixed
-    title: "No permissions block in feasibility.yml — inherits default token scopes"
+    title: "`feasibility.yml` omits the least-privilege `permissions:` block the repo convention mandates"
   - id: WR-07
     severity: warning
     disposition: fixed
@@ -43,18 +55,6 @@ findings:
     severity: warning
     disposition: fixed
     title: "Two residual clauses in the run-step comment contradict the corrected fallback semantics and the committed evidence"
-  - id: IN-01
-    severity: info
-    disposition: deferred
-    title: "test_timeout / extra_inputs spec keys are dead config (Phase 8 generalization wires them)"
-  - id: IN-02
-    severity: info
-    disposition: deferred
-    title: "assert_tree_clean fails on pre-existing developer WIP under example/ (no baseline/delta)"
-  - id: IN-03
-    severity: info
-    disposition: deferred
-    title: "Hardcoded developer home path in the mirrored NER dataset generator (mirror-faithful; Phase 8 per D-03)"
   - id: IN-04
     severity: info
     disposition: deferred
@@ -63,47 +63,31 @@ findings:
     severity: info
     disposition: deferred
     title: "# ruff: ignore[rule-name] comments are inert — not a ruff directive (harmless under preview config)"
-open: 0
+open: 5
 total: 15
-recorded: 2026-10-02T04:35:00+08:00
+recorded: 2026-10-03T03:50:22.056Z
 ---
 
 # Phase 05: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | 89b2f63 fix(05) iter1 (not in the current review) |
-| WR-01 | warning | fixed | f8e0f9f fix(05) iter1 (not in the current review) |
-| WR-02 | warning | fixed | 9876a0b fix(05) iter1 (not in the current review) |
-| WR-03 | warning | fixed | 5c30083 fix(05) iter1 (not in the current review) |
-| WR-04 | warning | fixed | 9de82cd fix(05) iter1 (not in the current review) |
-| WR-05 | warning | fixed | 898d325 fix(05) iter1 (not in the current review) |
-| WR-06 | warning | fixed | 824b901 fix(05) iter1 (not in the current review) |
+| CR-01 | critical | open | - |
+| WR-01 | warning | open | - |
+| IN-01 | info | open | - |
+| IN-02 | info | open | - |
+| IN-03 | info | open | - |
+| WR-02 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
+| WR-03 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
+| WR-04 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
+| WR-05 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
+| WR-06 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-07 | warning | fixed | a5f38ac fix(05) iter2 (not in the current review) |
 | WR-08 | warning | fixed | 8fe451b fix(05) iter2 (not in the current review) |
-| WR-09 | warning | fixed | bb57709 orchestrator post-loop fix (reviewer's verbatim replacement text) |
-| IN-01 | info | deferred | known-deferred: Phase 8 fixture generalization wires the spec keys |
-| IN-02 | info | deferred | known-deferred: baseline/delta pattern lands with Phase 8 rollout |
-| IN-03 | info | deferred | known-deferred: mirror-faithful copy; content repair in Phase 8 per D-03 |
-| IN-04 | info | deferred | known-deferred: spike-only /tmp path, throwaway evidence context |
-| IN-05 | info | deferred | known-deferred: inert comments; revisit if preview config selects those codes |
+| WR-09 | warning | fixed | bb57709 orchestrator post-loop fix (reviewer's verbatim replacement text) (not in the current review) |
+| IN-04 | info | deferred | known-deferred: spike-only /tmp path, throwaway evidence context (not in the current review) |
+| IN-05 | info | deferred | known-deferred: inert comments; revisit if preview config selects those codes (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
-
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
-
 Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently. ONE exception: when a finding id is REUSED by a different finding, the earlier decision cannot keep a row — the id is taken — and it is dropped. A RECORDED decision (anything but `open`) is named on the console when that happens; a row still at `open` is replaced silently, because `open` records no decision to lose.
-
-Note: this ledger was rendered by the orchestrator following the canonical schema (the embedded renderer's heading parser does not match the iteration-3 review's `### IN-01 (carried, ...):` heading suffix shape, which would have produced an unparsed-shortfall row set). Every disposition above is grounded in the git commits cited; WR-09's fix (bb57709) applied the reviewer's verbatim replacement text after the 3-iteration --auto cap.
-
-## Gap-Closure Incremental Review Disposition (2026-10-02, review @ 774aa61, fixes @ 265dcec..6453ece)
-
-| ID | Severity | Finding (short) | Disposition |
-|---|---|---|---|
-| WR-01 | Warning | Shim attached helpers only to transformers.modeling_utils; pytorch_utils-importing remote checkpoints still crash on 5.x | fixed (265dcec) — per-name absence-gated attach to both modules + 6 new contract tests (32 total) |
-| WR-02 | Warning | lora_finetune gated entry fell to class mark 3600 == cell timeout, violating strictly-below invariant | fixed (d7493f5) — _TIMEOUT_7200_GATED frozenset; effective mark verified (7200,) |
-| WR-03 | Warning | Spec fields test_timeout/flavor were dead data contradicting docstrings | fixed (eb55cff) — removed fields, corrected docs; zero runtime change; 21+3 entries re-validated |
-| WR-04 | Warning | URLError catch swallowed HTTP 4xx into ever-green network-unavailable skip | fixed (6453ece) — 4xx re-raises, 5xx/URLError/timeout keep typed skip; flagged human-verify (slow network lane) |
-| IN-01..IN-05 | Info | gate checks one name / hand-built skip prefix / pre-existing hardcoded path / no synthetic-module attach test / timeout artifact gap | open (out of scope per fix_scope=critical_warning); IN-01 incidentally improved by WR-01's per-name structure |
-
-Verification: fast leg 1648 passed + 1 pre-existing skip; ruff clean on all touched files; live probe confirms pytorch_utils attach on 5.17.
