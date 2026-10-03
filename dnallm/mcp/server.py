@@ -45,6 +45,7 @@ import asyncio
 import functools
 import json
 import re
+import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -155,6 +156,18 @@ class DNALLMMCPServer:
 
         # Server state tracking
         self._initialized = False  # Prevents double initialization
+
+        # WR-01 (261003-ij4): dna_interpret offloads its captum work to the
+        # default executor; this lock is acquired INSIDE the
+        # executor-submitted closure (the CR-01 / 261003-hhj pattern), so a
+        # tool-timeout cancellation abandons only the await — the orphaned
+        # thread keeps the flight, a client retry queues behind it, and at
+        # most one interpretation runs per process at any instant,
+        # preventing unbounded orphan stacking via timeout→retry loops.
+        # Deliberately NOT _infer_thread_lock: DNAInterpret uses no
+        # DataLoader (no fork-unsafe window) and attributions must not
+        # queue behind minutes-long predicts.
+        self._interpret_thread_lock = threading.Lock()
 
     async def initialize(self) -> None:
         """Initialize the server and load all enabled models.
@@ -1552,23 +1565,36 @@ class DNALLMMCPServer:
                 else:
                     target_class = 0
 
-            # Instantiate interpreter
-            interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
+            def _run_interpretation() -> tuple[list[str], np.ndarray]:
+                # All model-touching sync work (instantiation, embedding-
+                # layer detection, the captum attribution itself) lives in
+                # one off-loop closure, serialized by the interpret flight
+                # lock so a timeout-cancellation cannot stack concurrent
+                # attributions on one shared torch model.
+                with self._interpret_thread_lock:
+                    interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
 
-            # Handle layer_conductance: auto-detect embedding layer
-            kwargs: dict[str, Any] = {}
-            if mapped_method == "layer_conductance":
-                target_layer = interpreter._find_embedding_layer()
-                kwargs["target_layer"] = target_layer
+                    # Handle layer_conductance: auto-detect embedding layer
+                    kwargs: dict[str, Any] = {}
+                    if mapped_method == "layer_conductance":
+                        target_layer = interpreter._find_embedding_layer()
+                        kwargs["target_layer"] = target_layer
 
-            # Run interpretation
-            tokens, attr_scores = interpreter.interpret(
-                input_seq=sequence,
-                method=mapped_method,
-                target=target_class,
-                max_length=max_length,
-                **kwargs,  # type: ignore[arg-type]
-            )
+                    # Run interpretation
+                    return interpreter.interpret(
+                        input_seq=sequence,
+                        method=mapped_method,
+                        target=target_class,
+                        max_length=max_length,
+                        **kwargs,  # type: ignore[arg-type]
+                    )
+
+            # WR-01 (261003-ij4): a synchronous captum attribution (observed
+            # 172s) must never occupy the event-loop thread, else the
+            # _with_timeout_wrapper asyncio.wait_for cannot fire and every
+            # client on every transport freezes.
+            loop = asyncio.get_running_loop()
+            tokens, attr_scores = await loop.run_in_executor(None, _run_interpretation)
 
             # Normalize attribution scores
             attr_min = float(np.min(attr_scores))

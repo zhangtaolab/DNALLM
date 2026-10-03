@@ -1,5 +1,9 @@
 """Unit tests for the dna_interpret MCP tool."""
 
+import asyncio
+import threading
+import time
+
 import pytest
 from unittest.mock import Mock, patch
 import numpy as np
@@ -526,3 +530,242 @@ class TestDNAInterpretTool:
         assert result["content"][0]["text"] == (
             "Interpretation failed. See server logs for details."
         )
+
+
+@pytest.mark.asyncio
+class TestDNAInterpretLoopOffloading:
+    """WR-01 (05-REVIEW.md:198): dna_interpret must never block the event loop.
+
+    Before the fix, ``_dna_interpret`` called the synchronous captum
+    attribution ``interpreter.interpret(...)`` directly on the event-loop
+    thread (observed 172s on a non-mamba model against a 30s tool cap).
+    ``_with_timeout_wrapper``'s ``asyncio.wait_for`` only fires at await
+    points, so while the single loop thread ran a long interpretation the
+    dna_interpret timeout was dead code and every client on every transport
+    was frozen.
+
+    The fix submits the whole blocking body to the default executor behind
+    a dedicated ``_interpret_thread_lock`` acquired INSIDE the
+    executor-submitted closure (the CR-01 / 261003-hhj pattern).  Accepted
+    property (same as CR-01): on timeout only the await is cancelled — the
+    orphaned executor thread runs to completion and keeps the flight.  The
+    assertions below cover loop responsiveness and flight retention, never
+    thread cancellation.
+    """
+
+    @staticmethod
+    def _blocked_interpret(state: dict, started: threading.Event, release: threading.Event):
+        """Return an interpret() fake that blocks until released.
+
+        The bounded ``release.wait(timeout=5)`` stands in for a long real
+        attribution (172s class) and keeps a failing run from wedging
+        pytest-timeout: on the pre-fix code it is the only thing that
+        unblocks the frozen loop thread.
+        """
+        tokens = ["A", "T", "G", "C"]
+        scores = np.array([0.1, -0.2, 0.3, -0.1])
+
+        def fake_interpret(*args, **kwargs):
+            state["in_flight"] = True
+            started.set()
+            release.wait(timeout=5)
+            state["in_flight"] = False
+            return (tokens, scores)
+
+        return fake_interpret
+
+    async def test_concurrent_tool_completes_while_interpretation_blocked(self, mock_server):
+        """A trivial tool call completes WHILE an attribution is blocked.
+
+        RED on the pre-fix code: ``interpret`` runs inline on the loop
+        thread, so the health-check heartbeat can only run after the 5s
+        block releases — by then the fake has already flipped
+        ``state["in_flight"]`` back to False and the assertion below
+        fails.  That is the proof the loop was frozen (WR-01).
+        """
+        state = {"in_flight": False}
+        started = threading.Event()
+        release = threading.Event()
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret = Mock(
+                side_effect=self._blocked_interpret(state, started, release)
+            )
+
+            task = asyncio.create_task(
+                mock_server._dna_interpret(
+                    sequence="ATGC",
+                    model_name="test-model",
+                    method="lig",
+                    target_class=0,
+                )
+            )
+
+            # Poll for the fake to start without ever blocking the loop
+            # thread under test on a threading wait.  The 7s window must
+            # exceed the fake's 5s bounded block: since Python 3.12
+            # asyncio.wait_for drives a raw coroutine inline in the
+            # caller's task, a shorter window would fail at this poll with
+            # TimeoutError on the pre-fix code instead of proving the
+            # heartbeat property at the assertion below.
+            async def _poll_started():
+                while not started.is_set():
+                    await asyncio.sleep(0.01)
+
+            await asyncio.wait_for(_poll_started(), timeout=7)
+
+            # A cheap pure-async tool (two config lookups) must complete
+            # while the attribution is still blocked — the serving-liveness
+            # property WR-01 restores.  A bare Mock has no len(), so give
+            # get_loaded_models a real empty list first.
+            mock_server.model_manager.get_loaded_models.return_value = []
+            heartbeat = await asyncio.wait_for(mock_server._health_check(), timeout=2)
+            assert heartbeat.get("health", {}).get("status") == "healthy"
+            assert state["in_flight"] is True, (
+                "health_check only ran after the interpretation unblocked — "
+                "captum work occupied the event-loop thread (WR-01)"
+            )
+
+            release.set()
+            result = await asyncio.wait_for(task, timeout=5)
+            assert "isError" not in result or result.get("isError") is False
+
+    async def test_timeout_wrapper_fires_while_interpretation_blocked(self, mock_server):
+        """The tool timeout returns its timeout dict while interpret still runs.
+
+        RED on the pre-fix code: ``asyncio.wait_for`` cannot fire while the
+        loop thread is blocked inside the sync attribution, so the wrapped
+        call returns a SUCCESS dict only after the 5s block releases and
+        the ``error_type == "timeout"`` assertion fails — the timeout
+        wrapper was dead code for dna_interpret (WR-01).
+        """
+        state = {"in_flight": False}
+        started = threading.Event()
+        release = threading.Event()
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret = Mock(
+                side_effect=self._blocked_interpret(state, started, release)
+            )
+
+            mock_server._tool_timeout_seconds = 0.5
+            mock_server._log_format = "text"
+            wrapped = mock_server._with_timeout_wrapper(mock_server._dna_interpret, "dna_interpret")
+
+            wall_start = time.monotonic()
+            result = await wrapped(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=0,
+            )
+            elapsed = time.monotonic() - wall_start
+
+            assert result.get("error_type") == "timeout", (
+                "the dna_interpret timeout wrapper cannot fire while the "
+                "attribution occupies the loop thread (WR-01)"
+            )
+            assert result.get("isError") is True
+            assert elapsed < 2, f"wrapped call took {elapsed:.1f}s, not the 0.5s cap"
+            assert state["in_flight"] is True, (
+                "the wrapper must return while the attribution is still running"
+            )
+
+            # The server stays usable after a timeout fired: release the
+            # orphan, restore a working interpret, call the tool again.
+            release.set()
+            mock_server._tool_timeout_seconds = 10
+            mock_interp.interpret.side_effect = None
+            mock_interp.interpret.return_value = (
+                ["A", "T", "G", "C"],
+                np.array([0.1, -0.2, 0.3, -0.1]),
+            )
+
+            retry = await wrapped(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=0,
+            )
+            assert not retry.get("isError")
+            assert "attributions" in retry
+
+    async def test_timeout_cancelled_interpret_holds_single_flight_for_retry(self, mock_server):
+        """A timeout→retry loop cannot stack concurrent attributions (CR-01 mirror).
+
+        RED on the pre-fix code right at the first assertion: the wrapped
+        call cannot time out while the loop thread is blocked, so call 1
+        returns a success dict instead of the timeout dict.  After the fix
+        this test also pins the dedicated interpret flight lock: without
+        it, a bare executor move would let the immediate retry enter
+        ``interpret`` concurrently with the orphaned, uncancellable first
+        attribution (max_active 2 on one shared torch model).
+        """
+        counts = {"active": 0, "max_active": 0}
+        guard = threading.Lock()
+        started = threading.Event()
+        release = threading.Event()
+        tokens = ["A", "T", "G", "C"]
+        scores = np.array([0.1, -0.2, 0.3, -0.1])
+
+        def counting_interpret(*args, **kwargs):
+            with guard:
+                counts["active"] += 1
+                counts["max_active"] = max(counts["max_active"], counts["active"])
+            started.set()
+            release.wait(timeout=5)
+            with guard:
+                counts["active"] -= 1
+            return (tokens, scores)
+
+        with patch("dnallm.mcp.server.DNAInterpret") as mock_interp_cls:
+            mock_interp = Mock()
+            mock_interp_cls.return_value = mock_interp
+            mock_interp.interpret = Mock(side_effect=counting_interpret)
+
+            mock_server._tool_timeout_seconds = 0.3
+            mock_server._log_format = "text"
+            wrapped = mock_server._with_timeout_wrapper(mock_server._dna_interpret, "dna_interpret")
+
+            # Call 1 hits the tool timeout and abandons its attribution to
+            # the executor thread — the uncancellable orphan holds the flight.
+            first = await wrapped(
+                sequence="ATGC",
+                model_name="test-model",
+                method="lig",
+                target_class=0,
+            )
+            assert first.get("error_type") == "timeout", (
+                "call 1 could not be timed out — the wrapper is dead code "
+                "while the attribution occupies the loop thread (WR-01)"
+            )
+
+            # The client's immediate retry must stay OUT of interpret while
+            # the orphan is still inside it.
+            mock_server._tool_timeout_seconds = 10
+            retry_task = asyncio.create_task(
+                wrapped(
+                    sequence="ATGC",
+                    model_name="test-model",
+                    method="lig",
+                    target_class=0,
+                )
+            )
+            await asyncio.sleep(0.3)
+            assert counts["active"] == 1, (
+                "retry entered interpret while the orphaned attribution was "
+                "still running — single-flight was lost across the timeout "
+                "cancellation boundary"
+            )
+
+            release.set()
+            retry = await asyncio.wait_for(retry_task, timeout=5)
+            assert not retry.get("isError")
+            assert "attributions" in retry
+            assert counts["max_active"] == 1, (
+                f"concurrent interpretations observed (max {counts['max_active']})"
+            )
