@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 Phase: 06 — Model Registry & Showcase Data Curation
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-03 — Completed quick task 261003-hhj: CR-01 fixed (single-flight threading.Lock spans orphaned infer_seqs thread lifetime, timeout-cancellation regression test; commit 032b308)
+Last activity: 2026-10-03 — Completed quick task 261003-ij4: WR-01 fixed (dna_interpret captum work offloaded to executor behind dedicated single-flight lock, tool timeout now fires; commit 3fe80bf)
 
 Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
 
@@ -114,7 +114,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - From v1 ship triage (still open, live in /gsd-ship ledger): WR-01 nightly test-mamba continue-on-error; WR-02 plot.py prepare_data drops task_type; WR-03 workflows README stale — note WR-08/09 are v1.1 Phase 5 scope, these three are not
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
 - [Phase 05] D-04 feasibility dispatch deferred post-merge — `workflow_dispatch` needs feasibility.yml on the default branch; fires after phs→dev→main integration (phs range unpushed, manual-push rule)
-- [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 single-flight lock hole (critical) + WR-01 dna_interpret event-loop blocking — quick-task candidates before/during Phase 8 rollout
+- [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 and WR-01 both FIXED (261003-hhj commit 032b308; 261003-ij4 commit 3fe80bf) — no open critical/warning findings from the Phase 05 incremental review remain
 
 ### Quick Tasks Completed
 
@@ -126,6 +126,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
 | 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
 | 261003-hhj | Fix CR-01: MCP single-flight inference — threading.Lock inside the executor-submitted callable spans the orphaned thread lifetime (asyncio lock released on timeout cancellation); asyncio.wait_for-cancellation regression test; 3/3 single-flight tests + 220 tests/mcp green | 2026-10-03 | 032b308 | [261003-hhj-fix-cr-01-mcp-single-flight-inference-as](./quick/261003-hhj-fix-cr-01-mcp-single-flight-inference-as/) |
+| 261003-ij4 | Fix WR-01: dna_interpret runs captum work in the default executor behind a dedicated `_interpret_thread_lock` (CR-01 pattern) — event loop stays responsive during long attributions, the 30s tool timeout actually fires, timeout→retry cannot stack concurrent interpretations; 3 red-then-green regression tests + 223 tests/mcp green | 2026-10-03 | 3fe80bf | [261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca](./quick/261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca/) |
 
 ## Deferred Items
 
@@ -139,8 +140,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T12:10:00+08:00
-Stopped at: Phase 05 complete, ready to plan Phase 06
+Last session: 2026-10-03T13:47:00+08:00
+Stopped at: Quick task 261003-ij4 (WR-01) complete; ready to plan Phase 06
 Resume file: None
 
 ## Deferred Verification

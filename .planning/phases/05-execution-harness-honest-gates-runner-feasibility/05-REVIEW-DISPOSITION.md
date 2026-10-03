@@ -9,7 +9,7 @@ findings:
     title: "Single-flight inference lock releases on tool timeout while the orphaned infer_seqs thread keeps running"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "dna_interpret runs blocking captum work on the event-loop thread — its timeout wrapper can never fire"
   - id: IN-01
     severity: info
@@ -63,7 +63,7 @@ findings:
     severity: info
     disposition: deferred
     title: "# ruff: ignore[rule-name] comments are inert — not a ruff directive (harmless under preview config)"
-open: 4
+open: 3
 total: 15
 recorded: 2026-10-03T03:50:22.056Z
 ---
@@ -73,7 +73,7 @@ recorded: 2026-10-03T03:50:22.056Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | CR-01 | critical | fixed | 032b308 fix(quick-261003-hhj) |
-| WR-01 | warning | open | - |
+| WR-01 | warning | fixed | 3fe80bf fix(quick-261003-ij4) |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
 | IN-03 | info | open | - |
