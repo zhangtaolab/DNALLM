@@ -6,10 +6,10 @@ current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
 status: planning
 stopped_at: Phase 05 complete, ready to plan Phase 06
-last_updated: "2026-10-03T04:48:20.595Z"
+last_updated: "2026-10-03T06:25:44.804Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 05 complete, transitioned to Phase 06
-state_head: 032b308aee96bf7aa499f540b523e30a05974190
+state_head: 56a72c91be633b48c200bc6d7a9deb84b4524062
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 Phase: 06 — Model Registry & Showcase Data Curation
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-03 — Completed quick task 261003-ij4: WR-01 fixed (dna_interpret captum work offloaded to executor behind dedicated single-flight lock, tool timeout now fires; commit 3fe80bf)
+Last activity: 2026-10-03 — Completed quick task 261003-jpr: IN-01 fixed (transformers_compat absence guards on the three sl7 installers + dynamic absence-contract test class; commits cad7370/56a72c9)
 
 Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
 
@@ -127,6 +127,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
 | 261003-hhj | Fix CR-01: MCP single-flight inference — threading.Lock inside the executor-submitted callable spans the orphaned thread lifetime (asyncio lock released on timeout cancellation); asyncio.wait_for-cancellation regression test; 3/3 single-flight tests + 220 tests/mcp green | 2026-10-03 | 032b308 | [261003-hhj-fix-cr-01-mcp-single-flight-inference-as](./quick/261003-hhj-fix-cr-01-mcp-single-flight-inference-as/) |
 | 261003-ij4 | Fix WR-01: dna_interpret runs captum work in the default executor behind a dedicated `_interpret_thread_lock` (CR-01 pattern) — event loop stays responsive during long attributions, the 30s tool timeout actually fires, timeout→retry cannot stack concurrent interpretations; 3 red-then-green regression tests + 223 tests/mcp green | 2026-10-03 | 3fe80bf | [261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca](./quick/261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca/) |
+| 261003-jpr | Fix IN-01: absence guards on the three sl7 patch installers in transformers_compat.py (configuration_utils/cache_utils/modeling_utils bare imports → standard try/except no-op guards); new TestTransformersAbsenceContract dynamically collects installers so future ones are auto-covered (11 items, roster pin + apply_patches survival); RED 4F/83P → GREEN 87P, tests/utils 129 green | 2026-10-03 | 56a72c9 | [261003-jpr-fix-in-01-the-three-new-patch-installers](./quick/261003-jpr-fix-in-01-the-three-new-patch-installers/) |
 
 ## Deferred Items
 
