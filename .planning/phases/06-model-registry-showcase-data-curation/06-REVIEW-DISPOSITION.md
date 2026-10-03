@@ -5,15 +5,15 @@ titles: json
 findings:
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`fla` extra is installed by no CI leg — nightly smoke tests run on the silent non-KDA fallback path"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "_load_with_fallback converts any exception — including dnallm code regressions — into a green skip"
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "slice_gff_rows strips only \\n — CRLF input silently corrupts column-9 values"
   - id: WR-04
     severity: warning
@@ -47,7 +47,7 @@ findings:
     severity: info
     disposition: open
     title: "Local .scratch/ ignore is redundant with the root pattern"
-open: 9
+open: 6
 total: 11
 recorded: 2026-10-03T18:40:00Z
 ---
@@ -56,9 +56,9 @@ recorded: 2026-10-03T18:40:00Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| WR-01 | warning | open | routed: needs ci.yml nightly legs to install .[base,fla] + smoke importorskip guard — recommend quick task or Phase 9 CI wiring before the next coverage-nightly run |
-| WR-02 | warning | open | routed: skip-contract redesign (whitelisted environment-unavailable prefix masks dnallm regressions) — quick-task candidate |
-| WR-03 | warning | open | routed: CRLF handling in slice_gff_rows violates the module's loud-error contract (LF committed data unaffected) — quick-task candidate; Phase 7 notebooks are the first external-GFF consumers |
+| WR-01 | warning | fixed | eb85f7e fix(quick-261003-r73): both nightly legs (coverage-nightly + mamba nightly) install .[base,fla]; both slow smokes carry the typed environment-unavailable: importorskip guard |
+| WR-02 | warning | fixed | 1219f0f test(quick-261003-r73): _is_environment_error classifier — env-class failures keep the byte-identical typed skip, dnallm regressions propagate and fail; 7 fast regression tests |
+| WR-03 | warning | fixed | 8d6bd3b fix(quick-261003-r73): slice_gff_rows strips \n/\r\n/\r terminators and raises ValueError on embedded \r; 2 same-change tests |
 | WR-04 | warning | fixed | 5d354c9 (pyproject mypy overrides + pyfaidx precedent; full mypy run still blocked by pre-existing numpy-stubs abort, CI-advisory) |
 | WR-05 | warning | fixed | 5d354c9 (tomllib guarded for 3.10; the two pyproject-declaration tests carry typed environment-unavailable skipif; ruff clean, 3 tests pass) |
 | IN-01 | info | open | - |
