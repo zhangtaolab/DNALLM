@@ -6,10 +6,10 @@ current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
 status: planning
 stopped_at: Phase 05 complete, ready to plan Phase 06
-last_updated: "2026-10-03T04:05:51.904Z"
+last_updated: "2026-10-03T04:48:20.595Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 05 complete, transitioned to Phase 06
-state_head: 80b40a58aa9e61c44890e1f9f4603f170349715d
+state_head: 032b308aee96bf7aa499f540b523e30a05974190
 progress:
   total_phases: 5
   completed_phases: 1
@@ -32,9 +32,9 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 Phase: 06 — Model Registry & Showcase Data Curation
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-03 — Phase 05 complete, transitioned to Phase 06
+Last activity: 2026-10-03 — Completed quick task 261003-hhj: CR-01 fixed (single-flight threading.Lock spans orphaned infer_seqs thread lifetime, timeout-cancellation regression test; commit 032b308)
 
-Progress: [█████████████░░░░░░░] 6/9 plans (67%)
+Progress: [█████████████░░░░░░░] 6/9 plans ([██░░░░░░░░] 20%)
 
 ## Performance Metrics
 
@@ -125,6 +125,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 3 | gsd-fast: fix Benchmark.plot return annotation lie (-> None vs actual 2-tuple), kills ty not-iterable in benchmark notebook | 2026-10-02 | d352c0e | — |
 | 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
 | 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
+| 261003-hhj | Fix CR-01: MCP single-flight inference — threading.Lock inside the executor-submitted callable spans the orphaned thread lifetime (asyncio lock released on timeout cancellation); asyncio.wait_for-cancellation regression test; 3/3 single-flight tests + 220 tests/mcp green | 2026-10-03 | 032b308 | [261003-hhj-fix-cr-01-mcp-single-flight-inference-as](./quick/261003-hhj-fix-cr-01-mcp-single-flight-inference-as/) |
 
 ## Deferred Items
 

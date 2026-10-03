@@ -5,7 +5,7 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "Single-flight inference lock releases on tool timeout while the orphaned infer_seqs thread keeps running"
   - id: WR-01
     severity: warning
@@ -63,7 +63,7 @@ findings:
     severity: info
     disposition: deferred
     title: "# ruff: ignore[rule-name] comments are inert — not a ruff directive (harmless under preview config)"
-open: 5
+open: 4
 total: 15
 recorded: 2026-10-03T03:50:22.056Z
 ---
@@ -72,7 +72,7 @@ recorded: 2026-10-03T03:50:22.056Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
+| CR-01 | critical | fixed | 032b308 fix(quick-261003-hhj) |
 | WR-01 | warning | open | - |
 | IN-01 | info | open | - |
 | IN-02 | info | open | - |
