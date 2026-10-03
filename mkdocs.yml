@@ -211,6 +211,7 @@ nav:
         - Embedding: example/notebooks/embedding_attention.md
       - Showcase:
         - PlantHelixSeek CRE Scan: example/notebooks/plant_helixseek_cre.md
+        - PlantHelixSeek Gene Annotation: example/notebooks/plant_helixseek_anno.md
       - Benchmarking:
         - Benchmark: example/notebooks/benchmark.md
       - Data Preparation:
