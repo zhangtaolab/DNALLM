@@ -10,5 +10,5 @@ ms  zhangtaolab/plant-dnamamba-BPE-open_chromatin    # dnallm/mcp/tests/configs/
 ms  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_inference.py::test_real_model_integration (modelscope route)
 ms  ZhejiangLab-LifeScience/DNA_bert_4               # tests/models/test_model.py::test_download_real_modelscope_connection
 ms  zhangtaolab/PlantHelixSeek-CRE                    # tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope)
-ms  zhangtaolab/PlantHelixSeek-Anno                   # tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope; Anno test lands with 07-02)
+ms  zhangtaolab/PlantHelixSeek-Anno                   # tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope)
 dataset:  zhangtaolab/plant-multi-species-core-promoters  # DNADataset.from_modelscope (trainer tests)
