@@ -125,7 +125,7 @@ base = [
     "types-transformers>=0.1.0",
 ]
 all = [
-    "dnallm[base,dev,test,notebook,docs,ui,mcp]",
+    "dnallm[base,dev,test,notebook,docs,ui,mcp,fla]",
 ]
 cpu = [
     "torch>=2.4.0,<2.12",
@@ -152,6 +152,12 @@ mamba = [
     "causal_conv1d==1.7.0",
     "mamba-ssm==2.3.2.post1",
     "torch>=2.6.0,<2.12",
+]
+# KDA kernels for PlantHelixSeek remote code (HelixSeekDelta layers). Bare install:
+# rides the already-installed torch/triton — do NOT use fla's own backend extras
+# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
+fla = [
+    "flash-linear-attention>=0.5.2,<0.6",
 ]
 
 #mamba = [

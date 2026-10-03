@@ -168,7 +168,7 @@ uv pip install -e '.[all,cuda130]'
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
+| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
 | `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |
@@ -176,6 +176,7 @@ uv pip install -e '.[all,cuda130]'
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP server | (included in core) |
+| `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
 
@@ -227,6 +228,18 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 
 Note that Plant DNAMamba, Caduceus, PlantCaduceus, PlantCAD2, Jamba-DNA, JanusDNA models are all based on Mamba architecture. Therefore, the training and inference of these models can be accelerated by installing the native mamba support.
 
+### Flash-Linear-Attention (KDA) Kernels for PlantHelixSeek
+
+PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. Install the `fla` extra (already included in `all`):
+
+```bash
+uv pip install -e '.[fla]'
+```
+
+> **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
+
+Two install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; and keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions.
+
 ### Install Dependencies for Special Models
 
 Several models require extra dependencies to train or inference.
@@ -237,6 +250,7 @@ These models are listed below:
 | -------- | ---------- | ------ | ------------ |
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
+| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
 | GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
