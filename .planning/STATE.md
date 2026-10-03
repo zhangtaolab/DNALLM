@@ -5,11 +5,11 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-10-03T07:29:04.158Z"
+stopped_at: "06-03 Task 2 blocked at package-approval checkpoint: flash-linear-attention needed (see scratch fla-fallback-diagnosis.md)"
+last_updated: "2026-10-03T08:13:50.984Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 06 execution started
-state_head: 975af3399f9786875b22ae3254fa8780d75d9ade
+state_head: 1f9efcf3261836f31e94a232d5d2f9d75a13fe6f
 progress:
   total_phases: 5
   completed_phases: 1
@@ -123,6 +123,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
 - [Phase 05] D-04 feasibility dispatch deferred post-merge — `workflow_dispatch` needs feasibility.yml on the default branch; fires after phs→dev→main integration (phs range unpushed, manual-push rule)
 - [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 and WR-01 both FIXED (261003-hhj commit 032b308; 261003-ij4 commit 3fe80bf) — no open critical/warning findings from the Phase 05 incremental review remain
+- 06-03 Task 2 blocked: PlantHelixSeek delta layers (9/39) run a non-KDA pure-torch fallback because flash-linear-attention is absent - both checkpoints produce positionally-uninformative outputs (proven: CRE p(in-DHS)=0.0073 vs p(non-DHS)=0.0087 with fallback; 0.84 vs 0.19 with faithful KDA patch). Owner decision needed: install fla (0.4.1 upstream-pinned / 0.5.2) into .venv - package install is human-gated. Evidence: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md
 
 ### Quick Tasks Completed
 
@@ -149,9 +150,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T07:29:04.135Z
-Stopped at: Completed 06-02-PLAN.md
-Resume file: None
+Last session: 2026-10-03T08:13:50.961Z
+Stopped at: 06-03 Task 2 blocked at package-approval checkpoint: flash-linear-attention needed (see scratch fla-fallback-diagnosis.md)
+Resume file: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md
 
 ## Deferred Verification
 
