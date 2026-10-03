@@ -1,11 +1,12 @@
 """PlantHelixSeek showcase notebooks: structure tests + nightly execution lane.
 
-Phase 7 (07-01) landing module for the CRE showcase notebook and, from 07-02,
-the Anno sibling.  Two layers per D-13/D-05:
+Phase 7 (07-01) landing module for the CRE showcase notebook; 07-02 extends it
+with the Anno sibling (both-strand gene-structure decode).  Two layers per
+D-13/D-05:
 
 * **Fast, kernel-free structure tests** (:class:`TestPlantHelixSeekShowcaseStructure`)
-  pin the committed notebook's contract surface: the provenance cell, the D-16
-  fla guard shape (and the absence of any ``fla`` import statement), the
+  pin BOTH committed notebooks' contract surface: the provenance cell, the
+  D-16 fla guard shape (and the absence of any ``fla`` import statement), the
   illustrative-loci captions, the embedded vega outputs, the 2 MB size budget
   (D-12), the SHOW-07 no-genome-wide-claim rule, and a parse guard proving
   :func:`_parse_floors`/:func:`_parse_bands` can read the frozen
@@ -19,7 +20,7 @@ the Anno sibling.  Two layers per D-13/D-05:
 
 The showcase notebooks NEVER join ``ACTIVE_NOTEBOOKS``/``GATED_NOTEBOOKS`` in
 ``test_notebook_execution.py``: their census semantics would double-execute
-each ~10-20 min notebook per nightly run (research Open Question 1).
+each ~10-60 min notebook per nightly run (research Open Question 1).
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ from tests.examples._execution import (
 SHARED_DATA = EXAMPLE_DIR / "notebooks" / "plant_helixseek_shared" / "data"
 SELECTION_MD = SHARED_DATA / "selection.md"
 CRE_NB = EXAMPLE_DIR / "notebooks" / "plant_helixseek_cre" / "plant_helixseek_cre.ipynb"
+ANNO_NB = EXAMPLE_DIR / "notebooks" / "plant_helixseek_anno" / "plant_helixseek_anno.ipynb"
 
 # The pinned disclaimer sentence (D-03/SHOW-07) every metric figure or
 # conclusion cell carries; structure tests pin it, selection.md explains it.
@@ -53,6 +55,14 @@ ILLUSTRATIVE_DISCLAIMER = "illustrative locus, not genome-wide accuracy"
 # an outer kill at the cell budget would preempt nbclient's clean
 # CellTimeoutError handling and the partial-failure artifact capture).
 CRE_TEST_TIMEOUT_S = 2400
+ANNO_TEST_TIMEOUT_S = 5400
+
+# Parametrized structure-test surface: both showcase notebooks, each with the
+# locus key its provenance cell pins (D-01).
+SHOWCASE_NOTEBOOKS = [
+    pytest.param(CRE_NB, "cre_locus=Chr1:5100001-5300000", id="cre"),
+    pytest.param(ANNO_NB, "anno_locus=Chr1:5100001-5300000", id="anno"),
+]
 
 
 def _cell_text(cell: dict) -> str:
@@ -191,19 +201,21 @@ class TestPlantHelixSeekShowcaseStructure:
             assert low <= high, f"band {key} is inverted: [{low}, {high}]"
         assert isinstance(bands["genes_above_floor"], int)
 
-    def test_provenance_markdown_cell(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_provenance_markdown_cell(self, nb_path: Path, locus_key: str):
         """Cell 0 is the consolidated provenance markdown (D-01/D-03)."""
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         first = nb["cells"][0]
         assert first["cell_type"] == "markdown", "first cell must be the provenance markdown"
         text = _cell_text(first)
         assert "plant_helixseek_shared/data/selection.md" in text, "selection.md link missing"
-        assert "cre_locus=Chr1:5100001-5300000" in text, "locus coordinate line missing"
+        assert locus_key in text, f"locus coordinate line {locus_key!r} missing"
         assert "illustrative locus" in text.lower(), "illustrative-loci disclaimer missing"
 
-    def test_first_code_cell_is_the_fla_guard(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_first_code_cell_is_the_fla_guard(self, nb_path: Path, locus_key: str):
         """The first code cell carries the D-16 find_spec guard + version keys."""
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         code_cells = [cell for cell in nb["cells"] if cell["cell_type"] == "code"]
         assert code_cells, "notebook has no code cells"
         src = _cell_text(code_cells[0])
@@ -212,14 +224,15 @@ class TestPlantHelixSeekShowcaseStructure:
         for key in ("transformers_version=", "torch_version=", "fla_version="):
             assert key in src, f"version print {key!r} missing from the guard cell"
 
-    def test_no_import_statement_names_fla(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_no_import_statement_names_fla(self, nb_path: Path, locus_key: str):
         """AST-level: no Import/ImportFrom node names the fla module (D-16).
 
         tests/examples/test_examples.py::test_notebook_imports execs every
         import statement node on legs without the fla extra, so the notebook
         must read the fla version through importlib.metadata calls only.
         """
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         for index, cell in enumerate(nb["cells"]):
             if cell["cell_type"] != "code":
                 continue
@@ -244,9 +257,10 @@ class TestPlantHelixSeekShowcaseStructure:
                         "read the version via importlib.metadata instead (D-16)"
                     )
 
-    def test_illustrative_caption_follows_the_metric_figure(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_illustrative_caption_follows_the_metric_figure(self, nb_path: Path, locus_key: str):
         """The markdown after the altair figure carries the pinned disclaimer (D-03)."""
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         figure_idx = next(
             (
                 i
@@ -255,7 +269,7 @@ class TestPlantHelixSeekShowcaseStructure:
             ),
             None,
         )
-        assert figure_idx is not None, "CRE notebook has no altair figure cell"
+        assert figure_idx is not None, f"{nb_path.name} has no altair figure cell"
         following_markdown = [
             _cell_text(cell)
             for cell in nb["cells"][figure_idx + 1 :]
@@ -267,9 +281,10 @@ class TestPlantHelixSeekShowcaseStructure:
             f"{ILLUSTRATIVE_DISCLAIMER!r}"
         )
 
-    def test_committed_notebook_has_executed_outputs(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_committed_notebook_has_executed_outputs(self, nb_path: Path, locus_key: str):
         """The committed blob carries stream outputs, a vega mime OUTPUT, and stays <= 2 MB (D-12)."""
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         output_mimes = [
             mime
             for cell in nb["cells"]
@@ -283,14 +298,15 @@ class TestPlantHelixSeekShowcaseStructure:
             "figure cell never executed (its source also names the mime strings, so this "
             "checks outputs, not raw text)"
         )
-        assert CRE_NB.stat().st_size <= 2097152, (
-            f"committed notebook is {CRE_NB.stat().st_size} bytes (budget 2097152, D-12)"
+        assert nb_path.stat().st_size <= 2097152, (
+            f"committed notebook is {nb_path.stat().st_size} bytes (budget 2097152, D-12)"
         )
         assert _stream_text(nb).strip(), "committed notebook carries no stream outputs"
 
-    def test_no_genome_wide_claim_phrasing(self):
+    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+    def test_no_genome_wide_claim_phrasing(self, nb_path: Path, locus_key: str):
         """SHOW-07: 'genome-wide' may appear only inside the negated disclaimer."""
-        nb = _load_nb(CRE_NB)
+        nb = _load_nb(nb_path)
         for index, cell in enumerate(nb["cells"]):
             if cell["cell_type"] != "markdown":
                 continue
@@ -366,3 +382,81 @@ def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
         f"{floors['neg_cre_fraction']}). Re-run selection (Phase-6 methodology) if "
         "environment drift is suspected."
     )
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(ANNO_TEST_TIMEOUT_S)
+def test_anno_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
+    """Re-execute the committed Anno notebook in-sandbox; assert parsed bands (D-13/D-14)."""
+    spec = NOTEBOOK_EXEC_SPECS[str(ANNO_NB)]
+    # Pitfall 6: the harness contract requires cell_timeout < the outer mark,
+    # else pytest-timeout preempts nbclient's clean CellTimeoutError handling.
+    assert spec["cell_timeout"] < ANNO_TEST_TIMEOUT_S, (
+        f"NOTEBOOK_EXEC_SPECS cell_timeout {spec['cell_timeout']} must stay strictly "
+        f"below this test's {ANNO_TEST_TIMEOUT_S}s pytest-timeout mark (Pitfall 6)"
+    )
+
+    # Pattern 6: shared data rides along as per-FILE tuple extras seeding the
+    # sibling ../plant_helixseek_shared/data/ directory inside the sandbox --
+    # selection.md (runtime comparison parse), the intergenic negative-control
+    # FASTA, and the zero-row intergenic GFF3 (rendered-as-zero evidence).
+    extras = [
+        (SELECTION_MD, "../plant_helixseek_shared/data/selection.md"),
+        (
+            SHARED_DATA / "chr1_14953292_14973291.fas",
+            "../plant_helixseek_shared/data/chr1_14953292_14973291.fas",
+        ),
+        (
+            SHARED_DATA / "TAIR10_GFF3_chr1_14953292_14973291.gff3",
+            "../plant_helixseek_shared/data/TAIR10_GFF3_chr1_14953292_14973291.gff3",
+        ),
+    ]
+    sandbox = seed_sandbox(ANNO_NB.parent, tmp_path, extra_inputs=extras)
+    artifacts = tmp_path / "artifacts"
+    nb = run_notebook(ANNO_NB, sandbox, cell_timeout=spec["cell_timeout"], artifact_dir=artifacts)
+
+    errored = [
+        (cell_index, output)
+        for cell_index, cell in enumerate(nb["cells"])
+        for output in cell.get("outputs", []) or []
+        if output.get("output_type") == "error"
+    ]
+    assert not errored, f"Anno notebook executed with error outputs: {errored}"
+
+    assert_tree_clean()
+
+    stream = _stream_text(nb)
+    floors = _parse_floors()
+    bands = _parse_bands()
+
+    genes_match = re.search(r"^genes_above_floor=([0-9]+)", stream, re.MULTILINE)
+    assert genes_match is not None, "Anno notebook stream is missing the 'genes_above_floor=' line"
+    observed_genes = int(genes_match.group(1))
+
+    gene_bound = bands["genes_above_floor"]
+    assert observed_genes >= gene_bound, (
+        f"Anno gene models with exon-F1 >= 0.8: observed genes_above_floor={observed_genes} "
+        f"below the selection.md lower bound >= {gene_bound} genes (selection.md observed "
+        f"{floors['genes_above_floor']}; the headroom above the floor absorbs transformers "
+        "4.49-5.x drift). Re-run selection (Phase-6 methodology) if environment drift is "
+        "suspected."
+    )
+
+    neg_match = re.search(r"^neg_anno_fraction=([0-9.eE+-]+)", stream, re.MULTILINE)
+    assert neg_match is not None, "Anno notebook stream is missing the 'neg_anno_fraction=' line"
+    observed_neg = float(neg_match.group(1))
+
+    low, high = bands["neg_anno_fraction"]
+    assert low <= observed_neg <= high, (
+        f"negative-Anno genic-base fraction={observed_neg} outside the selection.md band "
+        f"[{low}, {high}] (selection.md observed {floors['neg_anno_fraction']}). Re-run "
+        "selection (Phase-6 methodology) if environment drift is suspected."
+    )
+
+    # Evidence keys (not banded): exon_f1 carries no Phase-7 band (selection.md
+    # records the observed 0.7522 only); the emitted GFF3 row count proves the
+    # emission + structural-validation cell ran.
+    for evidence_key in ("exon_f1=", "pred_gff3_rows="):
+        assert evidence_key in stream, (
+            f"Anno notebook stream is missing the evidence key {evidence_key!r}"
+        )
