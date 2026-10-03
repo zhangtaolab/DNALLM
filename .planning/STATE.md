@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 06
 current_phase_name: Model Registry & Showcase Data Curation
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-10-03T07:08:29.942Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-10-03T07:29:04.158Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 06 execution started
-state_head: 695a79c2b8dbc4c752128342f3d41d97b0497b04
+state_head: 975af3399f9786875b22ae3254fa8780d75d9ade
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 ## Current Position
 
 Phase: 06 (Model Registry & Showcase Data Curation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-10-03 — Phase 06 execution started
 
@@ -69,6 +69,7 @@ Progress: [█████████████░░░░░░░] 6/9 pla
 | Phase 05-05 P05 | 29 min | 3 tasks | 8 files |
 | Phase 05-06 P06 | 151min | 3 tasks | 5 files |
 | Phase 06 P01 | 19 min | 2 tasks | 4 files |
+| Phase 06 P02 | 16 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 06]: 06-01: PlantHelixSeek label order frozen from upstream train_token_cls.py:78-96 (checkpoint configs carry none — Anno id2label is LABEL_i placeholders, CRE absent; re-proven live by the freeze run)
 - [Phase 06]: 06-01: smoke-test forwards run under torch.no_grad() — autograd over the 8192 bp Anno eager-attention window OOM-kills the box; research memory budgets were measured no-grad
 - [Phase 06]: 06-01: one-shot freeze tooling lives uncommitted in example/notebooks/plant_helixseek_shared/.scratch/ (owner constraint); only outcome artifacts committed (yaml + 2 tests + scratch-home .gitignore)
+- [Phase 06]: [06-02] RED evidence via NotImplementedError stub committed in the test commit: suite fails at test level (RED_EVIDENCE_OK, 20 failed/exit 1) instead of collection-level ImportError (INVALID_RED per #3770)
+- [Phase 06]: [06-02] normalize_chrom vocabulary: numeric token or organelle C/M after case-insensitive chr prefix, else bare digits; anything else raises (first draft over-accepted 'chromosome1' — caught by RED-authored tests)
+- [Phase 06]: [06-02] fetch_sequence takes an open pyfastx.Fasta OR a path (function-local pyfastx import is load-bearing); half_open_to_gff1 rejects zero-width intervals — no 1-based closed form exists
 
 ### Pending Todos
 
@@ -145,8 +149,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T07:08:29.921Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-10-03T07:29:04.135Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
 
 ## Deferred Verification
