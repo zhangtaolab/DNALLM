@@ -102,6 +102,12 @@ notebook = [
     "jupyter>=1.1.1",
     "marimo>=0.16.3",
     "nbclient>=0.10",
+    # REPAIR-01 (08-02): pygenometracks>=3.9 pins matplotlib<3.9, whose
+    # install_repl_displayhook imports IPython.core.pylabtools.backend2gui
+    # unguarded -- removed in IPython 9. Under ipython 9.x the first
+    # plt.subplots in every notebook kernel dies with ImportError. Floor
+    # 8.31 = first IPython 8 with Python 3.13 support (CI matrix).
+    "ipython>=8.31,<9",
     # GPL-3.0: explicit owner override (2026-10-04) for the example showcase
     # notebooks' zoom/combined figures; dnallm package code never imports it.
     "pygenometracks>=3.9",
