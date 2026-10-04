@@ -810,9 +810,7 @@ class TestMegadnaSiblingContentContracts:
     def _active_lines(cell: str) -> str:
         """Drop comment lines: notebooks document the alternative source=
         routes as comments, and the contract pins the ACTIVE route."""
-        return "\n".join(
-            line for line in cell.splitlines() if not line.strip().startswith("#")
-        )
+        return "\n".join(line for line in cell.splitlines() if not line.strip().startswith("#"))
 
     def test_source_routes_are_d15_aligned(self) -> None:
         """Active source= route matches the lock direction: ms-mirrored ids
