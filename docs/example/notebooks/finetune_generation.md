@@ -18,9 +18,34 @@ uv pip install -e '.[base,finetune,cuda124]'
 uv pip install pyfastx
 ```
 
+The megaDNA half additionally needs the FEASIBILITY-locked prerequisites: the
+`lingxusb/megaDNA` clone pinned to commit
+`cb2f5ab4cc88dc0effe05c5f23358862c837014a` plus `MEGABYTE_pytorch==0.2.1` (never a
+floating clone — see the pinned install cell in Part 2).
+
+### Environment provenance
+
+The first code cell prints the exact library versions the notebook ran with as
+key=value lines (D-21); this notebook has no flash-linear-attention dependency,
+so its `fla_version` line records `not-used` and the megaDNA pins are stamped
+alongside:
+
+```python
+import torch
+import transformers
+
+print(f"transformers_version={transformers.__version__}")
+print(f"torch_version={torch.__version__}")
+print("fla_version=not-used")
+print("megadna_commit=cb2f5ab4cc88dc0effe05c5f23358862c837014a")
+print("megabyte_version=0.2.1")
+```
+
 ## Prepare Training Data
 
-Download and preprocess coding sequences from Arabidopsis:
+Download and preprocess coding sequences from Arabidopsis. The `!wget` genome
+download cell runs BEFORE the `Fasta(...)` load cell that reads the file
+(`wget -c` resumes a partial download):
 
 ```python
 from pyfastx import Fasta
@@ -131,6 +156,21 @@ print("Raw sequence:         ", seq)
 ## Part 2: megaDNA
 
 megaDNA uses an embedding task type and requires custom trainer logic.
+
+### Install pinned prerequisites
+
+The megaDNA model checkpoint unpickles classes from the `megaDNA` package, so
+the pinned prerequisites must be installed BEFORE the model-load cell. The
+clone is pinned to commit `cb2f5ab4cc88dc0effe05c5f23358862c837014a` and
+`MEGABYTE_pytorch` to `0.2.1` (the repo's own requirements pin) — never a
+floating clone. `uv pip install` targets the kernel's `VIRTUAL_ENV`: under the
+isolated `dnallm-megadna` kernelspec this mutates only the throwaway venv.
+
+```bash
+git clone https://github.com/lingxusb/megaDNA.git
+git -C megaDNA checkout cb2f5ab4cc88dc0effe05c5f23358862c837014a
+uv pip install MEGABYTE_pytorch==0.2.1 ./megaDNA
+```
 
 ### Update Config
 
