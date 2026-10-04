@@ -38,7 +38,7 @@ failure noted. Logs: /tmp/08_03_examples_full.log (pass A), /tmp/08_03_examples_
 | notebooks/inference_for_tRNA/inference.ipynb | ACTIVE | PASS | pass B |
 | mcp_example/mcp_client_ollama_langchain_agents.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | pass B `ssssssss` batch — endpoint probe state at run time carried in the skip message (261003-csd contract) |
 | mcp_example/mcp_client_ollama_pydantic_ai.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | same batch |
-| notebooks/generation_evo_models/inference.ipynb | GATED (`_gate_evo`) | typed-skip-with-evidence | optional-dep (stripedhyena/evo2 absent by design) — family plan 08-04/08-05 un-gates |
+| notebooks/generation_evo_models/inference.ipynb | GATED (`_gate_evo`) | PASS | 08-06/08-07 un-gate: isolated dnallm-evo lane (dev-box giants tier + HF_HUB_OFFLINE) — executed for real green (5 passed / 0 SKIPPED, 49s; re-confirmed 08-07 census). 08-07 reconciliation also fixed the static import check (evo venv-only stack added to OPTIONAL_IMPORT_MODULES after the D-21 stamp cell's literal `import flash_attn` failed it in the project venv) |
 | notebooks/generation_megaDNA/inference.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: pinned prereqs (megadna @ cb2f5ab4 + MEGABYTE_pytorch==0.2.1) installed into the project venv (reversible) + D-21 stamp + executable pinned install cell; executed for real green in the family lane (12 passed / 0 SKIPPED, 48:05, /tmp/08_05_family.log) |
 | notebooks/finetune_custom_head/finetune.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: demo cell repaired (pinned install cell before the megaDNA load — census ImportError at megadna.py:146 gone) + D-21 stamp; DNAGPT and megaDNA trainings both executed green in the family lane |
 | notebooks/finetune_generation/finetune_generation.ipynb | GATED (`_gate_megadna_isolated`) | PASS | 08-04 isolated dnallm-megadna lane first green (837s, 0 skips); 08-05 family reconciliation re-run green in the same lane |
@@ -74,10 +74,39 @@ pre-existing baseline one.
 
 | family | items | gate | owning plan |
 | --- | --- | --- | --- |
-| evo (evo-1 / evo2) | generation_evo_models | optional-dep (stripedhyena + evo2) | evo family plan |
+| evo (evo-1 / evo2) | generation_evo_models | CLOSED (08-07): PASS by real execution on the isolated dnallm-evo lane — giants strategy verified at load time (A4) | evo family plan (08-06 + 08-07, done) |
 | megaDNA | generation_megaDNA, finetune_custom_head, finetune_generation | CLOSED (08-05): all three PASS by real execution — siblings on the project venv (reversible pinned prereqs), finetune_generation on the isolated lane | megaDNA family plan (08-05, done) |
 | PlantCAD / mamba | lora_finetune, lora_inference | optional-dep (mamba_ssm native build) | mamba/lora family plan |
 | mcp + ollama | langchain + pydantic_ai client notebooks | endpoint-up probes (execute when both up) | mcp batch plan / runner infra |
 
 Every gated skip in this baseline is an honest `optional-dep:`/`network-unavailable:` typed
 skip carrying live probe evidence — the CURRENT-STATE baseline per D-03, not a failure.
+
+## evo family reconciliation + A4 verification (08-07, D-03)
+
+Full examples census re-run post-evo-repairs (2026-10-04 20:00–22:31 UTC, three sequential
+passes to stay under runner time caps): **188 passed / 5 honest typed skips / 0 failed** —
+14 P (NER family + multi_labels, 51:28) + 25 P (megaDNA family, 48:21) + 149 P (rest,
+50:34; one pre-fix failure `test_notebook_imports[evo]` re-run green post-fix, 106 P/1 S
+on the fast module). The 5 skips: 1 benign no-imports (predict_data), 2 mcp
+network-unavailable (MCP endpoint down at run time, ollama GREEN — probe evidence in
+message), 2 lora optional-dep (mamba_ssm; 08-08's family). Zero evo skips —
+`generation_evo_models` executed green in the census itself. Fast lane (EXEC-05):
+**1803 passed / 1 pre-existing skip, exit 0, 91.46s** (+3 vs the 08-05 baseline = 08-06's
+TestEvoIsolatedLane; zero new skips).
+
+**A4 VERIFIED (CI-05 empirical proof).** The 08-07 execution loaded the evo-1 giants
+snapshot offline (`HF_HUB_OFFLINE=1` in the spec env — a re-fetch was impossible by
+construction; zero fetch lines in the execution log). The evo-1 snapshot dir still holds
+**zero `.pt` files** (safetensors + index + configs only, 12.3GB window, refs/main
+present) and the giants blob store is unchanged at 14,889 MiB = evo-1 12.3GB + evo2
+2.7GB — no 16.81GB `pytorch_model.pt` re-fetch occurred. Note: `evo2_1b_base.pt` inside
+the evo2 snapshot is that model's OWN native checkpoint format (present since 08-06's
+recorded full fetch), not a CI-05 violation — the `.pt`-free guarantee is scoped to the
+evo-1 giants snapshot it protects. Giants dir remains outside every cached path.
+
+**08-07 repair (REPAIR-01):** the 08-06 D-21 stamp cell added a literal
+`import flash_attn` to the evo notebook, which the static `test_notebook_imports` check
+(rightly) failed in the project venv — the evo stack is FEASIBILITY-locked to the
+throwaway venv. Fixed by extending `OPTIONAL_IMPORT_MODULES` (pybedtools precedent) with
+`flash_attn/stripedhyena/evo2` + a comment naming the 08-06 lock; re-run green.
