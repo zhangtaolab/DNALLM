@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-10-04T16:22:51.599Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-10-04T18:28:47.683Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: 746acc918a2566b0d966c083e22824a43b0bd1b0
+state_head: 54892b29cefa5fa1a977aaebf0e3da1bb71a429b
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 14
+  completed_plans: 15
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -78,6 +78,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 08 P01 | 97 min | 3 tasks | 4 files |
 | Phase 08 P02 | 7h 27min | 3 tasks | 7 files |
 | Phase 08 P03 | 20min | 3 tasks | 9 files |
+| Phase 08 P04 | 115 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: 08-03: np.fromstring gate PROBES one binary-mode call instead of hasattr — numpy 2.x keeps the NAME as a raising ValueError stub, so presence gating would no-op on exactly the versions needing the shim
 - [Phase 08]: 08-03: shim restores binary mode only (frombuffer semantics + writable copy); text mode refused with a loadtxt pointer; evo2 keeps its unfiltered 2.7GB fetch — only evo-1 passes the giants pattern set
 - [Phase 08]: 08-03: np.fromstring gate PROBES one binary-mode call instead of hasattr (numpy 2.x raising stub)
+- [Phase 08]: 08-04: DNATokenizer unknowns encode to id 1 (upstream encode_sequence rule) — checkpoint vocab stays six wide; None ids crashed tensor creation in _call_one
+- [Phase 08]: 08-04: isolated megadna lane gates on a venv-targeted probe (cold = optional-dep skip, never auto-provision) so the runner rollout stays deliberate for 08-05/08-09
+- [Phase 08]: 08-04: transformers 5.x no longer emits token_type_ids — MEGA-DNA column drop filters to present columns (4.49-5.x span repair, contract-tested)
+- [Phase 08]: 08-04: three pre-existing mirror drifts resynced (Rule 3) to unblock the binary sync gate — check_notebook_md_sync 24/24 again
 
 ### Pending Todos
 
@@ -183,8 +188,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T16:22:35.686Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-10-04T18:28:47.648Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
 
 ## Deferred Verification
