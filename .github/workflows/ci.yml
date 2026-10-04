@@ -324,6 +324,11 @@ jobs:
         # installs; it proves they resolve green on this exact box.
         run: |
           uv venv
+          # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
+          # 37184990854): see the example-nightly stage-0 comment — sysconfig
+          # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
+          # at the runner's real toolcache lib.
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
           uv pip install -e ".[base,fla]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
@@ -475,6 +480,11 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
+          # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
+          # 37184990854): see the example-nightly stage-0 comment — sysconfig
+          # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
+          # at the runner's real toolcache lib.
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
           # fla included (WR-01): this is the only leg running the full suite
           # with the two slow PlantHelixSeek checkpoint smokes — without fla
           # those loads exercise the remote code's silent non-KDA fallback.
@@ -579,6 +589,16 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
+          # pyBigWig (pulled by pygenometracks in the notebook extra since
+          # 261004-dyw) builds from sdist on aarch64 — no arm64 wheels —
+          # and its extension links -lpython against the LIBDIR the
+          # python-versions build baked into sysconfig
+          # (/opt/hostedtoolcache/...), which does not exist on this
+          # self-hosted box (run 37184990854: ld "cannot find
+          # -lpython3.12"). The runner's real toolcache ships
+          # libpythonX.Y.so — point the linker at sys.prefix/lib (rootless,
+          # version-agnostic; proven green on this box).
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
           # D-10 full extras: base (dev/test/notebook/mcp transitive),
           # fla (PlantHelixSeek KDA kernels), dev (pyfastx/pybedtools for
           # the script lane), mcp (server stack for stage 2). System
