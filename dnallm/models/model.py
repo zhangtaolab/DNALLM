@@ -319,6 +319,7 @@ def download_model(
     downloader: Any,
     revision: str | None = None,
     max_try: int = 10,
+    allow_patterns: list[str] | None = None,
 ) -> str:
     """Download a model with retry mechanism for network issues.
 
@@ -329,6 +330,11 @@ def download_model(
         model_name: Name of the model to download
         downloader: Download function to use (e.g., snapshot_download)
         max_try: Maximum number of download attempts, default 10
+        allow_patterns: Optional glob patterns restricting which snapshot
+            files are fetched (e.g. ``["*.safetensors", "*.json"]``). When
+            ``None`` (the default) the downloader is called exactly as
+            before -- no ``allow_patterns`` key is forwarded, so every
+            existing caller behaves byte-identically.
 
     Returns:
         Path where the model files are stored
@@ -345,7 +351,15 @@ def download_model(
             break
         cnt += 1
         try:
-            status = downloader(model_name, revision=revision)
+            # Conditional forwarding, rebuilt per attempt: the downloader
+            # kwarg exists ONLY when the caller explicitly passed a pattern
+            # set (CI-05 -- no family may silently inherit another's
+            # patterns), and a no-revision retry must observe the reset
+            # revision below, not the value bound at loop entry.
+            download_kwargs: dict[str, Any] = {"revision": revision}
+            if allow_patterns is not None:
+                download_kwargs["allow_patterns"] = allow_patterns
+            status = downloader(model_name, **download_kwargs)
             if status != "incomplete":
                 logger.info(f"Model files are stored in {status}")
                 break
@@ -392,7 +406,10 @@ def _setup_huggingface_mirror(use_mirror: bool) -> None:
 
 
 def _get_model_path_and_imports(
-    model_name: str, source: str, revision: str | None = None
+    model_name: str,
+    source: str,
+    revision: str | None = None,
+    allow_patterns: list[str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Get model path and import the required libraries based on source.
 
@@ -404,6 +421,11 @@ def _get_model_path_and_imports(
                 'modelscope')
         revision: Specific model revision (branch, tag, commit),
                   default None
+        allow_patterns: Optional glob patterns restricting which snapshot
+            files the hub download fetches. When ``None`` (the default) the
+            downloader is called exactly as before; only callers that
+            explicitly pass a pattern set (the evo-1 giants family) get a
+            restricted snapshot.
 
     Returns:
         Tuple of (model_path, imported_modules_dict)
@@ -413,6 +435,13 @@ def _get_model_path_and_imports(
     """
     source_lower = source.lower()
 
+    # Conditional forwarding, mirroring download_model: the kwarg reaches the
+    # downloader ONLY when the caller explicitly passed a pattern set, so the
+    # call signature stays byte-identical for every existing caller.
+    hub_kwargs: dict[str, Any] = {"revision": revision}
+    if allow_patterns is not None:
+        hub_kwargs["allow_patterns"] = allow_patterns
+
     if source_lower == "local":
         if not os.path.exists(model_name):
             raise ValueError(f"Model {model_name} not found locally.")
@@ -421,14 +450,14 @@ def _get_model_path_and_imports(
     elif source_lower == "huggingface":
         from huggingface_hub import snapshot_download as hf_snapshot_download
 
-        model_path = download_model(model_name, downloader=hf_snapshot_download, revision=revision)
+        model_path = download_model(model_name, downloader=hf_snapshot_download, **hub_kwargs)
 
     elif source_lower == "modelscope":
         from modelscope.hub.snapshot_download import (
             snapshot_download as ms_snapshot_download,
         )
 
-        model_path = download_model(model_name, downloader=ms_snapshot_download, revision=revision)
+        model_path = download_model(model_name, downloader=ms_snapshot_download, **hub_kwargs)
 
         # Import ModelScope modules
         try:
