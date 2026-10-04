@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-10-04T18:28:47.683Z"
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-10-04T19:30:40.169Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: 54892b29cefa5fa1a977aaebf0e3da1bb71a429b
+state_head: 5d880284f86791d176f2cfa6f32f52f08d495911
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -79,6 +79,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 08 P02 | 7h 27min | 3 tasks | 7 files |
 | Phase 08 P03 | 20min | 3 tasks | 9 files |
 | Phase 08 P04 | 115 min | 3 tasks | 10 files |
+| Phase 08 P05 | 57 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: 08-04: isolated megadna lane gates on a venv-targeted probe (cold = optional-dep skip, never auto-provision) so the runner rollout stays deliberate for 08-05/08-09
 - [Phase 08]: 08-04: transformers 5.x no longer emits token_type_ids — MEGA-DNA column drop filters to present columns (4.49-5.x span repair, contract-tested)
 - [Phase 08]: 08-04: three pre-existing mirror drifts resynced (Rule 3) to unblock the binary sync gate — check_notebook_md_sync 24/24 again
+- [Phase 08]: [08-05] megaDNA sibling un-gating rides a reversible exact-version install into the project .venv (megadna @ cb2f5ab4 clone + MEGABYTE_pytorch==0.2.1) — the default-kernel pin is preserved; the installing finetune_generation keeps the isolated kernelspec (T-08-19)
+- [Phase 08]: [08-05] demo-cell repair = pinned install cell immediately before the megaDNA demo load (census ImportError at megadna.py:146); generation_megaDNA's floating clone comment replaced by the same executable pinned form; D-21 stamps added, source= routes verified already D-15-aligned
+- [Phase 08]: [08-05] content contracts check ACTIVE lines only — notebooks document alternative source= routes as comments; family lane 12 passed / 0 SKIPPED in 2885s, fast lane 1800/1, census megaDNA rows PASS (family CLOSED)
 
 ### Pending Todos
 
@@ -188,8 +192,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:28:47.648Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-10-04T19:30:40.131Z
+Stopped at: Completed 08-05-PLAN.md
 Resume file: None
 
 ## Deferred Verification

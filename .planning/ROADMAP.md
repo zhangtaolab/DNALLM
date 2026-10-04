@@ -117,7 +117,7 @@ Plans:
   4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
   5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
 
-**Plans**: 4/9 plans executed
+**Plans**: 5/9 plans executed
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -129,7 +129,7 @@ Plans:
 - [x] 08-04-PLAN.md — megaDNA tracer slice: DNATokenizer library repair + finetune_generation content repair (ordering + pinned clone) + isolated-kernelspec first execution (EXEC-02, REPAIR-01, REPAIR-03)
 
 **Wave 3** *(blocked on 08-04 — shared test wiring + library fix)*
-- [ ] 08-05-PLAN.md — megaDNA expansion slice: finetune_custom_head + generation_megaDNA repairs + family execution + D-03 census reconciliation (EXEC-02, REPAIR-01)
+- [x] 08-05-PLAN.md — megaDNA expansion slice: finetune_custom_head + generation_megaDNA repairs + family execution + D-03 census reconciliation (EXEC-02, REPAIR-01)
 
 **Wave 4** *(blocked on 08-03 enablers + 08-05 census baseline)*
 - [ ] 08-06-PLAN.md — evo tracer slice: dev-box giants tier + isolated dnallm-evo kernelspec + 8k/noFP8 notebook repair + first real execution/rung discovery (EXEC-02, CI-05, REPAIR-01)
@@ -167,7 +167,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
-| 8. Full Execution Rollout & Repair Loop | v1.1 | 4/9 | In Progress|  |
+| 8. Full Execution Rollout & Repair Loop | v1.1 | 5/9 | In Progress|  |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 
 ---
