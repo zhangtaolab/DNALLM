@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-10-04T19:55:40.932Z"
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-10-04T22:36:53.107Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: 4dbfe6b69a9a7d27633ecc0bb937cb90f552b261
+state_head: 648b91bd1ffb16e5d9a663a6977ef6c23f1a6c57
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -81,6 +81,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 08 P04 | 115 min | 3 tasks | 10 files |
 | Phase 08 P05 | 57 min | 2 tasks | 8 files |
 | Phase 08 P06 | 20 min | 2 tasks | 5 files |
+| Phase 08 P07 | 157 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -146,6 +147,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: [08-05] megaDNA sibling un-gating rides a reversible exact-version install into the project .venv (megadna @ cb2f5ab4 clone + MEGABYTE_pytorch==0.2.1) — the default-kernel pin is preserved; the installing finetune_generation keeps the isolated kernelspec (T-08-19)
 - [Phase 08]: [08-05] demo-cell repair = pinned install cell immediately before the megaDNA demo load (census ImportError at megadna.py:146); generation_megaDNA's floating clone comment replaced by the same executable pinned form; D-21 stamps added, source= routes verified already D-15-aligned
 - [Phase 08]: [08-05] content contracts check ACTIVE lines only — notebooks document alternative source= routes as comments; family lane 12 passed / 0 SKIPPED in 2885s, fast lane 1800/1, census megaDNA rows PASS (family CLOSED)
+- [Phase 08]: [08-07] evo family CLOSED: 08-06's empty OPEN-RUNG ledger collapsed Task 1 to a confirmation run (5P/0S 49s; tests/utils 168P)
+- [Phase 08]: [08-07] evo venv-only stack (flash_attn/stripedhyena/evo2) added to OPTIONAL_IMPORT_MODULES — 08-06's D-21 stamp cell failed the static import check in the project venv; fixed at the check's seam, not the notebook
+- [Phase 08]: [08-07] A4/CI-05 verified at load time (offline load, evo-1 .pt-free, blobs unchanged 14,889 MiB); .pt-zero guarantee scoped to the evo-1 dir — evo2_1b_base.pt is its native checkpoint
 
 ### Pending Todos
 
@@ -193,8 +197,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T19:55:40.894Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-10-04T22:36:53.069Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None
 
 ## Deferred Verification

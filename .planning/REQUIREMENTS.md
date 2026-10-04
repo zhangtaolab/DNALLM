@@ -10,7 +10,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 ### Execution Testing
 
 - [x] **EXEC-01**: Private execution harness (`tests/examples/_execution.py` + locally-scoped `conftest.py`) runs notebooks via nbclient-as-library with per-cell timeout inside a per-test timeout mark, tmp-sandbox cwd isolation (kernel cwd = sandbox copy), context-managed kernel shutdown, and partial-notebook failure artifacts captured on error
-- [ ] **EXEC-02**: All 21 example Jupyter notebooks execute all code cells end-to-end with real models on the nightly GPU runner (slow-marked; `allow_errors=False` fail-at-first-error per notebook, fail-soft across notebooks)
+- [x] **EXEC-02**: All 21 example Jupyter notebooks execute all code cells end-to-end with real models on the nightly GPU runner (slow-marked; `allow_errors=False` fail-at-first-error per notebook, fail-soft across notebooks)
 - [x] **EXEC-03**: All 3 marimo apps execute headlessly via subprocess (flavor standardized in the Phase-1 pilot) with UI elements yielding defaults and exit codes asserted
 - [x] **EXEC-04**: `generate_bpe_dataset.py` executes against its committed inputs producing its dataset artifact in-sandbox
 - [x] **EXEC-05**: Every example YAML config passes real `load_config()` Pydantic validation on the fast leg (new showcase YAMLs valid from their first commit)
@@ -18,7 +18,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 
 ### Repair
 
-- [ ] **REPAIR-01**: Every error surfaced by real execution is fixed — notebook/app/script code — each with a regression test; harness-bug vs content-bug triaged explicitly (no cwd false-repairs)
+- [x] **REPAIR-01**: Every error surfaced by real execution is fixed — notebook/app/script code — each with a regression test; harness-bug vs content-bug triaged explicitly (no cwd false-repairs)
 - [x] **REPAIR-02**: The already-broken docs/example mirror is closed (sync-script wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and regenerated as part of every subsequent notebook repair
 - [x] **REPAIR-03**: dnallm library bugs exposed by execution are fixed with regression tests (v1 precedent: AUROC, CrossDNA)
 - [x] **REPAIR-04**: The langchain notebook's `!uv pip install langchain-ollama` shell-magic cell is repaired — dependency declared in the `mcp` extra
@@ -29,7 +29,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 - [x] **CI-02**: WR-09 closed — docs-validation installs the `mcp` extra; README "Local Testing" install line corrected
 - [ ] **CI-03**: Execution tests are `slow`-marked into the nightly census with zero new fast-leg skips; typed skip prefixes (`network-unavailable:` reuse, `environment-unavailable:`/`optional-dep:` additions) registered in `expected_skips.yaml`; skip audit green with the new categories
 - [ ] **CI-04**: `models.lock` extended with all newly-executed model ids (~8+) with **ModelScope-first prefixes** — `ms` wherever the model exists on ModelScope (owner decision; zhangtaolab models are mirrored there), `hf` only as fallback — each notebook's `source=` route aligned with its lock prefix, revision-pinned (`trust_remote_code` provenance)
-- [ ] **CI-05**: Cache strategy survives the giants — evo-1 fetched via `allow_patterns` (safetensors only, ~12.9GB not 29.7GB), tiered so giant models persist outside the 10GB-quota cache and never evict the existing warm cache
+- [x] **CI-05**: Cache strategy survives the giants — evo-1 fetched via `allow_patterns` (safetensors only, ~12.9GB not 29.7GB), tiered so giant models persist outside the 10GB-quota cache and never evict the existing warm cache
 - [ ] **CI-06**: Measured runtime budgets recorded; if total execution exceeds the 900-min nightly job, a separate example-execution nightly job is split out (pre-authorized by owner)
 - [ ] **CI-07**: Nightly hygiene steps land: kernel `pkill` + VRAM assertion, timeout-arithmetic sum-of-ceilings review, `if: always()` artifact uploads
 - [ ] **CI-08**: models.lock consistency guard — a fast-leg test cross-checks model id literals inside notebooks/apps against lock entries, failing on drift
@@ -95,12 +95,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EXEC-01 | Phase 5 | Complete |
-| EXEC-02 | Phase 8 | Pending |
+| EXEC-02 | Phase 8 | Complete |
 | EXEC-03 | Phase 8 | Complete |
 | EXEC-04 | Phase 8 | Complete |
 | EXEC-05 | Phase 8 | Complete |
 | EXEC-06 | Phase 5 | Complete |
-| REPAIR-01 | Phase 8 | Pending |
+| REPAIR-01 | Phase 8 | Complete |
 | REPAIR-02 | Phase 5 | Complete |
 | REPAIR-03 | Phase 8 | Complete |
 | REPAIR-04 | Phase 8 | Complete |
@@ -108,7 +108,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-02 | Phase 5 | Complete |
 | CI-03 | Phase 9 | Pending |
 | CI-04 | Phase 8 | Pending |
-| CI-05 | Phase 8 | Pending |
+| CI-05 | Phase 8 | Complete |
 | CI-06 | Phase 9 | Pending |
 | CI-07 | Phase 9 | Pending |
 | CI-08 | Phase 9 | Pending |
