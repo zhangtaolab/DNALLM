@@ -6,10 +6,10 @@ current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: planning
 stopped_at: Phase 8 context gathered
-last_updated: "2026-10-04T01:45:48.795Z"
+last_updated: "2026-10-04T05:12:25.586Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 22c064df7f3d50e433e6257a643fcd157f42e277
+state_head: 4c2e5bd589656791629a3b6f078d43e09df7d2d5
 progress:
   total_phases: 5
   completed_phases: 3
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 Phase: 8 — Full Execution Rollout & Repair Loop
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-10-04 — Phase 7 complete, transitioned to Phase 8
+Last activity: 2026-10-04 - Completed quick task 261004-dyw: showcase display enhancement
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
@@ -155,6 +155,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261003-jpr | Fix IN-01: absence guards on the three sl7 patch installers in transformers_compat.py (configuration_utils/cache_utils/modeling_utils bare imports → standard try/except no-op guards); new TestTransformersAbsenceContract dynamically collects installers so future ones are auto-covered (11 items, roster pin + apply_patches survival); RED 4F/83P → GREEN 87P, tests/utils 129 green | 2026-10-03 | 56a72c9 | [261003-jpr-fix-in-01-the-three-new-patch-installers](./quick/261003-jpr-fix-in-01-the-three-new-patch-installers/) |
 | 261003-r73 | Close Phase-06 review warnings WR-01/02/03: nightly CI legs install .[base,fla] + typed importorskip guards on the two slow smokes (WR-01, eb85f7e); CRLF-robust slice_gff_rows — strips \n/\r\n/\r terminators, raises on embedded \r, 2 same-change tests (WR-03, 8d6bd3b); _load_with_fallback exception classifier — env failures skip typed (byte-identical message), dnallm regressions fail, 7 fast tests (WR-02, 1219f0f); 06-REVIEW-DISPOSITION WR-01/02/03 flipped fixed, 35 fast tests green | 2026-10-03 | eb85f7e, 8d6bd3b, 1219f0f | [261003-r73-close-phase-06-review-warnings-wr-01-02-](./quick/261003-r73-close-phase-06-review-warnings-wr-01-02-/) |
 | 261003-ryz | Close Phase-06 review info findings IN-01..06: fetch_sequence path branch releases pyfastx handles + cleans only a .fxi it created, 3 same-change tests (aaf6308); ASCII-only bare-numeric chrom digits (c19999a); import-purity test restores the package attribute + identity guard (3662ea5); Anno label_names re-quoted, one-line diff gate (7790920); fla extra asserted by exact bracket-member parse (2a0ba40); local .scratch/ ignore removed by live masked/unmasked check-ignore evidence — root .gitignore:60 covers it, 06-01 .py-coverage claim corrected (188a4f6); dispositions IN-01..06 fixed, open: 0; 36 fast tests green, branch pushed | 2026-10-03 | aaf6308, c19999a, 3662ea5, 7790920, 2a0ba40, 188a4f6 | [261003-ryz-close-phase-06-review-info-findings-in-0](./quick/261003-ryz-close-phase-06-review-info-findings-in-0/) |
+| 261004-dyw | Showcase display enhancement: PNG mimes everywhere + pgt zoom windows + new combined notebook (window Chr1:5220001-5260000 +5kb flank; pygenometracks adopted, GPL override recorded; leaf-DNase bedGraph + truth GTF + region FASTA committed artifacts) | 2026-10-04 | 4c2e5bd | [261004-dyw-planthelixseek-showcase-notebook-vega-ve](./quick/261004-dyw-planthelixseek-showcase-notebook-vega-ve/) |
 
 ## Deferred Items
 
