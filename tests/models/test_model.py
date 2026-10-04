@@ -175,6 +175,30 @@ class TestDownloadModel:
         assert mock_downloader.call_count == 1
         assert mock_sleep.call_count == 0
 
+    def test_download_forwards_allow_patterns_kwarg(self):
+        """allow_patterns set -> forwarded as a downloader kwarg on the success path."""
+        mock_downloader = Mock(return_value="/path/to/model")
+
+        result = download_model(
+            "test-model", mock_downloader, max_try=3, allow_patterns=["*.safetensors"]
+        )
+
+        assert result == "/path/to/model"
+        assert mock_downloader.call_args.kwargs["allow_patterns"] == ["*.safetensors"]
+
+    def test_download_omits_allow_patterns_kwarg_when_none(self):
+        """allow_patterns omitted -> the downloader kwargs carry no allow_patterns key.
+
+        This is the byte-identical-when-omitted half of the CI-05 contract:
+        no existing caller (and no family) may silently inherit a pattern set.
+        """
+        mock_downloader = Mock(return_value="/path/to/model")
+
+        result = download_model("test-model", mock_downloader, max_try=3)
+
+        assert result == "/path/to/model"
+        assert "allow_patterns" not in mock_downloader.call_args.kwargs
+
     @pytest.mark.slow
     @pytest.mark.timeout(900)
     def test_download_real_huggingface_connection(self):
@@ -200,6 +224,30 @@ class TestDownloadModel:
         )
         assert result is not None
         assert os.path.exists(result)
+
+
+class TestGetModelPathAndImportsAllowPatterns:
+    """allow_patterns passthrough on the hub branch (CI-05 load-time half)."""
+
+    def test_hub_branch_forwards_allow_patterns_to_download_model(self):
+        """Hub branch threads allow_patterns into download_model when given."""
+        with patch("huggingface_hub.snapshot_download"), patch(
+            "dnallm.models.model.download_model", return_value="/hf/model"
+        ) as mock_download:
+            _get_model_path_and_imports(
+                "test-model", "huggingface", allow_patterns=["*.safetensors"]
+            )
+
+        assert mock_download.call_args.kwargs["allow_patterns"] == ["*.safetensors"]
+
+    def test_hub_branch_omits_allow_patterns_when_none(self):
+        """Hub branch carries no allow_patterns key when the parameter is None."""
+        with patch("huggingface_hub.snapshot_download"), patch(
+            "dnallm.models.model.download_model", return_value="/hf/model"
+        ) as mock_download:
+            _get_model_path_and_imports("test-model", "huggingface")
+
+        assert "allow_patterns" not in mock_download.call_args.kwargs
 
 
 class TestIsFp8Capable:
