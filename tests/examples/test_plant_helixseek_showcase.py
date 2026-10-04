@@ -68,6 +68,65 @@ CRE_TEST_TIMEOUT_S = 2400
 ANNO_TEST_TIMEOUT_S = 5400
 COMBINED_TEST_TIMEOUT_S = 2400
 
+# Cross-directory inputs of the combined notebook (08-02 repair): its cells
+# read the CRE sibling's zoom FASTA via a cwd-relative ../plant_helixseek_cre/
+# path, which a fresh sandbox does not contain -- the 08-01 first nightly
+# dispatch failed exactly here (FileNotFoundError on the runner; reproduced
+# on the dev box in the 08-02 D-03 lane).  Seeded per the benchmark
+# ``_NOTEBOOK_EXTRA_INPUTS`` precedent; coverage is contract-tested by
+# :class:`TestCombinedSiblingSeeding` below.
+COMBINED_EXTRA_INPUTS: list[tuple[Path, str]] = [
+    (
+        SHARED_DATA / "chr1_5220001_5265000.fas",
+        "data/chr1_5220001_5265000.fas",
+    ),
+    (
+        EXAMPLE_DIR / "notebooks" / "plant_helixseek_cre" / "data" / "chr1_5100001_5300000.fas",
+        "../plant_helixseek_cre/data/chr1_5100001_5300000.fas",
+    ),
+]
+
+
+class TestCombinedSiblingSeeding:
+    """Fast contract: every cross-dir read of the combined notebook is seeded.
+
+    Regression for the 08-01 nightly FileNotFoundError: the combined
+    notebook's cwd-relative ``../`` reads must each have an explicit
+    seeding entry whose source file is committed, so a fresh sandbox (CI
+    or dev box) can never miss a sibling input again.
+    """
+
+    @staticmethod
+    def _notebook_crossdir_refs() -> set[str]:
+        """Collect ``../``-style path literals from the combined notebook."""
+        nb = json.loads(COMBINED_NB.read_text(encoding="utf-8"))
+        refs: set[str] = set()
+        for cell in nb["cells"]:
+            source = cell.get("source", "")
+            text = "".join(source) if isinstance(source, list) else source
+            refs.update(re.findall(r"""["'](\.\./[^"']+)["']""", text))
+        return refs
+
+    def test_every_crossdir_ref_has_a_seeding_entry(self) -> None:
+        """Each ../ path the notebook reads appears in COMBINED_EXTRA_INPUTS dests."""
+        seeded = {dest for _src, dest in COMBINED_EXTRA_INPUTS}
+        refs = self._notebook_crossdir_refs()
+        assert refs, "combined notebook unexpectedly has no ../ refs -- check the parse"
+        missing = {ref for ref in refs if ref not in seeded}
+        assert not missing, (
+            f"combined notebook reads sibling path(s) with no sandbox seeding: "
+            f"{sorted(missing)} -- add (src, dest) tuples to COMBINED_EXTRA_INPUTS"
+        )
+
+    def test_every_seeded_source_is_committed_and_present(self) -> None:
+        """Every seeding source exists in the repo tree (fresh-checkout safe)."""
+        for src, _dest in COMBINED_EXTRA_INPUTS:
+            assert src.is_file(), (
+                f"COMBINED_EXTRA_INPUTS source missing from the repo: {src} -- "
+                f"a fresh checkout sandbox would fail (08-01 nightly failure class)"
+            )
+
+
 # Parametrized structure-test surface: all three showcase notebooks, each with
 # the locus key its provenance cell pins (D-01).  Every structure test takes
 # the uniform (nb_path, locus_key) signature against this one shared list even
@@ -587,13 +646,7 @@ def test_combined_notebook_executes_with_display_figure(tmp_path: Path) -> None:
         f"below this test's {COMBINED_TEST_TIMEOUT_S}s pytest-timeout mark (Pitfall 6)"
     )
 
-    extras = [
-        (
-            SHARED_DATA / "chr1_5220001_5265000.fas",
-            "data/chr1_5220001_5265000.fas",
-        ),
-    ]
-    sandbox = seed_sandbox(COMBINED_NB.parent, tmp_path, extra_inputs=extras)
+    sandbox = seed_sandbox(COMBINED_NB.parent, tmp_path, extra_inputs=COMBINED_EXTRA_INPUTS)
     artifacts = tmp_path / "artifacts"
     nb = run_notebook(
         COMBINED_NB, sandbox, cell_timeout=spec["cell_timeout"], artifact_dir=artifacts

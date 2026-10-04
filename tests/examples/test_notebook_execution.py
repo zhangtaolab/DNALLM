@@ -89,10 +89,36 @@ ACTIVE_NOTEBOOKS = [
 # silently treats the missing path STRING as one "sequence", building a
 # labels-less one-row dataset that crashes Benchmark.run at
 # dnallm/inference/benchmark.py:296 (KeyError on the label column).
+#
+# 08-02 (rice.uga.edu outage 2026-10-04): data_generation_and_inference
+# downloads its rice inputs in-notebook via ``wget -c``, which skips
+# complete files -- so seeding complete copies from the 05-06 census cache
+# (gitignored .scratch/, dev-box only) makes the notebook input-outage
+# proof while CI/fresh checkouts keep the in-notebook download as the
+# only path.  Built by :func:`_rice_cache_extras` (unit-tested below).
+RICE_CACHE_DIR = EXAMPLE_DIR.parent / ".scratch" / "census-out" / "inputs"
+RICE_CACHE_NAMES = ("osa1_r7.asm.fa.gz", "osa1_r7.all_models.gff3.gz")
+
+
+def _rice_cache_extras(cache_dir: Path = RICE_CACHE_DIR) -> list[tuple[Path, str]]:
+    """Build (cached-file, sandbox-name) seed tuples for the rice inputs.
+
+    Returns one tuple per COMPLETE cached file (dev-box mirror of the
+    notebook's documented rice.uga.edu URLs); empty on a cold cache so the
+    notebook falls back to its own ``wget -c`` download cell.
+    """
+    return [
+        (cached, cached.name)
+        for name in RICE_CACHE_NAMES
+        if (cached := cache_dir / name).is_file() and cached.stat().st_size > 0
+    ]
+
+
 _NOTEBOOK_EXTRA_INPUTS: dict[str, list[tuple[Path, str]]] = {
     "notebooks/benchmark/benchmark.ipynb": [
         (EXAMPLE_DIR / "notebooks" / "inference" / "test.csv", "../inference/test.csv"),
     ],
+    "notebooks/finetune_NER_task/data_generation_and_inference.ipynb": _rice_cache_extras(),
 }
 
 
@@ -320,6 +346,36 @@ class TestSeedSandbox:
 
         escaped = (tmp_path.parent / "etc" / "evil.csv").resolve()
         assert not escaped.exists(), "the guard must reject before anything is written outside"
+
+
+class TestRiceCacheExtras:
+    """Contract for :func:`_rice_cache_extras` (08-02 rice.uga.edu outage).
+
+    Warm cache -> one seed tuple per complete file (name, size order from
+    RICE_CACHE_NAMES); cold/partial cache -> fewer or none, so the
+    notebook keeps its own ``wget -c`` download cell as the only path.
+    """
+
+    def test_warm_cache_yields_both_tuples(self, tmp_path: Path) -> None:
+        """Both complete cached files become (path, name) seed tuples."""
+        for name in RICE_CACHE_NAMES:
+            (tmp_path / name).write_bytes(b"x" * 16)
+        extras = _rice_cache_extras(tmp_path)
+        assert [(src.name, dest) for src, dest in extras] == [
+            ("osa1_r7.asm.fa.gz", "osa1_r7.asm.fa.gz"),
+            ("osa1_r7.all_models.gff3.gz", "osa1_r7.all_models.gff3.gz"),
+        ]
+
+    def test_cold_cache_yields_nothing(self, tmp_path: Path) -> None:
+        """No cache dir -> no extras (notebook downloads in-cell)."""
+        assert _rice_cache_extras(tmp_path / "cold") == []
+
+    def test_zero_byte_cache_entry_is_skipped(self, tmp_path: Path) -> None:
+        """A truncated/zero-byte cached file must not seed a sandbox."""
+        (tmp_path / RICE_CACHE_NAMES[0]).write_bytes(b"")
+        (tmp_path / RICE_CACHE_NAMES[1]).write_bytes(b"full")
+        extras = _rice_cache_extras(tmp_path)
+        assert [src.name for src, _dest in extras] == [RICE_CACHE_NAMES[1]]
 
 
 class TestProbeHonesty:
