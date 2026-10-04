@@ -1,0 +1,35 @@
+# ollama systemd unit for the dnallm-nightly self-hosted runner (D-12, MCP-01).
+#
+# In-repo definition: auditable and rebuildable by diff (08-08). The live unit
+# on the runner host is enabled ONCE by the owner from this file -- see
+# scripts/runner/README.md. Template source: the stock ollama Linux packaging
+# unit captured verbatim on the dev box (/etc/systemd/system/ollama.service),
+# with the Environment PATH GENERICIZED (a standard system PATH plus
+# /usr/local/bin -- the dev-box unit's box-specific entries removed) and the
+# D-12 loopback pin added.
+#
+# SECURITY (D-12): OLLAMA_HOST pins the bind to loopback only. ollama binds
+# 127.0.0.1:11434 by default, but the pin makes the intent explicit and
+# protects against a future ollama default change. The FAQ's 0.0.0.0 example
+# must NEVER be copied here -- that would expose the model server on every
+# interface of the runner.
+[Unit]
+Description=Ollama Service
+After=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+# Genericized PATH: standard system dirs plus /usr/local/bin (where the
+# official ollama installer places the binary). No box-specific paths.
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+# D-12: loopback-only bind -- the access control for network clients.
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+# Optional: pin model storage to a dedicated dir (uncomment to use).
+# Environment="OLLAMA_MODELS=/var/lib/ollama/models"
+
+[Install]
+WantedBy=default.target
