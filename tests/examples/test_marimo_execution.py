@@ -7,6 +7,13 @@ Census lane of the v1.1 example rollout (D-08): every app listed in
 inside a tmp sandbox, proving a real export without touching the repo
 tree.  Every test here is slow-marked so hosted fast legs never spawn
 an app runtime.
+
+D-18 deepening (08-01): a shallow export-plus-size check can pass on an
+empty shell, so each app is asserted on the full quadruple -- (1) a
+successful headless run, (2) the exit-code contract, (3) the app's UI
+default-value literals present in the exported HTML, and (4) a
+key-content marker.  Artifacts stay in the tmp sandbox (``assert_tree_clean``
+enforces nothing is committed).
 """
 
 from __future__ import annotations
@@ -23,6 +30,30 @@ from tests.examples._execution import (
     run_marimo_app,
     seed_sandbox,
 )
+
+# D-18 (3): per-app UI default-value literals, calibrated from each app's
+# ``mo.ui`` constructors (``value=`` arguments in example/marimo/**) by real
+# export runs on the dev box. The exported HTML embeds both the app code and
+# the rendered initial UI state, so these literals prove the export carries
+# the app's real default UI values -- not an empty shell. Keys are POSIX
+# paths relative to EXAMPLE_DIR. A new app added to MARIMO_EXEC_SPECS
+# without a defaults entry fails loudly here (KeyError) -- that is the
+# inheritance mechanism: calibrate the literals when the app joins the lane.
+MARIMO_EXPORT_DEFAULTS: dict[str, tuple[str, ...]] = {
+    "marimo/inference/inference_demo.py": ("open chromatin", "Plant DNABERT", "BPE"),
+    "marimo/benchmark/benchmark_demo.py": ("config.yaml", "test.csv", "modelscope"),
+    "marimo/finetune/finetune_demo.py": (
+        "finetune_config.yaml",
+        "zhangtaolab/plant-dnagpt-BPE",
+        "512",
+    ),
+}
+
+# D-18 (4): key-content marker present in every real marimo export --
+# calibrated against a real benchmark_demo export (marimo >=0.16 emits the
+# embedded <marimo-code> element; this version has no marimo-root element).
+# An empty-shell export (or a truncated one) fails this check.
+MARIMO_EXPORT_MARKER = "marimo-code"
 
 
 # The sandbox fixture lives in this module (not a tests/examples/conftest.py):
@@ -52,13 +83,13 @@ class TestMarimoAppExecution:
         [Path(key) for key in MARIMO_EXEC_SPECS],
         ids=lambda p: str(p.relative_to(EXAMPLE_DIR)),
     )
-    def test_app_exports_html(
+    def test_app_exports_html_with_default_ui_and_content(
         self,
         app_path: Path,
         tmp_path: Path,
         marimo_sandbox: Path,
     ) -> None:
-        """Export the app to HTML headlessly and prove a real artifact results."""
+        """Export the app headlessly and assert the D-18 quadruple."""
         spec = MARIMO_EXEC_SPECS[str(app_path)]
         html_out = run_marimo_app(
             app_path,
@@ -69,5 +100,28 @@ class TestMarimoAppExecution:
         assert html_out.is_file(), f"export artifact missing: {html_out}"
         assert html_out.stat().st_size > 1000, (
             f"export artifact undersized: {html_out.stat().st_size} bytes"
+        )
+        # D-18 (2) exit-code contract: run_marimo_app never returns a
+        # process handle -- it raises AssertionError on any non-zero
+        # ``marimo export`` return code, and it writes
+        # ``<stem>.export.error.txt`` ONLY on that failure path. Reaching
+        # this assertion therefore proves the subprocess exited 0; the
+        # artifact's absence is the recorded exit-0 evidence.
+        error_artifact = tmp_path / "artifacts" / f"{app_path.stem}.export.error.txt"
+        assert not error_artifact.exists(), (
+            f"marimo export recorded a failure artifact (non-zero exit "
+            f"returncode): {error_artifact}"
+        )
+        # D-18 (3) + (4): default-value literals and key-content marker in
+        # the exported HTML -- plain ``in`` checks, no DOM scraping.
+        rel = app_path.relative_to(EXAMPLE_DIR).as_posix()
+        html_text = html_out.read_text(encoding="utf-8")
+        for literal in MARIMO_EXPORT_DEFAULTS[rel]:
+            assert literal in html_text, (
+                f"{rel}: UI default literal {literal!r} absent from the export"
+            )
+        assert MARIMO_EXPORT_MARKER in html_text, (
+            f"{rel}: key-content marker {MARIMO_EXPORT_MARKER!r} absent "
+            f"from the export (empty-shell export?)"
         )
         assert_tree_clean()
