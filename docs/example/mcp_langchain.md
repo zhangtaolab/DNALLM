@@ -73,8 +73,8 @@ tools = await client.get_tools()
 
 # Create agent with Ollama LLM
 agent = create_agent(
-    "ollama:qwen3.6:latest",
-    tools
+    "ollama:qwen3.8:latest",  # Local LLM model via Ollama
+    tools                   # MCP tools from DNALLM server
 )
 ```
 

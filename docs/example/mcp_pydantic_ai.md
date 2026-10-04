@@ -42,7 +42,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
 ollama_model = OpenAIChatModel(
-    model_name='qwen3.6:latest',
+    model_name='qwen3.8:latest',
     provider=OllamaProvider(base_url='http://localhost:11434/v1'),
 )
 ```
@@ -50,9 +50,9 @@ ollama_model = OpenAIChatModel(
 ## Connect MCP Server
 
 ```python
-from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.mcp import FastMCPClient, MCPToolset
 
-server = MCPServerStreamableHTTP('http://localhost:8000/mcp')
+server = MCPToolset(FastMCPClient('http://localhost:8000/mcp'))
 ```
 
 ## Create Agent
@@ -104,7 +104,7 @@ time.sleep(3)
 print("=== DNA Sequence Analysis Result ===")
 print(result.output)
 print("\n=== Usage Statistics ===")
-print(result.usage())
+print(result.usage)
 ```
 
 ## List Available Models

@@ -75,7 +75,7 @@ Single file:
 ```python
 # Load single dataset
 dataset = DNADataset.load_local_data(
-    "../../../../tests/test_data/regression/train.csv",
+    "./train.csv",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -89,9 +89,9 @@ Pre-split files:
 # Load multiple files (e.g., pre-split datasets)
 dataset = DNADataset.load_local_data(
     {
-        "train": "../../../../tests/test_data/regression/train.csv",
-        "test": "../../../../tests/test_data/regression/test.csv",
-        "validation": "../../../../tests/test_data/regression/dev.csv"
+        "train": "./train.csv",
+        "test": "./test.csv",
+        "validation": "./dev.csv"
     },
     seq_col="sequence",
     label_col="label",
