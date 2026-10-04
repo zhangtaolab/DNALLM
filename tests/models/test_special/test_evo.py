@@ -543,3 +543,32 @@ class TestHandleEvo1Models:
         model, tokenizer = result
         assert model == "wrapped-model"
         assert isinstance(tokenizer, EvoTokenizerWrapper)
+
+    def test_hub_fetch_is_safetensors_only(self, monkeypatch):
+        """The evo-1 hub fetch carries the safetensors-only allow_patterns set.
+
+        CI-05 / Pitfall 4: a warm giants dir must never be re-expanded with
+        the 16.81GB pytorch_model.pt at load time -- the pattern set keeps
+        the snapshot download restricted to safetensors + configs.
+        """
+        _install_evo1_stubs(monkeypatch)
+        modules = _evo1_modules()
+
+        with (
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded", modules),
+            ) as mock_resolve,
+            patch(
+                "dnallm.models.special.evo.is_flash_attention_capable",
+                return_value=True,
+            ),
+        ):
+            _handle_evo1_models("evo-1-8k-base", "huggingface")
+
+        assert mock_resolve.call_args.kwargs["allow_patterns"] == [
+            "*.safetensors",
+            "*.json",
+            "*.txt",
+            "README.md",
+        ]
