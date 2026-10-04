@@ -47,6 +47,15 @@ def _handle_megadna_models(
                     "vocab_file": "vocab.txt"
                 }
                 DEFAULT_TOKENS = ("**", "#")
+                # Characters outside the six-token vocabulary (IUPAC
+                # ambiguity codes, soft-masked lowercase) encode to id 1,
+                # the upstream encode_sequence rule (megaDNA mutagenesis
+                # notebook).  The checkpoint vocabulary is exactly six
+                # tokens wide, so an unknown id cannot be introduced;
+                # mapping unknowns to None (the unk_token_id default with
+                # unk_token=None) crashed tensor creation inside
+                # transformers before the model ever ran (08-04).
+                UNKNOWN_TOKEN_ID = 1
 
                 def __init__(
                     self,
@@ -80,7 +89,7 @@ def _handle_megadna_models(
                     return list(text)
 
                 def _convert_token_to_id(self, token: str) -> int:
-                    return self.token_to_id.get(token, self.unk_token_id)
+                    return self.token_to_id.get(token, self.UNKNOWN_TOKEN_ID)
 
                 def _convert_id_to_token(self, index: int):
                     return self.id_to_token.get(index, self.unk_token)
