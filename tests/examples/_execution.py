@@ -218,6 +218,17 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "cell_timeout": 3600,
         "extra_inputs": [],
     },
+    str(EXAMPLE_DIR / "notebooks" / "plant_helixseek_shared" / "plant_helixseek_combined.ipynb"): {
+        # Quick-task 261004-dyw combined view: both PlantHelixSeek models over
+        # the 45 kb display region only (two warm loads + a ~1 min CRE scan +
+        # a ~1 min Anno both-strand scan + the pgt render); 1200s per cell
+        # leaves ample headroom while staying strictly below the combined
+        # test's 2400s pytest-timeout mark (Pitfall 6). The combined slow test
+        # seeds its own cross-notebook FASTA extra -- this entry carries only
+        # the budget.
+        "cell_timeout": 1200,
+        "extra_inputs": [],
+    },
 }
 
 # Per-marimo-app execution specs.  Keys are str() of the absolute app

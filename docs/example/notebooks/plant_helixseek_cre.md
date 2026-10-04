@@ -13,7 +13,7 @@ All results shown in the executed notebook are computed on one illustrative locu
 
 [:octicons-book-24: View Full Notebook](https://github.com/zhangtaolab/DNALLM/blob/main/example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb){ .md-button }
 
-The committed notebook carries its executed outputs, including the embedded prediction-vs-truth track figures (rendered by the GitHub notebook viewer).
+The committed notebook carries its executed outputs, including the embedded prediction-vs-truth track figures (rendered by the GitHub notebook viewer). The full-locus figure embeds an image/png copy alongside the compiled vega/vega-lite JSON, so it also renders in local JupyterLab/VS Code, and the notebook adds an owner-chosen illustrative zoom window (`Chr1:5220001-5260000`) — the confident-band p(CRE) track plus the official PlantDHS leaf DNase signal from the committed bedGraph — rendered with pygenometracks for display clarity. For the both-modality view on one aligned axis, see the [PlantHelixSeek Combined View](plant_helixseek_combined.md).
 
 ## Prerequisites
 

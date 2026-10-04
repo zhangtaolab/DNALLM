@@ -1,13 +1,17 @@
 """PlantHelixSeek showcase notebooks: structure tests + nightly execution lane.
 
 Phase 7 (07-01) landing module for the CRE showcase notebook; 07-02 extends it
-with the Anno sibling (both-strand gene-structure decode).  Two layers per
-D-13/D-05:
+with the Anno sibling (both-strand gene-structure decode); quick task
+261004-dyw adds the PNG-mime pinning (every figure renders everywhere), the
+pygenometracks-rendered zoom windows over the owner-chosen display window, and
+the combined CRE+Anno notebook.  Two layers per D-13/D-05:
 
 * **Fast, kernel-free structure tests** (:class:`TestPlantHelixSeekShowcaseStructure`)
-  pin BOTH committed notebooks' contract surface: the provenance cell, the
+  pin ALL THREE committed notebooks' contract surface: the provenance cell, the
   D-16 fla guard shape (and the absence of any ``fla`` import statement), the
-  illustrative-loci captions, the embedded vega outputs, the 2 MB size budget
+  illustrative-loci captions after every figure cell, the embedded vega outputs
+  plus the PNG mimes (the full-locus altair figures render in local
+  JupyterLab/VS Code; the zoom figures embed PNG only), the 2 MB size budget
   (D-12), the SHOW-07 no-genome-wide-claim rule, and a parse guard proving
   :func:`_parse_floors`/:func:`_parse_bands` can read the frozen
   ``selection.md`` contract (failing red on any missing key or band row, D-06).
@@ -41,11 +45,16 @@ from tests.examples._execution import (
     seed_sandbox,
 )
 
-# Committed showcase surface (Phase-6 data + Phase-7 notebooks).
+# Committed showcase surface (Phase-6 data + Phase-7 notebooks + 261004-dyw).
 SHARED_DATA = EXAMPLE_DIR / "notebooks" / "plant_helixseek_shared" / "data"
 SELECTION_MD = SHARED_DATA / "selection.md"
 CRE_NB = EXAMPLE_DIR / "notebooks" / "plant_helixseek_cre" / "plant_helixseek_cre.ipynb"
 ANNO_NB = EXAMPLE_DIR / "notebooks" / "plant_helixseek_anno" / "plant_helixseek_anno.ipynb"
+COMBINED_NB = (
+    EXAMPLE_DIR / "notebooks" / "plant_helixseek_shared" / "plant_helixseek_combined.ipynb"
+)
+LEAF_DNASE_BEDGRAPH = SHARED_DATA / "Ath_leaf_DNase_chr1_5100001_5300000.bedGraph"
+TRUTH_GTF = SHARED_DATA / "TAIR10_GTF_chr1_5100001_5300000.gtf"
 
 # The pinned disclaimer sentence (D-03/SHOW-07) every metric figure or
 # conclusion cell carries; structure tests pin it, selection.md explains it.
@@ -57,17 +66,24 @@ ILLUSTRATIVE_DISCLAIMER = "illustrative locus, not genome-wide accuracy"
 # CellTimeoutError handling and the partial-failure artifact capture).
 CRE_TEST_TIMEOUT_S = 2400
 ANNO_TEST_TIMEOUT_S = 5400
+COMBINED_TEST_TIMEOUT_S = 2400
 
-# Parametrized structure-test surface: both showcase notebooks, each with the
-# locus key its provenance cell pins (D-01).  Every structure test takes the
-# uniform (nb_path, locus_key) signature against this one shared list even
+# Parametrized structure-test surface: all three showcase notebooks, each with
+# the locus key its provenance cell pins (D-01).  Every structure test takes
+# the uniform (nb_path, locus_key) signature against this one shared list even
 # where it reads only nb_path -- single-source parametrization beats five
 # bespoke argument lists; only test_provenance_markdown_cell consumes
 # locus_key.
 SHOWCASE_NOTEBOOKS = [
     pytest.param(CRE_NB, "cre_locus=Chr1:5100001-5300000", id="cre"),
     pytest.param(ANNO_NB, "anno_locus=Chr1:5100001-5300000", id="anno"),
+    pytest.param(COMBINED_NB, "combined_locus=Chr1:5220001-5265000", id="combined"),
 ]
+
+# The two MAIN notebooks carry the full-locus altair figures (vega + PNG mimes
+# + metric key=value streams); the combined notebook is display-only (PNG
+# figure, no vega, no metrics) and gets its own structure test.
+MAIN_NOTEBOOKS = SHOWCASE_NOTEBOOKS[:2]
 
 
 def _cell_text(cell: dict) -> str:
@@ -264,31 +280,49 @@ class TestPlantHelixSeekShowcaseStructure:
 
     @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
     def test_illustrative_caption_follows_the_metric_figure(self, nb_path: Path, locus_key: str):
-        """The markdown after the altair figure carries the pinned disclaimer (D-03)."""
-        nb = _load_nb(nb_path)
-        figure_idx = next(
-            (
-                i
-                for i, cell in enumerate(nb["cells"])
-                if cell["cell_type"] == "code" and "alt.Chart(" in _cell_text(cell)
-            ),
-            None,
-        )
-        assert figure_idx is not None, f"{nb_path.name} has no altair figure cell"
-        following_markdown = [
-            _cell_text(cell)
-            for cell in nb["cells"][figure_idx + 1 :]
-            if cell["cell_type"] == "markdown"
-        ]
-        assert following_markdown, "no markdown cell follows the metric figure"
-        assert ILLUSTRATIVE_DISCLAIMER in following_markdown[0].lower(), (
-            f"the caption following the metric figure must carry the pinned disclaimer "
-            f"{ILLUSTRATIVE_DISCLAIMER!r}"
-        )
+        """Every figure cell is followed by a caption carrying the disclaimer (D-03).
 
-    @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
+        Figure cells are keyed structurally: code cells whose source embeds a
+        display dict naming ``"image/png"`` -- the full-locus altair figures
+        (vega + PNG mimes) and the pygenometracks-rendered zoom/combined
+        figures (PNG only) alike.
+        """
+        nb = _load_nb(nb_path)
+        figure_indices = [
+            i
+            for i, cell in enumerate(nb["cells"])
+            if cell["cell_type"] == "code" and '"image/png"' in _cell_text(cell)
+        ]
+        has_altair = any(
+            cell["cell_type"] == "code" and "alt.Chart(" in _cell_text(cell) for cell in nb["cells"]
+        )
+        expected = 2 if has_altair else 1  # main notebooks: altair + zoom; combined: one figure
+        assert len(figure_indices) >= expected, (
+            f"{nb_path.name} has {len(figure_indices)} figure cells (expected >= {expected}: "
+            "the altair full-locus figure plus the pgt zoom for the main notebooks, the "
+            "single combined figure for the combined notebook)"
+        )
+        for figure_idx in figure_indices:
+            following_markdown = [
+                _cell_text(cell)
+                for cell in nb["cells"][figure_idx + 1 :]
+                if cell["cell_type"] == "markdown"
+            ]
+            assert following_markdown, f"no markdown cell follows figure cell {figure_idx}"
+            assert ILLUSTRATIVE_DISCLAIMER in following_markdown[0].lower(), (
+                f"the caption following figure cell {figure_idx} must carry the pinned "
+                f"disclaimer {ILLUSTRATIVE_DISCLAIMER!r}"
+            )
+
+    @pytest.mark.parametrize(("nb_path", "locus_key"), MAIN_NOTEBOOKS)
     def test_committed_notebook_has_executed_outputs(self, nb_path: Path, locus_key: str):
-        """The committed blob carries stream outputs, a vega mime OUTPUT, and stays <= 2 MB (D-12)."""
+        """Main blobs carry stream outputs, vega + PNG mimes, and stay <= 2 MB (D-12).
+
+        The full-locus altair figures embed a vega v6 object + vegalite JSON
+        string (GitHub renders them) AND a rasterized image/png copy (local
+        JupyterLab/VS Code render neither vega form); the pgt zoom figures add
+        at least one more image/png display output.
+        """
         nb = _load_nb(nb_path)
         output_mimes = [
             mime
@@ -303,10 +337,49 @@ class TestPlantHelixSeekShowcaseStructure:
             "figure cell never executed (its source also names the mime strings, so this "
             "checks outputs, not raw text)"
         )
+        png_mimes = [mime for mime in output_mimes if mime == "image/png"]
+        assert len(png_mimes) >= 2, (
+            "committed notebook carries fewer than two image/png display outputs -- the "
+            "full-locus PNG mime and the pgt zoom figure are both missing or stripped"
+        )
         assert nb_path.stat().st_size <= 2097152, (
             f"committed notebook is {nb_path.stat().st_size} bytes (budget 2097152, D-12)"
         )
         assert _stream_text(nb).strip(), "committed notebook carries no stream outputs"
+
+    def test_combined_notebook_structure(self):
+        """The combined notebook: executed PNG figure, no scoring text, <= 2 MB (D-12).
+
+        The combined view is display-only: exactly the both-modality figure,
+        window evidence lines in its stream, and NO jaccard/gene_f1 scoring
+        text anywhere (the full-locus metrics live in the two main notebooks).
+        """
+        nb = _load_nb(COMBINED_NB)
+        display_outputs = [
+            output
+            for cell in nb["cells"]
+            for output in cell.get("outputs", []) or []
+            if output.get("output_type") in ("display_data", "execute_result")
+        ]
+        png_outputs = [
+            output for output in display_outputs if "image/png" in (output.get("data") or {})
+        ]
+        assert png_outputs, "combined notebook carries no image/png display output"
+        stream = _stream_text(nb)
+        assert "zoom_window=Chr1:5220001-5260000" in stream, (
+            "combined notebook stream is missing the zoom_window= evidence line"
+        )
+        assert "combined_window=Chr1:5220001-5265000" in stream, (
+            "combined notebook stream is missing the combined_window= evidence line"
+        )
+        assert stream.strip(), "combined notebook carries no stream outputs"
+        for index, cell in enumerate(nb["cells"]):
+            src = _cell_text(cell)
+            assert "jaccard" not in src, f"combined notebook cell {index} mentions jaccard"
+            assert "gene_f1" not in src, f"combined notebook cell {index} mentions gene_f1"
+        assert COMBINED_NB.stat().st_size <= 2097152, (
+            f"combined notebook is {COMBINED_NB.stat().st_size} bytes (budget 2097152, D-12)"
+        )
 
     @pytest.mark.parametrize(("nb_path", "locus_key"), SHOWCASE_NOTEBOOKS)
     def test_no_genome_wide_claim_phrasing(self, nb_path: Path, locus_key: str):
@@ -346,7 +419,9 @@ def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
     )
 
     # Pattern 6: shared data rides along as per-FILE tuple extras seeding the
-    # sibling ../plant_helixseek_shared/data/ directory inside the sandbox.
+    # sibling ../plant_helixseek_shared/data/ directory inside the sandbox --
+    # selection.md (contract parse), the flanking negative-control pair, and
+    # the leaf-DNase bedGraph read directly by the pgt zoom figure cell.
     extras = [
         (SELECTION_MD, "../plant_helixseek_shared/data/selection.md"),
         (
@@ -356,6 +431,10 @@ def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
         (
             SHARED_DATA / "TAIR10_DHSs_chr1_5351001_5371000.gff",
             "../plant_helixseek_shared/data/TAIR10_DHSs_chr1_5351001_5371000.gff",
+        ),
+        (
+            LEAF_DNASE_BEDGRAPH,
+            "../plant_helixseek_shared/data/Ath_leaf_DNase_chr1_5100001_5300000.bedGraph",
         ),
     ]
     sandbox = seed_sandbox(CRE_NB.parent, tmp_path, extra_inputs=extras)
@@ -414,7 +493,9 @@ def test_anno_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
     # Pattern 6: shared data rides along as per-FILE tuple extras seeding the
     # sibling ../plant_helixseek_shared/data/ directory inside the sandbox --
     # selection.md (runtime comparison parse), the intergenic negative-control
-    # FASTA, and the zero-row intergenic GFF3 (rendered-as-zero evidence).
+    # FASTA + zero-row intergenic GFF3 (rendered-as-zero evidence), and the
+    # shared display artifacts the pgt zoom reads (the pre-converted truth GTF
+    # and the leaf-DNase bedGraph cited by the provenance cell).
     extras = [
         (SELECTION_MD, "../plant_helixseek_shared/data/selection.md"),
         (
@@ -424,6 +505,14 @@ def test_anno_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
         (
             SHARED_DATA / "TAIR10_GFF3_chr1_14953292_14973291.gff3",
             "../plant_helixseek_shared/data/TAIR10_GFF3_chr1_14953292_14973291.gff3",
+        ),
+        (
+            LEAF_DNASE_BEDGRAPH,
+            "../plant_helixseek_shared/data/Ath_leaf_DNase_chr1_5100001_5300000.bedGraph",
+        ),
+        (
+            TRUTH_GTF,
+            "../plant_helixseek_shared/data/TAIR10_GTF_chr1_5100001_5300000.gtf",
         ),
     ]
     sandbox = seed_sandbox(ANNO_NB.parent, tmp_path, extra_inputs=extras)
@@ -475,3 +564,69 @@ def test_anno_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
         assert evidence_key in stream, (
             f"Anno notebook stream is missing the evidence key {evidence_key!r}"
         )
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(COMBINED_TEST_TIMEOUT_S)
+def test_combined_notebook_executes_with_display_figure(tmp_path: Path) -> None:
+    """Re-execute the combined notebook in-sandbox; assert the display figure (D-13).
+
+    The combined view is display-only (no bands): the test asserts a clean
+    execution, the six-track pygenometracks figure as an image/png display
+    output, and the owner-window evidence lines.  Its own shared data dir
+    (selection.md + leaf-DNase bedGraph + pre-converted truth GTF + the
+    region-level FASTA) rides along via seed_sandbox's whole-dir copy; the
+    region FASTA is also seeded explicitly as the notebook's single tuple
+    extra (owner-directed, belt-and-braces).
+    """
+    spec = NOTEBOOK_EXEC_SPECS[str(COMBINED_NB)]
+    # Pitfall 6: the harness contract requires cell_timeout < the outer mark,
+    # else pytest-timeout preempts nbclient's clean CellTimeoutError handling.
+    assert spec["cell_timeout"] < COMBINED_TEST_TIMEOUT_S, (
+        f"NOTEBOOK_EXEC_SPECS cell_timeout {spec['cell_timeout']} must stay strictly "
+        f"below this test's {COMBINED_TEST_TIMEOUT_S}s pytest-timeout mark (Pitfall 6)"
+    )
+
+    extras = [
+        (
+            SHARED_DATA / "chr1_5220001_5265000.fas",
+            "data/chr1_5220001_5265000.fas",
+        ),
+    ]
+    sandbox = seed_sandbox(COMBINED_NB.parent, tmp_path, extra_inputs=extras)
+    artifacts = tmp_path / "artifacts"
+    nb = run_notebook(
+        COMBINED_NB, sandbox, cell_timeout=spec["cell_timeout"], artifact_dir=artifacts
+    )
+
+    errored = [
+        (cell_index, output)
+        for cell_index, cell in enumerate(nb["cells"])
+        for output in cell.get("outputs", []) or []
+        if output.get("output_type") == "error"
+    ]
+    assert not errored, f"combined notebook executed with error outputs: {errored}"
+
+    assert_tree_clean()
+
+    stream = _stream_text(nb)
+    assert "zoom_window=Chr1:5220001-5260000" in stream, (
+        "combined notebook stream is missing the zoom_window= evidence line"
+    )
+    assert "combined_window=Chr1:5220001-5265000" in stream, (
+        "combined notebook stream is missing the combined_window= evidence line"
+    )
+    assert "pcres_bins_shown=" in stream, (
+        "combined notebook stream is missing the pcres_bins_shown= display-filter evidence"
+    )
+
+    display_outputs = [
+        output
+        for cell in nb["cells"]
+        for output in cell.get("outputs", []) or []
+        if output.get("output_type") in ("display_data", "execute_result")
+    ]
+    png_outputs = [
+        output for output in display_outputs if "image/png" in (output.get("data") or {})
+    ]
+    assert png_outputs, "combined notebook produced no image/png display output"

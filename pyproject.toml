@@ -102,6 +102,9 @@ notebook = [
     "jupyter>=1.1.1",
     "marimo>=0.16.3",
     "nbclient>=0.10",
+    # GPL-3.0: explicit owner override (2026-10-04) for the example showcase
+    # notebooks' zoom/combined figures; dnallm package code never imports it.
+    "pygenometracks>=3.9",
 ]
 docs = [
     "mkdocs-jupyter>=0.24.0",

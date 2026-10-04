@@ -13,7 +13,7 @@ All results shown in the executed notebook are computed on one illustrative locu
 
 [:octicons-book-24: View Full Notebook](https://github.com/zhangtaolab/DNALLM/blob/main/example/notebooks/plant_helixseek_anno/plant_helixseek_anno.ipynb){ .md-button }
 
-The committed notebook carries its executed outputs, including the embedded gene-model diagrams comparing predicted CDS segments against the TAIR10 truth gene models (rendered by the GitHub notebook viewer).
+The committed notebook carries its executed outputs, including the embedded gene-model diagrams comparing predicted CDS segments against the TAIR10 truth gene models (rendered by the GitHub notebook viewer). The full-locus figure embeds an image/png copy alongside the compiled vega/vega-lite JSON, so it also renders in local JupyterLab/VS Code, and the notebook adds an owner-chosen illustrative zoom window (`Chr1:5220001-5260000`) — predicted transcripts island-decoded from the same label tracks against the TAIR10 truth from the committed pre-converted GTF — rendered with pygenometracks for display clarity. For the both-modality view on one aligned axis, see the [PlantHelixSeek Combined View](plant_helixseek_combined.md).
 
 ## Prerequisites
 
