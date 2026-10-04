@@ -117,12 +117,12 @@ Plans:
   4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
   5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
 
-**Plans**: 1/9 plans executed
+**Plans**: 2/9 plans executed
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
 - [x] 08-01-PLAN.md — example-nightly job tracer (staggered/staged/fail-soft/shared cache) + langchain-ollama in mcp extra + marimo D-18 deepening (EXEC-02, EXEC-03, REPAIR-04, MCP-02)
-- [ ] 08-02-PLAN.md — NT heal: pristine snapshot + shim-only proof + D-17 ledger + script lane real-green + YAML re-verify + D-03 baseline census (EXEC-04, EXEC-05, REPAIR-01, REPAIR-03)
+- [x] 08-02-PLAN.md — NT heal: pristine snapshot + shim-only proof + D-17 ledger + script lane real-green + YAML re-verify + D-03 baseline census (EXEC-04, EXEC-05, REPAIR-01, REPAIR-03)
 - [ ] 08-03-PLAN.md — evo library enablers: allow_patterns passthrough + np.fromstring shim + harness kernel env override, all with same-change tests (CI-05, EXEC-02)
 
 **Wave 2** *(family order per D-01; blocked on 08-02/08-03)*
@@ -167,7 +167,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
-| 8. Full Execution Rollout & Repair Loop | v1.1 | 1/9 | In Progress|  |
+| 8. Full Execution Rollout & Repair Loop | v1.1 | 2/9 | In Progress|  |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 
 ---

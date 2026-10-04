@@ -12,8 +12,8 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 - [x] **EXEC-01**: Private execution harness (`tests/examples/_execution.py` + locally-scoped `conftest.py`) runs notebooks via nbclient-as-library with per-cell timeout inside a per-test timeout mark, tmp-sandbox cwd isolation (kernel cwd = sandbox copy), context-managed kernel shutdown, and partial-notebook failure artifacts captured on error
 - [ ] **EXEC-02**: All 21 example Jupyter notebooks execute all code cells end-to-end with real models on the nightly GPU runner (slow-marked; `allow_errors=False` fail-at-first-error per notebook, fail-soft across notebooks)
 - [x] **EXEC-03**: All 3 marimo apps execute headlessly via subprocess (flavor standardized in the Phase-1 pilot) with UI elements yielding defaults and exit codes asserted
-- [ ] **EXEC-04**: `generate_bpe_dataset.py` executes against its committed inputs producing its dataset artifact in-sandbox
-- [ ] **EXEC-05**: Every example YAML config passes real `load_config()` Pydantic validation on the fast leg (new showcase YAMLs valid from their first commit)
+- [x] **EXEC-04**: `generate_bpe_dataset.py` executes against its committed inputs producing its dataset artifact in-sandbox
+- [x] **EXEC-05**: Every example YAML config passes real `load_config()` Pydantic validation on the fast leg (new showcase YAMLs valid from their first commit)
 - [x] **EXEC-06**: A deliberate-hang test proves the harness kills a hung kernel and leaves no `ipykernel_launcher` process behind
 
 ### Repair
@@ -97,8 +97,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXEC-01 | Phase 5 | Complete |
 | EXEC-02 | Phase 8 | Pending |
 | EXEC-03 | Phase 8 | Complete |
-| EXEC-04 | Phase 8 | Pending |
-| EXEC-05 | Phase 8 | Pending |
+| EXEC-04 | Phase 8 | Complete |
+| EXEC-05 | Phase 8 | Complete |
 | EXEC-06 | Phase 5 | Complete |
 | REPAIR-01 | Phase 8 | Pending |
 | REPAIR-02 | Phase 5 | Complete |

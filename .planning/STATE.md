@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-01-PLAN.md (example-nightly tracer; honest-red first dispatch, 6 items triaged to 08-02..08-09)
-last_updated: "2026-10-04T08:26:56.488Z"
+stopped_at: Completed 08-02-PLAN.md (D-17 pristine closure; EXEC-04/05; D-03 census baseline)
+last_updated: "2026-10-04T15:58:04.513Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: f71c091ccaa09db7e376d4a84e44f7e41562e99f
+state_head: c5f0916cf57fbcd08bdce8d86f067d5c0fa2f891
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 12
+  completed_plans: 13
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -76,6 +76,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 07 P01 | 38 min | 3 tasks | 19 files |
 | Phase 07 P02 | 56 min | 3 tasks | 6 files |
 | Phase 08 P01 | 97 min | 3 tasks | 4 files |
+| Phase 08 P02 | 7h 27min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 07]: 07-02: Anno nucleotide metrics are per-strand CDS base masks pooled across strands (evidence-only, unbanded); emitted GFF3 rows carry per-segment placeholder Parent ids since the frozen argmax decode does not group segments into genes
 - [Phase 07]: 07-02: timeout-arithmetic hand-off for Phase 9 CI-07 — +2400s (CRE) + 5400s (Anno) marks push the coverage-nightly sum-of-ceilings comment past the 900-min job cap on paper (~970 min); D-14 budgets NOT shrunk, actuals ~15 min for both slow showcase tests; CI-06 pre-authorizes a separate example-execution nightly job if actuals overflow
 - [Phase 08]: 08-01: pyBigWig aarch64 sdist links need LDFLAGS=-L$(sys.prefix)/lib in nightly installs (sysconfig bakes nonexistent /opt/hostedtoolcache); marimo exit-0 evidence = absence of .export.error.txt; example-nightly timeout 2700min sum-of-ceilings backstop
+- [Phase 08]: D-17 executed shim-covered: 9-shim layer closes all NT rungs on a pristine snapshot; marker conversion stays dead fallback (08-02)
+- [Phase 08]: ipython>=8.31,<9 pinned in notebook extra — pgt hard-caps matplotlib<3.9 so IPython 8 is the only kernel-plot lever (08-02)
+- [Phase 08]: rice.uga.edu outage handled by census-cache seeding (cache-first dev box, cold cache keeps download+typed skip, 4xx re-raises WR-04)
+- [Phase 08]: combined-notebook sibling gap fixed at harness seeding layer with a JSON-parsed ../ coverage contract test (08-02)
 
 ### Pending Todos
 
@@ -173,8 +178,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T08:26:56.433Z
-Stopped at: Completed 08-01-PLAN.md (example-nightly tracer; honest-red first dispatch, 6 items triaged to 08-02..08-09)
+Last session: 2026-10-04T15:58:04.478Z
+Stopped at: Completed 08-02-PLAN.md (D-17 pristine closure; EXEC-04/05; D-03 census baseline)
 Resume file: None
 
 ## Deferred Verification
