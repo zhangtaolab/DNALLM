@@ -199,10 +199,16 @@ data = copy.deepcopy(datasets)
 data.encode_sequences(tokenizer=tokenizer)
 ```
 
-megaDNA requires specific column renaming:
+megaDNA requires specific column renaming (`token_type_ids` only materializes on
+transformers < 5, so drop whichever non-input columns are present on the running stack):
 
 ```python
-data.dataset = data.dataset.remove_columns(["seq_id", "sequence", "token_type_ids", "attention_mask"])
+_present = [
+    column
+    for column in ["seq_id", "sequence", "token_type_ids", "attention_mask"]
+    if column in data.dataset.column_names
+]
+data.dataset = data.dataset.remove_columns(_present)
 data.dataset = data.dataset.rename_column("input_ids", "ids")
 ```
 

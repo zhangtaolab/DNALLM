@@ -27,6 +27,7 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import os
+import json
 import socket
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
@@ -47,9 +48,12 @@ from nbclient.exceptions import CellExecutionError, CellTimeoutError
 from tests.examples._execution import (
     EXAMPLE_DIR,
     LANGCHAIN_KERNEL_NAME,
+    MEGADNA_KERNEL_NAME,
     NOTEBOOK_EXEC_SPECS,
     assert_tree_clean,
     ensure_isolated_kernel,
+    ensure_megadna_kernel,
+    megadna_prerequisites_installed,
     network_unavailable_skip,
     optional_dep_skip,
     run_notebook,
@@ -590,6 +594,120 @@ class TestSpecEnvOverrides:
         assert "GSD_SPEC_ONLY" not in os.environ
 
 
+class TestMegadnaIsolatedLane:
+    """Spec-level wiring for the isolated megaDNA lane (08-04).
+
+    finetune_generation executes under the dedicated ``dnallm-megadna``
+    kernelspec (kernel.json env ``VIRTUAL_ENV`` pinned to the throwaway
+    ``.scratch/megadna-venvs/megadna`` venv); its gate probes THAT venv's
+    interpreter for the FEASIBILITY-locked prerequisites instead of the
+    running one.  The two read-only megaDNA siblings keep the
+    project-venv gate until their own family rollout (08-05).
+    """
+
+    FGEN_SPEC = str(EXAMPLE_DIR / "notebooks" / "finetune_generation" / "finetune_generation.ipynb")
+    SIBLING_SPECS = (
+        str(EXAMPLE_DIR / "notebooks" / "generation_megaDNA" / "inference.ipynb"),
+        str(EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"),
+    )
+
+    def test_finetune_generation_spec_pins_megadna_kernel(self) -> None:
+        """The finetune_generation spec routes to the isolated kernelspec."""
+        assert NOTEBOOK_EXEC_SPECS[self.FGEN_SPEC]["kernel_name"] == MEGADNA_KERNEL_NAME
+
+    def test_megadna_siblings_keep_default_project_kernel(self) -> None:
+        """The sibling megaDNA notebooks carry no kernel override yet."""
+        for spec in self.SIBLING_SPECS:
+            assert "kernel_name" not in NOTEBOOK_EXEC_SPECS[spec], spec
+
+    def test_gate_green_when_venv_prerequisites_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A green venv probe -> plain return (the caller executes)."""
+        # Patch the RUNNING module object, not a re-imported copy (the
+        # established _probe_http idiom in this file).
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "megadna_prerequisites_installed",
+            lambda: (True, "fake venv green"),
+        )
+        assert _gate_megadna_isolated("nb.ipynb") is None
+
+    def test_gate_skips_typed_when_venv_cold(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A cold venv -> optional-dep typed skip carrying the probe evidence."""
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "megadna_prerequisites_installed",
+            lambda: (False, "fake venv cold evidence"),
+        )
+        with pytest.raises(pytest.skip.Exception) as excinfo:
+            _gate_megadna_isolated("nb.ipynb")
+        message = str(excinfo.value.args[0])
+        assert message.startswith("optional-dep:"), message
+        assert "fake venv cold evidence" in message, message
+        assert "isolated megaDNA venv" in message, message
+
+
+class TestFinetuneGenerationContentContracts:
+    """Fast JSON-level contracts for the repaired finetune_generation (08-04).
+
+    The notebook executed end-to-end under the isolated dnallm-megadna
+    kernelspec; these pin the content invariants the execution proved, so a
+    future editorial revert fails in seconds on the fast lane instead of at
+    the next 14-minute real execution (REPAIR-01 same-commit regression).
+    """
+
+    NB_PATH = EXAMPLE_DIR / "notebooks" / "finetune_generation" / "finetune_generation.ipynb"
+
+    @classmethod
+    def _code_cells(cls) -> list[str]:
+        nb = json.loads(cls.NB_PATH.read_text(encoding="utf-8"))
+        return ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
+
+    def test_provenance_stamp_is_first_code_cell(self) -> None:
+        """The D-21 stamp (key=value version lines) leads the code cells."""
+        first = self._code_cells()[0]
+        assert "transformers_version=" in first
+        assert "torch_version=" in first
+        assert "fla_version=" in first
+        assert "megadna_commit=cb2f5ab4cc88dc0effe05c5f23358862c837014a" in first
+
+    def test_genome_download_precedes_fasta_load(self) -> None:
+        """The Ensembl !wget cell executes before the Fasta(...) load cell."""
+        cells = self._code_cells()
+        wget = next(i for i, s in enumerate(cells) if "!wget" in s and "ensemblgenomes" in s)
+        # Match the executable call, not prose: the wget cell's own comment
+        # mentions Fasta(...) too.
+        fasta = next(i for i, s in enumerate(cells) if "= Fasta(" in s)
+        assert wget < fasta
+
+    def test_megadna_install_is_pinned_and_precedes_model_load(self) -> None:
+        """The megaDNA install cell carries the FEASIBILITY pins and runs first."""
+        cells = self._code_cells()
+        install = next(
+            i
+            for i, s in enumerate(cells)
+            if "git clone https://github.com/lingxusb/megaDNA.git" in s
+        )
+        assert "cb2f5ab4cc88dc0effe05c5f23358862c837014a" in cells[install]
+        assert "MEGABYTE_pytorch==0.2.1" in cells[install]
+        load = next(i for i, s in enumerate(cells) if "megaDNA_updated" in s and "load_model" in s)
+        assert install < load
+
+    def test_megadna_column_drop_is_stack_version_robust(self) -> None:
+        """The MEGA-DNA column drop keeps only columns present on the stack.
+
+        transformers 5.x fast tokenizers no longer emit token_type_ids, so
+        the pre-repair hardcoded remove_columns list raised ValueError
+        mid-notebook (repaired 08-04); the present-filter form runs on both
+        sides of the transformers 4.49-5.x span.
+        """
+        cells = self._code_cells()
+        drop = next(i for i, s in enumerate(cells) if "remove_columns(" in s)
+        assert "if column in data.dataset.column_names" in cells[drop]
+        assert "token_type_ids" in cells[drop]
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
@@ -691,6 +809,26 @@ def _gate_megadna(nb_name: str) -> None:
     _gate_optional_deps(nb_name, ("megaDNA", "MEGABYTE_pytorch"))
 
 
+def _gate_megadna_isolated(nb_name: str) -> None:
+    """Isolated megaDNA lane (08-04): probe the throwaway venv, not this one.
+
+    finetune_generation runs under the ``dnallm-megadna`` kernelspec
+    (VIRTUAL_ENV pinned to ``.scratch/megadna-venvs/megadna``), so its
+    prerequisites live in THAT venv; a probe of the running interpreter
+    would report absent forever.  Green -> the caller provisions the
+    kernelspec (idempotent) and executes for real; cold venv -> the same
+    honest optional-dep typed skip the project-venv family gate emits,
+    with the venv probe evidence embedded.
+    """
+    installed, evidence = megadna_prerequisites_installed()
+    if installed:
+        return
+    optional_dep_skip(
+        f"execute {nb_name} (isolated megaDNA venv prerequisites install-gated)",
+        evidence=evidence,
+    )
+
+
 def _gate_mamba(nb_name: str) -> None:
     """PlantCAD remote code requires the mamba_ssm optional extra."""
     _gate_optional_deps(nb_name, ("mamba_ssm",))
@@ -711,7 +849,9 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
     ),
     (
         "notebooks/finetune_generation/finetune_generation.ipynb",
-        _gate_megadna,
+        # Isolated lane (08-04): prerequisites probed in the throwaway
+        # dnallm-megadna venv, not the project venv.
+        _gate_megadna_isolated,
     ),
     ("notebooks/lora_finetune_inference/lora_finetune.ipynb", _gate_mamba),
     ("notebooks/lora_finetune_inference/lora_inference.ipynb", _gate_mamba),
@@ -770,6 +910,12 @@ class TestGatedNotebookExecution:
             # any cell runs, so the project venv is unreachable by
             # construction (T-mcp1-01).
             ensure_isolated_kernel()
+        elif kernel == MEGADNA_KERNEL_NAME:
+            # Same contract for the isolated megaDNA lane (08-04): the gate
+            # has already proven the pinned prerequisites live in the
+            # throwaway venv, so provisioning only repairs/creates the
+            # kernelspec -- a failure here is owner-visible, never a skip.
+            ensure_megadna_kernel()
         run_notebook(
             nb_path,
             gated_sandbox,

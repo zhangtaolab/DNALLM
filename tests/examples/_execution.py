@@ -80,6 +80,20 @@ EXAMPLE_DIR = REPO_ROOT / "example"
 LANGCHAIN_KERNEL_NAME = "dnallm-mcp-langchain"
 LANGCHAIN_VENV_DIR = REPO_ROOT / ".scratch" / "mcp-example-venvs" / "langchain"
 
+# Isolated megaDNA lane (08-04, T-08-10): the megaDNA family's notebooks
+# clone + install their prerequisites, so they run under the dedicated
+# ``dnallm-megadna`` kernelspec whose kernel.json env pins ``VIRTUAL_ENV``
+# to the throwaway ``.scratch/megadna-venvs/megadna`` venv -- the project
+# venv is porcelain-clean by construction.  The prerequisites themselves
+# are the FEASIBILITY-locked pins (never floating): the clone at exactly
+# ``MEGADNA_CLONE_COMMIT`` and ``MEGABYTE_pytorch==0.2.1``.
+MEGADNA_KERNEL_NAME = "dnallm-megadna"
+MEGADNA_VENV_DIR = REPO_ROOT / ".scratch" / "megadna-venvs" / "megadna"
+MEGADNA_CLONE_DIR = REPO_ROOT / ".scratch" / "megadna-venvs" / "megadna-clone-src"
+MEGADNA_CLONE_URL = "https://github.com/lingxusb/megaDNA.git"
+MEGADNA_CLONE_COMMIT = "cb2f5ab4cc88dc0effe05c5f23358862c837014a"
+MEGADNA_MEGABYTE_PIN = "MEGABYTE_pytorch==0.2.1"
+
 # Per-notebook execution budgets.  Keys are str() of the absolute
 # notebook paths so parametrized lookups stay exact; values carry the
 # per-cell timeout and any out-of-dir sandbox inputs.  The per-test
@@ -156,6 +170,11 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "notebooks" / "finetune_generation" / "finetune_generation.ipynb"): {
         "cell_timeout": 3600,
         "extra_inputs": [],
+        # Isolated megaDNA lane (08-04): routes this notebook away from the
+        # project-venv python3 kernel so its pinned clone/install cells
+        # mutate only the throwaway dnallm-megadna venv.  Prerequisites
+        # are probed in THAT venv by the test-layer gate.
+        "kernel_name": MEGADNA_KERNEL_NAME,
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_multi_labels" / "finetune_multi_labels.ipynb"): {
         "cell_timeout": 3600,
@@ -552,6 +571,161 @@ def ensure_isolated_kernel() -> Path:
     kernel_json = spec_dir / "kernel.json"
     spec = json.loads(kernel_json.read_text(encoding="utf-8"))
     spec.setdefault("env", {})["VIRTUAL_ENV"] = str(LANGCHAIN_VENV_DIR)
+    kernel_json.write_text(json.dumps(spec, indent=1) + "\n", encoding="utf-8")
+    return spec_dir
+
+
+def megadna_prerequisites_installed() -> tuple[bool, str]:
+    """Probe the isolated venv for the pinned megaDNA prerequisites.
+
+    The probe targets the THROWAWAY venv interpreter (never the running
+    one): the megaDNA family's prerequisites deliberately never live in
+    the project venv, so a project-venv probe would always report absent.
+    Green requires ``megaDNA`` importable AND ``MEGABYTE_pytorch`` at the
+    pinned 0.2.1 (a floating MEGABYTE is a FEASIBILITY-lock violation).
+
+    Returns:
+        (installed, evidence): evidence is human-readable either way and
+        is embedded verbatim in the gate's typed-skip message.
+    """
+    venv_python = MEGADNA_VENV_DIR / "bin" / "python"
+    if not venv_python.is_file():
+        return False, f"isolated venv python absent: {venv_python}"
+    probe = (
+        "import importlib.metadata, megaDNA, MEGABYTE_pytorch; "
+        "assert importlib.metadata.version('MEGABYTE_pytorch') == '0.2.1'"
+    )
+    # ruff: ignore[subprocess-without-shell-equals-true]
+    result = subprocess.run(
+        [str(venv_python), "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode == 0:
+        return True, f"{venv_python} imports megaDNA + MEGABYTE_pytorch==0.2.1"
+    detail = (result.stderr or result.stdout or "").strip().splitlines()
+    last = detail[-1] if detail else "no output"
+    return False, f"venv probe failed ({venv_python}): {last}"
+
+
+def ensure_megadna_kernel() -> Path:
+    """Provision the isolated megaDNA kernelspec; idempotent (08-04).
+
+    Creates, when the kernelspec does not already resolve with a live
+    interpreter AND the pinned prerequisites present (see
+    :func:`megadna_prerequisites_installed`):
+
+    1. the throwaway venv ``.scratch/megadna-venvs/megadna``;
+    2. the dnallm stack inside it (``-e .[cuda130]`` resolves the same
+       torch build the project venv pins, via the project's own uv index
+       config) plus ``ipykernel`` and ``pyfastx`` (the notebook's genome
+       input reader);
+    3. the FEASIBILITY-locked prerequisites: ``MEGABYTE_pytorch==0.2.1``
+       and the ``lingxusb/megaDNA`` clone checked out at exactly
+       ``MEGADNA_CLONE_COMMIT`` (never a floating clone) -- installed
+       from the local pinned checkout under ``.scratch``;
+    4. the user-level ``dnallm-megadna`` kernelspec with env
+       ``VIRTUAL_ENV`` pinned to the throwaway venv, so the notebook's
+       own ``!uv pip install`` cells target it by construction.
+
+    Returns:
+        The kernelspec directory (the pre-existing one when valid).
+
+    Raises:
+        RuntimeError: any provisioning step failed.  This helper is only
+            called after the family gate is GREEN, so an environment
+            that claims readiness but cannot provision is an
+            owner-visible failure -- never a skip.
+    """
+    spec_dir = _resolve_kernelspec_dir(MEGADNA_KERNEL_NAME)
+    installed, _evidence = megadna_prerequisites_installed()
+    if spec_dir is not None and installed:
+        kernel_json = spec_dir / "kernel.json"
+        try:
+            argv0 = json.loads(kernel_json.read_text(encoding="utf-8"))["argv"][0]
+        except (OSError, ValueError, KeyError, IndexError):
+            argv0 = None
+        if argv0 and Path(argv0).is_file():
+            return spec_dir  # idempotent no-op: spec + prerequisites live
+
+    if spec_dir is not None and spec_dir.is_dir():
+        shutil.rmtree(spec_dir)  # broken/partial spec from an earlier attempt
+
+    uv_next_to_py = Path(sys.executable).with_name("uv")
+    uv_bin = uv_next_to_py if uv_next_to_py.is_file() else shutil.which("uv")
+    uv_bin_str = str(uv_bin) if uv_bin else None
+
+    def _uv_install(*args: str) -> None:
+        if uv_bin_str is not None:
+            _run_provision_step(
+                "uv pip install",
+                [uv_bin_str, "pip", "install", "--python", str(venv_python), *args],
+                timeout_s=3600,
+            )
+        else:
+            _run_provision_step(
+                "venv pip install",
+                [str(venv_python), "-m", "pip", "install", *args],
+                timeout_s=3600,
+            )
+
+    venv_python = MEGADNA_VENV_DIR / "bin" / "python"
+    if not venv_python.is_file():
+        if MEGADNA_VENV_DIR.exists():
+            shutil.rmtree(MEGADNA_VENV_DIR)  # partial venv from an earlier attempt
+        MEGADNA_VENV_DIR.parent.mkdir(parents=True, exist_ok=True)
+        if uv_bin_str is not None:
+            _run_provision_step(
+                "uv venv",
+                [uv_bin_str, "venv", "--python", sys.executable, str(MEGADNA_VENV_DIR)],
+            )
+        else:
+            _run_provision_step(
+                "python -m venv",
+                [sys.executable, "-m", "venv", str(MEGADNA_VENV_DIR)],
+            )
+
+    # dnallm stack + kernel + the notebook's non-megaDNA prerequisites.
+    # Absolute path: provisioning must not depend on the test's cwd.
+    _uv_install("-e", f"{REPO_ROOT}[cuda130]", "ipykernel", "pyfastx")
+
+    # FEASIBILITY-locked megaDNA prerequisites: local pinned checkout.
+    if not MEGADNA_CLONE_DIR.is_dir():
+        MEGADNA_VENV_DIR.parent.mkdir(parents=True, exist_ok=True)
+        _run_provision_step(
+            "git clone megaDNA",
+            ["git", "clone", MEGADNA_CLONE_URL, str(MEGADNA_CLONE_DIR)],
+        )
+    _run_provision_step(
+        "git checkout pinned megaDNA commit",
+        ["git", "-C", str(MEGADNA_CLONE_DIR), "checkout", MEGADNA_CLONE_COMMIT],
+    )
+    _uv_install(MEGADNA_MEGABYTE_PIN, str(MEGADNA_CLONE_DIR))
+
+    _run_provision_step(
+        "ipykernel install --user",
+        [
+            str(venv_python),
+            "-m",
+            "ipykernel",
+            "install",
+            "--user",
+            "--name",
+            MEGADNA_KERNEL_NAME,
+            "--display-name",
+            "Python (dnallm megadna isolated)",
+        ],
+    )
+
+    spec_dir = _resolve_kernelspec_dir(MEGADNA_KERNEL_NAME)
+    if spec_dir is None:
+        raise RuntimeError(
+            f"kernelspec {MEGADNA_KERNEL_NAME!r} still unresolvable after ipykernel install --user"
+        )
+    kernel_json = spec_dir / "kernel.json"
+    spec = json.loads(kernel_json.read_text(encoding="utf-8"))
+    spec.setdefault("env", {})["VIRTUAL_ENV"] = str(MEGADNA_VENV_DIR)
     kernel_json.write_text(json.dumps(spec, indent=1) + "\n", encoding="utf-8")
     return spec_dir
 
