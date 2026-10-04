@@ -231,9 +231,10 @@ class TestGetModelPathAndImportsAllowPatterns:
 
     def test_hub_branch_forwards_allow_patterns_to_download_model(self):
         """Hub branch threads allow_patterns into download_model when given."""
-        with patch("huggingface_hub.snapshot_download"), patch(
-            "dnallm.models.model.download_model", return_value="/hf/model"
-        ) as mock_download:
+        with (
+            patch("huggingface_hub.snapshot_download"),
+            patch("dnallm.models.model.download_model", return_value="/hf/model") as mock_download,
+        ):
             _get_model_path_and_imports(
                 "test-model", "huggingface", allow_patterns=["*.safetensors"]
             )
@@ -242,9 +243,10 @@ class TestGetModelPathAndImportsAllowPatterns:
 
     def test_hub_branch_omits_allow_patterns_when_none(self):
         """Hub branch carries no allow_patterns key when the parameter is None."""
-        with patch("huggingface_hub.snapshot_download"), patch(
-            "dnallm.models.model.download_model", return_value="/hf/model"
-        ) as mock_download:
+        with (
+            patch("huggingface_hub.snapshot_download"),
+            patch("dnallm.models.model.download_model", return_value="/hf/model") as mock_download,
+        ):
             _get_model_path_and_imports("test-model", "huggingface")
 
         assert "allow_patterns" not in mock_download.call_args.kwargs
