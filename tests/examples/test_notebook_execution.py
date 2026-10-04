@@ -46,6 +46,7 @@ from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError, CellTimeoutError
 
 from tests.examples._execution import (
+    EVO_KERNEL_NAME,
     EXAMPLE_DIR,
     LANGCHAIN_KERNEL_NAME,
     MEGADNA_KERNEL_NAME,
@@ -53,6 +54,8 @@ from tests.examples._execution import (
     assert_tree_clean,
     ensure_isolated_kernel,
     ensure_megadna_kernel,
+    ensure_evo_kernel,
+    evo_prerequisites_installed,
     megadna_prerequisites_installed,
     network_unavailable_skip,
     optional_dep_skip,
@@ -648,6 +651,50 @@ class TestMegadnaIsolatedLane:
         assert "isolated megaDNA venv" in message, message
 
 
+class TestEvoIsolatedLane:
+    """Spec-level wiring for the isolated evo giants lane (08-06).
+
+    The evo notebook executes under the dedicated ``dnallm-evo-kernel``
+    kernelspec (kernel.json env ``VIRTUAL_ENV`` pinned to the throwaway
+    ``.scratch/evo-venvs/evo`` venv) with its ``HF_HUB_CACHE`` pointed at
+    the giants dir (CI-05); the gate probes THAT venv's interpreter for
+    the FEASIBILITY-locked prerequisites instead of the running one.
+    """
+
+    EVO_SPEC = str(EXAMPLE_DIR / "notebooks" / "generation_evo_models" / "inference.ipynb")
+
+    def test_evo_spec_pins_isolated_kernel_and_giants_env(self) -> None:
+        """The evo notebook routes to the isolated kernelspec + giants hub."""
+        spec = NOTEBOOK_EXEC_SPECS[self.EVO_SPEC]
+        assert spec["kernel_name"] == EVO_KERNEL_NAME
+        assert spec["env"]["HF_HUB_CACHE"] == os.path.expanduser("~/models-giants/hub")
+
+    def test_gate_green_when_venv_prerequisites_installed(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A green venv probe -> plain return (the caller executes)."""
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "evo_prerequisites_installed",
+            lambda: (True, "fake evo venv green"),
+        )
+        assert _gate_evo("nb.ipynb") is None
+
+    def test_gate_skips_typed_when_venv_cold(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A cold venv -> optional-dep typed skip carrying the probe evidence."""
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "evo_prerequisites_installed",
+            lambda: (False, "fake evo venv cold evidence"),
+        )
+        with pytest.raises(pytest.skip.Exception) as excinfo:
+            _gate_evo("nb.ipynb")
+        message = str(excinfo.value.args[0])
+        assert message.startswith("optional-dep:"), message
+        assert "fake evo venv cold evidence" in message, message
+        assert "isolated evo venv" in message, message
+
+
 class TestFinetuneGenerationContentContracts:
     """Fast JSON-level contracts for the repaired finetune_generation (08-04).
 
@@ -875,8 +922,24 @@ def _gate_optional_deps(nb_name: str, modules: tuple[str, ...]) -> None:
 
 
 def _gate_evo(nb_name: str) -> None:
-    """Evo legs: stripedhyena (evo-1) + evo2 package, both 05-06-proven."""
-    _gate_optional_deps(nb_name, ("stripedhyena", "evo2"))
+    """Isolated evo lane (08-06): probe the kernelspec venv, not this one.
+
+    The evo notebook executes under the ``dnallm-evo-kernel`` kernelspec
+    (``VIRTUAL_ENV`` pinned to ``.scratch/evo-venvs/evo``), so its
+    prerequisites -- stripedhyena + evo2 + flash-attn -- live in THAT
+    venv; a probe of the running interpreter would report absent forever
+    (the project venv intentionally imports none of them).  Green -> the
+    caller registers the kernelspec (idempotent, never installs) and
+    executes for real; cold venv -> the honest optional-dep typed skip
+    with the venv probe evidence embedded.
+    """
+    installed, evidence = evo_prerequisites_installed()
+    if installed:
+        return
+    optional_dep_skip(
+        f"execute {nb_name} (isolated evo venv prerequisites install-gated)",
+        evidence=evidence,
+    )
 
 
 def _gate_megadna(nb_name: str) -> None:
@@ -991,6 +1054,13 @@ class TestGatedNotebookExecution:
             # throwaway venv, so provisioning only repairs/creates the
             # kernelspec -- a failure here is owner-visible, never a skip.
             ensure_megadna_kernel()
+        elif kernel == EVO_KERNEL_NAME:
+            # Isolated evo lane (08-06): register/repair the kernelspec
+            # only -- the giants tier + evo stack are provisioned
+            # out-of-band (dev box here; runner steps in 08-08/08-09), so
+            # a failure is owner-visible, never a skip and never an
+            # implicit install.
+            ensure_evo_kernel()
         run_notebook(
             nb_path,
             gated_sandbox,

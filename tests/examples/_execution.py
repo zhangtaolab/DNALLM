@@ -94,6 +94,17 @@ MEGADNA_CLONE_URL = "https://github.com/lingxusb/megaDNA.git"
 MEGADNA_CLONE_COMMIT = "cb2f5ab4cc88dc0effe05c5f23358862c837014a"
 MEGADNA_MEGABYTE_PIN = "MEGABYTE_pytorch==0.2.1"
 
+# Isolated evo lane (08-06): the evo giants family runs under the
+# dedicated ``dnallm-evo-kernel`` kernelspec whose kernel.json env pins
+# ``VIRTUAL_ENV`` to the throwaway ``.scratch/evo-venvs/evo`` venv --
+# evo-model 0.5 + stripedhyena 0.2.2 (--no-deps) + evo2 0.3.0 (vtx, TE
+# absent) + flash-attn 2.8.3.post1 (spike sm_120 build reused) never
+# touch the project venv (T-08-12).  The prerequisites are provisioned
+# out-of-band (08-06 on the dev box; runner job steps in 08-08/08-09),
+# never auto-installed from a test -- the gate probes THAT venv.
+EVO_KERNEL_NAME = "dnallm-evo-kernel"
+EVO_VENV_DIR = REPO_ROOT / ".scratch" / "evo-venvs" / "evo"
+
 # Per-notebook execution budgets.  Keys are str() of the absolute
 # notebook paths so parametrized lookups stay exact; values carry the
 # per-cell timeout and any out-of-dir sandbox inputs.  The per-test
@@ -134,6 +145,9 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         # the per-notebook env sandwich in run_notebook only. Expanded at
         # module load with os.path.expanduser -- never a baked absolute.
         "env": {"HF_HUB_CACHE": os.path.expanduser("~/models-giants/hub")},
+        # Isolated evo lane (08-06): evo-model/stripedhyena/evo2/flash-attn
+        # live in the throwaway evo venv, not the project venv.
+        "kernel_name": EVO_KERNEL_NAME,
     },
     str(EXAMPLE_DIR / "notebooks" / "generation_megaDNA" / "inference.ipynb"): {
         "cell_timeout": 900,
@@ -726,6 +740,104 @@ def ensure_megadna_kernel() -> Path:
     kernel_json = spec_dir / "kernel.json"
     spec = json.loads(kernel_json.read_text(encoding="utf-8"))
     spec.setdefault("env", {})["VIRTUAL_ENV"] = str(MEGADNA_VENV_DIR)
+    kernel_json.write_text(json.dumps(spec, indent=1) + "\n", encoding="utf-8")
+    return spec_dir
+
+
+def evo_prerequisites_installed() -> tuple[bool, str]:
+    """Probe the isolated evo venv for the FEASIBILITY-locked prerequisites.
+
+    The evo notebook executes under the ``dnallm-evo-kernel`` kernelspec
+    (``VIRTUAL_ENV`` pinned to ``.scratch/evo-venvs/evo``), so its
+    prerequisites -- ``stripedhyena`` (evo-1 remote code), ``evo2`` (the
+    evo2 half) and ``flash_attn`` (the evo-1 remote code declares it
+    required) -- are probed with THAT venv's interpreter, never the one
+    hosting pytest (08-06; mirrors :func:`megadna_prerequisites_installed`).
+
+    Returns:
+        ``(installed, evidence)`` exactly like the megaDNA probe: a live
+        interpreter importing all three -> green evidence string; anything
+        else -> the interpreter path plus the last failing output line.
+    """
+    venv_python = EVO_VENV_DIR / "bin" / "python"
+    if not venv_python.is_file():
+        return False, f"isolated evo venv missing ({venv_python})"
+    probe = "import stripedhyena, evo2, flash_attn"
+    result = subprocess.run(
+        [str(venv_python), "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    if result.returncode == 0:
+        return True, f"{venv_python} imports stripedhyena + evo2 + flash_attn"
+    detail = (result.stderr or result.stdout or "").strip().splitlines()
+    last = detail[-1] if detail else "no output"
+    return False, f"venv probe failed ({venv_python}): {last}"
+
+
+def ensure_evo_kernel() -> Path:
+    """Register/repair the isolated evo kernelspec; idempotent (08-06).
+
+    Unlike :func:`ensure_megadna_kernel` this NEVER installs packages:
+    the evo prerequisites (a ~13GB model tier, an evo-model/stripedhyena/
+    evo2 stack and a ~50-minute flash-attn source build) are provisioned
+    out-of-band -- the 08-06 dev-box setup and the runner job steps
+    (08-08/08-09).  This helper only guarantees that, once the family
+    gate is GREEN, the ``dnallm-evo-kernel`` kernelspec resolves with a
+    live interpreter and ``VIRTUAL_ENV`` pinned to the throwaway venv.
+
+    Returns:
+        The kernelspec directory (the pre-existing one when valid).
+
+    Raises:
+        RuntimeError: the kernelspec cannot be registered or the gated
+            venv is not actually live -- owner-visible, never a skip.
+    """
+    spec_dir = _resolve_kernelspec_dir(EVO_KERNEL_NAME)
+    installed, _evidence = evo_prerequisites_installed()
+    if spec_dir is not None and installed:
+        kernel_json = spec_dir / "kernel.json"
+        try:
+            argv0 = json.loads(kernel_json.read_text(encoding="utf-8"))["argv"][0]
+        except (OSError, ValueError, KeyError, IndexError):
+            argv0 = None
+        if argv0 and Path(argv0).is_file():
+            return spec_dir  # idempotent no-op: spec + prerequisites live
+
+    if not installed:
+        raise RuntimeError(
+            "evo venv is not provisioned (stripedhyena/evo2/flash_attn "
+            f"probe failed under {EVO_VENV_DIR}) -- provision it out-of-band; "
+            "the lane never installs prerequisites itself"
+        )
+
+    if spec_dir is not None and spec_dir.is_dir():
+        shutil.rmtree(spec_dir)  # broken/partial spec from an earlier attempt
+
+    venv_python = EVO_VENV_DIR / "bin" / "python"
+    _run_provision_step(
+        "ipykernel install --user",
+        [
+            str(venv_python),
+            "-m",
+            "ipykernel",
+            "install",
+            "--user",
+            "--name",
+            EVO_KERNEL_NAME,
+            "--display-name",
+            "Python (dnallm evo isolated)",
+        ],
+    )
+    spec_dir = _resolve_kernelspec_dir(EVO_KERNEL_NAME)
+    if spec_dir is None:
+        raise RuntimeError(
+            f"kernelspec {EVO_KERNEL_NAME!r} still unresolvable after ipykernel install --user"
+        )
+    kernel_json = spec_dir / "kernel.json"
+    spec = json.loads(kernel_json.read_text(encoding="utf-8"))
+    spec.setdefault("env", {})["VIRTUAL_ENV"] = str(EVO_VENV_DIR)
     kernel_json.write_text(json.dumps(spec, indent=1) + "\n", encoding="utf-8")
     return spec_dir
 
