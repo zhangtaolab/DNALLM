@@ -39,9 +39,9 @@ failure noted. Logs: /tmp/08_03_examples_full.log (pass A), /tmp/08_03_examples_
 | mcp_example/mcp_client_ollama_langchain_agents.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | pass B `ssssssss` batch — endpoint probe state at run time carried in the skip message (261003-csd contract) |
 | mcp_example/mcp_client_ollama_pydantic_ai.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | same batch |
 | notebooks/generation_evo_models/inference.ipynb | GATED (`_gate_evo`) | typed-skip-with-evidence | optional-dep (stripedhyena/evo2 absent by design) — family plan 08-04/08-05 un-gates |
-| notebooks/generation_megaDNA/inference.ipynb | GATED (`_gate_megadna`) | typed-skip-with-evidence | optional-dep — family plan un-gates |
-| notebooks/finetune_custom_head/finetune.ipynb | GATED (`_gate_megadna`) | typed-skip-with-evidence | optional-dep — family plan un-gates |
-| notebooks/finetune_generation/finetune_generation.ipynb | GATED (`_gate_megadna`) | typed-skip-with-evidence | optional-dep — family plan un-gates |
+| notebooks/generation_megaDNA/inference.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: pinned prereqs (megadna @ cb2f5ab4 + MEGABYTE_pytorch==0.2.1) installed into the project venv (reversible) + D-21 stamp + executable pinned install cell; executed for real green in the family lane (12 passed / 0 SKIPPED, 48:05, /tmp/08_05_family.log) |
+| notebooks/finetune_custom_head/finetune.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: demo cell repaired (pinned install cell before the megaDNA load — census ImportError at megadna.py:146 gone) + D-21 stamp; DNAGPT and megaDNA trainings both executed green in the family lane |
+| notebooks/finetune_generation/finetune_generation.ipynb | GATED (`_gate_megadna_isolated`) | PASS | 08-04 isolated dnallm-megadna lane first green (837s, 0 skips); 08-05 family reconciliation re-run green in the same lane |
 | notebooks/lora_finetune_inference/lora_finetune.ipynb | GATED (`_gate_mamba`) | typed-skip-with-evidence | optional-dep (mamba_ssm absent) — family plan 08-06/08-07 un-gates |
 | notebooks/lora_finetune_inference/lora_inference.ipynb | GATED (`_gate_mamba`) | typed-skip-with-evidence | optional-dep — family plan un-gates |
 | marimo/inference/inference_demo.py | marimo | PASS | pass A (3 dots) |
@@ -75,7 +75,7 @@ pre-existing baseline one.
 | family | items | gate | owning plan |
 | --- | --- | --- | --- |
 | evo (evo-1 / evo2) | generation_evo_models | optional-dep (stripedhyena + evo2) | evo family plan |
-| megaDNA | generation_megaDNA, finetune_custom_head, finetune_generation | optional-dep (megaDNA + MEGABYTE_pytorch) | megaDNA family plan |
+| megaDNA | generation_megaDNA, finetune_custom_head, finetune_generation | CLOSED (08-05): all three PASS by real execution — siblings on the project venv (reversible pinned prereqs), finetune_generation on the isolated lane | megaDNA family plan (08-05, done) |
 | PlantCAD / mamba | lora_finetune, lora_inference | optional-dep (mamba_ssm native build) | mamba/lora family plan |
 | mcp + ollama | langchain + pydantic_ai client notebooks | endpoint-up probes (execute when both up) | mcp batch plan / runner infra |
 

@@ -708,6 +708,81 @@ class TestFinetuneGenerationContentContracts:
         assert "token_type_ids" in cells[drop]
 
 
+class TestMegadnaSiblingContentContracts:
+    """Fast JSON-level contracts for the repaired megaDNA siblings (08-05).
+
+    Both notebooks executed end-to-end on the default project kernel with
+    the FEASIBILITY-locked prerequisites installed into the project venv
+    (reversible exact-version install); these pin the content invariants
+    the executions proved, so an editorial revert fails in seconds on the
+    fast lane instead of at the next real execution (REPAIR-01
+    same-commit regression).
+    """
+
+    GEN_PATH = EXAMPLE_DIR / "notebooks" / "generation_megaDNA" / "inference.ipynb"
+    HEAD_PATH = EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"
+
+    @staticmethod
+    def _code_cells(path: Path) -> list[str]:
+        nb = json.loads(path.read_text(encoding="utf-8"))
+        return ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
+
+    def test_siblings_carry_provenance_stamps(self) -> None:
+        """Each sibling carries its own D-21 stamp (key=value lines + pins)."""
+        for path in (self.GEN_PATH, self.HEAD_PATH):
+            cells = self._code_cells(path)
+            stamp = next(
+                (s for s in cells if "transformers_version=" in s and "megadna_commit=" in s),
+                None,
+            )
+            assert stamp is not None, f"no D-21 stamp in {path.name}"
+            assert "torch_version=" in stamp
+            assert "fla_version=not-used" in stamp
+            assert "megabyte_version=0.2.1" in stamp
+
+    def test_install_is_pinned_and_precedes_model_load(self) -> None:
+        """The floating clone is gone; the FEASIBILITY pins precede the load."""
+        for path in (self.GEN_PATH, self.HEAD_PATH):
+            cells = self._code_cells(path)
+            install = next(
+                i
+                for i, s in enumerate(cells)
+                if "git clone https://github.com/lingxusb/megaDNA.git" in s
+            )
+            assert "cb2f5ab4cc88dc0effe05c5f23358862c837014a" in cells[install]
+            assert "MEGABYTE_pytorch==0.2.1" in cells[install]
+            load = next(
+                i for i, s in enumerate(cells) if "megaDNA_updated" in s and "load_model" in s
+            )
+            assert install < load, f"install after load in {path.name}"
+
+    @staticmethod
+    def _active_lines(cell: str) -> str:
+        """Drop comment lines: notebooks document the alternative source=
+        routes as comments, and the contract pins the ACTIVE route."""
+        return "\n".join(
+            line for line in cell.splitlines() if not line.strip().startswith("#")
+        )
+
+    def test_source_routes_are_d15_aligned(self) -> None:
+        """Active source= route matches the lock direction: ms-mirrored ids
+        take modelscope, the HF-only lingxusb id takes huggingface."""
+        head_cells = self._code_cells(self.HEAD_PATH)
+        dnagpt = next(s for s in head_cells if "plant-dnagpt-BPE" in s and "load_model" in s)
+        dnagpt_active = self._active_lines(dnagpt)
+        assert 'source="modelscope"' in dnagpt_active
+        assert 'source="huggingface"' not in dnagpt_active
+        megadna = next(s for s in head_cells if "megaDNA_updated" in s and "load_model" in s)
+        megadna_active = self._active_lines(megadna)
+        assert 'source="huggingface"' in megadna_active
+        assert 'source="modelscope"' not in megadna_active
+        gen_cells = self._code_cells(self.GEN_PATH)
+        gen_load = next(s for s in gen_cells if "megaDNA_updated" in s and "load_model" in s)
+        gen_active = self._active_lines(gen_load)
+        assert 'source="huggingface"' in gen_active
+        assert 'source="modelscope"' not in gen_active
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
