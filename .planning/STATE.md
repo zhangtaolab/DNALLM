@@ -5,17 +5,17 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-10-04T06:58:27.075Z"
+stopped_at: Completed 08-01-PLAN.md (example-nightly tracer; honest-red first dispatch, 6 items triaged to 08-02..08-09)
+last_updated: "2026-10-04T08:26:56.488Z"
 last_activity: 2026-10-04
-last_activity_desc: Phase 7 complete, transitioned to Phase 8
-state_head: 827db29f8b7ec86ad4bc5b010b70a2c70c882c11
+last_activity_desc: Phase 8 execution started
+state_head: f71c091ccaa09db7e376d4a84e44f7e41562e99f
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 11
-  percent: 55
+  completed_plans: 12
+  percent: 60
 ---
 
 # Project State
@@ -29,14 +29,14 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 ## Current Position
 
-Phase: 8 (Full Execution Rollout & Repair Loop) — READY TO EXECUTE
-Plan: Not started
+Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-10-04 - Completed quick task 261004-dyw: showcase display enhancement
+Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
-Progress: [████████████████████] 11/11 plans ([██████░░░░] 55%)
+Progress: [████████████████████] 11/11 plans ([██████░░░░] 60%)
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 06 P03 | 125 min | 3 tasks | 11 files |
 | Phase 07 P01 | 38 min | 3 tasks | 19 files |
 | Phase 07 P02 | 56 min | 3 tasks | 6 files |
+| Phase 08 P01 | 97 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 07]: 07-02: A4 closed — the B-L permutation was transcribed from the Phase-6 scratch select_loci.py (the code that produced the floors, citing upstream predict_genome_multigpu.py:97-101), cross-checked against 06-RESEARCH and BILOU semantics, and proven by exact reproduction of every selection.md value (exon_f1=0.7522, 59 genes, tp=346 fp=48 fn=180)
 - [Phase 07]: 07-02: Anno nucleotide metrics are per-strand CDS base masks pooled across strands (evidence-only, unbanded); emitted GFF3 rows carry per-segment placeholder Parent ids since the frozen argmax decode does not group segments into genes
 - [Phase 07]: 07-02: timeout-arithmetic hand-off for Phase 9 CI-07 — +2400s (CRE) + 5400s (Anno) marks push the coverage-nightly sum-of-ceilings comment past the 900-min job cap on paper (~970 min); D-14 budgets NOT shrunk, actuals ~15 min for both slow showcase tests; CI-06 pre-authorizes a separate example-execution nightly job if actuals overflow
+- [Phase 08]: 08-01: pyBigWig aarch64 sdist links need LDFLAGS=-L$(sys.prefix)/lib in nightly installs (sysconfig bakes nonexistent /opt/hostedtoolcache); marimo exit-0 evidence = absence of .export.error.txt; example-nightly timeout 2700min sum-of-ceilings backstop
 
 ### Pending Todos
 
@@ -170,9 +172,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T01:45:48.733Z
-Stopped at: Phase 8 context gathered
-Resume file: .planning/phases/08-full-execution-rollout-repair-loop/08-CONTEXT.md
+Last session: 2026-10-04T08:26:56.433Z
+Stopped at: Completed 08-01-PLAN.md (example-nightly tracer; honest-red first dispatch, 6 items triaged to 08-02..08-09)
+Resume file: None
 
 ## Deferred Verification
 

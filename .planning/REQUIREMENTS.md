@@ -21,7 +21,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 - [ ] **REPAIR-01**: Every error surfaced by real execution is fixed — notebook/app/script code — each with a regression test; harness-bug vs content-bug triaged explicitly (no cwd false-repairs)
 - [x] **REPAIR-02**: The already-broken docs/example mirror is closed (sync-script wrapper-`.md` handling fixed, byte-identical resync, missing script mirrored) and regenerated as part of every subsequent notebook repair
 - [x] **REPAIR-03**: dnallm library bugs exposed by execution are fixed with regression tests (v1 precedent: AUROC, CrossDNA)
-- [ ] **REPAIR-04**: The langchain notebook's `!uv pip install langchain-ollama` shell-magic cell is repaired — dependency declared in the `mcp` extra
+- [x] **REPAIR-04**: The langchain notebook's `!uv pip install langchain-ollama` shell-magic cell is repaired — dependency declared in the `mcp` extra
 
 ### CI Gating
 
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REPAIR-01 | Phase 8 | Pending |
 | REPAIR-02 | Phase 5 | Complete |
 | REPAIR-03 | Phase 8 | Complete |
-| REPAIR-04 | Phase 8 | Pending |
+| REPAIR-04 | Phase 8 | Complete |
 | CI-01 | Phase 5 | Complete |
 | CI-02 | Phase 5 | Complete |
 | CI-03 | Phase 9 | Pending |
