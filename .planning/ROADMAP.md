@@ -117,7 +117,7 @@ Plans:
   4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
   5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
 
-**Plans**: 7 plans
+**Plans**: 9 plans
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -125,17 +125,23 @@ Plans:
 - [ ] 08-02-PLAN.md — NT heal: pristine snapshot + shim-only proof + D-17 ledger + script lane real-green + YAML re-verify + D-03 baseline census (EXEC-04, EXEC-05, REPAIR-01, REPAIR-03)
 - [ ] 08-03-PLAN.md — evo library enablers: allow_patterns passthrough + np.fromstring shim + harness kernel env override, all with same-change tests (CI-05, EXEC-02)
 
-**Wave 2** *(family order per D-01)*
-- [ ] 08-05-PLAN.md — megaDNA family: DNATokenizer library repair + finetune_generation/custom_head notebook repairs + execution + census (EXEC-02, REPAIR-01, REPAIR-03)
+**Wave 2** *(family order per D-01; blocked on 08-02/08-03)*
+- [ ] 08-04-PLAN.md — megaDNA tracer slice: DNATokenizer library repair + finetune_generation content repair (ordering + pinned clone) + isolated-kernelspec first execution (EXEC-02, REPAIR-01, REPAIR-03)
 
-**Wave 3** *(blocked on 08-03 enablers + 08-05 test-file conflict)*
-- [ ] 08-04-PLAN.md — evo giants family: 8k/noFP8 notebook repair + dev-box giants tier + isolated kernelspec execution + rung discovery (EXEC-02, CI-05, REPAIR-01)
+**Wave 3** *(blocked on 08-04 — shared test wiring + library fix)*
+- [ ] 08-05-PLAN.md — megaDNA expansion slice: finetune_custom_head + generation_megaDNA repairs + family execution + D-03 census reconciliation (EXEC-02, REPAIR-01)
 
-**Wave 4** *(blocked on 08-04 test-file conflict)*
-- [ ] 08-06-PLAN.md — mamba lora pair + ollama loopback systemd infra + D-13 readiness probe + mcp pair both-up + D-07 stage contract (MCP-01, MCP-02, EXEC-02)
+**Wave 4** *(blocked on 08-03 enablers + 08-05 census baseline)*
+- [ ] 08-06-PLAN.md — evo tracer slice: dev-box giants tier + isolated dnallm-evo kernelspec + 8k/noFP8 notebook repair + first real execution/rung discovery (EXEC-02, CI-05, REPAIR-01)
 
-**Wave 5** *(blocked on all families + job skeleton)*
-- [ ] 08-07-PLAN.md — models.lock growth with revision pins + cache-quota decision + example-nightly completion (prereqs, giants prefetch, stages 2/3) + final D-03 census (CI-04, CI-05, EXEC-02, REPAIR-01)
+**Wave 5** *(blocked on 08-06)*
+- [ ] 08-07-PLAN.md — evo expansion slice: residual rung closure to full green + A4 verification record + evo census reconciliation (EXEC-02, CI-05, REPAIR-01)
+
+**Wave 6** *(blocked on evo completion + shared census rollup)*
+- [ ] 08-08-PLAN.md — mamba lora pair + ollama loopback systemd infra + D-13 readiness probe + mcp pair both-up + D-07 stage contract (MCP-01, MCP-02, EXEC-02)
+
+**Wave 7** *(blocked on all families + job skeleton)*
+- [ ] 08-09-PLAN.md — models.lock growth with revision pins + cache-quota decision + example-nightly completion (prereqs incl. bedtools rootless step, giants prefetch, stages 2/3) + final D-03 census (CI-04, CI-05, EXEC-02, REPAIR-01)
 
 ### Phase 9: CI Wiring & Census Verification
 

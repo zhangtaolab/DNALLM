@@ -440,14 +440,19 @@ Module guidance, verbatim [dnallm/utils/transformers_compat.py:504-505]: "If exe
 1. **Runner environment ground truth** (A1/A2/A9/A10/A11) — ollama? bedtools? disk? build toolchain? rice/Ensembl reachability?
    - What we know: dev-box parity for everything; runner unobservable from here.
    - Recommendation: G0's first dispatch doubles as the probe — add explicit `command -v`/`curl`/`df -h` echo steps to the job skeleton so the first nightly run reports the runner inventory as CI logs.
+   - **(RESOLVED — adopted by 08-01 Task 1)** the job skeleton carries the runner-inventory probe echo steps; the first dispatch reports the inventory as CI logs (A10's bedtools answer additionally gets a rootless install/fallback job step in 08-09 Task 2, D-10).
 2. **Cache quota strategy** (Pitfall 3, A6/A8) — measure the post-growth cache; if >10GB: exclude which entries (evo2 2.7GB is the biggest non-giant), or owner opts into pay-as-you-go?
    - Recommendation: measure in G7; present numbers to owner; keep giants out regardless.
+   - **(RESOLVED — adopted by 08-09 Task 3)** measure-then-decide: the measured total is recorded in 08-CENSUS-ROLLUP.md; >10GB routes to an evidence-carrying owner decision request (exclusions vs pay-as-you-go); giants excluded regardless.
 3. **evo-1 lock prefix** — `ms` exists (HTTP 200) but the MS snapshot route for the evo handler is unproven; `hf` route is spike-proven.
    - Recommendation: `hf togethercomputer/evo-1-8k-base` + notebook `source="huggingface"`; note the MS mirror in the lock comment.
+   - **(RESOLVED — recommendation adopted)** `hf` route: notebook carries `source="huggingface"` via 08-06 Task 2; the lock row with the MS-mirror note lands in 08-09 Task 1.
 4. **Does the example job install the `[mamba]` extra?** D-10's locked line omits it, but EXEC-02's "all 21" requires it for the lora pair.
    - Recommendation: treat the mamba build as a job step (test-mamba precedent, wheel-cached) — flag to owner if the nightly build cost proves unacceptable.
+   - **(RESOLVED — job step, never a pyproject change)** dev-box build proves the kernels (08-08 Task 1); the wheel-cached job step lands in 08-09 Task 2 (test-mamba precedent).
 5. **finetune_generation input strategy** — the `!wget` cell exists (Ensembl release-62 URL verified in-notebook) yet the census died at cell 2 `Fasta(...)` — ordering repair vs seeded-extra input.
    - Recommendation: ordering/content repair per D-02 (the notebook must be self-sufficient as a tutorial), mirroring the rice-notebook precedent.
+   - **(RESOLVED — ordering/content repair adopted)** 08-04 Task 2 repairs the notebook to be self-sufficient (Ensembl download precedes the Fasta load, pinned clone rides the same commit); no seeded-extra input.
 
 ## Environment Availability
 
