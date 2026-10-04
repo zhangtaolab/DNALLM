@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-02-PLAN.md (D-17 pristine closure; EXEC-04/05; D-03 census baseline)
-last_updated: "2026-10-04T15:58:04.513Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-10-04T16:22:51.599Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: c5f0916cf57fbcd08bdce8d86f067d5c0fa2f891
+state_head: 746acc918a2566b0d966c083e22824a43b0bd1b0
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 14
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 3 of 9
+Plan: 4 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -77,6 +77,7 @@ Progress: [████████████████████] 11/11 p
 | Phase 07 P02 | 56 min | 3 tasks | 6 files |
 | Phase 08 P01 | 97 min | 3 tasks | 4 files |
 | Phase 08 P02 | 7h 27min | 3 tasks | 7 files |
+| Phase 08 P03 | 20min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: ipython>=8.31,<9 pinned in notebook extra — pgt hard-caps matplotlib<3.9 so IPython 8 is the only kernel-plot lever (08-02)
 - [Phase 08]: rice.uga.edu outage handled by census-cache seeding (cache-first dev box, cold cache keeps download+typed skip, 4xx re-raises WR-04)
 - [Phase 08]: combined-notebook sibling gap fixed at harness seeding layer with a JSON-parsed ../ coverage contract test (08-02)
+- [Phase 08]: 08-03: allow_patterns forwarding is conditional at BOTH layers (kwargs rebuilt per retry attempt) so exact-signature callers and the no-revision retry reset stay byte-identical
+- [Phase 08]: 08-03: np.fromstring gate PROBES one binary-mode call instead of hasattr — numpy 2.x keeps the NAME as a raising ValueError stub, so presence gating would no-op on exactly the versions needing the shim
+- [Phase 08]: 08-03: shim restores binary mode only (frombuffer semantics + writable copy); text mode refused with a loadtxt pointer; evo2 keeps its unfiltered 2.7GB fetch — only evo-1 passes the giants pattern set
+- [Phase 08]: 08-03: np.fromstring gate PROBES one binary-mode call instead of hasattr (numpy 2.x raising stub)
 
 ### Pending Todos
 
@@ -178,8 +183,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T15:58:04.478Z
-Stopped at: Completed 08-02-PLAN.md (D-17 pristine closure; EXEC-04/05; D-03 census baseline)
+Last session: 2026-10-04T16:22:35.686Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
 
 ## Deferred Verification
