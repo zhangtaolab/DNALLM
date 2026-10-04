@@ -668,6 +668,9 @@ class TestEvoIsolatedLane:
         spec = NOTEBOOK_EXEC_SPECS[self.EVO_SPEC]
         assert spec["kernel_name"] == EVO_KERNEL_NAME
         assert spec["env"]["HF_HUB_CACHE"] == os.path.expanduser("~/models-giants/hub")
+        # Hermetic lane (08-06): the prefetched giants tier serves both model
+        # legs; revision resolution never head-calls the Hub.
+        assert spec["env"]["HF_HUB_OFFLINE"] == "1"
 
     def test_gate_green_when_venv_prerequisites_installed(
         self, monkeypatch: pytest.MonkeyPatch

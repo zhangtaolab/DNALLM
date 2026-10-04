@@ -144,7 +144,16 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         # points at the giants dir OUTSIDE the quota-cached hub, applied via
         # the per-notebook env sandwich in run_notebook only. Expanded at
         # module load with os.path.expanduser -- never a baked absolute.
-        "env": {"HF_HUB_CACHE": os.path.expanduser("~/models-giants/hub")},
+        # HF_HUB_OFFLINE (08-06): the lane runs hermetically against the
+        # prefetched giants tier -- the handler resolves revision 'main'
+        # for the undotted evo-1-8k id, which without offline mode would
+        # head-call the Hub on every run (and hang on boxes whose only
+        # reachable endpoint is a mirror). refs/main for both models is
+        # created by the prefetch step, so the offline resolution is exact.
+        "env": {
+            "HF_HUB_CACHE": os.path.expanduser("~/models-giants/hub"),
+            "HF_HUB_OFFLINE": "1",
+        },
         # Isolated evo lane (08-06): evo-model/stripedhyena/evo2/flash-attn
         # live in the throwaway evo venv, not the project venv.
         "kernel_name": EVO_KERNEL_NAME,
@@ -763,6 +772,7 @@ def evo_prerequisites_installed() -> tuple[bool, str]:
     if not venv_python.is_file():
         return False, f"isolated evo venv missing ({venv_python})"
     probe = "import stripedhyena, evo2, flash_attn"
+    # ruff: ignore[subprocess-without-shell-equals-true]
     result = subprocess.run(
         [str(venv_python), "-c", probe],
         capture_output=True,
