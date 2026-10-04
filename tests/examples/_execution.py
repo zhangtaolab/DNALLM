@@ -115,6 +115,11 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "notebooks" / "generation_evo_models" / "inference.ipynb"): {
         "cell_timeout": 1800,
         "extra_inputs": [],
+        # Giants tier (08-03, CI-05/D-14): the evo-1 kernel's HF_HUB_CACHE
+        # points at the giants dir OUTSIDE the quota-cached hub, applied via
+        # the per-notebook env sandwich in run_notebook only. Expanded at
+        # module load with os.path.expanduser -- never a baked absolute.
+        "env": {"HF_HUB_CACHE": os.path.expanduser("~/models-giants/hub")},
     },
     str(EXAMPLE_DIR / "notebooks" / "generation_megaDNA" / "inference.ipynb"): {
         "cell_timeout": 900,
@@ -338,6 +343,7 @@ def run_notebook(
     cell_timeout: int = 600,
     artifact_dir: Path | None = None,
     kernel_name: str = "python3",
+    env: dict[str, str] | None = None,
 ) -> NotebookNode:
     """Execute a notebook inside *sandbox* and return the executed node.
 
@@ -362,6 +368,11 @@ def run_notebook(
             ``python3`` kernel; the isolated langchain lane passes
             ``LANGCHAIN_KERNEL_NAME`` (provisioned via
             :func:`ensure_isolated_kernel` by the caller first).
+        env: optional per-notebook environment overrides, merged OVER
+            the global :data:`_ENV_OVERRIDES` for this execution only
+            (spec ``env`` key).  The save/restore sandwich restores every
+            touched key -- spec-only keys included -- to its prior state
+            afterwards.
 
     Returns:
         The executed notebook node with every cell's outputs collected.
@@ -382,8 +393,14 @@ def run_notebook(
         shutdown_kernel="immediate",
         resources={"metadata": {"path": str(sandbox)}},
     )
-    saved_env = {key: os.environ.get(key) for key in _ENV_OVERRIDES}
-    os.environ.update(_ENV_OVERRIDES)
+    # Per-notebook overrides (08-03): a spec entry's env key wins over the
+    # global _ENV_OVERRIDES for this notebook only; the sandwich below saves
+    # and restores EVERY touched key, spec-only ones included.
+    overrides = dict(_ENV_OVERRIDES)
+    if env:
+        overrides.update(env)
+    saved_env = {key: os.environ.get(key) for key in overrides}
+    os.environ.update(overrides)
     try:
         client.execute()  # internally: setup_kernel -> cells -> finally _cleanup_kernel()
         return nb

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import os
 import socket
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
@@ -189,6 +190,7 @@ class TestNotebookExecution:
             sandbox,
             cell_timeout=spec["cell_timeout"],
             artifact_dir=artifacts,
+            env=spec.get("env"),
         )
 
         # Structure-only invariants: every non-empty code cell ran to
@@ -513,6 +515,81 @@ class TestKernelPlumbing:
         assert params["kernel_name"].default == "python3"
 
 
+class TestSpecEnvOverrides:
+    """Per-notebook kernel env overrides (08-03, giants tier CI-05/D-14).
+
+    A spec entry's optional ``env`` dict is merged over the global
+    ``_ENV_OVERRIDES`` for that notebook's kernel execution only; the
+    save/update/restore sandwich in ``run_notebook`` must return every
+    touched key -- spec-only keys included -- to its prior state.
+    """
+
+    EVO_SPEC = str(EXAMPLE_DIR / "notebooks" / "generation_evo_models" / "inference.ipynb")
+
+    def test_evo_spec_carries_runtime_expanded_giants_hf_hub_cache(self) -> None:
+        """The evo notebook points its kernel at the giants hub, outside the quota cache."""
+        env = NOTEBOOK_EXEC_SPECS[self.EVO_SPEC]["env"]
+        assert env["HF_HUB_CACHE"] == os.path.expanduser("~/models-giants/hub")
+
+    def test_run_notebook_env_defaults_to_none(self) -> None:
+        """run_notebook exposes env with a None default so pre-existing callers are unchanged."""
+        params = inspect.signature(run_notebook).parameters
+        assert params["env"].default is None
+
+    def test_spec_env_keys_set_during_execution_and_restored_after(
+        self, monkeypatch, tmp_path
+    ) -> None:
+        """Spec env keys are live for the kernel and fully restored afterwards.
+
+        Uses a fake NotebookClient (kernel-free, fast lane) that snapshots
+        os.environ at execute() time: the spec-only key and the spec-wins
+        override must both be visible during execution, and the sandwich
+        must restore pre-existing values / remove absent ones afterwards.
+        """
+        from tests.examples import _execution
+
+        seen: dict[str, str | None] = {}
+
+        class _FakeClient:
+            def __init__(self, nb, **kwargs):
+                self.nb = nb
+
+            def execute(self):
+                for key in ("GSD_SPEC_ONLY", "GSD_SPEC_WINS", "MPLBACKEND"):
+                    seen[key] = os.environ.get(key)
+
+        monkeypatch.setattr(_execution, "NotebookClient", _FakeClient)
+        monkeypatch.setenv("GSD_SPEC_WINS", "old-value")
+        monkeypatch.setenv("MPLBACKEND", "original-backend")
+        monkeypatch.delenv("GSD_SPEC_ONLY", raising=False)
+
+        nb_path = tmp_path / "fake.ipynb"
+        nbformat.write(nbf.new_notebook(cells=[nbf.new_code_cell("pass")]), nb_path)
+
+        run_notebook(
+            nb_path,
+            tmp_path,
+            cell_timeout=60,
+            env={
+                "GSD_SPEC_ONLY": "spec-only-value",
+                "GSD_SPEC_WINS": "spec-wins-value",
+                "MPLBACKEND": "Agg",
+            },
+        )
+
+        # During kernel execution: spec-only key set, spec key wins over
+        # both the prior value and the global override.
+        assert seen == {
+            "GSD_SPEC_ONLY": "spec-only-value",
+            "GSD_SPEC_WINS": "spec-wins-value",
+            "MPLBACKEND": "Agg",
+        }
+        # After: every touched key back to its prior state.
+        assert os.environ["GSD_SPEC_WINS"] == "old-value"
+        assert os.environ["MPLBACKEND"] == "original-backend"
+        assert "GSD_SPEC_ONLY" not in os.environ
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
@@ -699,5 +776,6 @@ class TestGatedNotebookExecution:
             cell_timeout=spec["cell_timeout"],
             artifact_dir=tmp_path / "artifacts",
             kernel_name=kernel,
+            env=spec.get("env"),
         )
         assert_tree_clean()
