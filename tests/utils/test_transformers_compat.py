@@ -1317,6 +1317,7 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_pretrained_config_legacy_defaults",
     "_patch_mamba_cache",
     "_patch_deberta_vocab_dict",
+    "_patch_numpy_fromstring",
     "_patch_get_head_mask",
     "_patch_legacy_init_weights_bookkeeping",
 })

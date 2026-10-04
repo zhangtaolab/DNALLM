@@ -1021,6 +1021,83 @@ def _patch_legacy_init_weights_bookkeeping():
     model_cls._dnallm_init_weights_patch = True  # type: ignore[attr-defined]
 
 
+# numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been
+# deprecated since numpy 1.14 with "use frombuffer instead"; the text mode
+# went with it). stripedhyena's ``CharLevelTokenizer`` -- the evo-1 family
+# tokenizer loaded through dnallm/models/special/evo.py -- still calls
+# ``np.fromstring`` on the utf-8 bytes of every sequence, which raises
+# AttributeError on numpy 2.x. The vendored fallback below restores ONLY
+# the historical binary-mode behavior: ``frombuffer`` semantics with the
+# writable copy ``fromstring`` returned, and the ``count`` argument honored.
+# The text mode (``sep != ''``) is refused with a ``loadtxt`` pointer --
+# nothing in dnallm or stripedhyena uses it, and reproducing it would mean
+# re-vendoring the removed C text parser. If another numpy API disappears
+# that dnallm needs, add a NEW absence-gated rung -- never widen this one.
+
+
+def _np_fromstring(string, dtype=float, count=-1, sep=""):
+    """Vendored ``np.fromstring`` binary-mode fallback (see comment above)."""
+    import numpy as np
+
+    if sep:
+        raise ValueError(
+            "np.fromstring text mode (sep != '') is not provided by the dnallm "
+            "compat shim; it was removed with numpy 2.0 and no dnallm/stripedhyena "
+            "code path uses it. Use numpy.loadtxt instead."
+        )
+    # Historical fromstring returned a fresh writable array, while frombuffer
+    # shares the read-only buffer -- copy so downstream in-place writes keep
+    # working exactly as they did before numpy 2.0.
+    return np.array(np.frombuffer(string, dtype=dtype, count=count))
+
+
+def _numpy_fromstring_works(numpy) -> bool:
+    """Probe whether ``numpy.fromstring`` is actually usable.
+
+    numpy 2.x keeps the NAME ``fromstring`` as a stub that raises
+    ``ValueError`` on every call ("The binary mode of fromstring is
+    removed, use frombuffer instead"), so a mere ``hasattr`` gate would
+    no-op on exactly the versions that need the shim. The probe performs
+    one tiny binary-mode call: any raise counts as absent, a clean
+    return (numpy 1.x native, or an already-installed shim) counts as
+    present. The numpy 1.x call emits a DeprecationWarning, which this
+    suite ignores globally.
+    """
+    fn = getattr(numpy, "fromstring", None)
+    if fn is None:
+        return False
+    try:
+        # getattr (not attribute access): the probe must fail on "fromstring
+        # is broken", never on "this module clone lacks a uint8 alias".
+        fn(b"AC", dtype=getattr(numpy, "uint8", None))
+    except Exception:
+        return False
+    return True
+
+
+def _patch_numpy_fromstring():
+    """Restore ``np.fromstring`` (binary mode) on numpy 2.x for stripedhyena.
+
+    Gated on the :func:`_numpy_fromstring_works` probe (numpy 1.x keeps its
+    native working ``fromstring`` untouched; numpy 2.x ships a raising stub
+    that must be replaced), idempotent via a module sentinel, and a plain
+    no-op when numpy is not installed at all.
+    """
+    try:
+        import numpy
+    except Exception:  # pragma: no cover - numpy not installed
+        return
+
+    if _numpy_fromstring_works(numpy):
+        return
+
+    if getattr(numpy, "_dnallm_fromstring_patch", False):
+        return
+
+    numpy.fromstring = _np_fromstring
+    numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]
+
+
 def apply_patches():
     """Apply all compatibility patches. Safe to call multiple times."""
     _patch_get_parameter_or_buffer()
@@ -1032,6 +1109,7 @@ def apply_patches():
     _patch_deberta_vocab_dict()
     _patch_get_head_mask()
     _patch_legacy_init_weights_bookkeeping()
+    _patch_numpy_fromstring()
 
 
 # Apply patches on module import so they are active before any

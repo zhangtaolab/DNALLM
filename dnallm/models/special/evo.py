@@ -24,6 +24,19 @@ evo_models = {
     "evo-1-8k-transposon": "evo-1-8k-base",
 }
 
+# CI-05 giants tier (Pitfall 4): dnallm's own load path performs a full-repo
+# snapshot_download, which would re-expand a warm giants dir with the
+# 16.81GB pytorch_model.pt alongside the 12.913GB safetensors weights. The
+# evo-1 family therefore restricts its hub fetch to the safetensors weights
+# plus configs/tokenizer files; evo2 keeps its unfiltered fetch (2.7GB, fits
+# the quota cache).
+_EVO1_SAFETENSORS_ONLY_PATTERNS: list[str] = [
+    "*.safetensors",
+    "*.json",
+    "*.txt",
+    "README.md",
+]
+
 
 class EvoTokenizerWrapper:
     def __init__(self, raw_tokenizer, model_max_length=8192, **kwargs):
@@ -369,7 +382,12 @@ def _handle_evo1_models(
 
             evo_model = CustomEvo1()
             revision = "1.1_fix" if "." in model_name and source == "huggingface" else "main"
-            _, modules = _get_model_path_and_imports(model_name, source, revision=revision)
+            _, modules = _get_model_path_and_imports(
+                model_name,
+                source,
+                revision=revision,
+                allow_patterns=_EVO1_SAFETENSORS_ONLY_PATTERNS,
+            )
             evo_model.model = evo_model.load_checkpoint(
                 model_name=model_name,
                 revision=revision,

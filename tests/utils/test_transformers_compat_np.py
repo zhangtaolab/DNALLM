@@ -59,6 +59,29 @@ class TestNumpyFromstringShim:
         assert callable(fake.fromstring)
         assert fake._dnallm_fromstring_patch is True
 
+    def test_patch_replaces_raising_numpy2_stub(self, monkeypatch):
+        """The numpy 2.x raising stub is treated as absent and replaced.
+
+        numpy 2.x keeps the NAME ``fromstring`` as a stub that raises on
+        every call, so a mere hasattr gate would no-op on exactly the
+        versions that need the shim -- the probe must call it.
+        """
+
+        def raising_stub(string, dtype=float, count=-1, sep=""):
+            raise ValueError("The binary mode of fromstring is removed, use frombuffer instead")
+
+        fake = types.ModuleType("numpy")
+        fake.fromstring = raising_stub
+        fake.uint8 = np.uint8
+        fake.frombuffer = np.frombuffer
+        fake.array = np.array
+        monkeypatch.setitem(sys.modules, "numpy", fake)
+
+        _patch_fn()()
+
+        assert fake.fromstring is transformers_compat._np_fromstring
+        assert fake.fromstring(b"ACGT", dtype=fake.uint8).tolist() == [65, 67, 71, 84]
+
     def test_patch_is_idempotent_via_sentinel(self, monkeypatch):
         """A second install call must not rebind the fallback."""
         fake = types.ModuleType("numpy")
