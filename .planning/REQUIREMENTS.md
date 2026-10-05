@@ -28,7 +28,7 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 - [x] **CI-01**: WR-08 closed — docs-validation `continue-on-error: true` removed in the same reviewable unit as the mirror-drift closure, so the gate is honest without blocking unrelated PRs
 - [x] **CI-02**: WR-09 closed — docs-validation installs the `mcp` extra; README "Local Testing" install line corrected
 - [ ] **CI-03**: Execution tests are `slow`-marked into the nightly census with zero new fast-leg skips; typed skip prefixes (`network-unavailable:` reuse, `environment-unavailable:`/`optional-dep:` additions) registered in `expected_skips.yaml`; skip audit green with the new categories
-- [ ] **CI-04**: `models.lock` extended with all newly-executed model ids (~8+) with **ModelScope-first prefixes** — `ms` wherever the model exists on ModelScope (owner decision; zhangtaolab models are mirrored there), `hf` only as fallback — each notebook's `source=` route aligned with its lock prefix, revision-pinned (`trust_remote_code` provenance)
+- [x] **CI-04**: `models.lock` extended with all newly-executed model ids (~8+) with **ModelScope-first prefixes** — `ms` wherever the model exists on ModelScope (owner decision; zhangtaolab models are mirrored there), `hf` only as fallback — each notebook's `source=` route aligned with its lock prefix, revision-pinned (`trust_remote_code` provenance)
 - [x] **CI-05**: Cache strategy survives the giants — evo-1 fetched via `allow_patterns` (safetensors only, ~12.9GB not 29.7GB), tiered so giant models persist outside the 10GB-quota cache and never evict the existing warm cache
 - [ ] **CI-06**: Measured runtime budgets recorded; if total execution exceeds the 900-min nightly job, a separate example-execution nightly job is split out (pre-authorized by owner)
 - [ ] **CI-07**: Nightly hygiene steps land: kernel `pkill` + VRAM assertion, timeout-arithmetic sum-of-ceilings review, `if: always()` artifact uploads
@@ -107,7 +107,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-01 | Phase 5 | Complete |
 | CI-02 | Phase 5 | Complete |
 | CI-03 | Phase 9 | Pending |
-| CI-04 | Phase 8 | Pending |
+| CI-04 | Phase 8 | Complete |
 | CI-05 | Phase 8 | Complete |
 | CI-06 | Phase 9 | Pending |
 | CI-07 | Phase 9 | Pending |

@@ -117,7 +117,7 @@ Plans:
   4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
   5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
 
-**Plans**: 8/9 plans executed
+**Plans**: 9/9 plans executed
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -141,7 +141,7 @@ Plans:
 - [x] 08-08-PLAN.md — mamba lora pair + ollama loopback systemd infra + D-13 readiness probe + mcp pair both-up + D-07 stage contract (MCP-01, MCP-02, EXEC-02)
 
 **Wave 7** *(blocked on all families + job skeleton)*
-- [ ] 08-09-PLAN.md — models.lock growth with revision pins + cache-quota decision + example-nightly completion (prereqs incl. bedtools rootless step, giants prefetch, stages 2/3) + final D-03 census (CI-04, CI-05, EXEC-02, REPAIR-01)
+- [x] 08-09-PLAN.md — models.lock growth with revision pins + cache-quota decision + example-nightly completion (prereqs incl. bedtools rootless step, giants prefetch, stages 2/3) + final D-03 census (CI-04, CI-05, EXEC-02, REPAIR-01)
 
 ### Phase 9: CI Wiring & Census Verification
 
@@ -167,7 +167,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
-| 8. Full Execution Rollout & Repair Loop | v1.1 | 8/9 | In Progress|  |
+| 8. Full Execution Rollout & Repair Loop | v1.1 | 9/9 | In Progress|  |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 
 ---
