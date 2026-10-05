@@ -28,6 +28,7 @@ import importlib.util
 import inspect
 import os
 import json
+import re
 import socket
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
@@ -42,6 +43,7 @@ from pathlib import Path
 import nbformat
 import nbformat.v4 as nbf
 import pytest
+import yaml
 from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError, CellTimeoutError
 
@@ -355,6 +357,100 @@ class TestSeedSandbox:
 
         escaped = (tmp_path.parent / "etc" / "evil.csv").resolve()
         assert not escaped.exists(), "the guard must reject before anything is written outside"
+
+
+class TestSeedSandboxYamlOverrides:
+    """Kernel-free contract for the D-05 sandbox-only YAML patch seam (09-02).
+
+    The finetune_custom_head nightly runtime cut (``num_train_epochs`` 3 -> 1,
+    owner A/A decision 2026-10-05) must land ONLY in the seeded sandbox copy:
+    committed example content -- and the census executability claim resting on
+    it -- stays byte-identical, and the loop body the notebook runs is
+    identical (only the epoch count changes).  These tests pin the
+    :func:`seed_sandbox` ``yaml_overrides`` contract (fail-closed on a missing
+    target file or missing section, no-op by default) and the
+    NOTEBOOK_EXEC_SPECS ``yaml_patch`` key that drives it from the spec layer
+    (the spec-env precedent).
+    """
+
+    @staticmethod
+    def _seed_dir(tmp_path: Path) -> Path:
+        """Create a tiny fake example dir holding one notebook and one finetune YAML."""
+        src_dir = tmp_path / "fake_finetune_example"
+        src_dir.mkdir()
+        (src_dir / "tiny.ipynb").write_text("{}", encoding="utf-8")
+        (src_dir / "finetune_config.yaml").write_text(
+            'task:\n    task_type: "binary"\nfinetune:\n    num_train_epochs: 3\n    seed: 42\n',
+            encoding="utf-8",
+        )
+        return src_dir
+
+    def test_override_patches_sandbox_copy_only(self, tmp_path: Path) -> None:
+        """D-05: the SANDBOX copy loads num_train_epochs 1 while the SOURCE still reads 3."""
+        src_dir = self._seed_dir(tmp_path)
+
+        sandbox = seed_sandbox(
+            src_dir,
+            tmp_path / "run",
+            yaml_overrides={"finetune_config.yaml": {"finetune": {"num_train_epochs": 1}}},
+        )
+
+        patched = yaml.safe_load((sandbox / "finetune_config.yaml").read_text(encoding="utf-8"))
+        source = yaml.safe_load((src_dir / "finetune_config.yaml").read_text(encoding="utf-8"))
+        assert patched["finetune"]["num_train_epochs"] == 1, (
+            "the sandbox copy must carry the patched epoch count (the D-05 cut)"
+        )
+        assert source["finetune"]["num_train_epochs"] == 3, (
+            "the committed-side source file must never be mutated by a sandbox "
+            "override (D-05 honesty contract)"
+        )
+
+    def test_missing_override_target_file_raises(self, tmp_path: Path) -> None:
+        """Fail-closed: an override naming a file absent from the sandbox raises ValueError."""
+        src_dir = self._seed_dir(tmp_path)
+
+        with pytest.raises(ValueError, match=re.escape("absent_config.yaml")):
+            seed_sandbox(
+                src_dir,
+                tmp_path / "run",
+                yaml_overrides={"absent_config.yaml": {"finetune": {"num_train_epochs": 1}}},
+            )
+
+    def test_missing_override_section_raises(self, tmp_path: Path) -> None:
+        """Fail-closed: an override naming an absent section raises ValueError naming it."""
+        src_dir = self._seed_dir(tmp_path)
+
+        with pytest.raises(ValueError, match="no_such_section"):
+            seed_sandbox(
+                src_dir,
+                tmp_path / "run",
+                yaml_overrides={
+                    "finetune_config.yaml": {"no_such_section": {"num_train_epochs": 1}}
+                },
+            )
+
+    def test_finetune_custom_head_spec_pins_the_epochs_cut(self) -> None:
+        """The spec yaml_patch key equals the D-05 patch -- guards editorial removal."""
+        nb_path = EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"
+
+        spec = NOTEBOOK_EXEC_SPECS[str(nb_path)]
+
+        assert spec.get("yaml_patch") == {
+            "finetune_config.yaml": {"finetune": {"num_train_epochs": 1}}
+        }, (
+            "the finetune_custom_head entry must carry the D-05 sandbox YAML patch -- "
+            "without it the seeded copy runs the committed 3 epochs (~31 min nightly)"
+        )
+
+    def test_no_overrides_leaves_sandbox_yaml_byte_identical(self, tmp_path: Path) -> None:
+        """Default no-op: without yaml_overrides the sandbox YAML stays byte-identical."""
+        src_dir = self._seed_dir(tmp_path)
+
+        sandbox = seed_sandbox(src_dir, tmp_path / "run")
+
+        assert (sandbox / "finetune_config.yaml").read_bytes() == (
+            src_dir / "finetune_config.yaml"
+        ).read_bytes(), "existing callers (no yaml_overrides) must be unaffected"
 
 
 class TestRiceCacheExtras:
