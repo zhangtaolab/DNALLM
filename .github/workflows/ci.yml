@@ -10,11 +10,14 @@ on:
     branches: [ main, master, dev ]
   workflow_dispatch:
   schedule:
+    # D-19: BOTH entries below trigger the whole workflow — GitHub offers no
+    # per-cron routing, so each nightly job carries its own cron-string gate
+    # (github.event.schedule == '<cron>') selecting exactly one entry: the
+    # 03:00 UTC entry fires coverage-nightly + test-mamba, the 05:30 UTC
+    # entry fires example-nightly (D-06 stagger, queue-serialized on the
+    # single dnallm-nightly runner). Cron schedules fire only from the
+    # default branch.
     - cron: "0 3 * * *"
-    # D-06: example-nightly stagger — 2.5h after the 03:00 UTC coverage
-    # run, queue-serialized on the single dnallm-nightly runner (the
-    # example-nightly job below carries its own event gate; the other
-    # schedule-gated jobs fire per their own cron entries).
     - cron: "30 5 * * *"
 
 # Least privilege: every job (including test jobs that run arbitrary test code
@@ -272,7 +275,11 @@ jobs:
     # (including forks) never executes on this runner. The gpu-check step below
     # stays as a fail-safe no-op if the box ever loses its GPU.
     runs-on: [self-hosted, dnallm-nightly]
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # D-19: cron-string gate — both workflow schedule entries trigger this
+    # job's evaluation, so the gate selects exactly the 03:00 UTC entry
+    # (the 05:30 entry belongs to example-nightly). The dispatch disjunct
+    # stays; push/PR must never reach the self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # The recurring per-run CUDA kernel source build is the long pole
     # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
     # the mamba-ssm/causal_conv1d compile repeats every run, not just the
@@ -420,7 +427,10 @@ jobs:
     # stay on hosted runners. Hosted runners cap at 360min (run 36747594207 was
     # killed at exactly 6h00m33s), which a CPU census cannot fit (13x GPU->CPU).
     runs-on: [self-hosted, dnallm-nightly]
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # D-19: cron-string gate — selects exactly the 03:00 UTC schedule
+    # entry (the 05:30 entry belongs to example-nightly) while keeping the
+    # dispatch disjunct; push/PR must never reach the self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # Per-test timeout ceilings across the census sum to 840min (7 phase marks
     # = 600min + download/real-inference/MCP marks = 900+900+5x1800+3600s =
     # 240min; the 1800s class mark on TestRealModelInference applies to all 5
@@ -464,15 +474,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-
 
-      - name: Restore model caches (keyed on models.lock)
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/huggingface/hub
-            ~/.cache/modelscope/hub
-          key: ${{ runner.os }}-models-${{ hashFiles('models.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-models-
+      # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
+      # restore that stood here is removed — cold pulls are proven (65-min
+      # all-cold stage 1 vs the 2700-min budget; the lock-only cache was
+      # 15.2GiB, over the 10GB Actions quota, and never successfully saved).
+      # The box's local $HOME hub caches remain the warm path (owner rule:
+      # never cleaned).
 
       - name: Create virtual environment and install dependencies
         env:
@@ -522,12 +529,23 @@ jobs:
     # start, queue-serialized on the single dnallm-nightly runner so GPU
     # and disk bandwidth are never contended.
     runs-on: [self-hosted, dnallm-nightly]
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # D-19: cron-string gate — selects exactly the 05:30 UTC schedule
+    # entry (the D-06 stagger, 2.5h after the 03:00 coverage run) while
+    # keeping the dispatch disjunct; push/PR must never reach the
+    # self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '30 5 * * *')
     # D-07 staged-serial ordering contract (VRAM/port coexistence, MCP-02):
     #   stage 0    install + shared caches + runner-inventory probes
+    #              (D-04: evo provisioning deleted; D-11: no model cache)
+    #   stage 0.5  census collection assertion — hard gate (D-03): the
+    #              collect-only triple for the exact stage-1 selector set
+    #              is pinned; any census drift fails the job before stage 1
     #   stage 1    torch-heavy example execution FIRST (ACTIVE notebooks +
     #              showcase + marimo + script lane + YAML leg; the two
-    #              mcp_example ids are deselected — they belong to stage 2)
+    #              mcp_example ids are deselected — they belong to stage 2 —
+    #              and the giants-marked evo execution test is deselected
+    #              per D-01 owner policy; dispatch/manual lane runs it with
+    #              -m giants)
     #   stage 1.5  kernel pkill + VRAM settle before any server-binding stage
     #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
     #              streamable-http probes, sse restart, 3 sse probes)
@@ -557,17 +575,20 @@ jobs:
     # ~11 min, mcp pair ~25 min, fast YAML leg seconds. First dispatch of
     # the 08-01 skeleton measured 66 min end-to-end (stage 1 only, typed
     # skips for the then-gated families) — the completed job adds the
-    # gated-family executions plus a one-time flash-attn/mamba wheel build
-    # (~50 + ~40-90 min, wheel-cached afterward) and the 12.9GB giants
-    # prefetch (one-time), so first-run totals land well under this
-    # backstop while steady-state runs track the dev-box actuals.
+    # gated-family executions plus a one-time mamba wheel build
+    # (~40-90 min, wheel-cached afterward), so first-run totals land well
+    # under this backstop while steady-state runs track the dev-box
+    # actuals. D-04 (2026-10-05) removed the evo provisioning and giant-
+    # model prefetch this comment originally counted; those minutes no
+    # longer exist in the job.
     timeout-minutes: 2700
     env:
       # Network reality on the dnallm-nightly box (08-08 lora repair
       # finding): huggingface.co is unreachable while hf-mirror.com — the
       # endpoint dnallm's own use_mirror toggle installs — serves the same
-      # artifacts. Pinned job-wide so cold hub fetches (giants prefetch
-      # included) cannot dead-wait on the unreachable origin.
+      # artifacts. Pinned job-wide so cold hub fetches (D-11: no cache
+      # layer, cold pulls by design) cannot dead-wait on the unreachable
+      # origin.
       HF_ENDPOINT: https://hf-mirror.com
     steps:
       - name: Checkout code
@@ -589,19 +610,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-uv-
 
-      - name: Restore model caches (keyed on models.lock)
-        # D-09: EXACT coverage-nightly key — read-only reuse of the shared
-        # hub cache (identical key = cache hit, no save churn competing
-        # with the coverage run). Giant-model tiers stay out of this cache
-        # (D-13).
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/huggingface/hub
-            ~/.cache/modelscope/hub
-          key: ${{ runner.os }}-models-${{ hashFiles('models.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-models-
+      # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
+      # restore that stood here is removed — cold pulls are proven (65-min
+      # all-cold stage 1 vs the 2700-min budget; the lock-only cache was
+      # 15.2GiB, over the 10GB Actions quota, and never successfully saved).
+      # The box's local $HOME hub caches remain the warm path (owner rule:
+      # never cleaned).
 
       - name: "Stage 0: create venv and install full extras (D-10)"
         env:
@@ -659,61 +673,23 @@ jobs:
           command -v bedtools && bedtools --version \
             || { echo "bedtools still missing after rootless fallback"; exit 1; }
 
-      - name: "Stage 0: evo isolated venv — FEASIBILITY-locked stack (gated-family prereq)"
-        # D-10 job-step clause; NEVER a pyproject extra (05-FEASIBILITY
-        # lock). The evo notebook's dnallm-evo-kernel lane probes
-        # .scratch/evo-venvs/evo for stripedhyena + evo2 + flash_attn
-        # (evo_prerequisites_installed, 08-06) — this step provisions that
-        # venv, mirroring the dev-box venv the 08-07 census executed
-        # green: dnallm[cuda130] + ipykernel, stripedhyena 0.2.2 pinned
-        # first (--no-deps so the resolver cannot float it), evo-model 0.5
-        # with deps (brings biopython), evo2==0.3.0 + vtx 1.1.0.
-        # transformer-engine stays DELIBERATELY absent (05-FEASIBILITY:
-        # the empty TE meta package raises at import in a way that escapes
-        # vortex's ImportError guard) — asserted below.
-        run: |
-          EVO_PY=.scratch/evo-venvs/evo/bin/python
-          mkdir -p .scratch/evo-venvs
-          uv venv .scratch/evo-venvs/evo --python .venv/bin/python
-          uv pip install --python "$EVO_PY" -e ".[cuda130]" ipykernel
-          uv pip install --python "$EVO_PY" "stripedhyena==0.2.2" --no-deps
-          uv pip install --python "$EVO_PY" "evo-model==0.5"
-          uv pip install --python "$EVO_PY" "evo2==0.3.0" "vtx==1.1.0"
-          if "$EVO_PY" -c "import transformer_engine" 2>/dev/null; then
-            echo "FATAL: transformer_engine present in the evo venv — FEASIBILITY requires it absent"
-            exit 1
-          fi
-          echo "evo stack installed (flash-attn lands via the wheelhouse step below)"
+      # D-04: the evo isolated-venv provisioning step that stood here is
+      # deleted with the evo/giants census exit (full note beside the
+      # wheelhouse deletions below).
 
       - name: "Stage 0: capture wheel-cache key versions"
         id: wheelkeys
         run: |
           {
             echo "torch=$(.venv/bin/python -c 'import torch; print(torch.__version__)')"
-            echo "evo_torch=$(.scratch/evo-venvs/evo/bin/python -c 'import torch; print(torch.__version__)')"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Cache flash-attn wheelhouse (evo venv)
-        # ~50-min sm_120 source build happens ONCE; the built wheel is
-        # cached keyed on package version + arch + the evo venv's torch
-        # build (the extension links against torch's C ABI).
-        uses: actions/cache@v4
-        with:
-          path: wheelhouse-flashattn
-          key: flashattn-2.8.3.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.evo_torch }}
-
-      - name: "Stage 0: build/install flash-attn (cached wheelhouse, evo venv)"
-        run: |
-          if ! ls wheelhouse-flashattn/flash_attn-*.whl >/dev/null 2>&1; then
-            mkdir -p wheelhouse-flashattn
-            EVO_PY=.scratch/evo-venvs/evo/bin/python
-            uv pip install --python "$EVO_PY" pip
-            FLASH_ATTN_CUDA_ARCHS="120" MAX_JOBS=8 \
-              "$EVO_PY" -m pip wheel "flash-attn==2.8.3.post1" \
-                --no-build-isolation --no-cache-dir -w wheelhouse-flashattn
-          fi
-          uv pip install --python .scratch/evo-venvs/evo/bin/python wheelhouse-flashattn/flash_attn-*.whl
-          .scratch/evo-venvs/evo/bin/python -c "import stripedhyena, evo2, flash_attn; print('evo gate probe: GREEN')"
+      # D-04 (owner directive 2026-10-05): evo/giants exited the pytest
+      # census by owner policy (D-01 marker + stage-1 deselect). The evo
+      # isolated-venv and flash-attention wheelhouse steps that stood here
+      # are deleted — the flash-attention build-isolation failure of run
+      # 37278002681 dissolves with this deletion. The dispatch/manual lane
+      # and the local giants model tier remain (never cleaned, owner rule).
 
       - name: Cache mamba kernel wheelhouse (project venv)
         uses: actions/cache@v4
@@ -757,26 +733,9 @@ jobs:
           uv pip install "MEGABYTE_pytorch==0.2.1" .scratch/megadna-venvs/megadna-clone-src
           "$MGD_PY" -c "import megaDNA, MEGABYTE_pytorch; print('megadna gate probe: GREEN')"
 
-      - name: "Stage 0: evo-1 giants prefetch (safetensors-only → ~/models-giants, D-14/CI-05)"
-        # The 12.913GB safetensors set (never the 16.81GB pytorch_model.pt)
-        # lands in ~/models-giants — OUTSIDE every actions/cache path, so
-        # it can never evict the 10GB-quota hub cache. The evo notebook's
-        # spec env points HF_HUB_CACHE here and runs HF_HUB_OFFLINE=1
-        # (08-06 lane); dnallm's allow_patterns passthrough (08-03) keeps
-        # load-time fetches safetensors-only, so nothing re-pulls the .pt.
-        # HF_ENDPOINT comes from the job env (hf-mirror; origin unreachable).
-        run: |
-          .venv/bin/python -c "
-          import os
-          from huggingface_hub import snapshot_download
-          snapshot_download(
-              'togethercomputer/evo-1-8k-base',
-              revision='a9be7b66485080893399ade87c7d34f81ad3e249',
-              allow_patterns=['*.safetensors', '*.json', '*.txt', 'README.md'],
-              cache_dir=os.path.expanduser('~/models-giants/hub'),
-          )
-          print('giants prefetch complete')
-          "
+      # D-04: the giant-model prefetch step that stood here is deleted with
+      # the evo exit (D-01) — the local giants model tier stays for the
+      # dispatch/manual lane (never cleaned, owner rule).
 
       - name: "Stage 0: runner inventory probe (A1/A10/A11)"
         # T-08-03: echoes only command locations, disk totals, GPU totals,

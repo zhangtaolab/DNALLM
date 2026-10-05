@@ -12,8 +12,11 @@ The workflows are triggered on:
 
 - **Push events** to `main`, `master`, and `dev` branches
 - **Pull request events** targeting `main`, `master`, and `dev` branches
-- **Scheduled nightly run** at 03:00 UTC — triggers the `coverage-nightly` full census and the `test-mamba` kernel-build leg (GitHub runs cron schedules only from the default branch)
-- **Manual workflow dispatch** — runs the nightly census on demand (e.g. for calibration), and is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box)
+- **Scheduled nightly runs** — two cron entries, and BOTH trigger the whole workflow (GitHub offers no per-cron routing), so each nightly job carries its own cron-string gate (`github.event.schedule == '<cron>'`, D-19) selecting exactly one entry:
+  - **03:00 UTC** (cron `0 3 * * *`) — fires `coverage-nightly` (full coverage census) and `test-mamba` (kernel-build leg)
+  - **05:30 UTC** (cron `30 5 * * *`) — fires `example-nightly` (example-execution census; D-06 stagger, queue-serialized on the single `dnallm-nightly` runner)
+  - GitHub runs cron schedules only from the default branch
+- **Manual workflow dispatch** — each nightly job's gate admits `workflow_dispatch` (on-demand census/calibration runs), and dispatch is the ONLY trigger of the `feasibility.yml` spike (runner confirmation for the GB10 feasibility verdicts; never push/PR/schedule, so PR-authored code cannot reach the self-hosted box)
 
 ## 🔧 Jobs
 
@@ -66,7 +69,7 @@ The workflows are triggered on:
 
 ### 4. Mamba Test Job (`test-mamba`)
 
-**Purpose**: Compiles and exercises the native mamba-ssm/causal_conv1d CUDA kernels (the `.[mamba]` extra). Scheduled nightly / manual dispatch only — PR code (including forks) never runs on this runner.
+**Purpose**: Compiles and exercises the native mamba-ssm/causal_conv1d CUDA kernels (the `.[mamba]` extra). Scheduled nightly (03:00 UTC entry only, via its D-19 cron-string gate) / manual dispatch only — PR code (including forks) never runs on this runner.
 
 **Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.11, 180-minute timeout (the recurring kernel source build is the long pole)
 
@@ -95,21 +98,46 @@ The workflows are triggered on:
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
-**Purpose**: Coverage census including the `slow` tests (real HF/ModelScope model downloads) under the same `fail_under = 90` floor. Runs only on the 03:00 UTC schedule and via manual workflow dispatch — event guards keep it out of the push/PR loop.
+**Purpose**: Coverage census including the `slow` tests (real HF/ModelScope model downloads) under the same `fail_under = 90` floor. Runs only on the 03:00 UTC schedule entry and via manual workflow dispatch — its cron-string gate (D-19) keeps it out of the push/PR loop and off the 05:30 entry.
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
 **Timeout**: 900 minutes (per-test `@pytest.mark.timeout` ceilings across the slow suite sum to 840min — 600min from the 7 phase marks plus 240min from the download/real-inference/MCP marks, where the 1800s class mark on `TestRealModelInference` applies to all 5 of its items; the kill sits above that sum so a hung test fails via its own mark, with junit and the skip audit still produced. Note that GitHub-hosted runners hard-cap a single job at 360min, so the platform cap binds before this figure — the per-test marks are the primary protection, the job-level number is a backstop, and the census itself is projected at 4-7.5h on 4-core CPU runners, i.e. a slow night can still hit the platform cap)
 
-**Model Caches**: Both hub directories (`~/.cache/huggingface/hub`, `~/.cache/modelscope/hub`) are cached whole, keyed on `hashFiles('models.lock')` — editing a `models.lock` entry rotates the key; the cache saves only on job success.
+**Model Caches**: none — the `models.lock`-keyed hub cache layer was removed (D-11, owner decision 2026-10-05): cold pulls are proven (a 65-min all-cold example stage 1 against a 2700-min budget) and the lock-only cache (~15.2GiB) exceeded the 10GB Actions cache quota without ever successfully saving. The runner box's local `$HOME` hub caches remain the warm path and are never cleaned (owner rule).
 
 **Steps**:
-1. **Code Checkout** / **Free Disk Space** / **Python 3.12 Setup** / **UV + Caches**: shared uv cache plus the `models.lock`-keyed model caches
+1. **Code Checkout** / **Free Disk Space** / **Python 3.12 Setup** / **UV + Cache**: shared uv cache only (the hub cache layer is gone — D-11)
 2. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
 3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long network-bound tests (trainer, real-download, and MCP integration)
 4. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
 
-### 7. Feasibility Spike Job (`feas-spike`)
+### 7. Example Nightly Job (`example-nightly`)
+
+**Purpose**: Real execution census for everything under `example/` — notebooks (nbclient), marimo apps, the helper script, and every YAML config through real `load_config()`. Split out of coverage-nightly once the example census outgrew its budget (CI-06 pre-authorization).
+
+**Trigger**: the **05:30 UTC** schedule entry only (cron-string gate, D-19) plus manual `workflow_dispatch` — never push/PR, so PR-authored code (including forks) never reaches the self-hosted box.
+
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.12, 2700-minute timeout (per-test `@pytest.mark.timeout` marks are the primary hang protection; the job kill is the whole-job backstop).
+
+**Staged-serial topology** (stages run strictly in order inside one job — a server-binding stage may never start while the previous stage still holds GPU memory or kernel processes):
+
+| Stage | Content |
+|-------|---------|
+| 0 | venv + full extras + bedtools rootless prefix + mamba kernel wheelhouse (cached) + megaDNA pinned provisioning + runner inventory probe. **No evo provisioning (D-04), no model cache (D-11)** |
+| 0.5 | **Census collection assertion** (D-03) — hard gate: the collect-only triple for the exact stage-1 selector set (`-m "not giants" -k "not mcp_example"`) is pinned in the workflow; any drift (collection breakage, marker typo, accidental over-marking) fails the job before stage 1 runs. The pinned literal is the deliberate census-growth bump-point |
+| 1 | torch-heavy example execution: `pytest tests/examples` with the two `mcp_example` ids deselected (stage 3 owns them) and the `giants`-marked evo execution test deselected (D-01 owner-policy exclusion — the runner environment works, so a typed skip would be dishonest; the dispatch/manual lane runs it explicitly with `-m giants`), plus the fast YAML config leg |
+| 1.5 | kernel pkill + VRAM settle |
+| 2 | MCP live-server probes on :8000 (streamable-http probes, restart, sse probes) |
+| 2.5 | kernel pkill + VRAM settle |
+| 3 | fresh MCP server + the `mcp_example` pair (ollama loopback) |
+| 4 | skip audit + junit artifact upload + fail-soft summary |
+
+**Fail-soft contract** (D-08): every stage-1+ invocation records its exit code to `stage-results.txt` and its step exits 0 so later stages still run; the stage-4 summary exits non-zero when ANY recorded outcome failed. NO step carries `continue-on-error` — a forever-green job is prohibited. Stage-0-area failures (venv, provisioning, and the stage-0.5 assertion) fail the job directly.
+
+**Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
+
+### 8. Feasibility Spike Job (`feas-spike`)
 
 **Purpose**: Runner confirmation for the Phase 5 GB10 feasibility spike (FEAS-01, D-04) — re-runs the committed per-family spike runner (`scripts/feasibility/spike_families.py`) on the same hardware class the local verdicts were taken on and uploads the logs plus the verdict matrix as artifacts. The owner fills the matrix's Runner confirmation column from those artifacts; local verdicts become official only then.
 
@@ -124,7 +152,7 @@ The workflows are triggered on:
 4. **Spike Execution**: `--family all --fallback` (D-06 fallback variants only — `--fallback` replaces the notebook variant, it does not run both; notebook-variant verdicts rest on the committed local evidence in `spike-logs/`); expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
 5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)
 
-### 8. Deploy Job (`deploy`)
+### 9. Deploy Job (`deploy`)
 
 **Purpose**: Automatic documentation deployment to GitHub Pages.
 
