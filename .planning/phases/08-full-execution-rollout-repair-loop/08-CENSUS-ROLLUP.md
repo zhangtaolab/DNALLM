@@ -133,3 +133,157 @@ kernels torn down, memory asserted at 116 Gi available before any next stage.
 ci.yml lanes per the D-07 comment block in tests/examples/test_notebook_execution.py,
 and keep the cleanup+assert discipline at every stage boundary (>=35Gi available
 before entering a heavy stage).
+
+## First-Dispatch Consumption (08-09, REPAIR-01 / owner dispositions)
+
+The example-nightly job has dispatched twice on the `phs` ref (workflow_dispatch;
+the 05:30 UTC schedule only fires post-merge from the default branch — D-04).
+
+| dispatch | run id | when | duration | outcome |
+| --- | --- | --- | --- | --- |
+| 1 | 37184990854 | 2026-10-04 07:10:34Z | 64 s | stage-0 infra failure: pyBigWig sdist `ld: cannot find -lpython3.12` (sysconfig baked nonexistent /opt/hostedtoolcache LIBDIR) |
+| 2 | 37185365961 | 2026-10-04 07:18:08Z | 66 min | FIRST COMPLETED dispatch — consumed below (junit artifact `example-nightly-junit` + full logs fetched via gh) |
+
+**Dispatch-2 stage outcomes** (stage-results.txt from the log): `stage1-examples=1`,
+`stage1-yaml=0`, both stage-4 skip audits 0 (every skip allowlisted), summary
+exited 1 per D-08 (honest, not forever-green). Stage 1 measured
+**6 failed / 147 passed / 7 skipped / 8 deselected in 3908.46s (1:05:08)** —
+with NO restored model cache (see the quota section: "Cache not found" for both
+the uv and models keys), i.e. every model fetch was cold and the lane still
+finished in 65 min (ModelScope + hf-mirror are fast from this box).
+
+**Per-failure classification** (every runner-side failure repaired or dispositioned;
+nothing silently dropped):
+
+| failing item | evidence (junit/log) | class | disposition |
+| --- | --- | --- | --- |
+| interpretation.ipynb | `ImportError: cannot import name 'backend2gui' from 'IPython.core.pylabtools'` (logomaker chain) | library/declared-dep conflict (IPython 9 × mpl 3.8.4) | REPAIRED — 08-02 commit 439370f (`ipython>=8.31,<9` in notebook extra), landed later the same day, post-dispatch |
+| finetune_NER_task/data_generation_and_inference.ipynb | same backend2gui ImportError | same class | REPAIRED — same 08-02 commit |
+| embedding_attention.ipynb | same backend2gui ImportError | same class | REPAIRED — same 08-02 commit |
+| test_combined_notebook_executes_with_display_figure | `FileNotFoundError: ../plant_helixseek_cre/data/chr1_5100001_5300000.fas` (fresh-sandbox sibling gap — the 08-01 runner failure class, live again) | harness/content | REPAIRED — 08-02 Task 3 commit c5f0916 (`COMBINED_EXTRA_INPUTS` sibling seeding + contract tests) |
+| test_cre_notebook_executes_within_selection_bands | test's own honest assert: `bedtools is not on PATH` (runner inventory probe confirmed MISSING; A10) | runner system dep | REPAIRED — 08-09 Task 2 commit ea1bfd6 (bedtools rootless micromamba/bioconda step onto GITHUB_PATH; no sudo/apt) |
+| test_generate_bpe_dataset_produces_artifact | `NotImplementedError: "intersectBed" does not appear to be installed` (pybedtools in the script lane) | runner system dep (same bedtools class) | REPAIRED — same 08-09 Task 2 step |
+
+**Per-skip classification** (7 skips, all audit-allowlisted): 1 benign
+no-imports (predict_data — the permanent baseline skip) + 6 gated
+`optional-dep:` skips (evo ×1, megaDNA ×3, lora ×2) — honest at the time: the
+08-01 skeleton installed no gated-family prerequisites. 08-09 Task 2's prereq
+steps (evo venv + flash-attn wheelhouse, mamba wheelhouse, megaDNA pinned
+clone/venvs) turn exactly these six into real executions on the next dispatch.
+The mcp pair was deselected from stage 1 (8 items) — stages 2/3 were
+placeholders in that skeleton; they are wired now (Task 2).
+
+**Runner inventory (probe step answers, dispatch 2):** bedtools MISSING (A10
+confirmed — rootless step now covers it); GPU `NVIDIA GB10, [N/A]` (GB10 does
+not report memory via that nvidia-smi query — the >=35Gi `free -h` discipline
+is the operative guard on this shared box); `hf-mirror.com HTTP 200`;
+ollama on 127.0.0.1:11434 is UP (the runner shares the dev box's systemd
+service, owner-enabled — MCP-01's manual step is effectively satisfied for
+stage 3, re-verified 2026-10-05).
+
+**Open dispositions (owner actions / deferrals):**
+1. Cache-quota decision — see the next section (THE open owner item).
+2. First dispatch of the COMPLETED job (post-08-09): fired at hand-off on the
+   pushed `phs` ref (see the final census section); its outcome lands
+   post-merge per the Phase-5 D-04 runner-confirmation boundary. The one-time
+   first-run costs (flash-attn ~50 min build, mamba kernel build, 12.9 GB
+   giants prefetch) are wheel/eager-cache amortized afterward.
+
+## Cache-quota measurement + decision record (08-09, CI-05 / research Pitfall 3 / A6-A8)
+
+Measured 2026-10-05. **The decision is an owner call — evidence below, do not
+guess** (research A8: pay-as-you-go is a billing choice).
+
+**Runner-side GitHub cache store (definitive, `actions/caches` API):** exactly
+2 entries, both `Linux-uv-cuda-*` from 2026-10-01 (3.15 GB + 7.22 GB =
+**10.37 GB total — the store already sits at the 10 GB eviction threshold**).
+**Zero models-cache entries have ever been saved**: both 2026-10-04 dispatches
+restored nothing ("Cache not found") and their post-job saves produced no
+entry — the source dirs (below) exceed the 10 GB single-entry cap, so the
+save is rejected every night.
+
+**Box-side cache dirs** (the runner shares $HOME with the dev box — same
+user, same paths actions/cache would save):
+- `~/.cache/huggingface/hub` = 84 GB: 28 GB evo-1-8k full-repo leftover
+  (pre-giants era, includes the 16.81 GB `pytorch_model.pt`) **inside the
+  cached path**, 19 GB `Qwen--Qwen3.8-27B` (manual/dev download), 38 GB
+  legacy top-level blobs, plus small lock-model stubs.
+- `~/.cache/modelscope/hub` = 13 GB: models 9.4 GB + datasets 2.8 GB.
+- `~/models-giants` = 15 GB — the giants tier, **outside every cached path by
+  construction** (D-14 verified; evo-1 safetensors-only 12.3 GB + evo2 2.7 GB).
+
+**Clean lock-only arithmetic** (what a cache holding exactly the 24-row
+models.lock + its dataset row would weigh, from per-model du):
+ms lock models 9.62 GiB + ms lock dataset
+(plant-multi-species-core-promoters) 1.5 GiB + hf lock models ~4.1 GiB
+(evo2 2.7 + megaDNA 0.58 + InstaDeepAI ~0.5 + PlantCAD2 ~0.35) ≈
+**15.2 GiB > 10 GB quota**. The plan's exclusion option (drop evo2, the
+largest non-giant) lands at ~12.5 GiB — still over. Even ms-models-only
+(9.62 GiB) fits only by evicting the uv caches and covering nothing else.
+
+**Options for the owner** (numbers above):
+a. Opt into cache pay-as-you-go (removes the 10 GB cap; GitHub billing
+   decision).
+b. Drop the models-cache layer entirely (de-facto operating mode since
+   2026-10-04 and PROVEN GREEN: a fully cold stage 1 completed in 65 min with
+   all downloads; nightly cost ≈ 15 GB of re-downloads, no hard failure).
+c. Partial ms-only cache — poor value (evicts the uv caches; leaves hf models
+   cold).
+Whichever option: the box-side $HOME cleanup is prerequisite to (a) ever
+working — while the 28 GB evo-1 leftover + 19 GB Qwen + 38 GB legacy blobs sit
+inside `~/.cache/huggingface/hub`, every save from this runner is rejected
+regardless of the lock content. The executor's targeted removal of the 28 GB
+evo-1 leftover was denied by the execution permission policy (irreversible
+deletion outside the pinned project tree) — recorded here as an OWNER ACTION:
+`rm -rf ~/.cache/huggingface/hub/models--togethercomputer--evo-1-8k-base`
+(28 GB, re-downloadable never needed: the giants tier holds the sanctioned
+safetensors-only copy). The 19 GB Qwen and 38 GB legacy-blob trees are
+out-of-scope dev artifacts flagged for the same owner cleanup pass.
+
+**Giants stay outside the cache regardless of the option chosen** (Pitfall 3 /
+D-14 — structural, not part of this decision).
+
+## Final D-03 reconciliation census (08-09, phase-final)
+
+**Full examples census** (single invocation, `.pytest tests/examples -q -rs`,
+2026-10-05 04:24–07:24 UTC, both endpoints up for the mcp pair: MCP server on
+:8000 streamable-http + ollama on 127.0.0.1:11434):
+**196 passed / 1 benign typed skip / 0 failed in 10774.89s (2:59:34)**,
+exit 0 (/tmp/08_09_examples.log). The single skip is the permanent
+no-imports entry (predict_data) — **zero lora/mcp/megaDNA/evo skips: every
+one of the 21 notebooks executes for real**, matching the 08-08 family-close
+baseline counts exactly (196/1/0). The per-item table above (08-03 baseline +
+family-close updates) is re-confirmed wholesale by this run: every
+notebook/marimo/script/showcase/YAML row PASS. **Fast lane (EXEC-05): 1807
+passed / 1 pre-existing skip / 53 deselected, exit 0, 97.55s**
+(/tmp/08_09_fastlane.log) — identical counts to the 08-08 baseline, zero new
+skips.
+
+Stage discipline per the owner directive (>=35Gi before heavy stages,
+before/after recorded): pre-census 115Gi avail → server start 112Gi → census
+trough 39Gi (gated-family training peak, still above floor) → post-census
+115Gi after server stop + process cleanup; port 8000 verified free after
+teardown (/tmp/08_09_census_mem.log). The owner's live JupyterLab kernels
+(idle, auto-respawned) were left intact — memory never approached the floor.
+
+**Runtime-budget hand-off for Phase 9 (CI-06/CI-07):**
+- First dispatch (skeleton, cold caches): stage 0 ~15 s warm-uv / stage 1
+  65:08 with all model fetches cold.
+- This final census (single serial invocation, warm box): 2:59:34 for all
+  196 items.
+- First dispatch of the COMPLETED job adds one-time costs: flash-attn sm_120
+  wheel build (~50 min, cached on version+arch+torch afterward), mamba
+  kernel wheel build (~40–90 min, cached), 12.9 GB giants prefetch (eager on
+  disk, never re-fetched), evo/megadna throwaway-venv creation (~minutes from
+  the warm local uv cache on this shared-$HOME box).
+- Steady-state nightly estimate: stage 1 ~3 h + stages 2/3 ~45 min + stage 0
+  ~10–20 min — well inside the 2700-min timeout backstop; the per-test marks
+  remain the primary hang protection.
+- Quota note for CI-06/07 planning: the models-cache layer is currently
+  inert (see the quota section) — nightly runs re-download ~15 GB until the
+  owner picks an option; runtime numbers above already include that cost.
+
+**Hand-off dispatch:** the completed job's first real dispatch was fired on
+the pushed `phs` ref at hand-off (workflow_dispatch; run id recorded in
+08-09-SUMMARY.md). Its outcome lands per the Phase-5 D-04 post-merge
+runner-confirmation boundary.
