@@ -789,6 +789,25 @@ jobs:
           echo "--- hf-mirror reachability ---"
           curl -sS -m 5 -o /dev/null -w "hf-mirror.com HTTP %{http_code}\n" https://hf-mirror.com || echo "hf-mirror.com UNREACHABLE (exit $?)"
 
+      - name: "Stage 0.5: census collection assertion (D-03) — hard gate, census integrity"
+        # The pinned triple below is the deliberate bump-point: census-growth
+        # PRs update it on purpose (that is the guard working, not friction);
+        # the authoritative record lives in the 09 census rollup. Uses the
+        # EXACT stage-1 selector flags — a selector set that omits the giants
+        # filter would guard nothing. Any drift (collection breakage, marker
+        # typo, accidental over-marking) turns this step red and fails the job
+        # directly (stage-0-area contract: honest failure, no fail-soft).
+        run: |
+          .venv/bin/python -m pytest tests/examples --collect-only -q \
+            -m "not giants" -k "not mcp_example" 2>/dev/null | tee census-collect.txt | tail -1
+          MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
+          echo "census collection measured: ${MEASURED}"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *188/197 tests collected \(9 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 188/197 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
+            cat census-collect.txt
+            exit 1
+          fi
+
       - name: "Stage 1: torch-heavy example execution (ACTIVE + showcase + marimo + script + YAML leg)"
         # D-08 fail-soft: each invocation records its exit code and the
         # step exits 0 so stages 1.5-4 still run; the stage-4 summary
