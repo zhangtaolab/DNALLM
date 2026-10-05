@@ -32,8 +32,8 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 - [x] **CI-05**: Cache strategy survives the giants — evo-1 fetched via `allow_patterns` (safetensors only, ~12.9GB not 29.7GB), tiered so giant models persist outside the 10GB-quota cache and never evict the existing warm cache
 - [ ] **CI-06**: Measured runtime budgets recorded; if total execution exceeds the 900-min nightly job, a separate example-execution nightly job is split out (pre-authorized by owner)
 - [ ] **CI-07**: Nightly hygiene steps land: kernel `pkill` + VRAM assertion, timeout-arithmetic sum-of-ceilings review, `if: always()` artifact uploads
-- [ ] **CI-08**: models.lock consistency guard — a fast-leg test cross-checks model id literals inside notebooks/apps against lock entries, failing on drift
-- [ ] **CI-09**: Coverage expectation documented: example execution runs in kernel subprocesses and by design does not move the 96.30% coverage gate (AUDIT-04 precedent)
+- [x] **CI-08**: models.lock consistency guard — a fast-leg test cross-checks model id literals inside notebooks/apps against lock entries, failing on drift
+- [x] **CI-09**: Coverage expectation documented: example execution runs in kernel subprocesses and by design does not move the 96.30% coverage gate (AUDIT-04 precedent)
 
 ### Runner Feasibility
 
@@ -111,8 +111,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-05 | Phase 8 | Complete |
 | CI-06 | Phase 9 | Pending |
 | CI-07 | Phase 9 | Pending |
-| CI-08 | Phase 9 | Pending |
-| CI-09 | Phase 9 | Pending |
+| CI-08 | Phase 9 | Complete |
+| CI-09 | Phase 9 | Complete |
 | FEAS-01 | Phase 5 | Complete |
 | REG-01 | Phase 6 | Complete |
 | REG-02 | Phase 6 | Complete |

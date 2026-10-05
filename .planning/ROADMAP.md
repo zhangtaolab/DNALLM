@@ -155,12 +155,12 @@ Plans:
   4. The fast-leg models.lock consistency guard fails on drift between model id literals inside notebooks/apps and lock entries
   5. The coverage expectation is documented: example execution runs in kernel subprocesses and by design does not move the 96.30% coverage gate (AUDIT-04 precedent)
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
 - [x] 09-01-PLAN.md — giants exit end-to-end: `giants` marker registration + spec-derived mark + example-nightly deselect (D-01) + census collection hard assertion (D-03) + evo-step/models-cache deletions (D-04/D-11) + cron-string job gates (D-19) (CI-03)
-- [ ] 09-03-PLAN.md — fast-leg guards + docs: models.lock consistency guard with drift-injection proof (CI-08) + coverage-expectation docs page with AUDIT-04 cross-reference + mkdocs nav (CI-09/D-15)
+- [x] 09-03-PLAN.md — fast-leg guards + docs: models.lock consistency guard with drift-injection proof (CI-08) + coverage-expectation docs page with AUDIT-04 cross-reference + mkdocs nav (CI-09/D-15)
 
 **Wave 2** *(blocked on 09-01 — shared test module)*
 - [ ] 09-02-PLAN.md — runtime cuts: finetune_custom_head epochs 3→1 via sandbox-only YAML patch in the seed seam (D-05) + num_ctx 8192 server-default pin in the in-repo ollama unit with owner re-apply (D-06) — both with same-change tests (D-07) (CI-03, CI-06)
@@ -179,7 +179,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 9/9 | Complete    | 2026-10-05 |
-| 9. CI Wiring & Census Verification | v1.1 | 1/4 | In Progress | - |
+| 9. CI Wiring & Census Verification | v1.1 | 2/4 | In Progress | - |
 
 ---
 

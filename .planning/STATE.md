@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 09
 current_phase_name: CI Wiring & Census Verification
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-10-05T14:49:40.576Z"
+stopped_at: Completed 09-03-PLAN.md
+last_updated: "2026-10-05T15:10:29.195Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 09 execution started
-state_head: 6218948e235787ecd729a959555797813257827d
+state_head: 1a8e6f8497fd46d67fc712c044a16e37d200c10b
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 ## Current Position
 
 Phase: 09 (CI Wiring & Census Verification) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 09 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -86,6 +86,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 08 P08 | ~13h | 3 tasks | 5 files |
 | Phase 08 P09 | 3h 22min | 3 tasks | 3 files |
 | Phase 09 P01 | 12 min | 3 tasks | 5 files |
+| Phase 09 P03 | 15 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Owner decision 2026-10-05, A/A] Nightly runtime cuts (Phase 9 scope): (1) finetune_custom_head epochs 3→1 via TEST-SANDBOX-ONLY YAML patch (harness sandbox-patch step, ~31→~11min; committed notebook content unchanged; loop body identical so executability claim intact); (2) mcp_example pair: per-request ollama `options.num_ctx` ~8k at the D-13/probe layer (today's 256k kv-cache held 36GB and dominated both latency and the 14:07 VRAM trough; same model per D-11, same turns, notebook content unchanged). Both land with same-change tests in Phase 9
 - [Phase 09]: [Phase 09] 09-01: giants marker registered + applied spec-derived via _GIANTS_GATED/_gated_test_param (composable marks; only the 1 evo execution test marked, 4 fast evo contract tests stay on every fast leg per OQ2); measured census triple 188/197 (9 deselected = 8 mcp + 1 giants) pinned by the new Stage 0.5 hard gate (D-03), the deliberate census-growth bump-point (09-02 bumps it to 193/202)
 - [Phase 09]: [Phase 09] 09-01: D-04/D-11 topology surgery — all four evo provisioning blocks and both models.lock-keyed hub cache restores deleted (cold pulls by design; flash-attn build-isolation bug of run 37278002681 dissolved with deletion; local giants tier + $HOME hub caches remain, never cleaned per owner rule); D-19 cron-string gates on all three nightly jobs close the 05:30 double-trigger before phs merges to main; D-16 dispatch fired: run 37327398343 (outcome = 09-04/D-17 scope)
+- [Phase 09]: 09-03: CI-08 guard landed with zero lock additions — first full scan triaged every non-lock candidate as non-model (MIME keys and data-file paths filtered generically; one local LoRA adapter path allowlisted with reason); lock additions stay deliberate review acts, the test never writes models.lock
+- [Phase 09]: 09-03: quoted-only extraction misses unquoted YAML model paths (benchmark_config.yaml path: rows) — the CI-08 scanner applies quoted-token + YAML-value-position patterns to .yaml files (must-have: every example YAML config covered)
+- [Phase 09]: 09-03: route-alignment guard covers 15 single-id/single-route live files (>=10 non-vacuity floor pinned); ambiguous multi-id/multi-route files, raw-AutoModel embedding_attention, marimo runtime dropdowns, and YAML configs are the documented skipped set
+- [Phase 09]: 09-03: AUDIT-04 published user-visibly (D-15) — docs/user_guide/continuous_integration.md states kernel-subprocess coverage is unmeasured by design so the example lane does not move the 96.30% gate; out-of-docs links use blob URLs (relative paths to .github/ would 404 on the Pages site)
 
 ### Pending Todos
 
@@ -218,8 +223,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T14:49:40.534Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-10-05T15:10:29.152Z
+Stopped at: Completed 09-03-PLAN.md
 Resume file: None
 
 ## Deferred Verification
