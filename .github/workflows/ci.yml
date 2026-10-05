@@ -529,8 +529,11 @@ jobs:
     #              showcase + marimo + script lane + YAML leg; the two
     #              mcp_example ids are deselected — they belong to stage 2)
     #   stage 1.5  kernel pkill + VRAM settle before any server-binding stage
-    #   stage 2    MCP live-server probes on :8000 (family owner: plan 08-09)
-    #   stage 3    ollama batch LAST (family owner: plan 08-09)
+    #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
+    #              streamable-http probes, sse restart, 3 sse probes)
+    #   stage 2.5  kernel pkill + VRAM settle before the ollama batch
+    #   stage 3    ollama batch LAST (wired in 08-09: fresh streamable-http
+    #              server + the two mcp_example ids; D-13 probe in-gate)
     #   stage 4    junit skip audit + artifact upload + fail-soft summary
     # Stages run serially inside one job by design; a server-binding stage
     # may never start while the previous stage still holds GPU memory or
@@ -548,7 +551,24 @@ jobs:
     # step in this job carries continue-on-error — a forever-green job is
     # prohibited, and an infra failure in stage 0 still fails the job
     # directly (nothing downstream can run without a venv).
+    # Measured dev-box actuals (08-03/08-05/08-07/08-08 family SUMMARYs):
+    # full examples lane ~2h35m wall (08-08 chunked census 41+6+149 items),
+    # megaDNA family lane 48:05, evo lane 49s (offline giants), lora pair
+    # ~11 min, mcp pair ~25 min, fast YAML leg seconds. First dispatch of
+    # the 08-01 skeleton measured 66 min end-to-end (stage 1 only, typed
+    # skips for the then-gated families) — the completed job adds the
+    # gated-family executions plus a one-time flash-attn/mamba wheel build
+    # (~50 + ~40-90 min, wheel-cached afterward) and the 12.9GB giants
+    # prefetch (one-time), so first-run totals land well under this
+    # backstop while steady-state runs track the dev-box actuals.
     timeout-minutes: 2700
+    env:
+      # Network reality on the dnallm-nightly box (08-08 lora repair
+      # finding): huggingface.co is unreachable while hf-mirror.com — the
+      # endpoint dnallm's own use_mirror toggle installs — serves the same
+      # artifacts. Pinned job-wide so cold hub fetches (giants prefetch
+      # included) cannot dead-wait on the unreachable origin.
+      HF_ENDPOINT: https://hf-mirror.com
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -602,16 +622,161 @@ jobs:
           # D-10 full extras: base (dev/test/notebook/mcp transitive),
           # fla (PlantHelixSeek KDA kernels), dev (pyfastx/pybedtools for
           # the script lane), mcp (server stack for stage 2). System
-          # binaries such as bedtools are probed below — their rootless
-          # install/fallback job step lands with plan 08-09, not here.
+          # binaries such as bedtools are handled by the rootless
+          # install/fallback step below (08-09, D-10's job-step clause).
           uv pip install -e ".[base,fla,dev,mcp]"
           : > stage-results.txt
 
-      - name: "Stage 0: bedtools probe (A10)"
-        # Rootless posture: probe only — the runner user has no sudo. The
-        # rootless install/fallback step is plan 08-09's scope; today the
-        # answer is recorded as first-dispatch CI log ground truth.
-        run: command -v bedtools || echo "bedtools MISSING (rootless fallback is plan 08-09 scope)"
+      - name: Cache bedtools rootless prefix
+        uses: actions/cache@v4
+        with:
+          path: .bedtools-env
+          key: bedtools-bioconda-${{ runner.os }}-${{ runner.arch }}
+
+      - name: "Stage 0: bedtools rootless install/fallback (D-10, A10)"
+        # Rootless posture (research Pitfall 5): the runner user has no
+        # sudo, so bedtools comes from micromamba/bioconda into a job-local
+        # prefix (cached across runs) when the box does not already ship
+        # the binary. The prefix goes onto PATH via GITHUB_PATH so the
+        # script lane's pybedtools finds it — never apt, never sudo.
+        run: |
+          if command -v bedtools; then
+            echo "bedtools already on PATH: $(command -v bedtools)"
+            exit 0
+          fi
+          if [ -x .bedtools-env/bin/bedtools ]; then
+            echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+            echo "bedtools restored from cached prefix: $(.bedtools-env/bin/bedtools --version)"
+            exit 0
+          fi
+          echo "bedtools absent — rootless micromamba/bioconda install (no sudo)"
+          curl -Ls "https://micro.mamba.pm/api/micromamba/linux-$(uname -m)/latest" \
+            | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -p "$GITHUB_WORKSPACE/.bedtools-env" \
+            -c conda-forge -c bioconda bedtools
+          echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+          export PATH="$GITHUB_WORKSPACE/.bedtools-env/bin:$PATH"
+          command -v bedtools && bedtools --version \
+            || { echo "bedtools still missing after rootless fallback"; exit 1; }
+
+      - name: "Stage 0: evo isolated venv — FEASIBILITY-locked stack (gated-family prereq)"
+        # D-10 job-step clause; NEVER a pyproject extra (05-FEASIBILITY
+        # lock). The evo notebook's dnallm-evo-kernel lane probes
+        # .scratch/evo-venvs/evo for stripedhyena + evo2 + flash_attn
+        # (evo_prerequisites_installed, 08-06) — this step provisions that
+        # venv, mirroring the dev-box venv the 08-07 census executed
+        # green: dnallm[cuda130] + ipykernel, stripedhyena 0.2.2 pinned
+        # first (--no-deps so the resolver cannot float it), evo-model 0.5
+        # with deps (brings biopython), evo2==0.3.0 + vtx 1.1.0.
+        # transformer-engine stays DELIBERATELY absent (05-FEASIBILITY:
+        # the empty TE meta package raises at import in a way that escapes
+        # vortex's ImportError guard) — asserted below.
+        run: |
+          EVO_PY=.scratch/evo-venvs/evo/bin/python
+          mkdir -p .scratch/evo-venvs
+          uv venv .scratch/evo-venvs/evo --python .venv/bin/python
+          uv pip install --python "$EVO_PY" -e ".[cuda130]" ipykernel
+          uv pip install --python "$EVO_PY" "stripedhyena==0.2.2" --no-deps
+          uv pip install --python "$EVO_PY" "evo-model==0.5"
+          uv pip install --python "$EVO_PY" "evo2==0.3.0" "vtx==1.1.0"
+          if "$EVO_PY" -c "import transformer_engine" 2>/dev/null; then
+            echo "FATAL: transformer_engine present in the evo venv — FEASIBILITY requires it absent"
+            exit 1
+          fi
+          echo "evo stack installed (flash-attn lands via the wheelhouse step below)"
+
+      - name: "Stage 0: capture wheel-cache key versions"
+        id: wheelkeys
+        run: |
+          {
+            echo "torch=$(.venv/bin/python -c 'import torch; print(torch.__version__)')"
+            echo "evo_torch=$(.scratch/evo-venvs/evo/bin/python -c 'import torch; print(torch.__version__)')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Cache flash-attn wheelhouse (evo venv)
+        # ~50-min sm_120 source build happens ONCE; the built wheel is
+        # cached keyed on package version + arch + the evo venv's torch
+        # build (the extension links against torch's C ABI).
+        uses: actions/cache@v4
+        with:
+          path: wheelhouse-flashattn
+          key: flashattn-2.8.3.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.evo_torch }}
+
+      - name: "Stage 0: build/install flash-attn (cached wheelhouse, evo venv)"
+        run: |
+          if ! ls wheelhouse-flashattn/flash_attn-*.whl >/dev/null 2>&1; then
+            mkdir -p wheelhouse-flashattn
+            EVO_PY=.scratch/evo-venvs/evo/bin/python
+            uv pip install --python "$EVO_PY" pip
+            FLASH_ATTN_CUDA_ARCHS="120" MAX_JOBS=8 \
+              "$EVO_PY" -m pip wheel "flash-attn==2.8.3.post1" \
+                --no-build-isolation --no-cache-dir -w wheelhouse-flashattn
+          fi
+          uv pip install --python .scratch/evo-venvs/evo/bin/python wheelhouse-flashattn/flash_attn-*.whl
+          .scratch/evo-venvs/evo/bin/python -c "import stripedhyena, evo2, flash_attn; print('evo gate probe: GREEN')"
+
+      - name: Cache mamba kernel wheelhouse (project venv)
+        uses: actions/cache@v4
+        with:
+          path: wheelhouse-mamba
+          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.torch }}
+
+      - name: "Stage 0: build/install mamba kernels (cached wheelhouse, project venv)"
+        # Cached-wheelhouse variant of the test-mamba install flags
+        # (--no-build-isolation source compile): the lora pair's _gate_mamba
+        # probes mamba_ssm in the RUNNING interpreter, so the kernels land
+        # in the project venv (08-08 dev-box precedent). Versions mirror
+        # the pyproject mamba extra pins.
+        run: |
+          if ! ls wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl >/dev/null 2>&1; then
+            mkdir -p wheelhouse-mamba
+            uv pip install --python .venv/bin/python pip
+            .venv/bin/python -m pip wheel "causal_conv1d==1.7.0" "mamba-ssm==2.3.2.post1" \
+              --no-build-isolation --no-cache-dir -w wheelhouse-mamba
+          fi
+          uv pip install wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl
+
+      - name: "Stage 0: megaDNA pinned clone + isolated venv + project-venv siblings"
+        # FEASIBILITY-locked pins (research): finetune_generation's
+        # dnallm-megadna kernel probes .scratch/megadna-venvs/megadna for
+        # megaDNA + MEGABYTE_pytorch==0.2.1 (megadna_prerequisites_installed);
+        # the two read-only siblings probe the PROJECT venv (_gate_megadna),
+        # so the pinned pair installs into both (08-05 reversible sibling
+        # install). Clone is checked out at exactly cb2f5ab4 — never
+        # floating. Mirrors ensure_megadna_kernel's own recipe.
+        run: |
+          MGD_PY=.scratch/megadna-venvs/megadna/bin/python
+          mkdir -p .scratch/megadna-venvs
+          uv venv .scratch/megadna-venvs/megadna --python .venv/bin/python
+          uv pip install --python "$MGD_PY" -e ".[cuda130]" ipykernel pyfastx
+          if [ ! -d .scratch/megadna-venvs/megadna-clone-src ]; then
+            git clone https://github.com/lingxusb/megaDNA.git .scratch/megadna-venvs/megadna-clone-src
+          fi
+          git -C .scratch/megadna-venvs/megadna-clone-src checkout cb2f5ab4cc88dc0effe05c5f23358862c837014a
+          uv pip install --python "$MGD_PY" "MEGABYTE_pytorch==0.2.1" .scratch/megadna-venvs/megadna-clone-src
+          uv pip install "MEGABYTE_pytorch==0.2.1" .scratch/megadna-venvs/megadna-clone-src
+          "$MGD_PY" -c "import megaDNA, MEGABYTE_pytorch; print('megadna gate probe: GREEN')"
+
+      - name: "Stage 0: evo-1 giants prefetch (safetensors-only → ~/models-giants, D-14/CI-05)"
+        # The 12.913GB safetensors set (never the 16.81GB pytorch_model.pt)
+        # lands in ~/models-giants — OUTSIDE every actions/cache path, so
+        # it can never evict the 10GB-quota hub cache. The evo notebook's
+        # spec env points HF_HUB_CACHE here and runs HF_HUB_OFFLINE=1
+        # (08-06 lane); dnallm's allow_patterns passthrough (08-03) keeps
+        # load-time fetches safetensors-only, so nothing re-pulls the .pt.
+        # HF_ENDPOINT comes from the job env (hf-mirror; origin unreachable).
+        run: |
+          .venv/bin/python -c "
+          import os
+          from huggingface_hub import snapshot_download
+          snapshot_download(
+              'togethercomputer/evo-1-8k-base',
+              revision='a9be7b66485080893399ade87c7d34f81ad3e249',
+              allow_patterns=['*.safetensors', '*.json', '*.txt', 'README.md'],
+              cache_dir=os.path.expanduser('~/models-giants/hub'),
+          )
+          print('giants prefetch complete')
+          "
 
       - name: "Stage 0: runner inventory probe (A1/A10/A11)"
         # T-08-03: echoes only command locations, disk totals, GPU totals,
@@ -648,27 +813,105 @@ jobs:
           nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (VRAM settle unverified)"
 
       # ── Stage 2: MCP live-server probes on :8000 ──────────────────────
-      # TODO(family-owner: plan 08-09): start the MCP server, run the two
-      # mcp_example notebooks here (and drop stage 1's -k deselection),
-      # stop the server. D-07 ordering: server-binding work runs only after
-      # the stage-1.5 VRAM/process settle.
-      - name: "Stage 2: MCP live-server probes (placeholder — wiring lands in plan 08-09)"
+      # D-07 contract (module comments in tests/examples/
+      # test_notebook_execution.py): start the dnallm MCP server on :8000
+      # (yaml host/port — the CLI --host/--port flags are dead), run the 6
+      # live-server probes. The two transports need their own server
+      # instance (one :8000 server at a time — 08-08 finding): 3
+      # streamable-http probes, restart in sse, 3 sse probes, stop.
+      # Readiness window: the server eagerly loads its 3 configured models
+      # at startup (minutes from a warm cache), so the poll allows ~15 min.
+      - name: "Stage 2: MCP live-server probes — streamable-http (D-07)"
         run: |
-          echo "Stage 2 contract (D-07): MCP server on :8000 → mcp pair probes → server stop; concrete wiring is plan 08-09 scope"
+          set +e
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport streamable-http > mcp-server-streamable.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
+            sleep 10
+          done
+          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
+            .venv/bin/python -m pytest dnallm/mcp/tests/test_streamable_http_client.py -q \
+              --junitxml=pytest-junit-mcp-stage2-streamable.xml
+            echo "stage2-mcp-probes-streamable=$?" >> stage-results.txt
+          else
+            echo "MCP server (streamable-http) never became ready — see mcp-server-streamable.log"
+            echo "stage2-mcp-probes-streamable=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          exit 0
+
+      - name: "Stage 2: MCP live-server probes — sse (server restarted, one transport at a time)"
+        run: |
+          set +e
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport sse > mcp-server-sse.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -m 2 http://localhost:8000/sse && break
+            sleep 10
+          done
+          if curl -s -o /dev/null -m 2 http://localhost:8000/sse; then
+            .venv/bin/python -m pytest dnallm/mcp/tests/test_sse_client.py -q \
+              --junitxml=pytest-junit-mcp-stage2-sse.xml
+            echo "stage2-mcp-probes-sse=$?" >> stage-results.txt
+          else
+            echo "MCP server (sse) never became ready — see mcp-server-sse.log"
+            echo "stage2-mcp-probes-sse=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          exit 0
+
+      - name: "Stage 2.5: kernel cleanup + VRAM settle (D-07, pre-ollama)"
+        # Explicit cleanup before the ollama batch: stray ipykernel
+        # children die, GPU memory settles before qwen3.8's 17GB weights
+        # come under load in stage 3.
+        run: |
+          pkill -f ipykernel_launcher || true
+          sleep 5
+          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (VRAM settle unverified)"
 
       # ── Stage 3: ollama batch ──────────────────────────────────────────
-      # TODO(family-owner: plan 08-09): probe the local ollama /api/tags,
-      # then run the ollama-dependent items. D-07 ordering: ollama runs
-      # last so its daemon never coexists with the stage-1 GPU load.
-      - name: "Stage 3: ollama batch (placeholder — wiring lands in plan 08-09)"
+      # D-07 ordering: ollama runs last so its daemon never coexists with
+      # the stage-1 GPU load. The D-13 readiness probe (~60s retry window
+      # over 127.0.0.1:11434/api/tags) lives INSIDE the gate
+      # (_gate_ollama_stack) — ollama itself is the owner-enabled systemd
+      # unit (scripts/runner/README.md); when it is down the pair degrades
+      # honestly to network-unavailable typed skips carrying both probe
+      # results. The MCP server must be UP here too (the notebooks' gate
+      # probes :8000/mcp), so stage 3 starts a fresh streamable-http
+      # instance — the D-07 architecture keeps exactly one :8000 server at
+      # a time and stops it after the pair.
+      - name: "Stage 3: mcp pair (ollama + MCP server up, D-13 probe in the tests)"
         run: |
-          echo "Stage 3 contract (D-07): ollama probe → ollama-dependent items; concrete wiring is plan 08-09 scope"
+          set +e
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport streamable-http > mcp-server-stage3.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
+            sleep 10
+          done
+          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
+            .venv/bin/python -m pytest tests/examples/test_notebook_execution.py -k "mcp_example" -q -rs \
+              --junitxml=pytest-junit-mcp-stage3.xml
+            echo "stage3-mcp-pair=$?" >> stage-results.txt
+          else
+            echo "MCP server (stage 3) never became ready — see mcp-server-stage3.log"
+            echo "stage3-mcp-pair=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          pkill -f ipykernel_launcher || true
+          exit 0
 
       - name: "Stage 4: junit skip audits (fail-soft)"
         if: always()
         run: |
           set +e
-          for junit in pytest-junit-example-stage1.xml pytest-junit-yaml-stage1.xml; do
+          for junit in pytest-junit-example-stage1.xml pytest-junit-yaml-stage1.xml \
+            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml \
+            pytest-junit-mcp-stage3.xml; do
             if [ -f "$junit" ]; then
               .venv/bin/python scripts/audit_skips.py "$junit" tests/expected_skips.yaml
               echo "stage4-audit-$junit=$?" >> stage-results.txt
@@ -683,7 +926,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: example-nightly-junit
-          path: pytest-junit-*.xml
+          path: |
+            pytest-junit-*.xml
+            mcp-server-*.log
 
       - name: "Stage 4: fail-soft summary (D-08)"
         if: always()
