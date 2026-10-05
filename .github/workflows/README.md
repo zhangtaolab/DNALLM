@@ -95,6 +95,7 @@ The workflows are triggered on:
 5. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
 6. **Gated Fast Census**: Runs the fast census with coverage; a total below the 90 floor fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the gate junit — unexpected skips fail the job
+8. **Type Checking (ty, advisory)**: `uvx ty@0.0.84 check dnallm/` — an exact-pinned advisory step (D-08, same seconds-scale layer as the ruff statistics step) that does not fail the job; the hard flip plus the mypy retirement land together in one later atomic change (D-09). The advisory MyPy steps on the other legs are unchanged until that swap
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
@@ -126,14 +127,18 @@ The workflows are triggered on:
 |-------|---------|
 | 0 | venv + full extras + bedtools rootless prefix + mamba kernel wheelhouse (cached) + megaDNA pinned provisioning + runner inventory probe. **No evo provisioning (D-04), no model cache (D-11)** |
 | 0.5 | **Census collection assertion** (D-03) — hard gate: the collect-only triple for the exact stage-1 selector set (`-m "not giants" -k "not mcp_example"`) is pinned in the workflow; any drift (collection breakage, marker typo, accidental over-marking) fails the job before stage 1 runs. The pinned literal is the deliberate census-growth bump-point |
-| 1 | torch-heavy example execution: `pytest tests/examples` with the two `mcp_example` ids deselected (stage 3 owns them) and the `giants`-marked evo execution test deselected (D-01 owner-policy exclusion — the runner environment works, so a typed skip would be dishonest; the dispatch/manual lane runs it explicitly with `-m giants`), plus the fast YAML config leg |
-| 1.5 | kernel pkill + VRAM settle |
+| 1 | torch-heavy example execution: `pytest tests/examples` with the two `mcp_example` ids deselected (stage 3 owns them) and the `giants`-marked evo execution test deselected (D-01 owner-policy exclusion — the runner environment works, so a typed skip would be dishonest; the dispatch/manual lane runs it explicitly with `-m giants`), plus the fast YAML config leg. Every pytest invocation is tee'd to its own `stage*.log` via `set -o pipefail` (D-14) so exit codes still record while the full text is preserved |
+| 1.5 | named hygiene step (D-13, HARD gate): kernel pkill + before/after `free -g` available-memory value logging + the **>=35Gi floor assertion** on the available column — a failed floor fails the job (the box cannot safely continue into a server-binding stage). `nvidia-smi` stays telemetry-only: GB10 reports no memory through it, so the free -g column is the operative metric |
 | 2 | MCP live-server probes on :8000 (streamable-http probes, restart, sse probes) |
-| 2.5 | kernel pkill + VRAM settle |
+| 2.5 | named hygiene step (D-13, HARD gate) before the ollama batch: the same kernel pkill + memory-floor + before/after logging discipline |
 | 3 | fresh MCP server + the `mcp_example` pair (ollama loopback) |
-| 4 | skip audit + junit artifact upload + fail-soft summary |
+| 4 | skip audits + fail-soft summary + the complete-failure-scene artifact upload |
 
-**Fail-soft contract** (D-08): every stage-1+ invocation records its exit code to `stage-results.txt` and its step exits 0 so later stages still run; the stage-4 summary exits non-zero when ANY recorded outcome failed. NO step carries `continue-on-error` — a forever-green job is prohibited. Stage-0-area failures (venv, provisioning, and the stage-0.5 assertion) fail the job directly.
+**Fail-soft contract** (D-08): every stage-1+ invocation records its exit code to `stage-results.txt` and its step exits 0 so later stages still run; the stage-4 summary exits non-zero when ANY recorded outcome failed. NO step carries `continue-on-error` — a forever-green job is prohibited. Stage-0-area failures (venv, provisioning, and the stage-0.5 assertion) fail the job directly. The two D-13 hygiene steps sit between fail-soft stages but are themselves hard gates: a memory floor below 35Gi fails the job rather than letting a server-binding stage start on an exhausted box.
+
+**Complete failure scene** (D-14): the `if: always()` artifact upload carries everything needed to diagnose a red (or green) run — every junit xml, every per-stage tee'd log (`stage*.log`), the D-03 census capture (`census-collect.txt`), the stage-results ledger, and the MCP server logs (`mcp-server-*.log`). A red run never loses its own evidence.
+
+**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus an advisory `uvx ty@0.0.84 check dnallm/` step (D-08); the mypy advisory steps elsewhere are unchanged until the later atomic swap (D-09) that flips ty hard and retires mypy together.
 
 **Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
 

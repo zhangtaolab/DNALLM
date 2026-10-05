@@ -420,6 +420,21 @@ jobs:
           source .venv/bin/activate
           python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 
+      - name: "Run type checking (ty, advisory — D-08)"
+        # D-08: ty runs as an advisory standalone step (seconds-scale, same
+        # layer as the ruff statistics step) until the E-family triage quick
+        # task reaches zero diagnostics; failures here never red the gate
+        # prematurely. Exact-pinned invocation (never floating) — no
+        # pyproject dependency added.
+        # D-09: the ty hard flip and the mypy retirement land together in
+        # ONE later atomic change — this phase touches nothing mypy (the
+        # existing advisory mypy steps, pre-commit, check_code.py, and
+        # [tool.mypy] stay untouched).
+        # D-10: static checks never enter pytest (lint lane, not behavior).
+        run: |
+          source .venv/bin/activate
+          uvx ty@0.0.84 check dnallm/ || true
+
   coverage-nightly:
     name: coverage-nightly (py3.12, full suite incl. slow)
     # Self-hosted GPU box (aarch64, warm HF/ModelScope caches in $HOME):
@@ -546,10 +561,14 @@ jobs:
     #              and the giants-marked evo execution test is deselected
     #              per D-01 owner policy; dispatch/manual lane runs it with
     #              -m giants)
-    #   stage 1.5  kernel pkill + VRAM settle before any server-binding stage
+    #   stage 1.5  hygiene step (D-13, hard gate): kernel pkill + >=35Gi
+    #              free -g available-memory floor + before/after value
+    #              logging (nvidia-smi stays telemetry-only — GB10 reports
+    #              no memory through it)
     #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
     #              streamable-http probes, sse restart, 3 sse probes)
-    #   stage 2.5  kernel pkill + VRAM settle before the ollama batch
+    #   stage 2.5  hygiene step (D-13, hard gate) before the ollama batch:
+    #              same kernel pkill + memory floor + value logging
     #   stage 3    ollama batch LAST (wired in 08-09: fresh streamable-http
     #              server + the two mcp_example ids; D-13 probe in-gate)
     #   stage 4    junit skip audit + artifact upload + fail-soft summary
@@ -771,24 +790,45 @@ jobs:
         # D-08 fail-soft: each invocation records its exit code and the
         # step exits 0 so stages 1.5-4 still run; the stage-4 summary
         # carries the non-zero verdict when anything failed.
+        # D-14: pipefail + tee per invocation — the rc capture still
+        # records pytest's exit code (pipefail, test-mamba precedent)
+        # while the full text lands in the stage*.log files that the
+        # always-upload carries.
         run: |
           set +e
-          .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml -k "not mcp_example" -m "not giants"
+          set -o pipefail
+          .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml \
+            -k "not mcp_example" -m "not giants" 2>&1 | tee stage1-examples.log
           rc=$?
           echo "stage1-examples=$rc" >> stage-results.txt
-          .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q --junitxml=pytest-junit-yaml-stage1.xml
+          .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q \
+            --junitxml=pytest-junit-yaml-stage1.xml 2>&1 | tee stage1-yaml.log
           rc=$?
           echo "stage1-yaml=$rc" >> stage-results.txt
           exit 0
 
-      - name: "Stage 1.5: kernel cleanup + VRAM settle (D-07)"
-        # Explicit VRAM/process cleanup between the torch-heavy stage and
-        # any server-binding stage: stray ipykernel children are killed
-        # before GPU memory is expected to settle.
+      - name: "Stage 1.5: hygiene — kernel cleanup + memory floor assertion (D-13)"
+        # Named hygiene step between fail-soft stages, itself a HARD gate
+        # (D-07 ordering + D-13 observability): stray ipykernel children
+        # are killed, memory settles, and the free -g available column
+        # (the GB10-operative metric — nvidia-smi reports no memory on
+        # this box and stays telemetry-only) must clear the >=35Gi floor
+        # before any server-binding stage; a failed floor means the box
+        # cannot safely continue (08-08/08-09 discipline). LC_ALL=C pins
+        # the free parse: free localizes its row label under a non-C
+        # locale and /^Mem:/ would then match nothing (a floor that
+        # measures nothing — the Pitfall-1 failure mode).
         run: |
+          echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
           pkill -f ipykernel_launcher || true
           sleep 5
-          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (VRAM settle unverified)"
+          AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          echo "after:  ${AVAIL_GI}Gi available"
+          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
+          if [ "${AVAIL_GI}" -lt 35 ]; then
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before a server-binding stage — 08-08/08-09 discipline)"
+            exit 1
+          fi
 
       # ── Stage 2: MCP live-server probes on :8000 ──────────────────────
       # D-07 contract (module comments in tests/examples/
@@ -802,6 +842,7 @@ jobs:
       - name: "Stage 2: MCP live-server probes — streamable-http (D-07)"
         run: |
           set +e
+          set -o pipefail
           .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
             --transport streamable-http > mcp-server-streamable.log 2>&1 &
           SERVER_PID=$!
@@ -811,7 +852,7 @@ jobs:
           done
           if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
             .venv/bin/python -m pytest dnallm/mcp/tests/test_streamable_http_client.py -q \
-              --junitxml=pytest-junit-mcp-stage2-streamable.xml
+              --junitxml=pytest-junit-mcp-stage2-streamable.xml 2>&1 | tee stage2-streamable.log
             echo "stage2-mcp-probes-streamable=$?" >> stage-results.txt
           else
             echo "MCP server (streamable-http) never became ready — see mcp-server-streamable.log"
@@ -823,6 +864,7 @@ jobs:
       - name: "Stage 2: MCP live-server probes — sse (server restarted, one transport at a time)"
         run: |
           set +e
+          set -o pipefail
           .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
             --transport sse > mcp-server-sse.log 2>&1 &
           SERVER_PID=$!
@@ -832,7 +874,7 @@ jobs:
           done
           if curl -s -o /dev/null -m 2 http://localhost:8000/sse; then
             .venv/bin/python -m pytest dnallm/mcp/tests/test_sse_client.py -q \
-              --junitxml=pytest-junit-mcp-stage2-sse.xml
+              --junitxml=pytest-junit-mcp-stage2-sse.xml 2>&1 | tee stage2-sse.log
             echo "stage2-mcp-probes-sse=$?" >> stage-results.txt
           else
             echo "MCP server (sse) never became ready — see mcp-server-sse.log"
@@ -841,14 +883,23 @@ jobs:
           kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
           exit 0
 
-      - name: "Stage 2.5: kernel cleanup + VRAM settle (D-07, pre-ollama)"
-        # Explicit cleanup before the ollama batch: stray ipykernel
-        # children die, GPU memory settles before qwen3.8's 17GB weights
-        # come under load in stage 3.
+      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-ollama)"
+        # Same named hygiene step (D-13) before the ollama batch: stray
+        # ipykernel children die, memory settles before qwen3.8's 17GB
+        # weights come under load in stage 3, and the free -g available
+        # floor is a HARD gate — nvidia-smi stays telemetry-only (GB10
+        # reports no memory through it).
         run: |
+          echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
           pkill -f ipykernel_launcher || true
           sleep 5
-          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (VRAM settle unverified)"
+          AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          echo "after:  ${AVAIL_GI}Gi available"
+          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
+          if [ "${AVAIL_GI}" -lt 35 ]; then
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the ollama batch — 08-08/08-09 discipline)"
+            exit 1
+          fi
 
       # ── Stage 3: ollama batch ──────────────────────────────────────────
       # D-07 ordering: ollama runs last so its daemon never coexists with
@@ -864,6 +915,7 @@ jobs:
       - name: "Stage 3: mcp pair (ollama + MCP server up, D-13 probe in the tests)"
         run: |
           set +e
+          set -o pipefail
           .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
             --transport streamable-http > mcp-server-stage3.log 2>&1 &
           SERVER_PID=$!
@@ -873,7 +925,7 @@ jobs:
           done
           if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
             .venv/bin/python -m pytest tests/examples/test_notebook_execution.py -k "mcp_example" -q -rs \
-              --junitxml=pytest-junit-mcp-stage3.xml
+              --junitxml=pytest-junit-mcp-stage3.xml 2>&1 | tee stage3-mcp-pair.log
             echo "stage3-mcp-pair=$?" >> stage-results.txt
           else
             echo "MCP server (stage 3) never became ready — see mcp-server-stage3.log"
@@ -899,7 +951,11 @@ jobs:
           done
           exit 0
 
-      - name: "Stage 4: upload junit artifacts"
+      - name: "Stage 4: upload complete failure scene (D-14)"
+        # if:always() is load-bearing: the complete failure scene (every
+        # junit, every per-stage tee'd log, the D-03 census capture, the
+        # stage-results ledger, and the MCP server logs) uploads on green
+        # and red alike — a red run must never lose its own evidence.
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -907,6 +963,9 @@ jobs:
           path: |
             pytest-junit-*.xml
             mcp-server-*.log
+            stage-results.txt
+            stage*.log
+            census-collect.txt
 
       - name: "Stage 4: fail-soft summary (D-08)"
         if: always()
