@@ -36,14 +36,14 @@ failure noted. Logs: /tmp/08_03_examples_full.log (pass A), /tmp/08_03_examples_
 | notebooks/embedding_attention.ipynb | ACTIVE | PASS | killed mid-run by the executor's 2h cap in pass A (not a test failure; passed standalone 18:10 in 29.29s) → pass B green |
 | notebooks/finetune_NER_task/finetune_NER_task.ipynb | ACTIVE | PASS | pass B (full 3-epoch training; standalone 33:20) |
 | notebooks/inference_for_tRNA/inference.ipynb | ACTIVE | PASS | pass B |
-| mcp_example/mcp_client_ollama_langchain_agents.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | pass B `ssssssss` batch — endpoint probe state at run time carried in the skip message (261003-csd contract) |
-| mcp_example/mcp_client_ollama_pydantic_ai.ipynb | GATED (`_gate_ollama_stack`) | typed-skip-with-evidence | same batch |
+| mcp_example/mcp_client_ollama_langchain_agents.ipynb | GATED (`_gate_ollama_stack`) | PASS | 08-08 un-gate (both-up dev-box execution): D-13 retry-window probe live, langchain under the isolated `dnallm-mcp-langchain` kernelspec — pair green in the canonical run (`2 passed / 0 SKIPPED`, /tmp/08_08_mcp.log) |
+| mcp_example/mcp_client_ollama_pydantic_ai.ipynb | GATED (`_gate_ollama_stack`) | PASS | 08-08: same canonical pair run (pydantic_ai first hit a transient DeadKernelError under VRAM contention — the 08-02 NER run-1 class; isolated re-run green in 361s, then green in the canonical pair run) |
 | notebooks/generation_evo_models/inference.ipynb | GATED (`_gate_evo`) | PASS | 08-06/08-07 un-gate: isolated dnallm-evo lane (dev-box giants tier + HF_HUB_OFFLINE) — executed for real green (5 passed / 0 SKIPPED, 49s; re-confirmed 08-07 census). 08-07 reconciliation also fixed the static import check (evo venv-only stack added to OPTIONAL_IMPORT_MODULES after the D-21 stamp cell's literal `import flash_attn` failed it in the project venv) |
 | notebooks/generation_megaDNA/inference.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: pinned prereqs (megadna @ cb2f5ab4 + MEGABYTE_pytorch==0.2.1) installed into the project venv (reversible) + D-21 stamp + executable pinned install cell; executed for real green in the family lane (12 passed / 0 SKIPPED, 48:05, /tmp/08_05_family.log) |
 | notebooks/finetune_custom_head/finetune.ipynb | GATED (`_gate_megadna`) | PASS | 08-05 un-gate: demo cell repaired (pinned install cell before the megaDNA load — census ImportError at megadna.py:146 gone) + D-21 stamp; DNAGPT and megaDNA trainings both executed green in the family lane |
 | notebooks/finetune_generation/finetune_generation.ipynb | GATED (`_gate_megadna_isolated`) | PASS | 08-04 isolated dnallm-megadna lane first green (837s, 0 skips); 08-05 family reconciliation re-run green in the same lane |
-| notebooks/lora_finetune_inference/lora_finetune.ipynb | GATED (`_gate_mamba`) | typed-skip-with-evidence | optional-dep (mamba_ssm absent) — family plan 08-06/08-07 un-gates |
-| notebooks/lora_finetune_inference/lora_inference.ipynb | GATED (`_gate_mamba`) | typed-skip-with-evidence | optional-dep — family plan un-gates |
+| notebooks/lora_finetune_inference/lora_finetune.ipynb | GATED (`_gate_mamba`) | PASS | 08-08 un-gate: `.[mamba]` extra built into the dev-box project venv (causal_conv1d 1.7.0 + mamba-ssm 2.3.2.post1, test-mamba flags) — `_gate_mamba` probes green, training executed for real (3 passed / 0 SKIPPED incl. contract, /tmp/08_08_lora.log) |
+| notebooks/lora_finetune_inference/lora_inference.ipynb | GATED (`_gate_mamba`) | PASS | 08-08: same lane; REPAIR-01 — huggingface.co unreachable on the dev box left the uncached `plantcad/...` LoRA adapter download dead while the cached base model passed; both lora specs now pin `HF_ENDPOINT=hf-mirror.com` (08-06 spec-env precedent) + `TestLoraMirrorEndpoint` contract |
 | marimo/inference/inference_demo.py | marimo | PASS | pass A (3 dots) |
 | marimo/finetune/finetune_demo.py | marimo | PASS | pass A |
 | marimo/benchmark/benchmark_demo.py | marimo | PASS | pass A |
@@ -76,8 +76,8 @@ pre-existing baseline one.
 | --- | --- | --- | --- |
 | evo (evo-1 / evo2) | generation_evo_models | CLOSED (08-07): PASS by real execution on the isolated dnallm-evo lane — giants strategy verified at load time (A4) | evo family plan (08-06 + 08-07, done) |
 | megaDNA | generation_megaDNA, finetune_custom_head, finetune_generation | CLOSED (08-05): all three PASS by real execution — siblings on the project venv (reversible pinned prereqs), finetune_generation on the isolated lane | megaDNA family plan (08-05, done) |
-| PlantCAD / mamba | lora_finetune, lora_inference | optional-dep (mamba_ssm native build) | mamba/lora family plan |
-| mcp + ollama | langchain + pydantic_ai client notebooks | endpoint-up probes (execute when both up) | mcp batch plan / runner infra |
+| PlantCAD / mamba | lora_finetune, lora_inference | CLOSED (08-08): both PASS by real execution — `.[mamba]` kernels in the project venv + mirror endpoint for the LoRA adapter | mamba/lora family plan (08-08, done) |
+| mcp + ollama | langchain + pydantic_ai client notebooks | CLOSED (08-08): both PASS in the both-up state on the dev box (D-13 retry probe live; 6 MCP live-server probes green across both transports); runner enable = owner user_setup step (MCP-01) | mcp batch plan / runner infra (08-08 dev-box half done; ci.yml wiring 08-09) |
 
 Every gated skip in this baseline is an honest `optional-dep:`/`network-unavailable:` typed
 skip carrying live probe evidence — the CURRENT-STATE baseline per D-03, not a failure.
@@ -110,3 +110,26 @@ evo-1 giants snapshot it protects. Giants dir remains outside every cached path.
 (rightly) failed in the project venv — the evo stack is FEASIBILITY-locked to the
 throwaway venv. Fixed by extending `OPTIONAL_IMPORT_MODULES` (pybedtools precedent) with
 `flash_attn/stripedhyena/evo2` + a comment naming the 08-06 lock; re-run green.
+
+## mcp + lora family closure — D-03 family-close census (08-08)
+
+Full examples lane re-run post-08-08-repairs (2026-10-05, three disjoint chunked
+passes, both endpoints up for the mcp pair): **196 passed / 1 benign typed skip /
+0 failed** — chunk A (NER|multi_labels, which case-insensitively also captures the
+`generation_*` families incl. evo + megaDNA trio) 41 P in 1:10:32; chunk B
+(megaDNA-only leftovers) 6 P; chunk C (rest, incl. the REAL lora pair ~11 min and
+the REAL mcp pair ~25 min) 149 P + 1 S in 1:23:45. The single skip is the benign
+no-imports entry (predict_data) — **zero lora skips, zero mcp skips**: all 21
+notebooks now execute on the dev box. Fast lane: **1807 passed / 1 pre-existing
+skip, exit 0, 98.30s** (+4 vs the 08-07 baseline = 08-08's TestLoraMirrorEndpoint
+and the three D-13 retry-contract tests; zero new skips).
+
+Stage cleanup recorded per the D-07 discipline (owner directive 2026-10-05):
+post-census the orphaned streamable-http server (24.5GB RSS) was killed, sandbox
+kernels torn down, memory asserted at 116 Gi available before any next stage.
+
+08-09 inheritance: the mcp pair's both-up execution requires the MCP server on
+:8000 (yaml port; CLI flags are dead) and ollama on 127.0.0.1:11434 — stage the
+ci.yml lanes per the D-07 comment block in tests/examples/test_notebook_execution.py,
+and keep the cleanup+assert discipline at every stage boundary (>=35Gi available
+before entering a heavy stage).

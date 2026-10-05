@@ -432,6 +432,52 @@ class TestProbeHonesty:
         assert ok is False
         assert evidence, "the down direction must carry verbatim transport evidence"
 
+    # -- D-13 retry-window contract (08-08) --------------------------------
+
+    def test_retry_probe_succeeds_first_try(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A reachable-first-try url returns green on attempt 1/30, no sleeps."""
+        sleeps: list[float] = []
+        monkeypatch.setattr(
+            sys.modules[__name__], "_probe_http", lambda url, timeout_s=5.0: (True, "HTTP 200")
+        )
+        monkeypatch.setattr(time, "sleep", lambda s: sleeps.append(s))
+        ok, evidence = _probe_http_with_retry("http://127.0.0.1:1/tags")
+        assert ok is True
+        assert "attempt 1/30" in evidence
+        assert sleeps == [], "a first-try success must never sleep"
+
+    def test_retry_probe_succeeds_after_warmup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A service green from attempt 3 returns green; sleeps 1 and 2 happened."""
+        calls: list[int] = []
+
+        def warmup_probe(url: str, timeout_s: float = 5.0) -> tuple[bool, str]:
+            calls.append(1)
+            return (True, "HTTP 200") if len(calls) >= 3 else (False, "URLError: warming")
+
+        monkeypatch.setattr(sys.modules[__name__], "_probe_http", warmup_probe)
+        ok, evidence = _probe_http_with_retry("http://127.0.0.1:1/tags", attempts=5)
+        assert ok is True
+        assert "attempt 3/5" in evidence
+
+    def test_retry_probe_caps_retries_and_logs_every_attempt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A persistently-down url stops at the cap; evidence carries every attempt."""
+        sleeps: list[float] = []
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "_probe_http",
+            lambda url, timeout_s=5.0: (False, "URLError: refused"),
+        )
+        monkeypatch.setattr(time, "sleep", lambda s: sleeps.append(s))
+        ok, evidence = _probe_http_with_retry("http://127.0.0.1:1/tags", attempts=4, interval_s=2.0)
+        assert ok is False
+        assert "unreachable after 4 attempts" in evidence
+        assert evidence.count("URLError: refused") == 4, (
+            "every attempt's verbatim result must ride the evidence"
+        )
+        assert sleeps == [2.0] * 3, "retries pause between attempts but not after the last"
+
 
 class TestGateMatrix:
     """Execute-state gate semantics for the ollama/mcp stack (D-08, 261003-csd).
@@ -463,6 +509,9 @@ class TestGateMatrix:
         # is not a regular package, so a dotted-string target would import
         # a second module object and leave the gate reading real probes.
         monkeypatch.setattr(sys.modules[__name__], "_probe_http", fake_probe)
+        # The ollama leg probes through the D-13 retry window (08-08); a
+        # down fake would otherwise burn 30x2s of real sleep here.
+        monkeypatch.setattr(time, "sleep", lambda _s: None)
 
     def test_both_up_executes_with_plain_return(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Both probes green -> the gate returns None (the caller executes)."""
@@ -867,8 +916,23 @@ class TestMegadnaSiblingContentContracts:
 # running under its isolated kernelspec.  Non-qualifying execution
 # failures always re-raise -- never converted to skips.
 
-OLLAMA_URL = "http://localhost:11434/api/tags"
+OLLAMA_URL = "http://127.0.0.1:11434/api/tags"
 MCP_ENDPOINT = "http://localhost:8000/mcp"
+
+# D-07 stage contract (08-08, MCP-02): within one example-nightly job the
+# three GPU/VRAM/port consumers run STAGED SERIAL, never concurrently --
+#   stage 1 TORCH-HEAVY: pytest tests/examples with the two mcp gated ids
+#     DESELECTED (Pitfall 7: `--deselect` both mcp_example entries, else the
+#     pair runs once as an honest skip here and once for real in stage 3,
+#     polluting the junit audit);
+#   stage 2 MCP LIVE SERVER: start the dnallm MCP server on :8000 (yaml
+#     host/port -- the CLI flags are dead), run dnallm/mcp/tests, stop it;
+#   stage 3 OLLAMA BATCH: with ollama up (D-13 probe below), re-run just the
+#     two gated mcp tests (server up + ollama probed).
+# BETWEEN stages: explicit kernel pkill + VRAM settle (a few seconds' sleep
+# after torch-heavy work lets the allocator release before ollama loads the
+# 17GB qwen3.8 weights). The ci.yml wiring lands in 08-09; these module
+# comments are the contract it implements.
 
 
 def _probe_http(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
@@ -893,6 +957,33 @@ def _probe_http(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
         return False, f"{type(exc).__name__}: {exc}"
 
 
+def _probe_http_with_retry(
+    url: str,
+    attempts: int = 30,
+    interval_s: float = 2.0,
+    timeout_s: float = 5.0,
+) -> tuple[bool, str]:
+    """Retry-window wrapper over :func:`_probe_http` (D-13, 08-08).
+
+    Retries *url* up to ``attempts`` times, ``interval_s`` apart (~60s total
+    at the defaults) -- a runner-fresh ollama service may still be loading
+    the 17GB qwen3.8 weights when the test starts, and a single 2s probe
+    would typed-skip on a service that is merely warming up. Returns as soon
+    as any attempt succeeds; a persistent failure returns (False, evidence
+    naming the url, the attempt count, and every attempt's verbatim result).
+    Tests patch ``time.sleep`` so the window costs milliseconds in CI.
+    """
+    results: list[str] = []
+    for attempt in range(1, attempts + 1):
+        ok, evidence = _probe_http(url, timeout_s=timeout_s)
+        if ok:
+            return True, f"{evidence} (attempt {attempt}/{attempts})"
+        results.append(f"attempt {attempt}: {evidence}")
+        if attempt < attempts:
+            time.sleep(interval_s)
+    return False, f"{url} unreachable after {attempts} attempts: " + "; ".join(results)
+
+
 def _probe_module(name: str) -> tuple[bool, str]:
     """find_spec probe; return (installed, evidence)."""
     spec = importlib.util.find_spec(name)
@@ -910,8 +1001,15 @@ def _gate_ollama_stack(nb_name: str) -> None:
     retired the never-auto-execute sentinel; ollama/VRAM coexistence is
     owner-sanctioned).  Any unreachable endpoint is an honest
     network-unavailable skip carrying both live probe results.
+
+    D-13 (08-08): the ollama leg probes through the ~60s retry window --
+    a warming service (17GB model still loading) is distinguished from an
+    absent one, and a persistent failure carries the full retry log in the
+    skip message.  The D-13 fallback is infra-missing ONLY: a model that
+    answers with wrong output is an assertion failure to be repaired,
+    never a skip.
     """
-    ollama_ok, ollama_ev = _probe_http(OLLAMA_URL)
+    ollama_ok, ollama_ev = _probe_http_with_retry(OLLAMA_URL)
     server_ok, server_ev = _probe_http(MCP_ENDPOINT)
     if ollama_ok and server_ok:
         return
