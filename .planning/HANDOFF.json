@@ -1,45 +1,41 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-03T03:21:56.922Z",
-  "phase": "05",
-  "phase_name": "execution-harness-honest-gates-runner-feasibility",
-  "phase_dir": ".planning/phases/05-execution-harness-honest-gates-runner-feasibility",
-  "plan": null,
-  "task": null,
-  "total_tasks": null,
+  "timestamp": "2026-10-05T16:50:00+08:00",
+  "phase": "9",
+  "phase_name": "ci-wiring-&-census-verification",
+  "phase_dir": ".planning/phases/09-ci-wiring-census-verification (not yet created)",
+  "plan": 0,
+  "task": 0,
+  "total_tasks": 0,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "quick 261002-se3: transformers-5.x get_extended_attention_mask shim", "status": "done", "commit": "fdc4915"},
-    {"id": 2, "name": "quick 261002-sl7: 6 non-gated notebooks to green (ACTIVE 8->13; 5 shims + 34 tests; 2 discovered rungs)", "status": "done", "commit": "6073f72"},
-    {"id": 3, "name": "gsd-fast: Benchmark.plot annotation lie fix", "status": "done", "commit": "d352c0e"},
-    {"id": 4, "name": "quick 261003-0p0: typing special (ty 570->165, DNALLMConfig TypedDict, E-family triage list)", "status": "done", "commit": "a0220d5"},
-    {"id": 5, "name": "quick 261003-csd: both mcp client notebooks GREEN in gated lane (2 serving bugs fixed, both-direction honest gate, D-08 closed)", "status": "done", "commit": "9453d23"}
+    {"id": 1, "name": "Phase 8 execution 9/9 (08-08 + 08-09 executors)", "status": "done", "commit": "a98da4e, 4b3f9d2"},
+    {"id": 2, "name": "Phase 8 verification (passed 8/8, 0 gaps)", "status": "done", "commit": "2e64237 (local)"},
+    {"id": 3, "name": "Phase 8 transition (ROADMAP/STATE/PROJECT -> Phase 9)", "status": "done", "commit": "86022f7 (local)"},
+    {"id": 4, "name": "gsd-fast: DNAInference/DNATrainer config dict->Mapping", "status": "done", "commit": "1bcd579 (local)"},
+    {"id": 5, "name": "gsd-fast extension: Mutagenesis/Benchmark/DNAInterpret Mapping + Benchmark private copy + 7 contract tests", "status": "in_progress", "progress": "code complete, 7/7 contract green, ruff clean; AWAITING tests/inference+tests/finetune regression result (bg task bmch4cy0x, will die with session) before commit"}
   ],
   "remaining_tasks": [
-    {"id": 6, "name": "Gated family round: generation_evo_models, generation_megaDNA, finetune_custom_head, lora x2 (+finetune_generation megaDNA half) — evo2 0.3.0+vtx+flash-attn sm_120 source build ~50min (noFP8 config mandatory), megaDNA pinned clone cb2f5ab + MEGABYTE_pytorch==0.2.1 (chain-fires 3 notebooks), mamba env", "status": "not_started"},
-    {"id": 7, "name": "E-family ty fixes (~165 residual, triaged at .planning/research/ty-triage-next-batch-2026-10-03.md; includes real-bug candidates: MambaCache torch.zeros(None), dnabert2.py:30 torch.dot trans_b, benchmark.py:299 labels)", "status": "not_started"},
-    {"id": 8, "name": "verify-work Test 2 (D-04 runner confirmation): push phs (49 ahead) -> merge phs->dev -> merge PR #40 (dev->main, OPEN/MERGEABLE) -> gh workflow run feasibility.yml --ref dev -> download spike-logs artifact -> fill 05-FEASIBILITY.md Runner column -> /gsd-verify-work 05 test 2 pass -> canonicalize VERIFICATION -> phase transition", "status": "blocked_on_push_merge"},
-    {"id": 9, "name": "MCP server deferred bugs: --host/--port CLI flags dead (start_server overrides from yaml, server.py:1696-1700; port change = yaml edit ONLY); dna_interpret runs captum inline on event loop (172s observed, blocks all traffic)", "status": "not_started"},
-    {"id": 10, "name": "Residue disposal: example/notebooks/benchmark/benchmark.ipynb + inference.ipynb uncommitted local run outputs (owner decide: restore or refresh-commit; currently only thing reddening local docs-sync)", "status": "owner_decision"},
-    {"id": 11, "name": "STATE housekeeping: reconcile 05-04 D-07 record (superseded by NER is_decoder shim); review unknown quick-task dir .planning/quick/261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1/ (not created this session); placeholder-grep hits in 05-02/05-03-SUMMARY + VERIFICATION to eyeball", "status": "not_started"}
+    {"id": 6, "name": "Verify regression (rerun if bg task died): .venv/bin/python -m pytest tests/inference/ tests/finetune/ -q --timeout=120; then commit Mapping batch + STATE docs lines", "status": "not_started"},
+    {"id": 7, "name": "Push batch: git push origin phs (3 local commits + new ones; egress flaky, retry)", "status": "not_started"},
+    {"id": 8, "name": "Phase 9 pre-work (owner-ordered): /gsd-map-codebase -> /gsd-graphify build -> /gsd-discuss-phase 9", "status": "not_started"}
   ],
   "blockers": [
-    {"description": "D-04 workflow_dispatch requires feasibility.yml on default branch (main); phs has 49 unpushed commits; PR #40 (dev->main) unmerged", "type": "human_action", "workaround": "push + merge chain, then dispatch"}
+    {"description": "github.com/PyPI egress intermittently failing on this box (caused today: git push timeouts x3, test-mamba build fetch abort, coverage-nightly git protocol error)", "type": "external", "workaround": "batch-push with retries; re-dispatch affected nightlies when egress stabilizes"},
+    {"description": "example-nightly run 37278002681 FAILED 19m: flash-attn==2.8.3.post1 build needs torch at get_requires_for_build_wheel time (ModuleNotFoundError inside build isolation) — first-live-fire job bug", "type": "technical", "workaround": "Phase 9 fixes the build ordering (install torch first + --no-build-isolation, or prebuilt wheelhouse step); test-mamba/coverage-nightly legs of the same run were transient network"}
   ],
-  "async_jobs": [],
-  "human_actions_pending": [
-    {"action": "git push origin phs (49 commits; push restriction lifted 2026-10-02, but owner reserved push/merge timing)", "context": "unblocks D-04 + PR #40 chain", "blocking": true},
-    {"action": "decide PR #40 (dev->main milestone merge) + phs->dev merge order", "context": "feasibility.yml must land on main for dispatch", "blocking": true},
-    {"action": "disposition of 2 residue notebooks (restore vs refresh-commit)", "context": "only remaining local docs-sync red", "blocking": false}
+  "async_jobs": [
+    {"manifest": "(none on disk)", "job_id": "37278002681", "backend": "github-actions CI dispatch (example-nightly + test-mamba + coverage-nightly)", "status": "failed (example-nightly: flash-attn build-isolation bug; other two: transient egress)", "submit_command": "workflow_dispatch on phs 07:29Z", "submitted_at": "2026-10-05T07:29:14Z", "expected_artifacts": ["stage-1 examples execution (never reached)"], "verification_command": "gh run view 37278002681 --log-failed", "resume_command": "after Phase 9 flash-attn fix: re-dispatch example-nightly"}
   ],
+  "human_actions_pending": [],
   "decisions": [
-    {"decision": "load_config TypedDict via option A (typing special) rather than notebook-side suppression", "rationale": "owner chose A 2026-10-02; landed with zero consumer edits (all consumers take bare dict)", "phase": "05"},
-    {"decision": "mcp_example x2 executed BEFORE gated families", "rationale": "owner directive 2026-10-03 '先处理 mcp 的两个'", "phase": "05"},
-    {"decision": "port 8005 fallback authorized but never fired; yaml is the ONLY working port mechanism (CLI flags dead)", "rationale": "owner directive; measured free port 8000 bound cleanly", "phase": "05"},
-    {"decision": "finetune_generation moved to GATED with _gate_megadna (data-prep fixed, DNAGPT half green, megaDNA half gated)", "rationale": "installing megaDNA would chain-force 2 other deferred notebooks; owner deferral stands", "phase": "05"},
-    {"decision": "NER is_decoder shim supersedes 05-04 D-07 rung-termination record", "rationale": "owner instruction 'fix all non-gated now' overrides D-09 typed-skip disposition", "phase": "05"}
+    {"decision": "models-cache layer dropped from CI (cold pulls; Phase 9 lands the ci.yml edit)", "rationale": "lock-only cache 15.2GiB > 10GB quota, never actually saved; 65-min cold stage 1 proven vs 2700-min budget", "phase": "8"},
+    {"decision": "Local hub cleanup executed once (84->19GB; evo-1 leftover + legacy blobs out, Qwen kept)", "rationale": "owner-approved one-off, dead data only", "phase": "8"},
+    {"decision": "Local caches are NEVER cleaned by default going forward", "rationale": "caches are the persistence layer keeping nightlies download-free; memory file no-routine-cache-cleanup.md", "phase": "8"},
+    {"decision": "Giants/evo family exits the pytest census (Phase 9 deselects the evo lane; committed executed-notebook outputs are the evidence)", "rationale": "owner directive 16:27 CST — heavy giant models should not be re-executed by pytest nightly", "phase": "9"},
+    {"decision": "ty promoted to hard QC gate; mypy retired (pre-commit -> CI -> check_code.py; [tool.mypy] last)", "rationale": "ty fast with better messages; needs E-family 165->0 triage first; static checks stay out of pytest", "phase": "9"}
   ],
-  "uncommitted_files": [" M .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-UAT.md", " M example/notebooks/benchmark/benchmark.ipynb", " M example/notebooks/inference.ipynb", "?? .gsd/", "?? .jupyter/", "?? .planning/codebase/", "?? .planning/graphs/", "?? .planning/milestone.lock", "?? .planning/quick/261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1/", "?? .planning/quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/261003-csd-PLAN.md", "?? .planning/state.json", "?? .planning/tmp/", "?? graphify-out/", "?? transformers5-npu-compat-plan.html"],
-  "next_action": "Ask owner which of A (gated family round), B (MCP server deferred bugs), C (push->merge->PR#40->dispatch chain closing verify-work Test 2) to run; then /gsd-quick or /gsd-verify-work 05 accordingly",
-  "context_notes": "Session was a verify-work session (/gsd-verify-work 05, test 2 D-04 deferred post-merge) that grew 5 side quick tasks, all closed with independent verification. UAT 05-UAT.md still has Current Test = test 2 awaiting user response. Fast lane now 1716 passed/1 skipped; slow lane 15 passed/8 typed-skips; ty 165; 21/21 notebooks executed at least once. All executors terminated; MCP server killed by PID; monitors expired. ollama still up (qwen3.8:latest)."
+  "uncommitted_files": [" M .planning/STATE.md", " M dnallm/inference/benchmark.py", " M dnallm/inference/interpret.py", " M dnallm/inference/mutagenesis.py", " M tests/test_config_mapping_contracts.py"],
+  "next_action": "1) Check/re-run the inference+finetune regression for the Mapping batch; 2) if green commit 'fix: engines accept Mapping-typed config' extension (3 source files + test) and a docs commit for the 3 new STATE decision lines; 3) push origin phs; 4) start Phase 9 pre-work: /gsd-map-codebase",
+  "context_notes": "Phase 8 fully closed (verifier passed). The Mapping batch is the second half of the ty TypedDict assignability fix (first half committed 1bcd579). Benchmark got dict(config) private-copy semantics (it mutates defaults; test pins no caller aliasing). Contract test learned types.UnionType unwrap (PEP 604). Phase 9 CONTEXT will consume 4 ready decisions from STATE. Owner rules now in memory: no-routine-cache-cleanup."
 }
