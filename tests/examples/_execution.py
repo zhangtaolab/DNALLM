@@ -214,10 +214,19 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_finetune.ipynb"): {
         "cell_timeout": 3600,
         "extra_inputs": [],
+        # 08-08 mirror endpoint: the dev box cannot reach huggingface.co
+        # directly (errno 101) while hf-mirror.com -- the endpoint dnallm's
+        # own use_mirror toggle sets -- serves the family's repos (adapter
+        # + base model verified live). Without this, an uncached repo (the
+        # PlantCAD2 LoRA adapter) fails download after retries while the
+        # cached base model silently passes, splitting the pair.
+        "env": {"HF_ENDPOINT": "https://hf-mirror.com"},
     },
     str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_inference.ipynb"): {
         "cell_timeout": 1800,
         "extra_inputs": [],
+        # Same mirror endpoint as the finetune sibling (08-08).
+        "env": {"HF_ENDPOINT": "https://hf-mirror.com"},
     },
     str(EXAMPLE_DIR / "notebooks" / "benchmark" / "benchmark.ipynb"): {
         "cell_timeout": 3600,

@@ -597,6 +597,29 @@ class TestSpecEnvOverrides:
         assert "GSD_SPEC_ONLY" not in os.environ
 
 
+class TestLoraMirrorEndpoint:
+    """Spec-level mirror endpoint for the lora pair (08-08 repair).
+
+    The dev box cannot reach huggingface.co directly while hf-mirror.com
+    (the endpoint dnallm's own ``use_mirror`` toggle installs) serves the
+    family's repos; without the override the UNCACHED PlantCAD2 LoRA
+    adapter fails download after retries while the cached base model
+    silently passes -- splitting the pair.  The pin keeps the override
+    from being silently dropped (an editorial revert fails in seconds on
+    the fast lane, not at the next 25-minute real execution).
+    """
+
+    LORA_SPECS = (
+        str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_finetune.ipynb"),
+        str(EXAMPLE_DIR / "notebooks" / "lora_finetune_inference" / "lora_inference.ipynb"),
+    )
+
+    def test_both_lora_specs_pin_the_mirror_endpoint(self) -> None:
+        """Both lora specs carry HF_ENDPOINT=hf-mirror.com for the kernel."""
+        for spec in self.LORA_SPECS:
+            assert NOTEBOOK_EXEC_SPECS[spec]["env"]["HF_ENDPOINT"] == "https://hf-mirror.com", spec
+
+
 class TestMegadnaIsolatedLane:
     """Spec-level wiring for the isolated megaDNA lane (08-04).
 
