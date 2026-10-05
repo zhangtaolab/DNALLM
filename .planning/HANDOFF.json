@@ -1,41 +1,35 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-05T16:50:00+08:00",
+  "timestamp": "2026-10-05T19:53:00+08:00",
   "phase": "9",
   "phase_name": "ci-wiring-&-census-verification",
-  "phase_dir": ".planning/phases/09-ci-wiring-census-verification (not yet created)",
+  "phase_dir": ".planning/phases/09-ci-wiring-census-verification",
   "plan": 0,
   "task": 0,
   "total_tasks": 0,
-  "status": "paused",
+  "status": "paused_at_ready_to_plan",
   "completed_tasks": [
-    {"id": 1, "name": "Phase 8 execution 9/9 (08-08 + 08-09 executors)", "status": "done", "commit": "a98da4e, 4b3f9d2"},
-    {"id": 2, "name": "Phase 8 verification (passed 8/8, 0 gaps)", "status": "done", "commit": "2e64237 (local)"},
-    {"id": 3, "name": "Phase 8 transition (ROADMAP/STATE/PROJECT -> Phase 9)", "status": "done", "commit": "86022f7 (local)"},
-    {"id": 4, "name": "gsd-fast: DNAInference/DNATrainer config dict->Mapping", "status": "done", "commit": "1bcd579 (local)"},
-    {"id": 5, "name": "gsd-fast extension: Mutagenesis/Benchmark/DNAInterpret Mapping + Benchmark private copy + 7 contract tests", "status": "in_progress", "progress": "code complete, 7/7 contract green, ruff clean; AWAITING tests/inference+tests/finetune regression result (bg task bmch4cy0x, will die with session) before commit"}
+    {"id": 1, "name": "Phase 8 execution 9/9 + verification passed (8/8, 0 gaps) + transition", "status": "done", "commit": "2e64237, 86022f7"},
+    {"id": 2, "name": "Owner closeout: cache-quota decision (drop models-cache layer), hub cleanup 84->19GB, evo-exit directive, ty/mypy swap, runtime cuts A/A", "status": "done", "commit": "9ec6bf5"},
+    {"id": 3, "name": "gsd-fast x2: all 5 facade configs Mapping-typed (ty TypedDict assignability)", "status": "done", "commit": "1bcd579, 9ec6bf5"},
+    {"id": 4, "name": "dependabot: torch ignore rule (ABI rationale); PR #41 ruff held for owner merge; PR #42 held open as record", "status": "done", "commit": "16a9ffb"},
+    {"id": 5, "name": "Knowledge refresh: codebase map 7 docs (stamped 9ec6bf5) + graphify 13094 nodes (stamped 2e74617)", "status": "done", "commit": "2e74617"},
+    {"id": 6, "name": "Phase 9 discuss: 4 gray areas, D-01..D-20 captured (14/14 recommended picks)", "status": "done", "commit": "0fe9049"}
   ],
   "remaining_tasks": [
-    {"id": 6, "name": "Verify regression (rerun if bg task died): .venv/bin/python -m pytest tests/inference/ tests/finetune/ -q --timeout=120; then commit Mapping batch + STATE docs lines", "status": "not_started"},
-    {"id": 7, "name": "Push batch: git push origin phs (3 local commits + new ones; egress flaky, retry)", "status": "not_started"},
-    {"id": 8, "name": "Phase 9 pre-work (owner-ordered): /gsd-map-codebase -> /gsd-graphify build -> /gsd-discuss-phase 9", "status": "not_started"}
+    {"id": 7, "name": "/gsd-plan-phase 9 (CONTEXT ready; researcher+planner consume D-01..D-20)", "status": "not_started"},
+    {"id": 8, "name": "After plans: /gsd-execute-phase 9 (per-plan dispatch discipline D-16; green-run gate D-17)", "status": "not_started"}
   ],
-  "blockers": [
-    {"description": "github.com/PyPI egress intermittently failing on this box (caused today: git push timeouts x3, test-mamba build fetch abort, coverage-nightly git protocol error)", "type": "external", "workaround": "batch-push with retries; re-dispatch affected nightlies when egress stabilizes"},
-    {"description": "example-nightly run 37278002681 FAILED 19m: flash-attn==2.8.3.post1 build needs torch at get_requires_for_build_wheel time (ModuleNotFoundError inside build isolation) — first-live-fire job bug", "type": "technical", "workaround": "Phase 9 fixes the build ordering (install torch first + --no-build-isolation, or prebuilt wheelhouse step); test-mamba/coverage-nightly legs of the same run were transient network"}
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Merge dependabot PR #41 (ruff 0.16.10, all checks green) — merge was permission-gated earlier today; click merge in GitHub or re-authorize", "context": "trivial patch bump, no conflicts; purely owner's call", "blocking": false},
+    {"action": "example-nightly + test-mamba + coverage-nightly need re-dispatch after Phase 9 fixes land (D-16/D-18) — run 37278002681 failure was flash-attn build-isolation, which D-04 resolves by DELETING the evo steps", "context": "Phase 9 scope, not a manual prerequisite", "blocking": false}
   ],
-  "async_jobs": [
-    {"manifest": "(none on disk)", "job_id": "37278002681", "backend": "github-actions CI dispatch (example-nightly + test-mamba + coverage-nightly)", "status": "failed (example-nightly: flash-attn build-isolation bug; other two: transient egress)", "submit_command": "workflow_dispatch on phs 07:29Z", "submitted_at": "2026-10-05T07:29:14Z", "expected_artifacts": ["stage-1 examples execution (never reached)"], "verification_command": "gh run view 37278002681 --log-failed", "resume_command": "after Phase 9 flash-attn fix: re-dispatch example-nightly"}
-  ],
-  "human_actions_pending": [],
   "decisions": [
-    {"decision": "models-cache layer dropped from CI (cold pulls; Phase 9 lands the ci.yml edit)", "rationale": "lock-only cache 15.2GiB > 10GB quota, never actually saved; 65-min cold stage 1 proven vs 2700-min budget", "phase": "8"},
-    {"decision": "Local hub cleanup executed once (84->19GB; evo-1 leftover + legacy blobs out, Qwen kept)", "rationale": "owner-approved one-off, dead data only", "phase": "8"},
-    {"decision": "Local caches are NEVER cleaned by default going forward", "rationale": "caches are the persistence layer keeping nightlies download-free; memory file no-routine-cache-cleanup.md", "phase": "8"},
-    {"decision": "Giants/evo family exits the pytest census (Phase 9 deselects the evo lane; committed executed-notebook outputs are the evidence)", "rationale": "owner directive 16:27 CST — heavy giant models should not be re-executed by pytest nightly", "phase": "9"},
-    {"decision": "ty promoted to hard QC gate; mypy retired (pre-commit -> CI -> check_code.py; [tool.mypy] last)", "rationale": "ty fast with better messages; needs E-family 165->0 triage first; static checks stay out of pytest", "phase": "9"}
+    {"decision": "See 09-CONTEXT.md D-01..D-20 (evo giants-marker exit, baseline census rebuild, collection-count guard, evo CI steps removed, epochs sandbox patch, ollama num_ctx ~8k, ty advisory->hard staged with mypy atomic retirement, models-cache layer dropped, measure-then-set budgets, named hygiene steps, full if:always uploads, docs coverage expectation, per-plan dispatch, green-run completion gate, transient legs re-dispatch)", "rationale": "14/14 recommended picks, zero dissent", "phase": "9"}
   ],
-  "uncommitted_files": [" M .planning/STATE.md", " M dnallm/inference/benchmark.py", " M dnallm/inference/interpret.py", " M dnallm/inference/mutagenesis.py", " M tests/test_config_mapping_contracts.py"],
-  "next_action": "1) Check/re-run the inference+finetune regression for the Mapping batch; 2) if green commit 'fix: engines accept Mapping-typed config' extension (3 source files + test) and a docs commit for the 3 new STATE decision lines; 3) push origin phs; 4) start Phase 9 pre-work: /gsd-map-codebase",
-  "context_notes": "Phase 8 fully closed (verifier passed). The Mapping batch is the second half of the ty TypedDict assignability fix (first half committed 1bcd579). Benchmark got dict(config) private-copy semantics (it mutates defaults; test pins no caller aliasing). Contract test learned types.UnionType unwrap (PEP 604). Phase 9 CONTEXT will consume 4 ready decisions from STATE. Owner rules now in memory: no-routine-cache-cleanup."
+  "uncommitted_files": [],
+  "next_action": "/gsd-plan-phase 9 (optionally --chain for auto plan+execute)",
+  "context_notes": "Tree clean, origin synced at 073cdde. Owner memory now carries no-routine-cache-cleanup. Machine notes: nightly cron windows 03:00/05:30 UTC on shared-HOME runner; egress to github intermittently flaky all day (retry loops handled every push)."
 }
