@@ -517,6 +517,42 @@ jobs:
           source .venv/bin/activate
           uv pip install "numpy==2.2.0"
 
+      - name: Cache bedtools rootless prefix
+        uses: actions/cache@v4
+        with:
+          path: .bedtools-env
+          key: bedtools-bioconda-${{ runner.os }}-${{ runner.arch }}
+
+      - name: "Bedtools rootless install/fallback (D-10, A10)"
+        # D-18 discovery (run 37345067326, 2026-10-05): this job's full-tree
+        # census executes the NER data_generation notebook, the CRE showcase
+        # bands test, and the script lane — all of which need the bedtools
+        # BINARY, and 3 of its 4 failures traced to exactly this gap (the
+        # 08-09 example-nightly failure class, live again on this leg).
+        # Same rootless posture as the example-nightly step (08-09 commit
+        # ea1bfd6): micromamba/bioconda into a job-local prefix (cached
+        # across runs, shared key) when the box does not already ship the
+        # binary — never apt, never sudo.
+        run: |
+          if command -v bedtools; then
+            echo "bedtools already on PATH: $(command -v bedtools)"
+            exit 0
+          fi
+          if [ -x .bedtools-env/bin/bedtools ]; then
+            echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+            echo "bedtools restored from cached prefix: $(.bedtools-env/bin/bedtools --version)"
+            exit 0
+          fi
+          echo "bedtools absent — rootless micromamba/bioconda install (no sudo)"
+          curl -Ls "https://micro.mamba.pm/api/micromamba/linux-$(uname -m)/latest" \
+            | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -p "$GITHUB_WORKSPACE/.bedtools-env" \
+            -c conda-forge -c bioconda bedtools
+          echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+          export PATH="$GITHUB_WORKSPACE/.bedtools-env/bin:$PATH"
+          command -v bedtools && bedtools --version \
+            || { echo "bedtools still missing after rootless fallback"; exit 1; }
+
       # NOTE: 27 tests carry the slow mark; 21 execute here. The 6 MCP
       # live-server probes (dnallm/mcp/tests/test_sse_client.py,
       # test_streamable_http_client.py) target localhost:8000 and no CI job
