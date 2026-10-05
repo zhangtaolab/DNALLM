@@ -1272,7 +1272,11 @@ class TestGatedNotebookExecution:
     def gated_sandbox(self, tmp_path: Path, request: pytest.FixtureRequest) -> Iterator[Path]:
         """Seed the gated notebook's directory and assert the tree stays clean."""
         nb_path = EXAMPLE_DIR / request.node.callspec.params["gated_id"]
-        yield seed_sandbox(nb_path.parent, tmp_path)
+        # D-05 (09-02): forward any spec-driven sandbox YAML patch the same
+        # way the test body consumes spec keys (spec-env precedent) --
+        # specs without a yaml_patch key seed unchanged (None).
+        spec = NOTEBOOK_EXEC_SPECS[str(nb_path)]
+        yield seed_sandbox(nb_path.parent, tmp_path, yaml_overrides=spec.get("yaml_patch"))
         assert_tree_clean()
 
     @pytest.mark.parametrize(

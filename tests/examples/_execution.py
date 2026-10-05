@@ -58,6 +58,7 @@ from pathlib import Path
 
 import nbformat
 import pytest
+import yaml
 from nbclient import NotebookClient
 from nbclient.exceptions import CellExecutionError, CellTimeoutError
 from nbformat import NotebookNode
@@ -189,6 +190,14 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
     str(EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"): {
         "cell_timeout": 3600,
         "extra_inputs": [],
+        # D-05 nightly runtime cut (owner A/A 2026-10-05): the sandbox-only
+        # YAML patch below drops num_train_epochs 3 -> 1 in the SEEDED COPY
+        # only (~31 -> ~11 min); the committed notebook and finetune_config
+        # .yaml stay byte-identical, so the census executability claim keeps
+        # resting on committed content. Both trainer.train calls read this
+        # single loaded config (RESEARCH A1), and the loop body is identical
+        # -- only the epoch count changes.
+        "yaml_patch": {"finetune_config.yaml": {"finetune": {"num_train_epochs": 1}}},
     },
     str(EXAMPLE_DIR / "notebooks" / "finetune_generation" / "finetune_generation.ipynb"): {
         "cell_timeout": 3600,
@@ -327,6 +336,7 @@ def seed_sandbox(
     src_dir: Path,
     tmp_path: Path,
     extra_inputs: list[Path | tuple[Path, str]] | None = None,
+    yaml_overrides: dict[str, dict] | None = None,
 ) -> Path:
     """Copy an example directory into a pytest tmp sandbox for execution.
 
@@ -348,12 +358,24 @@ def seed_sandbox(
             the resolved destination stays under ``tmp_path`` (T-sl7-03:
             a ``../`` escape beyond the pytest tmp dir is rejected with
             ``ValueError`` rather than writing outside the sandbox tree).
+        yaml_overrides: optional sandbox-only YAML patches (D-05 runtime
+            cut seam, 09-02): mapping of a file path RELATIVE to the
+            sandbox to a ``{section: {key: value}}`` patch dict applied to
+            the SANDBOX COPY after seeding -- never to the committed
+            source. Contract: overrides affect the tmp sandbox copy only
+            (the patched copy loses YAML comments -- acceptable scratch
+            behavior), so committed example content -- and the
+            executability claim resting on it -- stays untouched; the
+            notebook's loop body is identical, only patched scalar values
+            (e.g. the epoch count) change.
 
     Returns:
         The sandbox path the kernel should use as its cwd.
 
     Raises:
-        ValueError: a tuple extra input resolves outside ``tmp_path``.
+        ValueError: a tuple extra input resolves outside ``tmp_path``; a
+            ``yaml_overrides`` target file is missing from the sandbox; a
+            patched section is absent from the target YAML.
     """
     sandbox = tmp_path / src_dir.name
     shutil.copytree(
@@ -385,6 +407,26 @@ def seed_sandbox(
         if not dest.exists():
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
+    # D-05 (09-02): sandbox-only YAML patches, applied after seeding so the
+    # committed source tree is never touched. Fail-closed on a missing target
+    # file or a missing section -- a typo'd override must never silently
+    # leave the sandbox running the committed (uncut) values.
+    for rel_path, patch in (yaml_overrides or {}).items():
+        target = sandbox / rel_path
+        if not target.is_file():
+            raise ValueError(
+                f"yaml_overrides target {rel_path!r} not found in the sandbox "
+                f"({target}) -- refusing to patch a missing file"
+            )
+        data = yaml.safe_load(target.read_text(encoding="utf-8"))
+        for section, kv in patch.items():
+            if data is None or section not in data:
+                raise ValueError(
+                    f"yaml_overrides section {section!r} absent from "
+                    f"{rel_path!r} in the sandbox -- refusing to patch a missing section"
+                )
+            data[section].update(kv)
+        target.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     return sandbox
 
 
