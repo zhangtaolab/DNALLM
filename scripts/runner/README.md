@@ -1,4 +1,4 @@
-# Runner host setup — ollama loopback service (MCP-01, D-12)
+# Runner host setup — ollama loopback service (MCP-01, D-12, D-06)
 
 This directory holds the in-repo definition of the `dnallm-nightly` self-hosted
 runner's ollama service, so it is auditable and rebuildable by diff instead of
@@ -13,7 +13,7 @@ notebooks (`example/mcp_example/`), whose LLM endpoint is
 2. Install this unit:
    ```bash
    sudo cp scripts/runner/ollama.service /etc/systemd/system/ollama.service
-   # -- or, if the stock unit is already installed, add the two Environment
+   # -- or, if the stock unit is already installed, add the Environment
    # lines to it: systemctl edit ollama.service
    sudo systemctl daemon-reload
    sudo systemctl enable --now ollama
@@ -26,6 +26,23 @@ notebooks (`example/mcp_example/`), whose LLM endpoint is
    ```bash
    curl -s http://127.0.0.1:11434/api/tags   # must list qwen3.8:latest
    ```
+5. Re-apply after any unit edit in this repo (the Environment values are
+   read at server START, so copying the file alone changes nothing):
+   ```bash
+   sudo cp scripts/runner/ollama.service /etc/systemd/system/ollama.service
+   sudo systemctl daemon-reload
+   sudo systemctl restart ollama
+   # read-only check (no sudo):
+   systemctl show ollama -p Environment   # must show OLLAMA_CONTEXT_LENGTH=8192
+                                         # and OLLAMA_HOST=127.0.0.1:11434
+   ```
+
+**Live-drift notice (2026-10-05):** the LIVE unit on the runner was probed at
+`OLLAMA_HOST=0.0.0.0:11434` — a real LAN exposure of the unauthenticated
+model server, not the in-repo loopback pin. The re-apply step above restores
+`127.0.0.1:11434` and closes that exposure; verify with
+`systemctl show ollama -p Environment` after restarting. Never configure or
+document a `0.0.0.0` bind for this service.
 
 ## Why loopback-only (D-12)
 
@@ -34,6 +51,21 @@ binding **is the access control** for this service. The runner is a shared,
 single-tenant CI box; binding any non-loopback address would expose an
 unauthenticated model server (and a 17GB loaded model) to the network. Do not
 substitute the `0.0.0.0` example from the ollama FAQ.
+
+## Why num_ctx 8192 (D-06)
+
+`OLLAMA_CONTEXT_LENGTH=8192` pins the server-default context window. The
+qwen3.8:latest model's native context is 256k, at which every request
+allocates a ~36GB kv-cache — this dominated both mcp-notebook latency and the
+nightly VRAM budget (owner A/A runtime cut, 2026-10-05). A server default is
+the only seam that covers BOTH mcp client stacks uniformly: the pydantic_ai
+sibling talks the OpenAI-compatible `/v1` endpoint, which has no per-request
+context parameter. Precedence is per-request `options.num_ctx` > Modelfile
+`PARAMETER num_ctx` > this env > built-in default; qwen3.8:latest currently
+carries no Modelfile `num_ctx` (probed live 2026-10-05), so the env governs —
+re-probe with `ollama show qwen3.8:latest --modelfile` if the model is ever
+re-pulled. The env is read at server start: a unit edit only takes effect
+after the re-apply step above (daemon-reload + `systemctl restart ollama`).
 
 ## How the D-13 readiness probe treats a down service
 
