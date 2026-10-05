@@ -57,8 +57,8 @@ Requirements for milestone v1.1 "Example Execution Testing & Repair". Each maps 
 
 ### MCP / ollama
 
-- [ ] **MCP-01**: ollama runs on the nightly GPU runner as loopback-only systemd infrastructure with a pre-pulled small model and readiness probe; both mcp_example notebooks execute end-to-end against it; a typed `network-unavailable:` skip (with evidence) is the documented fallback only
-- [ ] **MCP-02**: Port and VRAM coexistence is planned against the existing 6 MCP live-server probes (:8000) and heavy torch tests (execution ordering documented)
+- [x] **MCP-01**: ollama runs on the nightly GPU runner as loopback-only systemd infrastructure with a pre-pulled small model and readiness probe; both mcp_example notebooks execute end-to-end against it; a typed `network-unavailable:` skip (with evidence) is the documented fallback only
+- [x] **MCP-02**: Port and VRAM coexistence is planned against the existing 6 MCP live-server probes (:8000) and heavy torch tests (execution ordering documented)
 
 ## v1.2 Requirements
 
@@ -124,8 +124,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SHOW-05 | Phase 7 | Complete |
 | SHOW-06 | Phase 7 | Complete |
 | SHOW-07 | Phase 7 | Complete |
-| MCP-01 | Phase 8 | Pending |
-| MCP-02 | Phase 8 | Pending |
+| MCP-01 | Phase 8 | Complete |
+| MCP-02 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 32 total

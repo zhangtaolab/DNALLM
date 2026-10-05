@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 8
 current_phase_name: Full Execution Rollout & Repair Loop
 status: executing
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-10-04T22:36:53.107Z"
+stopped_at: Completed 08-08-PLAN.md
+last_updated: "2026-10-05T04:05:26.537Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 8 execution started
-state_head: 648b91bd1ffb16e5d9a663a6977ef6c23f1a6c57
+state_head: 9f4c4301983af30cbd847150b8991631f8921b6c
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 60
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 8 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -82,6 +82,8 @@ Progress: [████████████████████] 11/11 p
 | Phase 08 P05 | 57 min | 2 tasks | 8 files |
 | Phase 08 P06 | 20 min | 2 tasks | 5 files |
 | Phase 08 P07 | 157 min | 2 tasks | 2 files |
+| Phase 08 P08 | ~13h | 3 tasks | 5 files |
+| Phase 08 P08 | ~13h | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -150,6 +152,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: [08-07] evo family CLOSED: 08-06's empty OPEN-RUNG ledger collapsed Task 1 to a confirmation run (5P/0S 49s; tests/utils 168P)
 - [Phase 08]: [08-07] evo venv-only stack (flash_attn/stripedhyena/evo2) added to OPTIONAL_IMPORT_MODULES — 08-06's D-21 stamp cell failed the static import check in the project venv; fixed at the check's seam, not the notebook
 - [Phase 08]: [08-07] A4/CI-05 verified at load time (offline load, evo-1 .pt-free, blobs unchanged 14,889 MiB); .pt-zero guarantee scoped to the evo-1 dir — evo2_1b_base.pt is its native checkpoint
+- [Phase 08]: 08-08: lora+mcp families CLOSED on dev box (196P/1S census); LoRA-adapter repair at the spec-env seam (HF_ENDPOINT=hf-mirror.com, huggingface.co unreachable); D-13 retry probe + D-07 stage contract landed for 08-09 wiring
+- [Phase 08]: 08-08: stage-boundary cleanup+assert discipline (owner directive): kill orphaned stage processes, verify port free, >=35Gi available before any heavy stage, before/after recorded in the census log
 
 ### Pending Todos
 
@@ -197,8 +201,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T22:36:53.069Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-10-05T04:05:26.501Z
+Stopped at: Completed 08-08-PLAN.md
 Resume file: None
 
 ## Deferred Verification
