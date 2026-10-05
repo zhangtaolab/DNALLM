@@ -9,6 +9,7 @@ including performance evaluation, metrics calculation, and
 import os
 import numpy as np
 from pathlib import Path
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import torch
@@ -48,7 +49,7 @@ class Benchmark:
 
     def __init__(
         self,
-        config: dict | None = None,
+        config: Mapping[str, Any] | None = None,
         models: list[dict] | None = None,
         datasets: dict[str, Any] | None = None,
         metrics: list[str] | None = None,
@@ -85,7 +86,9 @@ class Benchmark:
         self.datasets_dict = datasets or {}
 
         if config is not None:
-            self.config = config
+            # Private writable copy: default sections (inference/task) are
+            # backfilled below without mutating the caller's mapping.
+            self.config = dict(config)
             if "benchmark" in config:
                 self.prepared = self.__load_from_config()
             else:

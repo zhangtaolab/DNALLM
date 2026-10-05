@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 from scipy.special import softmax, expit
 from tqdm import tqdm
+from collections.abc import Mapping
 from typing import Any
 
 import torch
@@ -46,7 +47,7 @@ class Mutagenesis:
             dataloader: DataLoader for batch processing of sequences
     """
 
-    def __init__(self, model: Any, tokenizer: Any, config: dict):
+    def __init__(self, model: Any, tokenizer: Any, config: Mapping[str, Any]):
         """Initialize Mutagenesis class.
 
         Args:

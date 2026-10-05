@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from collections.abc import Mapping
 from typing import Any
 from captum.attr import (
     LayerIntegratedGradients,
@@ -110,7 +111,7 @@ class DNAInterpret:
         self,
         model: PreTrainedModel,
         tokenizer: PreTrainedTokenizer,
-        config: dict | None = None,
+        config: Mapping[str, Any] | None = None,
     ):
         """
         Initialize the interpreter.
