@@ -63,6 +63,7 @@ nav:
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md
     - Troubleshooting: user_guide/troubleshooting.md
+    - Continuous Integration: user_guide/continuous_integration.md
     - Tutorial:
       - End-to-End Workflow: user_guide/tutorial/end_to_end_workflow.md
     - Data Processing:
