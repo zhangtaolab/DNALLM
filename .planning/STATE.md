@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 9
+current_phase: 09
 current_phase_name: CI Wiring & Census Verification
 status: executing
-stopped_at: Phase 9 context gathered
-last_updated: "2026-10-05T13:22:28.637Z"
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-10-05T14:49:40.576Z"
 last_activity: 2026-10-05
-last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: b4cf484aa081fc20cce07ed67601719aa72485f6
+last_activity_desc: Phase 09 execution started
+state_head: 6218948e235787ecd729a959555797813257827d
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 20
+  completed_plans: 21
   percent: 80
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-05)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 9 — CI Wiring & Census Verification (pre-work: knowledge-base refresh per Pending Todos)
+**Current focus:** Phase 09 — CI Wiring & Census Verification
 
 ## Current Position
 
-Phase: 9 (CI Wiring & Census Verification) — READY TO EXECUTE
-Plan: Not started
+Phase: 09 (CI Wiring & Census Verification) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-10-05 — Phase 8 complete, transitioned to Phase 9
+Last activity: 2026-10-05 — Phase 09 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
@@ -85,6 +85,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 08 P08 | ~13h | 3 tasks | 5 files |
 | Phase 08 P08 | ~13h | 3 tasks | 5 files |
 | Phase 08 P09 | 3h 22min | 3 tasks | 3 files |
+| Phase 09 P01 | 12 min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08 close 2026-10-05] Owner rule: 本地 cache 一般情况下一律不清理 — local caches (hf/modelscope/giants/ollama) are the persistence layer that keeps nightlies download-free; cleanup only with explicit owner approval + dead-data evidence (2026-10-05 cleanup was the one approved exception; Phase 9 planning must NOT propose routine cleanup)
 - [Owner decision 2026-10-05] Type-checking QC: **ty 升硬门,mypy 降级退休** — Phase 9 scope: triage E-family diagnostics to 0 (post-261003-0p0 baseline 165), then ty becomes a hard CI gate (fast leg + check_code.py + pre-commit); mypy exits pre-commit + CI + check_code.py ([tool.mypy] config retired last). Static checks stay OUT of pytest (lint lane, not behavior lane)
 - [Owner decision 2026-10-05, A/A] Nightly runtime cuts (Phase 9 scope): (1) finetune_custom_head epochs 3→1 via TEST-SANDBOX-ONLY YAML patch (harness sandbox-patch step, ~31→~11min; committed notebook content unchanged; loop body identical so executability claim intact); (2) mcp_example pair: per-request ollama `options.num_ctx` ~8k at the D-13/probe layer (today's 256k kv-cache held 36GB and dominated both latency and the 14:07 VRAM trough; same model per D-11, same turns, notebook content unchanged). Both land with same-change tests in Phase 9
+- [Phase 09]: [Phase 09] 09-01: giants marker registered + applied spec-derived via _GIANTS_GATED/_gated_test_param (composable marks; only the 1 evo execution test marked, 4 fast evo contract tests stay on every fast leg per OQ2); measured census triple 188/197 (9 deselected = 8 mcp + 1 giants) pinned by the new Stage 0.5 hard gate (D-03), the deliberate census-growth bump-point (09-02 bumps it to 193/202)
+- [Phase 09]: [Phase 09] 09-01: D-04/D-11 topology surgery — all four evo provisioning blocks and both models.lock-keyed hub cache restores deleted (cold pulls by design; flash-attn build-isolation bug of run 37278002681 dissolved with deletion; local giants tier + $HOME hub caches remain, never cleaned per owner rule); D-19 cron-string gates on all three nightly jobs close the 05:30 double-trigger before phs merges to main; D-16 dispatch fired: run 37327398343 (outcome = 09-04/D-17 scope)
 
 ### Pending Todos
 
@@ -215,9 +218,9 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T11:34:26.037Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-ci-wiring-census-verification/09-CONTEXT.md
+Last session: 2026-10-05T14:49:40.534Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None
 
 ## Deferred Verification
 

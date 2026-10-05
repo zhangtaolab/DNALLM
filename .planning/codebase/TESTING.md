@@ -18,7 +18,7 @@ last_mapped_at: 2026-10-05
 - Plain `assert` plus `pytest.raises(..., match=...)`, `pytest.fail(...)`, `pytest.skip(...)`; unittest.mock for doubles
 
 **Registered markers** (strict — unregistered marks error):
-`slow`, `pdf`, `performance`, `integration`, `unit`, `inference`, `utils`, `data`, `legacy`
+`slow`, `pdf`, `performance`, `integration`, `unit`, `inference`, `utils`, `data`, `legacy`, `giants` (owner-policy giant-model/evo census exclusion, D-01; example-nightly deselects with `-m "not giants"`)
 
 **Run Commands:**
 
@@ -167,7 +167,7 @@ pytest -m "not slow" --cov --cov-report=term-missing
 
 - **Fast leg** (push/PR, hosted): `pytest -m "not slow" --cov --junitxml=pytest-junit.xml` + skip audit + exit-code canary + advisory mypy; matrix py3.11/3.12/3.13 × numpy 1.26.4/2.2.0; separate windows (py3.12) and CUDA 12.1/12.4 legs
 - **coverage-gate** (push/PR): `pytest -m "not slow" -ra --durations=0 --junitxml=... --cov -p no:cacheprovider -p no:progress` + skip audit
-- **Nightlies** (schedule/dispatch only, self-hosted `dnallm-nightly` runner — never PR code): coverage-nightly (full suite incl. slow, model caches keyed on `models.lock`), example-nightly (staged-serial example census, `timeout-minutes: 2700`, `HF_ENDPOINT=hf-mirror.com`), mamba kernel-build leg
+- **Nightlies** (schedule/dispatch only, self-hosted `dnallm-nightly` runner — never PR code; each job cron-string-gated to exactly one schedule entry, D-19: 03:00 UTC coverage-nightly + mamba leg, 05:30 UTC example-nightly): coverage-nightly (full suite incl. slow; cold pulls, no model-cache layer — D-11), example-nightly (staged-serial example census with a hard pre-stage-1 collection-count assertion — D-03 — and the giants deselect; `timeout-minutes: 2700`, `HF_ENDPOINT=hf-mirror.com`), mamba kernel-build leg
 - **Exit-code canary:** every fast leg writes a deliberately failing test and asserts pytest exits non-zero (guards against exit-code masking regressions)
 - Real-model census status at closeout: 196 passed / 1 skipped / 0 failed
 
