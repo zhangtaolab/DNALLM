@@ -517,7 +517,8 @@ markers = [
     "inference: marks inference-related tests",
     "utils: marks utility function tests",
     "data: marks data handling tests",
-    "legacy: marks tests for legacy/deprecated features"
+    "legacy: marks tests for legacy/deprecated features",
+    "giants: marks giant-model (evo-class) execution tests excluded from the example-nightly census by owner policy (deselect with '-m \"not giants\"')"
 ]
 console_output_style = "progress"
 minversion = "8.4"

@@ -96,7 +96,7 @@ settings defined there include:
 - `python_files = "test_*.py"`, `python_classes = "Test*"`, `python_functions = "test_*"`
 - `addopts = -v --tb=short --strict-markers --strict-config --asyncio-mode=auto --timeout=300`
 - `markers` — `slow`, `pdf`, `performance`, `integration`, `unit`, `inference`, `utils`,
-  `data`, `legacy`
+  `data`, `legacy`, `giants`
 - `minversion = "8.4"`
 
 Coverage is configured in the same file, under `[tool.coverage.run]` and
@@ -121,6 +121,10 @@ Use markers to organize and selectively run tests:
 - **`@pytest.mark.inference`**: Tests specific to inference functionality
 - **`@pytest.mark.utils`**: Tests for utility functions
 - **`@pytest.mark.data`**: Tests for data handling functionality
+- **`@pytest.mark.giants`**: Giant-model (evo-class) execution tests excluded from the
+  example-nightly census by owner policy (D-01, 2026-10-05) — a marker deselection, not a
+  typed skip (the runner environment is available). The dispatch/manual lane runs them
+  explicitly with `pytest -m giants`; example-nightly deselects with `-m "not giants"`
 
 ### Using Markers
 

@@ -795,7 +795,7 @@ jobs:
         # carries the non-zero verdict when anything failed.
         run: |
           set +e
-          .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml -k "not mcp_example"
+          .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml -k "not mcp_example" -m "not giants"
           rc=$?
           echo "stage1-examples=$rc" >> stage-results.txt
           .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q --junitxml=pytest-junit-yaml-stage1.xml

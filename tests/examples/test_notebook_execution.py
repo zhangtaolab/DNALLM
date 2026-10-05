@@ -1129,6 +1129,43 @@ _TIMEOUT_7200_GATED: frozenset[str] = frozenset({
     "notebooks/lora_finetune_inference/lora_finetune.ipynb",
 })
 
+# Gated entries excluded from the example-nightly census by owner policy
+# (D-01, directive 2026-10-05): giant-model (evo-class) execution tests.
+# The runner environment is AVAILABLE, so a typed skip would fake
+# "environment-unavailable" and pollute the skip audit -- the marker
+# deselection is the only accepted mechanism and produces no skip message
+# (CI-03).  The dispatch/manual lane runs these explicitly with -m giants.
+# The fast evo contract tests (TestEvoIsolatedLane, TestSpecEnvOverrides
+# evo rows) are deliberately NOT members: they are kernel-free fast-lane
+# tests that must keep running on every fast leg.
+_GIANTS_GATED: frozenset[str] = frozenset({
+    "notebooks/generation_evo_models/inference.ipynb",
+})
+
+
+def _gated_test_param(nb_id: str) -> str | pytest.ParameterSet:
+    """Build the parametrize entry for a gated notebook id, accumulating marks.
+
+    Lane-exclusion marks are composable: the 7200s timeout override keeps
+    the outer kill strictly above the 3600s cell budget, and the giants
+    mark is the owner-policy census exclusion (D-01).
+
+    Args:
+        nb_id: Notebook id (POSIX relative to EXAMPLE_DIR).
+
+    Returns:
+        A bare id when no mark applies, else a :func:`pytest.param` carrying
+        the accumulated marks.
+    """
+    marks: list[pytest.MarkDecorator] = []
+    if nb_id in _TIMEOUT_7200_GATED:
+        marks.append(pytest.mark.timeout(7200))
+    if nb_id in _GIANTS_GATED:
+        marks.append(pytest.mark.giants)
+    if marks:
+        return pytest.param(nb_id, marks=marks, id=nb_id)
+    return nb_id
+
 
 @pytest.mark.slow
 @pytest.mark.timeout(3600)
@@ -1144,12 +1181,7 @@ class TestGatedNotebookExecution:
 
     @pytest.mark.parametrize(
         "gated_id",
-        [
-            pytest.param(nb_id, marks=pytest.mark.timeout(7200))
-            if nb_id in _TIMEOUT_7200_GATED
-            else nb_id
-            for nb_id, _gate in GATED_NOTEBOOKS
-        ],
+        [_gated_test_param(nb_id) for nb_id, _gate in GATED_NOTEBOOKS],
         ids=str,
     )
     def test_gated_notebook_probes_then_executes(
