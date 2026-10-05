@@ -449,24 +449,28 @@ Caveat for the planner: `yaml.safe_dump` drops the committed file's comments in 
 | A5 | A new docs CI/testing page under the existing nav (e.g. User Guide or a development section) is acceptable placement for D-15 | CI-09 | Pure discretion; owner may want a different location — wording and nav entry are planner's call |
 | A6 | evo execution on the local dispatch/manual lane remains runnable post-D-04 (local venv + giants tier intact per owner rule) | D-04 | If the local evo venv was on `.scratch` and wiped, the dispatch lane needs a documented rebuild path (08-06 recipe exists in-repo via ensure_evo_kernel + stage-0 history) |
 
-## Open Questions
+## Open Questions (RESOLVED — all four dispositions adopted by plans 09-01..09-04)
 
 1. **Coverage-nightly vs the giants marker**
    - What we know: coverage-nightly runs the FULL suite (no `-m` filter, ci.yml:507) and the evo gated test currently typed-skips there (cold venv, `optional-dep:` prefix allowlisted — audit green).
    - What's unclear: should coverage-nightly ALSO deselect giants (`-m "not giants"`), or keep the honest typed skip?
    - Recommendation: leave coverage-nightly unchanged in this phase (minimal wiring; the skip is allowlisted and honest); note it in the 09 rollup. If the owner prefers census purity, it is a one-flag addition later.
+   - Resolution (RESOLVED): keep coverage-nightly unchanged this phase — the gated evo test keeps its allowlisted optional-dep typed skip there. Adopted by 09-01 Task 1 (its action explicitly forbids touching coverage-nightly's unfiltered run). Census purity via one flag remains a possible later change; the 09 rollup notes it.
 2. **Exact giants-marker scope (A3) and the resulting census triple**
    - What we know: 197 total collected; stage-1 selectors already deselect 8 (mcp); 1 vs 5 giants candidates.
    - What's unclear: owner preference on including the 4 fast contract tests.
    - Recommendation: mark only the execution test; D-02 baseline fixes the literal either way.
+   - Resolution (RESOLVED): mark ONLY the 1 gated evo execution test via `_GIANTS_GATED` (09-01 Task 1); the 4 fast evo contract tests stay unmarked on every fast leg. The resulting triple is pinned by D-03 (188/197, 9 deselected at wave 1) and deliberately bumped by 09-02 Task 1 (193/202, 9 deselected) when its 5 contract tests grow the census.
 3. **D-12 backstop arithmetic for coverage-nightly**
    - What we know: 900-min kill vs ~970-min recomputed on-paper ceiling (07-02 note); measured showcase actuals ~15 min.
    - What's unclear: raise `timeout-minutes` above the recomputed sum, or keep 900 with a documented per-test-marks-primary rationale.
    - Recommendation: decide after the D-02 measured run; the 08-CENSUS steady-state numbers (stage 1 ~3h, stages 2/3 ~45min) suggest actuals sit far below both figures, so the comment rewrite may simply record measured totals and keep both backstops.
+   - Resolution (RESOLVED): decided at execution with the measurement in hand — 09-04 Task 2 step 4 owns the decision (raise `timeout-minutes` above the recomputed sum OR keep 900 with a documented intentional override citing the run id, recorded in the comment); never proportional estimation.
 4. **Runner cache-store eviction posture after D-11**
    - What we know: store sits at 10.37GB (threshold); removing the models-cache layer stops nightly save attempts.
    - What's unclear: whether the two uv-cuda entries should be pruned (owner action; GitHub-side).
    - Recommendation: out of scope (no deletion without owner action); mention in rollup only.
+   - Resolution (RESOLVED): out of scope — no cache-store deletion or pruning without explicit owner action (owner rule: local/remote caches are never cleaned by default; memory file no-routine-cache-cleanup). GitHub-side eviction is owner discretion, mentioned in the 09 rollup only.
 
 ## Environment Availability
 
