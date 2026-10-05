@@ -56,6 +56,15 @@ Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREME
 - All errors found by real execution fixed — example code, docs/example/ mirror, and exposed dnallm library bugs
 - CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
 
+Shipped in Phase 8 (Full Execution Rollout & Repair Loop, 2026-10-05):
+
+- ✓ Entire example/ tree executes for real on the shared GB10 box: final census **196 passed / 1 benign skip / 0 failed** (2:59:34) — all 21 notebooks (incl. the formerly gated evo/megaDNA/lora/mcp families), 3 marimo apps (D-18 quadruple incl. export-html validation), `generate_bpe_dataset.py`, every YAML through real `load_config()`; fast lane 1807P/1S with zero new skips
+- ✓ 13 repair classes fixed WITH same-change regression tests (DNATokenizer unk, np.fromstring shim, allow_patterns passthrough, column-drop span, lora mirror endpoint, bedtools rootless, D-13 retry probe, …); every notebook repair carries its byte-synced docs mirror; zero cwd false-repairs
+- ✓ `models.lock` grown to 24 rows / 14 sha-pinned new ids, prefix↔source= aligned (CI-04); evo-1 fetched safetensors-only into the `~/models-giants` tier outside every cached path (CI-05); A4 offline-load proof recorded
+- ✓ example-nightly job complete (CI-06 pre-authorization exercised): staggered 05:30 UTC, staged-serial D-07 (torch → MCP :8000 probes 3+3 → ollama loopback), fail-soft with nonzero summary exit, uv-wheelhouse/bedtools cached, job-level HF_ENDPOINT=hf-mirror.com; first real dispatch consumed (all 6 failures dispositioned) and the completed job's first full dispatch run landed green on its prereq steps
+- ✓ ollama loopback systemd unit + runner README in-repo (MCP-01); mcp_example pair green in the both-up state with 6 live-server probes across both transports (MCP-02)
+- Verifier verdict: passed — 8/8 must-haves, 11/11 requirement IDs, 0 gaps (08-VERIFICATION.md, 2e64237)
+
 Shipped in Phase 6 + Phase 7 (PlantHelixSeek Showcase, 2026-10-03/04):
 
 - ✓ Registry entries for `PlantHelixSeek-CRE`/`-Anno` (owner-org ModelScope repos, frozen label order, provenance comments) + `dnallm.utils.genomic_coords` coordinate helpers + committed Arabidopsis showcase loci (≤200kb/set, selection.md frozen contract with observed values and tolerance bands) — Phase 6
@@ -121,6 +130,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Census before repair: full-tree real execution with class-tagged exact tracebacks ranks the repair queue | Phase 8 repair must be evidence-ranked, not anecdotal | ✓ Landed Phase 5 (05-CENSUS.md: 11 PASS / 12 FAIL / 2 deferred) |
 | Showcase honesty: illustrative-loci framing is dual (full provenance-cell disclaimer + per-figure captions) and enforced by a genome-wide denylist structure test | Single-locus results must never read as genome-wide accuracy; SHOW-07 intent is mechanical plus judgment, both covered | ✓ Landed Phase 7 (UAT-verified on GitHub blob rendering and wording) |
 | Assertion ownership is two-layer: notebooks print metrics + floors comparison; the authoritative band assertions live in `tests/examples/` and parse selection.md at test startup | Transparent in-notebook numbers without brittle in-kernel asserts; single source of truth for thresholds (D-05/D-06) | ✓ Landed Phase 7 (`_parse_floors`/`_parse_bands`, parse-guard, 4/4 band rows) |
+| Repair rollout by model family with per-repair full-census reconciliation (D-01/D-03) | Same root cause benefits the whole family; every step keeps a full-tree baseline, so regressions surface immediately | ✓ Landed Phase 8 (final census identical across 08-08/08-09: 196P/1S/0F) |
+| Nightly coexistence is staged-serial with explicit VRAM/process cleanup + assert between stages (D-07 + owner VRAM directive 2026-10-05) | Heavy torch, MCP :8000, and ollama share one box; unserviced leftovers compound into OOM (orphaned 24.5GB server lesson) | ✓ Landed Phase 8 (≥35Gi-available rule in the rollup inheritance notes; census trough 39Gi, floor held) |
+| models-cache layer dropped from CI; cold pulls per run (owner decision 2026-10-05) | Lock-only cache ≈15.2GiB > 10GB Actions quota and never actually saved; cold stage 1 measured green at 65 min against a 2700-min budget | ✓ Adopted Phase 8 close; ci.yml edit lands in Phase 9 |
 
 ## Evolution
 
@@ -140,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-04 after Phase 7*
+*Last updated: 2026-10-05 after Phase 8*

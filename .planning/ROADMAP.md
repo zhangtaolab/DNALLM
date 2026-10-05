@@ -30,7 +30,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - [x] **Phase 5: Execution Harness, Honest Gates & Runner Feasibility** - Private nbclient execution harness proven on a pilot, WR-08/09 closed together with the docs-mirror drift they hid, and GB10 feasibility verdicts for the environment-gated model families (completed 2026-10-02; **REOPENED 2026-10-02** for post-closure gap closure — GAP-1 NT x transformers-5.17 compat shim + GAP-2 full example/ census bar, plans 05-04..06)
 - [x] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist (completed 2026-10-03)
 - [x] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror (completed 2026-10-04)
-- [ ] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place
+- [x] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place (completed 2026-10-05)
 - [ ] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation
 
 ## Phase Details
@@ -117,7 +117,7 @@ Plans:
   4. `models.lock` carries all newly-executed model ids (~8+) with ModelScope-first prefixes aligned to each notebook's actual `source=` route and revision pins; evo-1 is fetched safetensors-only via `allow_patterns` (~12.9GB, not 29.7GB) with giants tiered outside the 10GB-quota cache so the existing warm cache is never evicted
   5. Both mcp_example notebooks execute end-to-end against loopback-only ollama on the nightly runner (systemd service, pre-pulled small model, readiness probe), with port/VRAM coexistence planned against the 6 MCP live-server probes on :8000 and the heavy torch tests; a typed `network-unavailable:` skip with evidence is the documented fallback only
 
-**Plans**: 9/9 plans executed
+**Plans**: 9/9 plans complete
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -167,7 +167,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 5. Execution Harness, Honest Gates & Runner Feasibility | v1.1 | 6/6 | Complete    | 2026-10-03 |
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
-| 8. Full Execution Rollout & Repair Loop | v1.1 | 9/9 | In Progress|  |
+| 8. Full Execution Rollout & Repair Loop | v1.1 | 9/9 | Complete    | 2026-10-05 |
 | 9. CI Wiring & Census Verification | v1.1 | 0/TBD | Not started | - |
 
 ---

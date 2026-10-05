@@ -2,46 +2,46 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 8
-current_phase_name: Full Execution Rollout & Repair Loop
-status: verifying
-stopped_at: Completed 08-09-PLAN.md
-last_updated: "2026-10-05T07:31:08.549Z"
-last_activity: 2026-10-04
-last_activity_desc: Phase 8 execution started
-state_head: 63848057e3933f06b8d0253f92253a4de59f9631
+current_phase: 9
+current_phase_name: CI Wiring & Census Verification
+status: planning
+stopped_at: Phase 8 complete, ready to plan Phase 9
+last_updated: "2026-10-05T08:26:58.748Z"
+last_activity: 2026-10-05
+last_activity_desc: Phase 8 complete, transitioned to Phase 9
+state_head: 2e64237528d1d87e3f09f28714440cdefefb546d
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
   completed_plans: 20
-  percent: 60
+  percent: 80
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-04)
+See: .planning/PROJECT.md (updated 2026-10-05)
 
 **Core value:** A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
-**Current focus:** Phase 8 — Full Execution Rollout & Repair Loop
+**Current focus:** Phase 9 — CI Wiring & Census Verification (pre-work: knowledge-base refresh per Pending Todos)
 
 ## Current Position
 
-Phase: 8 (Full Execution Rollout & Repair Loop) — EXECUTING
-Plan: 9 of 9
-Status: Phase complete — ready for verification
-Last activity: 2026-10-04 — Phase 8 execution started
+Phase: 9 — CI Wiring & Census Verification
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-05 — Phase 8 complete, transitioned to Phase 9
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
-Progress: [████████████████████] 11/11 plans ([██████░░░░] 60%)
+Progress: [████████████████████] 20/20 plans ([████████████████████] 100% of planned; Phase 9 TBD)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11 (v1.1 Phase 05; v1 plans archived with the milestone)
+- Total plans completed: 20 (v1.1 Phase 05; v1 plans archived with the milestone)
 - Average duration: ~53 min (Phase 05: 320 min across 6 plans)
 - Total execution time: ~9.1 hours (v1) + ~5.3 hours (v1.1 Phase 05)
 
@@ -52,7 +52,7 @@ Progress: [████████████████████] 11/11 p
 | 05 | 6 | 320 min | ~53 min |
 | 06 | 3 | - | - |
 | 7 | 2 | - | - |
-| 08 | TBD | - | - |
+| 8 | 9 | - | - |
 | 09 | TBD | - | - |
 
 **Recent Trend:**
@@ -156,6 +156,11 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08]: 08-08: lora+mcp families CLOSED on dev box (196P/1S census); LoRA-adapter repair at the spec-env seam (HF_ENDPOINT=hf-mirror.com, huggingface.co unreachable); D-13 retry probe + D-07 stage contract landed for 08-09 wiring
 - [Phase 08]: 08-08: stage-boundary cleanup+assert discipline (owner directive): kill orphaned stage processes, verify port free, >=35Gi available before any heavy stage, before/after recorded in the census log
 
+- [Phase 08 close 2026-10-05] Final census frozen: 196P/1S/0F identical across 08-08/08-09 (2:59:34); fast lane 1807P/1S zero new skips; verifier passed 8/8 must-haves + 11/11 reqs, 0 gaps (2e64237); example-nightly first full dispatch in flight
+- [Phase 08 close 2026-10-05] Owner: models-cache layer dropped from CI — cold pulls accepted (65-min cold stage 1 proven vs 2700-min budget; lock-only cache 15.2GiB > 10GB quota and never actually saved); ci.yml edit lands in Phase 9
+- [Phase 08 close 2026-10-05] Owner: hub cleanup executed — ~/.cache/huggingface/hub 84→19GB (evo-1-8k full-repo leftover 28GB + unreferenced legacy blobs 38GB removed; Qwen 19GB kept; giants tier + modelscope untouched)
+- [Phase 08 close 2026-10-05] Owner directive 16:27 CST: 大模型(giants 类,evo family)不列入 pytest census — Phase 9 wires example-nightly WITHOUT the evo-lane pytest steps (deselect precedent: stage-1 mcp), giants-prefetch + evo-venv CI steps retire; evo tests stay in-repo as dispatch/manual lane; committed executed-notebook outputs remain the evidence; models.lock evo rows stay as provenance
+
 ### Pending Todos
 
 - [Owner decision 2026-10-04] BEFORE Phase 9 discuss/plan: refresh knowledge artifacts — run `/gsd-map-codebase` (refresh .planning/codebase/ maps, the direct planner/researcher input) then `/gsd-graphify` (rebuild .planning/graphs/). Trigger: Phase 8 execution completes + verification/transition done. Both maps are pre-v1.1-execution stale (2026-09-29 era); the plan-time drift gate will otherwise fire red at Phase 9 planning.
@@ -168,7 +173,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 07] Advisory review findings open in 07-REVIEW-DISPOSITION.md (8 of 8 open; none failing a must-have): WR-01 check_docs_sync IGNORE still misses gitignored benchmark runtime dirt (local-only red, CI clean); WR-02 CRE cell-18 band-loop can raise bare KeyError if selection.md changes shape; 6 info (stale lock comment, _execution docstring count, anno.md per-gene-F1 prose, unused locus_key params, bedtools not in nightly CI image, Anno label-index assert suggestion) — `/gsd-code-review 7 --fix` addresses them if wanted
 - Runtime budget risk: ~24 new slow tests with naive serial ceilings 14–48h vs the 900-min nightly job — measure per-artifact budgets during the Phase 5 pilot and Phase 8 rollout; escalation pre-authorized (CI-06)
 - From v1 ship triage (still open, live in /gsd-ship ledger): WR-01 nightly test-mamba continue-on-error; WR-02 plot.py prepare_data drops task_type; WR-03 workflows README stale — note WR-08/09 are v1.1 Phase 5 scope, these three are not
-- GitHub cache quota: evo-1 is a 29.7GB repo against a 10GB cache quota — safetensors-only `allow_patterns` + giant tier outside cached paths is Phase 8 scope (CI-05)
+- RESOLVED 2026-10-05 (owner decision): GitHub cache quota — models-cache layer dropped from CI entirely (cold pulls; 65-min cold stage 1 proven); box-side hub cleanup executed same day (84→19GB)
+- [Phase 09 wiring] Owner directive 2026-10-05: evo/giants excluded from the pytest census — example-nightly deselects the evo lane (stage-1 mcp precedent); giants prefetch + evo venv CI steps retire in Phase 9; scope-fence it in 09-CONTEXT
+- [Phase 08 leftover] example-nightly 05:30 cron double-triggers coverage-nightly + test-mamba via their own schedules — one-line job-gate fix pending owner call
+- [Phase 08→09] example-nightly first full dispatch (run 37278002681) outcome lands per Phase-5 D-04 post-merge boundary — verify during Phase 9 census wiring
 - [Phase 05] D-04 feasibility dispatch deferred post-merge — `workflow_dispatch` needs feasibility.yml on the default branch; fires after phs→dev→main integration (phs range unpushed, manual-push rule)
 - [Phase 05] Open review findings in quick-task code (05-REVIEW-DISPOSITION.md): CR-01 and WR-01 both FIXED (261003-hhj commit 032b308; 261003-ij4 commit 3fe80bf) — no open critical/warning findings from the Phase 05 incremental review remain
 - RESOLVED 2026-10-03 (owner decision B+): 06-03 Task 2 fla blocker — flash-linear-attention 0.5.2 installed into .venv; 16-window probe through the unmodified dnallm route confirmed healthy separation (0.7673/0.2230 vs dead fallback 0.0073/0.0087); 06-03 completed (commits e9d00df, b68e1a5). Follow-up upgraded by owner 17:03 CST: fla becomes a declared pyproject dependency (in-phase quick task after 06-03). Original evidence: example/notebooks/plant_helixseek_shared/.scratch/fla-fallback-diagnosis.md + fla-probe-0.5.2.md
@@ -203,7 +211,7 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-05T07:31:08.513Z
-Stopped at: Completed 08-09-PLAN.md
+Stopped at: Phase 8 complete, ready to plan Phase 9
 Resume file: None
 
 ## Deferred Verification
