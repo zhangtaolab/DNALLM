@@ -1,6 +1,12 @@
 # models.lock — remote artifacts fetched by the slow test suite.
 # Keys the gated CI job's model cache (actions/cache hashFiles).
 # Edit an entry to rotate the cache key.
+# Pinned form (D-15, 08-09): <hf|ms>  <repo-id>@<revision-sha>  # purpose.
+# Pins are registry head shas verified live at write time (ms rows:
+# modelscope git ls-remote; hf rows: HF main via the mirror API). The
+# prefix must match the using notebook's ACTIVE source= route (ms ⇒
+# source="modelscope", hf ⇒ source="huggingface"; D-15 alignment).
+# Rows below the original ten predate pinning and stay unpinned.
 hf  microsoft/DialoGPT-small                         # tests/models/test_model.py::test_download_real_huggingface_connection
 hf  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_inference_real_model.py (from_pretrained, HF route)
 ms  zhangtaolab/plant-dnabert-BPE                    # tests/finetune/test_trainer_real_model.py (12 call sites, source=modelscope)
@@ -11,4 +17,18 @@ ms  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_infe
 ms  ZhejiangLab-LifeScience/DNA_bert_4               # tests/models/test_model.py::test_download_real_modelscope_connection
 ms  zhangtaolab/PlantHelixSeek-CRE                    # tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope)
 ms  zhangtaolab/PlantHelixSeek-Anno                   # tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope)
+ms  zhangtaolab/plant-dnagpt-BPE@1311a7f1186ba69351727a5705137294a7ca6651  # example notebooks generation, finetune_multi_labels, finetune_custom_head (source=modelscope)
+ms  zhangtaolab/plant-dnagpt-6mer@2a59c2f251329442711aa90fcf28e0456fd3189a  # example notebook finetune_NER_task/data_generation_and_inference (source=modelscope)
+ms  zhangtaolab/plant-dnagpt-singlebase@e385e48b2dbcd9557e32b51b3cc88f1d24644c31  # example notebook finetune_generation (source=modelscope)
+ms  zhangtaolab/plant-nucleotide-transformer-BPE@e66bf2535aa2fc3297f677195d6b7e122c3a0510  # example notebook finetune_NER_task + generate_bpe_dataset.py script (source=modelscope)
+ms  zhangtaolab/nucleotide-transformer-v2-100m-promoter@c138b8c50e0013354a3aac0cef722be608bcffd0  # example benchmark_config.yaml third model (source=modelscope)
+ms  zhangtaolab/tRNADetector@6a97760db772e1a7d87d625a318a01a585e23ec2  # example notebook inference_for_tRNA (source=modelscope)
+ms  zhangtaolab/tRNAPointer@2fb8c41566441cedf227b73aedddb30f7e718724  # example notebook inference_for_tRNA (source=modelscope)
+ms  zhangtaolab/plant-dnabert-BPE-promoter_strength_leaf@f74808179d8e7262f30874322694798eb0cf8266  # example notebook interpretation (source=modelscope)
+ms  zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast@ef0261f0e570bdb67858f25e486a5d35598eb4e2  # example notebook in_silico_mutagenesis (source=modelscope)
+hf  InstaDeepAI/nucleotide-transformer-v2-50m-multi-species@81b29e5786726d891dbf929404ef20adca5b36f1  # example notebook embedding_attention (raw AutoModel route, source=huggingface)
+hf  lingxusb/megaDNA_updated@ed298be539e1667b52a1181a6472528a34dd2ef9  # example notebooks generation_megaDNA, finetune_custom_head, finetune_generation (source=huggingface)
+hf  kuleshov-group/PlantCAD2-Small-l24-d0768@f756c255cb76e9f538c3acec04acf4214ed03fb3  # example lora pair notebooks (source=huggingface)
+hf  arcinstitute/evo2_1b_base@2279e1df422c991037470302360edd40d0d2ea1e  # example notebook generation_evo_models (2.7GB, fits cache; evo2_1b_base.pt is its native ckpt)
+hf  togethercomputer/evo-1-8k-base@a9be7b66485080893399ade87c7d34f81ad3e249  # example notebook generation_evo_models — GIANTS tier: safetensors-only prefetch into ~/models-giants, deliberately outside the quota cache (D-14/CI-05); MS mirror exists but route unproven (OQ3)
 dataset:  zhangtaolab/plant-multi-species-core-promoters  # DNADataset.from_modelscope (trainer tests)
