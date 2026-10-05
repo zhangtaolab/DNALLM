@@ -1,9 +1,11 @@
-"""Runner-infrastructure contract tests (D-06/D-12, 09-02).
+"""Runner-infrastructure contract tests (D-06/D-12, 09-02; SSE probe, 09-04).
 
 Pins the in-repo ollama systemd unit's TWO Environment lines and the
 owner re-apply op documented in the runner README, so an editorial revert
 of either pin fails on the fast lane in SECONDS instead of at the next
-~25-minute real execution (D-07 same-change test contract):
+~25-minute real execution (D-07 same-change test contract). 09-04 adds
+the example-nightly stage-2 SSE readiness-probe shape contract (see
+:class:`TestExampleNightlySseProbe`):
 
 * ``OLLAMA_CONTEXT_LENGTH=8192`` -- the D-06 server-default runtime cut.
   The qwen3.8:latest model (17.74GB) allocates a ~36GB kv-cache per
@@ -29,6 +31,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 UNIT_FILE = REPO_ROOT / "scripts" / "runner" / "ollama.service"
 RUNNER_README = REPO_ROOT / "scripts" / "runner" / "README.md"
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
 def _load_unit_text() -> str:
@@ -39,6 +42,19 @@ def _load_unit_text() -> str:
 def _load_runner_readme() -> str:
     """Return the runner README text (the owner re-apply op source)."""
     return RUNNER_README.read_text(encoding="utf-8")
+
+
+def _load_sse_probe_block() -> str:
+    """Return the example-nightly stage-2 SSE step body from ci.yml.
+
+    Sliced between the step's unique ``--transport sse`` server-start line
+    and the following ``Stage 2.5`` step, so the assertions below read
+    exactly the readiness-probe wiring (09-04, D-17 repair).
+    """
+    text = CI_WORKFLOW.read_text(encoding="utf-8")
+    start = text.index("--transport sse > mcp-server-sse.log")
+    end = text.index("Stage 2.5", start)
+    return text[start:end]
 
 
 class TestOllamaUnitPins:
@@ -83,3 +99,44 @@ class TestRunnerReadmeReapply:
             "scripts/runner/README.md must carry the Why num_ctx 8192 (D-06) "
             "rationale section beside Why loopback-only"
         )
+
+
+class TestExampleNightlySseProbe:
+    """The example-nightly stage-2 SSE readiness probe shape (09-04, D-17).
+
+    An SSE endpoint answers 200 + ``text/event-stream`` and then holds the
+    body open forever, so a curl EXIT-CODE success probe (`curl -m 2 ... &&
+    break`) always fails at the max-time cap even against a healthy server:
+    the first live exercise of the stage (run 37345067326) polled a fully
+    serving server for 17 minutes and failed the stage on probe shape alone.
+    Readiness must be asserted on the RECEIVED HTTP status (``%{http_code}``
+    prints 200 once headers arrive, 000 when nothing answered).
+    """
+
+    def test_sse_probe_asserts_received_http_status(self) -> None:
+        """The /sse readiness check compares %{http_code} to 200, not curl's exit code."""
+        block = _load_sse_probe_block()
+        assert "%{http_code}" in block, (
+            "the stage-2 SSE readiness probe must read curl's %{http_code} "
+            "output -- an SSE body never completes under -m, so curl's exit "
+            "code can never signal readiness (run 37345067326: healthy server "
+            "polled for 17 minutes, stage recorded failed)"
+        )
+        assert '[ "$CODE" = "200" ]' in block, (
+            "the stage-2 SSE readiness probe must gate on a received 200 "
+            "status; 000 (nothing answered) is the only not-ready signal"
+        )
+
+    def test_sse_probe_never_requires_curl_exit_success(self) -> None:
+        """The pre-repair exit-code probe shapes are absent from the SSE step."""
+        block = _load_sse_probe_block()
+        old_shapes = (
+            "curl -s -o /dev/null -m 2 http://localhost:8000/sse && break",
+            "if curl -s -o /dev/null -m 2 http://localhost:8000/sse; then",
+        )
+        for shape in old_shapes:
+            assert shape not in block, (
+                f"stage-2 SSE probe regressed to the always-fail shape ({shape!r}): "
+                "SSE responses never complete under -m, so curl exits 28 at the "
+                "cap even when the server is serving -- assert %{http_code} instead"
+            )

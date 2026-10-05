@@ -898,6 +898,17 @@ jobs:
           exit 0
 
       - name: "Stage 2: MCP live-server probes — sse (server restarted, one transport at a time)"
+        # SSE readiness must be asserted on the RECEIVED HTTP STATUS, never
+        # on curl's exit code: an SSE endpoint answers 200 +
+        # text/event-stream and then holds the body open forever, so a
+        # `curl -m 2 ... && break` success probe always dies at the 2s cap
+        # (exit 28) even against a healthy server — the first live exercise
+        # of this stage (run 37345067326) polled a fully-up, serving server
+        # for 17 minutes and recorded the stage failed on probe shape alone
+        # (mcp-server-sse.log: startup complete 04:52:17, graceful kill
+        # 05:09:46, zero server errors). %{http_code} still prints when -m
+        # cuts the body mid-stream and prints 000 only when nothing
+        # answered, so a received "200" is the honest readiness signal.
         run: |
           set +e
           set -o pipefail
@@ -905,10 +916,12 @@ jobs:
             --transport sse > mcp-server-sse.log 2>&1 &
           SERVER_PID=$!
           for i in $(seq 1 90); do
-            curl -s -o /dev/null -m 2 http://localhost:8000/sse && break
+            CODE=$(curl -s -o /dev/null -m 2 -w "%{http_code}" http://localhost:8000/sse)
+            [ "$CODE" = "200" ] && break
             sleep 10
           done
-          if curl -s -o /dev/null -m 2 http://localhost:8000/sse; then
+          CODE=$(curl -s -o /dev/null -m 2 -w "%{http_code}" http://localhost:8000/sse)
+          if [ "$CODE" = "200" ]; then
             .venv/bin/python -m pytest dnallm/mcp/tests/test_sse_client.py -q \
               --junitxml=pytest-junit-mcp-stage2-sse.xml 2>&1 | tee stage2-sse.log
             echo "stage2-mcp-probes-sse=$?" >> stage-results.txt
