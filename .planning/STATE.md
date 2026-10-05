@@ -6,10 +6,10 @@ current_phase: 9
 current_phase_name: CI Wiring & Census Verification
 status: planning
 stopped_at: Phase 8 complete, ready to plan Phase 9
-last_updated: "2026-10-05T08:35:12.140Z"
+last_updated: "2026-10-05T09:15:48.906Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 86022f78d6f72866d6d44abcb6f20437bab5adc9
+state_head: 16a9ffb85ac48552afdcb5f920157bbbdc8a537a
 progress:
   total_phases: 5
   completed_phases: 4
@@ -160,6 +160,9 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 08 close 2026-10-05] Owner: models-cache layer dropped from CI — cold pulls accepted (65-min cold stage 1 proven vs 2700-min budget; lock-only cache 15.2GiB > 10GB quota and never actually saved); ci.yml edit lands in Phase 9
 - [Phase 08 close 2026-10-05] Owner: hub cleanup executed — ~/.cache/huggingface/hub 84→19GB (evo-1-8k full-repo leftover 28GB + unreferenced legacy blobs 38GB removed; Qwen 19GB kept; giants tier + modelscope untouched)
 - [Phase 08 close 2026-10-05] Owner directive 16:27 CST: 大模型(giants 类,evo family)不列入 pytest census — Phase 9 wires example-nightly WITHOUT the evo-lane pytest steps (deselect precedent: stage-1 mcp), giants-prefetch + evo-venv CI steps retire; evo tests stay in-repo as dispatch/manual lane; committed executed-notebook outputs remain the evidence; models.lock evo rows stay as provenance
+- [Phase 08 close 2026-10-05] Owner rule: 本地 cache 一般情况下一律不清理 — local caches (hf/modelscope/giants/ollama) are the persistence layer that keeps nightlies download-free; cleanup only with explicit owner approval + dead-data evidence (2026-10-05 cleanup was the one approved exception; Phase 9 planning must NOT propose routine cleanup)
+- [Owner decision 2026-10-05] Type-checking QC: **ty 升硬门,mypy 降级退休** — Phase 9 scope: triage E-family diagnostics to 0 (post-261003-0p0 baseline 165), then ty becomes a hard CI gate (fast leg + check_code.py + pre-commit); mypy exits pre-commit + CI + check_code.py ([tool.mypy] config retired last). Static checks stay OUT of pytest (lint lane, not behavior lane)
+- [Owner decision 2026-10-05, A/A] Nightly runtime cuts (Phase 9 scope): (1) finetune_custom_head epochs 3→1 via TEST-SANDBOX-ONLY YAML patch (harness sandbox-patch step, ~31→~11min; committed notebook content unchanged; loop body identical so executability claim intact); (2) mcp_example pair: per-request ollama `options.num_ctx` ~8k at the D-13/probe layer (today's 256k kv-cache held 36GB and dominated both latency and the 14:07 VRAM trough; same model per D-11, same turns, notebook content unchanged). Both land with same-change tests in Phase 9
 
 ### Pending Todos
 
@@ -198,6 +201,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261004-dyw | Showcase display enhancement: PNG mimes everywhere + pgt zoom windows + new combined notebook (window Chr1:5220001-5260000 +5kb flank; pygenometracks adopted, GPL override recorded; leaf-DNase bedGraph + truth GTF + region FASTA committed artifacts) | 2026-10-04 | 4c2e5bd | [261004-dyw-planthelixseek-showcase-notebook-vega-ve](./quick/261004-dyw-planthelixseek-showcase-notebook-vega-ve/) |
 | 12 | gsd-fast: guard all FASTA header interval regex matches against None in the three showcase notebooks (ty Match\|None fix; 4 sites, RuntimeError guard style, mirrors synced, 19 fast tests green) | 2026-10-04 | cbc5735 | — |
 | 13 | gsd-fast: DNAInference/DNATrainer config params dict->Mapping[str, Any] (ty TypedDict assignability for load_config output in notebooks; no mutation sites); 3 contract tests | 2026-10-05 | 86022f7 | — |
+| 14 | gsd-fast: Mutagenesis/Benchmark/DNAInterpret config -> Mapping; Benchmark backfills into a private dict(config) copy (no caller aliasing); contract tests extended to 5 engines + no-alias pin (types.UnionType unwrap lesson); fast-subset 389P | 2026-10-05 | 16a9ffb | — |
 
 ## Deferred Items
 
