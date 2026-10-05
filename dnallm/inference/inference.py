@@ -36,6 +36,7 @@ Example:
 import os
 import warnings
 import json
+from collections.abc import Mapping
 from typing import Any
 from pathlib import Path
 from tqdm import tqdm
@@ -79,7 +80,7 @@ class DNAInference:
         self,
         model: Any,
         tokenizer: Any,
-        config: dict,
+        config: Mapping[str, Any],
         lora_adapter: str | None = None,
         **kwargs,
     ) -> None:

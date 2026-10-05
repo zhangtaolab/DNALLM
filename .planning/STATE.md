@@ -6,10 +6,10 @@ current_phase: 9
 current_phase_name: CI Wiring & Census Verification
 status: planning
 stopped_at: Phase 8 complete, ready to plan Phase 9
-last_updated: "2026-10-05T08:26:58.748Z"
+last_updated: "2026-10-05T08:35:12.140Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 8 complete, transitioned to Phase 9
-state_head: 2e64237528d1d87e3f09f28714440cdefefb546d
+state_head: 86022f78d6f72866d6d44abcb6f20437bab5adc9
 progress:
   total_phases: 5
   completed_phases: 4
@@ -36,7 +36,7 @@ Last activity: 2026-10-05 — Phase 8 complete, transitioned to Phase 9
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
 
-Progress: [████████████████████] 20/20 plans ([████████████████████] 100% of planned; Phase 9 TBD)
+Progress: [████████████████████] 20/20 plans ([████████░░] 80% of planned; Phase 9 TBD)
 
 ## Performance Metrics
 
@@ -197,6 +197,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261003-ryz | Close Phase-06 review info findings IN-01..06: fetch_sequence path branch releases pyfastx handles + cleans only a .fxi it created, 3 same-change tests (aaf6308); ASCII-only bare-numeric chrom digits (c19999a); import-purity test restores the package attribute + identity guard (3662ea5); Anno label_names re-quoted, one-line diff gate (7790920); fla extra asserted by exact bracket-member parse (2a0ba40); local .scratch/ ignore removed by live masked/unmasked check-ignore evidence — root .gitignore:60 covers it, 06-01 .py-coverage claim corrected (188a4f6); dispositions IN-01..06 fixed, open: 0; 36 fast tests green, branch pushed | 2026-10-03 | aaf6308, c19999a, 3662ea5, 7790920, 2a0ba40, 188a4f6 | [261003-ryz-close-phase-06-review-info-findings-in-0](./quick/261003-ryz-close-phase-06-review-info-findings-in-0/) |
 | 261004-dyw | Showcase display enhancement: PNG mimes everywhere + pgt zoom windows + new combined notebook (window Chr1:5220001-5260000 +5kb flank; pygenometracks adopted, GPL override recorded; leaf-DNase bedGraph + truth GTF + region FASTA committed artifacts) | 2026-10-04 | 4c2e5bd | [261004-dyw-planthelixseek-showcase-notebook-vega-ve](./quick/261004-dyw-planthelixseek-showcase-notebook-vega-ve/) |
 | 12 | gsd-fast: guard all FASTA header interval regex matches against None in the three showcase notebooks (ty Match\|None fix; 4 sites, RuntimeError guard style, mirrors synced, 19 fast tests green) | 2026-10-04 | cbc5735 | — |
+| 13 | gsd-fast: DNAInference/DNATrainer config params dict->Mapping[str, Any] (ty TypedDict assignability for load_config output in notebooks; no mutation sites); 3 contract tests | 2026-10-05 | 86022f7 | — |
 
 ## Deferred Items
 

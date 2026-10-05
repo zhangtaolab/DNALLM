@@ -41,6 +41,7 @@ Usage Example:
 """
 
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 from collections.abc import Callable
 import math
@@ -126,7 +127,7 @@ class DNATrainer:
     def __init__(
         self,
         model: Any,
-        config: dict,
+        config: Mapping[str, Any],
         datasets: DNADataset | None = None,
         extra_args: dict | None = None,
         use_lora: bool = False,
