@@ -105,17 +105,49 @@ _YAML_VALUE_RE = re.compile(
 # Data/config file extensions: a token ending in one of these is a file
 # reference, never a model id (e.g. data/TAIR10_GFF3_chr1_....gff3 fetches).
 _FILE_EXTENSION_SUFFIXES: tuple[str, ...] = (
-    ".yaml", ".yml", ".csv", ".tsv", ".py", ".md", ".ipynb", ".json", ".txt",
-    ".gz", ".fa", ".fas", ".fasta", ".fna", ".pt", ".safetensors", ".gff",
-    ".gff3", ".gtf", ".bed", ".bedgraph", ".pkl", ".parquet", ".toml", ".log",
-    ".html", ".svg", ".png", ".jpg",
+    ".yaml",
+    ".yml",
+    ".csv",
+    ".tsv",
+    ".py",
+    ".md",
+    ".ipynb",
+    ".json",
+    ".txt",
+    ".gz",
+    ".fa",
+    ".fas",
+    ".fasta",
+    ".fna",
+    ".pt",
+    ".safetensors",
+    ".gff",
+    ".gff3",
+    ".gtf",
+    ".bed",
+    ".bedgraph",
+    ".pkl",
+    ".parquet",
+    ".toml",
+    ".log",
+    ".html",
+    ".svg",
+    ".png",
+    ".jpg",
 )
 
 # MIME top-level types: display-mime dict keys ("image/png", "text/plain")
 # in the showcase notebooks are org/name-shaped but not model artifacts.
-_MIME_TOP_LEVEL_TYPES = frozenset(
-    {"application", "audio", "font", "image", "message", "multipart", "text", "video"}
-)
+_MIME_TOP_LEVEL_TYPES = frozenset({
+    "application",
+    "audio",
+    "font",
+    "image",
+    "message",
+    "multipart",
+    "text",
+    "video",
+})
 
 _SOURCE_ROUTE_RE = re.compile(r"""\bsource\s*=\s*["'](\w+)["']""")
 _ROUTE_TO_LOCK_PREFIX = {"modelscope": "ms", "huggingface": "hf"}
@@ -145,17 +177,67 @@ def _parse_lock_rows(
     Raises:
         ValueError: on any malformed or unrecognized non-comment row.
     """
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    model_rows: list[tuple[str, str, str | None]] = []
+    dataset_id = ""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for lineno, raw in enumerate(lines, start=1):
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        parts = line.split()
+        if parts[0] in ("hf", "ms"):
+            if len(parts) != 2 or not _ORG_NAME_RE.fullmatch(parts[1].split("@", 1)[0]):
+                raise ValueError(
+                    f"{path}:{lineno}: malformed model row (expected "
+                    f"'<hf|ms>  <org/name>[@<sha>]'): {raw!r}"
+                )
+            repo_id, _, sha = parts[1].partition("@")
+            model_rows.append((parts[0], repo_id, sha or None))
+        elif parts[0] == "dataset:":
+            if len(parts) != 2 or not _ORG_NAME_RE.fullmatch(parts[1].split("@", 1)[0]):
+                raise ValueError(
+                    f"{path}:{lineno}: malformed dataset row (expected "
+                    f"'dataset:  <org/name>'): {raw!r}"
+                )
+            dataset_id = parts[1].split("@", 1)[0]
+        else:
+            raise ValueError(
+                f"{path}:{lineno}: unrecognized lock row (expected 'hf'/'ms' model "
+                f"row or 'dataset:'): {raw!r}"
+            )
+    return model_rows, dataset_id
 
 
 def _iter_scan_files(root: Path) -> Iterator[Path]:
     """Yield .ipynb/.py/.yaml files under root, pruning dot-dirs and __pycache__."""
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix not in _SCAN_SUFFIXES:
+            continue
+        rel_parts = path.relative_to(root).parts
+        if any(
+            part.startswith(".") or part in _PRUNED_DIR_NAMES for part in rel_parts[:-1]
+        ) or path.name.startswith("."):
+            continue
+        yield path
 
 
 def _code_text(path: Path) -> str:
     """Return code-bearing text: notebook code cells only (the _code_cells idiom)."""
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    if path.suffix == ".ipynb":
+        nb = json.loads(path.read_text(encoding="utf-8"))
+        return "\n".join(
+            "".join(cell["source"]) if isinstance(cell["source"], list) else cell["source"]
+            for cell in nb["cells"]
+            if cell["cell_type"] == "code"
+        )
+    if path.suffix == ".yaml":
+        # Strip per-line comments so value-position matching never reads a
+        # commented-out model path as a live reference.
+        return "\n".join(
+            line.split("#", 1)[0] if not line.lstrip().startswith("#") else ""
+            for line in path.read_text(encoding="utf-8").splitlines()
+        )
+    return path.read_text(encoding="utf-8")
 
 
 def _is_model_id_candidate(token: str) -> bool:
@@ -164,7 +246,15 @@ def _is_model_id_candidate(token: str) -> bool:
     Rejects URL/www fragments, ``*.git`` clone targets, file-extension
     carriers, and MIME-type strings, on top of the org/name fullmatch shape.
     """
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    if not _ORG_NAME_RE.fullmatch(token):
+        return False
+    if "http" in token or "www" in token:
+        return False
+    if token.endswith(".git"):
+        return False
+    if token.endswith(_FILE_EXTENSION_SUFFIXES):
+        return False
+    return token.split("/", 1)[0] not in _MIME_TOP_LEVEL_TYPES
 
 
 def _example_model_id_candidates(root: Path = EXAMPLE_DIR) -> dict[str, set[Path]]:
@@ -174,7 +264,16 @@ def _example_model_id_candidates(root: Path = EXAMPLE_DIR) -> dict[str, set[Path
     and .yaml files contribute raw text; YAML files additionally match
     unquoted scalar-value positions with per-line comment stripping.
     """
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    candidates: dict[str, set[Path]] = {}
+    for path in _iter_scan_files(root):
+        text = _code_text(path)
+        tokens = {match.group(1) for match in _QUOTED_TOKEN_RE.finditer(text)}
+        if path.suffix == ".yaml":
+            tokens.update(match.group(1) for match in _YAML_VALUE_RE.finditer(text))
+        for token in tokens:
+            if _is_model_id_candidate(token):
+                candidates.setdefault(token, set()).add(path)
+    return candidates
 
 
 def _find_unlocked_ids(
@@ -183,13 +282,19 @@ def _find_unlocked_ids(
     candidates: dict[str, set[Path]],
 ) -> dict[str, set[Path]]:
     """Return candidates that are neither lock rows, the dataset row, nor allowlisted."""
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    locked = {repo_id for _, repo_id, _ in model_rows} | {dataset_id}
+    allowed = {token for token, _ in _NON_MODEL_ALLOWLIST}
+    return {
+        token: files
+        for token, files in candidates.items()
+        if token not in locked and token not in allowed
+    }
 
 
 def _active_text(text: str) -> str:
     """Drop comment lines (the _active_lines idiom): alternative source= routes
     are documented as comments; only the ACTIVE route is contract-relevant."""
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    return "\n".join(line for line in text.splitlines() if not line.strip().startswith("#"))
 
 
 def _route_alignment_violations(
@@ -204,23 +309,52 @@ def _route_alignment_violations(
     lock-prefix == route (covered/skipped sets documented in the module
     docstring). Returns ``(violations, covered_file_count)``.
     """
-    raise NotImplementedError("CI-08 guard RED stub (implemented in the GREEN step)")
+    prefix_by_repo = {repo_id: prefix for prefix, repo_id, _ in model_rows}
+    violations: list[str] = []
+    covered = 0
+    for path in _iter_scan_files(root):
+        if path.suffix not in (".ipynb", ".py"):
+            continue  # YAML configs carry model paths but no source= routes
+        active = _active_text(_code_text(path))
+        routes = set(_SOURCE_ROUTE_RE.findall(active))
+        referenced = {
+            token
+            for token in (match.group(1) for match in _QUOTED_TOKEN_RE.finditer(active))
+            if token in prefix_by_repo
+        }
+        if len(referenced) != 1 or len(routes) != 1:
+            continue  # ambiguous or route-less: the documented skipped set
+        repo_id = next(iter(referenced))
+        route = next(iter(routes))
+        expected = _ROUTE_TO_LOCK_PREFIX.get(route)
+        if expected is None:
+            violations.append(
+                f"{path}: ACTIVE source={route!r} maps to no lock prefix "
+                f"(known routes: {sorted(_ROUTE_TO_LOCK_PREFIX)})"
+            )
+            continue
+        covered += 1
+        if prefix_by_repo[repo_id] != expected:
+            violations.append(
+                f"{path}: ACTIVE source={route!r} implies lock prefix {expected!r} "
+                f"but models.lock prefixes {repo_id!r} as {prefix_by_repo[repo_id]!r} "
+                f"(the models.lock header alignment rule)"
+            )
+    return violations, covered
 
 
 def _write_notebook(path: Path, *code_cells: str) -> None:
     """Write a minimal single-kernel notebook JSON with the given code cells."""
     path.write_text(
-        json.dumps(
-            {
-                "cells": [
-                    {"cell_type": "code", "metadata": {}, "source": cell.splitlines(keepends=True)}
-                    for cell in code_cells
-                ],
-                "metadata": {},
-                "nbformat": 4,
-                "nbformat_minor": 5,
-            }
-        ),
+        json.dumps({
+            "cells": [
+                {"cell_type": "code", "metadata": {}, "source": cell.splitlines(keepends=True)}
+                for cell in code_cells
+            ],
+            "metadata": {},
+            "nbformat": 4,
+            "nbformat_minor": 5,
+        }),
         encoding="utf-8",
     )
 
@@ -236,8 +370,12 @@ class TestLockParsing:
         assert {prefix for prefix, _, _ in model_rows} <= {"hf", "ms"}
         shas = [sha for _, _, sha in model_rows]
         # Both documented forms exist: pinned rows (@sha) and legacy unpinned rows.
-        assert any(sha is not None for sha in shas), "no pinned rows found -- parse lost the @sha form"
-        assert any(sha is None for sha in shas), "no unpinned rows found -- header says ten legacy rows stay unpinned"
+        assert any(sha is not None for sha in shas), (
+            "no pinned rows found -- parse lost the @sha form"
+        )
+        assert any(sha is None for sha in shas), (
+            "no unpinned rows found -- header says ten legacy rows stay unpinned"
+        )
 
     def test_malformed_model_row_raises_value_error(self, tmp_path: Path) -> None:
         """Unparseable model-shaped rows fail the guard instead of passing silently."""
@@ -340,7 +478,8 @@ class TestRouteAlignment:
         )
         violations, covered = _route_alignment_violations(nb_dir, model_rows)
         assert covered == 1, "synthetic mismatch fixture must be covered, not skipped"
-        assert len(violations) == 1 and "mismatch.ipynb" in violations[0], violations
+        assert len(violations) == 1, violations
+        assert "mismatch.ipynb" in violations[0], violations
 
     def test_synthetic_aligned_route_is_not_reported(self, tmp_path: Path) -> None:
         """Positive control: modelscope route + ms prefix passes and is covered."""
@@ -364,7 +503,7 @@ class TestRouteAlignment:
         _write_notebook(
             nb_dir / "commented.ipynb",
             'name = "zhangtaolab/mini-model"\n'
-            "# model, tok = load_model_and_tokenizer(name, source=\"huggingface\")\n"
+            '# model, tok = load_model_and_tokenizer(name, source="huggingface")\n'
             'model, tok = load_model_and_tokenizer(name, source="modelscope")\n',
         )
         violations, covered = _route_alignment_violations(nb_dir, model_rows)
