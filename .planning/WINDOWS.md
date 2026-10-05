@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 3
 fixed_count: 7
-total_count: 15
-last_updated: 2026-10-02T08:34:21.655Z
+total_count: 16
+last_updated: 2026-10-05T15:45:36.353Z
 ---
 
 # Broken Windows Ledger
@@ -30,6 +30,7 @@ last_updated: 2026-10-02T08:34:21.655Z
 | 13 | 05 | unrun-verify | example/mcp_example |  | Census deferred-owner rows (05-06, D-08/T-05-16): both ollama mcp client notebooks never executed - ollama probe GREEN (qwen3.8:latest) but dnallm MCP server endpoint down and uv pip install cells must never touch the project venv; needs the Phase-8 ollama/VRAM coexistence plan (owner decision); durable gated tests skip network-unavailable with live probe evidence and fail loudly if both endpoints come up | open |  | 2026-10-02T08:34:21.484Z |  |
 | 14 | 05 | deviation | dnallm/inference/benchmark.py | 296 | Census FAIL finding (05-06): Benchmark.run hardcodes self.datasets[di]['labels'] while example benchmark_config.yaml declares label_column 'label' - KeyError before any model loads; blocks the benchmark notebook (and its NT third-model disposition) until repaired; Phase 8 repair queue | open |  | 2026-10-02T08:34:21.569Z |  |
 | 15 | 05 | skipped-test | tests/examples/test_notebook_execution.py |  | 05-06 gated typed skips (sanctioned, self-healing): optional-dep probe-then-execute for evo/megaDNA prerequisites, finetune_custom_head megaDNA demo cell and PlantCAD lora pair (mamba_ssm); environment-unavailable script-lane skip (05-05 pattern) unchanged; all matched by audit_skips against registered prefixes | open |  | 2026-10-02T08:34:21.655Z |  |
+| 16 | 09 | unmet-truth | tests/benchmark/test_benchmark.py |  | Pre-existing fast-lane failure (found by 09-02 verify, reproduced at plan-start 3557e0b): TestBenchmark::test_plot_for_regression pandas TypeError float() argument ... not dict via _astype_nansafe in the plot path; not caused by any Phase 09 change (09-02 delta +8P/+0F/+0S); likely quick-task 13/14 Mapping fallout; logged in 09 deferred-items.md | open |  | 2026-10-05T15:45:36.353Z |  |
 
 ````json
 [
@@ -225,6 +226,19 @@ last_updated: 2026-10-02T08:34:21.655Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-02T08:34:21.655Z",
+    "resolved_at": null,
+    "milestone": "v1.1"
+  },
+  {
+    "id": 16,
+    "kind": "unmet-truth",
+    "phase": "09",
+    "file": "tests/benchmark/test_benchmark.py",
+    "line": null,
+    "description": "Pre-existing fast-lane failure (found by 09-02 verify, reproduced at plan-start 3557e0b): TestBenchmark::test_plot_for_regression pandas TypeError float() argument ... not dict via _astype_nansafe in the plot path; not caused by any Phase 09 change (09-02 delta +8P/+0F/+0S); likely quick-task 13/14 Mapping fallout; logged in 09 deferred-items.md",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-05T15:45:36.353Z",
     "resolved_at": null,
     "milestone": "v1.1"
   }

@@ -5,16 +5,16 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 09
 current_phase_name: CI Wiring & Census Verification
 status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-10-05T15:10:29.195Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-10-05T15:53:41.896Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 09 execution started
-state_head: 1a8e6f8497fd46d67fc712c044a16e37d200c10b
+state_head: e85eb73b42eea52df9cf1090fdd530a4846a72cb
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
   percent: 80
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 ## Current Position
 
 Phase: 09 (CI Wiring & Census Verification) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 09 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
@@ -87,6 +87,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 08 P09 | 3h 22min | 3 tasks | 3 files |
 | Phase 09 P01 | 12 min | 3 tasks | 5 files |
 | Phase 09 P03 | 15 min | 2 tasks | 3 files |
+| Phase 09 P02 | 38 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 09]: 09-03: quoted-only extraction misses unquoted YAML model paths (benchmark_config.yaml path: rows) — the CI-08 scanner applies quoted-token + YAML-value-position patterns to .yaml files (must-have: every example YAML config covered)
 - [Phase 09]: 09-03: route-alignment guard covers 15 single-id/single-route live files (>=10 non-vacuity floor pinned); ambiguous multi-id/multi-route files, raw-AutoModel embedding_attention, marimo runtime dropdowns, and YAML configs are the documented skipped set
 - [Phase 09]: 09-03: AUDIT-04 published user-visibly (D-15) — docs/user_guide/continuous_integration.md states kernel-subprocess coverage is unmeasured by design so the example lane does not move the 96.30% gate; out-of-docs links use blob URLs (relative paths to .github/ would 404 on the Pages site)
+- [Phase 09]: 09-02: D-05 landed at both seams — seed_sandbox owns yaml_overrides application (fail-closed on missing file/section), the SPEC owns the value (yaml_patch key, finetune_custom_head epochs 3->1) forwarded by the gated fixture spec.get()-style; committed example content byte-identical (D-05 honesty contract)
+- [Phase 09]: 09-02: D-03 census triple bumped 188/197 -> 193/202 (9 deselected unchanged: 8 mcp + 1 giants) in the SAME commit whose collected tests cause the growth (the designed bump-point); both ci.yml Stage 0.5 carriers updated from a fresh measurement with the exact stage-1 flags
+- [Phase 09]: 09-02: D-06 landed as OLLAMA_CONTEXT_LENGTH=8192 in the in-repo ollama unit beside the byte-preserved 127.0.0.1 loopback pin; owner re-apply (09-USER-SETUP.md, PENDING) makes it live AND closes the live 0.0.0.0 bind drift (T-09-03); 09-04 Task 2 asserts the read-only systemctl evidence before its baseline dispatch
+- [Phase 09]: 09-02: pre-existing fast-lane failure test_plot_for_regression proven pre-existing by a worktree run at plan-start HEAD (1825P/1F/1S -> 1833P/1F/1S = +8P/+0F/+0S); deferred-items.md + WINDOWS.md id 16; also: first D-16 dispatch ran stale remote phs (e9056c2) — cancelled, phs pushed, re-dispatched as 37335797121 at e85eb73b (push before dispatch, lesson for 09-04)
 
 ### Pending Todos
 
@@ -223,8 +228,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T15:10:29.152Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-10-05T15:53:36.044Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
 
 ## Deferred Verification
