@@ -352,7 +352,9 @@ def _handle_evo1_models(
                         state_dict = model.backbone.state_dict()
                         del model
                         del model_config
-                        global_config = dotdict(yaml.safe_load(open(config_path)))  # type: ignore
+                        # IN-02: context manager so the config handle closes.
+                        with open(config_path) as f:  # type: ignore
+                            global_config = dotdict(yaml.safe_load(f))
                         model = StripedHyena(global_config)
                         model.load_state_dict(state_dict, strict=True)
                         model.to_bfloat16_except_poles_residues()
