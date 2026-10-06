@@ -14,7 +14,7 @@ This tutorial demonstrates sequence generation and scoring with megaDNA, a speci
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 The megaDNA model checkpoint unpickles classes from the `megaDNA` package, so the

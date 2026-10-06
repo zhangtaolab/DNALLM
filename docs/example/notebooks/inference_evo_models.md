@@ -14,7 +14,7 @@ This tutorial covers inference with EVO-1 and EVO-2, large-scale genomic foundat
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 The notebook stamps its real execution environment (D-21) as `key=value`

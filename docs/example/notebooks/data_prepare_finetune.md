@@ -14,7 +14,7 @@ This tutorial covers how to prepare and load training data for fine-tuning DNA l
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Use Preset Datasets
