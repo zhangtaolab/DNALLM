@@ -6,10 +6,10 @@ current_phase: 09
 current_phase_name: CI Wiring & Census Verification
 status: executing
 stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-10-06T01:33:20.026Z"
+last_updated: "2026-10-06T07:48:18.839Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 09 execution started
-state_head: 550d31175960cbd7acbe487c79c8cfa6d061a7e6
+state_head: 0a5ca0de58bd6abc4a34e2273d679036a4d0d19c
 progress:
   total_phases: 5
   completed_phases: 4
@@ -178,6 +178,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 09]: 09-02: pre-existing fast-lane failure test_plot_for_regression proven pre-existing by a worktree run at plan-start HEAD (1825P/1F/1S -> 1833P/1F/1S = +8P/+0F/+0S); deferred-items.md + WINDOWS.md id 16; also: first D-16 dispatch ran stale remote phs (e9056c2) — cancelled, phs pushed, re-dispatched as 37335797121 at e85eb73b (push before dispatch, lesson for 09-04)
 - [Phase 09]: D-06 seam re-decided by owner (option A, 2026-10-06 00:42 CST): num_ctx 8k cut moves from the ollama systemd unit server-default pin to PER-REQUEST options.num_ctx=8192 injection at the execution/probe layer — the original A/A decision form. The live ollama service is NOT reconfigured (owner declines the sudo re-apply); the runner box unit stays owner-managed. Rework lands as a quick task; 09-04 Task-2 precondition (D-06 re-apply) is voided and replaced by "rework merged". Stale run 37335797121 cancelled same day (owner default). — The systemd-unit seam required owner sudo on the runner host — CI-green could not prove the box was configured, and Phase 9 blocked on a human op (checkpoint 2026-10-05 16:07Z). Per-request injection is fully in-repo, CI-reproducible, and matches owner decision A/A (2026-10-05) verbatim.
 - [Phase 09]: Owner decision (2026-10-06 00:52 CST, supersedes the 00:42 "option A" entry): num_ctx runtime cut is DEFERRED entirely. No rework (per-request injection quick task 261006-114 stopped pre-plan); live ollama service untouched; 09-02's in-repo unit pin (e85eb73) stays committed but inert until an owner applies it someday. 09-04 Task-2 precondition is voided — baseline dispatches at final HEAD WITHOUT the cut; D-12 measured budgets must record the un-cut reality and mark the cut deferred; USER-SETUP sudo re-apply item remains open-but-not-required-now. mcp_example pair keeps ~256k ctx kv-cache behavior (latency/VRAM cost accepted by owner for now). — Owner chose to postpone the num_ctx cut ("ollama 配置先不改了") after seeing the rework scope; the CI-06 budget risk of the un-cut mcp_example pair is accepted for now and will be visible in the D-12 measured numbers, giving the owner data to revisit the decision later.
+- [Phase 09]: D-11 re-decision 2026-10-06 15:27 CST (quick task 261006-lhm) — same-model constraint lifted for the agent brain; committed mcp_example pair + all mirrors + runner README now reference qwen3.5:4b (4.2B Q4_K_M, ~3.3GB, default context 262144 recorded); dnallm MCP server side untouched; interplay: 00:52 num_ctx deferral stands (no ollama config change, in-repo unit pin stays inert), 3600s cell / 7200s outer timeouts stay (decision B); swap evidence = 15:24 CST capability probe PASSED (3-turn tool-calling via /api/chat, 34.8s cold / 6.1s / 5.1s warm); committed notebook outputs remain from the previous model's execution until the next full nightly re-execution; RED->GREEN pin = TestMcpExampleModelSwap; one ci.yml comment line updated under the narrow fence relaxation.
 
 ### Pending Todos
 
@@ -218,6 +219,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 13 | gsd-fast: DNAInference/DNATrainer config params dict->Mapping[str, Any] (ty TypedDict assignability for load_config output in notebooks; no mutation sites); 3 contract tests | 2026-10-05 | 86022f7 | — |
 | 14 | gsd-fast: Mutagenesis/Benchmark/DNAInterpret config -> Mapping; Benchmark backfills into a private dict(config) copy (no caller aliasing); contract tests extended to 5 engines + no-alias pin (types.UnionType unwrap lesson); fast-subset 389P | 2026-10-05 | 16a9ffb | — |
 | 261006-cum | Fix pre-existing test_plot_for_regression regression (Mapping fallout, WINDOWS id 16) | 2026-10-06 | 550d311 | [261006-cum-fix-pre-existing-test-plot-for-regressio](./quick/261006-cum-fix-pre-existing-test-plot-for-regressio/) |
+| 261006-lhm | Direct-edit mcp_example notebooks' committed model id to qwen3.5:4b (owner decision 15:27 CST) | 2026-10-06 | 0a5ca0d | [261006-lhm-direct-edit-mcp-example-notebooks-commit](./quick/261006-lhm-direct-edit-mcp-example-notebooks-commit/) |
 
 ## Deferred Items
 
