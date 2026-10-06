@@ -107,10 +107,15 @@ these run ids; every number is reproducible from the run's own logs/artifacts.
 | stage 4 audits + upload + summary | 3s | 3s | all audits 0 in run 2 — the complete green ledger |
 | **job total (step pipeline)** | **2:49:53** | **2:42:46** (+ ~11 min post-job cache save; a ~33-min trailing runner-side log upload extended the job record to 3:15:34 — stages are the budget) | one-time/defect costs inside run 1: 22:28 wheelhouse + 17:58 broken sse wait |
 
-### coverage-nightly (run 37345067326)
+### coverage-nightly (runs 37345067326 + 37377004230)
 
-- Install + numpy: ~4 min (warm uv). Census (full 1947-item tree, slow included):
-  **1:27:14** (5234.50s). Job total **≈ 88 min** (16:59:49 → ~18:28).
+- Run 1 (bedtools gap — NER/CRE/script failed fast): install ~4 min (warm uv);
+  census (full 1947-item tree, slow included) **1:27:14** (5234.50s); job total
+  **≈ 88 min** (16:59:49 → ~18:28).
+- Run 2 (re-dispatch, bedtools restored from the shared cache prefix in ~20s):
+  census **1:40:35** (6035.89s; the bedtools trio now executes: 1933P/1F/15S);
+  job total **1:49:02** (01:03:23 → 02:52:25). The longer census is the honest
+  cost of those tests passing instead of failing fast.
 - Paper-ceiling recomputation from the current test files (marks above the 300s
   global default, per-item multiplicities from a fresh full-tree collection): the
   full-tree sum is ≈ 3920 min — dominated by the tests/examples execution marks
@@ -216,8 +221,49 @@ is the sole remaining red on test-mamba and coverage-nightly**
 end-to-end — every stage-results entry 0, both audits green on every junit,
 stage-2 sse 3 passed in 4.75s (the repair proven live), census reproduced
 exactly (192P/1S/9 deselected, 1:57:14). test-mamba re-dispatched: 1835P/1F/1S
-— red by exactly the fenced item. coverage-nightly re-dispatch outcome:
-recorded in the closure section below (Task 3).
+— red by exactly the fenced item. coverage-nightly re-dispatched: 1933P/1F/15S
+in 1:40:35 (job 1:49:02) — the bedtools trio now executes green (restored
+from the shared cache prefix in ~20s, "bedtools v2.31.1"), red by exactly the
+fenced item.
+
+## Phase closure records (09-04 Task 3)
+
+Green-gate dispatch run id: 37377004230
+
+- **D-17 green-run gate: MET.** Run 37377004230's example-nightly completed
+  green end-to-end under the final wiring (phs @ 5dfadda): stage-4 summary
+  "OK: every recorded stage item exited 0", every junit audit green, census
+  192P/1S/9-deselected, both D-13 hygiene floors passed, stage-2 sse green
+  post-repair. The run also carried test-mamba and coverage-nightly (one
+  workflow_dispatch fires all three D-19-gated jobs — the plan's per-leg
+  dispatches collapse into this single run, which measures all three legs at
+  one commit).
+- **D-18 transient-leg closure: re-dispatched and measured; green is gated on
+  one owner decision.**
+  - coverage-nightly re-dispatch run id: 37377004230 — **1933 passed /
+    15 skipped / 1 failed in 1:40:35** (job 1:49:02). The run-1 failures
+    behind the "transient" checkout-death facade were real: the bedtools
+    environment gap (fixed at decd2cc, proven by this run) and the fenced
+    pre-existing `test_plot_for_regression` (still red — owner triage).
+  - test-mamba re-dispatch run id: 37377004230 — **1835 passed / 1 skipped /
+    1 failed in 1:53** (job 10:49-class; kernels compiled green). Same single
+    fenced failure.
+  - Honest bottom line: both legs now complete (no checkout deaths, no
+    environment gaps) with EXACTLY ONE remaining failure each — the fenced
+    pre-existing failure outside this phase's authority (WINDOWS.md id 16;
+    diagnosis: `dnallm/inference/plot.py:234` `astype(float)` over a
+    dict-valued metric column via `benchmark.py:617` → `plot_bars`, the
+    quick-task 13/14 Mapping-config fallout family). Literal green closes
+    with that owner decision: fix in-phase as a quick task with same-change
+    tests, or accept the two nightly legs red-by-this-one until triaged. The
+    03:00 UTC nightly will stay red until then.
+- **D-20 bookkeeping (no repo action):** the dependabot torch-ignore rules
+  landed earlier at commit 16a9ffb; PR #42 stays open as a record, not
+  merged.
+- **D-16/D-17 dispatch evidence integrity (T-09-10):** every run id above is
+  backed by the cited run's own logs/junit (stage-4 ledger, census-collect
+  line, step timings from the jobs API); no outcome is asserted without its
+  run.
 
 ## Open dispositions / deferrals
 

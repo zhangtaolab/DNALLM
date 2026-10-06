@@ -448,10 +448,13 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
     # D-12 MEASURED rewrite (run 37345067326 + its re-dispatch 37377004230;
     # wall minutes from run logs, never proportional estimates): the full
-    # census measured 1:27:14 (1928P/4F/15S in 37345067326 — the 4 failures
+    # census measured 1:27:14 in 37345067326 (1928P/4F/15S — the 4 failures
     # were the bedtools gap fixed at decd2cc plus the fenced pre-existing
-    # test_plot_for_regression) with ~4 min of install ahead of it: job
-    # total ~88 min, far inside the kill.
+    # test_plot_for_regression; those tests then failed fast) and 1:40:35 in
+    # the re-dispatch 37377004230 (1933P/1F/15S — the bedtools trio now
+    # EXECUTES green; the 1 failure is the fenced item). Job totals ~88 min
+    # and 1:49:02 respectively (install ~4 min + bedtools-from-cache ~20s),
+    # far inside the kill.
     # Relationship (D-12, unchanged): per-test @pytest.mark.timeout marks are
     # the PRIMARY hang protection — a hung test dies at its own mark with
     # junit and the skip audit still produced; the job kill is only the
