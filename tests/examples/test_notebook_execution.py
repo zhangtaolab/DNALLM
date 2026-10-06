@@ -150,7 +150,13 @@ def notebook_sandbox(tmp_path: Path, request: pytest.FixtureRequest) -> Iterator
     """
     nb_path = Path(request.node.callspec.params["nb_path"])
     extras = _NOTEBOOK_EXTRA_INPUTS.get(nb_path.relative_to(EXAMPLE_DIR).as_posix(), [])
-    yield seed_sandbox(nb_path.parent, tmp_path, extra_inputs=extras)
+    # Mirror gated_sandbox (D-05, 09-02): forward any spec-driven yaml_patch
+    # so a future cut on an ACTIVE notebook is never silently ignored --
+    # specs without a yaml_patch key seed unchanged (None).
+    spec = NOTEBOOK_EXEC_SPECS[str(nb_path)]
+    yield seed_sandbox(
+        nb_path.parent, tmp_path, extra_inputs=extras, yaml_overrides=spec.get("yaml_patch")
+    )
     assert_tree_clean()
 
 
