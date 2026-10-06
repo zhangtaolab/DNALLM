@@ -16,6 +16,7 @@ mirroring ``tests/models/test_special/test_family_handlers.py``.
 """
 
 import torch
+import pytest
 from unittest.mock import patch
 
 from dnallm.models.special.megadna import _handle_megadna_models
@@ -127,3 +128,51 @@ class TestDnaTokenizerDecodePath:
 
         for token, token_id in tokenizer.get_vocab().items():
             assert tokenizer.decode(torch.tensor([token_id])).replace(" ", "") == token
+
+
+class TestMegadnaCheckpointSelection:
+    """WR-02: each family member selects its intended checkpoint file.
+
+    The old branch chain tested ``m in "megaDNA_updated"`` (the loop member
+    as a substring of a literal), so every explicit phage member fell
+    through to the 145M default -- 78M/277M/ecoli names silently loaded the
+    wrong .pt (or hit FileNotFoundError). Expected files verified against
+    the live repo listings: lingxusb/megaDNA_updated ships only
+    megaDNA_phage_145M.pt; lingxusb/megaDNA_variants ships
+    megaDNA_phage_78M.pt + megaDNA_phage_277M.pt;
+    lingxusb/megaDNA_finetuned ships megaDNA_phage_ecoli_finetuned.pt.
+    """
+
+    @pytest.mark.parametrize(
+        ("model_name", "expected_checkpoint"),
+        [
+            ("megaDNA_updated", "megaDNA_phage_145M.pt"),
+            ("lingxusb/megaDNA_updated", "megaDNA_phage_145M.pt"),
+            ("megaDNA_variants", "megaDNA_phage_78M.pt"),
+            ("lingxusb/megaDNA_variants", "megaDNA_phage_78M.pt"),
+            ("megaDNA_finetuned", "megaDNA_phage_ecoli_finetuned.pt"),
+            ("megaDNA_phage_145M", "megaDNA_phage_145M.pt"),
+            ("megaDNA_phage_78M", "megaDNA_phage_78M.pt"),
+            ("megaDNA_phage_277M", "megaDNA_phage_277M.pt"),
+            ("megaDNA_phage_ecoli_finetuned", "megaDNA_phage_ecoli_finetuned.pt"),
+        ],
+    )
+    def test_member_selects_its_intended_checkpoint(self, model_name, expected_checkpoint):
+        """The handler torch.loads <snapshot>/<intended checkpoint>."""
+        loaded_paths = []
+
+        def fake_torch_load(path, *args, **kwargs):
+            loaded_paths.append(path)
+            return object()
+
+        with (
+            patch("torch.load", side_effect=fake_torch_load),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/snapshot", None),
+            ),
+        ):
+            result = _handle_megadna_models(model_name, "huggingface", None)
+
+        assert result is not None, f"family member did not match: {model_name}"
+        assert loaded_paths == [f"/snapshot/{expected_checkpoint}"]

@@ -13,6 +13,23 @@ megadna_models = [
     "megaDNA_phage_ecoli_finetuned",
 ]
 
+# Checkpoint file each family member loads from its downloaded snapshot
+# (WR-02): verified against the live repo listings -- lingxusb/megaDNA_updated
+# ships only megaDNA_phage_145M.pt, lingxusb/megaDNA_variants ships
+# megaDNA_phage_78M.pt + megaDNA_phage_277M.pt, and
+# lingxusb/megaDNA_finetuned ships megaDNA_phage_ecoli_finetuned.pt. The bare
+# "megaDNA_variants" repo name keeps the historical 78M default; the explicit
+# phage members select their own-named checkpoint.
+_MEGADNA_CHECKPOINTS: dict[str, str] = {
+    "megaDNA_updated": "megaDNA_phage_145M.pt",
+    "megaDNA_variants": "megaDNA_phage_78M.pt",
+    "megaDNA_finetuned": "megaDNA_phage_ecoli_finetuned.pt",
+    "megaDNA_phage_145M": "megaDNA_phage_145M.pt",
+    "megaDNA_phage_78M": "megaDNA_phage_78M.pt",
+    "megaDNA_phage_277M": "megaDNA_phage_277M.pt",
+    "megaDNA_phage_ecoli_finetuned": "megaDNA_phage_ecoli_finetuned.pt",
+}
+
 
 def _handle_megadna_models(
     model_name: str,
@@ -117,14 +134,10 @@ def _handle_megadna_models(
                 from ..model import _get_model_path_and_imports
 
                 downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
-                if m in "megaDNA_updated":
-                    full_model_name = "megaDNA_phage_145M.pt"
-                elif m in "megaDNA_variants":
-                    full_model_name = "megaDNA_phage_78M.pt"
-                elif m in "megaDNA_finetuned":
-                    full_model_name = "megaDNA_phage_ecoli_finetuned.pt"
-                else:
-                    full_model_name = "megaDNA_phage_145M.pt"
+                # WR-02: the old chain tested `m in "megaDNA_updated"` (the
+                # member as a substring of a literal), so every explicit phage
+                # member fell through to the 145M default; select per member.
+                full_model_name = _MEGADNA_CHECKPOINTS.get(m, "megaDNA_phage_145M.pt")
                 downloaded_model_path = os.path.join(downloaded_model_path, full_model_name)
                 megadna_model = torch.load(downloaded_model_path, weights_only=False)
                 megadna_tokenizer = DNATokenizer()
