@@ -56,6 +56,15 @@ Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREME
 - All errors found by real execution fixed — example code, docs/example/ mirror, and exposed dnallm library bugs
 - CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
 
+Shipped in Phase 9 (CI Wiring & Census Verification, 2026-10-06):
+
+- ✓ Nightly census formally gates the execution-test layer, proven end-to-end on the real runner: final run 37432001711 all three legs green (example-nightly census 192P/1S/0F in 1:56:53 with stage-3 mcp pair at 87s; test-mamba 1840P/0F/1S; coverage-nightly 1938P/0F/15S at **96.42%**) — CI-03/CI-06
+- ✓ giants-class evo exit as a true deselect (`giants` marker + `-m "not giants"`, never a typed skip) with the D-03 census triple hard-asserted (193/202 collected, 9 deselected); evo CI steps + models-cache layer deleted; all three nightly crons schedule-aware — CI-03
+- ✓ `models.lock` consistency guard live on the fast leg (drift-injection proven; 12 contract tests) — CI-08; coverage-expectation docs page registered in mkdocs nav (AUDIT-04: example execution runs in kernel subprocesses and by design does not move the 96.30%→96.42% gate) — CI-09
+- ✓ D-12 measured budgets in ci.yml citing run ids (example 2:09:55, coverage 1:42–1:58, mamba 10:49); D-13 hygiene/memory-floor hard gates; D-14 always-uploaded failure scene; D-08 ty advisory step — CI-07
+- ✓ Runtime cuts landed at honest seams: finetune_custom_head epochs 3→1 as TEST-SANDBOX-ONLY yaml patch (committed example content byte-identical, 566s measured vs ~31min); num_ctx cut DEFERRED by owner mid-phase, then superseded by the qwen3.8→qwen3.5:4b agent-model swap (11-file sweep incl. docs mirrors, probe-proven tool-calling, stage-3 latency 35min-timeout → 87s)
+- Verifier verdict: passed — 18/18 must-haves, 5/5 requirement IDs (CI-03/06/07/08/09), 0 gaps; regression gate 592P/0F over phases 5–8 test files; repo-wide ruff green after CR-01 fix (8a405fe)
+
 Shipped in Phase 8 (Full Execution Rollout & Repair Loop, 2026-10-05):
 
 - ✓ Entire example/ tree executes for real on the shared GB10 box: final census **196 passed / 1 benign skip / 0 failed** (2:59:34) — all 21 notebooks (incl. the formerly gated evo/megaDNA/lora/mcp families), 3 marimo apps (D-18 quadruple incl. export-html validation), `generate_bpe_dataset.py`, every YAML through real `load_config()`; fast lane 1807P/1S with zero new skips
@@ -133,6 +142,8 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Repair rollout by model family with per-repair full-census reconciliation (D-01/D-03) | Same root cause benefits the whole family; every step keeps a full-tree baseline, so regressions surface immediately | ✓ Landed Phase 8 (final census identical across 08-08/08-09: 196P/1S/0F) |
 | Nightly coexistence is staged-serial with explicit VRAM/process cleanup + assert between stages (D-07 + owner VRAM directive 2026-10-05) | Heavy torch, MCP :8000, and ollama share one box; unserviced leftovers compound into OOM (orphaned 24.5GB server lesson) | ✓ Landed Phase 8 (≥35Gi-available rule in the rollup inheritance notes; census trough 39Gi, floor held) |
 | models-cache layer dropped from CI; cold pulls per run (owner decision 2026-10-05) | Lock-only cache ≈15.2GiB > 10GB Actions quota and never actually saved; cold stage 1 measured green at 65 min against a 2700-min budget | ✓ Adopted Phase 8 close; ci.yml edit lands in Phase 9 |
+| giants/evo exit the pytest census as a deselect, not a skip (owner directive 2026-10-05) | runner env is AVAILABLE — a typed skip would fake environment-unavailability; committed executed-notebook outputs remain the evidence | ✓ Adopted Phase 9 (D-01, marker + not-giants deselect) |
+| mcp_example agent brain swapped qwen3.8→qwen3.5:4b; num_ctx cut stays deferred (owner 2026-10-06) | 17GB/256k-ctx latency tail broke the 1800s cell timeout; 3.3GB 4b model probe-proven for tool-calling, stage-3 87s; server config never touched | ✓ Adopted Phase 9 (11-file sweep; timeout stays 3600s guard) |
 
 ## Evolution
 
@@ -152,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-05 after Phase 8*
+*Last updated: 2026-10-06 after Phase 9 — milestone v1.1 100%*
