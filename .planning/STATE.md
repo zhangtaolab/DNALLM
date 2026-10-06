@@ -4,17 +4,17 @@ milestone: v1.1
 milestone_name: Example Execution Testing & Repair
 current_phase: 09
 current_phase_name: CI Wiring & Census Verification
-status: executing
-stopped_at: Completed 09-02-PLAN.md
-last_updated: "2026-10-06T07:48:18.839Z"
+status: verifying
+stopped_at: Completed 09-04-PLAN.md (Phase 09 complete)
+last_updated: "2026-10-06T12:59:58.831Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 09 execution started
-state_head: 0a5ca0de58bd6abc4a34e2273d679036a4d0d19c
+state_head: 8851279ef02839ff5068a175d5873caaac6ab8ee
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 24
-  completed_plans: 23
+  completed_plans: 24
   percent: 80
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 
 Phase: 09 (CI Wiring & Census Verification) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-05 — Phase 09 execution started
 documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
 commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
@@ -88,6 +88,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 09 P01 | 12 min | 3 tasks | 5 files |
 | Phase 09 P03 | 15 min | 2 tasks | 3 files |
 | Phase 09 P02 | 38 min | 2 tasks | 6 files |
+| Phase 09 P04 | ~21h (4 runner cycles) | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,10 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 09]: D-06 seam re-decided by owner (option A, 2026-10-06 00:42 CST): num_ctx 8k cut moves from the ollama systemd unit server-default pin to PER-REQUEST options.num_ctx=8192 injection at the execution/probe layer — the original A/A decision form. The live ollama service is NOT reconfigured (owner declines the sudo re-apply); the runner box unit stays owner-managed. Rework lands as a quick task; 09-04 Task-2 precondition (D-06 re-apply) is voided and replaced by "rework merged". Stale run 37335797121 cancelled same day (owner default). — The systemd-unit seam required owner sudo on the runner host — CI-green could not prove the box was configured, and Phase 9 blocked on a human op (checkpoint 2026-10-05 16:07Z). Per-request injection is fully in-repo, CI-reproducible, and matches owner decision A/A (2026-10-05) verbatim.
 - [Phase 09]: Owner decision (2026-10-06 00:52 CST, supersedes the 00:42 "option A" entry): num_ctx runtime cut is DEFERRED entirely. No rework (per-request injection quick task 261006-114 stopped pre-plan); live ollama service untouched; 09-02's in-repo unit pin (e85eb73) stays committed but inert until an owner applies it someday. 09-04 Task-2 precondition is voided — baseline dispatches at final HEAD WITHOUT the cut; D-12 measured budgets must record the un-cut reality and mark the cut deferred; USER-SETUP sudo re-apply item remains open-but-not-required-now. mcp_example pair keeps ~256k ctx kv-cache behavior (latency/VRAM cost accepted by owner for now). — Owner chose to postpone the num_ctx cut ("ollama 配置先不改了") after seeing the rework scope; the CI-06 budget risk of the un-cut mcp_example pair is accepted for now and will be visible in the D-12 measured numbers, giving the owner data to revisit the decision later.
 - [Phase 09]: D-11 re-decision 2026-10-06 15:27 CST (quick task 261006-lhm) — same-model constraint lifted for the agent brain; committed mcp_example pair + all mirrors + runner README now reference qwen3.5:4b (4.2B Q4_K_M, ~3.3GB, default context 262144 recorded); dnallm MCP server side untouched; interplay: 00:52 num_ctx deferral stands (no ollama config change, in-repo unit pin stays inert), 3600s cell / 7200s outer timeouts stay (decision B); swap evidence = 15:24 CST capability probe PASSED (3-turn tool-calling via /api/chat, 34.8s cold / 6.1s / 5.1s warm); committed notebook outputs remain from the previous model's execution until the next full nightly re-execution; RED->GREEN pin = TestMcpExampleModelSwap; one ci.yml comment line updated under the narrow fence relaxation.
+- [Phase 09]: 09-04: one workflow_dispatch fires all three D-19-gated nightly legs, so per-leg dispatch intent collapsed into single runs measuring every leg at one commit — adopted and recorded as the evidence model
+- [Phase 09]: 09-04: coverage-nightly timeout decision (D-12/OQ3, measurement in hand) — KEEP 900 as documented override below both recomputed paper sums (~640min bind-set/~3920min all-marks); per-test marks primary, measured green path 1:42-1:58
+- [Phase 09]: 09-04: SSE readiness must assert the received HTTP status, never curl's exit code — an exit-code probe is structurally ungreenable against a healthy SSE endpoint (run 37345067326: 17:58 blind polling over a serving server); pinned by TestExampleNightlySseProbe contract tests
+- [Phase 09]: 09-04 close: D-17/D-18 green at the final wiring via run 37432001711 (example ledger zero; test-mamba 1840P/0F; coverage-nightly 1938P/0F @ 96.42%) — the phase's three criteria hold on runner evidence; num_ctx stays DEFERRED, D-05 epochs cut measured 566s
 
 ### Pending Todos
 
@@ -233,8 +238,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T15:53:36.044Z
-Stopped at: Completed 09-02-PLAN.md
+Last session: 2026-10-06T12:59:58.787Z
+Stopped at: Completed 09-04-PLAN.md (Phase 09 complete)
 Resume file: None
 
 ## Deferred Verification
