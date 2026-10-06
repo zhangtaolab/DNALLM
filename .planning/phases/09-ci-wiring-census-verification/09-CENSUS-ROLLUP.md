@@ -31,7 +31,9 @@ so the single baseline run measures all three legs at the same commit.
 | 37327398343 | phs @ e9056c2 | workflow_dispatch (09-01 wiring) | all three legs red at old wiring — example-nightly died at the since-deleted Stage-0 evo provisioning step (flash-attn build isolation); coverage-nightly and test-mamba died at "Checkout code" (transient egress). The latter two are exactly D-18's re-dispatch targets; neither failure was code-caused |
 | 37333370370 | stale remote phs @ e9056c2 | workflow_dispatch (09-02 D-16) | cancelled — dispatched before push, ran 12-commits-stale code exercising nothing from the phase |
 | 37335797121 | phs @ e85eb73b | workflow_dispatch (09-02 D-16) | cancelled by the orchestrator 2026-10-06 (owner default) — it could serve as neither the D-02 baseline (predates Task-1 job shape 9fb853c) nor D-17 evidence; verified completed/cancelled before the baseline below was dispatched |
-| **37345067326** | phs @ 9fb853c (final phase HEAD) | workflow_dispatch (09-04 D-02) | **the baseline / green-gate / D-18 run — measured below** |
+| **37345067326** | phs @ 9fb853c (final phase HEAD) | workflow_dispatch (09-04 D-02) | **the baseline census run of record — measured below** |
+| 37427527257 | phs @ aa4a6e7 | workflow_dispatch (09-04, post-timeout-bump) | CANCELLED by the orchestrator while still queued (superseded by the model swap) — NOT evidence of anything; the cancellation is bookkeeping, not a failure |
+| **37432001711** | phs @ 170e86f | workflow_dispatch (orchestrator, 15:48 CST) | **the FINAL verification run of record** — carries the plot fix (550d311) + the timeout bump (aa4a6e7) + the qwen3.5:4b model swap (261006-lhm); D-17/D-18 closure evidence |
 
 Baseline dispatch run id: 37345067326
 
@@ -212,10 +214,53 @@ is the sole remaining red on test-mamba and coverage-nightly**
   `dnallm/inference/plot.py:234` — `dbar[metric].astype(float)` over a
   dict-valued metric column (the quick-task 13/14 Mapping-config fallout family);
   `TypeError: float() argument must be a string or a real number, not 'dict'`.
-- **Disposition:** recorded here and in the SUMMARY; owner decision required
-  (fix in-phase as a quick task with same-change tests, or accept the nightly legs
-  red-by-this-one until triaged). It does NOT touch example-nightly (the D-17
-  green gate is unaffected).
+- **Disposition: RESOLVED mid-phase by owner-dispatched quick task 261006-cum**
+  (commit 550d311, 2026-10-06 01:32Z — the test retasks through the engine-owned
+  config; test-side only, `tests/benchmark/` 31/31 green locally; WINDOWS.md
+  id 16 flipped fixed). Recorded here per the no-silent-drop rule; the
+  final-dispatch confirmation (run 37406829738) proves it census-wide on the
+  runner. It never touched example-nightly (the D-17 green gate was unaffected).
+
+**4. [Owner decision B, 2026-10-06 - timeout line matches the un-cut budget]
+stage-3 mcp-pair cell timeout raised 1800 -> 3600s**
+- **Found during:** run 37406829738 (the post-plot-fix dispatch @ 8774151) —
+  example-nightly red with `stage3-mcp-pair=1` as its ONLY non-zero entry:
+  the pydantic_ai notebook's analysis cell hit `CellTimeoutError` after
+  exactly 1800s (`traitlets client.py:845 Timeout waiting for execute reply`),
+  `1 failed, 1 passed in 2099.56s`. Everything else green (census 192P/1S,
+  both probe batches, all audits) — the same un-cut ~256k ctx lane that
+  measured ~8 min in runs 1/2 showed a >30-min latency tail this run.
+- **Root contributor:** the deferred num_ctx cut (owner 2026-10-06 00:52) —
+  qwen3.8 serves the pair at 256k ctx; the fixed 1800s cell line sat below
+  the un-cut tail's variance.
+- **Fix (owner decision B, "timeout line matches the un-cut budget reality
+  recorded in D-12"):** aa4a6e7 — the seam is `run_notebook`'s
+  `NotebookClient(timeout=cell_timeout)` (the exact trait behind the
+  traitlets error); both mcp_example spec entries raised to 3600s, and the
+  pair joined `_TIMEOUT_7200_GATED` so the outer pytest-timeout mark stays
+  strictly ABOVE the cell budget (the harness contract: an outer kill at the
+  cell budget would preempt nbclient's clean CellTimeoutError handling and
+  the partial-failure artifact capture). No contract test pinned the old
+  value; the census triple is unaffected (marks do not change collection).
+  Revisit when/if the num_ctx cut is un-deferred.
+- **Verified by:** the final verification run 37432001711 (the interim
+  post-fix dispatch 37427527257 was cancelled queued by the orchestrator —
+  superseded by the model swap below — and is not evidence).
+
+**5. [Inherited owner decision 2026-10-06 15:27 CST - model swap] mcp_example
+pair agent model qwen3.8:latest -> qwen3.5:4b (quick task 261006-lhm)**
+- Landed mid-phase (commits febb627..170e86f, pushed) while 09-04's runner
+  cycles ran: an 11-file sweep (both mcp notebooks + docs mirrors + runner
+  README + one ci.yml comment line + the spec/test comment layer), RED-GREEN
+  contract battery 231 passed, docs sync gates 24/24, and a live capability
+  probe PASSED 15:24 CST (3-turn tool-calling: 34.8s cold / 6.1s / 5.1s warm).
+- The timeout bump (deviation 4) SURVIVES the swap by owner direction: the
+  4.2B Q4_K_M brain (~3.3GB) still defaults to a 262144 context — the
+  ~256k-class un-cut reality persists, so `cell_timeout 3600` + the 7200s
+  outer override stay as headroom; stage 3 is expected minutes-scale now
+  (measured by the final run).
+- D-11 re-decision recorded in STATE.md by the quick task; the num_ctx
+  deferral (deviation 0) is unchanged and still the revisit-with-data item.
 
 **Run-2 confirmations (37377004230, phs @ 5dfadda):** example-nightly GREEN
 end-to-end — every stage-results entry 0, both audits green on every junit,
@@ -226,44 +271,70 @@ in 1:40:35 (job 1:49:02) — the bedtools trio now executes green (restored
 from the shared cache prefix in ~20s, "bedtools v2.31.1"), red by exactly the
 fenced item.
 
+**Run-3 record (37406829738, phs @ 8774151 — post-plot-fix dispatch):**
+test-mamba **GREEN** (1837 passed / 1 skipped in 1:52, job 10:48 — the first
+fully-green mamba leg; 1837 = 1835 + the quick task's 2 pin tests).
+coverage-nightly **GREEN** (1935 passed / 15 skipped in 1:58:18 — the plot
+fix held census-wide; the "red coverage" in circulation described run 2's
+pre-fix state). example-nightly red by ONLY the stage-3 cell timeout
+(deviation 4 above; census and probes all green again).
+
+## FINAL verification run (37432001711, phs @ 170e86f) — ALL THREE LEGS GREEN
+
+- **test-mamba: SUCCESS** — 1840 passed / 1 skipped / 53 deselected in 1:53
+  (1840 = 1837 + the model-swap quick task's 3 pins).
+- **example-nightly: SUCCESS** — the complete green ledger ("OK: every
+  recorded stage item exited 0"; every junit audit green). Census pin green
+  (193/202, 9 deselected); stage 1 **192 passed / 1 skipped in 1:56:53**;
+  YAML 21 passed; both probe batches green (sse 3 passed — the repaired
+  probe's second consecutive green); **stage 3 mcp pair 2 passed in 87.10s
+  (1:27) at qwen3.5:4b** (the model swap collapsed the qwen3.8-era ~8 min /
+  >30-min-tail lane to minutes-scale, inside the 3600s cell budget with
+  huge headroom); both hygiene floors green. Job 08:51:03 → 11:00:58 =
+  **2:09:55 total**, and the mamba wheelhouse cache HIT for the first time
+  (build step 1s vs the 23-24 min misses of runs 1-2) — the measured
+  steady state is now ~2:10 with the build amortized.
+- **coverage-nightly: SUCCESS** — **1938 passed / 15 skipped / 0 failed in
+  1:42:18; required coverage 96.42%** (floor 90). Job 11:01:02 → 12:52:08
+  = 1:51:06.
+
+**D-17: MET at the final wiring (green complete example-nightly dispatch,
+run 37432001711). D-18: MET — both transient legs green in-phase at the
+final head (test-mamba 1840P/0F; coverage-nightly 1938P/0F @ 96.42%).**
+
 ## Phase closure records (09-04 Task 3)
 
-Green-gate dispatch run id: 37377004230
+Green-gate dispatch run id: 37432001711
 
-- **D-17 green-run gate: MET.** Run 37377004230's example-nightly completed
-  green end-to-end under the final wiring (phs @ 5dfadda): stage-4 summary
+- **D-17 green-run gate: MET — at the FINAL wiring.** Run 37432001711's
+  example-nightly (phs @ 170e86f: plot fix + SSE-probe repair + bedtools +
+  timeout bump + qwen3.5:4b swap) completed green end-to-end: stage-4 summary
   "OK: every recorded stage item exited 0", every junit audit green, census
-  192P/1S/9-deselected, both D-13 hygiene floors passed, stage-2 sse green
-  post-repair. The run also carried test-mamba and coverage-nightly (one
-  workflow_dispatch fires all three D-19-gated jobs — the plan's per-leg
-  dispatches collapse into this single run, which measures all three legs at
-  one commit).
-- **D-18 transient-leg closure: re-dispatched and measured; green is gated on
-  one owner decision.**
-  - coverage-nightly re-dispatch run id: 37377004230 — **1933 passed /
-    15 skipped / 1 failed in 1:40:35** (job 1:49:02). The run-1 failures
-    behind the "transient" checkout-death facade were real: the bedtools
-    environment gap (fixed at decd2cc, proven by this run) and the fenced
-    pre-existing `test_plot_for_regression` (still red — owner triage).
-  - test-mamba re-dispatch run id: 37377004230 — **1835 passed / 1 skipped /
-    1 failed in 1:53** (job 10:49-class; kernels compiled green). Same single
-    fenced failure.
-  - Honest bottom line: both legs now complete (no checkout deaths, no
-    environment gaps) with EXACTLY ONE remaining failure each — the fenced
-    pre-existing failure outside this phase's authority (WINDOWS.md id 16;
-    diagnosis: `dnallm/inference/plot.py:234` `astype(float)` over a
-    dict-valued metric column via `benchmark.py:617` → `plot_bars`, the
-    quick-task 13/14 Mapping-config fallout family). Literal green closes
-    with that owner decision: fix in-phase as a quick task with same-change
-    tests, or accept the two nightly legs red-by-this-one until triaged. The
-    03:00 UTC nightly will stay red until then.
+  192P/1S/9-deselected, both D-13 hygiene floors passed, sse probes green,
+  stage-3 pair green. (The FIRST complete green dispatch was run 37377004230
+  @ 5dfadda — a superseded wiring shape, kept in the ledger below.)
+- **D-18 transient-leg closure: MET — both legs GREEN in-phase at the final
+  head.**
+  - The re-dispatch chain: run 37377004230 proved the legs COMPLETE past
+    their "transient" checkout-death facade and exposed the real defects
+    behind it (bedtools gap decd2cc; plot failure — owner-fixed at 550d311;
+    stage-3 timeout — owner decision B, aa4a6e7; model swap 261006-lhm).
+  - coverage-nightly re-dispatch run id: 37377004230 — 1933P/1F/15S in
+    1:40:35 (the bedtools-fix proof run; its single failure was then the
+    unfenced-again plot test, fixed the same day). **GREEN closure: run
+    37432001711 — 1938 passed / 15 skipped / 0 failed in 1:42:18 at 96.42%
+    coverage.**
+  - test-mamba re-dispatch run id: 37377004230 — 1835P/1F/1S (same single
+    fenced failure). **GREEN closure: run 37432001711 — 1840 passed /
+    1 skipped / 0 failed in 1:53.**
 - **D-20 bookkeeping (no repo action):** the dependabot torch-ignore rules
   landed earlier at commit 16a9ffb; PR #42 stays open as a record, not
   merged.
 - **D-16/D-17 dispatch evidence integrity (T-09-10):** every run id above is
   backed by the cited run's own logs/junit (stage-4 ledger, census-collect
   line, step timings from the jobs API); no outcome is asserted without its
-  run.
+  run. The cancelled dispatches (37335797121, 37427527257) are recorded as
+  bookkeeping, never as evidence.
 
 ## Open dispositions / deferrals
 

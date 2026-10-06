@@ -446,15 +446,16 @@ jobs:
     # entry (the 05:30 entry belongs to example-nightly) while keeping the
     # dispatch disjunct; push/PR must never reach the self-hosted box.
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
-    # D-12 MEASURED rewrite (run 37345067326 + its re-dispatch 37377004230;
+    # D-12 MEASURED rewrite (runs 37345067326 / 37377004230 / 37432001711;
     # wall minutes from run logs, never proportional estimates): the full
     # census measured 1:27:14 in 37345067326 (1928P/4F/15S — the 4 failures
-    # were the bedtools gap fixed at decd2cc plus the fenced pre-existing
-    # test_plot_for_regression; those tests then failed fast) and 1:40:35 in
+    # were the bedtools gap fixed at decd2cc plus the then-fenced
+    # test_plot_for_regression; those tests then failed fast), 1:40:35 in
     # the re-dispatch 37377004230 (1933P/1F/15S — the bedtools trio now
-    # EXECUTES green; the 1 failure is the fenced item). Job totals ~88 min
-    # and 1:49:02 respectively (install ~4 min + bedtools-from-cache ~20s),
-    # far inside the kill.
+    # EXECUTES green), and GREEN in the final run 37432001711: **1938
+    # passed / 15 skipped / 0 failed in 1:42:18 at 96.42% coverage** (job
+    # 1:51:06; install ~4 min + bedtools-from-cache ~20s) — far inside the
+    # kill.
     # Relationship (D-12, unchanged): per-test @pytest.mark.timeout marks are
     # the PRIMARY hang protection — a hung test dies at its own mark with
     # junit and the skip audit still produced; the job kill is only the
@@ -644,28 +645,32 @@ jobs:
     # 09-CENSUS-ROLLUP.md):
     #   stage 0 venv+extras+bedtools+inventory  ~1 min (warm uv; bedtools
     #     from cached prefix ~15s)
-    #   stage 0 mamba kernel wheelhouse         23-24 min on BOTH runs —
-    #     the wheelhouse cache MISSED every 09-04 run (repo cache store at
-    #     its 10GB threshold throttles saves; owner disposition pending),
-    #     so the recurring source build is a measured cost, not an assumed
-    #     amortized one
+    #   stage 0 mamba kernel wheelhouse         23-24 min on the first two
+    #     09-04 runs (cache store at its 10GB threshold throttled saves);
+    #     the FINAL run's cache HIT (build step 1s) — the wheels finally
+    #     amortized, so steady state skips the source build
     #   stage 0.5 census assertion              4s (collect 1.28s)
-    #   stage 1 examples+YAML                   1:57-2:00 (192P/1S/9
-    #     deselected both runs; D-05 epochs-cut measured: gated
+    #   stage 1 examples+YAML                   1:57-2:00 every run (192P/1S/9
+    #     deselected; D-05 epochs-cut measured: gated
     #     finetune_custom_head 566s vs the ~31min 3-epoch dev-box figure)
     #   stage 1.5/2.5 hygiene floors            5-6s each (~115Gi avail)
     #   stage 2 streamable + sse probes         ~40s each post-fix (the
     #     17:58 sse figure in run 37345067326 was the pre-fix always-fail
     #     probe, never server cost)
-    #   stage 3 mcp pair                        ~8 min both runs at the
-    #     EXISTING ~256k ctx — D-06 num_ctx cut DEFERRED (owner decision
-    #     2026-10-06; the in-repo 8192 pin stays inert): 2P in 442-449s,
-    #     no floor pressure on the 128GB box; revisit with these numbers
+    #   stage 3 mcp pair                        qwen3.8-era: 2P in 442-449s
+    #     with a >30-min latency tail that red run 37406829738 at the old
+    #     1800s cell line (owner decision B -> 3600s cell + 7200s outer);
+    #     after the qwen3.5:4b swap (owner 2026-10-06 15:27 CST): 2P in
+    #     87s (final run 37432001711) — D-06 num_ctx cut stays DEFERRED
+    #     (the 4.2B brain still defaults to a 262144 ctx); revisit with
+    #     these numbers
     #   stage 4 audits+upload+summary           seconds
-    #   TOTAL measured pipeline                 2:43 (37377004230:
-    #     21:47:46->00:30:32 incl. the wheelhouse build + ~11 min
-    #     post-job cache save); a ~33-min trailing runner-side log upload
-    #     extended that run's job record — the stages are the budget
+    #   TOTAL measured pipeline                 2:43 incl. wheelhouse build
+    #     (37377004230) / 2:09:55 with the cache hit (37432001711, the
+    #     green-gate run of record: complete ledger zero, census
+    #     192P/1S/1:56:53, pair 2P in 87s); a ~33-min trailing runner-side
+    #     log upload extended one run's job record — the stages are the
+    #     budget
     #   The 2700-min kill sits far above the measured pipeline; the
     #   per-test marks remain the primary protection.
     # D-08 fail-soft: every stage-1+ invocation records its exit code to
