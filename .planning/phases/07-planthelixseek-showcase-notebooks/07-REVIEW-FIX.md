@@ -1,99 +1,109 @@
 ---
 phase: 07-planthelixseek-showcase-notebooks
-fixed_at: 2026-10-03T21:31:12Z
+fixed_at: 2026-10-06T16:56:09Z
 review_path: .planning/phases/07-planthelixseek-showcase-notebooks/07-REVIEW.md
-iteration: 2
-findings_in_scope: 8
-fixed: 8
+iteration: 1
+findings_in_scope: 4
+fixed: 4
 skipped: 0
 status: all_fixed
 ---
 
-# Phase 07: Code Review Fix Report
+# Phase 7: Code Review Fix Report
 
-**Fixed at (this iteration):** 2026-10-03T21:31:12Z
+**Fixed at:** 2026-10-06T16:56:09Z
 **Source review:** `.planning/phases/07-planthelixseek-showcase-notebooks/07-REVIEW.md`
-**Iteration:** 2 (cumulative report — see below)
+**Iteration:** 1
 
 **Summary:**
-- Findings in scope (cumulative over both fix passes on this review): 8 (0 Critical, 2 Warning, 6 Info)
-- Fixed: 8 (2 in iteration 1, 6 in iteration 2)
+- Findings in scope: 4 (1 Warning, 3 Info; scope = all)
+- Fixed: 4
 - Skipped: 0
 
-**Iteration history:**
-- **Iteration 1** (`fix_scope: critical_warning`, 2026-10-03T21:05:59Z): fixed WR-01 (`85f0f23`, `scripts/check_docs_sync.py` ignore set) and WR-02 (`9fd08d7`, CRE notebook cell-18 band-parse guard). Details preserved in the section at the bottom; both are recorded `fixed` in `07-REVIEW-DISPOSITION.md`.
-- **Iteration 2** (this run, `fix_scope: all`): fixed the six Info findings IN-01..IN-06. The Warnings were NOT re-attempted (already fixed; per-run instruction).
-
-All verification for this iteration ran in the MAIN CHECKOUT at `/home/forrest/Github/DNALLM`, branch `phs` — `workflow.use_worktrees=false`, so no isolated worktree was created and every number below is reproducible from this tree.
+**Environment:** `workflow.use_worktrees=false` — all edits, commits, and
+verification ran in the main checkout on branch `phs` (no isolated worktree).
 
 ## Fixed Issues
 
-### IN-01: models.lock comment still describes the Anno test as future work
+### WR-01: models.lock header sentence contradicts the pinned rows it governs
 
 **Files modified:** `models.lock`
-**Commit:** `92e584f`
-**Applied fix:** Dropped the stale `; Anno test lands with 07-02` clause from the `zhangtaolab/PlantHelixSeek-Anno` comment (line 13); it now matches line 12's phrasing exactly (`# tests/examples/test_plant_helixseek_showcase.py (nightly showcase execution, source=modelscope)`), since 07-02 landed `test_anno_notebook_executes_within_selection_bands`.
+**Commit:** 8f9620c
+**Applied fix:** Replaced the inverted sentence ("Rows below the original ten
+predate pinning and stay unpinned") with the true statement: the original ten
+rows (immediately below the header, lines 12-21) predate pinning and stay
+unpinned; every row added since carries a `@sha` pin. Comment line only — no
+model row touched.
 
-### IN-02: Harness docstring budget census is off by the two new entries
+### IN-01: models.lock header still describes a cache-key role removed in this delta
 
-**Files modified:** `tests/examples/_execution.py`
-**Commit:** `0b4fa07`
-**Applied fix:** Rewrote the `NOTEBOOK_EXEC_SPECS` doc-note sentence to "All 21 census example notebooks carry starter budgets (05-05, D-08); the two Phase-7 showcase-lane entries below are budget-only (their tests live in tests/examples/test_plant_helixseek_showcase.py)." Verified the dict really holds 23 `"cell_timeout":` entries (21 census + CRE/Anno showcase) before rewording. AST parse clean.
+**Files modified:** `models.lock`
+**Commit:** d26004f
+**Applied fix:** Rewrote the header's opening lines (former lines 1-3) from
+the stale cache-key instructions ("Keys the gated CI job's model cache
+(actions/cache hashFiles). Edit an entry to rotate the cache key.") to the
+post-D-11 truth: the file is a provenance registry of remote artifacts fetched
+by the slow test suite and example notebooks, and no CI cache is keyed on it
+since D-11 (owner decision 2026-10-05). Verified no `hashFiles('models.lock')`
+consumer remains in `.github/workflows/ci.yml` before rewording. Comment lines
+only — no model row touched.
 
-### IN-03: Anno wrapper claims a per-gene F1 print that the notebook does not emit
+### IN-02: check_docs_sync `.pdf` exemption is broader than the .gitignore rule that justifies it
 
-**Files modified:** `docs/example/notebooks/plant_helixseek_anno.md`
-**Commit:** `c6ab77e`
-**Applied fix:** Reworded the sentence to "The notebook also computes per-gene exon F1 (genes = mRNAs with CDS rows in the slice; the floor counts genes with per-gene exon-F1 >= 0.8) and prints the count of genes meeting the 0.8 floor (`genes_above_floor=`) and nucleotide-level sensitivity / precision / F1 as `key=value` stream lines, ...". Confirmed against the committed notebook first: cell 17 computes `gene_f1_scores` but its stream output carries only aggregates (`exon_f1=`, `genes_above_floor=`, `n_genes=`, `nt_*=`) — no per-gene value. Prose-only change; `check_notebook_md_sync.py` failure set unchanged (only the 3 pre-existing stale wrappers documented out of scope in the review; zero `plant_helixseek` entries).
+**Files modified:** `scripts/check_docs_sync.py`, `tests/scripts/test_check_docs_sync.py` (new)
+**Commit:** d93fb24
+**Applied fix:** Removed `.pdf` from the depth-free `IGNORE_SUFFIXES` (now
+`(".gz", ".log")`) and narrowed it to a path-shaped exemption: a `.pdf` is
+ignored only when it sits directly under `notebooks/<one-dir>/` — exactly the
+`.gitignore:118` pattern `example/notebooks/*/*.pdf` that justifies the
+exemption. `_should_ignore(name, path="")` now takes the walk-relative
+directory path; both call sites (left_only/right_only) pass it, so the
+exemption applies on both mirror sides like the suffix exemptions. Added
+`tests/scripts/test_check_docs_sync.py` (11 tests, `test_audit_skips.py`
+importlib idiom): unit-level `_should_ignore` shape tests plus end-to-end
+`check_sync`/`filecmp.dircmp` tests proving a PDF at the justified depth is
+exempt on both sides while PDFs one level deeper (`notebooks/demo/data/`) or
+outside `notebooks/` (`marimo/`) are reported as drift.
 
-### IN-04: Unused `locus_key` parameter in five of seven parametrized structure tests
+### IN-03: combined-notebook seeding guard checks disk presence, not committed state
 
 **Files modified:** `tests/examples/test_plant_helixseek_showcase.py`
-**Commit:** `5f7a164`
-**Applied fix:** Took the reviewer's second option (keep the uniform signature, note the intent): extended the `SHOWCASE_NOTEBOOKS` comment to state that every structure test takes the uniform `(nb_path, locus_key)` signature against the one shared list even where it reads only `nb_path` — single-source parametrization beats five bespoke argument lists — and that only `test_provenance_markdown_cell` consumes `locus_key`. Chosen over dropping the parameter because the five tests share the `SHOWCASE_NOTEBOOKS` parametrization; per-test argument lists would fragment that surface. AST parse + ruff clean.
+**Commit:** d27abf0
+**Applied fix:** `test_every_seeded_source_is_committed_and_present` now also
+asserts each `COMBINED_EXTRA_INPUTS` source is known to git via
+`git ls-files --error-unmatch` (`subprocess.run(..., check=True)`, `REPO_ROOT`
+imported from `tests/examples/_execution.py`, `shutil.which("git")` per the
+file's existing bedtools-guard idiom). Docstring updated to say
+"git-committed and on disk". An untracked stray now fails the guard instead of
+silently passing `is_file()`.
 
-### IN-05: bedtools dependency of the nightly CRE test is an unencoded runner assumption
+## Verification
 
-**Files modified:** `tests/examples/test_plant_helixseek_showcase.py`
-**Commit:** `4c9ce59`
-**Applied fix:** Added `import shutil` and an upfront guard as the first statement of `test_cre_notebook_executes_within_selection_bands`: `assert shutil.which("bedtools") is not None` with the message "bedtools is not on PATH -- the CRE notebook's jaccard agreement step requires bedtools v2.31+ (see 'Prerequisites' in docs/example/notebooks/plant_helixseek_cre.md)". Still fail-loud per the module's stated design, but self-describing instead of a bare `FileNotFoundError` from inside the kernel on a rebuilt runner. Behaviorally verified both branches of the condition (`shutil.which("bedtools")` returns the runner's `/home/linuxbrew/.linuxbrew/bin/bedtools`; returns `None` with a stripped PATH). AST parse + ruff check/format clean; the fast structure lane (13 tests) passes with the new import.
+All verification ran in the main checkout (`workflow.use_worktrees=false`),
+so every result below is reproducible from the committed tree at `d27abf0`.
 
-### IN-06: Anno label-order usage mixes registry-derived and hardcoded indexes
-
-**Files modified:** `docs/example/notebooks/plant_helixseek_anno/plant_helixseek_anno.ipynb`, `example/notebooks/plant_helixseek_anno/plant_helixseek_anno.ipynb` (byte-identical mirrors; identical edit applied to both)
-**Commit:** `2c56c51`
-**Status:** fixed: requires human verification (notebook-source edit with committed pre-edit outputs — the nightly lane re-executes and confirms; see verification below)
-**Applied fix:** Added a registry label-order assert in cell 11, immediately after the `_B_SWAP_L` transcription and before `swap = np.array(...)`: `assert label_names == ["O", "B-CDS", "I-CDS", "L-CDS", "U-CDS", "B-INTRON", ..., "U-UTR3"], "registry label order drifted from the frozen _B_SWAP_L permutation"`, preceded by a 4-line comment explaining that both the permutation and the intergenic control's `labels != 0` = `O` reading are positional while `label_names.index()` (cell 13) would silently follow a reorder. Strengthened from the reviewer's partial `[0]`/`[1:5]` example to the full 17-element equality because the permutation is itself 17-element positional — a reorder inside the INTRON/UTR families would break it while passing the partial check, and the full assert also covers cell 22's index-0 assumption. Edit applied as a binary-safe exact string replacement in the raw JSON `source` array (single-anchor-match assert, `json.loads` + cell `ast.parse` + <=100-char line checks, then written); the mirrors remain byte-identical (`cmp` clean).
-
-**Verification (iteration 2; all in the main checkout):**
-- `python -m pytest tests/examples/test_plant_helixseek_showcase.py -q -m "not slow"`: **13 passed, 2 deselected in 0.82s** — the fast structure lane over both edited notebooks (AST walk, fla-guard, captions, committed outputs, 2 MB budget) and the test module with the new `import shutil`.
-- `ruff check` + `ruff format --check` on `tests/examples/_execution.py` and `tests/examples/test_plant_helixseek_showcase.py`: clean.
-- `python scripts/check_docs_sync.py`: exit 0 (`OK: docs/example/ is in sync with example/`) — proves the two Anno notebook mirrors stayed byte-identical.
-- `python scripts/check_notebook_md_sync.py`: failure set unchanged (the 3 pre-existing stale MCP/data-prepare wrappers; zero `plant_helixseek` entries).
-- IN-06 assert truth verified against two independent sources before committing: the live registry (`dnallm/models/model_info.yaml` `label_names` for `zhangtaolab/PlantHelixSeek-Anno`) and the committed runtime outputs of notebook cell 3 (`registry_label_names=[...]`, `model_id2label={0: 'O', ..., 16: 'U-UTR3'}`) — both equal the asserted 17-element order, so the assert is behavior-preserving for the nightly re-execution lane.
-- Notebook size after edit: 290,416 bytes per mirror (budget 2,097,152).
-- An initial full-module pytest invocation (without `-m "not slow"`) was intentionally stopped: it had started the two nightly GPU re-execution tests (~40-80 min), which are the verifier phase's job, not per-fix verification.
-
-## Fixed Issues
-
-### WR-01: docs-sync gate ignores some sanctioned runtime artifacts, fails red on any tree where the benchmark example ran
-
-**Files modified:** `scripts/check_docs_sync.py`
-**Commit:** `85f0f23`
-**Applied fix (summary):** Added `"benchmark_results"` to `IGNORE` and `".pdf"` to `IGNORE_SUFFIXES`; `check_docs_sync.py` went from exit 1 (spurious `ONLY in example/` on gitignored runtime artifacts) to exit 0. Re-confirmed exit 0 during iteration 2.
-
-### WR-02: CRE notebook band-table parse fails as a bare KeyError instead of the documented parse guard
-
-**Files modified:** `docs/example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb`, `example/notebooks/plant_helixseek_cre/plant_helixseek_cre.ipynb`
-**Commit:** `9fd08d7`
-**Applied fix (summary):** Cell-18 band loop now raises `RuntimeError` at the parse site when a prefix-matching row carries no `[a, b]` interval (mirroring the Anno sibling), instead of a later opaque `KeyError`. Raw-JSON surgical edit, mirrors kept byte-identical; behavior-preserving for the committed well-formed `selection.md` (verified by simulation in iteration 1).
-
-## Skipped Issues
-
-None — all 8 findings across both iterations were fixed. No findings were skipped in either pass.
+- WR-01 + IN-01: `.venv/bin/python -m pytest tests/test_models_lock_contracts.py
+  tests/test_runner_infra_contracts.py -q --tb=short` — **20 passed** (row
+  semantics pinned; header prose edits proven non-breaking).
+- IN-02: `.venv/bin/python scripts/check_docs_sync.py` — **exit 0** ("OK:
+  docs/example/ is in sync with example/"; the two working-tree PDFs at
+  `example/notebooks/benchmark/` sit at the justified depth and stay exempt).
+  New tests: `pytest tests/scripts/test_check_docs_sync.py -q` — **11 passed**
+  (after correcting one inverted assertion in my own new test during
+  development). Mirror contract subset re-run:
+  `tests/test_runner_infra_contracts.py` — **8 passed**.
+- IN-03: `.venv/bin/python -m pytest tests/examples/test_plant_helixseek_showcase.py
+  -m "not slow and not giants" -q --tb=short` — **21 passed, 3 deselected**
+  (slow real-inference showcase tests excluded as directed). Negative check:
+  `git ls-files --error-unmatch` exits 1 on an untracked path, 0 on a
+  committed source — the guard discriminates as intended.
+- Lint/format: `ruff format --check` and `ruff check` clean on all three
+  touched Python files.
+- Working tree clean after all commits (only pre-existing untracked
+  `.planning/` artifacts remain); branch `phs` pushed (`9286531..d27abf0`).
 
 ---
 
-_Fixed: 2026-10-03T21:31:12Z (iteration 2)_
+_Fixed: 2026-10-06T16:56:09Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 2_
+_Iteration: 1_
