@@ -6,7 +6,8 @@
 # modelscope git ls-remote; hf rows: HF main via the mirror API). The
 # prefix must match the using notebook's ACTIVE source= route (ms ⇒
 # source="modelscope", hf ⇒ source="huggingface"; D-15 alignment).
-# Rows below the original ten predate pinning and stay unpinned.
+# The original ten rows (immediately below this header) predate pinning and
+# stay unpinned; every row added since carries a @sha pin.
 hf  microsoft/DialoGPT-small                         # tests/models/test_model.py::test_download_real_huggingface_connection
 hf  zhangtaolab/plant-dnagpt-BPE-promoter            # tests/inference/test_inference_real_model.py (from_pretrained, HF route)
 ms  zhangtaolab/plant-dnabert-BPE                    # tests/finetune/test_trainer_real_model.py (12 call sites, source=modelscope)
