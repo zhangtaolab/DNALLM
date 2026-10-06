@@ -103,15 +103,16 @@ The workflows are triggered on:
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
-**Timeout**: 900 minutes (per-test `@pytest.mark.timeout` ceilings across the slow suite sum to 840min — 600min from the 7 phase marks plus 240min from the download/real-inference/MCP marks, where the 1800s class mark on `TestRealModelInference` applies to all 5 of its items; the kill sits above that sum so a hung test fails via its own mark, with junit and the skip audit still produced. Note that GitHub-hosted runners hard-cap a single job at 360min, so the platform cap binds before this figure — the per-test marks are the primary protection, the job-level number is a backstop, and the census itself is projected at 4-7.5h on 4-core CPU runners, i.e. a slow night can still hit the platform cap)
+**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[base,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
 
 **Model Caches**: none — the `models.lock`-keyed hub cache layer was removed (D-11, owner decision 2026-10-05): cold pulls are proven (a 65-min all-cold example stage 1 against a 2700-min budget) and the lock-only cache (~15.2GiB) exceeded the 10GB Actions cache quota without ever successfully saving. The runner box's local `$HOME` hub caches remain the warm path and are never cleaned (owner rule).
 
 **Steps**:
 1. **Code Checkout** / **Free Disk Space** / **Python 3.12 Setup** / **UV + Cache**: shared uv cache only (the hub cache layer is gone — D-11)
 2. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
-3. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long network-bound tests (trainer, real-download, and MCP integration)
-4. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
+3. **Bedtools Rootless Install/Fallback**: the same cached-prefix + micromamba/bioconda step `example-nightly` uses (09-04, run 37345067326 finding) — this job's full-tree census executes the NER data_generation notebook, the CRE showcase bands test, and the script lane, all of which need the `bedtools` binary
+4. **Gated Full Census**: Runs the census of record with slow tests included (`-ra --durations=0 --cov`), minus the 6 MCP live-server probes that typed-skip without a local server (see Census scope above); per-test `@pytest.mark.timeout` marks override the global 300s timeout for the long network-bound tests (trainer, real-download, and MCP integration)
+5. **Skip Audit**: `scripts/audit_skips.py` against the nightly junit — unexpected skips fail the job
 
 ### 7. Example Nightly Job (`example-nightly`)
 
@@ -119,7 +120,7 @@ The workflows are triggered on:
 
 **Trigger**: the **05:30 UTC** schedule entry only (cron-string gate, D-19) plus manual `workflow_dispatch` — never push/PR, so PR-authored code (including forks) never reaches the self-hosted box.
 
-**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.12, 2700-minute timeout (per-test `@pytest.mark.timeout` marks are the primary hang protection; the job kill is the whole-job backstop).
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.12, 2700-minute timeout (per-test `@pytest.mark.timeout` marks are the primary hang protection; the job kill is the whole-job backstop). Measured pipeline **2:43** end-to-end including the ~24-min mamba wheelhouse build (run [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230), the green-gate run; the full D-12 measured budget lives in the workflow comments and the 09 census rollup). The mcp pair's num_ctx cut is **DEFERRED** (owner decision 2026-10-06) — stage 3 runs at the existing ~256k ctx, measured ~8 min with no memory-floor pressure on the 128GB box.
 
 **Staged-serial topology** (stages run strictly in order inside one job — a server-binding stage may never start while the previous stage still holds GPU memory or kernel processes):
 

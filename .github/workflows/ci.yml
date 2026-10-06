@@ -446,15 +446,31 @@ jobs:
     # entry (the 05:30 entry belongs to example-nightly) while keeping the
     # dispatch disjunct; push/PR must never reach the self-hosted box.
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
-    # Per-test timeout ceilings across the census sum to 840min (7 phase marks
-    # = 600min + download/real-inference/MCP marks = 900+900+5x1800+3600s =
-    # 240min; the 1800s class mark on TestRealModelInference applies to all 5
-    # of its items). Keep the job kill at 900, above that sum, so a hung test
-    # fails via its own mark (junit + skip audit still run) instead of a job
-    # kill (no junit, model-cache forfeit). NOTE: GitHub-hosted runners
-    # hard-cap a single job at 360min, so the platform cap binds before both
-    # numbers; the per-test marks are the primary protection and these
-    # job-level figures are backstops.
+    # D-12 MEASURED rewrite (run 37345067326 + its re-dispatch 37377004230;
+    # wall minutes from run logs, never proportional estimates): the full
+    # census measured 1:27:14 (1928P/4F/15S in 37345067326 — the 4 failures
+    # were the bedtools gap fixed at decd2cc plus the fenced pre-existing
+    # test_plot_for_regression) with ~4 min of install ahead of it: job
+    # total ~88 min, far inside the kill.
+    # Relationship (D-12, unchanged): per-test @pytest.mark.timeout marks are
+    # the PRIMARY hang protection — a hung test dies at its own mark with
+    # junit and the skip audit still produced; the job kill is only the
+    # backstop. Recomputed paper ceilings from the current marks (fresh
+    # full-tree collection, marks above the 300s global default):
+    # ~3920 min over ALL marks — dominated by tests/examples execution
+    # marks (13x7200s class + 8 gated 3600/7200s + 3x7200s marimo +
+    # 4x3600s script + showcase 2400+5400+2400s) that typed-skip at gate
+    # time in this job's .[base,fla] venv (no megaDNA/mamba/giants prereqs
+    # — example-nightly's lane); the bind-here set (real-model 5x1800s +
+    # remote-code 1800s + PlantHelixSeek smokes 2x1800s + trainer
+    # 2x7200s+3x3600s+7200s fn + inference 3600s + model 2x900s + mcp
+    # 3600s) sums to ~640 min. DECISION (with the measurement in hand,
+    # D-12 / research OQ3): KEEP 900 as a deliberate, documented override
+    # sitting below both paper sums — the sums assume every marked test
+    # hangs to its ceiling simultaneously, which the per-test marks
+    # themselves preclude (each hung test fails at its own mark, junit and
+    # audit still run), and the measured green-path total is ~88 min;
+    # raising the kill buys no protection the marks do not already provide.
     timeout-minutes: 900
     continue-on-error: false
     steps:
@@ -612,30 +628,49 @@ jobs:
     # may never start while the previous stage still holds GPU memory or
     # kernel processes.
     # Sum-of-ceilings backstop (same discipline as coverage-nightly): the
-    # per-test pytest-timeout marks across tests/examples sum to ~2620 min
-    # (ACTIVE 13x7200s + gated non-mcp 5x3600-7200s + marimo 3x7200s +
-    # showcase 2400+5400+2400s + script 3600s + fast contract tests), so
-    # the per-test marks are the primary hang protection; the job kill
-    # sits above that sum. Self-hosted jobs have no platform time cap —
-    # this backstop is the only whole-job bound.
+    # per-test pytest-timeout marks across tests/examples are the PRIMARY
+    # hang protection — a hung test dies at its own mark with junit and the
+    # skip audit still produced — and this job-level kill is the backstop
+    # above every measured total. Self-hosted jobs have no platform time
+    # cap, so this backstop is the only whole-job bound.
+    # D-12 MEASURED actuals (wall minutes from run logs — never
+    # proportional estimates; run 37345067326 = first live exercise at the
+    # 09-04 Task-1 wiring, run 37377004230 = the green-gate run at the
+    # fixed wiring incl. the SSE-probe repair 5dfadda; authoritative
+    # record: .planning/phases/09-ci-wiring-census-verification/
+    # 09-CENSUS-ROLLUP.md):
+    #   stage 0 venv+extras+bedtools+inventory  ~1 min (warm uv; bedtools
+    #     from cached prefix ~15s)
+    #   stage 0 mamba kernel wheelhouse         23-24 min on BOTH runs —
+    #     the wheelhouse cache MISSED every 09-04 run (repo cache store at
+    #     its 10GB threshold throttles saves; owner disposition pending),
+    #     so the recurring source build is a measured cost, not an assumed
+    #     amortized one
+    #   stage 0.5 census assertion              4s (collect 1.28s)
+    #   stage 1 examples+YAML                   1:57-2:00 (192P/1S/9
+    #     deselected both runs; D-05 epochs-cut measured: gated
+    #     finetune_custom_head 566s vs the ~31min 3-epoch dev-box figure)
+    #   stage 1.5/2.5 hygiene floors            5-6s each (~115Gi avail)
+    #   stage 2 streamable + sse probes         ~40s each post-fix (the
+    #     17:58 sse figure in run 37345067326 was the pre-fix always-fail
+    #     probe, never server cost)
+    #   stage 3 mcp pair                        ~8 min both runs at the
+    #     EXISTING ~256k ctx — D-06 num_ctx cut DEFERRED (owner decision
+    #     2026-10-06; the in-repo 8192 pin stays inert): 2P in 442-449s,
+    #     no floor pressure on the 128GB box; revisit with these numbers
+    #   stage 4 audits+upload+summary           seconds
+    #   TOTAL measured pipeline                 2:43 (37377004230:
+    #     21:47:46->00:30:32 incl. the wheelhouse build + ~11 min
+    #     post-job cache save); a ~33-min trailing runner-side log upload
+    #     extended that run's job record — the stages are the budget
+    #   The 2700-min kill sits far above the measured pipeline; the
+    #   per-test marks remain the primary protection.
     # D-08 fail-soft: every stage-1+ invocation records its exit code to
     # stage-results.txt and its step exits 0 so later stages still run; the
     # stage-4 summary exits non-zero when ANY recorded outcome failed. NO
     # step in this job carries continue-on-error — a forever-green job is
     # prohibited, and an infra failure in stage 0 still fails the job
     # directly (nothing downstream can run without a venv).
-    # Measured dev-box actuals (08-03/08-05/08-07/08-08 family SUMMARYs):
-    # full examples lane ~2h35m wall (08-08 chunked census 41+6+149 items),
-    # megaDNA family lane 48:05, evo lane 49s (offline giants), lora pair
-    # ~11 min, mcp pair ~25 min, fast YAML leg seconds. First dispatch of
-    # the 08-01 skeleton measured 66 min end-to-end (stage 1 only, typed
-    # skips for the then-gated families) — the completed job adds the
-    # gated-family executions plus a one-time mamba wheel build
-    # (~40-90 min, wheel-cached afterward), so first-run totals land well
-    # under this backstop while steady-state runs track the dev-box
-    # actuals. D-04 (2026-10-05) removed the evo provisioning and giant-
-    # model prefetch this comment originally counted; those minutes no
-    # longer exist in the job.
     timeout-minutes: 2700
     env:
       # Network reality on the dnallm-nightly box (08-08 lora repair
