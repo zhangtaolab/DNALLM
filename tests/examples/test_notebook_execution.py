@@ -435,6 +435,25 @@ class TestSeedSandboxYamlOverrides:
                 },
             )
 
+    def test_non_mapping_override_section_raises(self, tmp_path: Path) -> None:
+        """Fail-closed: a section mapping to a null/scalar raises ValueError (IN-01).
+
+        A YAML ``null_section:`` with no value parses to ``None`` (not a
+        mapping); the documented contract says ``ValueError``, not the
+        ``AttributeError`` an unguarded ``.update`` would raise.
+        """
+        src_dir = self._seed_dir(tmp_path)
+        (src_dir / "finetune_config.yaml").write_text(
+            'task:\n    task_type: "binary"\nnull_section:\n', encoding="utf-8"
+        )
+
+        with pytest.raises(ValueError, match="null_section"):
+            seed_sandbox(
+                src_dir,
+                tmp_path / "run",
+                yaml_overrides={"finetune_config.yaml": {"null_section": {"num_train_epochs": 1}}},
+            )
+
     def test_finetune_custom_head_spec_pins_the_epochs_cut(self) -> None:
         """The spec yaml_patch key equals the D-05 patch -- guards editorial removal."""
         nb_path = EXAMPLE_DIR / "notebooks" / "finetune_custom_head" / "finetune.ipynb"

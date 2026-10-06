@@ -397,7 +397,7 @@ def seed_sandbox(
     Raises:
         ValueError: a tuple extra input resolves outside ``tmp_path``; a
             ``yaml_overrides`` target file is missing from the sandbox; a
-            patched section is absent from the target YAML.
+            patched section is absent or non-mapping in the target YAML.
     """
     sandbox = tmp_path / src_dir.name
     shutil.copytree(
@@ -431,8 +431,9 @@ def seed_sandbox(
             shutil.copy2(src, dest)
     # D-05 (09-02): sandbox-only YAML patches, applied after seeding so the
     # committed source tree is never touched. Fail-closed on a missing target
-    # file or a missing section -- a typo'd override must never silently
-    # leave the sandbox running the committed (uncut) values.
+    # file, a missing section, or a non-mapping section -- a typo'd override
+    # must never silently leave the sandbox running the committed (uncut)
+    # values.
     for rel_path, patch in (yaml_overrides or {}).items():
         target = sandbox / rel_path
         if not target.is_file():
@@ -442,10 +443,10 @@ def seed_sandbox(
             )
         data = yaml.safe_load(target.read_text(encoding="utf-8"))
         for section, kv in patch.items():
-            if data is None or section not in data:
+            if not isinstance(data, dict) or not isinstance(data.get(section), dict):
                 raise ValueError(
-                    f"yaml_overrides section {section!r} absent from "
-                    f"{rel_path!r} in the sandbox -- refusing to patch a missing section"
+                    f"yaml_overrides section {section!r} absent or non-mapping in "
+                    f"{rel_path!r} in the sandbox -- refusing to patch"
                 )
             data[section].update(kv)
         target.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
