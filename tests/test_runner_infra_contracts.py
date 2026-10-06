@@ -22,6 +22,12 @@ the example-nightly stage-2 SSE readiness-probe shape contract (see
 
 The unit file is the auditable source (its own header contract: "auditable
 and rebuildable by diff"); these tests keep it honest between re-applies.
+
+2026-10-06 model swap (owner decision 15:27 CST): the notebooks' model
+reference became qwen3.5:4b (4.2B Q4_K_M, ~3.3GB; default context 262144
+-- still 256k-class, so the D-06 rationale above stays intact), pinned by
+:class:`TestMcpExampleModelSwap`; the pinned unit Environment lines are
+unchanged and remain inert pending the owner re-apply.
 """
 
 from __future__ import annotations

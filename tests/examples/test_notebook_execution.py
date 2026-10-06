@@ -1027,8 +1027,9 @@ MCP_ENDPOINT = "http://localhost:8000/mcp"
 #     two gated mcp tests (server up + ollama probed).
 # BETWEEN stages: explicit kernel pkill + VRAM settle (a few seconds' sleep
 # after torch-heavy work lets the allocator release before ollama loads the
-# 17GB qwen3.8 weights). The ci.yml wiring lands in 08-09; these module
-# comments are the contract it implements.
+# ~3.3GB qwen3.5:4b weights -- owner swap 2026-10-06 15:27 CST). The ci.yml
+# wiring lands in 08-09; these module comments are the contract it
+# implements.
 
 
 def _probe_http(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
@@ -1063,7 +1064,10 @@ def _probe_http_with_retry(
 
     Retries *url* up to ``attempts`` times, ``interval_s`` apart (~60s total
     at the defaults) -- a runner-fresh ollama service may still be loading
-    the 17GB qwen3.8 weights when the test starts, and a single 2s probe
+    the ~3.3GB qwen3.5:4b weights when the test starts (the smaller model
+    loads faster than the retired 17GB one, but the ~60s D-13 window
+    contract is unchanged and the probe stays HTTP-reachability-only over
+    /api/tags), and a single 2s probe
     would typed-skip on a service that is merely warming up. Returns as soon
     as any attempt succeeds; a persistent failure returns (False, evidence
     naming the url, the attempt count, and every attempt's verbatim result).
@@ -1220,9 +1224,13 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
 # artifact capture), so these carry the 7200s override instead of the
 # class-level 3600s mark. The mcp_example pair joined at cell-budget 3600
 # per owner decision B (2026-10-06, 09-04): the num_ctx 8k cut is DEFERRED,
-# so qwen3.8 serves the pair at ~256k ctx and the un-cut latency tail
-# crossed the old 1800s cell line live (run 37406829738 stage 3
-# CellTimeoutError); revisit when/if the cut is un-deferred.
+# so the agent brain serves the pair at its default context -- qwen3.5:4b
+# since the owner swap decision 2026-10-06 15:27 CST (default context
+# 262144, the same ~256k class as the previous qwen3.8; cell 3600s / outer
+# 7200s budgets unchanged for the smaller model) -- and the un-cut latency
+# tail crossed the old 1800s cell line live under the previous model (run
+# 37406829738 stage 3 CellTimeoutError); revisit when/if the cut is
+# un-deferred.
 _TIMEOUT_7200_GATED: frozenset[str] = frozenset({
     "mcp_example/mcp_client_ollama_langchain_agents.ipynb",
     "mcp_example/mcp_client_ollama_pydantic_ai.ipynb",

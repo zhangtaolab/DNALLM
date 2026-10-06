@@ -242,19 +242,26 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_langchain_agents.ipynb"): {
-        # Agent-loop budget: the qwen3.8 (17GB) ollama turns plus real MCP
-        # tool round-trips exceed the 600s starter (261003-csd campaign
-        # evidence: pydantic cell-6 analysis passed 600s with working
-        # tools). Owner decision B (2026-10-06, 09-04): raised 1800 -> 3600
-        # to match the UN-CUT num_ctx reality -- the num_ctx 8k cut is
-        # DEFERRED (owner 2026-10-06 00:52 CST), so qwen3.8 serves the pair
-        # at ~256k ctx and the un-cut latency tail crossed the old 1800s
-        # line live (run 37406829738 stage 3: CellTimeoutError after 1800s
-        # on the pydantic analysis cell; the prior green leg ran the whole
-        # pair in ~8 min). The outer pytest-timeout mark for this lane is
-        # the 7200s override (_TIMEOUT_7200_GATED) keeping the kill
-        # strictly above the cell budget. Revisit when/if the num_ctx cut
-        # is un-deferred (D-12 records the measured budget).
+        # Agent-loop budget: the qwen3.5:4b ollama turns plus real MCP tool
+        # round-trips exceed the 600s starter (261003-csd campaign evidence:
+        # pydantic cell-6 analysis passed 600s with working tools). Owner
+        # decision B (2026-10-06, 09-04): raised 1800 -> 3600 under the
+        # previous qwen3.8 model to match the UN-CUT num_ctx reality -- the
+        # num_ctx 8k cut is still DEFERRED (owner 2026-10-06 00:52 CST), so
+        # the brain serves the pair at its default context and the un-cut
+        # latency tail crossed the old 1800s line live (run 37406829738
+        # stage 3: CellTimeoutError after 1800s on the pydantic analysis
+        # cell under the PREVIOUS model; the prior green leg ran the whole
+        # pair in ~8 min). Model swapped to qwen3.5:4b (owner decision
+        # 2026-10-06 15:27 CST; 4.2B Q4_K_M, ~3.3GB, default context 262144
+        # = still 256k-class, so the un-cut latency tail still governs;
+        # capability probe PASSED 15:24 CST -- 3-turn tool-calling, 34.8s
+        # cold / 6.1s / 5.1s warm). cell_timeout 3600 and the 7200s outer
+        # override STAY (owner decision B; headroom for the smaller model).
+        # The outer pytest-timeout mark for this lane is the 7200s override
+        # (_TIMEOUT_7200_GATED) keeping the kill strictly above the cell
+        # budget. Revisit when/if the num_ctx cut is un-deferred (D-12
+        # records the measured budget).
         "cell_timeout": 3600,
         "extra_inputs": [],
         # Isolated lane (261003-csd): routes this notebook away from the
@@ -267,6 +274,9 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         # raised to 3600s with it per owner decision B (2026-10-06, 09-04:
         # the un-cut ~256k ctx latency tail crossed the old 1800s line --
         # run 37406829738 stage 3 CellTimeoutError; num_ctx cut DEFERRED).
+        # Model swapped to qwen3.5:4b (owner 2026-10-06 15:27 CST; 4.2B
+        # Q4_K_M, ~3.3GB, default context 262144 keeps the ~256k-class
+        # un-cut reality) -- budgets unchanged.
         "cell_timeout": 3600,
         "extra_inputs": [],
     },
