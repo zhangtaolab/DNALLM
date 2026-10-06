@@ -30,10 +30,24 @@ evo_models = {
 # evo-1 family therefore restricts its hub fetch to the safetensors weights
 # plus configs/tokenizer files; evo2 keeps its unfiltered fetch (2.7GB, fits
 # the quota cache).
+# CR-01 (08): "*.py" is REQUIRED here. The evo-1 repos' config.json
+# auto_map uses the cross-repo "--" convention
+# (togethercomputer/evo-1-131k-base--configuration_hyena.StripedHyenaConfig),
+# so load_checkpoint's AutoConfig.from_pretrained(repo_id,
+# trust_remote_code=True) resolves the code through the hub cache -- under
+# HF_HUB_OFFLINE=1 those module files must already be on disk or the load
+# fails deterministically with LocalEntryNotFoundError. "*.py" covers the
+# family members that ship code in their own repo (evo-1-131k-base); the
+# 8k/crispr/transposon variants redirect to the evo-1-131k-base sibling
+# repo, whose *.py must be prefetched into the giants hub cache alongside
+# the weights tier. The 16.81GB pytorch_model.pt stays excluded by
+# omission: no "*.pt" or "pytorch_model" pattern appears below, so the
+# Pitfall-4 skip intent is unchanged.
 _EVO1_SAFETENSORS_ONLY_PATTERNS: list[str] = [
     "*.safetensors",
     "*.json",
     "*.txt",
+    "*.py",
     "README.md",
 ]
 

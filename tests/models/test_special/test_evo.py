@@ -20,6 +20,7 @@ import torch.nn as nn
 
 from dnallm.models.special.evo import (
     EvoTokenizerWrapper,
+    _EVO1_SAFETENSORS_ONLY_PATTERNS,
     _handle_evo1_models,
     _handle_evo2_models,
 )
@@ -577,11 +578,17 @@ class TestHandleEvo1Models:
         assert isinstance(tokenizer, EvoTokenizerWrapper)
 
     def test_hub_fetch_is_safetensors_only(self, monkeypatch):
-        """The evo-1 hub fetch carries the safetensors-only allow_patterns set.
+        """The evo-1 hub fetch carries the safetensors+code allow_patterns set.
 
         CI-05 / Pitfall 4: a warm giants dir must never be re-expanded with
         the 16.81GB pytorch_model.pt at load time -- the pattern set keeps
-        the snapshot download restricted to safetensors + configs.
+        the snapshot download restricted to safetensors + configs.  CR-01
+        (08): "*.py" joins the set because offline trust_remote_code
+        resolution in load_checkpoint needs the auto_map code files
+        (configuration_hyena.py / modeling_hyena.py) in the hub cache --
+        fetched from the repo itself or, for the 8k variants whose auto_map
+        redirects there, from the evo-1-131k-base sibling repo; the .pt
+        weights stay out (see test_hub_fetch_patterns_exclude_pt_weights).
         """
         _install_evo1_stubs(monkeypatch)
         modules = _evo1_modules()
@@ -602,5 +609,21 @@ class TestHandleEvo1Models:
             "*.safetensors",
             "*.json",
             "*.txt",
+            "*.py",
             "README.md",
         ]
+
+    def test_hub_fetch_patterns_exclude_pt_weights(self):
+        """No evo-1 fetch pattern can match the pytorch_model.pt weights.
+
+        The Pitfall-4 skip intent (never re-expand a warm giants dir with
+        the 16.81GB .pt) survives the CR-01 "*.py" addition by omission:
+        the allow list must contain no "*.pt" / "pytorch_model" entry and
+        no glob able to match a .pt file at all.
+        """
+        patterns = _EVO1_SAFETENSORS_ONLY_PATTERNS
+
+        assert "*.pt" not in patterns
+        assert not any("pytorch_model" in pattern for pattern in patterns)
+        assert not any(pattern.endswith(".pt") for pattern in patterns)
+        assert not any(pattern == "*" or pattern == "*.*" for pattern in patterns)
