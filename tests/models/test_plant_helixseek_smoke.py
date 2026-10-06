@@ -323,13 +323,17 @@ def test_planthelixseek_cre_smoke_load():
     # WR-01 guard: without flash-linear-attention the load runs the remote
     # code's silent pure-PyTorch non-KDA fallback (positionally dead outputs),
     # so a shape-only green here would validate the wrong kernel path.
+    # IN-01: emit the REG-03 evidence and a versioned reason BEFORE the guard,
+    # so a fla-missing skip still carries the env versions per the module
+    # docstring contract.
+    _emit_env()
     pytest.importorskip(
         "fla",
-        reason="environment-unavailable: flash-linear-attention not installed — "
+        reason="environment-unavailable: flash-linear-attention not installed "
+        f"(transformers {transformers.__version__}, torch {torch.__version__}) — "
         "the PlantHelixSeek load would run the degraded non-KDA fallback "
         "(WR-01 typed skip; see tests/models/test_plant_helixseek_fla_kernels.py)",
     )
-    _emit_env()
     task = _registry_task(CRE_REPO_ID)
     cfg = TaskConfig(
         task_type=task["task_type"],
@@ -359,13 +363,15 @@ def test_planthelixseek_anno_smoke_load():
     """Anno loads via the generic route; frozen 17-BILOU order and forward shape."""
     # WR-01 guard: same rationale as the CRE smoke — without fla the load
     # validates the degraded non-KDA fallback, not the checkpoint's real path.
+    # IN-01: evidence + versions before the guard, matching the CRE smoke.
+    _emit_env()
     pytest.importorskip(
         "fla",
-        reason="environment-unavailable: flash-linear-attention not installed — "
+        reason="environment-unavailable: flash-linear-attention not installed "
+        f"(transformers {transformers.__version__}, torch {torch.__version__}) — "
         "the PlantHelixSeek load would run the degraded non-KDA fallback "
         "(WR-01 typed skip; see tests/models/test_plant_helixseek_fla_kernels.py)",
     )
-    _emit_env()
     task = _registry_task(ANNO_REPO_ID)
     cfg = TaskConfig(
         task_type=task["task_type"],
