@@ -5,10 +5,10 @@ milestone_name: Example Execution Testing & Repair
 current_phase: 09
 status: completed
 stopped_at: Phase 09 complete — all phases complete
-last_updated: "2026-10-06T13:30:11.830Z"
+last_updated: "2026-10-06T14:17:33.086Z"
 last_activity: 2026-10-06
 last_activity_desc: Phase 09 complete
-state_head: ec3b1c3be188af4fdf6533c820bc6a42b670342c
+state_head: 7cf8458552f8803a14f72d715be463a12b538374
 progress:
   total_phases: 5
   completed_phases: 5
@@ -224,6 +224,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 14 | gsd-fast: Mutagenesis/Benchmark/DNAInterpret config -> Mapping; Benchmark backfills into a private dict(config) copy (no caller aliasing); contract tests extended to 5 engines + no-alias pin (types.UnionType unwrap lesson); fast-subset 389P | 2026-10-05 | 16a9ffb | — |
 | 261006-cum | Fix pre-existing test_plot_for_regression regression (Mapping fallout, WINDOWS id 16) | 2026-10-06 | 550d311 | [261006-cum-fix-pre-existing-test-plot-for-regressio](./quick/261006-cum-fix-pre-existing-test-plot-for-regressio/) |
 | 261006-lhm | Direct-edit mcp_example notebooks' committed model id to qwen3.5:4b (owner decision 15:27 CST) | 2026-10-06 | 0a5ca0d | [261006-lhm-direct-edit-mcp-example-notebooks-commit](./quick/261006-lhm-direct-edit-mcp-example-notebooks-commit/) |
+| 261006-uq7 | Apply dependabot ruff bump on phs with mamba red-line gates (owner 22:06) | 2026-10-06 | 7cf8458 | [261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m](./quick/261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m/) |
 
 ## Deferred Items
 
