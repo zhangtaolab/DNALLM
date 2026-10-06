@@ -26,9 +26,9 @@ decisions:
     configuration_utils/cache_utils guards (a future transformers submodule rename is the IN-01 failure
     mode), plain "not installed" on the modeling_utils guard matching the two pre-existing modeling_utils
     guards verbatim
-  - `# pragma: no cover` markers kept on the new except branches despite the new tests exercising them —
+  - "`# pragma: no cover` markers kept on the new except branches despite the new tests exercising them —
     matches the file's established style (bitsandbytes guard at line 274 is likewise pragma-marked while
-    covered by test_passthrough_when_bitsandbytes_unavailable)
+    covered by test_passthrough_when_bitsandbytes_unavailable)"
   - Absence test collects installers dynamically from vars(transformers_compat) so any future _patch_*
     installer enters the absence contract automatically; the pinned EXPECTED_PATCH_INSTALLERS roster
     forces conscious extension when the installer set changes

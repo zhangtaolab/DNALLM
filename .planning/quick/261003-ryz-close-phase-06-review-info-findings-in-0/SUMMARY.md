@@ -1,3 +1,10 @@
+---
+phase: 261003-ryz
+plan: 01
+status: complete
+completed: 2026-10-03T12:29:35Z
+---
+
 # Quick Task 261003-ryz: Close Phase-06 Review Info Findings IN-01..06 Summary
 
 **Six surgical info-finding fixes: deterministic pyfastx handle/.fxi lifecycle in fetch_sequence, ASCII-strict chrom digits, contamination-free import-purity test, quote-normalized Anno registry line, exact bracket-member fla assertion, and an evidence-decided .scratch/ ignore removal (dispositions open 6 -> 0)**

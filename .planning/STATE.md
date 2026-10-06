@@ -232,6 +232,11 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| deferred_items | 09/deferred-items.md: test_plot_for_regression fast-lane failure | acknowledged (resolved in artifact by 261006-cum `550d311`; WINDOWS id 16 fixed) | 2026-10-06 | v1.1 |
+| deferred_items | 05/deferred-items.md: dnallm-mcp-server CLI `--host`/`--port` silently overridden by yaml config (server.py:1696-1700) | acknowledged (product decision: argparse sentinel defaults vs drop flags) | 2026-10-06 | v1.1 |
+| deferred_items | 05/deferred-items.md: `uv run pytest` resolver failure under uv 0.12.20 universal resolution (mamba × cuda conflicts matrix) | acknowledged (working forms: `uv run --no-sync pytest` or venv pytest) | 2026-10-06 | v1.1 |
+| quick_tasks | 261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1 | missing (plan-only, never executed — Python floor raise not taken in v1.1) | 2026-10-06 | v1.1 |
+| uat_gaps | 05/05-UAT.md | passed, 0 pending (feasibility.yml workflow_dispatch deferred until phs→dev→main) | 2026-10-06 | v1.1 |
 | deferred_items | 03/deferred-items.md: import-time `logs/dnallm.log` sink recreated under pytest cwd every run (`DNALLMLogger._setup_handlers`, logger.py:57-60) | acknowledged | 2026-10-01 | v1 |
 | deferred_items | 03/deferred-items.md: test_timeout.py fixed ~60s cost from two full-30s-timeout waits (shorten `_tool_timeout_seconds` like `test_timeout_configurable` does) | acknowledged | 2026-10-01 | v1 |
 | deferred_items | `DNADataset.raw_reverse_complement` no-op — `ds.map` result discarded (data.py:983), latent bug pinned as-is by test | acknowledged | 2026-10-01 | v1 |
