@@ -247,8 +247,11 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         # pydantic cell-6 analysis passed 600s with working tools). Owner
         # decision B (2026-10-06, 09-04): raised 1800 -> 3600 under the
         # previous qwen3.8 model to match the UN-CUT num_ctx reality -- the
-        # num_ctx 8k cut is still DEFERRED (owner 2026-10-06 00:52 CST), so
-        # the brain serves the pair at its default context and the un-cut
+        # num_ctx 8k cut is still DEFERRED (owner 2026-10-06 00:52 CST: the
+        # live ollama service was NOT reconfigured, so the in-repo unit's
+        # OLLAMA_CONTEXT_LENGTH pin is committed but inert -- same story as
+        # scripts/runner/README.md), the brain serves the pair at its
+        # default context (cost accepted), and the un-cut
         # latency tail crossed the old 1800s line live (run 37406829738
         # stage 3: CellTimeoutError after 1800s on the pydantic analysis
         # cell under the PREVIOUS model; the prior green leg ran the whole

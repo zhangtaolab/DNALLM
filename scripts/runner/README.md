@@ -68,11 +68,24 @@ Precedence is per-request `options.num_ctx` > Modelfile `PARAMETER num_ctx`
 is read at server start: a unit edit only takes effect after the re-apply
 step above (daemon-reload + `systemctl restart ollama`).
 
+**Deferral status (owner 2026-10-06 00:52 CST, standing decision):** the
+num_ctx cut is DEFERRED entirely. The live ollama service was NOT
+reconfigured — the live unit does not carry this env pin — so the in-repo
+`OLLAMA_CONTEXT_LENGTH=8192` above stays committed but INERT: it records
+the intended end state, not the running service. Until the deferral is
+lifted and the re-apply step above runs, the mcp_example pair is served at
+the model's default context (256k-class) and the latency/VRAM cost is
+accepted. The harness budgets tell this same story
+(`tests/examples/_execution.py` cell_timeout comments).
+
 Swapped 2026-10-06 (owner decision 15:27 CST): the notebooks' literal model
 reference became qwen3.5:4b (capability probe PASSED 15:24 CST — 3-turn
-tool-calling, 34.8s cold / 6.1s / 5.1s warm); the num_ctx cut remains
-DEFERRED (owner 2026-10-06 00:52 CST), so the server default env pin above
-stays exactly as committed.
+tool-calling, 34.8s cold / 6.1s / 5.1s warm). The Modelfile num_ctx probe
+has NOT been re-run for qwen3.5:4b: the 2026-10-05 live probe (no Modelfile
+num_ctx) covered only the replaced qwen3.8:latest, so if qwen3.5:4b's
+Modelfile sets `PARAMETER num_ctx` the env pin would be silently overridden
+once the unit is re-applied — re-probe with
+`ollama show qwen3.5:4b --modelfile` before relying on the env governing.
 
 ## How the D-13 readiness probe treats a down service
 

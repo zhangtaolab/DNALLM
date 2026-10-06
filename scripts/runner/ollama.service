@@ -16,11 +16,18 @@
 #
 # RUNTIME (D-06, 09-02): OLLAMA_CONTEXT_LENGTH pins the server-default
 # context window to 8192 (see the Environment comment below for the full
-# rationale). Precedence: per-request options.num_ctx > Modelfile
-# PARAMETER num_ctx > this env > the built-in default. qwen3.8:latest
-# currently carries NO Modelfile num_ctx (probed live 2026-10-05), so this
-# env governs -- re-probe with `ollama show qwen3.8:latest --modelfile`
-# if the model is ever re-pulled or replaced.
+# rationale). DEFERRAL STATUS (owner 2026-10-06 00:52 CST, standing): the
+# num_ctx cut is DEFERRED entirely -- the live ollama service was NOT
+# reconfigured with this unit, so this committed env pin is INERT on the
+# runner until the deferral is lifted and the re-apply step in
+# scripts/runner/README.md runs (daemon-reload + restart). Precedence when
+# it does govern: per-request options.num_ctx > Modelfile PARAMETER num_ctx
+# > this env > the built-in default. The swapped model qwen3.5:4b
+# (2026-10-06, replacing qwen3.8:latest) has NOT been re-probed -- the
+# 2026-10-05 live probe (no Modelfile num_ctx) covered only the replaced
+# model; if qwen3.5:4b's Modelfile sets num_ctx it silently overrides this
+# env. Re-probe with `ollama show qwen3.5:4b --modelfile` before relying
+# on the env governing.
 [Unit]
 Description=Ollama Service
 After=network-online.target
@@ -36,9 +43,11 @@ RestartSec=3
 Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
 # D-12: loopback-only bind -- the access control for network clients.
 Environment="OLLAMA_HOST=127.0.0.1:11434"
-# D-06 (09-02): server-default context window -- nightly runtime cut. The
-# qwen3.8 model's native 256k context allocates a ~36GB kv-cache per request,
-# dominating mcp-pair latency and VRAM; 8192 covers both mcp client stacks
+# D-06 (09-02): server-default context window -- nightly runtime cut,
+# currently DEFERRED and therefore inert on the live host (see the RUNTIME
+# comment above). A 256k-class native context (qwen3.5:4b default 262144;
+# the retired qwen3.8 measured ~36GB kv-cache per request at 256k)
+# dominates mcp-pair latency and VRAM; 8192 covers both mcp client stacks
 # (the pydantic_ai sibling talks OpenAI-compat /v1, which has no per-request
 # context parameter). The env is read at server start -- restart required.
 Environment="OLLAMA_CONTEXT_LENGTH=8192"
