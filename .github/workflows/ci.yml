@@ -902,6 +902,14 @@ jobs:
           pkill -f ipykernel_launcher || true
           sleep 5
           AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          # Fail CLOSED on an unparseable value: [ "" -lt 35 ] returns exit
+          # 2, which the if below treats as false — the floor would pass
+          # while having measured nothing (the Pitfall-1 failure mode this
+          # gate exists to prevent).
+          if [ -z "${AVAIL_GI}" ]; then
+            echo "FAIL: could not parse the free -g available column (floor unchecked — refusing to continue)"
+            exit 1
+          fi
           echo "after:  ${AVAIL_GI}Gi available"
           nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
           if [ "${AVAIL_GI}" -lt 35 ]; then
@@ -986,6 +994,14 @@ jobs:
           pkill -f ipykernel_launcher || true
           sleep 5
           AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          # Fail CLOSED on an unparseable value: [ "" -lt 35 ] returns exit
+          # 2, which the if below treats as false — the floor would pass
+          # while having measured nothing (the Pitfall-1 failure mode this
+          # gate exists to prevent).
+          if [ -z "${AVAIL_GI}" ]; then
+            echo "FAIL: could not parse the free -g available column (floor unchecked — refusing to continue)"
+            exit 1
+          fi
           echo "after:  ${AVAIL_GI}Gi available"
           nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
           if [ "${AVAIL_GI}" -lt 35 ]; then
