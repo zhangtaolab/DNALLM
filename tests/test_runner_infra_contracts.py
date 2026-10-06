@@ -26,6 +26,7 @@ and rebuildable by diff"); these tests keep it honest between re-applies.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -140,3 +141,106 @@ class TestExampleNightlySseProbe:
                 "SSE responses never complete under -m, so curl exits 28 at the "
                 "cap even when the server is serving -- assert %{http_code} instead"
             )
+
+
+# --- Committed-content model-swap pins (261006-lhm, D-11 re-decision) ---
+
+OLD_MODEL_TOKEN = "qwen3.8"
+NEW_MODEL = "qwen3.5:4b"
+PYDANTIC_NB = "mcp_client_ollama_pydantic_ai.ipynb"
+LANGCHAIN_NB = "mcp_client_ollama_langchain_agents.ipynb"
+EXAMPLE_MCP_DIR = REPO_ROOT / "example" / "mcp_example"
+DOCS_MCP_MIRROR_DIR = REPO_ROOT / "docs" / "example" / "mcp_example"
+DOCS_PYDANTIC_MD = REPO_ROOT / "docs" / "example" / "mcp_pydantic_ai.md"
+DOCS_LANGCHAIN_MD = REPO_ROOT / "docs" / "example" / "mcp_langchain.md"
+SWAP_DECISION = "owner model-swap decision 2026-10-06 15:27 CST"
+
+
+def _load_example_notebook_raw(name: str) -> str:
+    """Return the raw committed text of an example/mcp_example notebook."""
+    return (EXAMPLE_MCP_DIR / name).read_text(encoding="utf-8")
+
+
+def _load_example_notebook_code_sources(name: str) -> list[str]:
+    """Return each code cell's source as one joined string (JSON-aware read)."""
+    notebook = json.loads(_load_example_notebook_raw(name))
+    return ["".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"]
+
+
+class TestMcpExampleModelSwap:
+    """Committed-content pins for the qwen3.5:4b agent-brain swap (261006-lhm).
+
+    The owner swapped the MCP client example notebooks' agent-brain model
+    from qwen3.8:latest to qwen3.5:4b (2026-10-06 15:27 CST) everywhere the
+    repo faces it: both committed notebooks, their docs mirrors, the docs
+    md pages, and the runner README ops path. These pins make an editorial
+    revert -- or a wrong-model pull instruction -- fail the fast lane in
+    seconds instead of misleading the next runner rebuild (D-07
+    same-change test contract).
+    """
+
+    def test_both_committed_notebooks_pin_qwen35(self) -> None:
+        """Each committed notebook's model literal is qwen3.5:4b, old token absent."""
+        pydantic_sources = _load_example_notebook_code_sources(PYDANTIC_NB)
+        assert any("model_name='qwen3.5:4b'" in src for src in pydantic_sources), (
+            f"{PYDANTIC_NB} must carry model_name='{NEW_MODEL}' in a code cell "
+            f"({SWAP_DECISION}) -- the committed literal is what the nightly "
+            "gated mcp pair executes against"
+        )
+        langchain_sources = _load_example_notebook_code_sources(LANGCHAIN_NB)
+        assert any('"ollama:qwen3.5:4b"' in src for src in langchain_sources), (
+            f'{LANGCHAIN_NB} must carry "ollama:{NEW_MODEL}" in a code cell '
+            f"({SWAP_DECISION}) -- the committed literal is what the nightly "
+            "gated mcp pair executes against"
+        )
+        for name in (PYDANTIC_NB, LANGCHAIN_NB):
+            raw = _load_example_notebook_raw(name)
+            assert OLD_MODEL_TOKEN not in raw, (
+                f"{name} still references the retired {OLD_MODEL_TOKEN} model "
+                f"({SWAP_DECISION}) -- sweep every occurrence to {NEW_MODEL}"
+            )
+
+    def test_docs_ipynb_mirrors_and_md_pages_carry_the_swap(self) -> None:
+        """docs ipynb mirrors stay byte-identical and both md pages carry the swap."""
+        for name in (PYDANTIC_NB, LANGCHAIN_NB):
+            source_bytes = (EXAMPLE_MCP_DIR / name).read_bytes()
+            mirror_bytes = (DOCS_MCP_MIRROR_DIR / name).read_bytes()
+            assert mirror_bytes == source_bytes, (
+                f"docs/example/mcp_example/{name} drifted from its example/ "
+                "source (check_docs_sync compares byte-for-byte) -- re-copy "
+                "the swapped notebook onto its docs mirror"
+            )
+        for md_path, literal in (
+            (DOCS_PYDANTIC_MD, "model_name='qwen3.5:4b'"),
+            (DOCS_LANGCHAIN_MD, '"ollama:qwen3.5:4b"'),
+        ):
+            text = md_path.read_text(encoding="utf-8")
+            assert literal in text, (
+                f"{md_path.name} must carry {literal} in its python block "
+                f"({SWAP_DECISION}) -- check_notebook_md_sync asserts the md "
+                "block matches the notebook source"
+            )
+            assert OLD_MODEL_TOKEN not in text, (
+                f"{md_path.name} still references the retired {OLD_MODEL_TOKEN} "
+                f"model ({SWAP_DECISION}) -- sweep the python-block line"
+            )
+
+    def test_runner_readme_pull_and_verify_name_current_model(self) -> None:
+        """Runner README ops path pulls and verifies qwen3.5:4b, old token absent."""
+        text = _load_runner_readme()
+        assert "ollama pull qwen3.5:4b" in text, (
+            "scripts/runner/README.md pull step must read "
+            f"`ollama pull {NEW_MODEL}` ({SWAP_DECISION}) -- a stale pull "
+            "instruction misleads the next runner rebuild into pulling the "
+            "retired 17.74GB model"
+        )
+        assert "must list qwen3.5:4b" in text, (
+            "scripts/runner/README.md /api/tags verify comment must name "
+            f"{NEW_MODEL} ({SWAP_DECISION}) -- the verify step is what proves "
+            "the pull landed on the runner box"
+        )
+        assert OLD_MODEL_TOKEN not in text, (
+            "scripts/runner/README.md still references the retired "
+            f"{OLD_MODEL_TOKEN} model ({SWAP_DECISION}) -- sweep the pull, "
+            "verify, num_ctx-narrative, and re-probe lines"
+        )
