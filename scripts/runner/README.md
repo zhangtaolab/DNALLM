@@ -82,7 +82,7 @@ Swapped 2026-10-06 (owner decision 15:27 CST): the notebooks' literal model
 reference became qwen3.5:4b (capability probe PASSED 15:24 CST — 3-turn
 tool-calling, 34.8s cold / 6.1s / 5.1s warm). The Modelfile num_ctx probe
 has NOT been re-run for qwen3.5:4b: the 2026-10-05 live probe (no Modelfile
-num_ctx) covered only the replaced qwen3.8:latest, so if qwen3.5:4b's
+num_ctx) covered only the model that qwen3.5:4b replaced, so if qwen3.5:4b's
 Modelfile sets `PARAMETER num_ctx` the env pin would be silently overridden
 once the unit is re-applied — re-probe with
 `ollama show qwen3.5:4b --modelfile` before relying on the env governing.
