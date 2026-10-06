@@ -526,6 +526,25 @@ class TestHandleEvo1Models:
         assert mock_resolve.call_args.kwargs["revision"] == "main"
         assert isinstance(tokenizer, EvoTokenizerWrapper)
 
+    def test_mixed_case_source_selects_1_1_fix_revision(self, monkeypatch):
+        """source='HuggingFace' resolves 1.1_fix like the lowercase form (IN-03)."""
+        _install_evo1_stubs(monkeypatch)
+        modules = _evo1_modules()
+
+        with (
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded", modules),
+            ) as mock_resolve,
+            patch(
+                "dnallm.models.special.evo.is_flash_attention_capable",
+                return_value=True,
+            ),
+        ):
+            _handle_evo1_models("evo-1.5-8k-base", "HuggingFace")
+
+        assert mock_resolve.call_args.kwargs["revision"] == "1.1_fix"
+
     def test_head_config_wraps_in_sequence_classifier(self, monkeypatch):
         """A head_config wraps the loaded model in the DNALLM wrapper."""
         _install_evo1_stubs(monkeypatch)

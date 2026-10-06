@@ -391,7 +391,11 @@ def _handle_evo1_models(
             from ..model import _get_model_path_and_imports
 
             evo_model = CustomEvo1()
-            revision = "1.1_fix" if "." in model_name and source == "huggingface" else "main"
+            # IN-03: normalize case like the rest of the handler family, so
+            # source="HuggingFace" still resolves the 1.1_fix revision.
+            revision = (
+                "1.1_fix" if "." in model_name and source.lower() == "huggingface" else "main"
+            )
             _, modules = _get_model_path_and_imports(
                 model_name,
                 source,
