@@ -18,7 +18,7 @@ This tutorial demonstrates how to use Pydantic AI with Ollama models and the DNA
 uv pip install pydantic-ai nest-asyncio
 
 # Start Ollama and pull the model
-ollama pull qwen3.6:latest
+ollama pull qwen3.5:4b
 ```
 
 Start the DNALLM MCP server in a separate terminal:

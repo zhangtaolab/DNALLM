@@ -20,7 +20,7 @@ Install dependencies and start Ollama with the Qwen3 model:
 uv pip install -U langchain langchain-mcp-adapters langchain-ollama
 
 # Start Ollama and pull the model
-ollama pull qwen3.6:latest
+ollama pull qwen3.5:4b
 ```
 
 ## Start DNALLM MCP Server
