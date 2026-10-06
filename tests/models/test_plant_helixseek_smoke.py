@@ -21,6 +21,7 @@ HelixSeek cache and use_return_dict deprecation warnings (research Pattern 3).
 """
 
 import sys
+import types
 from pathlib import Path
 
 import dnallm
@@ -56,6 +57,24 @@ def _registry_task(repo_id: str) -> dict:
     return entries[0]["task"]
 
 
+def _raise_site_module(exc: BaseException) -> str | None:
+    """Module name of ``exc``'s raise-site (innermost) traceback frame.
+
+    The traceback of anything caught at the test boundary always lists dnallm
+    wrapper frames above the true origin — ``load_model_and_tokenizer`` called
+    into the failing library — so "any dnallm frame" would flag every real
+    network error. The discriminator is the deepest frame: the one executing
+    the ``raise`` or the failed import. Returns ``None`` for an exception that
+    was constructed but never raised (no traceback attached).
+    """
+    tb = exc.__traceback__
+    if tb is None:
+        return None
+    while tb.tb_next is not None:
+        tb = tb.tb_next
+    return tb.tb_frame.f_globals.get("__name__")
+
+
 def _is_environment_error(exc: BaseException) -> bool:
     """Classify a load exception as environment-caused or a dnallm regression.
 
@@ -63,18 +82,31 @@ def _is_environment_error(exc: BaseException) -> bool:
     Anchors cite the symbol first so the contract survives future edits; the
     line numbers are courtesy pins, current at the 2026-10-06 review:
 
-    - ``ConnectionError`` / ``TimeoutError`` / ``OSError`` anywhere in the
-      ``__cause__``/``__context__`` chain is environmental: requests'
-      ``RequestException``, huggingface_hub HTTP errors, and socket errors all
-      subclass ``OSError``, and the load block wraps everything as
-      ``ValueError(f"Failed to load model: {e}") from e`` — the boundary
-      wrap in ``load_model_and_tokenizer`` (model.py:917) — so hub/network
-      causes are visible only in the chain.
-    - ``ImportError`` anywhere in the chain is environmental (the
-      huggingface_hub and modelscope function-local imports and the modelscope
-      guard's ``raise ImportError ... from e`` in ``_get_model_path_and_imports``
-      (model.py:451, 456-458, 474-477), or remote code importing an absent
-      optional dependency such as fla).
+    - ``ConnectionError`` / ``TimeoutError`` anywhere in the
+      ``__cause__``/``__context__`` chain is environmental, unconditionally:
+      dnallm never raises these types itself, so any occurrence is a
+      network/transient signal. Both subclass ``OSError``, so they are
+      matched before the origin-checked ``OSError`` branch below.
+    - Other ``OSError`` / ``ImportError`` nodes are environmental only when
+      their raise site is OUTSIDE dnallm (WR-02): the module of the raise-site
+      (innermost traceback) frame must not be ``dnallm``/``dnallm.*``.
+      requests' ``RequestException``, huggingface_hub HTTP errors, and socket
+      errors subclass ``OSError`` and raise in huggingface_hub/modelscope/
+      requests/urllib3/socket/ssl frames; remote code importing an absent
+      optional dependency such as fla raises in the checkpoint's own module.
+      The same types raised in a dnallm frame — a broken function-local
+      import in dnallm's own load tree, an ``OSError``/``FileNotFoundError``
+      from dnallm's snapshot/local path handling — are dnallm regressions
+      and must fail loud. Deliberate consequence: huggingface-hub and
+      modelscope are base dependencies, so their absence fails the
+      function-local imports in ``_get_model_path_and_imports`` (model.py:451,
+      456-458) at a dnallm raise site and now fails loud instead of skipping —
+      a missing base install is a broken environment, not an outage. A node
+      with no traceback (constructed, never raised) cannot show a dnallm
+      raise site and stays environmental.
+    - The load block wraps what reaches it as ``ValueError(f"Failed to load
+      model: {e}") from e`` — the boundary wrap in ``load_model_and_tokenizer``
+      (model.py:917) — so environment causes are visible only in the chain.
     - The bare unchained ``ValueError(f"Model {name} download failed.")`` —
       the terminal raise of ``download_model``'s retry loop (model.py:389) —
       is environmental: it is the single terminal signal covering network
@@ -86,7 +118,8 @@ def _is_environment_error(exc: BaseException) -> bool:
 
     Anything else — a ``TypeError``/``AttributeError``/``KeyError`` from
     dnallm's dispatch or config plumbing, a boundary ``ValueError`` chained
-    from a non-network cause, a CUDA-OOM ``RuntimeError`` — is NOT
+    from a non-network or dnallm-origin cause, a CUDA-OOM ``RuntimeError``,
+    a dnallm-origin ``ImportError``/``OSError`` raise site — is NOT
     environmental and must propagate so the test fails with the real
     traceback.
 
@@ -97,13 +130,25 @@ def _is_environment_error(exc: BaseException) -> bool:
         bool: True when the failure is environment-class (the typed skip is
         legitimate); False when it is a dnallm-side regression.
     """
-    environmental = (ConnectionError, TimeoutError, OSError, ImportError)
     seen: set[int] = set()
     node: BaseException | None = exc
     while node is not None and id(node) not in seen:
         seen.add(id(node))
-        if isinstance(node, environmental):
+        # Unconditional network/transient classes: dnallm never raises these
+        # itself, and both subclass OSError, so test them before the
+        # origin-checked OSError branch below.
+        if isinstance(node, (ConnectionError, TimeoutError)):
             return True
+        if isinstance(node, (OSError, ImportError)):
+            # WR-02 origin check: an OSError/ImportError matching by type
+            # anywhere in the chain may still have been raised by dnallm's
+            # own load tree (a broken function-local import, snapshot/local
+            # path handling). Only a raise site outside dnallm keeps the
+            # typed skip; a dnallm raise site is a regression, so this node
+            # does not classify and the walk continues to any deeper cause.
+            origin = _raise_site_module(node)
+            if origin != "dnallm" and not (origin or "").startswith("dnallm."):
+                return True
         if (
             isinstance(node, ValueError)
             and str(node).startswith("Model ")
@@ -143,13 +188,31 @@ def _load_with_fallback(repo_id: str, cfg: TaskConfig):
     )
 
 
+def _raise_in_module(module_name: str, statement: str) -> BaseException:
+    """Execute ``statement`` in a fake ``module_name``; return what it raises.
+
+    The WR-02 origin check classifies OSError/ImportError by the raise-site
+    frame's module (``f_globals["__name__"]``), so the classification tests
+    raise from synthetic dnallm/third-party-named probe modules instead of
+    breaking real dnallm code.
+    """
+    probe = types.ModuleType(module_name)
+    exec(f"def _probe():\n    {statement}\n", probe.__dict__)  # ruff: ignore[exec-builtin]
+    try:
+        probe._probe()
+    except BaseException as exc:
+        return exc
+    pytest.fail(f"probe in {module_name} did not raise")
+
+
 class TestLoadWithFallbackClassification:
     """WR-02: only environment-class failures may produce the typed skip.
 
     A dnallm regression inside ``load_model_and_tokenizer`` (a TypeError from
-    the dispatch chain, config plumbing KeyError, ...) must FAIL the test,
-    never surface as a whitelisted ``environment-unavailable:`` skip. All
-    tests here are fast: no network, no model downloads, not slow-marked.
+    the dispatch chain, config plumbing KeyError, a dnallm-origin
+    ImportError/OSError raise site, ...) must FAIL the test, never surface as
+    a whitelisted ``environment-unavailable:`` skip. All tests here are fast:
+    no network, no model downloads, not slow-marked.
     """
 
     def test_network_and_import_classes_are_environmental(self):
@@ -180,6 +243,47 @@ class TestLoadWithFallbackClassification:
         wrapped = ValueError("Failed to load model: unexpected keyword argument")
         wrapped.__cause__ = TypeError("unexpected keyword argument")
         assert not _is_environment_error(wrapped)
+
+    def test_dnallm_origin_import_error_is_not_environmental(self):
+        # WR-02 residual hole closed: a broken function-local import inside
+        # dnallm's own load tree raises ImportError in a dnallm frame — a
+        # regression, not a missing optional dependency (fla imported by the
+        # checkpoint's remote code raises in non-dnallm frames and skips).
+        cause = _raise_in_module(
+            "dnallm._raise_site_probe",
+            "from dnallm.models import symbol_removed_by_a_refactor_xyz",
+        )
+        assert isinstance(cause, ImportError)
+        wrapped = ValueError(f"Failed to load model: {cause}")
+        wrapped.__cause__ = cause
+        assert not _is_environment_error(wrapped)
+
+    def test_dnallm_origin_file_not_found_is_not_environmental(self):
+        # WR-02 residual hole closed: FileNotFoundError (an OSError subclass)
+        # from dnallm's own snapshot/local path handling is a regression, not
+        # an environment-class typed skip.
+        cause = _raise_in_module(
+            "dnallm._raise_site_probe",
+            'raise FileNotFoundError(2, "No such file or directory", "/cache/missing")',
+        )
+        assert isinstance(cause, FileNotFoundError)
+        wrapped = ValueError(f"Failed to load model: {cause}")
+        wrapped.__cause__ = cause
+        assert not _is_environment_error(wrapped)
+
+    def test_env_origin_os_error_keeps_the_typed_skip(self):
+        # Mirror of the origin check: the same OSError type raised under a
+        # non-dnallm module — at runtime the huggingface_hub/requests/
+        # urllib3/socket frames beneath dnallm's wrappers — stays
+        # environment-class.
+        cause = _raise_in_module(
+            "huggingface_hub._raise_site_probe",
+            'raise OSError("connection reset by peer")',
+        )
+        assert isinstance(cause, OSError)
+        wrapped = ValueError(f"Failed to load model: {cause}")
+        wrapped.__cause__ = cause
+        assert _is_environment_error(wrapped)
 
     def test_dnallm_regression_propagates_instead_of_skipping(self, monkeypatch):
         def _regression(repo_id, cfg, source):
