@@ -1787,6 +1787,15 @@ class TestDNALLMforSequenceClassificationInit:
         assert type(model.score).__name__ == expected_head_name
         assert isinstance(model.score, getattr(head_module, expected_head_name))
 
+    def test_unknown_head_name_raises_value_error(self):
+        """An unrecognized head name raises the convention ValueError (WR-06).
+
+        UnboundLocalError used to escape ``_determine_classifier`` for head
+        names with no custom_head and no mlp/cnn/lstm/unet suffix.
+        """
+        with pytest.raises(ValueError, match=r"Unknown head type.*'attention'"):
+            _build_wrapper(head="attention", num_labels=2)
+
     def test_megadna_branch_uses_custom_model(self):
         """head='megadna' wires the custom model as backbone with a multi-scale head."""
         custom = TinyMegaDNABackbone()

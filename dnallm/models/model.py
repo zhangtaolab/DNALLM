@@ -144,6 +144,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             classifier = BasicLSTMHead
         elif self.config.head_config.get("head", "").lower().endswith("unet"):
             classifier = BasicUNet1DHead
+        else:
+            raise ValueError(
+                f"Unknown head type {self.config.head_config.get('head')!r}: "
+                "expected a name ending in mlp/cnn/lstm/unet or a custom_head class."
+            )
         return classifier
 
     def _determine_pooling_strategy(self):
