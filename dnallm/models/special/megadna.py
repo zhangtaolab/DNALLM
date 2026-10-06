@@ -39,10 +39,12 @@ def _handle_megadna_models(
 ) -> tuple | None:
     """Handle special case for megaDNA models."""
 
-    if extra:
-        megadna_models.append(extra)
+    # WR-03: never mutate the module-level list -- a caller passing extra
+    # must not grow it across calls (family name matching is process-global,
+    # so an appended extra would permanently alter matching).
+    models = megadna_models + ([extra] if extra else [])
 
-    for m in megadna_models:
+    for m in models:
         if m in model_name:
             from transformers import PreTrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 

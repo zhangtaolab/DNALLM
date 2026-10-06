@@ -176,3 +176,39 @@ class TestMegadnaCheckpointSelection:
 
         assert result is not None, f"family member did not match: {model_name}"
         assert loaded_paths == [f"/snapshot/{expected_checkpoint}"]
+
+
+class TestMegadnaExtraDoesNotMutateModuleList:
+    """WR-03: ``extra`` must not grow the module-level megadna_models list.
+
+    The old ``if extra: megadna_models.append(extra)`` mutated the list on
+    every call, so wiring megaDNA the way its sibling handlers
+    (enformer/space/borzoi) receive ``extra=model_name`` would grow the list
+    unboundedly and permanently alter family name matching.
+    """
+
+    def test_repeated_extra_calls_do_not_grow_the_family_list(self):
+        """Two extra-carrying calls resolve identically and leave the list intact."""
+        from dnallm.models.special import megadna as megadna_module
+
+        before = list(megadna_module.megadna_models)
+
+        def run():
+            with (
+                patch("torch.load", return_value=object()),
+                patch(
+                    "dnallm.models.model._get_model_path_and_imports",
+                    return_value=("/downloaded/model", None),
+                ),
+            ):
+                return _handle_megadna_models(
+                    "custom-megadna", "huggingface", None, extra="custom-megadna"
+                )
+
+        first, second = run(), run()
+
+        assert megadna_module.megadna_models == before
+        assert "custom-megadna" not in megadna_module.megadna_models
+        # Both calls resolved through the extra member (no growth needed to match).
+        assert first is not None
+        assert second is not None
