@@ -150,7 +150,7 @@ pytest -m "pdf or performance"
 # Generate HTML coverage report
 pytest --cov=dnallm --cov-report=html
 
-# Generate XML coverage report for CI
+# Generate a local XML coverage report (CI uploads none — see above)
 pytest --cov=dnallm --cov-report=xml
 
 # Show coverage in terminal
