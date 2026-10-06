@@ -6,7 +6,7 @@ This directory contains the comprehensive test suite for the DNALLM project, org
 
 ```
 tests/
-├── README.md               # This file - overall test documentation
+├── TESTING.md              # This file - overall test documentation
 ├── inference/              # Inference module tests
 │   ├── test_plot.py        # Plot functionality tests
 │   ├── pdf/                # PDF output directory
@@ -159,32 +159,45 @@ pytest --cov=dnallm --cov-report=term-missing
 
 ### Coverage Targets
 
-- **Overall Coverage**: Aim for >80% code coverage
-- **Critical Modules**: >90% for core functionality
-- **New Features**: >95% for newly added code
+- **Enforced Floor**: `fail_under = 90` in `pyproject.toml [tool.coverage.report]` — a
+  ratchet floor, not a goal: any `--cov` invocation (local or CI) whose total drops below
+  90 fails the run
+- **Suite Reality**: the in-process suite landed at 96.30% when the floor was set, and the
+  full nightly census has since measured 96.42% — hold new work at or above the current
+  total
+- **Scoped Runs**: the floor applies regardless of how many tests ran — drop `--cov` or
+  pass `--no-cov` when running a subset of the suite
 
 ## 🔄 Continuous Integration
 
 ### CI/CD Integration
 
-The test suite is designed for automated testing:
+The gated CI invocation (the `coverage-gate` job in `.github/workflows/ci.yml`): the
+`fail_under = 90` floor rides the pytest exit code, and the junit is audited for
+unexpected skips:
 
 ```yaml
-# Example GitHub Actions workflow
-- name: Run Tests
+# Actual invocation from .github/workflows/ci.yml (coverage-gate job)
+- name: Run gated fast census (not slow)
   run: |
-    pip install pytest pytest-cov
-    pytest --cov=dnallm --cov-report=xml --junitxml=test-results.xml
+    source .venv/bin/activate
+    .venv/bin/python -m pytest -m "not slow" -ra --durations=0 \
+      --junitxml=pytest-junit-gate.xml --cov -p no:cacheprovider -p no:progress
 
-- name: Upload Coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./coverage.xml
+- name: Skip audit (gated junit)
+  run: |
+    source .venv/bin/activate
+    python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 ```
+
+There is no codecov upload and no XML coverage report in CI — coverage totals are
+reported in the terminal only (see `.github/workflows/README.md` and
+`docs/user_guide/continuous_integration.md` for the full CI story).
 
 ### Test Artifacts
 
-- **Coverage Reports**: XML and HTML formats
+- **Coverage Reports**: HTML locally (`--cov-report=html`); CI reports totals in the
+  terminal only — no XML coverage report is produced
 - **Test Results**: JUnit XML format
 - **PDF Outputs**: Generated charts and visualizations
 - **Performance Metrics**: Timing and memory usage data
@@ -203,7 +216,7 @@ The test suite is designed for automated testing:
 
 2. **Missing Dependencies**
    ```bash
-   pip install pytest pytest-cov pytest-xdist
+   pip install pytest pytest-cov
    ```
 
 3. **Configuration Issues**
