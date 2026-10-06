@@ -1218,8 +1218,14 @@ GATED_NOTEBOOKS: list[tuple[str, object]] = [
 # timeout (run_notebook's contract -- an outer kill at the cell budget would
 # preempt nbclient's clean CellTimeoutError handling and the partial-failure
 # artifact capture), so these carry the 7200s override instead of the
-# class-level 3600s mark.
+# class-level 3600s mark. The mcp_example pair joined at cell-budget 3600
+# per owner decision B (2026-10-06, 09-04): the num_ctx 8k cut is DEFERRED,
+# so qwen3.8 serves the pair at ~256k ctx and the un-cut latency tail
+# crossed the old 1800s cell line live (run 37406829738 stage 3
+# CellTimeoutError); revisit when/if the cut is un-deferred.
 _TIMEOUT_7200_GATED: frozenset[str] = frozenset({
+    "mcp_example/mcp_client_ollama_langchain_agents.ipynb",
+    "mcp_example/mcp_client_ollama_pydantic_ai.ipynb",
     "notebooks/finetune_custom_head/finetune.ipynb",
     "notebooks/finetune_generation/finetune_generation.ipynb",
     "notebooks/lora_finetune_inference/lora_finetune.ipynb",

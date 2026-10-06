@@ -245,8 +245,17 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         # Agent-loop budget: the qwen3.8 (17GB) ollama turns plus real MCP
         # tool round-trips exceed the 600s starter (261003-csd campaign
         # evidence: pydantic cell-6 analysis passed 600s with working
-        # tools); 1800s stays strictly under the gated class's 3600s mark.
-        "cell_timeout": 1800,
+        # tools). Owner decision B (2026-10-06, 09-04): raised 1800 -> 3600
+        # to match the UN-CUT num_ctx reality -- the num_ctx 8k cut is
+        # DEFERRED (owner 2026-10-06 00:52 CST), so qwen3.8 serves the pair
+        # at ~256k ctx and the un-cut latency tail crossed the old 1800s
+        # line live (run 37406829738 stage 3: CellTimeoutError after 1800s
+        # on the pydantic analysis cell; the prior green leg ran the whole
+        # pair in ~8 min). The outer pytest-timeout mark for this lane is
+        # the 7200s override (_TIMEOUT_7200_GATED) keeping the kill
+        # strictly above the cell budget. Revisit when/if the num_ctx cut
+        # is un-deferred (D-12 records the measured budget).
+        "cell_timeout": 3600,
         "extra_inputs": [],
         # Isolated lane (261003-csd): routes this notebook away from the
         # project-venv python3 kernel so its install cells cannot touch
@@ -254,8 +263,11 @@ NOTEBOOK_EXEC_SPECS: dict[str, dict] = {
         "kernel_name": LANGCHAIN_KERNEL_NAME,
     },
     str(EXAMPLE_DIR / "mcp_example" / "mcp_client_ollama_pydantic_ai.ipynb"): {
-        # Same agent-loop budget as the langchain sibling (261003-csd).
-        "cell_timeout": 1800,
+        # Same agent-loop budget as the langchain sibling (261003-csd),
+        # raised to 3600s with it per owner decision B (2026-10-06, 09-04:
+        # the un-cut ~256k ctx latency tail crossed the old 1800s line --
+        # run 37406829738 stage 3 CellTimeoutError; num_ctx cut DEFERRED).
+        "cell_timeout": 3600,
         "extra_inputs": [],
     },
     str(EXAMPLE_DIR / "notebooks" / "plant_helixseek_cre" / "plant_helixseek_cre.ipynb"): {
