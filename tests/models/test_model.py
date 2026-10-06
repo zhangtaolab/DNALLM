@@ -1102,6 +1102,48 @@ class TestDispatchChain:
         assert model is sentinel_model
         assert tokenizer is sentinel_tokenizer
 
+    def test_partial_handler_result_survives_the_chain(self):
+        """A handler's resolved half is never discarded by a later stage (WR-04).
+
+        The chain's documented invariant says a handler's result is never
+        overwritten; the pair-reassignment form violated it -- a dnabert2
+        partial ``(model, None)`` was silently dropped when the generic
+        loader returned ``(None, tokenizer)``, crashing on
+        ``model._model_path``. The per-half merge preserves both halves.
+        """
+        sentinel_model = Mock()
+        sentinel_model.to = Mock(return_value=sentinel_model)
+        sentinel_tokenizer = Mock()
+        task_config = TaskConfig(task_type="binary", num_labels=2)
+
+        patchers = [
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            *_gate_patchers(),
+            *_declining_family_patchers(),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/models/some-model", {"AutoTokenizer": Mock()}),
+            ),
+            patch("dnallm.models.model._create_label_mappings", return_value=({}, {})),
+            patch(
+                "dnallm.models.model._handle_dnabert2_models",
+                return_value=(sentinel_model, None),
+            ),
+            patch(
+                "dnallm.models.model._load_model_by_task_type",
+                return_value=(None, sentinel_tokenizer),
+            ),
+            patch("dnallm.models.model._configure_model_padding"),
+            patch("dnallm.models.model._get_device", return_value=torch.device("cpu")),
+        ]
+        with ExitStack() as stack:
+            for patcher in patchers:
+                stack.enter_context(patcher)
+            model, tokenizer = load_model_and_tokenizer("some-model", task_config)
+
+        assert model is sentinel_model
+        assert tokenizer is sentinel_tokenizer
+
     def test_gpn_gate_import_error_propagates(self):
         """A gpn-named model surfaces the availability gate's ImportError."""
         task_config = TaskConfig(task_type="mask", num_labels=None)

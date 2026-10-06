@@ -884,10 +884,12 @@ def load_model_and_tokenizer(
         ]
         # Guarded dispatch chain (first resolved stage wins): crossdna ->
         # dnabert2 -> generic task-type loader. Each stage runs only when the
-        # previous stage left model or tokenizer None, so a handler's result
-        # is never overwritten by a later stage. The chain must NOT return
-        # early here: the tokenizer post-processing and attribute/device
-        # placement below must still run for a resolved handler result.
+        # previous stage left model or tokenizer None, and stages MERGE per
+        # half: a stage's None half never overwrites an earlier stage's
+        # resolved half, so a handler's partial result is never discarded by
+        # a later stage. The chain must NOT return early here: the tokenizer
+        # post-processing and attribute/device placement below must still
+        # run for a resolved handler result.
         model, tokenizer = None, None
         if "crossdna" in downloaded_model_path.lower():
             model, tokenizer = _handle_crossdna_models(
@@ -902,9 +904,13 @@ def load_model_and_tokenizer(
                 bnb_config,
             )
         if model is None or tokenizer is None:
-            model, tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
+            stage_model, stage_tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
+            model = stage_model if stage_model is not None else model
+            tokenizer = stage_tokenizer if stage_tokenizer is not None else tokenizer
         if model is None or tokenizer is None:
-            model, tokenizer = _load_model_by_task_type(*load_args)
+            stage_model, stage_tokenizer = _load_model_by_task_type(*load_args)
+            model = stage_model if stage_model is not None else model
+            tokenizer = stage_tokenizer if stage_tokenizer is not None else tokenizer
         # Process model with custom tokenizer if needed
         if "mutbert" in downloaded_model_path.lower():
             tokenizer = _handle_mutbert_tokenizer(tokenizer)
