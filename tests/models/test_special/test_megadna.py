@@ -17,7 +17,7 @@ mirroring ``tests/models/test_special/test_family_handlers.py``.
 
 import torch
 import pytest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from dnallm.models.special.megadna import _handle_megadna_models
 
@@ -212,3 +212,75 @@ class TestMegadnaExtraDoesNotMutateModuleList:
         # Both calls resolved through the extra member (no growth needed to match).
         assert first is not None
         assert second is not None
+
+
+class TestMegadnaLoadHardening:
+    """WR-05: revision-pinned fetch and weights_only=True tried first."""
+
+    def test_lock_recorded_repo_fetch_is_revision_pinned(self):
+        """The megaDNA_updated fetch carries the models.lock commit pin."""
+        with (
+            patch("torch.load", return_value=object()),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/model", None),
+            ) as mock_resolve,
+        ):
+            result = _handle_megadna_models("lingxusb/megaDNA_updated", "huggingface", None)
+
+        assert result is not None
+        assert (
+            mock_resolve.call_args.kwargs["revision"] == "ed298be539e1667b52a1181a6472528a34dd2ef9"
+        )
+
+    def test_unlock_recorded_repo_fetch_stays_unpinned(self):
+        """Family members without a lock row fetch at the default revision."""
+        with (
+            patch("torch.load", return_value=object()),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/model", None),
+            ) as mock_resolve,
+        ):
+            result = _handle_megadna_models("lingxusb/megaDNA_variants", "huggingface", None)
+
+        assert result is not None
+        assert mock_resolve.call_args.kwargs["revision"] is None
+
+    def test_weights_only_true_is_tried_first(self):
+        """The first torch.load attempt requests the safe weights-only path."""
+        fake = Mock(return_value=object())
+        with (
+            patch("torch.load", fake),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/model", None),
+            ),
+        ):
+            _handle_megadna_models("megaDNA_updated", "huggingface", None)
+
+        assert fake.call_count == 1
+        assert fake.call_args.kwargs["weights_only"] is True
+
+    def test_pickle_requiring_checkpoint_falls_back_to_false(self):
+        """A weights_only=True refusal retries exactly once with False."""
+        pickled_model = object()
+        fake = Mock(
+            side_effect=[
+                Exception("weights_only=True refused: pickled model object"),
+                pickled_model,
+            ]
+        )
+        with (
+            patch("torch.load", fake),
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                return_value=("/downloaded/model", None),
+            ),
+        ):
+            model, _tokenizer = _handle_megadna_models("megaDNA_updated", "huggingface", None)
+
+        assert fake.call_count == 2
+        assert fake.call_args_list[0].kwargs["weights_only"] is True
+        assert fake.call_args_list[1].kwargs["weights_only"] is False
+        assert model is pickled_model
