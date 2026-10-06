@@ -9,7 +9,7 @@ findings:
     title: "`_is_environment_error` docstring cites stale `model.py` line numbers for every load-ladder anchor"
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "type-based classification still whitelists dnallm-originating `ImportError`/`OSError` as environment-class (green skip)"
   - id: IN-01
     severity: info
@@ -47,7 +47,7 @@ findings:
     severity: info
     disposition: fixed
     title: "Local .scratch/ ignore is redundant with the root pattern"
-open: 1
+open: 0
 total: 11
 recorded: 2026-10-06T16:24:33.827Z
 ---
@@ -57,7 +57,7 @@ recorded: 2026-10-06T16:24:33.827Z
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
 | WR-01 | warning | fixed | 06-REVIEW-FIX.md |
-| WR-02 | warning | open | - |
+| WR-02 | warning | fixed | 7134aa6 — fix-report entry titles the same finding without the "(green skip)" suffix; hand-reconciled (innermost-frame origin check + 3 new classification pins) |
 | IN-01 | info | fixed | 06-REVIEW-FIX.md |
 | WR-03 | warning | fixed | 8d6bd3b fix(quick-261003-r73): slice_gff_rows strips \n/\r\n/\r terminators and raises ValueError on embedded \r; 2 same-change tests (not in the current review) |
 | WR-04 | warning | fixed | 5d354c9 (pyproject mypy overrides + pyfaidx precedent; full mypy run still blocked by pre-existing numpy-stubs abort, CI-advisory) (not in the current review) |
