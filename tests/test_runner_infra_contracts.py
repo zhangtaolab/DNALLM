@@ -151,7 +151,7 @@ class TestExampleNightlySseProbe:
 
 # --- Committed-content model-swap pins (261006-lhm, D-11 re-decision) ---
 
-OLD_MODEL_TOKEN = "qwen3.8"
+OLD_MODEL_NAME = "qwen3.8"
 NEW_MODEL = "qwen3.5:4b"
 PYDANTIC_NB = "mcp_client_ollama_pydantic_ai.ipynb"
 LANGCHAIN_NB = "mcp_client_ollama_langchain_agents.ipynb"
@@ -201,8 +201,8 @@ class TestMcpExampleModelSwap:
         )
         for name in (PYDANTIC_NB, LANGCHAIN_NB):
             raw = _load_example_notebook_raw(name)
-            assert OLD_MODEL_TOKEN not in raw, (
-                f"{name} still references the retired {OLD_MODEL_TOKEN} model "
+            assert OLD_MODEL_NAME not in raw, (
+                f"{name} still references the retired {OLD_MODEL_NAME} model "
                 f"({SWAP_DECISION}) -- sweep every occurrence to {NEW_MODEL}"
             )
 
@@ -226,8 +226,8 @@ class TestMcpExampleModelSwap:
                 f"({SWAP_DECISION}) -- check_notebook_md_sync asserts the md "
                 "block matches the notebook source"
             )
-            assert OLD_MODEL_TOKEN not in text, (
-                f"{md_path.name} still references the retired {OLD_MODEL_TOKEN} "
+            assert OLD_MODEL_NAME not in text, (
+                f"{md_path.name} still references the retired {OLD_MODEL_NAME} "
                 f"model ({SWAP_DECISION}) -- sweep the python-block line"
             )
 
@@ -245,8 +245,8 @@ class TestMcpExampleModelSwap:
             f"{NEW_MODEL} ({SWAP_DECISION}) -- the verify step is what proves "
             "the pull landed on the runner box"
         )
-        assert OLD_MODEL_TOKEN not in text, (
+        assert OLD_MODEL_NAME not in text, (
             "scripts/runner/README.md still references the retired "
-            f"{OLD_MODEL_TOKEN} model ({SWAP_DECISION}) -- sweep the pull, "
+            f"{OLD_MODEL_NAME} model ({SWAP_DECISION}) -- sweep the pull, "
             "verify, num_ctx-narrative, and re-probe lines"
         )
