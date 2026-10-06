@@ -1062,6 +1062,63 @@ class TestMegadnaSiblingContentContracts:
         assert 'source="modelscope"' not in gen_active
 
 
+class TestEvoNotebookContentContracts:
+    """Fast JSON-level contracts for the evo notebook's evo-1 leg (08 CR-01).
+
+    The 08-06 repair commit dropped the evo-1 ``load_model_and_tokenizer``
+    call from the EVO1 section, so its DNAInference rebuild silently reused
+    the still-bound evo2 pair from the section above -- the committed evo-1
+    outputs were evo2 outputs and no fast pin existed to catch the drop.
+    These contracts mirror the megaDNA sibling pattern above so that
+    regression class fails in seconds on the fast lane instead of at the
+    next real execution.
+    """
+
+    GEN_PATH = EXAMPLE_DIR / "notebooks" / "generation_evo_models" / "inference.ipynb"
+
+    @staticmethod
+    def _code_cells(path: Path) -> list[str]:
+        nb = json.loads(path.read_text(encoding="utf-8"))
+        return ["".join(c["source"]) for c in nb["cells"] if c["cell_type"] == "code"]
+
+    def test_evo1_section_loads_its_own_model(self) -> None:
+        """A cell binds an evo-1 model name AND loads it through the loader."""
+        cells = self._code_cells(self.GEN_PATH)
+        load_cell = next(
+            (
+                s
+                for s in cells
+                if "togethercomputer/evo-1" in s
+                and "model_name =" in s
+                and "load_model_and_tokenizer" in s
+            ),
+            None,
+        )
+        assert load_cell is not None, (
+            "no evo-1 load cell: the EVO1 section must assign the evo-1 "
+            "model_name AND pass it through load_model_and_tokenizer"
+        )
+        assert 'source="huggingface"' in load_cell
+
+    def test_evo1_load_precedes_second_dna_inference_build(self) -> None:
+        """The second DNAInference build follows the evo-1 load, not evo2's."""
+        cells = self._code_cells(self.GEN_PATH)
+        evo1_load_idx = next(
+            i
+            for i, s in enumerate(cells)
+            if "togethercomputer/evo-1" in s and "load_model_and_tokenizer" in s
+        )
+        build_idxs = [i for i, s in enumerate(cells) if "DNAInference(" in s]
+        assert len(build_idxs) == 2, "notebook builds DNAInference exactly twice (evo2 + evo1)"
+        second_build = cells[build_idxs[1]]
+        assert evo1_load_idx < build_idxs[1], (
+            "the EVO1 rebuild must come after its own load cell -- otherwise it "
+            "reuses the still-bound evo2 model/tokenizer (CR-01 regression)"
+        )
+        assert "model=model" in second_build
+        assert "tokenizer=tokenizer" in second_build
+
+
 # --------------------------------------------------------------------------
 # Gated census layer (D-05/D-06 ladder terminals; 05-06 Task 3)
 # --------------------------------------------------------------------------
