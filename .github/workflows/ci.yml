@@ -1038,7 +1038,11 @@ jobs:
               .venv/bin/python scripts/audit_skips.py "$junit" tests/expected_skips.yaml
               echo "stage4-audit-$junit=$?" >> stage-results.txt
             else
-              echo "stage4-audit-$junit=1 (junit missing: pytest never wrote it)" >> stage-results.txt
+              # D-08: the ledger line must end in the bare non-zero code so the
+              # summary's end-anchored grep ('=[1-9][0-9]*$') can see it; the
+              # human-readable reason goes to stdout only.
+              echo "stage4-audit-$junit=1 (junit missing: pytest never wrote it)"
+              echo "stage4-audit-$junit=1" >> stage-results.txt
             fi
           done
           exit 0
