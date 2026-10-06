@@ -33,6 +33,7 @@ import ast
 import json
 import re
 import shutil
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 from pathlib import Path
 
 import pytest
@@ -40,6 +41,7 @@ import pytest
 from tests.examples._execution import (
     EXAMPLE_DIR,
     NOTEBOOK_EXEC_SPECS,
+    REPO_ROOT,
     assert_tree_clean,
     run_notebook,
     seed_sandbox,
@@ -119,11 +121,23 @@ class TestCombinedSiblingSeeding:
         )
 
     def test_every_seeded_source_is_committed_and_present(self) -> None:
-        """Every seeding source exists in the repo tree (fresh-checkout safe)."""
+        """Every seeding source is git-committed and on disk (fresh-checkout safe).
+
+        ``is_file()`` alone would pass on an untracked stray working-tree
+        file -- exactly the fresh-checkout break the 08-01 nightly dispatch
+        hit -- so each source must also be known to git.
+        """
         for src, _dest in COMBINED_EXTRA_INPUTS:
             assert src.is_file(), (
                 f"COMBINED_EXTRA_INPUTS source missing from the repo: {src} -- "
                 f"a fresh checkout sandbox would fail (08-01 nightly failure class)"
+            )
+            git = shutil.which("git")
+            assert git is not None, "git is not on PATH -- cannot verify committed state"
+            # ruff: ignore[subprocess-without-shell-equals-true]
+            subprocess.run(
+                [git, "-C", REPO_ROOT, "ls-files", "--error-unmatch", str(src)],
+                check=True,
             )
 
 
