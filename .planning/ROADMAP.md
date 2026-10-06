@@ -31,7 +31,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - [x] **Phase 6: Model Registry & Showcase Data Curation** - PlantHelixSeek-CRE/-Anno load through the generic registry route (labels frozen, transformers-5 verified) and the committed ≤200kb Arabidopsis loci, truth slices, rationale doc, and shared coordinate normalization helper exist (completed 2026-10-03)
 - [x] **Phase 7: PlantHelixSeek Showcase Notebooks** - CRE and Anno notebooks running real sliding-window inference with prediction-vs-truth presentation, calibrated agreement floors, and rendered-figure write-back to the docs mirror (completed 2026-10-04)
 - [x] **Phase 8: Full Execution Rollout & Repair Loop** - All notebooks, marimo apps, the helper script, and every YAML execute for real on the nightly GPU runner; every surfaced error fixed with regression tests; models.lock, giant-model cache tiers, and ollama infrastructure in place (completed 2026-10-05)
-- [ ] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation
+- [x] **Phase 9: CI Wiring & Census Verification** - Nightly census formally gates the execution-test layer end to end: collection, skip audit, runtime budget, hygiene steps, consistency guard, documented coverage expectation (completed 2026-10-06)
 
 ## Phase Details
 
@@ -155,7 +155,7 @@ Plans:
   4. The fast-leg models.lock consistency guard fails on drift between model id literals inside notebooks/apps and lock entries
   5. The coverage expectation is documented: example execution runs in kernel subprocesses and by design does not move the 96.30% coverage gate (AUDIT-04 precedent)
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1** *(parallel — disjoint files)*
@@ -179,7 +179,7 @@ Phases execute in numeric order: 5 → 6 → 7 → 8 → 9 (Phases 5 and 6 are p
 | 6. Model Registry & Showcase Data Curation | v1.1 | 3/3 | Complete    | 2026-10-03 |
 | 7. PlantHelixSeek Showcase Notebooks | v1.1 | 2/2 | Complete    | 2026-10-04 |
 | 8. Full Execution Rollout & Repair Loop | v1.1 | 9/9 | Complete    | 2026-10-05 |
-| 9. CI Wiring & Census Verification | v1.1 | 4/4 | In Progress | - |
+| 9. CI Wiring & Census Verification | v1.1 | 4/4 | Complete    | 2026-10-06 |
 
 ---
 
