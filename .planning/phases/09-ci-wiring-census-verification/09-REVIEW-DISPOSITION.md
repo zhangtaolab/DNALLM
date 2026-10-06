@@ -21,8 +21,8 @@ findings:
     title: "tests/TESTING.md coverage guidance contradicts CI-09 story (>80% vs fail_under=90, codecov example, stale refs)"
   - id: IN-01
     severity: info
-    disposition: open
-    title: "deploy job uses actions/cache@v3 + run-number key that never exact-hits"
+    disposition: fixed
+    title: "stale '# Generate XML coverage report for CI' comment (incremental review)"
   - id: IN-02
     severity: info
     disposition: open
@@ -43,9 +43,9 @@ findings:
     severity: info
     disposition: open
     title: "unpinned latest micromamba binary fetched+executed on the self-hosted GPU box"
-open: 6
+open: 5
 total: 10
-recorded: 2026-10-06T21:59:00+08:00
+recorded: 2026-10-06T22:09:00+08:00
 ---
 
 # Phase 09: Code Review Disposition
@@ -56,12 +56,12 @@ recorded: 2026-10-06T21:59:00+08:00
 | WR-01 | warning | fixed | acc8c88 |
 | WR-02 | warning | fixed | f5066b6 |
 | WR-03 | warning | fixed | 313fd7d |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
+| IN-01 | info | fixed | incremental-review fix (same commit family as 313fd7d cleanup) |
+| IN-02 | info | open | - (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
+| IN-04 | info | open | - (not in the current review) |
+| IN-05 | info | open | - (not in the current review) |
+| IN-06 | info | open | - (not in the current review) |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 
