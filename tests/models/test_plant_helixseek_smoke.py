@@ -59,23 +59,30 @@ def _registry_task(repo_id: str) -> dict:
 def _is_environment_error(exc: BaseException) -> bool:
     """Classify a load exception as environment-caused or a dnallm regression.
 
-    Rules, derived from the exception ladder in ``dnallm/models/model.py``:
+    Rules, derived from the exception ladder in ``dnallm/models/model.py``.
+    Anchors cite the symbol first so the contract survives future edits; the
+    line numbers are courtesy pins, current at the 2026-10-06 review:
 
     - ``ConnectionError`` / ``TimeoutError`` / ``OSError`` anywhere in the
       ``__cause__``/``__context__`` chain is environmental: requests'
       ``RequestException``, huggingface_hub HTTP errors, and socket errors all
       subclass ``OSError``, and the load block wraps everything as
-      ``ValueError(f"Failed to load model: {e}") from e`` (model.py:887-888),
-      so hub/network causes are visible only in the chain.
+      ``ValueError(f"Failed to load model: {e}") from e`` — the boundary
+      wrap in ``load_model_and_tokenizer`` (model.py:917) — so hub/network
+      causes are visible only in the chain.
     - ``ImportError`` anywhere in the chain is environmental (the
-      modelscope/transformers guards at model.py:444-448 and 476-480, or
-      remote code importing an absent optional dependency such as fla).
-    - The bare unchained ``ValueError(f"Model {name} download failed.")`` from
-      ``download_model`` (model.py:375) is environmental: it is the single
-      terminal signal covering network failures, hub outages, and missing
-      repos on both sources, and it is raised outside the boundary wrap (the
-      ``_get_model_path_and_imports`` call at model.py:834), so it arrives at
-      the caller unchained and must be recognized by message shape.
+      huggingface_hub and modelscope function-local imports and the modelscope
+      guard's ``raise ImportError ... from e`` in ``_get_model_path_and_imports``
+      (model.py:451, 456-458, 474-477), or remote code importing an absent
+      optional dependency such as fla).
+    - The bare unchained ``ValueError(f"Model {name} download failed.")`` —
+      the terminal raise of ``download_model``'s retry loop (model.py:389) —
+      is environmental: it is the single terminal signal covering network
+      failures, hub outages, and missing repos on both sources, and it is
+      raised below the ``_get_model_path_and_imports`` call site (model.py:863),
+      which sits outside the boundary ``try`` (model.py:873-917) in
+      ``load_model_and_tokenizer``, so it arrives at the caller unchained and
+      must be recognized by message shape.
 
     Anything else — a ``TypeError``/``AttributeError``/``KeyError`` from
     dnallm's dispatch or config plumbing, a boundary ``ValueError`` chained
@@ -155,12 +162,13 @@ class TestLoadWithFallbackClassification:
             assert _is_environment_error(exc), type(exc).__name__
 
     def test_terminal_download_value_error_is_environmental(self):
-        # download_model's sole terminal signal (model.py:375), raised unchained
+        # download_model's terminal retry-loop raise (model.py:389), unchained
         assert _is_environment_error(ValueError(f"Model {CRE_REPO_ID} download failed."))
 
     def test_wrapped_value_error_from_connection_error_is_environmental(self):
-        # Boundary wrap (model.py:887-888): the network cause lives in the chain.
-        # Setting __cause__ directly is exactly what ``raise ... from ...`` does.
+        # Boundary wrap raise-from in load_model_and_tokenizer (model.py:917):
+        # the network cause lives in the chain. Setting __cause__ directly is
+        # exactly what ``raise ... from ...`` does.
         wrapped = ValueError("Failed to load model: hub unreachable")
         wrapped.__cause__ = ConnectionError("hub unreachable")
         assert _is_environment_error(wrapped)
