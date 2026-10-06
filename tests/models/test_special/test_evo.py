@@ -310,6 +310,19 @@ class TestHandleEvo2Models:
         with pytest.raises(ImportError, match="EVO2 package is required"):
             _handle_evo2_models("evo2_1b_base", "local")
 
+    def test_local_dir_without_pt_raises_value_error(self, monkeypatch, tmp_path):
+        """An empty local evo2 dir raises a descriptive ValueError (IN-01).
+
+        The glob used to index [0] unguarded, so a directory with no .pt
+        files escaped as a bare IndexError.
+        """
+        _install_evo2_stubs(monkeypatch)
+        model_dir = tmp_path / "evo2_1b_base"
+        model_dir.mkdir()
+
+        with pytest.raises(ValueError, match=r"No \.pt checkpoint found in"):
+            _handle_evo2_models(str(model_dir), "local")
+
     def test_local_source_loads_checkpoint(self, monkeypatch, tmp_path):
         """Local source resolves the .pt file inside the model directory."""
         _install_evo2_stubs(monkeypatch)

@@ -228,7 +228,15 @@ def _handle_evo2_models(
                     for key, value in kwargs.items():
                         setattr(self, key, value)
 
-            model_path = glob(model_name + "/*.pt")[0] if os.path.isdir(model_name) else model_name
+            if os.path.isdir(model_name):
+                # IN-01: a .pt-less local dir used to die with a bare
+                # IndexError from the glob; raise a matchable ValueError.
+                pt_files = glob(model_name + "/*.pt")
+                if not pt_files:
+                    raise ValueError(f"No .pt checkpoint found in {model_name}")
+                model_path = pt_files[0]
+            else:
+                model_path = model_name
             # Check the dependencies and find the correct config file
             is_fp8 = is_fp8_capable()
             has_flash_attention = is_flash_attention_capable()
