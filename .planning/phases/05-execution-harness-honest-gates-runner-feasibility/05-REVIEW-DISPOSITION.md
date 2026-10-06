@@ -3,38 +3,38 @@ phase: 05
 review: 05-REVIEW.md
 titles: json
 findings:
-  - id: CR-01
-    severity: critical
-    disposition: fixed
-    title: "Single-flight inference lock releases on tool timeout while the orphaned infer_seqs thread keeps running"
   - id: WR-01
     severity: warning
     disposition: fixed
-    title: "dna_interpret runs blocking captum work on the event-loop thread — its timeout wrapper can never fire"
+    title: "Model-id swap incomplete — Prerequisites still pulls `qwen3.6:latest`"
+  - id: WR-02
+    severity: warning
+    disposition: fixed
+    title: "ACTIVE-lane sandbox fixture ignores the spec `yaml_patch` key the gated lane forwards"
   - id: IN-01
     severity: info
     disposition: fixed
-    title: "Three new patch installers omit the try/except transformers-import guard the module contract promises"
+    title: "`yaml_overrides` on a non-mapping section raises `AttributeError`, not the documented `ValueError`"
   - id: IN-02
     severity: info
-    disposition: open
-    title: "Port bind-close-probe race in TestProbeHonesty unbound-port test"
+    disposition: fixed
+    title: "Prerequisite probes let `subprocess.TimeoutExpired` escape instead of reporting `(False, evidence)`"
+  - id: CR-01
+    severity: critical
+    disposition: fixed
+    title: "Unused `noqa` in spike runner fails `ruff check .` — CI lint gate is red on every push"
   - id: IN-03
     severity: info
     disposition: open
     title: "langchain notebook ensure-cell spawns a detached MCP server that is never shut down"
-  - id: WR-02
-    severity: warning
-    disposition: fixed
-    title: "Gated `lora_finetune.ipynb` runs with outer timeout == cell timeout, violating the strictly-below invariant"
   - id: WR-03
     severity: warning
     disposition: fixed
-    title: "`test_timeout` (and marimo `flavor`) spec fields are dead data contradicting their documented contract"
+    title: "New test module imports `nbclient` at module scope, but `nbclient` lives only in the `notebook` extra"
   - id: WR-04
     severity: warning
     disposition: fixed
-    title: "Permanent HTTP 4xx on the rice input URLs converts to an ever-green `network-unavailable` skip"
+    title: "`|| true` masks the spike runner's exit code, hiding infrastructure crashes as a green step"
   - id: WR-05
     severity: warning
     disposition: fixed
@@ -63,23 +63,23 @@ findings:
     severity: info
     disposition: deferred
     title: "# ruff: ignore[rule-name] comments are inert — not a ruff directive (harmless under preview config)"
-open: 2
+open: 1
 total: 15
-recorded: 2026-10-03T03:50:22.056Z
+recorded: 2026-10-06T15:07:37.134Z
 ---
 
 # Phase 05: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | 032b308 fix(quick-261003-hhj) |
-| WR-01 | warning | fixed | 3fe80bf fix(quick-261003-ij4) |
-| IN-01 | info | fixed | cad7370 fix(quick-261003-jpr) |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| WR-02 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
-| WR-03 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
-| WR-04 | warning | fixed | 05-REVIEW-FIX.md (not in the current review) |
+| WR-01 | warning | fixed | 05-REVIEW-FIX.md |
+| WR-02 | warning | fixed | 05-REVIEW-FIX.md |
+| IN-01 | info | fixed | 05-REVIEW-FIX.md |
+| IN-02 | info | fixed | 05-REVIEW-FIX.md |
+| CR-01 | critical | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
+| IN-03 | info | open | - (not in the current review) |
+| WR-03 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
+| WR-04 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-05 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-06 | warning | fixed | 05-REVIEW-FIX.iter2.md (not in the current review) |
 | WR-07 | warning | fixed | a5f38ac fix(05) iter2 (not in the current review) |
@@ -90,4 +90,4 @@ recorded: 2026-10-03T03:50:22.056Z
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
-Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently. ONE exception: when a finding id is REUSED by a different finding, the earlier decision cannot keep a row — the id is taken — and it is dropped. A RECORDED decision (anything but `open`) is named on the console when that happens; a row still at `open` is replaced silently, because `open` records no decision to lose.
+Re-running the gate keeps every row it can. A row the current review no longer reports is kept and its Source cell flagged, so a finding does not leave this record silently.
