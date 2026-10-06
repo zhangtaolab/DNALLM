@@ -101,7 +101,7 @@ class TestNumpyFromstringShim:
 
 
 class TestNumpyFromstringFallbackBehavior:
-    """The vendored fallback parses byte strings like historical numpy."""
+    """The vendored fallback parses bytes and str like historical numpy."""
 
     def _fallback(self):
         """The vendored fallback, resolved directly from the compat module."""
@@ -132,6 +132,43 @@ class TestNumpyFromstringFallbackBehavior:
         transformers_compat.apply_patches()
         assert hasattr(np, "fromstring")
         assert np.fromstring(b"ACGT", dtype=np.uint8).tolist() == [65, 67, 71, 84]
+
+    def test_binary_mode_str_input_matches_historical_behavior(self):
+        """str input (stripedhyena's shape) yields its byte values.
+
+        ``CharLevelTokenizer.tokenize(self, text: str)`` passes a bare str;
+        historical numpy 1.x binary mode accepted str as its ASCII byte
+        values, so the shim must encode rather than trip frombuffer's
+        bytes-only contract (CR-01 gate 3 live failure).
+        """
+        fromstring = self._fallback()
+        result = fromstring("ACGT", dtype=np.uint8)
+        assert result.tolist() == [65, 67, 71, 84]
+        assert result.dtype == np.uint8
+
+    def test_binary_mode_str_count_is_honored(self):
+        """The count argument truncates str input exactly like bytes input."""
+        fromstring = self._fallback()
+        result = fromstring("ACGTACGT", dtype=np.uint8, count=4)
+        assert result.tolist() == [65, 67, 71, 84]
+
+    def test_binary_mode_str_result_is_writable(self):
+        """str input also yields the historical writable copy, not a view."""
+        fromstring = self._fallback()
+        result = fromstring("ACGT", dtype=np.uint8)
+        result[0] = 84
+        assert result[0] == 84
+
+    def test_binary_mode_str_non_ascii_encodes_utf8(self):
+        """Non-ASCII sanity pin: the documented encode choice is utf-8.
+
+        Outside the stripedhyena ASCII vocab the shim's contract is its own
+        utf-8 encode (two bytes for U+00E9), asserted here so a future
+        switch to latin-1 must be a deliberate comment+test change.
+        """
+        fromstring = self._fallback()
+        result = fromstring("é", dtype=np.uint8)
+        assert result.tolist() == [195, 169]
 
     def test_text_mode_raises_instructive_error(self):
         """sep != '' (text mode) is refused with a pointer to loadtxt."""

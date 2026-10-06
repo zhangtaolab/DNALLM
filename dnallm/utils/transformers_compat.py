@@ -1024,15 +1024,21 @@ def _patch_legacy_init_weights_bookkeeping():
 # numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been
 # deprecated since numpy 1.14 with "use frombuffer instead"; the text mode
 # went with it). stripedhyena's ``CharLevelTokenizer`` -- the evo-1 family
-# tokenizer loaded through dnallm/models/special/evo.py -- still calls
-# ``np.fromstring`` on the utf-8 bytes of every sequence, which raises
-# AttributeError on numpy 2.x. The vendored fallback below restores ONLY
-# the historical binary-mode behavior: ``frombuffer`` semantics with the
-# writable copy ``fromstring`` returned, and the ``count`` argument honored.
-# The text mode (``sep != ''``) is refused with a ``loadtxt`` pointer --
-# nothing in dnallm or stripedhyena uses it, and reproducing it would mean
-# re-vendoring the removed C text parser. If another numpy API disappears
-# that dnallm needs, add a NEW absence-gated rung -- never widen this one.
+# tokenizer loaded through dnallm/models/special/evo.py -- calls
+# ``np.fromstring(text, dtype=np.uint8)`` on every sequence it tokenizes,
+# and it passes a BARE STR (live-verified on the CR-01 lane:
+# evo/scoring.py ``prepare_batch`` -> ``CharLevelTokenizer.tokenize``,
+# whose signature is ``tokenize(self, text: str)``). Historical numpy 1.x
+# binary mode accepted str and used its byte values, so the fallback
+# encodes str to utf-8 (identical to ASCII for the stripedhyena vocab)
+# before ``frombuffer``. The vendored fallback below restores ONLY the
+# historical binary-mode behavior: ``frombuffer`` semantics with the
+# writable copy ``fromstring`` returned, and the ``count`` argument
+# honored. The text mode (``sep != ''``) is refused with a ``loadtxt``
+# pointer -- nothing in dnallm or stripedhyena uses it, and reproducing it
+# would mean re-vendoring the removed C text parser. If another numpy API
+# disappears that dnallm needs, add a NEW absence-gated rung -- never
+# widen this one.
 
 
 def _np_fromstring(string, dtype=float, count=-1, sep=""):
@@ -1045,6 +1051,11 @@ def _np_fromstring(string, dtype=float, count=-1, sep=""):
             "compat shim; it was removed with numpy 2.0 and no dnallm/stripedhyena "
             "code path uses it. Use numpy.loadtxt instead."
         )
+    # stripedhyena hands over a bare str; numpy 1.x binary mode took str as
+    # its byte values, while frombuffer demands a bytes-like object -- so
+    # encode first (utf-8 == ASCII for the stripedhyena vocab).
+    if isinstance(string, str):
+        string = string.encode("utf-8")
     # Historical fromstring returned a fresh writable array, while frombuffer
     # shares the read-only buffer -- copy so downstream in-place writes keep
     # working exactly as they did before numpy 2.0.
