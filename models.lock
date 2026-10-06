@@ -1,6 +1,7 @@
-# models.lock — remote artifacts fetched by the slow test suite.
-# Keys the gated CI job's model cache (actions/cache hashFiles).
-# Edit an entry to rotate the cache key.
+# models.lock — provenance registry of remote artifacts fetched by the slow
+# test suite and the example notebooks; pinned rows record the registry-head
+# revision shas the lanes were validated against. Provenance only: no CI
+# cache is keyed on this file since D-11 (owner decision 2026-10-05).
 # Pinned form (D-15, 08-09): <hf|ms>  <repo-id>@<revision-sha>  # purpose.
 # Pins are registry head shas verified live at write time (ms rows:
 # modelscope git ls-remote; hf rows: HF main via the mirror API). The
