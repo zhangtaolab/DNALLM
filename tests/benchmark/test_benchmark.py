@@ -423,7 +423,11 @@ output:
         # Type assertion for task config
         from dnallm.configuration.configs import TaskConfig
 
-        task_config = self.config["task"]
+        # Post quick-14 no-alias semantics Benchmark owns a private dict(config)
+        # copy, and __load_from_config replaces that copy's "task" with a
+        # per-dataset TaskConfig — retasking must go through benchmark.config,
+        # the object plot() actually reads.
+        task_config = benchmark.config["task"]
         # Check if task_config has the expected attributes instead of
         # isinstance check
         assert hasattr(task_config, "task_type"), "task_config should have task_type attribute"
@@ -578,6 +582,56 @@ class TestCodeBasedInit:
         assert benchmark.prepared["sources"] == []
         assert benchmark.prepared["plot_format"] == "pdf"
         assert benchmark.config["inference"].batch_size == 1
+
+
+class TestPlotTaskTypeFlow:
+    """Engine-owned config drives Benchmark.plot branch selection."""
+
+    def test_engine_config_task_type_flows_to_scalar_plot_inputs(
+        self, benchmark_yaml_factory, tmp_path
+    ):
+        """Scalar plot inputs flow from the engine-owned config (WINDOWS id 16).
+
+        Pinned contract: Benchmark copies the caller's Mapping into a private
+        dict(config), and __load_from_config replaces that copy's "task" with a
+        per-dataset TaskConfig. Only mutating benchmark.config["task"] reaches
+        plot()'s task_type read; with a regression task_type the metrics reach
+        plot_bars/plot_scatter as strictly scalar bar columns and preserved
+        scatter lists — no dict column ever reaches plot_bars.
+        """
+        caller_cfg = benchmark_yaml_factory()
+        benchmark = Benchmark(caller_cfg)
+
+        # No-alias semantics: the engine owns its own config mapping and task
+        # object (the __load_from_config replacement leg).
+        assert benchmark.config is not caller_cfg
+        assert benchmark.config["task"] is not caller_cfg["task"]
+
+        benchmark.config["task"].task_type = "regression"
+        metrics = {
+            "ds1": {
+                "m1": {
+                    "mse": 0.05,
+                    "r2": 0.9,
+                    "scatter": {"predicted": [1.1, 2.2], "experiment": [1.0, 2.0]},
+                },
+            },
+        }
+
+        with (
+            patch("dnallm.inference.benchmark.plot_bars") as mock_bars,
+            patch("dnallm.inference.benchmark.plot_scatter") as mock_scatter,
+        ):
+            benchmark.plot(metrics, save_path=str(tmp_path))
+
+        bars_data = mock_bars.call_args.args[0]
+        assert set(bars_data) == {"models", "mse", "r2"}
+        assert all(isinstance(value, float) for value in bars_data["mse"])
+        assert all(isinstance(value, float) for value in bars_data["r2"])
+
+        scatter_data = mock_scatter.call_args.args[0]
+        assert scatter_data["m1"]["predicted"] == [1.1, 2.2]
+        assert scatter_data["m1"]["experiment"] == [1.0, 2.0]
 
 
 class TestRunBranches:
