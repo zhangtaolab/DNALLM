@@ -972,7 +972,7 @@ jobs:
 
       - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-ollama)"
         # Same named hygiene step (D-13) before the ollama batch: stray
-        # ipykernel children die, memory settles before qwen3.8's 17GB
+        # ipykernel children die, memory settles before qwen3.5:4b's ~3.3GB
         # weights come under load in stage 3, and the free -g available
         # floor is a HARD gate — nvidia-smi stays telemetry-only (GB10
         # reports no memory through it).
