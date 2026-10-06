@@ -891,6 +891,44 @@ class TestEvoIsolatedLane:
         assert "isolated evo venv" in message, message
 
 
+class TestVenvProbeTimeoutContract:
+    """IN-02: a hung venv probe reports ``(False, evidence)``, never raises.
+
+    The prerequisite gates promise an honest typed skip carrying probe
+    evidence; an unhandled ``subprocess.TimeoutExpired`` from a hung
+    interpreter would turn that skip into a test ERROR instead.
+    """
+
+    def test_hung_probe_returns_false_with_timeout_evidence(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both probes convert a 120s interpreter hang into typed-False evidence."""
+        import tests.examples._execution as execution_module
+
+        fake_venv = tmp_path / "fake-venv"
+        (fake_venv / "bin").mkdir(parents=True)
+        (fake_venv / "bin" / "python").write_text("#!/bin/sh\n", encoding="utf-8")
+
+        def _hung(*_args, **_kwargs):
+            raise subprocess.TimeoutExpired(cmd=["python", "-c", "probe"], timeout=120)
+
+        # Patch the probes' DEFINING module: the functions resolve their
+        # venv dir and subprocess.run from tests.examples._execution globals
+        # at call time (same idiom as the sys.modules gate patches above).
+        monkeypatch.setattr(execution_module.subprocess, "run", _hung)
+        for venv_const, probe in (
+            ("MEGADNA_VENV_DIR", megadna_prerequisites_installed),
+            ("EVO_VENV_DIR", evo_prerequisites_installed),
+        ):
+            monkeypatch.setattr(execution_module, venv_const, fake_venv)
+
+            installed, evidence = probe()
+
+            assert installed is False, probe.__name__
+            assert "timed out after 120s" in evidence, evidence
+            assert str(fake_venv / "bin" / "python") in evidence, evidence
+
+
 class TestFinetuneGenerationContentContracts:
     """Fast JSON-level contracts for the repaired finetune_generation (08-04).
 

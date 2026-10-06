@@ -692,13 +692,18 @@ def megadna_prerequisites_installed() -> tuple[bool, str]:
         "import importlib.metadata, megaDNA, MEGABYTE_pytorch; "
         "assert importlib.metadata.version('MEGABYTE_pytorch') == '0.2.1'"
     )
-    # ruff: ignore[subprocess-without-shell-equals-true]
-    result = subprocess.run(
-        [str(venv_python), "-c", probe],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    try:
+        # ruff: ignore[subprocess-without-shell-equals-true]
+        result = subprocess.run(
+            [str(venv_python), "-c", probe],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # A hung interpreter is an honest typed skip, never a test ERROR
+        # (IN-02): report the timeout as probe evidence like any cold venv.
+        return False, f"venv probe timed out after 120s ({venv_python}): {exc}"
     if result.returncode == 0:
         return True, f"{venv_python} imports megaDNA + MEGABYTE_pytorch==0.2.1"
     detail = (result.stderr or result.stdout or "").strip().splitlines()
@@ -840,19 +845,25 @@ def evo_prerequisites_installed() -> tuple[bool, str]:
     Returns:
         ``(installed, evidence)`` exactly like the megaDNA probe: a live
         interpreter importing all three -> green evidence string; anything
-        else -> the interpreter path plus the last failing output line.
+        else (a failing OR hung interpreter) -> the interpreter path plus
+        the last failing output line or the timeout evidence.
     """
     venv_python = EVO_VENV_DIR / "bin" / "python"
     if not venv_python.is_file():
         return False, f"isolated evo venv missing ({venv_python})"
     probe = "import stripedhyena, evo2, flash_attn"
-    # ruff: ignore[subprocess-without-shell-equals-true]
-    result = subprocess.run(
-        [str(venv_python), "-c", probe],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
+    try:
+        # ruff: ignore[subprocess-without-shell-equals-true]
+        result = subprocess.run(
+            [str(venv_python), "-c", probe],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # A hung interpreter is an honest typed skip, never a test ERROR
+        # (IN-02): report the timeout as probe evidence like any cold venv.
+        return False, f"venv probe timed out after 120s ({venv_python}): {exc}"
     if result.returncode == 0:
         return True, f"{venv_python} imports stripedhyena + evo2 + flash_attn"
     detail = (result.stderr or result.stdout or "").strip().splitlines()
