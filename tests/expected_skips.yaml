@@ -68,3 +68,8 @@ allowed:
   # tests/utils/test_cuda_compat.py:26 — non-Linux legs only (CI is linux).
   - reason_like: "SONAME check is Linux-specific"
     category: environment
+
+  # tests/utils/test_genomic_coords.py:261 — non-Linux legs only (fd accounting
+  # reads /proc/self/fd; fires on the test-windows fast leg).
+  - reason_like: "fd accounting needs /proc"
+    category: environment
