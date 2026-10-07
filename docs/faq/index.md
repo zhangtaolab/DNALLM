@@ -43,7 +43,7 @@ export HTTPS_PROXY="http://your.proxy.server:port"
 - `ImportError: EVO-1 package is required...`
 - `ImportError: No module named 'mamba_ssm'`
 - `ImportError: No module named 'gpn'`
-- `ImportError: No module named 'ai2_olmo'`
+- `ImportError: No module named 'olmo'`
 
 **Solution**: You must install the required dependencies for the specific model you are trying to use.
 
@@ -84,8 +84,7 @@ uv pip install evo-model
 1. **Enable Gradient Accumulation**: In your config file, set `training_args.gradient_accumulation_steps` to a value like 4 or 8. This is the most effective solution.
 2. **Reduce Batch Size**: Lower `training_args.per_device_train_batch_size` to 4, 2, or even 1.
 3. **Enable Mixed Precision**: Set `training_args.fp16: true`. This halves the memory required for the model and activations.
-4. **Use an 8-bit Optimizer**: Set `training_args.optim: "adamw_8bit"`. This requires the `bitsandbytes` library.
-5. **Enable Gradient Checkpointing**: Set `training_args.gradient_checkpointing: true`. This saves a lot of memory at the cost of slower training.
+4. **Enable Gradient Checkpointing**: Set `training_args.gradient_checkpointing: true`. This saves a lot of memory at the cost of slower training.
 
 ### Q: Loss is `NaN` or Explodes
 
@@ -104,11 +103,13 @@ uv pip install evo-model
 
 **Problem**: You are trying to load a model with a custom architecture (e.g., Hyena, Caduceus, Evo) that is not yet part of the main `transformers` library.
 
-**Solution**: You **must** pass `trust_remote_code=True` when loading the model. This allows `transformers` to download and run the model's defining Python code from the Hugging Face Hub.
+**Solution**: DNALLM's `load_model_and_tokenizer` handles this for you — it passes `trust_remote_code=True` to `transformers` automatically when loading models from the Hugging Face Hub, so custom-architecture models work out of the box. You just need to supply the required `task_config`:
 
 ```python
 model, tokenizer = load_model_and_tokenizer(
-    "togethercomputer/evo-1-131k-base", trust_remote_code=True
+    "togethercomputer/evo-1-131k-base",
+    task_config=configs["task"],
+    source="huggingface",
 )
 ```
 
@@ -202,10 +203,10 @@ uv pip install "flash_attn<=2.7.4.post1" --no-build-isolation --no-cache-dir
 **Cause**: The model, data, and intermediate activations require more GPU VRAM than is available.
 
 **Solutions**:
-- **Primary**: Reduce `batch_size` in your `inference` or `training` configuration. This is the most effective way to lower memory usage.
+- **Primary**: Reduce `batch_size` in your `inference` configuration (or `training_args.per_device_train_batch_size` for training). This is the most effective way to lower memory usage.
 - **Secondary**: Reduce `max_length`. The memory requirement for transformers scales quadratically with sequence length.
 - **Use Half-Precision**: Set `use_fp16: true` or `use_bf16: true`. This can nearly halve the model's memory footprint.
-- **Disable Interpretability Features**: For large-scale runs, ensure `output_hidden_states` and `output_attentions` are `False`.
+- **Avoid Attention/Hidden-State Extraction**: `output_hidden_states` and `output_attentions` default to `False` and are only enabled by the extraction methods (e.g., `DNAInference.get_embeddings`), so skip those methods for large-scale runs.
 
 ---
 
@@ -247,7 +248,7 @@ See the [Model Selection Guide](../resources/model_selection.md) for detailed gu
 ### Q: What are the system requirements for DNALLM?
 
 **Answer**:
-- **Python**: 3.10 or higher (Python 3.12 recommended)
+- **Python**: 3.10 or higher (Python 3.11 or higher recommended)
 - **GPU**: NVIDIA GPU with at least 8GB VRAM recommended for optimal performance
 - **Memory**: 16GB RAM minimum, 32GB+ recommended for large models
 - **Storage**: At least 10GB free space for model downloads and cache
@@ -265,7 +266,7 @@ See the [Performance Optimization Guide](../user_guide/inference/performance_opt
 
 ### Q: Where can I find example configurations?
 
-**Answer**: Example configurations are available in the `example/` directory of the DNALLM repository. You can also use the interactive configuration generator:
+**Answer**: Example configurations are available in the `configs/` directory of the DNALLM repository (e.g., `configs/finetune_config.yaml`, `configs/inference_config.yaml`). You can also use the interactive configuration generator:
 
 ```bash
 dnallm model-config-generator --output my_config.yaml

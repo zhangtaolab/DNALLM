@@ -24,7 +24,7 @@ finetune:
 
 **CLI Argument:**
 ```bash
-dnallm finetune --per_device_train_batch_size 4 --gradient_accumulation_steps 8 ...
+dnallm train -c config.yaml
 ```
 
 ## 2. Gradient Checkpointing
@@ -42,9 +42,7 @@ This is another trade-off: it saves a significant amount of memory at the cost o
 **Configuration (`config.yaml`):**
 ```yaml
 finetune:
+  gradient_checkpointing: true
 ```
 
-**CLI Argument:**
-```bash
-dnallm finetune --gradient_checkpointing ...
-```
+**YAML key:** `finetune.gradient_checkpointing: true` (`dnallm/configuration/configs.py`)

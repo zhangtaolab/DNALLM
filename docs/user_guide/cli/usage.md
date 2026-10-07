@@ -54,10 +54,10 @@ python run_cli.py model-config-generator --output config.yaml
 python cli/cli.py --help
 
 # Training
-python cli/train.py config.yaml model_path data_path
+python cli/train.py --config config.yaml
 
 # Inference
-python cli/inference.py config.yaml model_path
+python cli/inference.py --config config.yaml
 
 # Configuration generator
 python cli/model_config_generator.py --output config.yaml
@@ -70,10 +70,10 @@ python cli/model_config_generator.py --output config.yaml
 python -m dnallm.cli.cli --help
 
 # Package training
-python -m dnallm.cli.train config.yaml model_path data_path
+python -m dnallm.cli.train --config config.yaml
 
 # Package inference
-python -m dnallm.cli.inference config.yaml model_path
+python -m dnallm.cli.inference --config config.yaml
 
 # Package configuration generator
 python -m dnallm.cli.model_config_generator --output config.yaml
@@ -126,7 +126,7 @@ Generate configuration files for DNALLM tasks.
 **Options:**
 - `--output, -o`: Output file path for configuration
 - `--preview`: Preview configuration without saving
-- `--template`: Template type (training, inference, benchmark)
+- `--non-interactive, -n`: Use non-interactive mode with defaults
 
 **Examples:**
 ```bash
@@ -143,8 +143,8 @@ Start MCP (Model Context Protocol) server.
 
 **Options:**
 - `--config, -c`: Path to configuration file
-- `--port, -p`: Server port (default: 8000)
-- `--host, -h`: Server host (default: localhost)
+- `--port`: Server port (default: 8000)
+- `--host`: Server host (default: 0.0.0.0)
 
 **Examples:**
 ```bash
@@ -171,10 +171,10 @@ Run in-silico mutagenesis analysis on DNA sequences.
 **Examples:**
 ```bash
 # Single sequence analysis
-dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCGATCG
+dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCGATCG
 
 # Batch analysis from file
-dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
+dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
 ```
 
 ## Configuration Examples

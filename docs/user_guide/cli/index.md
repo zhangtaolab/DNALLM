@@ -30,7 +30,7 @@ dnallm model-config-generator --output finetune_config.yaml
 dnallm train --config finetune_config.yaml
 
 # Run inference
-dnallm inference --config inference_config.yaml --model-path ./models/trained_model
+dnallm inference --config inference_config.yaml --model ./models/trained_model
 
 # Benchmark models
 dnallm benchmark --config benchmark_config.yaml

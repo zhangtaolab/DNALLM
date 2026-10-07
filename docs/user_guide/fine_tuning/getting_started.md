@@ -91,9 +91,9 @@ dataset = DNADataset.load_local_data(
 if not dataset.is_split:
     dataset.split_data(test_size=0.2, val_size=0.1)
 
-print(f"Training samples: {len(dataset.train_data)}")
-print(f"Validation samples: {len(dataset.val_data)}")
-print(f"Test samples: {len(dataset.test_data)}")
+print(f"Training samples: {len(dataset.dataset['train'])}")
+print(f"Validation samples: {len(dataset.dataset['val'])}")
+print(f"Test samples: {len(dataset.dataset['test'])}")
 ```
 
 ### 4. Load Pre-trained Model
@@ -119,23 +119,22 @@ print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 ### 5. Initialize Trainer and Start Training
 
 ```python
-# Initialize trainer
+# Initialize trainer — the DNADataset is passed as `datasets`; the trainer
+# resolves the train/val/test splits from it automatically
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 # Start training
 print("Starting fine-tuning...")
 trainer.train()
 
-# Save the final model
-trainer.save_model("./final_model")
-tokenizer.save_pretrained("./final_model")
-print("Training completed! Model saved to ./final_model")
+# train() automatically saves the final model and tokenizer to
+# finetune.output_dir ("./outputs" in this config); intermediate
+# checkpoints are also written there per save_strategy/save_steps
+print("Training completed! Model saved to ./outputs")
 ```
 
 ## Command Line Interface
@@ -143,14 +142,22 @@ print("Training completed! Model saved to ./final_model")
 DNALLM also provides a convenient command-line interface:
 
 ```bash
-# Basic fine-tuning run
-dnallm-finetune --config finetune_config.yaml --model zhangtaolab/plant-dnabert-BPE --dataset path/to/data.csv
+# Basic fine-tuning run — model, data, and all training parameters live in the YAML config
+dnallm train --config finetune_config.yaml
 
-# Fine-tune with custom parameters
-dnallm-finetune --config config.yaml --epochs 5 --batch-size 16 --learning-rate 1e-4
+# Without a config, --model, --data, and --output must all be provided
+dnallm train --model zhangtaolab/plant-dnabert-BPE --data path/to/data.csv --output ./outputs
 
-# Resume from checkpoint
-dnallm-finetune --config config.yaml --resume-from-checkpoint ./checkpoint-1000
+# The standalone entry point takes the same options
+dnallm-train --config finetune_config.yaml
+```
+
+The CLI only accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o`. Training parameters such as epochs, batch size, and learning rate are set in the `finetune` section of the config file, not via command-line flags. To resume an interrupted run, set `resume_from_checkpoint` in the `finetune` section:
+
+```yaml
+finetune:
+  # ... other settings ...
+  resume_from_checkpoint: "./outputs/checkpoint-1000"
 ```
 
 ## Understanding the Configuration
@@ -274,7 +281,7 @@ def run_finetuning():
 
     print(
         f"Dataset loaded: {len(dataset.dataset['train'])} train, "
-        f"{len(dataset.dataset['validation'])} val"
+        f"{len(dataset.dataset['val'])} val"
     )
 
     # Encode sequences
@@ -328,8 +335,11 @@ Configure early stopping to prevent overfitting:
 ```yaml
 finetune:
   # ... other settings ...
-  early_stopping_threshold: 0.001
   metric_for_best_model: "eval_loss"
+  callbacks:
+    early_stopping:
+      patience: 3        # stop after 3 evaluations without improvement (None disables early stopping)
+      threshold: 0.001   # improvements smaller than this count as "no improvement"
 ```
 
 ## Common Hyperparameters
@@ -383,8 +393,9 @@ finetune:
 # Add regularization
 finetune:
   weight_decay: 0.1    # Increased from 0.01
-  dropout: 0.2         # Add dropout
 ```
+
+There is no `dropout` field in the `finetune` section. Dropout for custom prediction heads is set in the model/head configuration (`dropout`, default 0.1), and LoRA layers use `lora.lora_dropout`.
 
 ## Additional Resources
 

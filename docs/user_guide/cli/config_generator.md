@@ -16,21 +16,25 @@ The DNALLM Configuration Generator is an interactive CLI tool that helps you cre
 
 ```bash
 # Generate configuration interactively
-dnallm config-generator
+dnallm model-config-generator
 
-# Generate specific configuration type
-dnallm config-generator --type finetune
-dnallm config-generator --type inference
-dnallm config-generator --type benchmark
+# The configuration type (fine-tuning, inference, benchmark) is chosen
+# from an interactive menu when the command starts
 
 # Specify output file
-dnallm config-generator --output my_config.yaml
+dnallm model-config-generator --output my_config.yaml
+
+# Equivalent standalone script
+dnallm-model-config-generator
 ```
 
 ### Command Line Options
 
-- `--type, -t`: Specify configuration type (finetune, inference, benchmark)
 - `--output, -o`: Specify output file path (default: auto-generated based on type)
+- `--preview, -p`: Preview configuration before saving
+- `--non-interactive, -n`: Use non-interactive mode with defaults
+
+The configuration type is not a command-line option — it is selected interactively from a 1-3 menu (fine-tuning, inference, benchmark) after the command starts.
 
 ## Configuration Types
 
@@ -43,7 +47,6 @@ Generates configuration for training/fine-tuning DNA language models.
 - Training parameters (epochs, batch size, learning rate)
 - Optimization settings (weight decay, warmup ratio)
 - Logging and evaluation settings
-- Inference settings for evaluation
 
 **Example Output:**
 
@@ -63,12 +66,6 @@ finetune:
   eval_steps: 100
   save_steps: 500
   seed: 42
-inference:
-  batch_size: 16
-  max_length: 512
-  device: auto
-  num_workers: 4
-  output_dir: ./results
 ```
 
 ### 2. Inference Configuration
@@ -195,19 +192,19 @@ The tool will guide you through each configuration section with helpful prompts:
 ### Quick Fine-tuning Setup
 
 ```bash
-# Generate fine-tuning config with defaults
-dnallm config-generator --type finetune --output my_training.yaml
+# Generate fine-tuning config (choose "1" in the type menu)
+dnallm model-config-generator --output my_training.yaml
 
 # Customize specific parameters
-dnallm config-generator --type finetune
+dnallm model-config-generator
 # Follow prompts to set custom values
 ```
 
 ### Benchmark Multiple Models
 
 ```bash
-# Generate benchmark config
-dnallm config-generator --type benchmark --output model_comparison.yaml
+# Generate benchmark config (choose "3" in the type menu)
+dnallm model-config-generator --output model_comparison.yaml
 
 # Add multiple models and datasets interactively
 # Configure evaluation metrics and output format
@@ -216,8 +213,8 @@ dnallm config-generator --type benchmark --output model_comparison.yaml
 ### Inference Configuration
 
 ```bash
-# Generate inference config for inference
-dnallm config-generator --type inference --output inference_config.yaml
+# Generate inference config (choose "2" in the type menu)
+dnallm model-config-generator --output inference_config.yaml
 
 # Set batch size, device, and output options
 ```
@@ -264,14 +261,12 @@ dnallm benchmark --config benchmark_config.yaml
 ## Advanced Usage
 
 ### Custom Metrics
-Add custom evaluation metrics in benchmark configurations:
+Add custom evaluation metrics in benchmark configurations. Metrics are plain name strings (a list of `str`) — use the "Add custom metric" option in the interactive prompt to enter a name:
 
 ```yaml
 metrics:
-  - name: custom_dna_metric
-    class: CustomDNAMetric
-    parameters:
-      threshold: 0.5
+  - accuracy
+  - custom_dna_metric
 ```
 
 ### Model Variants
@@ -290,14 +285,13 @@ models:
 ```
 
 ### Data Augmentation
-Enable data augmentation for training:
+Data augmentation is not controlled through configuration files. Apply it in code after loading a dataset by calling the `augment_reverse_complement()` method on a `DNADataset` instance (see `dnallm/datahandling/data.py`):
 
-```yaml
-dataset:
-  preprocessing:
-    augment: true
-    reverse_complement_ratio: 0.5
-    random_mutation_ratio: 0.1
+```python
+from dnallm import DNADataset
+
+dataset = DNADataset(...)  # load your dataset as usual
+dataset.augment_reverse_complement(reverse=True, complement=True)
 ```
 
 The Configuration Generator makes it easy to create comprehensive, validated configurations for all your DNALLM tasks!

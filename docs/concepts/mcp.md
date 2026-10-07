@@ -147,19 +147,25 @@ MCP enables AI assistants to:
 ### Available Tools
 
 **Basic Prediction Tools**:
-- `dna_sequence_predict`: Single sequence prediction
-- `dna_batch_predict`: Batch sequence prediction
-- `dna_multi_model_predict`: Multi-model prediction
+- `_dna_sequence_predict`: Single sequence prediction (requires `model_name`)
+- `_dna_batch_predict`: Batch sequence prediction
+- `_dna_multi_model_predict`: Multi-model prediction
 
 **Streaming Prediction Tools**:
-- `dna_stream_predict`: Single sequence streaming prediction
-- `dna_stream_batch_predict`: Batch streaming prediction
-- `dna_stream_multi_model_predict`: Multi-model streaming prediction
+- `_dna_stream_predict`: Single sequence streaming prediction
+- `_dna_stream_batch_predict`: Batch streaming prediction
+- `_dna_stream_multi_model_predict`: Multi-model streaming prediction
 
 **Model Management Tools**:
-- `list_loaded_models`: List loaded models
-- `get_model_info`: Get detailed model information
-- `health_check`: Server health check
+- `_list_loaded_models`: List loaded models
+- `_get_model_info`: Get detailed model information
+- `_list_models_by_task_type`: List available models filtered by task type
+- `_get_all_available_models`: List models enabled in the server configuration
+- `_health_check`: Server health check
+
+**Analysis Tools**:
+- `_dna_mutagenesis`: In silico mutagenesis analysis
+- `_dna_interpret`: Model interpretation via attribution methods
 
 ### Client Access Points
 
@@ -220,8 +226,8 @@ const response = await fetch('/mcp/messages/', {
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      name: "dna_sequence_predict",
-      arguments: { sequence: "ATCGATCGATCG" }
+      name: "_dna_sequence_predict",
+      arguments: { sequence: "ATCGATCGATCG", model_name: "promoter_model" }
     }
   })
 });
@@ -237,7 +243,7 @@ const response = await fetch('http://localhost:8000/mcp/messages', {
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      name: "dna_sequence_predict",
+      name: "_dna_sequence_predict",
       arguments: {
         sequence: "ATCGATCGATCG",
         model_name: "promoter_model"
@@ -260,7 +266,7 @@ async def predict_dna_sequence(sequence):
     async with ClientSession("http://localhost:8000/sse") as session:
         await session.initialize()
         result = await session.call_tool(
-            "dna_sequence_predict",
+            "_dna_sequence_predict",
             {"sequence": sequence, "model_name": "promoter_model"},
         )
         return result

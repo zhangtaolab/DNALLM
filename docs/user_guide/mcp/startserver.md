@@ -6,7 +6,7 @@ This guide covers how to start the DNALLM MCP (Model Context Protocol) server, i
 
 Before starting the MCP server, ensure you have:
 
-- Python 3.8+ installed
+- Python 3.10+ installed
 - DNALLM package installed
 - Sufficient system resources (RAM, disk space)
 - Network access for model downloading (if using remote models)
@@ -93,9 +93,6 @@ sse:
   max_connections: 100
   connection_timeout: 300
   enable_compression: true
-  mount_path: "/mcp"
-  cors_origins: ["*"]
-  enable_heartbeat: true
 
 # Logging configuration
 logging:
@@ -105,6 +102,8 @@ logging:
   max_size: "10MB"
   backup_count: 5
 ```
+
+> Note: the shipped `dnallm/mcp/configs/mcp_server_config.yaml` also lists `mount_path`, `cors_origins`, and `enable_heartbeat` under `sse` — these keys are currently no-ops (not defined in `SSEConfig` and not consumed by the server), so they are omitted here.
 
 ### 2. Individual Model Configuration
 
@@ -268,7 +267,7 @@ dnallm-mcp-server [OPTIONS]
 
 Options:
   --config, -c PATH          Path to MCP server configuration file
-  --host TEXT                Host to bind the server to (default: 127.0.0.1)
+  --host TEXT                Host to bind the server to (default: 0.0.0.0)
   --port INTEGER             Port to bind the server to (default: 8000)
   --transport [stdio|sse|streamable-http]  Transport protocol (default: stdio)
   --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]  Logging level (default: INFO)

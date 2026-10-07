@@ -83,7 +83,7 @@ uv pip install -e '.[all]'
 python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
 
-For NPU support such as Huawei Ascend, see [installation](getting_started/installation.md#scenario-3-using-huawei-ascend-npu-for-training-and-inference) section.
+For NPU support such as Huawei Ascend, see [installation](getting_started/installation.md#scenario-5-using-huawei-ascend-npu-for-training-and-inference) section.
 
 
 2. **Basic Model Loading and Inference**
@@ -151,7 +151,7 @@ trainer.train()
 from dnallm.mcp import DNALLMMCPServer
 
 # Initialize MCP server
-server = DNALLMMCPServer("config/mcp_server_config.yaml")
+server = DNALLMMCPServer("dnallm/mcp/configs/mcp_server_config.yaml")
 await server.initialize()
 
 # Start server with SSE transport for real-time streaming
@@ -219,7 +219,7 @@ DNALLM-Suite supports the following task types:
 - **MULTICLASS**: Multi-class classification task that specifies which class the input belongs to (more than two)
 - **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
 - **REGRESSION**: Regression task which returns a continuous score
-- **NER**: Token classification task which is usually for Named Entity Recognition
+- **TOKEN**: Token classification task which is usually for Named Entity Recognition
 
 ## 🏗️ Project Structure
 

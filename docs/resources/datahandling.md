@@ -112,7 +112,7 @@ dna_ds.random_generate(
     maxl=2000,  # Maximum sequence length
     samples=3000,  # Number of sequences to generate
     gc=(0.1, 0.9),  # GC content range
-    N_ratio=0.0,  # Ratio of N bases to include
+    n_ratio=0.0,  # Ratio of N bases to include
     padding_size=1,  # Ensure sequences are multiples of this value
     append=True,  # Append to existing dataset
     label_func=None,  # Custom function for generating labels

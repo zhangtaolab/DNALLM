@@ -44,7 +44,7 @@ While Transformers are powerful, their computational cost grows quadratically wi
 ### Convolutional Neural Networks (CNNs)
 - **What they are**: CNNs use sliding filters (kernels) to detect local patterns or motifs in the data. While often associated with image processing, they are also highly effective for finding motifs in DNA sequences.
 - **Advantages**: Excellent at capturing local, position-invariant patterns.
-- **DNALLM Examples**: `GPN` (Genome-wide Pathogen-derived Network).
+- **DNALLM Examples**: `GPN` (Genomic Pre-trained Network).
 
 ## 4. Model Selection in DNALLM
 

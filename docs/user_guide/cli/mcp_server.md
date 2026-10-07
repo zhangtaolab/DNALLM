@@ -79,46 +79,85 @@ The MCP server uses YAML configuration files to define server settings and model
 
 ```yaml
 # MCP Server Configuration
-mcp:
-  name: "DNALLM MCP Server"
-  version: "1.0.0"
-  description: "MCP server for DNA sequence prediction"
-
-# Server settings
+# Full schema: MCPServerConfig in dnallm/mcp/config_validators.py
 server:
   host: "127.0.0.1"
   port: 8000
-  transport: "stdio"  # stdio, sse, streamable-http
-  log_level: "INFO"
+  workers: 1          # 1-16
+  log_level: "INFO"   # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  debug: false
 
-# Model configurations
+mcp:
+  name: "DNALLM MCP Server"
+  version: "0.1.0"
+  description: "MCP server for DNA sequence prediction using fine-tuned models"
+
+# Model configurations: a mapping keyed by model identifier
 models:
-  - name: "promoter_model"
-    path: "zhangtaolab/plant-dnabert-BPE-promoter"
-    source: "modelscope"
-    task_type: "binary_classification"
+  promoter_model:
+    name: "promoter_model"
+    model_name: "Plant DNABERT BPE promoter"
+    config_path: "./promoter_inference_config.yaml"
     enabled: true
-  - name: "conservation_model"
-    path: "zhangtaolab/plant-dnabert-BPE-conservation"
-    source: "modelscope"
-    task_type: "binary_classification"
+    priority: 1
+  conservation_model:
+    name: "conservation_model"
+    model_name: "Plant DNABERT BPE conservation"
+    config_path: "./conservation_inference_config.yaml"
+    enabled: true
+    priority: 2
+
+# Multi-model parallel prediction groups
+multi_model:
+  promoter_analysis:
+    name: "promoter_analysis"
+    description: "Comprehensive promoter analysis using multiple models"
+    models: ["promoter_model", "conservation_model"]
     enabled: true
 
-# Logging configuration
+# SSE transport settings
+sse:
+  heartbeat_interval: 30
+  max_connections: 100
+  connection_timeout: 300
+  enable_compression: true
+
+# Streamable HTTP transport settings (optional block)
+streamable_http:
+  host: "0.0.0.0"
+  port: 8000
+  path: "/mcp"
+
+# Logging configuration (level, format, and file are required)
 logging:
   level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   file: "./logs/mcp_server.log"
+  max_size: "10MB"
+  backup_count: 5
+
+# Per-tool timeout in seconds, 1-300 (default: 30)
+tool_timeout_seconds: 30
 ```
+
+The transport protocol is not configured in this file — it is selected with the
+`--transport` CLI option (`stdio`, `sse`, or `streamable-http`).
 
 ### Model Configuration
 
-Each model in the configuration includes:
+Each entry in the `models` mapping includes:
 
-- **name**: Unique identifier for the model
-- **path**: Model path (Hugging Face model ID or local path)
-- **source**: Model source (`huggingface`, `modelscope`, or `local`)
-- **task_type**: Type of task the model performs
-- **enabled**: Whether the model should be loaded
+- **name**: Unique identifier for the model (must be unique across all entries)
+- **model_name**: Name of the model to load
+- **config_path**: Path to the per-model inference configuration YAML
+- **enabled**: Whether the model should be loaded (default: `true`)
+- **priority**: Loading priority, from 1 (highest) to 10 (default: `1`)
+
+The inference configuration referenced by `config_path` holds the actual model
+location: `model.path` (e.g., `zhangtaolab/plant-dnabert-BPE-promoter`) and
+`model.source`, which must be either `huggingface` or `modelscope`
+(default: `modelscope`). See
+`dnallm/mcp/configs/promoter_inference_config.yaml` for a complete example.
 
 ### Transport Protocols
 
@@ -160,9 +199,8 @@ Each model in the configuration includes:
 #### Streamable HTTP Transport
 - **Main Endpoint**: `http://localhost:8000/mcp`
 - **Available Endpoints**:
-  - `http://localhost:8000/mcp` - Main MCP protocol endpoint
-  - `http://localhost:8000/mcp/tools` - Tool listing endpoint
-  - `http://localhost:8000/mcp/messages` - MCP message handling endpoint
+  - `http://localhost:8000/mcp` - The only route; all MCP requests
+    (`tools/list`, `tools/call`, session management) go through this endpoint
 
 ### Testing Client Access
 
@@ -171,8 +209,8 @@ Each model in the configuration includes:
 # Test basic connectivity
 curl http://localhost:8000/mcp
 
-# List available tools
-curl -X POST "http://localhost:8000/mcp/tools" \
+# List available tools (tools/list is sent to the same /mcp endpoint)
+curl -X POST "http://localhost:8000/mcp" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
 ```
@@ -198,7 +236,7 @@ curl -X POST "http://localhost:8000/mcp/messages" \
     "id": 1,
     "method": "tools/call",
     "params": {
-      "name": "dna_sequence_predict",
+      "name": "_dna_sequence_predict",
       "arguments": {
         "sequence": "ATCGATCGATCGATCG",
         "model_name": "promoter_model"
@@ -217,15 +255,19 @@ server:
   host: "127.0.0.1"  # Bind to localhost only
   port: 9000         # Use custom port
 
-# Custom mount path for SSE
-sse:
-  mount_path: "/api/mcp"  # Custom mount path
+# Custom endpoint path for streamable-http (default: /mcp)
+streamable_http:
+  path: "/api/mcp"
 ```
 
 With custom configuration, the endpoints would be:
-- **Streamable HTTP**: `http://127.0.0.1:9000/mcp`
+- **Streamable HTTP**: `http://127.0.0.1:9000/api/mcp`
 - **SSE**: `http://127.0.0.1:9000/sse`
-- **MCP Messages**: `http://127.0.0.1:9000/api/mcp/messages/`
+- **MCP Messages**: `http://127.0.0.1:9000/mcp/messages/`
+
+The SSE mount path is not configurable (`sse:` has no `mount_path` field); the
+SSE app is always mounted at `/mcp`, so the SSE message endpoint is always
+`/mcp/messages/`.
 
 ## API Reference
 
@@ -239,12 +281,12 @@ The MCP server provides the following tools:
 - **Returns**: Server health information and loaded models
 
 #### 2. DNA Sequence Prediction
-- **Tool**: `predict_dna_sequence`
+- **Tool**: `_dna_sequence_predict`
 - **Description**: Predict properties of DNA sequences
 - **Parameters**:
-  - `sequence`: DNA sequence to analyze
-  - `model_name`: Specific model to use (optional)
-  - `task_type`: Type of prediction task (optional)
+  - `sequence`: DNA sequence to analyze (required)
+  - `model_name`: Name of the model to use for prediction; must be one of the
+    loaded models (required)
 
 #### 3. Model Information
 - **Tool**: `get_model_info`
@@ -259,7 +301,7 @@ The MCP server provides the following tools:
 
 # DNA sequence prediction
 {
-    "tool": "predict_dna_sequence",
+    "tool": "_dna_sequence_predict",
     "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"},
 }
 

@@ -29,17 +29,32 @@ Consider quantization when:
 
 ## Using Quantization in DNALLM
 
-DNALLM supports quantization through the underlying inference framework. Set the `torch_dtype` parameter when loading models:
+DNALLM supports quantization through the `quantization_config` parameter of `load_model_and_tokenizer`, a dict of BitsAndBytesConfig options (requires `bitsandbytes`):
 
 ```python
 from dnallm.models import load_model_and_tokenizer
 
-# Load model in FP16
-model, tokenizer = load_model_and_tokenizer("model_name", torch_dtype="float16")
-
 # Load model in INT8 (requires bitsandbytes)
-model, tokenizer = load_model_and_tokenizer("model_name", load_in_8bit=True)
+model, tokenizer = load_model_and_tokenizer(
+    "model_name",
+    task_config=task_config,
+    quantization_config={"load_in_8bit": True},
+)
+
+# Load model in 4-bit NF4 (e.g. for QLoRA fine-tuning)
+model, tokenizer = load_model_and_tokenizer(
+    "model_name",
+    task_config=task_config,
+    quantization_config={
+        "load_in_4bit": True,
+        "bnb_4bit_compute_dtype": "float16",
+        "bnb_4bit_use_double_quant": True,
+        "bnb_4bit_quant_type": "nf4",
+    },
+)
 ```
+
+Half precision is not a loader parameter: enable `fp16` or `bf16` in the `finetune` section of your YAML config for training, and set `use_qlora: true` there to combine 4-bit quantization with LoRA.
 
 ## Hardware Requirements
 

@@ -51,7 +51,7 @@ The process of loading and preparing data can become a bottleneck, leaving your 
 
 ## 6. Model Compilation
 
-- **`torch.compile`**: For PyTorch 2.0 and later, you can use `torch.compile` to get a significant speedup. It uses a JIT (Just-In-Time) compiler to optimize the model's execution graph.
-- **How to use in DNALLM**: In your training configuration, you can enable this feature (support may vary by model and version).
+- **`torch.compile`**: For PyTorch 2.0 and later, `torch.compile` can provide a significant speedup via JIT compilation of the model's execution graph.
+- **Status in DNALLM**: There is currently no training-configuration field for it (Pydantic would silently drop such a key). Advanced users can pass `torch_compile=True` through Hugging Face `TrainingArguments` via the `DNATrainer` constructor's `extra_args` parameter.
 
 By combining these techniques, you can dramatically reduce training times and inference latency, making your research and development cycles much more efficient.

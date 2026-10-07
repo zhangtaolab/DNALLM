@@ -1,6 +1,6 @@
 # Training Concepts in Machine Learning
 
-Training is the fundamental process in machine learning where a model learns patterns from data to make predictions or perform tasks. This document explains the core concepts of training and provides practical examples using DNALLM for DNA language models.
+Training is the fundamental process in machine learning where a model learns patterns from data to make predictions or perform tasks. This document explains the core concepts of training as they apply to DNA language models. For hands-on DNALLM fine-tuning walkthroughs, see the Fine-tuning guide (`user_guide/fine_tuning/`) and the worked case studies (`user_guide/case_studies/`).
 
 ## What is Training in Machine Learning?
 

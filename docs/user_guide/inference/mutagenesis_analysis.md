@@ -54,6 +54,7 @@ configs = load_config("config_mlm.yaml")
 model, tokenizer = load_model_and_tokenizer(
     "InstaDeepAI/nucleotide-transformer-500m-human-ref",
     task_config=configs["task"],
+    source="huggingface",
 )
 
 mut_analyzer = Mutagenesis(model=model, tokenizer=tokenizer, config=configs)
@@ -83,7 +84,7 @@ Set `task_type: "generation"` in your configuration.
 configs = load_config("config_clm.yaml")
 
 model, tokenizer = load_model_and_tokenizer(
-    "zhangtaolab/plant-dnagpt-BPE-promoter", task_config=configs["task"]
+    "zhangtaolab/plant-dnagpt-BPE-promoter", task_config=configs["task"], source="modelscope"
 )
 
 mut_analyzer = Mutagenesis(model=model, tokenizer=tokenizer, config=configs)
@@ -145,7 +146,7 @@ mut_analyzer.plot(predictions, save_path="./results/finetuned_mut_effects.pdf")
 
 The `Mutagenesis` class has built-in support for specialized generative models like **Evo-1** and **Evo-2**. These models have their own optimized `scoring` methods.
 
-When an Evo model is detected, `mutagenesis.evaluate()` automatically calls `inference_engine.scoring()` instead of the standard `batch_infer()`. The `strategy` parameter is passed to the `reduce_method` of the scoring function, typically with `"mean"` or `"sum"` being the most relevant options.
+`mutagenesis.evaluate()` chooses its scoring path from the `task_type` in your config: `"mask"` calls `mlm_evaluate()`, `"generation"` calls `clm_evaluate()`, `"embedding"` calls `inference_engine.scoring()`, and any other task type falls back to the standard `batch_infer()`. Evo-1 and Evo-2 models are detected inside `DNAInference.scoring()`, so set `task_type: "embedding"` to route them to their optimized scoring methods. The `strategy` parameter is passed to the `reduce_method` of the scoring function, typically with `"mean"` or `"sum"` being the most relevant options.
 
 ```python
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis

@@ -24,7 +24,7 @@ server:
 
 **Options:**
 - `host`: IP address to bind to (`"0.0.0.0"` for all interfaces, `"127.0.0.1"` for localhost only)
-- `port`: Port number (1-65535)
+- `port`: Port number (1024-65535)
 - `workers`: Number of worker processes (typically 1 for MCP servers)
 - `log_level`: `"DEBUG"`, `"INFO"`, `"WARNING"`, `"ERROR"`, `"CRITICAL"`
 - `debug`: Enable debug mode for detailed logging
@@ -52,15 +52,15 @@ models:
     model_name: "Plant DNABERT BPE promoter"  # Display name
     config_path: "./promoter_inference_config.yaml"  # Path to model config
     enabled: true                             # Whether model is loaded
-    priority: 1                               # Loading priority (1=highest)
+    priority: 1                               # Model priority (1-10, higher = more important)
 ```
 
 **Model Options:**
-- `name`: Unique identifier for the model (used in API calls)
-- `model_name`: Human-readable name from model_info.yaml
-- `config_path`: Path to individual model configuration file
+- `name`: Unique identifier for the model (entry names must be unique)
+- `model_name`: Human-readable model display name
+- `config_path`: Path to individual model configuration file (resolved relative to the config directory when not absolute)
 - `enabled`: Whether to load this model at startup
-- `priority`: Loading order (lower numbers load first)
+- `priority`: Model priority, 1-10 (higher = more important)
 
 ### Multi-Model Analysis Groups
 
@@ -83,23 +83,35 @@ multi_model:
 
 ```yaml
 sse:
-  heartbeat_interval: 30        # Heartbeat interval in seconds
-  max_connections: 100          # Maximum concurrent connections
-  connection_timeout: 300       # Connection timeout in seconds
+  heartbeat_interval: 30        # Heartbeat interval in seconds (5-300)
+  max_connections: 100          # Maximum concurrent connections (1-1000)
+  connection_timeout: 300       # Connection timeout in seconds (60-3600)
   enable_compression: true      # Enable gzip compression
-  mount_path: "/mcp"            # URL mount path
-  cors_origins: ["*"]           # CORS allowed origins
-  enable_heartbeat: true        # Enable heartbeat messages
 ```
 
 **SSE Options:**
-- `heartbeat_interval`: How often to send heartbeat messages
-- `max_connections`: Maximum number of concurrent SSE connections
-- `connection_timeout`: How long to keep idle connections open
+- `heartbeat_interval`: How often to send heartbeat messages (5-300 seconds)
+- `max_connections`: Maximum number of concurrent SSE connections (1-1000)
+- `connection_timeout`: How long to keep idle connections open (60-3600 seconds)
 - `enable_compression`: Enable gzip compression for SSE streams
-- `mount_path`: URL path where MCP endpoints are mounted
-- `cors_origins`: List of allowed CORS origins (`["*"]` for all)
-- `enable_heartbeat`: Send periodic heartbeat messages to keep connections alive
+
+The shipped `dnallm/mcp/configs/mcp_server_config.yaml` also sets `mount_path`, `cors_origins`, and `enable_heartbeat` under `sse`. These keys are not part of the validated `sse` schema — they are ignored at load time, and the SSE endpoint always mounts at `/mcp`.
+
+### Streamable HTTP Configuration
+
+```yaml
+streamable_http:
+  host: "0.0.0.0"              # Host address for the HTTP server
+  port: 8000                   # Port number (1024-65535)
+  path: "/mcp"                 # URL path of the MCP endpoint
+```
+
+**Options:**
+- `host`: Host address to bind the HTTP server to
+- `port`: Port number (1024-65535)
+- `path`: URL path of the single MCP endpoint (default `"/mcp"`)
+
+The `streamable_http` block is optional. When omitted, the server falls back to the `server.host` and `server.port` values with path `/mcp`. Configuring both `sse` and `streamable_http` logs a warning — valid for transitional deployments but unusual in production.
 
 ### Logging Configuration
 
@@ -114,8 +126,8 @@ logging:
 
 **Logging Options:**
 - `level`: Minimum log level to record
-- `format`: Log message format string
-- `file`: Path to log file (relative to server working directory)
+- `format`: Log message format string (required)
+- `file`: Path to log file (required; relative to server working directory)
 - `max_size`: Maximum size before rotating log file
 - `backup_count`: Number of old log files to keep
 
@@ -127,7 +139,7 @@ Each model requires its own configuration file. Here's the complete structure:
 
 ```yaml
 task:
-  task_type: "binary"           # Task type: binary, multiclass, regression, token
+  task_type: "binary"           # Task type: binary, multiclass, multilabel, regression
   num_labels: 2                 # Number of output labels
   label_names: ["Not promoter", "Core promoter"]  # Label names
   threshold: 0.5                # Classification threshold
@@ -138,7 +150,7 @@ task:
 - `binary`: Two-class classification (e.g., promoter vs non-promoter)
 - `multiclass`: Multi-class classification (e.g., open chromatin states)
 - `regression`: Continuous value prediction (e.g., promoter strength)
-- `token`: Token-level prediction (e.g., NER tasks)
+- `multilabel`: Multi-label classification (multiple labels per sequence)
 
 ### Inference Configuration
 
@@ -146,7 +158,7 @@ task:
 inference:
   batch_size: 16                # Batch size for inference
   max_length: 512               # Maximum sequence length
-  device: "cpu"                 # Device: "cpu" or "cuda"
+  device: "cpu"                 # Device: "auto", "cpu", "cuda", or "mps"
   num_workers: 4                # Number of data loading workers
   precision: "float16"          # Precision: "float16", "float32", "bfloat16"
   output_dir: "./outputs/promoter_predictions"  # Output directory
@@ -158,7 +170,7 @@ inference:
 **Inference Options:**
 - `batch_size`: Number of sequences processed together (higher = faster, more memory)
 - `max_length`: Maximum input sequence length in tokens
-- `device`: `"cpu"` for CPU inference, `"cuda"` for GPU
+- `device`: `"auto"` for auto-selection, `"cpu"` for CPU inference, `"cuda"` for GPU, or `"mps"` for Apple Silicon
 - `num_workers`: Number of parallel data loading processes
 - `precision`: Numerical precision (`"float16"` for speed, `"float32"` for accuracy)
 - `output_dir`: Directory to save prediction outputs
@@ -250,9 +262,11 @@ sse:
   max_connections: 100
   connection_timeout: 300
   enable_compression: true
-  mount_path: "/mcp"
-  cors_origins: ["*"]
-  enable_heartbeat: true
+
+streamable_http:
+  host: "0.0.0.0"
+  port: 8000
+  path: "/mcp"
 
 logging:
   level: "INFO"
@@ -345,7 +359,7 @@ model:
 task:
   task_type: "regression"
   num_labels: 1
-  label_names: "promoter strength in tobacco leaves"
+  label_names: ["promoter strength in tobacco leaves"]
   threshold: 0.5
   description: "Predict promoter strength in tobacco leaves"
 
@@ -375,33 +389,29 @@ model:
       mae: 0.32
 ```
 
-## Environment Variables
+## Command-Line Overrides
 
-You can override configuration values using environment variables:
+The `dnallm-mcp-server` entry point accepts command-line arguments for server settings:
 
 ```bash
-# Server settings
-export DNALLM_MCP_HOST="127.0.0.1"
-export DNALLM_MCP_PORT="8000"
-export DNALLM_MCP_LOG_LEVEL="DEBUG"
-
-# Model settings
-export DNALLM_MODEL_DEVICE="cuda"
-export DNALLM_MODEL_BATCH_SIZE="32"
-export DNALLM_MODEL_PRECISION="float16"
-
-# Start server
-dnallm-mcp-server
+dnallm-mcp-server --config mcp_server_config.yaml --host 127.0.0.1 --port 8000 \
+  --log-level DEBUG --transport streamable-http
 ```
+
+- `--config`, `-c`: Path to the server configuration file (default: `dnallm/mcp/configs/mcp_server_config.yaml`)
+- `--host`: Host to bind the server to (default: `0.0.0.0`)
+- `--port`: Port to bind the server to (default: `8000`)
+- `--log-level`: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (default: `INFO`)
+- `--transport`: `stdio`, `sse`, or `streamable-http` (default: `stdio`)
 
 ## Configuration Validation
 
 The server validates configuration files on startup. Common validation errors:
 
-1. **Invalid Model Path**: Ensure model paths exist in model_info.yaml
+1. **Invalid Model Source**: `model.source` must be `huggingface` or `modelscope`
 2. **Missing Configuration Files**: Check that all referenced config files exist
-3. **Invalid Task Type**: Use only supported task types
-4. **Invalid Device**: Use only "cpu" or "cuda"
+3. **Invalid Task Type**: Use only `binary`, `multiclass`, `multilabel`, or `regression`
+4. **Invalid Device**: Use only "auto", "cpu", "cuda", or "mps"
 5. **Invalid Precision**: Use only "float16", "float32", or "bfloat16"
 
 ## Best Practices
@@ -449,7 +459,7 @@ The server validates configuration files on startup. Common validation errors:
    - Check model path in configuration
    - Verify internet connection for model download
    - Check available disk space
-   - Review model_info.yaml for correct model names
+   - Check the `model.path` and `model.source` values in the model configuration
 
 3. **Invalid Configuration**
    - Use YAML validator to check syntax

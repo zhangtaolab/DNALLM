@@ -50,7 +50,7 @@ Based on the distribution, you can decide whether to filter out sequences that a
 -   **Resampling**:
     -   **Oversampling**: Randomly duplicate samples from the minority class.
     -   **Undersampling**: Randomly remove samples from the majority class.
--   **Weighted Loss**: During training, you can assign a higher weight to the minority class in the loss function. The DNALLM `finetune` command can handle this if class weights are provided.
+-   **Weighted Loss**: Per-class weights are not supported. Instead, select a loss that compensates for imbalance: set `loss_function: "focal"` in the model head config when running `dnallm train`. `FocalLoss` (`dnallm/models/losses.py`) down-weights well-classified examples and focuses on hard ones, making it effective for imbalanced datasets.
 
 ---
 

@@ -1,6 +1,6 @@
 # Common Workflows in DNALLM
 
-DNALLM is designed to streamline common tasks in computational genomics. This guide covers three primary workflows: fine-tuning a model, performing inference, and benchmarking multiple models.
+DNALLM is designed to streamline common tasks in computational genomics. This guide covers two primary hands-on workflows: fine-tuning a model and performing inference. For benchmarking multiple models, see the Tutorials section and the Benchmark guide (`user_guide/benchmark/`).
 
 ## 1. Fine-tuning a Model
 

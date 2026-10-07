@@ -35,13 +35,17 @@ You can load a Llama-based DNA model using the `AutoModelForCausalLM` class from
 
 Here’s how to load a Llama-based model for a causal language modeling task.
 ```python
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # Use a specific Llama-based DNA model
 model_name = "GenerTeam/GENERator-eukaryote-1.2b-base"
 
-# Load model and tokenizer
-model, tokenizer = load_model_and_tokenizer(model_name_or_path=model_name)
+# Causal (autoregressive) generation task suits Llama-based models
+task_config = TaskConfig(task_type="generation")
+
+# Load model and tokenizer (source="huggingface" resolves bare repo ids)
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 
 print("Model:", type(model))
 print("Tokenizer:", type(tokenizer))
@@ -52,11 +56,13 @@ print("Tokenizer:", type(tokenizer))
 Let's use a Llama-based model to get embeddings for a DNA sequence.
 ```python
 import torch
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the pre-trained model and tokenizer
 model_name = "XLS/OmniNA-66m"
-model, tokenizer = load_model_and_tokenizer(model_name)
+task_config = TaskConfig(task_type="generation")
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 model.eval()
 
 # 2. Prepare and tokenize the DNA sequence

@@ -45,7 +45,7 @@ DNALLM supports models that use various tokenization strategies. Here are the mo
     - **Manages Vocabulary Size**: Balances sequence length and vocabulary size effectively.
 - **Cons**:
     - **Less Interpretable**: The learned tokens may not always correspond to known biological motifs.
-- **DNALLM Models**: Many modern models, including `Plant DNAGPT`, `Plant DNABERT-BPE`, and `Nucleotide Transformer`, use BPE.
+- **DNALLM Models**: Many modern models, including `Plant DNAGPT`, `Plant DNABERT-BPE`, and `Plant NT`, use BPE. (The InstaDeep `Nucleotide Transformer` instead uses a fixed 6-mer vocabulary — see k-mer tokenization above.)
 
 ## 3. Why Tokenization Matters
 
