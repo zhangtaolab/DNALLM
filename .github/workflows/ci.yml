@@ -6,6 +6,13 @@ on:
       - main
       - master
       - dev
+      # 2026-10-07 lesson: the matrix legs run on push/PR only, so a
+      # long-lived working branch that never opens PRs reaches the merge
+      # to dev with ZERO matrix exposure -- the v1.1 merge surfaced three
+      # first-exposure failure classes in one afternoon. Running the
+      # matrix on phs pushes closes that gap; deploy stays main/master
+      # only and the nightly legs stay dispatch/schedule-gated.
+      - phs
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:
