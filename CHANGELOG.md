@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-10-08
+
+### Overview
+
+Patch release recording the stabilization that landed on `dev` immediately after 0.7.0 — CI first-exposure fixes, a verifier-driven docs accuracy repair, and a tooling refresh. No API changes.
+
+### Fixed
+
+- Windows installs failing on `pybigwig` — `pygenometracks` gated behind a non-Windows platform marker in the notebook extra
+- transformers >= 5.19 device-type query crashing the import chain on CUDA-built torch without a visible GPU — compat shim answering both observed signatures (torch >= 2.6 `RuntimeError` and torch <= 2.5 `AttributeError`)
+- OS-native test assertions replacing Unix-only fd//proc assumptions
+- CI ruff-format gate tripping on over-long fenced Python blocks in 3 docs pages — reformatted
+- docs: 49-page verifier-driven accuracy repair retiring the stale `VERIFICATION_REPORT` snapshot
+
+### Changed
+
+- ruff dev dependency 0.16.9 → 0.16.10 (dependabot)
+
 ## [0.7.0] - 2026-10-07
 
 ### Overview
