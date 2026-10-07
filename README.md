@@ -20,14 +20,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
-- **🧪 Comprehensive Testing**: 200+ test cases covering all major functionality
+- **🧪 Comprehensive Testing**: 1,900+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
@@ -36,7 +36,7 @@ DNALLM-Suite supports a wide range of DNA language models including:
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
-- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek， CrossDNA
+- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, CrossDNA
 
 ### Causal Language Models (CLM)
 - **EVO Series**: EVO-1, EVO-2
@@ -162,7 +162,7 @@ uv pip install -e '.[all,cuda128]'
 uv pip install -e '.[all,cuda130]'
 ```
 
-> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) are mutually exclusive. You must choose exactly one. Do NOT combine multiple CUDA versions.
+> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver; `rocm` cannot share an environment with another hardware group (only one torch build installs), while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
 
 ### Dependency Groups
 
@@ -182,14 +182,14 @@ uv pip install -e '.[all,cuda130]'
 
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
-| `cpu` | 2.4.0-2.7 | No GPU |
-| `cuda121` | 2.2.0-2.7 | Older NVIDIA GPUs |
-| `cuda124` | 2.4.0-2.7 | Most modern GPUs (recommended) |
-| `cuda126` | 2.6.0-2.7 | Ada/Hopper with Flash Attention |
-| `cuda128` | 2.6.0-2.7 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.12 | CUDA 13.0, Windows & Linux (driver >= 580) |
-| `rocm` | 2.5.0-2.7 | AMD GPUs |
-| `mamba` | 2.6.0-2.7 | Native Mamba architecture (requires CUDA) |
+| `cpu` | 2.4.0-2.11 | No GPU |
+| `cuda121` | 2.2.0-2.11 | Older NVIDIA GPUs |
+| `cuda124` | 2.4.0-2.11 | Most modern GPUs (recommended) |
+| `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
+| `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
+| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) |
+| `rocm` | 2.5.0-2.11 | AMD GPUs |
+| `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
 
 ```bash
 # Examples:
@@ -298,6 +298,8 @@ predictions = mutagenesis.evaluate(strategy="mean")
 # Visualize results
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
+
+### 3. Model Fine-tuning
 ```python
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
@@ -356,6 +358,9 @@ server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
 - **Batch Processing**: Efficient handling of multiple sequences
+- **Health Monitoring**: Built-in server diagnostics and status checks
+
+#### MCP Client SDK
 ```python
 from dnallm.mcp.client import DNALLMMCPClient
 
@@ -370,18 +375,21 @@ result = client.health_check()
 # Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
 # client = DNALLMMCPClient(transport="sse", url="http://localhost:8000/sse")
 ```
-- **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
-- **Model Management**: Dynamic model loading and switching
-- **Batch Processing**: Efficient handling of multiple sequences
-- **Health Monitoring**: Built-in server diagnostics and status checks
 
 #### Available MCP Tools
-- `dna_sequence_predict` - Single sequence prediction
-- `dna_batch_predict` - Batch sequence processing
-- `dna_multi_model_predict` - Multi-model comparison
-- `dna_stream_predict` - Real-time streaming prediction
-- `list_loaded_models` - Model management
-- `health_check` - Server monitoring
+- `_dna_sequence_predict` - Single sequence prediction
+- `_dna_batch_predict` - Batch sequence processing
+- `_dna_multi_model_predict` - Multi-model comparison
+- `_dna_stream_predict` - Real-time streaming prediction
+- `_dna_stream_batch_predict` - Streaming batch prediction
+- `_dna_stream_multi_model_predict` - Streaming multi-model comparison
+- `_dna_mutagenesis` - In-silico mutagenesis analysis
+- `_dna_interpret` - Model interpretation (feature attribution)
+- `_list_loaded_models` - List currently loaded models
+- `_get_model_info` - Query a loaded model's details
+- `_list_models_by_task_type` - List models by task type
+- `_get_all_available_models` - List all models in the registry
+- `_health_check` - Server monitoring
 
 ## 📚 Examples and Tutorials
 
@@ -434,6 +442,8 @@ uv run --no-sync jupyter lab
 # - example/notebooks/interpretation/ - Model interpretation
 # - example/notebooks/data_prepare/ - Data preparation examples
 # - example/notebooks/benchmark/ - Model evaluation and benchmarking
+# - example/notebooks/plant_helixseek_cre/ - PlantHelixSeek-CRE showcase notebook
+# - example/notebooks/plant_helixseek_anno/ - PlantHelixSeek-Anno showcase notebook
 ```
 
 ## 🏗️ Project Structure
@@ -484,6 +494,9 @@ dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
 # Model configuration generator
 dnallm-model-config-generator
 
+# In-silico mutagenesis
+dnallm-mutagenesis --model-name <model-name> --sequence ATCGATCG
+
 # MCP server
 dnallm-mcp-server --config path/to/config.yaml
 ```
@@ -503,7 +516,7 @@ DNALLM-Suite supports the following task types:
 
 ## 🧪 Testing
 
-DNALLM-Suite includes a comprehensive test suite with 200+ test cases:
+DNALLM-Suite includes a comprehensive test suite with 1,900+ test cases:
 
 ```bash
 # Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
@@ -513,6 +526,9 @@ uv pip install -e '.[test,dev,mcp]'
 # Run all tests
 uv run pytest
 
+# Run the fast lane only (as CI does on every push/PR)
+uv run pytest -m "not slow"
+
 # Run specific test categories
 uv run pytest tests/inference/ -v
 uv run pytest tests/mcp/ -v
@@ -521,6 +537,8 @@ uv run pytest tests/tasks/ -v
 # Run with coverage
 uv run pytest --cov=dnallm --cov-report=html
 ```
+
+CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 1.26.4/2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 

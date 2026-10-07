@@ -63,6 +63,14 @@ Analyze model behavior and predictions.
 - **Model Interpretation** - Attention and embedding analysis
 - **Embedding & Attention** - Feature visualization
 
+### Showcase
+
+End-to-end Arabidopsis showcase notebooks: results are computed on illustrative loci over committed data slices, not genome-wide accuracy claims.
+
+- **PlantHelixSeek CRE Scan** - Cis-regulatory element sliding-window scan, predictions scored against PlantDHS truth on an illustrative locus
+- **PlantHelixSeek Gene Annotation** - Gene-structure annotation with BILOU decode compared against TAIR10 truth
+- **PlantHelixSeek Combined View** - Zoomed display combining both modalities and their truths on one aligned genomic axis
+
 ### Benchmarking
 
 - **Benchmark Evaluation** - Compare multiple models on the same dataset

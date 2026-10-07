@@ -217,7 +217,7 @@ We provide automated scripts to run all code quality checks at once:
 
 #### Python Script (Cross-platform, Recommended)
 ```bash
-# Basic usage - run code quality checks only (default)
+# Basic usage - run standard checks incl. fast tests (matches CI)
 python scripts/check_code.py
 
 # Auto-fix issues where possible
@@ -270,40 +270,39 @@ scripts\check_code.bat --verbose
 
 #### Example Usage
 ```text
-# Quick code quality check (default - no tests)
+# Standard checks (default - includes fast tests)
 $ python scripts/check_code.py
 [INFO] Starting DNALLM code quality checks...
-==========================================
-[INFO] 1. Code Formatting...
-[SUCCESS] Code formatting check completed successfully
+==================================================
+[INFO] Step 1: Ruff code formatting check
+[SUCCESS] Ruff code formatting check passed
 
-[INFO] 2. Code Quality (Ruff)...
-[SUCCESS] Code quality check completed successfully
+[INFO] Step 2: Ruff linting
+[SUCCESS] Ruff linting passed
 
-[INFO] 3. Flake8 (MCP Module)...
-[SUCCESS] Flake8 check for MCP module completed successfully
+[INFO] Step 3: Test suite (fast tests only, excludes slow) with coverage
+[SUCCESS] Test suite (fast tests only, excludes slow) with coverage passed
 
-[INFO] 4. Type Checking (MyPy)...
-[SUCCESS] Type checking with MyPy completed successfully
+[INFO] Step 4: MyPy type checking (informational)
+[SUCCESS] MyPy type checking (informational) passed
 
-==========================================
-[SUCCESS] All checks passed! ✅
-[INFO] Your code is ready for commit.
+==================================================
+[SUCCESS] All required checks passed! Your code is ready for commit.
 
 # Include slow tests (real-model tests)
 $ python scripts/check_code.py --all
 [INFO] Starting DNALLM code quality checks...
-[INFO] 1. Code Formatting...
-[SUCCESS] Code formatting check completed successfully
+[INFO] Step 1: Ruff code formatting check
+[SUCCESS] Ruff code formatting check passed
 ...
-[INFO] 5. Test Suite...
-[SUCCESS] Test suite execution completed successfully
+[INFO] Step 3: Test suite (all tests including slow) with coverage
+[SUCCESS] Test suite (all tests including slow) with coverage passed
 
 # Auto-fix issues
 $ python scripts/check_code.py --fix
 [INFO] Starting DNALLM code quality checks...
-[INFO] 1. Code Formatting...
-[SUCCESS] Code formatting (auto-fix) completed successfully
+[INFO] Step 1: Ruff code formatting (auto-fix)
+[SUCCESS] Ruff code formatting (auto-fix) passed
 ...
 ```
 
@@ -631,7 +630,7 @@ source .venv/bin/activate
 uv pip install -e '.[dev]'
 
 # Pre-commit validation (run before every commit)
-# Option 1: Use automated script (recommended, code quality only)
+# Option 1: Use automated script (recommended, includes fast tests)
 python scripts/check_code.py
 
 # Option 2: Include slow tests (real-model tests)

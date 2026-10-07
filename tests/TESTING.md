@@ -7,12 +7,22 @@ This directory contains the comprehensive test suite for the DNALLM project, org
 ```
 tests/
 ├── TESTING.md              # This file - overall test documentation
-├── inference/              # Inference module tests
-│   ├── test_plot.py        # Plot functionality tests
-│   ├── pdf/                # PDF output directory
-│   └── README.md           # Inference-specific documentation
-├── utils/                   # Utility module tests
-│   └── test_sequence.py    # Sequence utility tests
+├── conftest.py             # Shared fixtures for the whole suite
+├── expected_skips.yaml     # Skip allowlist audited by scripts/audit_skips.py in CI
+├── test_config_mapping_contracts.py, test_extras_guard.py,
+│   test_models_lock_contracts.py, test_runner_infra_contracts.py   # root contract tests
+├── benchmark/              # Benchmark module tests
+├── cli/                    # CLI tests (test_cli.py)
+├── configuration/          # Config loading + YAML round-trip tests
+├── datahandling/           # DNADataset tests
+├── examples/               # Example/notebook/script execution census (example-nightly lane)
+├── finetune/               # Trainer tests (incl. test_trainer_real_model.py)
+├── inference/              # Inference tests (test_plot.py, test_interpret.py, ...)
+├── mcp/                    # MCP unit tests (client, server, model manager)
+├── models/                 # Model loading/registry tests
+├── scripts/                # Tests for CI scripts (audit_skips, check_docs_sync)
+├── tasks/                  # Metrics and task tests
+├── utils/                  # Utility tests (test_sequence.py, compat shims, ...)
 └── test_data/              # Test data files
     ├── binary_classification/
     ├── embedding/
@@ -22,6 +32,10 @@ tests/
     ├── regression/
     └── token_classification/
 ```
+
+The layout mirrors the `dnallm/` package. `testpaths` collects a second root,
+`dnallm/mcp/tests/` (the packaged MCP suite, including the live-server probes);
+runtime output directories such as `tests/logs/` are gitignored.
 
 ## 🚀 Running Tests
 
@@ -61,19 +75,19 @@ pytest
 ### Selective Testing
 
 ```bash
-# Run tests by marker
-pytest -m inference -v        # Only inference tests
-pytest -m utils -v            # Only utility tests
-pytest -m pdf -v              # Only PDF generation tests
-pytest -m performance -v      # Only performance tests
+# Run tests by marker — only slow, pdf, data, and giants are applied to
+# tests today; the other registered markers select nothing yet
+pytest -m pdf -v              # Only PDF generation tests (tests/inference/test_plot.py)
+pytest -m data -v             # Only data-handling tests
+pytest -m giants -v           # Giant-model (evo-class) execution tests
 
 # Run specific test files
 pytest tests/inference/test_plot.py
 pytest tests/utils/test_sequence.py
 
-# Run specific test classes
+# Run specific test classes (test_sequence.py uses module-level functions)
 pytest tests/inference/test_plot.py::TestPlotBars
-pytest tests/utils/test_sequence.py::TestSequenceUtils
+pytest tests/utils/test_sequence.py::test_reverse_complement
 
 # Run specific test methods
 pytest tests/inference/test_plot.py::TestPDFOutputQuality::test_demo_pdf_generation
@@ -126,20 +140,24 @@ Use markers to organize and selectively run tests:
   typed skip (the runner environment is available). The dispatch/manual lane runs them
   explicitly with `pytest -m giants`; example-nightly deselects with `-m "not giants"`
 
+Of the registered markers, only `slow`, `pdf`, `data`, and `giants` are currently
+applied to tests; the rest are registered so `--strict-markers` accepts them, but
+they select nothing yet.
+
 ### Using Markers
 
 ```bash
 # Run only fast tests
 pytest -m "not slow"
 
-# Run only unit tests
-pytest -m unit
+# Run only PDF-marked tests
+pytest -m pdf
 
-# Run inference tests but exclude slow ones
-pytest -m "inference and not slow"
+# Run data-marked tests but exclude slow ones
+pytest -m "data and not slow"
 
 # Run multiple marker combinations
-pytest -m "pdf or performance"
+pytest -m "pdf or data"
 ```
 
 ## 📊 Test Coverage
@@ -216,7 +234,9 @@ reported in the terminal only (see `.github/workflows/README.md` and
 
 2. **Missing Dependencies**
    ```bash
-   pip install pytest pytest-cov
+   # addopts needs pytest-asyncio and pytest-timeout too — install the
+   # test extra instead of individual packages
+   pip install -e ".[test]"
    ```
 
 3. **Configuration Issues**
