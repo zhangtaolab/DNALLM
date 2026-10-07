@@ -79,9 +79,8 @@ pre-commit install
 pytest tests/ -v
 
 # Check code quality
-black --check .
-isort --check-only .
-flake8 .
+ruff format --check .
+ruff check .
 mypy dnallm/
 ```
 
@@ -140,7 +139,7 @@ We welcome several types of contributions:
    flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
 
    # Type checking (relaxed settings)
-   mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   mypy dnallm/ --show-error-codes --pretty
    ```
 
 5. **Commit your changes**:
@@ -160,7 +159,7 @@ We welcome several types of contributions:
 
 We follow the following standards:
 
-- **Ruff**: Code formatting and linting (line length: 79 characters)
+- **Ruff**: Code formatting and linting (line length: 100 characters; 79 applies only to the MCP module via .flake8)
 - **flake8**: Additional linting for MCP module compatibility
 - **mypy**: Type checking (with relaxed settings for development)
 
@@ -189,7 +188,7 @@ We follow the following standards:
 3. **Type Checking**:
    ```bash
    # Run mypy with relaxed settings
-   mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   mypy dnallm/ --show-error-codes --pretty
    ```
 
 4. **Test Suite**:
@@ -207,10 +206,10 @@ We follow the following standards:
    python scripts/check_code.py
 
    # Option 2: Run all checks manually in one command
-   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
    ```
 
-**All checks must pass before committing!** CI will run the same checks and will fail if any issues are found.
+**All checks must pass before committing!** CI gates on ruff format/lint, the pytest suite with a coverage hard gate, skip audits, and an exit-code canary; mypy and ty type checks run advisory only (`|| true`), and CI runs no flake8 step.
 
 ### Code Check Scripts
 
@@ -227,8 +226,8 @@ python scripts/check_code.py --fix
 # Show detailed output
 python scripts/check_code.py --verbose
 
-# Include test suite execution
-python scripts/check_code.py --with-tests
+# Include slow tests (real-model tests) as well
+python scripts/check_code.py --all
 
 # Get help
 python scripts/check_code.py --help
@@ -264,7 +263,7 @@ scripts\check_code.bat --verbose
 #### What the Scripts Check
 1. **Code Formatting** (Ruff)
 2. **Code Quality** (Ruff linting)
-3. **MCP Module Compatibility** (Flake8)
+3. **MCP Module Compatibility** (Flake8 — legacy `check_code.sh`/`check_code.bat` only, not `check_code.py`)
 4. **Type Checking** (MyPy with relaxed settings)
 5. **Test Suite** (Pytest)
 6. **Test Coverage** (Pytest with coverage)
@@ -291,8 +290,8 @@ $ python scripts/check_code.py
 [SUCCESS] All checks passed! ✅
 [INFO] Your code is ready for commit.
 
-# Include test suite execution
-$ python scripts/check_code.py --with-tests
+# Include slow tests (real-model tests)
+$ python scripts/check_code.py --all
 [INFO] Starting DNALLM code quality checks...
 [INFO] 1. Code Formatting...
 [SUCCESS] Code formatting check completed successfully
@@ -311,7 +310,7 @@ $ python scripts/check_code.py --fix
 ### Code Quality Standards
 
 #### Ruff Configuration
-- **Line length**: 79 characters (not 88 like Black)
+- **Line length**: 100 characters (same as Black)
 - **Indentation**: 4 spaces
 - **Quote style**: Double quotes
 - **Import sorting**: Automatic with isort compatibility
@@ -319,14 +318,14 @@ $ python scripts/check_code.py --fix
 
 #### Flake8 Configuration (MCP Module)
 - **Line length**: 79 characters
-- **Ignored errors**: E203, W503, C901, E402
+- **Ignored errors**: E203
 - **Purpose**: Ensure MCP module compatibility
 
 #### MyPy Configuration
 - **Strict mode**: Disabled for development
 - **Missing imports**: Ignored
-- **Optional types**: Not strictly enforced
-- **Disabled error codes**: Multiple codes disabled for development flexibility
+- **Implicit Optional**: Disallowed (`no_implicit_optional = true`)
+- **Error codes**: None disabled; `check_untyped_defs` and `warn_unreachable` enabled
 
 #### File Organization
 - **Maximum file size**: < 1000 lines
@@ -463,7 +462,7 @@ Documentation is organized in the `docs/` directory:
 docs/
 ├── index.md                 # Main documentation page
 ├── getting_started/         # Installation and setup guides
-├── tutorials/              # Step-by-step tutorials
+├── user_guide/              # Step-by-step usage guides
 ├── api/                    # API reference
 ├── concepts/               # Core concepts
 └── faq/                    # Frequently asked questions
@@ -497,7 +496,7 @@ mkdocs serve
 1. **Run the complete pre-commit checklist** (see [Pre-commit Checklist](#pre-commit-checklist) above):
    ```bash
    # Quick validation - all checks must pass
-   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
    ```
 
 2. **Ensure all tests pass**:
@@ -635,11 +634,11 @@ uv pip install -e '.[dev]'
 # Option 1: Use automated script (recommended, code quality only)
 python scripts/check_code.py
 
-# Option 2: Include test suite execution
-python scripts/check_code.py --with-tests
+# Option 2: Include slow tests (real-model tests)
+python scripts/check_code.py --all
 
 # Option 3: Manual validation
-ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
 
 # Auto-fix code issues
 python scripts/check_code.py --fix
@@ -692,7 +691,6 @@ mkdocs serve
 ## Recognition
 
 Contributors will be recognized in:
-- **CONTRIBUTORS.md** file
 - **Release notes**
 - **Project documentation**
 
