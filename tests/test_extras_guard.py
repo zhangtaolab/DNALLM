@@ -51,7 +51,7 @@ EXPECTED_NOTEBOOK_MEMBERS = frozenset({
     "jupyter>=1.1.1",
     "marimo>=0.16.3",
     "nbclient>=0.10",
-    "pygenometracks>=3.9",
+    "pygenometracks>=3.9; platform_system != 'Windows'",
 })
 
 

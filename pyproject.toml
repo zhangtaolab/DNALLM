@@ -110,7 +110,11 @@ notebook = [
     "ipython>=8.31,<9",
     # GPL-3.0: explicit owner override (2026-10-04) for the example showcase
     # notebooks' zoom/combined figures; dnallm package code never imports it.
-    "pygenometracks>=3.9",
+    # Windows-excluded (2026-10-07): pgt pulls pybigwig, which has no Windows
+    # wheel and whose sdist setup.py dies with AttributeError 'NoneType' object
+    # has no attribute 'split' on the test-windows .[base] install; dnallm never
+    # imports pgt, so omitting it on Windows is behavior-safe.
+    "pygenometracks>=3.9; platform_system != 'Windows'",
 ]
 docs = [
     "mkdocs-jupyter>=0.24.0",
