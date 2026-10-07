@@ -241,6 +241,19 @@ last_updated: 2026-10-06T01:31:42.584Z
     "recorded_at": "2026-10-05T15:45:36.353Z",
     "resolved_at": "2026-10-06T01:31:42.584Z",
     "milestone": "v1.1"
+  },
+  {
+    "id": 17,
+    "kind": "unmet-truth",
+    "phase": "quick-261007-vxx",
+    "file": "docs/user_guide/fine_tuning/getting_started.md",
+    "line": null,
+    "description": "Push of ruff-format fix commit 97a7c30 to origin/dev blocked by GitHub receive-side Internal Server Error (4 attempts, Request IDs 8832:3513C8/C942:3774A8/B48E:2E4A69/991C:246D9C, 2026-10-07 15:07-15:12Z); local ruff format --check green at dev 97a7c30; re-run 'git push origin dev' when GitHub receive recovers to unblock ci.yml format gates + PR #40",
+    "status": "resolved",
+    "reason": "GitHub receive recovered; orchestrator re-push at 2026-10-07T15:17:44Z landed cfc8346..97a7c30 on origin/dev; CI + Docs Validation re-triggered",
+    "recorded_at": "2026-10-07T15:20:00.000Z",
+    "resolved_at": "2026-10-07T15:18:00.000Z",
+    "milestone": "v1.1"
   }
 ]
 ````

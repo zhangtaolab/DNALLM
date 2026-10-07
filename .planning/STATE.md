@@ -2,11 +2,11 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Quick task 261007-nns complete — awaiting orchestrator docs commit and phs push (remote test-windows proof)
-last_updated: "2026-10-07T09:21:47.037Z"
+stopped_at: Quick task 261007-vxx complete — CI ruff-format fix pushed to origin/dev (97a7c30 after GitHub receive recovery); CI re-running
+last_updated: "2026-10-07T15:22:00.000Z"
 last_activity: 2026-10-07
-last_activity_desc: "Quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda legs"
-state_head: c028a00ad640bdb146cc9b41f13f9d3914b39947
+last_activity_desc: "Quick task 261007-vxx: CI ruff-format fix (3 docs pages) — pushed to origin/dev, GitHub 500 outage rode out"
+state_head: 97a7c30307882e3fe47ad5135180e044815bde60
 progress:
   total_phases: 5
   completed_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v1.1 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-07 — Completed quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda CI legs
+Last activity: 2026-10-07 — Completed quick task 261007-vxx: CI ruff-format fix (3 docs pages) pushed to origin/dev after GitHub 500 outage
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Last activity: 2026-10-07 — Completed quick task 261007-mxl: transformers 5.19
 | Phase 09 P02 | 38 min | 2 tasks | 6 files |
 | Phase 09 P04 | ~21h (4 runner cycles) | 3 tasks | 6 files |
 | Phase quick-261007-nns P01 | 3 min | 2 tasks | 2 files |
+| Phase quick-261007-vxx P01 | 9 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261007-mhz | Fix Windows CI leg: gate pygenometracks behind platform_system != 'Windows' marker in notebook extra (pybigwig has no Windows wheel; sdist setup.py dies) + same-change extras-guard literal update | 2026-10-07 | a982f69 | [261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis](./quick/261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis/) |
 | 261007-mxl | Fix test-cuda CI legs: probe-gated _patch_device_type_query rung (transformers >= 5.19 accelerator query answered "cpu" on GPU-less CUDA torch) registered first in apply_patches() + dnallm/__init__.py .utils-before-.models reorder + 10 contract tests | 2026-10-07 | 30f1a25 | [261007-mxl-fix-test-cuda-ci-leg-failure-transformer](./quick/261007-mxl-fix-test-cuda-ci-leg-failure-transformer/) |
 | 3 | Extend device-query shim to torch <=2.5 AttributeError signature (cu121 leg, gsd-fast follow-up to 261007-mxl) | 2026-10-07 | c028a00 | — |
+| 261007-vxx | Fix CI ruff-format gate: ruff-format fenced Python blocks in 3 docs pages (push survived a GitHub receive 500 outage — WINDOWS id 17 resolved) | 2026-10-07 | 97a7c30 | [261007-vxx-fix-ci-ruff-format-failure-run-ruff-form](./quick/261007-vxx-fix-ci-ruff-format-failure-run-ruff-form/) |
 
 ## Deferred Items
 
@@ -227,8 +229,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T09:14:13.512Z
-Stopped at: Quick task 261007-nns complete — awaiting orchestrator docs commit and phs push (remote test-windows proof)
+Last session: 2026-10-07T15:22:00.000Z
+Stopped at: Quick task 261007-vxx complete — ruff-format fix (3 docs pages) committed 97a7c30 and pushed to origin/dev; CI re-running on the new head
 Resume file: None
 
 ## Deferred Verification
