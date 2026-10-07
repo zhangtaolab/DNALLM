@@ -451,6 +451,17 @@ pytest --cov=dnallm --cov-report=html
 pytest tests/inference/test_inference.py
 ```
 
+### Nightly-Only Lanes
+
+Three test lanes — `coverage-nightly` (full suite incl. `slow`), `example-nightly`
+(example execution census), and `test-mamba` (Mamba extra) — run only on the nightly
+schedule or by manual dispatch, on a self-hosted GPU runner; they never run in PR or
+push checks. Giants-marked execution tests are excluded from `example-nightly` by
+owner policy and run in a dispatch/manual lane (`pytest -m giants`; the nightly
+census uses `-m "not giants"`). Locally, `python scripts/check_code.py --all`
+includes the `slow` tests. Schedules, runner details, and per-lane contracts live
+in [tests/TESTING.md](tests/TESTING.md).
+
 ## Documentation
 
 ### Documentation Structure
@@ -509,7 +520,7 @@ mkdocs serve
 
 5. **Update CHANGELOG.md** if applicable
 
-6. **Verify CI compatibility**: Your local checks should match what CI runs
+6. **Verify CI compatibility**: Your local checks should match what CI runs on PRs; the [nightly-only lanes](#nightly-only-lanes) are nightly/dispatch-only and never gate PRs (details in [tests/TESTING.md](tests/TESTING.md))
 
 ### PR Description Template
 
