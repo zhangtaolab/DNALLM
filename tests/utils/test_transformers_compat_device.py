@@ -26,6 +26,7 @@ import transformers.utils
 from dnallm.utils import transformers_compat
 
 _ERROR_MESSAGE = "Cannot access accelerator device when none is available"
+_OLD_TORCH_MESSAGE = "module 'torch' has no attribute 'accelerator'"
 
 
 def _patch_fn():
@@ -114,6 +115,41 @@ class TestDeviceTypeQueryShim:
         with pytest.raises(RuntimeError, match=_ERROR_MESSAGE):
             deviceless_query()
 
+    def test_patch_installs_when_probe_raises_old_torch_attribute_error(self, monkeypatch):
+        """torch <= 2.5 (no torch.accelerator module at all) gets the same "cpu" wrapper."""
+
+        def old_torch_query():
+            raise AttributeError(_OLD_TORCH_MESSAGE)
+
+        fake = _install_fake_import_utils(monkeypatch, old_torch_query)
+
+        _patch_fn()()
+
+        assert fake._dnallm_device_type_patch is True
+        installed = fake.get_device_type
+        assert installed is not old_torch_query
+        assert installed() == "cpu"
+        # The underlying stub still raises untouched for anything else.
+        with pytest.raises(AttributeError, match="no attribute 'accelerator'"):
+            old_torch_query()
+
+    def test_installed_wrapper_answers_old_torch_attribute_error_per_call(self, monkeypatch):
+        """After a RuntimeError-probe install the wrapper also answers the AttributeError form."""
+
+        calls = []
+
+        def flaky_old_torch_query():
+            calls.append(1)
+            if len(calls) == 1:
+                raise RuntimeError(_ERROR_MESSAGE)  # the probe call
+            raise AttributeError(_OLD_TORCH_MESSAGE)  # every later call
+
+        fake = _install_fake_import_utils(monkeypatch, flaky_old_torch_query)
+
+        _patch_fn()()
+
+        assert fake.get_device_type() == "cpu"
+
     def test_installed_wrapper_delegates_and_forwards_arguments(self, monkeypatch):
         """After the one-time probe failure the wrapper delegates with full passthrough."""
         calls = []
@@ -147,7 +183,7 @@ class TestDeviceTypeQueryShim:
         assert fake.get_device_type is first
 
     def test_unknown_probe_failures_stay_loud(self, monkeypatch):
-        """Only the observed RuntimeError signature is answered; anything else raises."""
+        """Only the two observed signatures are answered; anything else raises."""
 
         def broken_query():
             raise ValueError("unknown device-query failure")
@@ -155,6 +191,20 @@ class TestDeviceTypeQueryShim:
         fake = _install_fake_import_utils(monkeypatch, broken_query)
 
         with pytest.raises(ValueError, match="unknown device-query failure"):
+            _patch_fn()()
+
+        assert fake.get_device_type is broken_query
+        assert getattr(fake, "_dnallm_device_type_patch", False) is False
+
+    def test_unrelated_attribute_error_stays_loud(self, monkeypatch):
+        """An AttributeError NOT naming the accelerator module is never answered "cpu"."""
+
+        def broken_query():
+            raise AttributeError("boom")
+
+        fake = _install_fake_import_utils(monkeypatch, broken_query)
+
+        with pytest.raises(AttributeError, match="boom"):
             _patch_fn()()
 
         assert fake.get_device_type is broken_query

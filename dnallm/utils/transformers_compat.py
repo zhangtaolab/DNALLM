@@ -1116,31 +1116,40 @@ def _patch_numpy_fromstring():
 # get_device_type() -> torch.accelerator.current_accelerator()), which
 # raises RuntimeError("Cannot access accelerator device when none is
 # available") when a CUDA-built torch runs on a GPU-less machine: the
-# test-cuda CI legs (ubuntu-latest, torch 2.6.0 cu121/cu124 wheels, no GPU)
-# die at COLLECTION with 37 collection errors on every module importing
-# dnallm. CPU-only torch wheels pass with the same transformers (the native
-# query answers "cpu" without touching CUDA), and GPU machines (the dev box
-# and the nightly runner, transformers 5.17) never see the raise.
-# get_device_type exists nowhere in transformers <= 5.17 (verified live:
-# site-packages grep returns zero matches on 5.17.0), hence the absence
-# gate. The probe performs ONE real call (the np.fromstring precedent) so
-# working environments are never patched, and only RuntimeError -- the
-# observed torch signature -- is answered, with the honest "cpu" device
-# string; any other failure stays loud rather than lying "cpu".
+# test-cuda CI legs (ubuntu-latest, GPU-less; cu124 wheel = torch 2.6.0,
+# cu121 wheel = torch 2.5.1) die at COLLECTION on every module importing
+# dnallm, with TWO observed signatures: torch >= 2.6 has torch.accelerator
+# and its current_accelerator() raises RuntimeError("Cannot access
+# accelerator device when none is available"); torch <= 2.5 has no
+# torch.accelerator module at all and the same query raises
+# AttributeError("module 'torch' has no attribute 'accelerator'") (cu121
+# leg, run 37597786774). CPU-only torch wheels pass with the same
+# transformers (the native query answers "cpu" without touching CUDA), and
+# GPU machines (the dev box and the nightly runner, transformers 5.17)
+# never see either raise. get_device_type exists nowhere in transformers
+# <= 5.17 (verified live: site-packages grep returns zero matches on
+# 5.17.0), hence the absence gate. The probe performs ONE real call (the
+# np.fromstring precedent) so working environments are never patched, and
+# only the two observed accelerator-unavailability signatures are
+# answered, with the honest "cpu" device string; any other failure stays
+# loud rather than lying "cpu".
 
 
 def _device_type_query_broken(module) -> bool:
-    """Probe whether ``get_device_type`` raises ``RuntimeError`` on this host.
+    """Probe whether ``get_device_type`` raises an accelerator-unavailability error.
 
     Args:
         module: the transformers.utils.import_utils module to probe.
 
     Returns:
-        True only when ``module.get_device_type()`` raises RuntimeError (a
-        CUDA-built torch with no visible accelerator). A clean return or an
-        absent ``get_device_type`` maps to False; any NON-RuntimeError raise
-        propagates untouched (unknown failure states must stay loud, never
-        be silently answered "cpu").
+        True only when ``module.get_device_type()`` raises one of the two
+        observed accelerator-unavailability signatures: RuntimeError (torch
+        >= 2.6 CUDA build with no visible accelerator) or an AttributeError
+        naming 'accelerator' (torch <= 2.5 has no torch.accelerator module
+        for transformers >= 5.19 to touch). A clean return or an absent
+        ``get_device_type`` maps to False; any other raise propagates
+        untouched (unknown failure states must stay loud, never be
+        silently answered "cpu").
     """
     fn = getattr(module, "get_device_type", None)
     if fn is None:
@@ -1149,6 +1158,10 @@ def _device_type_query_broken(module) -> bool:
         fn()
     except RuntimeError:
         return True
+    except AttributeError as exc:
+        if "accelerator" in str(exc):
+            return True
+        raise
     return False
 
 
@@ -1157,8 +1170,10 @@ def _patch_device_type_query():
 
     Installs a ``get_device_type(*args, **kwargs)`` wrapper over
     ``transformers.utils.import_utils.get_device_type`` that returns the
-    original's result and, on RuntimeError (torch's
-    "Cannot access accelerator device when none is available"), answers the
+    original's result and, on either observed accelerator-unavailability
+    signature (torch >= 2.6's RuntimeError "Cannot access accelerator
+    device when none is available", or torch <= 2.5's AttributeError for
+    the missing torch.accelerator module), answers the
     honest ``"cpu"`` device string instead of raising -- keeping the
     transformers >= 5.19 flex_attention import chain inside modeling_utils
     importable on CUDA-built torch without a visible GPU. Gated three ways:
@@ -1189,9 +1204,16 @@ def _patch_device_type_query():
         try:
             return original(*args, **kwargs)
         except RuntimeError:
-            # torch.accelerator's signature for a CUDA build with no visible
-            # device: the honest device-type answer for that host is "cpu".
+            # torch >= 2.6 CUDA build with no visible device: the honest
+            # device-type answer for that host is "cpu".
             return "cpu"
+        except AttributeError as exc:
+            # torch <= 2.5 has no torch.accelerator module for transformers
+            # >= 5.19 to touch: same honest answer. Unrelated attribute
+            # failures stay loud rather than masking real bugs.
+            if "accelerator" in str(exc):
+                return "cpu"
+            raise
 
     module.get_device_type = get_device_type
     module._dnallm_device_type_patch = True  # type: ignore[attr-defined]
