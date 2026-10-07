@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
 stopped_at: Quick task 261007-nns complete — awaiting orchestrator docs commit and phs push (remote test-windows proof)
-last_updated: "2026-10-07T09:14:13.526Z"
+last_updated: "2026-10-07T09:21:47.037Z"
 last_activity: 2026-10-07
 last_activity_desc: "Quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda legs"
-state_head: bc426bcecd514f744b8704062641c0010ad72c86
+state_head: c028a00ad640bdb146cc9b41f13f9d3914b39947
 progress:
   total_phases: 5
   completed_phases: 5
@@ -208,6 +208,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 |---|-------------|------|--------|-----------|
 | 261007-mhz | Fix Windows CI leg: gate pygenometracks behind platform_system != 'Windows' marker in notebook extra (pybigwig has no Windows wheel; sdist setup.py dies) + same-change extras-guard literal update | 2026-10-07 | a982f69 | [261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis](./quick/261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis/) |
 | 261007-mxl | Fix test-cuda CI legs: probe-gated _patch_device_type_query rung (transformers >= 5.19 accelerator query answered "cpu" on GPU-less CUDA torch) registered first in apply_patches() + dnallm/__init__.py .utils-before-.models reorder + 10 contract tests | 2026-10-07 | 30f1a25 | [261007-mxl-fix-test-cuda-ci-leg-failure-transformer](./quick/261007-mxl-fix-test-cuda-ci-leg-failure-transformer/) |
+| 3 | Extend device-query shim to torch <=2.5 AttributeError signature (cu121 leg, gsd-fast follow-up to 261007-mxl) | 2026-10-07 | c028a00 | — |
 
 ## Deferred Items
 
