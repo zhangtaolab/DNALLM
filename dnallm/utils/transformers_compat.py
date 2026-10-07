@@ -1109,8 +1109,109 @@ def _patch_numpy_fromstring():
     numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]
 
 
+# transformers 5.19.0 (freshly resolved by the open >=4.49,<6 range on
+# remote CI) eagerly imports its flex_attention integration inside
+# modeling_utils (chain: transformers/modeling_utils.py:82 ->
+# integrations/flex_attention.py:46 -> is_torch_flex_attn_available() ->
+# get_device_type() -> torch.accelerator.current_accelerator()), which
+# raises RuntimeError("Cannot access accelerator device when none is
+# available") when a CUDA-built torch runs on a GPU-less machine: the
+# test-cuda CI legs (ubuntu-latest, torch 2.6.0 cu121/cu124 wheels, no GPU)
+# die at COLLECTION with 37 collection errors on every module importing
+# dnallm. CPU-only torch wheels pass with the same transformers (the native
+# query answers "cpu" without touching CUDA), and GPU machines (the dev box
+# and the nightly runner, transformers 5.17) never see the raise.
+# get_device_type exists nowhere in transformers <= 5.17 (verified live:
+# site-packages grep returns zero matches on 5.17.0), hence the absence
+# gate. The probe performs ONE real call (the np.fromstring precedent) so
+# working environments are never patched, and only RuntimeError -- the
+# observed torch signature -- is answered, with the honest "cpu" device
+# string; any other failure stays loud rather than lying "cpu".
+
+
+def _device_type_query_broken(module) -> bool:
+    """Probe whether ``get_device_type`` raises ``RuntimeError`` on this host.
+
+    Args:
+        module: the transformers.utils.import_utils module to probe.
+
+    Returns:
+        True only when ``module.get_device_type()`` raises RuntimeError (a
+        CUDA-built torch with no visible accelerator). A clean return or an
+        absent ``get_device_type`` maps to False; any NON-RuntimeError raise
+        propagates untouched (unknown failure states must stay loud, never
+        be silently answered "cpu").
+    """
+    fn = getattr(module, "get_device_type", None)
+    if fn is None:
+        return False
+    try:
+        fn()
+    except RuntimeError:
+        return True
+    return False
+
+
+def _patch_device_type_query():
+    """Make the transformers device-type query import-safe without an accelerator.
+
+    Installs a ``get_device_type(*args, **kwargs)`` wrapper over
+    ``transformers.utils.import_utils.get_device_type`` that returns the
+    original's result and, on RuntimeError (torch's
+    "Cannot access accelerator device when none is available"), answers the
+    honest ``"cpu"`` device string instead of raising -- keeping the
+    transformers >= 5.19 flex_attention import chain inside modeling_utils
+    importable on CUDA-built torch without a visible GPU. Gated three ways:
+    absence (``get_device_type`` must exist -- transformers <= 5.17 has it
+    nowhere), probe (one real call must raise RuntimeError before anything
+    is installed), and the module sentinel for idempotency. The wrapper is
+    also mirrored onto the ``transformers.utils`` re-export, but only where
+    that reference still holds the identical original object.
+    """
+    try:
+        import transformers.utils.import_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    module = transformers.utils.import_utils
+
+    original = getattr(module, "get_device_type", None)
+    if original is None:
+        return
+
+    if getattr(module, "_dnallm_device_type_patch", False):
+        return
+
+    if not _device_type_query_broken(module):
+        return
+
+    def get_device_type(*args, **kwargs):
+        try:
+            return original(*args, **kwargs)
+        except RuntimeError:
+            # torch.accelerator's signature for a CUDA build with no visible
+            # device: the honest device-type answer for that host is "cpu".
+            return "cpu"
+
+    module.get_device_type = get_device_type
+    module._dnallm_device_type_patch = True  # type: ignore[attr-defined]
+
+    # transformers.utils re-exports import_utils names; mirror the wrapper
+    # there too, but only where the re-export still holds the exact original
+    # object -- a divergent binding is never stamped over.
+    if getattr(transformers.utils, "get_device_type", None) is original:
+        transformers.utils.get_device_type = get_device_type
+
+
 def apply_patches():
-    """Apply all compatibility patches. Safe to call multiple times."""
+    """Apply all compatibility patches. Safe to call multiple times.
+
+    The device-type-query rung must stay FIRST: it imports only
+    transformers.utils.import_utils (a leaf utility module) and must run
+    before any rung that resolves transformers.modeling_utils, whose
+    transformers >= 5.19 import chain queries the accelerator device.
+    """
+    _patch_device_type_query()
     _patch_get_parameter_or_buffer()
     _patch_initialize_weights_for_quantized_missing()
     _patch_remote_code_pruning_helpers()

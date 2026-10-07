@@ -1310,6 +1310,7 @@ def _collect_patch_installers():
 
 
 EXPECTED_PATCH_INSTALLERS = frozenset({
+    "_patch_device_type_query",
     "_patch_get_parameter_or_buffer",
     "_patch_initialize_weights_for_quantized_missing",
     "_patch_remote_code_pruning_helpers",
