@@ -355,3 +355,26 @@ Green-gate dispatch run id: 37432001711
 - **Pre-existing fast-lane failure** `test_plot_for_regression` (WINDOWS.md id 16,
   `unmet-truth`): proven pre-existing at 09-02 plan-start HEAD; NOT this phase's to
   fix; it does not touch the example-nightly lane.
+
+## Post-close census addendum (2026-10-07, pre-close audit regeneration)
+
+The v1.1 pre-close verification regeneration (phases 05-08, 2026-10-06/07) ran each
+phase's code-review gate over its post-close delta and repaired covered files. Four
+of those repairs added fast tests to `tests/examples/test_notebook_execution.py`
+without re-pinning the D-03 census triple at landing time — the designed
+bump-point, triggered late:
+
+| Test | Class | Adding commit | Phase cycle |
+|------|-------|---------------|-------------|
+| `test_non_mapping_override_section_raises` | `TestSeedSandboxYamlOverrides` | 374e8e6 | 05 (IN-01) |
+| venv-probe timeout pins | `TestVenvProbeTimeoutContract` | 9d44cbf | 05 (IN-02) |
+| evo-1 load-cell content pins (x2) | `TestEvoNotebookContentContracts` | 5dc18c6 | 08 (CR-01) |
+
+Fresh measurement with the exact stage-1 selector flags
+(`pytest tests/examples --collect-only -q -m "not giants" -k "not mcp_example"`):
+**197/206 tests collected (9 deselected)** — was 193/202. Deselected count
+unchanged (8 mcp + 1 giants). Both ci.yml Stage 0.5 carriers re-pinned in the same
+commit as this addendum; the growth is repair-class (fail-loud pins), zero new
+skips. Example-nightly re-dispatch at the re-pin HEAD: recorded below.
+
+- Example-nightly run of record at the re-pin HEAD: _(pending dispatch — filled in when green)_

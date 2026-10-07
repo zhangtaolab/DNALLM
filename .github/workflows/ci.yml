@@ -859,8 +859,8 @@ jobs:
             -m "not giants" -k "not mcp_example" 2>/dev/null | tee census-collect.txt | tail -1
           MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
           echo "census collection measured: ${MEASURED}"
-          if ! tail -1 census-collect.txt | grep -qE '^=* *193/202 tests collected \(9 deselected\) in '; then
-            echo "FAIL: census collection mismatch (D-03) — expected triple: 193/202 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *197/206 tests collected \(9 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 197/206 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
             cat census-collect.txt
             exit 1
           fi
