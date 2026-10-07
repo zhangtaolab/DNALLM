@@ -15,6 +15,8 @@ and ``torch.load`` patched (fakes, never downloads -- fast-lane friendly),
 mirroring ``tests/models/test_special/test_family_handlers.py``.
 """
 
+import os
+
 import torch
 import pytest
 from unittest.mock import Mock, patch
@@ -175,7 +177,10 @@ class TestMegadnaCheckpointSelection:
             result = _handle_megadna_models(model_name, "huggingface", None)
 
         assert result is not None, f"family member did not match: {model_name}"
-        assert loaded_paths == [f"/snapshot/{expected_checkpoint}"]
+        # Separators are an OS detail: the handler builds the torch.load path
+        # with os.path.join (backslash on Windows), so the expectation must be
+        # OS-native too.
+        assert loaded_paths == [os.path.join("/snapshot", expected_checkpoint)]
 
 
 class TestMegadnaExtraDoesNotMutateModuleList:
