@@ -2,11 +2,11 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Quick task 261007-mxl complete
-last_updated: "2026-10-07T08:59:44Z"
+stopped_at: Quick task 261007-nns complete — awaiting orchestrator docs commit and phs push (remote test-windows proof)
+last_updated: "2026-10-07T09:14:13.526Z"
 last_activity: 2026-10-07
-last_activity_desc: Quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda legs
-state_head: a982f69df570c7c619032f99956885831ba0106d
+last_activity_desc: "Quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda legs"
+state_head: bc426bcecd514f744b8704062641c0010ad72c86
 progress:
   total_phases: 5
   completed_phases: 5
@@ -84,6 +84,7 @@ Last activity: 2026-10-07 — Completed quick task 261007-mxl: transformers 5.19
 | Phase 09 P03 | 15 min | 2 tasks | 3 files |
 | Phase 09 P02 | 38 min | 2 tasks | 6 files |
 | Phase 09 P04 | ~21h (4 runner cycles) | 3 tasks | 6 files |
+| Phase quick-261007-nns P01 | 3 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -179,6 +180,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 - [Phase 09]: 09-04: coverage-nightly timeout decision (D-12/OQ3, measurement in hand) — KEEP 900 as documented override below both recomputed paper sums (~640min bind-set/~3920min all-marks); per-test marks primary, measured green path 1:42-1:58
 - [Phase 09]: 09-04: SSE readiness must assert the received HTTP status, never curl's exit code — an exit-code probe is structurally ungreenable against a healthy SSE endpoint (run 37345067326: 17:58 blind polling over a serving server); pinned by TestExampleNightlySseProbe contract tests
 - [Phase 09]: 09-04 close: D-17/D-18 green at the final wiring via run 37432001711 (example ledger zero; test-mamba 1840P/0F; coverage-nightly 1938P/0F @ 96.42%) — the phase's three criteria hold on runner evidence; num_ctx stays DEFERRED, D-05 epochs cut measured 566s
+- [Phase quick-261007-nns]: [quick 261007-nns] Windows fast-leg close-out: megadna checkpoint assertion made OS-native test-side only (handler os.path.join at megadna.py:155 stays byte-identical — backslash torch.load path on Windows is valid local-file IO); fd-accounting skip allowlisted via reason_like 'fd accounting needs /proc' rather than rewording to the typed environment-unavailable: prefix (reserved for Phase-8 evidence-backed helpers per D-06; SONAME twin is the in-file precedent)
 
 ### Pending Todos
 
@@ -224,8 +226,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T16:59:00+08:00
-Stopped at: Quick task 261007-mxl complete — awaiting orchestrator docs commit and phs push (remote test-cuda proof)
+Last session: 2026-10-07T09:14:13.512Z
+Stopped at: Quick task 261007-nns complete — awaiting orchestrator docs commit and phs push (remote test-windows proof)
 Resume file: None
 
 ## Deferred Verification
