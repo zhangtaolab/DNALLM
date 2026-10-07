@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Phase 09 complete — all phases complete
-last_updated: "2026-10-07T08:26:13.681Z"
+stopped_at: Quick task 261007-mxl complete
+last_updated: "2026-10-07T08:59:44Z"
 last_activity: 2026-10-07
-last_activity_desc: Milestone v1.1 completed and archived
+last_activity_desc: Quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda legs
 state_head: a982f69df570c7c619032f99956885831ba0106d
 progress:
   total_phases: 5
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v1.1 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-07 — Completed quick task 261007-mhz: fix Windows CI leg (pygenometracks platform marker)
+Last activity: 2026-10-07 — Completed quick task 261007-mxl: transformers 5.19 device-query shim for test-cuda CI legs
 
 ## Performance Metrics
 
@@ -205,6 +205,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261007-mhz | Fix Windows CI leg: gate pygenometracks behind platform_system != 'Windows' marker in notebook extra (pybigwig has no Windows wheel; sdist setup.py dies) + same-change extras-guard literal update | 2026-10-07 | a982f69 | [261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis](./quick/261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis/) |
+| 261007-mxl | Fix test-cuda CI legs: probe-gated _patch_device_type_query rung (transformers >= 5.19 accelerator query answered "cpu" on GPU-less CUDA torch) registered first in apply_patches() + dnallm/__init__.py .utils-before-.models reorder + 10 contract tests | 2026-10-07 | 30f1a25 | [261007-mxl-fix-test-cuda-ci-leg-failure-transformer](./quick/261007-mxl-fix-test-cuda-ci-leg-failure-transformer/) |
 
 ## Deferred Items
 
@@ -223,8 +224,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-06T21:35:00+08:00
-Stopped at: Phase 09 complete — all phases complete
+Last session: 2026-10-07T16:59:00+08:00
+Stopped at: Quick task 261007-mxl complete — awaiting orchestrator docs commit and phs push (remote test-cuda proof)
 Resume file: None
 
 ## Deferred Verification
