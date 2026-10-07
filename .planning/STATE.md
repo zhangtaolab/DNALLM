@@ -2,11 +2,11 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Quick task 261007-xbz complete — version bumped 0.7.0 -> 0.7.1, commit b2410c1 pushed to origin/dev (first attempt)
-last_updated: "2026-10-07T16:14:41.797Z"
-last_activity: 2026-10-07
-last_activity_desc: "Quick task 261007-vxx: CI ruff-format fix (3 docs pages) — pushed to origin/dev, GitHub 500 outage rode out"
-state_head: b2410c1abaf39859f0805d0df0b75277a9959fcc
+stopped_at: Quick task 261008-0h5 complete — CONTRIBUTING nightly-lanes note (6a366b5) pushed; example-nightly dispatch verification + 420fc19 CI watch in flight
+last_updated: "2026-10-07T16:32:00.000Z"
+last_activity: 2026-10-08
+last_activity_desc: "Quick task 261008-0h5: CONTRIBUTING.md nightly-only lanes note + CI-compat pointer (6a366b5)"
+state_head: 6a366b5979267973c57c566d64e8150b83fb73cf
 milestone_name: Example Execution Testing & Repair
 current_phase: 09
 progress:
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v1.1 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-07 — Completed quick task 261007-vxx: CI ruff-format fix (3 docs pages) pushed to origin/dev after GitHub 500 outage
+Last activity: 2026-10-08 — Completed quick task 261008-0h5: CONTRIBUTING.md nightly-only lanes note (coverage-nightly / example-nightly / test-mamba)
 
 ## Performance Metrics
 
@@ -213,6 +213,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 3 | Extend device-query shim to torch <=2.5 AttributeError signature (cu121 leg, gsd-fast follow-up to 261007-mxl) | 2026-10-07 | c028a00 | — |
 | 261007-vxx | Fix CI ruff-format gate: ruff-format fenced Python blocks in 3 docs pages (push survived a GitHub receive 500 outage — WINDOWS id 17 resolved) | 2026-10-07 | 97a7c30 | [261007-vxx-fix-ci-ruff-format-failure-run-ruff-form](./quick/261007-vxx-fix-ci-ruff-format-failure-run-ruff-form/) |
 | 261007-xbz | Bump package version 0.7.0 → 0.7.1 across all three surfaces (pyproject line 3, dnallm/version.py, CHANGELOG 0.7.1 entry) with owner-rule pytest trio green; trailer-free commit b2410c1 pushed to origin/dev first attempt — dev HEAD is the v0.7.1 release tag target pending PR #40 | 2026-10-08 | b2410c1 | [261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr](./quick/261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr/) |
+| 261008-0h5 | Note nightly-only test lanes in CONTRIBUTING (coverage-nightly, example-nightly, test-mamba) + CI-compat checklist pointer to tests/TESTING.md | 2026-10-08 | 6a366b5 | [261008-0h5-add-a-short-nightly-lanes-note-to-contri](./quick/261008-0h5-add-a-short-nightly-lanes-note-to-contri/) |
 
 ## Deferred Items
 
