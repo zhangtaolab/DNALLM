@@ -280,8 +280,7 @@ def run_finetuning():
         dataset.split_data(test_size=0.2, val_size=0.1)
 
     print(
-        f"Dataset loaded: {len(dataset.dataset['train'])} train, "
-        f"{len(dataset.dataset['val'])} val"
+        f"Dataset loaded: {len(dataset.dataset['train'])} train, {len(dataset.dataset['val'])} val"
     )
 
     # Encode sequences

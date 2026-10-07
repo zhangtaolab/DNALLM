@@ -115,7 +115,10 @@ import pickle  # ruff: ignore[suspicious-pickle-import]
 from dnallm.datahandling.data import DNADataset
 
 # 1. Serialize your dataset as a dict of columns
-data = {"sequence": ["GATTACAGATTACAGATTACAGATTACA", "CGCGCGCGCGCGCGCGCGCGCGCGCGCG"], "labels": [1, 0]}
+data = {
+    "sequence": ["GATTACAGATTACAGATTACAGATTACA", "CGCGCGCGCGCGCGCGCGCGCGCGCGCG"],
+    "labels": [1, 0],
+}
 with open("my_dataset.pkl", "wb") as f:
     pickle.dump(data, f)
 
