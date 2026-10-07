@@ -2,22 +2,15 @@
 
 ## What This Is
 
-DNALLM (`dnallm` v0.5.2) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate.
+DNALLM (`dnallm` v0.7.0) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Milestone v1.1 (shipped 2026-10-07) made every artifact under `example/` execute for real — 21 notebooks, 3 marimo apps, the helper script, every YAML — on the nightly GPU runner, fixed every error it surfaced with same-change regression tests, delivered the PlantHelixSeek showcase notebooks over committed Arabidopsis loci, and brought the execution tests under formal nightly gating.
 
 ## Core Value
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: v1.1 Example Execution Testing & Repair
+## Current State
 
-**Goal:** Establish real-model execution testing for everything under `example/` and fix every error it surfaces; add PlantHelixSeek-CRE/-Anno Arabidopsis inference example notebooks; repair the CI gate false-green (WR-08/09) and bring example tests under formal gating.
-
-**Target features:**
-- Real execution of all existing examples — 20 Jupyter notebooks (nbclient), 3 marimo apps (headless), `generate_bpe_dataset.py`, all YAML configs through real `load_config()` validation — using real models on the nightly self-hosted GPU runner
-- Error repair across example/ code, docs/example/ mirror, and any dnallm library bugs the executions expose
-- CI: remove `continue-on-error` false-green in docs-validation, add missing `mcp` extra, fix README (WR-08/WR-09); example execution tests marked `slow` join the nightly census gate
-- New PlantHelixSeek examples: registry entries for `PlantHelixSeek-CRE` (binary) / `PlantHelixSeek-Anno` (token, 17 BILOU); two notebooks using dnallm API with in-notebook sliding-window scanning and BigWig/GFF3 post-processing (mirroring upstream `scripts/cis_regulatory` / `scripts/gene_annotation` pipelines)
-- Arabidopsis showcase data committed in-repo at ≤200kb per region: **guarantee that predictions are substantially consistent with experimental truth on the selected loci** (CRE ↔ PlantDHS TAIR10_DHSs.gff; Anno ↔ TAIR10 GFF3 gene annotation) — agreement verified during loci selection and asserted by the example tests; intermediate full-genome downloads from arabidopsis.org stay gitignored
+v1.1 shipped 2026-10-07 (32/32 requirements, 5/5 phases verified, milestone audit: 0 blockers / 13 deferred items — see `.planning/milestones/v1.1-MILESTONE-AUDIT.md` after archival). Next milestone not yet defined — start with `/gsd-new-milestone`. Known carried debt: runner-box operational items (ollama loopback re-apply, cache-quota decision, `$HOME` cleanup), the MCP `--host/--port` flag-override bug (owner-scope ledger), one stale `.github/workflows/README.md` sentence, and the giants-lane manual-execution policy (W1).
 
 ## Requirements
 
@@ -50,11 +43,16 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-Milestone v1.1 (see Current Milestone section above; formal REQ-IDs in REQUIREMENTS.md):
+(none — v1.1 shipped 2026-10-07; next milestone requirements are defined via `/gsd-new-milestone`)
 
-- Real-model execution tests for every artifact under `example/` (notebooks, marimo apps, helper script, YAML configs)
-- All errors found by real execution fixed — example code, docs/example/ mirror, and exposed dnallm library bugs
-- CI example gate repaired and enforced (WR-08/WR-09 closed; `slow`-marked execution tests in nightly census)
+### Validated — v1.1 (Example Execution Testing & Repair, shipped 2026-10-07)
+
+Milestone headline — 32/32 REQ-IDs satisfied (full ledger in `milestones/v1.1-REQUIREMENTS.md`):
+
+- ✓ Real-model execution for every artifact under `example/`: 21 notebooks, 3 marimo apps, `generate_bpe_dataset.py`, every YAML through real `load_config()` — final census 196P/1S/0F, formally nightly-gated
+- ✓ Every surfaced error fixed with a same-change regression test (13 repair classes + all review findings) across example code, the docs mirror, and dnallm library bugs
+- ✓ CI false-green repaired and example tests under formal gating (WR-08/WR-09 closed; hard census collection gate; honest docs-validation)
+- ✓ PlantHelixSeek-CRE/-Anno showcase: registry route, committed ≤200kb Arabidopsis loci, two executed notebooks reproducing the frozen truth-agreement metrics exactly (jaccard=0.3247, exon_f1=0.7522), byte-identical docs-mirror write-back
 
 Shipped in Phase 9 (CI Wiring & Census Verification, 2026-10-06):
 
@@ -106,6 +104,8 @@ Shipped in Phase 4 (CI Gate Enforcement, 2026-10-01):
 
 ## Context
 
+Shipped v1.1 on 2026-10-07 (373 commits over v1; 5 phases, 24 plans): the whole `example/` tree executes for real behind a staged example-nightly job (census hard gate pinned at 197/206 collected, hygiene floors ≥35 GiB, fail-soft summary with a hard non-zero exit), the docs mirror is byte-identical under `check_docs_sync.py`, and the showcase notebooks assert truth-agreement floors parsed from `selection.md`. Fast lane at close: 1,933 passed / 1 allowlisted skip; coverage-nightly 96.42% against the unchanged `fail_under=90` gate.
+
 Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% line coverage** (7,133/7,407 stmts) on a denominator byte-stable since Phase 1, `fail_under = 90` enforced through the pytest exit code and required-check branch protection on dev+main.
 
 - Test config lives solely in `pyproject.toml [tool.pytest.ini_options]` (`--asyncio-mode=auto`, `--timeout=300`, `--strict-markers`; markers `slow`, `pdf`, `performance`, `integration`; testpaths `tests/` + `dnallm/mcp/tests/`)
@@ -113,7 +113,7 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 - CI shape: `coverage-gate` (fast PR leg, push/PR) + `coverage-nightly` (slow census, self-hosted `dnallm-nightly` GPU runner, models.lock-keyed cache) + `test-mamba` (same runner, schedule/dispatch-only); matrix legs + windows leg stay ungated
 - Skip discipline: every skip is typed and matched against `tests/expected_skips.yaml` by `scripts/audit_skips.py` in 4 CI jobs — an unexpected skip fails the run
 - transformers compatibility spans 4.49–5.x via `dnallm/utils/transformers_compat.py`; installed dev env uses transformers 5.17, torch 2.11 cu130
-- Known tech debt (reviewed, dispositioned, non-blocking): see `.planning/v1-MILESTONE-AUDIT.md` tech-debt ledger — 7 warning-tier + ~31 info-tier review findings, 3 acknowledged deferred engineering items (STATE.md), concentrated in the `/gsd-ship` triage path
+- Known tech debt (reviewed, dispositioned, non-blocking): v1 — see `milestones/v1-MILESTONE-AUDIT.md` (7 warning-tier + ~31 info-tier findings); v1.1 — see `milestones/v1.1-MILESTONE-AUDIT.md` (0 blockers, 13 deferred items: runner ops, MCP flag-override bug, giants-lane manual policy, one stale README sentence)
 - Codebase map with full concerns list: `.planning/codebase/` (STACK, ARCHITECTURE, TESTING, CONCERNS)
 
 ## Constraints
@@ -163,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-06 after Phase 9 — milestone v1.1 100%*
+*Last updated: 2026-10-07 after v1.1 milestone*

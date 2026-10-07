@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 milestone_name: Example Execution Testing & Repair
-current_phase: 09
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 09 complete — all phases complete
-last_updated: "2026-10-07T03:19:00.000Z"
+last_updated: "2026-10-07T07:53:06.609Z"
 last_activity: 2026-10-07
-last_activity_desc: Phase 09 complete
-state_head: 43a47a05a7621c6e4ae0d8e1576bc3410c9702c2
+last_activity_desc: Milestone v1.1 completed and archived
+state_head: 1d5c287a744a042ad497c76e914ce5f5dc4bd357
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 24
   completed_plans: 24
   percent: 100
+current_phase: 09
 ---
 
 # Project State
@@ -28,14 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 
 ## Current Position
 
-Phase: 09
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-06 — Phase 09 complete
-documented dependency (fla extra >=0.5.2,<0.6 in all + README + docs FAQ + 3 guard tests,
-commit 2259573); owner-upgraded B+ decision landed in-phase before tail gates
-
-Progress: [████████████████████] 20/20 plans ([██████████] 100% of planned; Phase 9 TBD)
+Phase: Milestone v1.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-07 — Milestone v1.1 completed and archived
 
 ## Performance Metrics
 
@@ -208,23 +204,6 @@ Recent decisions affecting current work (v1.1 roadmap):
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261002-se3 | Fix transformers 5.x remote-code compat: restore get_extended_attention_mask for trust_remote_code ESM models (benchmark notebook AttributeError), with pytest coverage | 2026-10-02 | fdc4915 | [261002-se3-fix-transformers-5-x-remote-code-compat-](./quick/261002-se3-fix-transformers-5-x-remote-code-compat-/) |
-| 261002-sl7 | Run and fix the 6 non-gated census-failing notebooks to green: 5 promoted to ACTIVE lane (8-13), finetune_generation data-prep fixed + megaDNA half honestly gated; 5 transformers-5.x shims + 34 contract tests | 2026-10-02 | fa0386e | [261002-sl7-run-and-fix-the-5-non-gated-census-faili](./quick/261002-sl7-run-and-fix-the-5-non-gated-census-faili/) |
-| 3 | gsd-fast: fix Benchmark.plot return annotation lie (-> None vs actual 2-tuple), kills ty not-iterable in benchmark notebook | 2026-10-02 | d352c0e | — |
-| 261003-0p0 | Batch typing special: ty 570->165 (excludes + 44 audited suppressions + canonical renames + TypedDict + 41 ignore removals); E-family triage list emitted; fast lane 1703 green | 2026-10-02 | a0220d5 | [261003-0p0-batch-typing-special-configure-ty-baseli](./quick/261003-0p0-batch-typing-special-configure-ty-baseli/) |
-| 261003-csd | Execute the 2 owner-deferred MCP client notebooks to green in the gated lane (D-08 closed; execute-state gate + 4xx probe + isolated langchain kernel; 2 dnallm serving fixes with tests: single-flight inference, mamba interpret guard; port 8000, fallback never fired; full lane 1716 green) | 2026-10-03 | 9453d23 | [261003-csd-execute-the-two-owner-deferred-mcp-clien](./quick/261003-csd-execute-the-two-owner-deferred-mcp-clien/) |
-| 261003-hhj | Fix CR-01: MCP single-flight inference — threading.Lock inside the executor-submitted callable spans the orphaned thread lifetime (asyncio lock released on timeout cancellation); asyncio.wait_for-cancellation regression test; 3/3 single-flight tests + 220 tests/mcp green | 2026-10-03 | 032b308 | [261003-hhj-fix-cr-01-mcp-single-flight-inference-as](./quick/261003-hhj-fix-cr-01-mcp-single-flight-inference-as/) |
-| 261003-ij4 | Fix WR-01: dna_interpret runs captum work in the default executor behind a dedicated `_interpret_thread_lock` (CR-01 pattern) — event loop stays responsive during long attributions, the 30s tool timeout actually fires, timeout→retry cannot stack concurrent interpretations; 3 red-then-green regression tests + 223 tests/mcp green | 2026-10-03 | 3fe80bf | [261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca](./quick/261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca/) |
-| 261003-jpr | Fix IN-01: absence guards on the three sl7 patch installers in transformers_compat.py (configuration_utils/cache_utils/modeling_utils bare imports → standard try/except no-op guards); new TestTransformersAbsenceContract dynamically collects installers so future ones are auto-covered (11 items, roster pin + apply_patches survival); RED 4F/83P → GREEN 87P, tests/utils 129 green | 2026-10-03 | 56a72c9 | [261003-jpr-fix-in-01-the-three-new-patch-installers](./quick/261003-jpr-fix-in-01-the-three-new-patch-installers/) |
-| 261003-r73 | Close Phase-06 review warnings WR-01/02/03: nightly CI legs install .[base,fla] + typed importorskip guards on the two slow smokes (WR-01, eb85f7e); CRLF-robust slice_gff_rows — strips \n/\r\n/\r terminators, raises on embedded \r, 2 same-change tests (WR-03, 8d6bd3b); _load_with_fallback exception classifier — env failures skip typed (byte-identical message), dnallm regressions fail, 7 fast tests (WR-02, 1219f0f); 06-REVIEW-DISPOSITION WR-01/02/03 flipped fixed, 35 fast tests green | 2026-10-03 | eb85f7e, 8d6bd3b, 1219f0f | [261003-r73-close-phase-06-review-warnings-wr-01-02-](./quick/261003-r73-close-phase-06-review-warnings-wr-01-02-/) |
-| 261003-ryz | Close Phase-06 review info findings IN-01..06: fetch_sequence path branch releases pyfastx handles + cleans only a .fxi it created, 3 same-change tests (aaf6308); ASCII-only bare-numeric chrom digits (c19999a); import-purity test restores the package attribute + identity guard (3662ea5); Anno label_names re-quoted, one-line diff gate (7790920); fla extra asserted by exact bracket-member parse (2a0ba40); local .scratch/ ignore removed by live masked/unmasked check-ignore evidence — root .gitignore:60 covers it, 06-01 .py-coverage claim corrected (188a4f6); dispositions IN-01..06 fixed, open: 0; 36 fast tests green, branch pushed | 2026-10-03 | aaf6308, c19999a, 3662ea5, 7790920, 2a0ba40, 188a4f6 | [261003-ryz-close-phase-06-review-info-findings-in-0](./quick/261003-ryz-close-phase-06-review-info-findings-in-0/) |
-| 261004-dyw | Showcase display enhancement: PNG mimes everywhere + pgt zoom windows + new combined notebook (window Chr1:5220001-5260000 +5kb flank; pygenometracks adopted, GPL override recorded; leaf-DNase bedGraph + truth GTF + region FASTA committed artifacts) | 2026-10-04 | 4c2e5bd | [261004-dyw-planthelixseek-showcase-notebook-vega-ve](./quick/261004-dyw-planthelixseek-showcase-notebook-vega-ve/) |
-| 12 | gsd-fast: guard all FASTA header interval regex matches against None in the three showcase notebooks (ty Match\|None fix; 4 sites, RuntimeError guard style, mirrors synced, 19 fast tests green) | 2026-10-04 | cbc5735 | — |
-| 13 | gsd-fast: DNAInference/DNATrainer config params dict->Mapping[str, Any] (ty TypedDict assignability for load_config output in notebooks; no mutation sites); 3 contract tests | 2026-10-05 | 86022f7 | — |
-| 14 | gsd-fast: Mutagenesis/Benchmark/DNAInterpret config -> Mapping; Benchmark backfills into a private dict(config) copy (no caller aliasing); contract tests extended to 5 engines + no-alias pin (types.UnionType unwrap lesson); fast-subset 389P | 2026-10-05 | 16a9ffb | — |
-| 261006-cum | Fix pre-existing test_plot_for_regression regression (Mapping fallout, WINDOWS id 16) | 2026-10-06 | 550d311 | [261006-cum-fix-pre-existing-test-plot-for-regressio](./quick/261006-cum-fix-pre-existing-test-plot-for-regressio/) |
-| 261006-lhm | Direct-edit mcp_example notebooks' committed model id to qwen3.5:4b (owner decision 15:27 CST) | 2026-10-06 | 0a5ca0d | [261006-lhm-direct-edit-mcp-example-notebooks-commit](./quick/261006-lhm-direct-edit-mcp-example-notebooks-commit/) |
-| 261006-uq7 | Apply dependabot ruff bump on phs with mamba red-line gates (owner 22:06) | 2026-10-06 | 7cf8458 | [261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m](./quick/261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m/) |
 
 ## Deferred Items
 
@@ -255,4 +234,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Plan Phase 5 with `/gsd-plan-phase 5` (Phase 6 is an independent parallel track if desired)
+- Start the next milestone with /gsd-new-milestone
