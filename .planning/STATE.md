@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.1
-milestone_name: Example Execution Testing & Repair
 status: Awaiting next milestone
 stopped_at: Phase 09 complete — all phases complete
-last_updated: "2026-10-07T07:53:06.609Z"
+last_updated: "2026-10-07T08:26:13.681Z"
 last_activity: 2026-10-07
 last_activity_desc: Milestone v1.1 completed and archived
-state_head: 1d5c287a744a042ad497c76e914ce5f5dc4bd357
+state_head: a982f69df570c7c619032f99956885831ba0106d
 progress:
   total_phases: 5
   completed_phases: 5
   total_plans: 24
   completed_plans: 24
   percent: 100
+milestone_name: Example Execution Testing & Repair
 current_phase: 09
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 Phase: Milestone v1.1 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-07 — Milestone v1.1 completed and archived
+Last activity: 2026-10-07 — Completed quick task 261007-mhz: fix Windows CI leg (pygenometracks platform marker)
 
 ## Performance Metrics
 
@@ -204,6 +204,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261007-mhz | Fix Windows CI leg: gate pygenometracks behind platform_system != 'Windows' marker in notebook extra (pybigwig has no Windows wheel; sdist setup.py dies) + same-change extras-guard literal update | 2026-10-07 | a982f69 | [261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis](./quick/261007-mhz-fix-windows-ci-leg-failure-pybigwig-sdis/) |
 
 ## Deferred Items
 
