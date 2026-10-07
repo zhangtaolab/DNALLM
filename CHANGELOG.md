@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-10-07
+
+### Overview
+
+Example execution release: every artifact under `example/` now executes for real on the nightly GPU runner — 21 notebooks, 3 marimo apps, the helper script, every YAML config through real `load_config()` — with every surfaced error fixed by a same-change regression test. The PlantHelixSeek showcase notebooks reproduce frozen truth-agreement metrics over committed Arabidopsis loci, and the execution-test layer is formally nightly-gated. Milestone v1.1: 32/32 requirements, 5/5 phases verified, 0 audit blockers.
+
+### Added
+
+- Tests: private nbclient execution harness (tmp-sandbox cwd isolation, kernel-kill proof, partial-failure artifacts) executing the entire example tree — final census 196 passed / 1 benign skip / 0 failed on the nightly GPU runner
+- CI: example-nightly job — staged-serial execution, hard census collection gate (197/206 pinned), >=35GiB hygiene floors between stages, `if: always()` artifact uploads, measured runtime budgets
+- CI: `models.lock` grown to 24 revision-pinned rows with a fast-leg consistency guard proven by drift injection; `giants` marker deselects evo-class notebooks from the scheduled census
+- Models: `PlantHelixSeek-CRE`/`-Anno` registry entries (frozen label order, generic route); `dnallm.utils.genomic_coords` coordinate/chrom-name normalization helpers (6 functions, 100% statement coverage)
+- Data: committed <=200kb Arabidopsis showcase loci with truth slices, negative controls, and a frozen selection contract (floors + tolerance bands parsed by the tests at startup)
+- Docs: executed showcase notebooks written back byte-identically into the docs mirror; coverage-expectation page documenting that example execution runs in kernel subprocesses and does not move the coverage gate
+
+### Fixed
+
+- `DNATokenizer` unknown-character crash in the megaDNA handler (library fix, RED-proven regression test)
+- numpy 2.x `np.fromstring` binary-mode regression via a probe-gated shim (`dnallm.utils.transformers_compat`)
+- transformers >= 5.19 device-type query crashing the import chain on CUDA-built torch without a visible GPU — both observed signatures (torch >= 2.6 `RuntimeError`, torch <= 2.5 missing `torch.accelerator` `AttributeError`) answered honestly via compat shim
+- Windows installs failing on `pybigwig` (no Windows wheel): `pygenometracks` gated behind a non-Windows platform marker in the notebook extra
+- Both v1 false-green CI gates closed together with the docs-mirror drift they hid; docs-validation now a required check on dev and main
+- MCP server: single-flight concurrent-inference deadlock (fork-unsafe filelock) and the `dna_interpret` mamba-model crash (captum backward SIGKILLs the server)
+
 ## [0.6.0] - 2026-10-01
 
 ### Overview
