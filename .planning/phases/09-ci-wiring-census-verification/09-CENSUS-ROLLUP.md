@@ -377,4 +377,4 @@ unchanged (8 mcp + 1 giants). Both ci.yml Stage 0.5 carriers re-pinned in the sa
 commit as this addendum; the growth is repair-class (fail-loud pins), zero new
 skips. Example-nightly re-dispatch at the re-pin HEAD: recorded below.
 
-- Example-nightly run of record at the re-pin HEAD: _(pending dispatch — filled in when green)_
+- Example-nightly run of record at the re-pin HEAD: **run 37550730293 (workflow_dispatch @ 86c1fe8, 2026-10-07) — example-nightly job `success`, all steps green** incl. Stage 0.5 census hard-gate passing on the re-pinned 197/206 triple and Stage 1 torch-heavy census; test-mamba + coverage-nightly legs of the same dispatch were still executing when this was recorded (their green is corroborating, not gap-critical — the gap's missing item was the census ratchet + example-nightly).
