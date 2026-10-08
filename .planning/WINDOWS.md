@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 7
 waived_count: 3
 fixed_count: 9
-total_count: 18
-last_updated: 2026-10-08T04:30:00.000Z
+total_count: 19
+last_updated: 2026-10-08T08:00:06.495Z
 ---
 
 # Broken Windows Ledger
@@ -33,6 +33,7 @@ last_updated: 2026-10-08T04:30:00.000Z
 | 16 | 09 | unmet-truth | tests/benchmark/test_benchmark.py |  | Pre-existing fast-lane failure (found by 09-02 verify, reproduced at plan-start 3557e0b): TestBenchmark::test_plot_for_regression pandas TypeError float() argument ... not dict via _astype_nansafe in the plot path; not caused by any Phase 09 change (09-02 delta +8P/+0F/+0S); likely quick-task 13/14 Mapping fallout; logged in 09 deferred-items.md | fixed |  | 2026-10-05T15:45:36.353Z | 2026-10-06T01:31:42.584Z |
 | 17 | quick-261007-vxx | unmet-truth | docs/user_guide/fine_tuning/getting_started.md |  | Push of ruff-format fix commit 97a7c30 to origin/dev blocked by GitHub receive-side Internal Server Error (4 attempts, Request IDs 8832:3513C8/C942:3774A8/B48E:2E4A69/991C:246D9C, 2026-10-07 15:07-15:12Z); local ruff format --check green at dev 97a7c30; re-run 'git push origin dev' when GitHub receive recovers to unblock ci.yml format gates + PR #40 | fixed | GitHub receive recovered; orchestrator re-push at 2026-10-07T15:17:44Z landed cfc8346..97a7c30 on origin/dev; CI + Docs Validation re-triggered | 2026-10-07T15:20:00.000Z | 2026-10-07T15:18:00.000Z |
 | 18 | quick-261008-env | deviation | pyproject.toml |  | Windows fla installability gap (env adaptation 2026-10-08): pip install -e '.[fla]' on Windows succeeds but leaves fla broken - torch Windows wheels declare no triton dependency (Linux pulls it) and fla-core requires triton only under its [cuda]/[cpu] extras which the pyproject deliberately avoids, so fla imports top-level but fla.ops.* raises ModuleNotFoundError and test_chunk_kda_importable_when_fla_installed FAILS instead of skipping. Remedy installed in dnallm-cuda: triton-windows==3.7.1.post27 (community wheels; upstream triton ships no win_amd64) - KDA chunk kernel proven compiling+executing on RTX 5080 sm_120. Open owner decision: whether to declare triton-windows behind a Windows platform marker in the fla extra (third-party fork enters declared deps) or document the manual step | open |  | 2026-10-08T04:30:00.000Z |  |
+| 19 | quick-261008-wfx | deviation | tests/examples/test_plant_helixseek_showcase.py |  | CRE showcase execution test requires the bedtools CLI and fails loud by design (test line ~480 asserts shutil.which('bedtools')); bedtools has no Windows build, so local Windows full-example runs must --deselect test_cre_notebook_executes_within_selection_bands (workaround in daily use since 2026-10-08). Open question: WSL-scope bedtools provisioning or permanent documented deselect; Linux nightly lanes unaffected | open |  | 2026-10-08T08:00:06.495Z |  |
 
 ````json
 [
@@ -269,6 +270,19 @@ last_updated: 2026-10-08T04:30:00.000Z
     "recorded_at": "2026-10-08T04:30:00.000Z",
     "resolved_at": null,
     "milestone": null
+  },
+  {
+    "id": 19,
+    "kind": "deviation",
+    "phase": "quick-261008-wfx",
+    "file": "tests/examples/test_plant_helixseek_showcase.py",
+    "line": null,
+    "description": "CRE showcase execution test requires the bedtools CLI and fails loud by design (test line ~480 asserts shutil.which('bedtools')); bedtools has no Windows build, so local Windows full-example runs must --deselect test_cre_notebook_executes_within_selection_bands (workaround in daily use since 2026-10-08). Open question: WSL-scope bedtools provisioning or permanent documented deselect; Linux nightly lanes unaffected",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-08T08:00:06.495Z",
+    "resolved_at": null,
+    "milestone": "v1.1"
   }
 ]
 ````

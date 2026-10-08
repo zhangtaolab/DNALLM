@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Quick task 261008-env complete — Windows dnallm-cuda adapted to 0.7.1 (fla+triton-windows proven on RTX 5080; WINDOWS.md id 18); full fast-lane attempt killed by system memory pressure mid-run (not a test failure) — re-run on request
-last_updated: "2026-10-08T04:36:00.000Z"
+stopped_at: Quick task 261008-wfx complete — full local pytest (incl. examples) run on Windows: main 1792P/8S/0F + examples after repair 85P/11S/0F (8 first-exposure failures fixed with same-change tests); remaining Windows limitation: CRE test needs bedtools (WINDOWS id 19, local deselect)
+last_updated: "2026-10-08T06:30:00.000Z"
 last_activity: 2026-10-08
-last_activity_desc: "Quick task 261008-env: Windows dnallm-cuda env adaptation to 0.7.1 deps + fla/triton-windows"
+last_activity_desc: "Quick task 261008-wfx: Windows example-lane first-exposure fixes (marimo resolver, pybedtools/pgt gates, CIM kernel count)"
 state_head: 6a366b5979267973c57c566d64e8150b83fb73cf
 milestone_name: Example Execution Testing & Repair
 current_phase: 09
@@ -217,6 +217,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261007-xbz | Bump package version 0.7.0 → 0.7.1 across all three surfaces (pyproject line 3, dnallm/version.py, CHANGELOG 0.7.1 entry) with owner-rule pytest trio green; trailer-free commit b2410c1 pushed to origin/dev first attempt — dev HEAD is the v0.7.1 release tag target pending PR #40 | 2026-10-08 | b2410c1 | [261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr](./quick/261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr/) |
 | 261008-0h5 | Note nightly-only test lanes in CONTRIBUTING (coverage-nightly, example-nightly, test-mamba) + CI-compat checklist pointer to tests/TESTING.md | 2026-10-08 | 6a366b5 | [261008-0h5-add-a-short-nightly-lanes-note-to-contri](./quick/261008-0h5-add-a-short-nightly-lanes-note-to-contri/) |
 | 261008-env | Windows env adaptation (dnallm-cuda): editable base extras re-synced to 0.7.1 (langchain-ollama+ollama, ruff 0.16.10, ipython 9.17.1→8.39.0 per notebook pin, decorator); fla 0.5.2 + triton-windows 3.7.1.post27 installed — KDA chunk kernel proven on RTX 5080 sm_120; fla contract tests 6/6, 2008 tests collect clean; torch 2.11.0+cu130 untouched; WINDOWS.md id 18 records the fla-without-triton trap (owner decision: declare triton-windows or document); bookkeeping-only task (no repo code change) | 2026-10-08 | — | — |
+| 261008-wfx | Windows first-exposure fixes for the example execution lane (full local run 261008: main 1792P/8S, examples 188P/8S/8F → all 8 failures repaired): marimo CLI resolver learned Windows Scripts\ layout (_resolve_marimo_cli, 3 real exports green); pybedtools probe gates for the NER notebook (active-lane gate map, census parametrization untouched) + generate_bpe_dataset.py script (gate fires before rice downloads); pygenometracks CLI gates for anno/combined showcase zoom cells; _kernel_count Windows branch via PowerShell CIM (fail-loud on unparseable). 11 same-change contract tests; re-run 85P/11S/0F | 2026-10-08 | (this task) | — |
 
 ## Deferred Items
 
@@ -235,8 +236,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-08T04:50:00.000Z
-Stopped at: Quick task 261008-env (Windows dnallm-cuda adaptation) complete and committed — full fast-lane verification attempt was killed by system memory pressure mid-run (Claude Code reaper, not a test failure); fla contract 6/6 + 2008-collected + GPU kernel proof stand; re-run the full lane on request. Both prior in-flight items resolved: example-nightly dispatch run 37650818114 @420fc19 leg SUCCESS (coverage-nightly/test-mamba legs of that dispatch were cancelled post-completion); dev CI green at 80179ba incl. PR #40 checks. HANDOFF.json/.continue-here retired (contents folded into Pending Todos above).
+Last session: 2026-10-08T06:30:00.000Z
+Stopped at: Quick task 261008-wfx (Windows example-lane fixes) complete — full local pytest incl. examples validated on the Windows box: main suite 1792P/8S/0F (13:56), examples 188P/8S/8F pre-fix → 85P/11S/0F on the repaired subset re-run (3 real marimo exports green, 5 honest typed skips). Windows run recipe: PYTHONUTF8=1, -m "not giants", deselect the 2 HF/ModelScope real-connection tests + CRE (bedtools, WINDOWS id 19). Env work 261008-env committed at 5f4029c; wfx commits follow.
 Resume file: None
 
 ## Deferred Verification
