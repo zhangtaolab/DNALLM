@@ -2,10 +2,10 @@
 gsd_state_version: "1.0"
 milestone: v1.1
 status: Awaiting next milestone
-stopped_at: Quick task 261008-0h5 complete — CONTRIBUTING nightly-lanes note (6a366b5) pushed; example-nightly dispatch verification + 420fc19 CI watch in flight
-last_updated: "2026-10-07T16:32:00.000Z"
+stopped_at: Quick task 261008-env complete — Windows dnallm-cuda adapted to 0.7.1 (fla+triton-windows proven on RTX 5080; WINDOWS.md id 18); full fast-lane attempt killed by system memory pressure mid-run (not a test failure) — re-run on request
+last_updated: "2026-10-08T04:36:00.000Z"
 last_activity: 2026-10-08
-last_activity_desc: "Quick task 261008-0h5: CONTRIBUTING.md nightly-only lanes note + CI-compat pointer (6a366b5)"
+last_activity_desc: "Quick task 261008-env: Windows dnallm-cuda env adaptation to 0.7.1 deps + fla/triton-windows"
 state_head: 6a366b5979267973c57c566d64e8150b83fb73cf
 milestone_name: Example Execution Testing & Repair
 current_phase: 09
@@ -186,6 +186,8 @@ Recent decisions affecting current work (v1.1 roadmap):
 
 ### Pending Todos
 
+- [folded from 2026-10-07 handoff, still open] Ledger items: python floor decision (0.8.0 if done — 0.7.0/0.7.1 consumed; 3.10 EOL 2026-10-31; requires-python still >=3.10), delete unreferenced doc_mocks.py entries (CustomMetric/fasta_to_df), README:345+server.py:97 `config/` path pattern, quick_start "NER" task-type line, MCP client `_call_tool` naming mismatch (latent client/server bug, EXPECTED_TOOLS authoritative)
+- [folded from 2026-10-07 handoff, still open] Post-PR-#40-merge unlock: D-04 feasibility.yml dispatch (needs workflow on default branch); optional 49-doc post-fix re-verification (belt-and-suspenders; fix agents self-verified, CI green)
 - [Owner decision 2026-10-04] BEFORE Phase 9 discuss/plan: refresh knowledge artifacts — run `/gsd-map-codebase` (refresh .planning/codebase/ maps, the direct planner/researcher input) then `/gsd-graphify` (rebuild .planning/graphs/). Trigger: Phase 8 execution completes + verification/transition done. Both maps are pre-v1.1-execution stale (2026-09-29 era); the plan-time drift gate will otherwise fire red at Phase 9 planning.
 - Next notebook round (owner-scoped 2026-10-02, "门控的留在下一轮"): gated families — generation_evo_models, generation_megaDNA, finetune_custom_head, lora_finetune ×2 (evo2/megaDNA/mamba prerequisites per 05-FEASIBILITY.md); mcp_example ×2 DONE 261003-csd (both green in the gated lane); finetune_generation megaDNA half (now honestly gated via _gate_megadna)
 - TypedDict pass for `load_config` (owner chose option A, 2026-10-02): `dnallm/configuration/configs.py:495` returns `dict[str, BaseModel]` → per-key TypedDict (task→TaskConfig etc.); coordinated update of `dict[str, BaseModel]` consumers (DNAInference/DNATrainer/cli) + tests in same change; kills IDE pyrefly `invalid-argument-type` on notebook `configs['task']` calls
@@ -214,6 +216,7 @@ Recent decisions affecting current work (v1.1 roadmap):
 | 261007-vxx | Fix CI ruff-format gate: ruff-format fenced Python blocks in 3 docs pages (push survived a GitHub receive 500 outage — WINDOWS id 17 resolved) | 2026-10-07 | 97a7c30 | [261007-vxx-fix-ci-ruff-format-failure-run-ruff-form](./quick/261007-vxx-fix-ci-ruff-format-failure-run-ruff-form/) |
 | 261007-xbz | Bump package version 0.7.0 → 0.7.1 across all three surfaces (pyproject line 3, dnallm/version.py, CHANGELOG 0.7.1 entry) with owner-rule pytest trio green; trailer-free commit b2410c1 pushed to origin/dev first attempt — dev HEAD is the v0.7.1 release tag target pending PR #40 | 2026-10-08 | b2410c1 | [261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr](./quick/261007-xbz-bump-package-version-0-7-0-to-0-7-1-pypr/) |
 | 261008-0h5 | Note nightly-only test lanes in CONTRIBUTING (coverage-nightly, example-nightly, test-mamba) + CI-compat checklist pointer to tests/TESTING.md | 2026-10-08 | 6a366b5 | [261008-0h5-add-a-short-nightly-lanes-note-to-contri](./quick/261008-0h5-add-a-short-nightly-lanes-note-to-contri/) |
+| 261008-env | Windows env adaptation (dnallm-cuda): editable base extras re-synced to 0.7.1 (langchain-ollama+ollama, ruff 0.16.10, ipython 9.17.1→8.39.0 per notebook pin, decorator); fla 0.5.2 + triton-windows 3.7.1.post27 installed — KDA chunk kernel proven on RTX 5080 sm_120; fla contract tests 6/6, 2008 tests collect clean; torch 2.11.0+cu130 untouched; WINDOWS.md id 18 records the fla-without-triton trap (owner decision: declare triton-windows or document); bookkeeping-only task (no repo code change) | 2026-10-08 | — | — |
 
 ## Deferred Items
 
@@ -232,8 +235,8 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-07T16:14:41.785Z
-Stopped at: Quick task 261007-xbz complete — version bumped 0.7.0 -> 0.7.1, commit b2410c1 pushed to origin/dev (first attempt)
+Last session: 2026-10-08T04:50:00.000Z
+Stopped at: Quick task 261008-env (Windows dnallm-cuda adaptation) complete and committed — full fast-lane verification attempt was killed by system memory pressure mid-run (Claude Code reaper, not a test failure); fla contract 6/6 + 2008-collected + GPU kernel proof stand; re-run the full lane on request. Both prior in-flight items resolved: example-nightly dispatch run 37650818114 @420fc19 leg SUCCESS (coverage-nightly/test-mamba legs of that dispatch were cancelled post-completion); dev CI green at 80179ba incl. PR #40 checks. HANDOFF.json/.continue-here retired (contents folded into Pending Todos above).
 Resume file: None
 
 ## Deferred Verification
