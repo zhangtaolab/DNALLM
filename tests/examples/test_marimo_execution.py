@@ -18,6 +18,9 @@ enforces nothing is committed).
 
 from __future__ import annotations
 
+import shutil
+import sys
+import sysconfig
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -26,6 +29,7 @@ import pytest
 from tests.examples._execution import (
     EXAMPLE_DIR,
     MARIMO_EXEC_SPECS,
+    _resolve_marimo_cli,
     assert_tree_clean,
     run_marimo_app,
     seed_sandbox,
@@ -54,6 +58,50 @@ MARIMO_EXPORT_DEFAULTS: dict[str, tuple[str, ...]] = {
 # embedded <marimo-code> element; this version has no marimo-root element).
 # An empty-shell export (or a truncated one) fails this check.
 MARIMO_EXPORT_MARKER = "marimo-code"
+
+
+class TestMarimoCliResolution:
+    """Cross-platform CLI-discovery contracts (Windows first exposure, 2026-10-08).
+
+    POSIX layouts put console scripts in ``bin/`` beside the interpreter;
+    Windows conda/venv layouts put them in ``Scripts/`` -- the resolver
+    must find the installed CLI under both, and fail loudly (never
+    silently) when nothing resolves.
+    """
+
+    def test_resolves_installed_cli_on_this_interpreter(self) -> None:
+        """marimo is installed in the test env (notebook extra) -- it must resolve."""
+        cli = _resolve_marimo_cli()
+        assert cli.is_file(), f"resolved a non-existent CLI path: {cli}"
+        assert "marimo" in cli.name
+
+    def test_missing_cli_raises_value_error(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """All candidates missing + PATH empty -> the descriptive ValueError."""
+        fake_exe = tmp_path / "python.exe"
+        fake_exe.write_text("", encoding="utf-8")
+        monkeypatch.setattr(sys, "executable", str(fake_exe))
+        monkeypatch.setattr(sysconfig, "get_path", lambda *_args, **_kwargs: str(tmp_path))
+        monkeypatch.setattr(shutil, "which", lambda *_args, **_kwargs: None)
+        with pytest.raises(ValueError, match="marimo CLI not found"):
+            _resolve_marimo_cli()
+
+    def test_windows_scripts_layout_resolves(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A Scripts\\marimo.exe beside a root python.exe resolves (conda/venv layout)."""
+        (tmp_path / "Scripts").mkdir()
+        cli_exe = tmp_path / "Scripts" / "marimo.exe"
+        cli_exe.write_text("", encoding="utf-8")
+        fake_exe = tmp_path / "python.exe"
+        fake_exe.write_text("", encoding="utf-8")
+        monkeypatch.setattr(sys, "executable", str(fake_exe))
+        monkeypatch.setattr(
+            sysconfig, "get_path", lambda *_args, **_kwargs: str(tmp_path / "Scripts")
+        )
+        monkeypatch.setattr(shutil, "which", lambda *_args, **_kwargs: None)
+        assert _resolve_marimo_cli() == cli_exe
 
 
 # The sandbox fixture lives in this module (not a tests/examples/conftest.py):

@@ -10,6 +10,7 @@ download genomes.
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 import sys
 import time
@@ -23,6 +24,7 @@ from tests.examples._execution import (
     EXAMPLE_DIR,
     assert_tree_clean,
     environment_unavailable_skip,
+    optional_dep_skip,
     run_example_script,
     seed_sandbox,
 )
@@ -123,6 +125,46 @@ def _seed_rice_input(name: str, url: str, sandbox: Path) -> None:
     )
 
 
+def _gate_script_pybedtools() -> None:
+    """Probe pybedtools before any rice input is fetched (Windows first exposure).
+
+    generate_bpe_dataset.py imports ``pybedtools`` at line 7 for its
+    genome-interval prep; the dev extra excludes it on Windows (pyproject
+    platform marker).  Present -> plain return (the script executes for
+    real, Linux lanes unchanged); absent -> the honest optional-dep typed
+    skip, fired BEFORE the rice-input downloads so a gated box never
+    spends network on inputs it cannot consume.
+    """
+    spec = importlib.util.find_spec("pybedtools")
+    if spec is None:
+        optional_dep_skip(
+            "execute generate_bpe_dataset.py (prerequisites install-gated)",
+            evidence="find_spec('pybedtools') is None",
+        )
+
+
+class TestScriptGateContracts:
+    """Fast contracts for the script-lane probe gate (same-change tests)."""
+
+    def test_gate_skips_typed_when_pybedtools_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An absent probe raises the optional-dep typed skip with evidence."""
+        from _pytest.outcomes import Skipped
+
+        monkeypatch.setattr(
+            importlib.util, "find_spec", lambda name: None if name == "pybedtools" else object()
+        )
+        with pytest.raises(Skipped) as excinfo:
+            _gate_script_pybedtools()
+        message = str(excinfo.value)
+        assert message.startswith("optional-dep: "), message
+        assert "find_spec('pybedtools') is None" in message
+
+    def test_gate_passes_when_pybedtools_resolves(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A resolved probe returns silently -- the script executes for real."""
+        monkeypatch.setattr(importlib.util, "find_spec", lambda name: object())
+        _gate_script_pybedtools()
+
+
 @pytest.mark.slow
 @pytest.mark.timeout(3600)
 class TestExampleScriptExecution:
@@ -130,6 +172,7 @@ class TestExampleScriptExecution:
 
     def test_generate_bpe_dataset_produces_artifact(self, tmp_path: Path) -> None:
         """Run generate_bpe_dataset.py in-sandbox and prove a fresh pkl results."""
+        _gate_script_pybedtools()
         sandbox = seed_sandbox(SCRIPT_DIR, tmp_path)
         for name, url in RICE_INPUT_URLS.items():
             _seed_rice_input(name, url, sandbox)

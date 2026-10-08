@@ -169,7 +169,36 @@ def _kernel_count() -> int:
     against a captured pre-test baseline (delta-zero), never against
     absolute zero -- unrelated jupyter servers on the box are none of
     this test's business.
+
+    Windows has no pgrep; the count comes from a PowerShell CIM query of
+    python-named processes whose command line carries the pattern.  The
+    Name filter also keeps the query self-match-safe: the powershell
+    process hosting the pattern text is excluded by name, and the pytest
+    process's own argv never contains it.
     """
+    if sys.platform == "win32":
+        # ruff: ignore[start-process-with-partial-path]
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "(Get-CimInstance Win32_Process -Filter \"Name LIKE 'python%'\""
+                " | Where-Object {$_.CommandLine -match 'ipykernel_launcher'}).Count",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        try:
+            return int(result.stdout.strip())
+        except ValueError as exc:
+            # Fail loud, never fail-zero: a silently-empty count would make
+            # the delta-zero poll vacuously green (the false-green class
+            # this harness exists to prevent).
+            raise RuntimeError(
+                f"unparseable kernel-count output: {result.stdout!r} (stderr: {result.stderr!r})"
+            ) from exc
     # ruff: ignore[start-process-with-partial-path]
     result = subprocess.run(
         ["pgrep", "-f", "ipykernel_launcher"],
@@ -197,6 +226,9 @@ class TestNotebookExecution:
         notebook_sandbox: Path,
     ) -> None:
         """Execute the whole notebook in a tmp sandbox and prove it stays error-free."""
+        gate = _ACTIVE_NOTEBOOK_GATES.get(nb_path.relative_to(EXAMPLE_DIR).as_posix())
+        if gate is not None:
+            gate(nb_path.relative_to(EXAMPLE_DIR).as_posix())
         spec = NOTEBOOK_EXEC_SPECS[str(nb_path)]
         sandbox = notebook_sandbox
         artifacts = tmp_path / "artifacts"
@@ -259,6 +291,54 @@ class TestKernelLifecycle:
         while time.time() < deadline and _kernel_count() > before:
             time.sleep(0.5)
         assert _kernel_count() == before, "hung kernel survived the harness"
+
+    def test_kernel_count_returns_nonnegative_int(self) -> None:
+        """The platform counter answers a plain non-negative int without raising.
+
+        Windows first exposure (2026-10-08): the CIM/powershell branch must
+        behave like the pgrep branch -- an int, never a crash, never a
+        silent zero on unparseable output (that raises, fail-loud).
+        """
+        count = _kernel_count()
+        assert isinstance(count, int)
+        assert count >= 0
+
+
+class TestActiveNotebookGates:
+    """Contracts for the active-lane probe gates (Windows first exposure, 2026-10-08)."""
+
+    def test_gate_map_keys_are_active_notebook_ids(self) -> None:
+        """Every gate-map key must be a real ACTIVE_NOTEBOOKS id (typo guard)."""
+        active_ids = {p.relative_to(EXAMPLE_DIR).as_posix() for p in ACTIVE_NOTEBOOKS}
+        assert set(_ACTIVE_NOTEBOOK_GATES) <= active_ids
+
+    def test_pybedtools_gate_passes_when_module_resolves(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A resolved probe returns silently -- Linux lanes execute for real."""
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "_probe_module",
+            lambda name: (True, f"find_spec({name!r}) resolved"),
+        )
+        _gate_pybedtools("notebooks/finetune_NER_task/data_generation_and_inference.ipynb")
+
+    def test_pybedtools_gate_skips_typed_when_module_absent(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An absent probe raises the optional-dep typed skip with evidence."""
+        from _pytest.outcomes import Skipped
+
+        monkeypatch.setattr(
+            sys.modules[__name__],
+            "_probe_module",
+            lambda name: (False, f"find_spec({name!r}) is None"),
+        )
+        with pytest.raises(Skipped) as excinfo:
+            _gate_pybedtools("notebooks/finetune_NER_task/data_generation_and_inference.ipynb")
+        message = str(excinfo.value)
+        assert message.startswith("optional-dep: "), message
+        assert "find_spec('pybedtools') is None" in message
 
 
 class TestPartialFailureArtifacts:
@@ -1312,6 +1392,31 @@ def _gate_megadna_isolated(nb_name: str) -> None:
 def _gate_mamba(nb_name: str) -> None:
     """PlantCAD remote code requires the mamba_ssm optional extra."""
     _gate_optional_deps(nb_name, ("mamba_ssm",))
+
+
+def _gate_pybedtools(nb_name: str) -> None:
+    """Genome-interval prep imports pybedtools (Windows-excluded dev extra).
+
+    The rice data-generation notebook's first import cell pulls
+    ``pybedtools``, a dev-extra dependency deliberately excluded on
+    Windows (pyproject platform marker; bedtools/pysam have no Windows
+    story).  Probe-then-execute (D-05 pattern): present -> the notebook
+    executes for real unchanged (Linux lanes); absent -> the honest
+    optional-dep typed skip carrying the probe evidence.
+    """
+    _gate_optional_deps(nb_name, ("pybedtools",))
+
+
+# Active-lane probe gates (first Windows exposure, 2026-10-08): notebooks
+# that stay in ACTIVE_NOTEBOOKS -- keeping the census parametrization and
+# the rice-cache sandbox extras byte-identical -- but whose execution
+# needs an optional dependency probed first.  Keys are POSIX ids relative
+# to EXAMPLE_DIR (the same form as _NOTEBOOK_EXTRA_INPUTS); the test body
+# consults this map before run_notebook.  A gate that passes changes
+# nothing on Linux lanes; a gate that fails produces the typed skip.
+_ACTIVE_NOTEBOOK_GATES: dict[str, object] = {
+    "notebooks/finetune_NER_task/data_generation_and_inference.ipynb": _gate_pybedtools,
+}
 
 
 # Gated parametrization: notebook id (POSIX relative to EXAMPLE_DIR) plus

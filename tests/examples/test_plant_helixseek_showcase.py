@@ -43,9 +43,52 @@ from tests.examples._execution import (
     NOTEBOOK_EXEC_SPECS,
     REPO_ROOT,
     assert_tree_clean,
+    optional_dep_skip,
     run_notebook,
     seed_sandbox,
 )
+
+
+def _gate_pygenometracks(action: str) -> None:
+    """Skip typed when the pygenometracks CLI is absent (Windows-excluded).
+
+    The anno/combined zoom cells shell out to the ``pygenometracks`` CLI
+    (subprocess run with check semantics); the notebook extra excludes pgt
+    on Windows (261007-mhz owner decision -- it pulls pybigwig, which has
+    no Windows wheel), so those cells cannot execute there.  Linux lanes
+    resolve the CLI and execute the notebooks for real, unchanged.
+    """
+    if shutil.which("pygenometracks") is None:
+        optional_dep_skip(
+            action,
+            evidence=(
+                "pygenometracks CLI not on PATH (Windows-excluded notebook extra, "
+                "261007-mhz: pgt pulls pybigwig, no Windows wheel)"
+            ),
+        )
+
+
+class TestPygenometracksGateContracts:
+    """Fast contracts for the zoom-cell CLI gate (same-change tests)."""
+
+    def test_gate_skips_typed_when_cli_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A missing CLI raises the optional-dep typed skip with evidence."""
+        from _pytest.outcomes import Skipped
+
+        monkeypatch.setattr(
+            shutil, "which", lambda name: None if name == "pygenometracks" else "/usr/bin/other"
+        )
+        with pytest.raises(Skipped) as excinfo:
+            _gate_pygenometracks("execute some notebook (pygenometracks zoom cell)")
+        message = str(excinfo.value)
+        assert message.startswith("optional-dep: "), message
+        assert "pygenometracks CLI not on PATH" in message
+
+    def test_gate_passes_when_cli_resolves(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A resolvable CLI returns silently -- Linux lanes execute for real."""
+        monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}" if name else None)
+        _gate_pygenometracks("execute some notebook (pygenometracks zoom cell)")
+
 
 # Committed showcase surface (Phase-6 data + Phase-7 notebooks + 261004-dyw).
 SHARED_DATA = EXAMPLE_DIR / "notebooks" / "plant_helixseek_shared" / "data"
@@ -555,6 +598,7 @@ def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
 @pytest.mark.timeout(ANNO_TEST_TIMEOUT_S)
 def test_anno_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
     """Re-execute the committed Anno notebook in-sandbox; assert parsed bands (D-13/D-14)."""
+    _gate_pygenometracks("execute plant_helixseek_anno.ipynb (pygenometracks zoom cell)")
     spec = NOTEBOOK_EXEC_SPECS[str(ANNO_NB)]
     # Pitfall 6: the harness contract requires cell_timeout < the outer mark,
     # else pytest-timeout preempts nbclient's clean CellTimeoutError handling.
@@ -652,6 +696,7 @@ def test_combined_notebook_executes_with_display_figure(tmp_path: Path) -> None:
     region FASTA is also seeded explicitly as the notebook's single tuple
     extra (owner-directed, belt-and-braces).
     """
+    _gate_pygenometracks("execute plant_helixseek_combined.ipynb (pygenometracks zoom cell)")
     spec = NOTEBOOK_EXEC_SPECS[str(COMBINED_NB)]
     # Pitfall 6: the harness contract requires cell_timeout < the outer mark,
     # else pytest-timeout preempts nbclient's clean CellTimeoutError handling.

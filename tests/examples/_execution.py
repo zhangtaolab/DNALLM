@@ -54,6 +54,7 @@ import os
 import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
+import sysconfig
 from pathlib import Path
 
 import nbformat
@@ -940,6 +941,47 @@ def ensure_evo_kernel() -> Path:
     return spec_dir
 
 
+def _resolve_marimo_cli() -> Path:
+    """Resolve the ``marimo`` console script across POSIX and Windows layouts.
+
+    Candidate order: a script named ``marimo``/``marimo.exe`` beside the
+    running interpreter (POSIX venv ``bin/`` sits next to ``python``), then
+    the interpreter's ``sysconfig`` scripts directory (``bin/`` on POSIX,
+    ``Scripts/`` on Windows -- the conda/venv console-script home where
+    ``pip install marimo`` puts ``marimo.exe``), then ``PATH``.  The first
+    existing file wins; nothing existing raises ``ValueError``.
+
+    Returns:
+        Path of the resolved marimo CLI.
+
+    Raises:
+        ValueError: no ``marimo`` console script resolvable beside the
+            interpreter, in the scripts directory, nor on ``PATH``.
+    """
+    exe_dir = Path(sys.executable).parent
+    scripts_dir = Path(sysconfig.get_path("scripts"))
+    seen: set[Path] = set()
+    for candidate in (
+        exe_dir / "marimo",
+        exe_dir / "marimo.exe",
+        scripts_dir / "marimo",
+        scripts_dir / "marimo.exe",
+    ):
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.is_file():
+            return candidate
+    which = shutil.which("marimo")
+    if which is not None:
+        return Path(which)
+    raise ValueError(
+        "marimo CLI not found: expected a console script next to "
+        f"{sys.executable}, in {scripts_dir}, or a marimo on PATH -- the "
+        "notebook extra must be installed in the active venv"
+    )
+
+
 def run_marimo_app(
     app_path: Path,
     sandbox: Path,
@@ -971,8 +1013,8 @@ def run_marimo_app(
         bytes on success).
 
     Raises:
-        ValueError: no ``marimo`` console script resolvable next to the
-            running interpreter nor on ``PATH``.
+        ValueError: no ``marimo`` console script resolvable (see
+            :func:`_resolve_marimo_cli`).
         subprocess.TimeoutExpired: the export exceeded ``timeout``; the
             child is killed first (``subprocess.run`` semantics: the
             timeout expiry kills and waits for the child, then the
@@ -981,16 +1023,7 @@ def run_marimo_app(
             undersized (< 1000 bytes); the error artifact carries the
             captured stdout/stderr for the census evidence.
     """
-    marimo_bin = Path(sys.executable).with_name("marimo")
-    if not marimo_bin.is_file():
-        which = shutil.which("marimo")
-        if which is None:
-            raise ValueError(
-                "marimo CLI not found: expected a console script next to "
-                f"{sys.executable} or a marimo on PATH -- the notebook extra "
-                "must be installed in the active venv"
-            )
-        marimo_bin = Path(which)
+    marimo_bin = _resolve_marimo_cli()
     out_dir = artifact_dir if artifact_dir is not None else sandbox
     out_dir.mkdir(parents=True, exist_ok=True)
     html_out = out_dir / "_census_export.html"
