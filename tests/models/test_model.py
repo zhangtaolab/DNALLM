@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import types
+from pathlib import Path
 import pytest
 import torch
 import torch.nn as nn
@@ -1470,6 +1471,200 @@ class TestRandomInit:
             from dnallm.models.tokenizer import DNAOneHotTokenizer
 
             assert isinstance(tokenizer, DNAOneHotTokenizer)
+
+    # ── slow lane: two-architecture acceptance (D-06) + difference proof ──
+
+    _MS_DNABERT = "zhangtaolab/plant-dnabert-BPE"
+    _MS_MAMBA = "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+
+    @staticmethod
+    def _skip_if_model_unavailable(model_id):
+        """Typed slow-lane skip: run when the model is cached, else only if the hub is reachable."""
+        cache_dir = Path.home() / ".cache" / "modelscope" / "hub" / "models" / model_id
+        if (cache_dir / "config.json").is_file():
+            return
+        import socket
+
+        try:
+            socket.create_connection(("modelscope.cn", 443), timeout=5).close()
+        except OSError as e:
+            pytest.skip(
+                f"network-unavailable: {model_id} not cached and "
+                f"modelscope.cn unreachable ({type(e).__name__})"
+            )
+
+    @staticmethod
+    def _digest_table(named_iter):
+        """Digest every tensor yielded by ``named_iter`` as {name: (digest, dtype)}."""
+        return {name: (_tensor_digest(t), t.dtype) for name, t in named_iter()}
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(900)
+    def test_random_init_generic_bert_family_modelscope(self, caplog):
+        """D-06 first member: generic AutoModel (BERT-style) from_config on the modelscope route.
+
+        Asserts banner + per-tensor hash lines, same-seed reload
+        reproducibility of the full hash table, tokenizer loading, and one
+        CPU forward pass.
+        """
+        self._skip_if_model_unavailable(self._MS_DNABERT)
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        tables = []
+        for _ in range(2):
+            caplog.clear()
+            with caplog.at_level(logging.INFO):
+                model, tokenizer = load_model_and_tokenizer(
+                    self._MS_DNABERT,
+                    task_config,
+                    source="modelscope",
+                    random_init=True,
+                    random_init_seed=42,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        assert "randomly initialized" in caplog.text
+        # Full BERT parameter census per tensor (embeddings, encoder layers,
+        # tied LM head alias) — a single global hash would hide leftovers.
+        assert len(tables[0]) >= 100
+        assert tables[0] == tables[1]
+        assert tokenizer is not None
+
+        model = model.to("cpu")
+        enc = tokenizer("ACGTACGTACGTACGTACGT", return_tensors="pt")
+        with torch.no_grad():
+            out = model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"])
+        assert tuple(out.logits.shape[:2]) == tuple(enc["input_ids"].shape[:2])
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(900)
+    def test_random_init_mamba_trust_remote_code_modelscope(self, caplog):
+        """D-06 second member (allowlist): the Mamba trust_remote_code from_config branch (A6).
+
+        Plant DNAMamba loads through the generic AutoModelForCausalLM path —
+        no special handler — and its remote-code config exercises
+        ``from_config(trust_remote_code=True)``.
+        """
+        self._skip_if_model_unavailable(self._MS_MAMBA)
+        task_config = TaskConfig(task_type="generation", num_labels=None)
+
+        tables = []
+        for _ in range(2):
+            caplog.clear()
+            with caplog.at_level(logging.INFO):
+                model, tokenizer = load_model_and_tokenizer(
+                    self._MS_MAMBA,
+                    task_config,
+                    source="modelscope",
+                    random_init=True,
+                    random_init_seed=42,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        assert "randomly initialized" in caplog.text
+        assert len(tables[0]) >= 10
+        assert tables[0] == tables[1]
+        assert tokenizer is not None
+
+        model = model.to("cpu")
+        enc = tokenizer("ACGTACGTACGTACGTACGT", return_tensors="pt")
+        with torch.no_grad():
+            out = model(input_ids=enc["input_ids"], attention_mask=enc.get("attention_mask"))
+        assert tuple(out.logits.shape[:2]) == tuple(enc["input_ids"].shape[:2])
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(1200)
+    def test_random_init_per_tensor_difference_vs_pretrained(self):
+        """Pitfall 4c: every float parameter tensor's hash differs from the pretrained load.
+
+        Allowed exceptions, enumerated and counted (RESEARCH A-class):
+        1. non-float (int/bool) buffers, which are deterministic constants
+           (BERT: exactly two, ``position_ids`` and ``token_type_ids``);
+        2. tied-weight aliases sharing storage, which match *within* each
+           load (BERT: exactly two ties — the LM-head decoder weight
+           aliasing the word-embedding weight, and the decoder bias
+           aliasing the prediction bias) — all still differ from
+           pretrained.
+        Non-float parameters are also allowed to match; BERT has none.
+        """
+        self._skip_if_model_unavailable(self._MS_DNABERT)
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        pretrained_model, _ = load_model_and_tokenizer(
+            self._MS_DNABERT, task_config, source="modelscope"
+        )
+        pre_params = self._digest_table(
+            lambda: pretrained_model.named_parameters(remove_duplicate=False)
+        )
+        pre_buffers = self._digest_table(pretrained_model.named_buffers)
+        del pretrained_model
+
+        random_model, _ = load_model_and_tokenizer(
+            self._MS_DNABERT,
+            task_config,
+            source="modelscope",
+            random_init=True,
+            random_init_seed=42,
+        )
+        rnd_params = self._digest_table(
+            lambda: random_model.named_parameters(remove_duplicate=False)
+        )
+        rnd_buffers = self._digest_table(random_model.named_buffers)
+
+        common = set(pre_params) & set(rnd_params)
+        assert len(common) >= 100
+
+        # Every float parameter tensor differs (per tensor, not globally).
+        float_params = [n for n in common if rnd_params[n][1].is_floating_point]
+        matching_float = [
+            n for n in float_params if pre_params[n][0] == rnd_params[n][0]
+        ]
+        assert matching_float == []
+
+        # Exception class 1: non-float parameters — none for BERT.
+        non_float_params = [n for n in common if not rnd_params[n][1].is_floating_point]
+        assert non_float_params == []
+
+        # Exception class 2: tied-weight aliases sharing storage, matching
+        # within each load. Storage-identity detection (data_ptr), NOT
+        # digest collisions — fresh-init LayerNorm zero/one tensors
+        # legitimately share digests across *different* tensors of equal
+        # shape. BERT ties exactly two pairs: the LM-head decoder weight
+        # aliasing the word-embedding weight, and the decoder bias
+        # aliasing the prediction bias.
+        ptr_map: dict[int, str] = {}
+        tied_aliases = set()
+        for name, p in random_model.named_parameters(remove_duplicate=False):
+            ptr = p.data_ptr()
+            if ptr in ptr_map:
+                tied_aliases.add(ptr_map[ptr])
+                tied_aliases.add(name)
+            else:
+                ptr_map[ptr] = name
+        assert sorted(tied_aliases) == [
+            "bert.embeddings.word_embeddings.weight",
+            "cls.predictions.bias",
+            "cls.predictions.decoder.bias",
+            "cls.predictions.decoder.weight",
+        ]
+        assert (
+            rnd_params["bert.embeddings.word_embeddings.weight"][0]
+            == rnd_params["cls.predictions.decoder.weight"][0]
+        )
+
+        # Buffers: any buffer matching across loads must be non-float
+        # (deterministic constants); BERT's only such buffer is
+        # position_ids (long).
+        common_buffers = set(pre_buffers) & set(rnd_buffers)
+        matching_buffers = sorted(
+            n for n in common_buffers if pre_buffers[n][0] == rnd_buffers[n][0]
+        )
+        for name in matching_buffers:
+            assert not rnd_buffers[name][1].is_floating_point
+        assert matching_buffers == [
+            "bert.embeddings.position_ids",
+            "bert.embeddings.token_type_ids",
+        ]
 
 
 class TestLoadPresetModel:
