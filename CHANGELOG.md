@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Metric registry contract at `dnallm.tasks.metric_registry`: a single {canonical: (fn, aliases)} registry with resolve()/canonical_name(); `dnallm.tasks.metrics` now emits exclusively canonical registry names, historical aliases (eval_auroc, eval_spearman_r, ...) are recognized but never emitted (REV-02, R1-2d)
 - Multi-seed sweep protocol at `dnallm.finetune.sweep`: `run_seeds` drives one fully-seeded run per seed under the `{out_root}/{model}/{task}/seed_{s}/` protocol with same-split seed semantics (the split is fixed once by the caller; the sweep seed threads init/shuffle only), and the pure `aggregate_seeds` reports mean/sd with an n-guarded ci95 — Student-t for 3-9 seeds, null below 3, seeded percentile bootstrap from 10 seeds — written per metric into a `statistics.json` block (REV-09, R1-2a)
+- Frozen-embedding probing at `dnallm.inference.probing`: `extract_embeddings` reads any hidden-state layer (default last) with mean/cls pooling over the frozen model's `output_hidden_states` path and caches float32 npz entries under `output_dir/probe_cache/` keyed by (model, dataset, layer, pooling) with sanitized-hash filenames and atomic writes; `fit_probe(kind="logistic"|"mlp")` uses fixed module-constant hyperparameters (no YAML surface) with a train-split-only StandardScaler, and emits registry-canonical AUROC/AUPRC/accuracy on the documented F4 output row {model, dataset, layer, pooling, kind, metrics, n_train, n_test, cache_hit} (REV-07, R2-2)
 
 ### Changed
 

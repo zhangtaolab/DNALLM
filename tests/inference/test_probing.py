@@ -8,6 +8,7 @@ the bottom of this file behind the ``slow`` marker.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -369,6 +370,19 @@ class TestEdgeBattery:
         with pytest.raises(ValueError, match=r"no hidden states"):
             extract_embeddings(_LogitOnlyModel(), simple_dna_tokenizer, ["ACGT"], [0])
 
+    def test_strict_signature_without_kwargs_still_probes(self, simple_dna_tokenizer):
+        """A forward accepting neither output_hidden_states nor **kwargs works."""
+
+        class _StrictSigModel:
+            def forward(self, input_ids=None, attention_mask=None):
+                hidden = torch.ones(input_ids.shape[0], input_ids.shape[1], 5)
+                return SimpleNamespace(hidden_states=[hidden])
+
+            __call__ = forward
+
+        result = extract_embeddings(_StrictSigModel(), simple_dna_tokenizer, ["ACGT"], [0])
+        assert result.embeddings.shape == (1, 5)
+
     def test_readonly_config_still_probes(self, simple_dna_tokenizer):
         """A config that rejects the output_hidden_states flag degrades with a warning."""
 
@@ -660,3 +674,118 @@ class TestHiddenStateExtractionPrecedence:
         hidden = torch.zeros(2, 3, 4)
         result = _hidden_states_from_outputs(SimpleNamespace(last_hidden_state=hidden))
         assert result == [hidden]
+
+
+class TestRealModelAcceptance:
+    """PROB-01 slow-lane acceptance on the models.lock-pinned model + dataset."""
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(1800)
+    def test_probe_end_to_end_real_model_two_layers(self, tmp_path):
+        """Any model x any binary task: pinned plant-dnabert-BPE x core promoters.
+
+        Extracts frozen embeddings at TWO layers (last + one intermediate —
+        the NT-paper layer finding makes the intermediate layer a real case),
+        fits both probe kinds, and asserts registry-canonical metrics, cache
+        hit on the second call, and layer/pooling/kind on every output row.
+        """
+        from dnallm import DNADataset, load_config, load_model_and_tokenizer
+
+        config = load_config(Path(__file__).parent / "inference_config.yaml")
+        model_name = "zhangtaolab/plant-dnabert-BPE"
+        data_name = "zhangtaolab/plant-multi-species-core-promoters"
+        try:
+            model, tokenizer = load_model_and_tokenizer(
+                model_name, task_config=config["task"], source="modelscope"
+            )
+            datasets = DNADataset.from_modelscope(
+                data_name,
+                seq_col="sequence",
+                label_col="label",
+                tokenizer=tokenizer,
+                max_length=512,
+            )
+        except Exception as e:
+            pytest.skip(f"network-unavailable: {model_name} / {data_name}: {e}")
+
+        raw = datasets.dataset
+        if hasattr(raw, "keys") and "train" in list(raw.keys()):
+            split = raw["train"]
+        elif hasattr(raw, "train"):
+            split = raw.train
+        else:
+            split = raw
+        all_sequences = list(split["sequence"])
+        all_labels = [int(label) for label in split["labels"]]
+
+        # Balanced, seeded subsample: probing is a frozen-backbone evaluation,
+        # so 60 rows are enough evidence that the path works end-to-end.
+        positives = [i for i, label in enumerate(all_labels) if label == 1][:30]
+        negatives = [i for i, label in enumerate(all_labels) if label == 0][:30]
+        rng = np.random.default_rng(42)
+        chosen = rng.permutation(positives + negatives).tolist()
+        sequences = [all_sequences[i] for i in chosen]
+        labels = [all_labels[i] for i in chosen]
+        train_slice, test_slice = slice(0, 36), slice(36, 60)
+
+        n_layers = int(getattr(model.config, "num_hidden_layers", 6) or 6)
+        layers = [-1, max(1, n_layers // 2)]
+
+        rows = []
+        for layer in layers:
+            result = extract_embeddings(
+                model,
+                tokenizer,
+                sequences,
+                labels,
+                layer=layer,
+                pooling="mean",
+                model_name=model_name,
+                dataset_name=data_name,
+                output_dir=tmp_path,
+            )
+            assert result.cache_hit is False
+            assert result.embeddings.dtype == np.float32
+            for kind in ("logistic", "mlp"):
+                probe = fit_probe(
+                    result.embeddings[train_slice],
+                    result.labels[train_slice],
+                    result.embeddings[test_slice],
+                    result.labels[test_slice],
+                    kind=kind,
+                    layer=layer,
+                    pooling="mean",
+                    model_name=model_name,
+                    dataset_name=data_name,
+                    cache_hit=result.cache_hit,
+                )
+                assert {"AUROC", "AUPRC", "accuracy"} <= set(probe.metrics)
+                assert all(
+                    isinstance(v, float) and np.isfinite(v) and 0.0 <= v <= 1.0
+                    for v in probe.metrics.values()
+                )
+                row = probe.to_row()
+                assert row["layer"] == layer
+                assert row["pooling"] == "mean"
+                assert row["kind"] == kind
+                rows.append(row)
+
+        # Two distinct (layer) keys -> two cache entries.
+        cache_files = list((tmp_path / "probe_cache").iterdir())
+        assert len(cache_files) == 2
+
+        # Second extract with the identical 4-tuple key hits the cache.
+        cached = extract_embeddings(
+            model,
+            tokenizer,
+            sequences,
+            labels,
+            layer=-1,
+            pooling="mean",
+            model_name=model_name,
+            dataset_name=data_name,
+            output_dir=tmp_path,
+        )
+        assert cached.cache_hit is True
+        assert cached.layer == -1
+        assert len(rows) == 4

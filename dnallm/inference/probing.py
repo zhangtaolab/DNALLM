@@ -470,12 +470,16 @@ def extract_embeddings(
         model.eval()
 
     # Reuse the output_hidden_states mechanics the same way DNAInference
-    # does: pass the kwarg when the forward signature accepts it, and flip
-    # the config flag for models that only read it from the config.
+    # does: pass the kwarg when the forward signature accepts it (as a named
+    # parameter OR through **kwargs — transformers 5.x task heads absorb it
+    # via var-keywords), and best-effort flip the config flag for models
+    # that only read it from the config.
     params = inspect.signature(model.forward).parameters
-    forward_kwargs: dict[str, Any] = {}
-    if "output_hidden_states" in params:
-        forward_kwargs["output_hidden_states"] = True
+    accepts_kwarg = "output_hidden_states" in params or any(
+        p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
+    )
+    forward_kwargs: dict[str, Any] = {"output_hidden_states": True} if accepts_kwarg else {}
+    if hasattr(model, "config"):
         try:
             model.config.output_hidden_states = True
         except (ValueError, AttributeError) as e:
