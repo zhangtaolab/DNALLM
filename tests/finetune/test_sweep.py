@@ -302,3 +302,137 @@ class TestRunSweepFromConfig:
                 model_name="m",
                 task_name="t",
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Slow lane: real-model >= 3-seed end-to-end acceptance trial (D-15, SEED-01)
+# ─────────────────────────────────────────────────────────────────────────────
+
+SWEEP_MODEL_REPO = "zhangtaolab/plant-dnabert-BPE"
+SWEEP_MODEL_LABEL = "plant-dnabert-BPE"
+SWEEP_DATASET = "zhangtaolab/plant-multi-species-core-promoters"
+# D-16: fixed dataset-derived data-prep seed — deliberately NOT one of the
+# sweep seeds, so sampling/splitting is identical across seeds by
+# construction and seed-to-seed variance measures init/shuffle only.
+SWEEP_DATA_SEED = 0
+
+
+def _sweep_slow_lane_available() -> str | None:
+    """Typed availability check for the slow-lane acceptance artifacts.
+
+    Returns None when the pinned model and dataset are cached (offline
+    runnable) or the modelscope route answers; otherwise a typed
+    network-unavailable skip reason (allowlisted in expected_skips.yaml).
+    """
+    ms_cache = Path.home() / ".cache" / "modelscope" / "hub"
+    model_cached = (ms_cache / "models" / "zhangtaolab" / "plant-dnabert-BPE").is_dir()
+    dataset_glob = list(ms_cache.glob("datasets/zhangtaolab___plant-multi-species-core-promoters*"))
+    if model_cached and dataset_glob:
+        return None
+    try:
+        import socket
+
+        with socket.create_connection(("modelscope.cn", 443), timeout=5):
+            pass
+    except OSError:
+        return (
+            "network-unavailable: models.lock-pinned plant-dnabert-BPE / "
+            "plant-multi-species-core-promoters are not cached and the "
+            "modelscope route is unreachable"
+        )
+    return None
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(3600)
+def test_sweep_three_seed_end_to_end(tmp_path):
+    """D-15 acceptance: a >= 3-seed sweep of one small binary task, end-to-end.
+
+    Pre-splits the dataset ONCE with a fixed data seed (D-16), then runs a
+    tiny DNATrainer fine-tune of the pinned plant-dnabert-BPE per sweep seed
+    via run_seeds; asserts the directory protocol, the per-seed result
+    JSONs, and a t-interval statistics block at n=3.
+    """
+    reason = _sweep_slow_lane_available()
+    if reason:
+        pytest.skip(reason)
+    import copy
+
+    from datasets import DatasetDict
+
+    from dnallm import DNADataset, DNATrainer, load_config, load_model_and_tokenizer
+
+    from dnallm.finetune.sweep import run_seeds
+
+    base_config = load_config(str(Path(__file__).parent / "test_finetune_config.yaml"))
+
+    # D-16: data preparation happens ONCE, outside the per-seed fn — the
+    # sweep seeds never influence sampling or the split.
+    _, tokenizer = load_model_and_tokenizer(
+        SWEEP_MODEL_REPO, task_config=base_config["task"], source="modelscope"
+    )
+    datasets = DNADataset.from_modelscope(
+        SWEEP_DATASET,
+        seq_col="sequence",
+        label_col="label",
+        tokenizer=tokenizer,
+        max_length=128,
+    )
+    datasets.encode_sequences()
+    sampled = datasets.sampling(0.02, seed=SWEEP_DATA_SEED, overwrite=True)
+    if not isinstance(sampled.dataset, DatasetDict):
+        sampled.split_data(test_size=0.2, val_size=0.1, seed=SWEEP_DATA_SEED)
+
+    def train_one_seed(seed: int, seed_dir: Path) -> dict[str, float]:
+        config = copy.deepcopy(base_config)
+        finetune = config["finetune"]
+        finetune.seed = seed  # D-16: threads init/shuffle only
+        finetune.output_dir = str(seed_dir)
+        finetune.num_train_epochs = 1
+        finetune.max_steps = 5
+        finetune.eval_strategy = "no"
+        finetune.save_strategy = "no"
+        finetune.load_best_model_at_end = False
+        finetune.report_to = ["none"]
+        finetune.save_total_limit = 1
+        run_model, _ = load_model_and_tokenizer(
+            SWEEP_MODEL_REPO, task_config=config["task"], source="modelscope"
+        )
+        trainer = DNATrainer(model=run_model, config=config, datasets=sampled)
+        trainer.train(save_tokenizer=False)
+        metrics = trainer.evaluate(split="test")
+        del trainer, run_model
+        return metrics
+
+    run_seeds(
+        train_one_seed,
+        [42, 43, 44],
+        tmp_path,
+        model_name=SWEEP_MODEL_LABEL,
+        task_name="core_promoters",
+    )
+
+    task_root = tmp_path / SWEEP_MODEL_LABEL / "core_promoters"
+    for seed in (42, 43, 44):
+        seed_dir = task_root / f"seed_{seed}"
+        assert seed_dir.is_dir()
+        assert (seed_dir / "seed_result.json").is_file()
+        # The trainer's own per-seed result JSON lands in the same directory.
+        assert (seed_dir / "eval_test_result.json").is_file()
+
+    stats = json.loads((task_root / "statistics.json").read_text())
+    assert stats["seeds"] == [42, 43, 44]
+    assert stats["statistics"], "statistics block must aggregate at least one metric"
+    auroc_block = next(
+        (block for name, block in stats["statistics"].items() if name.lower() == "auroc"),
+        None,
+    )
+    assert auroc_block is not None, (
+        f"expected an auroc metric among aggregated keys, got {sorted(stats['statistics'])}"
+    )
+    assert auroc_block["n_seeds"] == 3
+    assert auroc_block["method"] == "t"
+    lower, upper = auroc_block["ci95"]
+    assert math.isfinite(lower)
+    assert math.isfinite(upper)
+    assert lower < upper

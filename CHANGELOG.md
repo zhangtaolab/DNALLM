@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Metric registry contract at `dnallm.tasks.metric_registry`: a single {canonical: (fn, aliases)} registry with resolve()/canonical_name(); `dnallm.tasks.metrics` now emits exclusively canonical registry names, historical aliases (eval_auroc, eval_spearman_r, ...) are recognized but never emitted (REV-02, R1-2d)
+- Multi-seed sweep protocol at `dnallm.finetune.sweep`: `run_seeds` drives one fully-seeded run per seed under the `{out_root}/{model}/{task}/seed_{s}/` protocol with same-split seed semantics (the split is fixed once by the caller; the sweep seed threads init/shuffle only), and the pure `aggregate_seeds` reports mean/sd with an n-guarded ci95 — Student-t for 3-9 seeds, null below 3, seeded percentile bootstrap from 10 seeds — written per metric into a `statistics.json` block (REV-09, R1-2a)
 
 ### Changed
 
