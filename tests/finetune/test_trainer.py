@@ -422,12 +422,13 @@ class TestEvaluateSplit:
         with pytest.raises(ValueError, match="Split 'nonexistent' not found in dataset"):
             trainer.evaluate(split="nonexistent")
 
+    @pytest.mark.parametrize("missing_output_dir", [None, ""], ids=["none", "empty-string"])
     def test_missing_output_dir_raises_instead_of_cwd_fallback(
-        self, trainer_config, mock_hf_boundary
+        self, trainer_config, mock_hf_boundary, missing_output_dir
     ):
-        """Without finetune.output_dir the result JSON has no CWD fallback."""
+        """Without finetune.output_dir (None or empty string) there is no CWD fallback."""
         trainer_cls, _ = mock_hf_boundary
-        trainer_config["finetune"].output_dir = None
+        trainer_config["finetune"].output_dir = missing_output_dir
         trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
 
         with pytest.raises(ValueError, match=r"finetune\.output_dir is not set"):

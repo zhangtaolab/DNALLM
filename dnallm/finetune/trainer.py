@@ -617,7 +617,7 @@ class DNATrainer:
             raise ValueError(
                 f"Split '{split}' not found in dataset; available splits: {sorted(self.data_split)}"
             )
-        if self.train_config.output_dir is None:
+        if not self.train_config.output_dir:
             raise ValueError(
                 f"evaluate(split='{split}') writes eval_{split}_result.json under "
                 "finetune.output_dir, but finetune.output_dir is not set. Set "
