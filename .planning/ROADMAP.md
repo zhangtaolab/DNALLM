@@ -88,11 +88,11 @@ Plans:
 **Plans**: 5
 
 Plans:
-- [ ] 11-01-ia3-peft-presets-PLAN.md — B1: REV-04+REV-05 — IA³ trainer branch (interim warn demolished), cross-field rejections, packaged presets lora_targets.yaml, dry-run validator, trainable-ratio guard, transformer+mamba slow acceptance + IA³ roundtrip
-- [ ] 11-02-random-init-baselines-PLAN.md — B2: REV-06 — random_init via AutoConfig+from_config, banner + per-tensor hash proof, no-download/reproducibility proofs, RANDOM_INIT_SUPPORTED_FAMILIES allowlist, two-architecture slow acceptance
-- [ ] 11-03-frozen-embedding-probing-PLAN.md — B3: REV-07 — probing.py: extract_embeddings (layer/pooling) + npz cache keyed by 4-tuple + fit_probe (fixed constants, train-only scaler) + registry metrics + F4 schema
-- [ ] 11-04-multi-seed-sweep-PLAN.md — B4: REV-09 — sweep.py: aggregate_seeds (n-guarded t/bootstrap) + run_seeds directory protocol with D-16 same-split seed semantics + statistics block + ≥3-seed trial
-- [ ] 11-05-vep-evaluate-vcf-cli-PLAN.md — B5: REV-08 completion — scikit-allel dep + evaluate_vcf (D-17 ClinVar convention, uppercase windows, skip accounting) + score_variant paradigm guard + dnallm-vep CLI + README protocol + ClinVar 1k × ≥5-model slow acceptance
+- [x] 11-01-ia3-peft-presets-PLAN.md — B1: REV-04+REV-05 — IA³ trainer branch (interim warn demolished), cross-field rejections, packaged presets lora_targets.yaml, dry-run validator, trainable-ratio guard, transformer+mamba slow acceptance + IA³ roundtrip
+- [x] 11-02-random-init-baselines-PLAN.md — B2: REV-06 — random_init via AutoConfig+from_config, banner + per-tensor hash proof, no-download/reproducibility proofs, RANDOM_INIT_SUPPORTED_FAMILIES allowlist, two-architecture slow acceptance
+- [x] 11-03-frozen-embedding-probing-PLAN.md — B3: REV-07 — probing.py: extract_embeddings (layer/pooling) + npz cache keyed by 4-tuple + fit_probe (fixed constants, train-only scaler) + registry metrics + F4 schema
+- [x] 11-04-multi-seed-sweep-PLAN.md — B4: REV-09 — sweep.py: aggregate_seeds (n-guarded t/bootstrap) + run_seeds directory protocol with D-16 same-split seed semantics + statistics block + ≥3-seed trial
+- [x] 11-05-vep-evaluate-vcf-cli-PLAN.md — B5: REV-08 completion — scikit-allel dep + evaluate_vcf (D-17 ClinVar convention, uppercase windows, skip accounting) + score_variant paradigm guard + dnallm-vep CLI + README protocol + ClinVar 1k × ≥5-model slow acceptance
 
 **Wave structure (owner-fixed):** 5 file-disjoint agents — B1 REV-04+REV-05 as ONE agent (shared hot files configs.py/trainer.py/inference.py:111-131; presets land before IA³ defaults); B2 REV-06 (model.py sole owner); B3 REV-07 probing (new file, registry read-only); B4 REV-09 sweep (new file, pure aggregation first); B5 REV-08 completion (evaluate_vcf, CLI, ClinVar slow tests with typed network skips + models.lock rows; sole owner of cli.py; adds the approved `scikit-allel>=1.3.13` dependency to pyproject and reads VCFs via `allel.read_vcf` incl. INFO parsing for ClinVar filtering — owner decision 2026-10-09, stdlib reader plan superseded). The plan encodes the per-agent file-ownership map. **Research flag:** the REV-08 lane carries the highest flag weight (tokenizer-class alignment semantics across char/k-mer/BPE, ClinVar filtering conventions, split-token alignment) — plan it with `/gsd-plan-phase --research-phase`; the REV-04/05/06/07/09 lanes follow standard patterns.
 
@@ -119,7 +119,7 @@ Phases execute in numeric order: 10 → 11 → 12
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 10. Evaluation Contract Layer & Shared Scaffolding | v1.2 | 4/4 | Complete    | 2026-10-09 |
-| 11. PEFT Adaptation, Baselines & New Evaluation Capabilities | v1.2 | 0/5 | Planned | - |
+| 11. PEFT Adaptation, Baselines & New Evaluation Capabilities | v1.2 | 5/5 | In Progress | - |
 | 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 0/TBD | Not started | - |
 
 ---
