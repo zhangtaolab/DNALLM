@@ -390,6 +390,31 @@ class TestEvaluateSplit:
         assert "timestamp" in payload
         assert payload["metrics"] == {"accuracy": 0.9, "AUROC": 0.8}
 
+    def test_runtime_keys_separated_from_metrics(self, trainer_config, mock_hf_boundary, tmp_path):
+        """Timing keys land in a separate runtime block, not the metrics dict."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.predict.return_value.metrics = {
+            "test_accuracy": 0.9,
+            "test_loss": 0.4,
+            "test_runtime": 1.25,
+            "test_samples_per_second": 32.0,
+            "test_steps_per_second": 8.0,
+        }
+        output_dir = tmp_path / "outputs"
+        trainer_config["finetune"].output_dir = str(output_dir)
+
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+        result = trainer.evaluate(split="test")
+
+        assert result == {"accuracy": 0.9, "loss": 0.4}
+        payload = json.loads((output_dir / "eval_test_result.json").read_text(encoding="utf-8"))
+        assert payload["metrics"] == {"accuracy": 0.9, "loss": 0.4}
+        assert payload["runtime"] == {
+            "runtime": 1.25,
+            "samples_per_second": 32.0,
+            "steps_per_second": 8.0,
+        }
+
     def test_unknown_split_raises_listing_available(self, trainer_config, mock_hf_boundary):
         """An absent split key raises a ValueError naming the available splits."""
         trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)

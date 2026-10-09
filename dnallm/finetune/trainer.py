@@ -65,6 +65,11 @@ from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
 transformers_version = Version(str(transformers.__version__))
 
+# Pure-timing keys trainer.predict reports alongside metrics; evaluate(split=...)
+# separates them into the JSON "runtime" block instead of the canonical
+# metric-names dict (they are not metric-registry names).
+PREDICT_RUNTIME_KEYS = ("runtime", "samples_per_second", "steps_per_second")
+
 
 class DNATrainer:
     """DNA Large Language Model Trainer that supports multiple model types.
@@ -562,9 +567,12 @@ class DNATrainer:
         ``trainer.evaluate`` — the ``test_`` predict prefix is stripped from
         the metric keys to produce canonical, unprefixed names, and a result
         JSON ``eval_{split}_result.json`` containing ``{"split", "timestamp",
-        "metrics"}`` is written under the finetune ``output_dir``. This
-        evaluates the weights the trainer currently holds; no checkpoint is
-        reloaded and no checkpoint parameter exists.
+        "metrics", "runtime"}`` is written under the finetune ``output_dir``.
+        Pure-timing predict keys (``runtime``, ``samples_per_second``,
+        ``steps_per_second``) are separated into the ``runtime`` block;
+        ``loss`` stays among the metrics. This evaluates the weights the
+        trainer currently holds; no checkpoint is reloaded and no checkpoint
+        parameter exists.
 
         Args:
             split: Dataset split key to evaluate (e.g. "test", "val"). Any
@@ -602,9 +610,13 @@ class DNATrainer:
             self.datasets.dataset[split],  # type: ignore
             ignore_keys=ignore_keys,
         )
-        metrics: dict[str, float] = {
+        stripped: dict[str, float] = {
             key.removeprefix("test_"): value for key, value in predict_result.metrics.items()
         }
+        runtime: dict[str, float] = {
+            key: stripped.pop(key) for key in PREDICT_RUNTIME_KEYS if key in stripped
+        }
+        metrics: dict[str, float] = stripped
         result_path = Path(self.train_config.output_dir or ".") / f"eval_{split}_result.json"
         result_path.parent.mkdir(parents=True, exist_ok=True)
         with open(result_path, "w", encoding="utf-8") as f:
@@ -613,6 +625,7 @@ class DNATrainer:
                     "split": split,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "metrics": metrics,
+                    "runtime": runtime,
                 },
                 f,
                 indent=2,
