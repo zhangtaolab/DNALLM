@@ -27,6 +27,7 @@ import pytest
 import torch
 
 from dnallm.inference.vep import (
+    RefMismatchError,
     VariantAlignment,
     align_variant,
     clm_log_likelihood,
@@ -199,8 +200,12 @@ class TestAlignVariant:
 
     def test_ref_mismatch_raises_value_error(self, simple_dna_tokenizer):
         """A ref allele that contradicts the sequence is an input-contract
-        violation — a ValueError, distinct from the skip path."""
-        with pytest.raises(ValueError, match="does not match"):
+        violation — a ValueError (as the dedicated RefMismatchError
+        subclass), distinct from the skip path."""
+        with pytest.raises(RefMismatchError, match="does not match"):
+            align_variant("ACGTTGCA", 3, "A", "T", simple_dna_tokenizer)
+        # The subclass IS a ValueError: legacy except-clauses keep working.
+        with pytest.raises(ValueError, match="does not match sequence at position 3"):
             align_variant("ACGTTGCA", 3, "A", "T", simple_dna_tokenizer)
 
     def test_multi_slot_token_difference_skips(self):
@@ -1354,6 +1359,43 @@ class TestEvaluateVcfEdgeCases:
 
         with pytest.raises(ValueError, match=r"REF/reference mismatch at chrT:6"):
             evaluate_vcf(model, simple_dna_tokenizer, vcf, FIXTURE_FA, paradigm="mlm")
+
+    def test_tokenizer_error_not_relabelled_as_ref_mismatch(self, tiny_model_factory, tmp_path):
+        """A plain ValueError raised by the tokenizer mid-scoring surfaces as
+        'Scoring failed at <coord>' with its original text preserved — never
+        a confidently-wrong REF-mismatch diagnosis (WR-04)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        # Position 6 of chrT is a G in the committed reference: REF matches,
+        # so the failure below is purely the tokenizer's.
+        rows = [
+            (
+                "chrT",
+                6,
+                "G",
+                "C",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "tokfail.vcf", rows)
+
+        class _ExplodingTokenizer:
+            """Passes the mlm paradigm guard, explodes at tokenization."""
+
+            mask_token_id = 4
+
+            def __call__(self, *args, **kwargs):
+                raise ValueError("tokenizer exploded: sequence too long")
+
+        with pytest.raises(
+            ValueError, match=r"Scoring failed at chrT:6.*tokenizer exploded"
+        ) as exc_info:
+            evaluate_vcf(model, _ExplodingTokenizer(), vcf, FIXTURE_FA, paradigm="mlm")
+
+        assert "REF/reference mismatch" not in str(exc_info.value)
+        assert exc_info.value.__cause__ is not None
+        assert "tokenizer exploded" in str(exc_info.value.__cause__)
 
     def test_clm_guard_on_configless_model_object(self, simple_dna_tokenizer):
         """A model-like object with no config at all counts as bidirectional

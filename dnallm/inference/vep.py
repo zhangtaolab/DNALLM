@@ -78,6 +78,16 @@ class VariantAlignment:
     skip_reason: str | None
 
 
+class RefMismatchError(ValueError):
+    """REF allele contradicts the reference sequence at the variant slot.
+
+    A ``ValueError`` subclass so existing ``except ValueError`` callers and
+    message matches keep working; the distinct type lets ``evaluate_vcf``
+    relabel ONLY this alignment-contract violation as a REF/reference
+    mismatch, never a plain ``ValueError`` raised by a tokenizer (WR-04).
+    """
+
+
 def _tokenize_ids(tokenizer: Any, sequence: str) -> list[int]:
     """Tokenize a sequence to a flat list of token ids.
 
@@ -127,12 +137,13 @@ def align_variant(sequence: str, pos: int, ref: str, alt: str, tokenizer: Any) -
         skip reason.
 
     Raises:
-        ValueError: If ``ref`` does not match the bases of ``sequence`` at
-            ``pos`` (input-contract violation — distinct from the skip path).
+        RefMismatchError: If ``ref`` does not match the bases of ``sequence``
+            at ``pos`` (input-contract violation — distinct from the skip
+            path). ``RefMismatchError`` subclasses ``ValueError``.
     """
     found = sequence[pos : pos + len(ref)]
     if found != ref:
-        raise ValueError(
+        raise RefMismatchError(
             f"Reference allele '{ref}' does not match sequence at position {pos} (found '{found}')"
         )
 
@@ -775,8 +786,11 @@ def evaluate_vcf(
 
     Raises:
         ValueError: If scikit-allel is not installed, the VCF cannot be
-            read, a VCF chromosome is missing from the reference, or a
-            REF allele contradicts the reference sequence.
+            read, a VCF chromosome is missing from the reference, or
+            per-variant scoring fails. REF/reference contradictions are
+            relabeled with the variant's coordinates; every other
+            per-variant ``ValueError`` is wrapped with the coordinates but
+            keeps its original message (WR-04).
     """
     try:
         import allel
@@ -791,8 +805,9 @@ def evaluate_vcf(
     if paradigm not in ("mlm", "clm"):
         raise ValueError(f"Unknown paradigm '{paradigm}'; expected 'clm' or 'mlm'.")
     # Fail fast on a paradigm↔architecture mismatch (D-11) before any
-    # scoring — the per-variant wrap below then only ever sees genuine
-    # REF/reference mismatches.
+    # scoring; per-variant ValueErrors from the loop below are wrapped with
+    # the variant's coordinates (REF mismatches relabeled, others keep
+    # their own text — WR-04).
     _check_paradigm_compatible(model, tokenizer, paradigm)
 
     try:
@@ -862,9 +877,17 @@ def evaluate_vcf(
                 outcome = score_variant(
                     model, tokenizer, window, local_pos, ref, alt, paradigm=paradigm
                 )
-            except ValueError as exc:
+            except RefMismatchError as exc:
+                # Only the alignment-contract violation carries the
+                # REF-mismatch diagnosis; any other ValueError (e.g. from a
+                # misbehaving tokenizer) keeps its own text, chained with the
+                # variant's coordinates (WR-04).
                 raise ValueError(
                     f"REF/reference mismatch at {chrom}:{pos1} (REF={ref}, ALT={alt}): {exc}"
+                ) from exc
+            except ValueError as exc:
+                raise ValueError(
+                    f"Scoring failed at {chrom}:{pos1} (REF={ref}, ALT={alt}): {exc}"
                 ) from exc
             if isinstance(outcome, VariantAlignment):
                 skip_counts[outcome.skip_reason] += 1
