@@ -320,9 +320,7 @@ def _model_device(model: Any) -> torch.device:
         return torch.device("cpu")
 
 
-def _attention_mask_from_inputs(
-    inputs: dict[str, Any], tokenizer: Any
-) -> torch.Tensor | None:
+def _attention_mask_from_inputs(inputs: dict[str, Any], tokenizer: Any) -> torch.Tensor | None:
     """Return the attention mask for a tokenized batch.
 
     Mirrors the ``DNAInference`` mask handling: prefer the tokenizer-provided
@@ -439,8 +437,10 @@ def extract_embeddings(
 
     cache_path: Path | None = None
     if output_dir is not None:
-        cache_path = Path(output_dir) / "probe_cache" / _cache_filename(
-            _cache_key(model_name, dataset_name, layer, pooling)
+        cache_path = (
+            Path(output_dir)
+            / "probe_cache"
+            / _cache_filename(_cache_key(model_name, dataset_name, layer, pooling))
         )
         cached = _load_cache(cache_path, model_name, dataset_name, layer, pooling)
         if cached is not None:
@@ -456,9 +456,7 @@ def extract_embeddings(
                 cache_path=str(cache_path),
             )
 
-    kept = [
-        (seq, label) for seq, label in zip(sequences, labels) if seq.strip()
-    ]
+    kept = [(seq, label) for seq, label in zip(sequences, labels, strict=True) if seq.strip()]
     if not kept:
         raise ValueError(
             f"No sequences remain after filtering ({len(sequences)} input sequences); "
@@ -492,9 +490,7 @@ def extract_embeddings(
             attention_mask = _attention_mask_from_inputs(inputs, tokenizer)
             outputs = model(
                 input_ids=input_ids,
-                attention_mask=attention_mask.to(device)
-                if attention_mask is not None
-                else None,
+                attention_mask=attention_mask.to(device) if attention_mask is not None else None,
                 **forward_kwargs,
             )
             states = _hidden_states_from_outputs(outputs)
@@ -600,9 +596,11 @@ def fit_probe(
     y_train = np.asarray(train_labels)
     y_test = np.asarray(test_labels)
 
-    # Leakage discipline (Pitfall 8): the scaler sees ONLY the train split.
+    # Leakage discipline (Pitfall 8): the scaler sees ONLY the train split —
+    # fit on train, then apply to both splits.
     scaler = StandardScaler()
-    x_train_scaled = scaler.fit_transform(x_train)
+    scaler.fit(x_train)
+    x_train_scaled = scaler.transform(x_train)
     x_test_scaled = scaler.transform(x_test)
 
     if kind == "logistic":
