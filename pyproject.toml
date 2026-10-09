@@ -263,6 +263,9 @@ include = ["dnallm*"]
 
 [tool.setuptools.package-data]
 "dnallm" = ["*.yaml", "*.yml", "*.json"]
+# Forward scaffolding: the IA³ per-model preset YAMLs land in
+# dnallm/configuration/presets/ with the next trainer phase; until then this
+# glob matches nothing and ships no files.
 "dnallm.configuration" = ["presets/*.yaml"]
 
 [project.scripts]
