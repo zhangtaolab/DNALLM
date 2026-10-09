@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.1
-status: Awaiting next milestone
-stopped_at: Quick task 261008-wfx complete — full local pytest (incl. examples) run on Windows: main 1792P/8S/0F + examples after repair 85P/11S/0F (8 first-exposure failures fixed with same-change tests); remaining Windows limitation: CRE test needs bedtools (WINDOWS id 19, local deselect)
-last_updated: "2026-10-08T06:30:00.000Z"
-last_activity: 2026-10-08
-last_activity_desc: "Quick task 261008-wfx: Windows example-lane first-exposure fixes (marimo resolver, pybedtools/pgt gates, CIM kernel count)"
-state_head: 6a366b5979267973c57c566d64e8150b83fb73cf
-milestone_name: Example Execution Testing & Repair
-current_phase: 09
+milestone: v1.2
+milestone_name: Paper Revision Suite Support
+status: planning
+last_updated: "2026-10-09T08:48:43.409Z"
+last_activity: 2026-10-09
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 24
-  completed_plans: 24
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 
 ## Current Position
 
-Phase: Milestone v1.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-08 — Completed quick task 261008-0h5: CONTRIBUTING.md nightly-only lanes note (coverage-nightly / example-nightly / test-mamba)
+Status: Defining requirements
+Last activity: 2026-10-09 — Milestone v1.2 started
 
 ## Performance Metrics
 

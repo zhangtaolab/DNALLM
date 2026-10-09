@@ -8,9 +8,21 @@ DNALLM (`dnallm` v0.7.0) is a Python toolkit for fine-tuning, inference, and ben
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
+## Current Milestone: v1.2 Paper Revision Suite Support
+
+**Goal:** Ship the suite-side capabilities the paper revision requires — evaluation-semantics leak guard, metric registry contract, IA³/PEFT presets, from-scratch loading, frozen probing, zero-shot VEP, multi-seed protocol, JASPAR motif matching, and MCP tool expansion — so the dnallmmark full re-run and the new reviewer-requested experiments (E1'–E8') can start.
+
+**Target features:**
+- Evaluation semantics: no silent test-as-eval (REV-01), metric registry contract (REV-02), docs/terminology/comparability warnings (REV-03)
+- Adaptation & baselines: IA³ adapter (REV-04), per-model PEFT target presets (REV-05), `random_init=True` from-scratch loading (REV-06)
+- New evaluation capabilities: frozen-embedding probing (REV-07), zero-shot VEP module with token-slot alignment rules (REV-08), multi-seed sweep protocol with uncertainty aggregation (REV-09)
+- Interpretation & agent surface: JASPAR/CIS-BP PWM matching (REV-10), MCP tools for ISM/hotspots/zero-shot scoring (REV-11)
+
+**Execution strategy (owner decision 2026-10-09):** full scope, acceptance criteria retained, calendar time compressed to ~1–1.5 days via 4–5 parallel implementation agents in waves. Intake material: `.planning/research/261009-paper-revision-suite-plan.md`.
+
 ## Current State
 
-v1.1 shipped 2026-10-07 (32/32 requirements, 5/5 phases verified, milestone audit: 0 blockers / 13 deferred items — see `.planning/milestones/v1.1-MILESTONE-AUDIT.md` after archival). Next milestone not yet defined — start with `/gsd-new-milestone`. Known carried debt: runner-box operational items (ollama loopback re-apply, cache-quota decision, `$HOME` cleanup), the MCP `--host/--port` flag-override bug (owner-scope ledger), one stale `.github/workflows/README.md` sentence, and the giants-lane manual-execution policy (W1).
+v1.1 shipped 2026-10-07 (32/32 requirements, 5/5 phases verified, milestone audit: 0 blockers / 13 deferred items — see `.planning/milestones/v1.1-MILESTONE-AUDIT.md` after archival). v1.2 started 2026-10-09 driven by the paper revision (reviewer comments R1/R2 + editor; suite-repo scope only — dnallmmark pipeline fixes F1–F10 and manuscript edits are tracked in companion docs, not this repo). Known carried debt: runner-box operational items (ollama loopback re-apply, cache-quota decision, `$HOME` cleanup), the MCP `--host/--port` flag-override bug (owner-scope ledger; folded into REV-11 scope), one stale `.github/workflows/README.md` sentence, and the giants-lane manual-execution policy (W1).
 
 ## Requirements
 
@@ -43,7 +55,18 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-(none — v1.1 shipped 2026-10-07; next milestone requirements are defined via `/gsd-new-milestone`)
+v1.2 Paper Revision Suite Support (defined 2026-10-09, full REQ-IDs in `.planning/REQUIREMENTS.md`):
+
+- [ ] Evaluation-semantics leak guard + explicit `evaluate(split=...)` (REV-01; R1-2c)
+- [ ] Metric registry contract shared with dnallmmark (REV-02; R1-2d)
+- [ ] Docs/terminology/comparability warnings (REV-03; Ed-2/Ed-6/R1-3c)
+- [ ] IA³ adapter + per-model PEFT target presets (REV-04/05; R2-2)
+- [ ] `random_init=True` from-scratch loading (REV-06; R2-5)
+- [ ] Frozen-embedding probing component (REV-07; R2-2)
+- [ ] Zero-shot VEP module with token-slot alignment (REV-08; R2-3/R1-3e①)
+- [ ] Multi-seed sweep protocol + uncertainty aggregation (REV-09; R1-2a/R2-4)
+- [ ] JASPAR/CIS-BP PWM matching module (REV-10; R1-3d)
+- [ ] MCP tools: ism_scan/hotspots/zero_shot_score (REV-11; R2-7 narrative/Ed-6)
 
 ### Validated — v1.1 (Example Execution Testing & Repair, shipped 2026-10-07)
 
@@ -163,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-07 after v1.1 milestone*
+*Last updated: 2026-10-09 after milestone v1.2 kickoff (paper revision intake)*
