@@ -933,12 +933,16 @@ class _FakeAutoConfig:
     """Fake AutoConfig capturing from_pretrained calls."""
 
     def __init__(self, config=None):
-        self.config = config if config is not None else PretrainedConfig(
-            model_type="bert",
-            hidden_size=8,
-            num_hidden_layers=1,
-            num_attention_heads=1,
-            vocab_size=16,
+        self.config = (
+            config
+            if config is not None
+            else PretrainedConfig(
+                model_type="bert",
+                hidden_size=8,
+                num_hidden_layers=1,
+                num_attention_heads=1,
+                vocab_size=16,
+            )
         )
         self.calls = []
 
@@ -991,15 +995,11 @@ def _random_init_patches(modules, weight_fetch_guard=True):
         stack.enter_context(
             patch(
                 "dnallm.models.model._get_model_path_and_imports",
-                side_effect=AssertionError(
-                    "weight-fetch path must never run under random_init"
-                ),
+                side_effect=AssertionError("weight-fetch path must never run under random_init"),
             )
         )
     stack.enter_context(patch("dnallm.models.model._configure_model_padding"))
-    stack.enter_context(
-        patch("dnallm.models.model._get_device", return_value=torch.device("cpu"))
-    )
+    stack.enter_context(patch("dnallm.models.model._get_device", return_value=torch.device("cpu")))
     return stack
 
 
@@ -1075,13 +1075,9 @@ class TestRandomInit:
                 load_model_and_tokenizer(model_name, task_config, random_init=True)
 
         # The message names the family and the allowlist so it is actionable.
-        try:
+        with pytest.raises(ValueError, match=family) as exc_info:
             _gate_random_init(model_name, None, None)
-        except ValueError as e:
-            assert family in str(e)
-            assert "RANDOM_INIT_SUPPORTED_FAMILIES" in str(e)
-        else:
-            raise AssertionError("expected ValueError from _gate_random_init")
+        assert "RANDOM_INIT_SUPPORTED_FAMILIES" in str(exc_info.value)
 
     def test_random_init_quantization_config_rejected(self):
         """random_init x quantization_config has no from_config equivalent: matchable ValueError."""
@@ -1101,9 +1097,7 @@ class TestRandomInit:
 
     def test_random_init_head_config_rejected(self):
         """random_init x custom head_config (DNALLMforSequenceClassification heads): matchable ValueError."""
-        task_config = TaskConfig(
-            task_type="binary", num_labels=2, head_config={"head": "mlp"}
-        )
+        task_config = TaskConfig(task_type="binary", num_labels=2, head_config={"head": "mlp"})
 
         with patch("dnallm.models.model._setup_huggingface_mirror"):
             with pytest.raises(
@@ -1194,7 +1188,6 @@ class TestRandomInit:
 
         assert len(modules[expected_key].calls) == 1
 
-
     @pytest.mark.parametrize(
         ("source", "expected_type"),
         [
@@ -1240,9 +1233,7 @@ class TestRandomInit:
         """
         task_config = TaskConfig(task_type="mask", num_labels=None)
         guard = MagicMock(
-            side_effect=AssertionError(
-                "_get_model_path_and_imports invoked under random_init"
-            )
+            side_effect=AssertionError("_get_model_path_and_imports invoked under random_init")
         )
         modules = _fake_random_modules()
 
@@ -1298,8 +1289,9 @@ class TestRandomInit:
         modules = _fake_random_modules(order=order)
         task_config = TaskConfig(task_type="mask", num_labels=None)
 
-        with _random_init_patches(modules), patch(
-            "torch.manual_seed", side_effect=lambda s: order.append(("seed", s))
+        with (
+            _random_init_patches(modules),
+            patch("torch.manual_seed", side_effect=lambda s: order.append(("seed", s))),
         ):
             load_model_and_tokenizer(
                 "test-random-model",
@@ -1317,11 +1309,7 @@ class TestRandomInit:
         copy_of_a = a.clone()
         different = torch.randn(3, 4)
 
-        expected = (
-            hashlib.sha256(
-                a.detach().cpu().contiguous().numpy().tobytes()
-            ).hexdigest()[:10]
-        )
+        expected = hashlib.sha256(a.detach().cpu().contiguous().numpy().tobytes()).hexdigest()[:10]
         assert _tensor_digest(a) == expected
         # Equal values in separate storage digest identically (byte-level,
         # not storage-identity): deterministic and device-independent.
@@ -1342,9 +1330,7 @@ class TestRandomInit:
         assert _tensor_digest(bf) == expected
 
         as_int = torch.arange(6, dtype=torch.long)
-        assert _tensor_digest(as_int) == hashlib.sha256(
-            as_int.numpy().tobytes()
-        ).hexdigest()[:10]
+        assert _tensor_digest(as_int) == hashlib.sha256(as_int.numpy().tobytes()).hexdigest()[:10]
         assert len(_tensor_digest(torch.tensor(True))) == 10
 
     def test_log_random_init_fingerprint_tied_aliases_and_buffers(self, caplog):
@@ -1358,9 +1344,7 @@ class TestRandomInit:
         model = _TinyScratchNN(tied=True)
 
         with caplog.at_level(logging.INFO):
-            table = _log_random_init_fingerprint(
-                model, "tiny-tied", "AutoModelForMaskedLM", 11
-            )
+            table = _log_random_init_fingerprint(model, "tiny-tied", "AutoModelForMaskedLM", 11)
 
         assert table["embedding.weight"] == table["lm_head.weight"]
         buffer_rows = _buffer_rows_from_caplog(caplog)
@@ -1372,9 +1356,7 @@ class TestRandomInit:
     def test_log_random_init_fingerprint_skips_buffer_shadowing_param(self, caplog):
         """A buffer row whose name collides with a parameter is skipped (params win the table)."""
         fake_model = SimpleNamespace(
-            named_parameters=lambda remove_duplicate=True: [
-                ("x.weight", torch.ones(2))
-            ],
+            named_parameters=lambda remove_duplicate=True: [("x.weight", torch.ones(2))],
             named_buffers=lambda: [("x.weight", torch.ones(2))],
         )
 
@@ -1416,7 +1398,7 @@ class TestRandomInit:
                 ),
                 caplog.at_level(logging.INFO),
             ):
-                model, tokenizer = load_model_and_tokenizer(
+                _, tokenizer = load_model_and_tokenizer(
                     str(model_dir),
                     task_config,
                     source="local",
@@ -1446,17 +1428,13 @@ class TestRandomInit:
             ("basenji2-tiny", None),
         ],
     )
-    def test_random_init_preserves_tokenizer_post_processing(
-        self, model_name, handler_attr
-    ):
+    def test_random_init_preserves_tokenizer_post_processing(self, model_name, handler_attr):
         """Tokenizer post-processing parity: mutbert/basenji2 handling still applies on the random path."""
         task_config = TaskConfig(task_type="mask", num_labels=None)
         modules = _fake_random_modules()
         # OneHotTokenizerWrapper calls len(tokenizer) — use a MagicMock.
         modules["AutoTokenizer"] = MagicMock()
-        modules["AutoTokenizer"].from_pretrained.return_value = MagicMock(
-            pad_token_id=0
-        )
+        modules["AutoTokenizer"].from_pretrained.return_value = MagicMock(pad_token_id=0)
 
         with _random_init_patches(modules):
             _, tokenizer = load_model_and_tokenizer(
@@ -1593,8 +1571,11 @@ class TestRandomInit:
         pretrained_model, _ = load_model_and_tokenizer(
             self._MS_DNABERT, task_config, source="modelscope"
         )
+        # Default-arg capture binds the model at def time: ruff/pyflakes
+        # treat a lambda capturing a name later ``del``-ed in the scope as
+        # undefined (F821); _digest_table consumes the lambda immediately.
         pre_params = self._digest_table(
-            lambda: pretrained_model.named_parameters(remove_duplicate=False)
+            lambda m=pretrained_model: m.named_parameters(remove_duplicate=False)
         )
         pre_buffers = self._digest_table(pretrained_model.named_buffers)
         del pretrained_model
@@ -1616,9 +1597,7 @@ class TestRandomInit:
 
         # Every float parameter tensor differs (per tensor, not globally).
         float_params = [n for n in common if rnd_params[n][1].is_floating_point]
-        matching_float = [
-            n for n in float_params if pre_params[n][0] == rnd_params[n][0]
-        ]
+        matching_float = [n for n in float_params if pre_params[n][0] == rnd_params[n][0]]
         assert matching_float == []
 
         # Exception class 1: non-float parameters — none for BERT.
