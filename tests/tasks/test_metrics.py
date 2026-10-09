@@ -37,8 +37,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0, 1])
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert "f1" in metrics
@@ -58,8 +57,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0])
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -73,8 +71,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0, 1, 0])  # Flattened labels for 3D logits
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -85,8 +82,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, -100, 1])  # -100 is padding
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -1081,8 +1077,7 @@ def _emission_calculate_metric_with_sklearn():
     logits = np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]])
     labels = np.array([1, 0, 1])
 
-    with patch("builtins.print"):  # silence the legacy shape print
-        return calculate_metric_with_sklearn((logits, labels))
+    return calculate_metric_with_sklearn((logits, labels))
 
 
 def _emission_dnabert2_regression():

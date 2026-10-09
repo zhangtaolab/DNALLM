@@ -92,7 +92,6 @@ def calculate_metric_with_sklearn(eval_pred):
     valid_mask = labels != -100  # Exclude padding tokens (assuming -100 is the padding token ID)
     valid_predictions = predictions[valid_mask]
     valid_labels = labels[valid_mask]
-    print(valid_labels.shape, valid_predictions.shape)
     return _emit({
         "accuracy": accuracy_score(valid_labels, valid_predictions),
         "f1": f1_score(valid_labels, valid_predictions, average="macro", zero_division=0),
