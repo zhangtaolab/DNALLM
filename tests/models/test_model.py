@@ -5,6 +5,9 @@ DNA language models from various sources.
 
 """
 
+import hashlib
+import importlib
+import logging
 import os
 import sys
 import types
@@ -14,7 +17,6 @@ import torch.nn as nn
 from contextlib import ExitStack
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock, patch, MagicMock
-import importlib
 from typing import Any
 
 from transformers import PretrainedConfig
@@ -33,6 +35,13 @@ from dnallm.models.model import (
     _fix_bnb_quantized_layers,
     _get_device,
     _safe_num_labels,
+    _detect_special_family,
+    _gate_random_init,
+    _get_auto_modules_for_source,
+    _tensor_digest,
+    _log_random_init_fingerprint,
+    _load_random_init_model,
+    RANDOM_INIT_SUPPORTED_FAMILIES,
     DNALLMforSequenceClassification,
 )
 from dnallm.models.losses import FocalLoss
@@ -890,6 +899,298 @@ class TestLoadModelAndTokenizer:
                 match="Failed to load model: Loading failed",
             ):
                 load_model_and_tokenizer("test-model", task_config)
+
+
+# ───────────────────────── random_init (BASE-01) ─────────────────────────
+
+
+class _TinyScratchNN(nn.Module):
+    """Real tiny torch module that consumes the CPU RNG during construction.
+
+    Carries an int buffer and a bool buffer so the per-tensor hash table's
+    buffer rows and the non-float exception rules are exercisable; ``tied``
+    adds an ``lm_head`` weight aliased onto the embedding (shared storage).
+    """
+
+    def __init__(self, tied: bool = False):
+        super().__init__()
+        self.embedding = nn.Embedding(16, 8)
+        self.head = nn.Linear(8, 4)
+        self.register_buffer("position_ids", torch.arange(4, dtype=torch.long))
+        self.register_buffer("is_causal", torch.tensor(True))
+        if tied:
+            self.lm_head = nn.Linear(8, 16, bias=False)
+            self.lm_head.weight = self.embedding.weight
+        self.config = SimpleNamespace(pad_token_id=None)
+
+    def forward(self, input_ids=None, **kwargs):
+        return SimpleNamespace(logits=self.head(self.embedding(input_ids).mean(dim=1)))
+
+
+class _FakeAutoConfig:
+    """Fake AutoConfig capturing from_pretrained calls."""
+
+    def __init__(self, config=None):
+        self.config = config if config is not None else PretrainedConfig(
+            model_type="bert",
+            hidden_size=8,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+            vocab_size=16,
+        )
+        self.calls = []
+
+    def from_pretrained(self, name, **kwargs):
+        self.calls.append((name, kwargs))
+        return self.config
+
+
+class _FakeAutoClass:
+    """Fake Auto* class whose from_config builds a fresh tiny module."""
+
+    def __init__(self, name, build_fn=None, order=None):
+        self.name = name
+        self.build_fn = build_fn or (lambda: _TinyScratchNN())
+        self.order = order
+        self.calls = []
+
+    def from_config(self, config, **kwargs):
+        self.calls.append((config, kwargs))
+        if self.order is not None:
+            self.order.append(f"build:{self.name}")
+        return self.build_fn()
+
+
+def _fake_random_modules(order=None, build_fn=None, config=None):
+    """Build the modules dict consumed by the random path, all fakes."""
+    modules = {"AutoConfig": _FakeAutoConfig(config)}
+    for name in (
+        "AutoModel",
+        "AutoModelForMaskedLM",
+        "AutoModelForCausalLM",
+        "AutoModelForSequenceClassification",
+        "AutoModelForTokenClassification",
+    ):
+        modules[name] = _FakeAutoClass(name, build_fn=build_fn, order=order)
+    fake_tokenizer_cls = Mock()
+    fake_tokenizer_cls.from_pretrained = Mock(return_value=Mock(pad_token_id=0))
+    modules["AutoTokenizer"] = fake_tokenizer_cls
+    return modules
+
+
+def _random_init_patches(modules, weight_fetch_guard=True):
+    """ExitStack of patches for a mocked-boundary random_init load."""
+    stack = ExitStack()
+    stack.enter_context(patch("dnallm.models.model._setup_huggingface_mirror"))
+    stack.enter_context(
+        patch("dnallm.models.model._get_auto_modules_for_source", return_value=modules)
+    )
+    if weight_fetch_guard:
+        stack.enter_context(
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                side_effect=AssertionError(
+                    "weight-fetch path must never run under random_init"
+                ),
+            )
+        )
+    stack.enter_context(patch("dnallm.models.model._configure_model_padding"))
+    stack.enter_context(
+        patch("dnallm.models.model._get_device", return_value=torch.device("cpu"))
+    )
+    return stack
+
+
+def _param_hashes_from_caplog(caplog):
+    """Parse the per-tensor param hash lines out of captured random-init logs."""
+    table = {}
+    for record in caplog.records:
+        msg = record.getMessage()
+        if msg.startswith("[random-init] param "):
+            rest = msg[len("[random-init] param ") :]
+            name, sha_field = rest.split(" sha=")
+            table[name] = sha_field.split(" ")[0]
+    return table
+
+
+def _buffer_rows_from_caplog(caplog):
+    """Parse the buffer hash rows out of captured random-init logs."""
+    rows = []
+    for record in caplog.records:
+        msg = record.getMessage()
+        if msg.startswith("[random-init] buffer "):
+            rows.append(msg)
+    return rows
+
+
+class TestRandomInit:
+    """random_init=True from-scratch loading: tracer + allowlist + mocked proofs (BASE-01)."""
+
+    def test_random_init_end_to_end_mocked_boundary(self, caplog):
+        """Tracer: kwarg -> gate -> from_config random model, banner + per-tensor hashes logged, tokenizer returned."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules), caplog.at_level(logging.INFO):
+            model, tokenizer = load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert isinstance(model, _TinyScratchNN)
+        assert tokenizer is not None
+        # Loud banner (greppable "randomly initialized") + >= 1 per-tensor hash line.
+        assert "randomly initialized" in caplog.text
+        param_table = _param_hashes_from_caplog(caplog)
+        assert len(param_table) >= 1
+        assert set(param_table) == {
+            "embedding.weight",
+            "head.weight",
+            "head.bias",
+        }
+
+    @pytest.mark.parametrize(
+        ("model_name", "family"),
+        [
+            ("evo2_7b", "evo2"),
+            ("evo-1-142m", "evo1"),
+            ("gpn-brassicales", "gpn"),
+            ("megaDNA_phage_145M", "megadna"),
+            ("Omni-DNA-20M", "omnidna"),
+            ("enformer-191k", "enformer"),
+            ("SPACE-v2", "space"),
+            ("borzoi-replicate-0", "borzoi"),
+            ("CrossDNA-8.1M", "crossdna"),
+            ("dnabert-2-117m", "dnabert2"),
+            ("DNABERT-S", "dnabert2"),
+        ],
+    )
+    def test_random_init_offlist_special_family_raises(self, model_name, family):
+        """Off-list special families raise a matchable ValueError before any handler claims the load (D-06/D-07)."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(ValueError, match="random_init=True is not supported"):
+                load_model_and_tokenizer(model_name, task_config, random_init=True)
+
+        # The message names the family and the allowlist so it is actionable.
+        try:
+            _gate_random_init(model_name, None, None)
+        except ValueError as e:
+            assert family in str(e)
+            assert "RANDOM_INIT_SUPPORTED_FAMILIES" in str(e)
+        else:
+            raise AssertionError("expected ValueError from _gate_random_init")
+
+    def test_random_init_quantization_config_rejected(self):
+        """random_init x quantization_config has no from_config equivalent: matchable ValueError."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(
+                ValueError,
+                match="random_init=True cannot be combined with quantization_config",
+            ):
+                load_model_and_tokenizer(
+                    "test-model",
+                    task_config,
+                    quantization_config={"load_in_4bit": True},
+                    random_init=True,
+                )
+
+    def test_random_init_head_config_rejected(self):
+        """random_init x custom head_config (DNALLMforSequenceClassification heads): matchable ValueError."""
+        task_config = TaskConfig(
+            task_type="binary", num_labels=2, head_config={"head": "mlp"}
+        )
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(
+                ValueError,
+                match="random_init=True is not supported with a custom head_config",
+            ):
+                load_model_and_tokenizer("test-model", task_config, random_init=True)
+
+    def test_random_init_generic_path_from_config_never_pretrained(self):
+        """AutoConfig.from_pretrained + the task-type Auto*.from_config are the only construction calls."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        # Config fetched via AutoConfig.from_pretrained with trust_remote_code;
+        # revision=None is not forwarded (hub default).
+        assert len(modules["AutoConfig"].calls) == 1
+        name, config_kwargs = modules["AutoConfig"].calls[0]
+        assert name == "test-random-model"
+        assert config_kwargs["trust_remote_code"] is True
+        assert "revision" not in config_kwargs
+
+        # The mask task selected AutoModelForMaskedLM, via from_config only.
+        assert len(modules["AutoModelForMaskedLM"].calls) == 1
+        _, model_kwargs = modules["AutoModelForMaskedLM"].calls[0]
+        assert model_kwargs["trust_remote_code"] is True
+        for other in (
+            "AutoModel",
+            "AutoModelForCausalLM",
+            "AutoModelForSequenceClassification",
+            "AutoModelForTokenClassification",
+        ):
+            assert modules[other].calls == []
+
+    def test_random_init_classification_head_shaping_on_config(self):
+        """num_labels/id2label/label2id/problem_type are set as config attributes (A4)."""
+        task_config = TaskConfig(
+            task_type="binary", num_labels=3, label_names=["alpha", "beta", "gamma"]
+        )
+        config = PretrainedConfig(
+            model_type="bert",
+            hidden_size=8,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+            vocab_size=16,
+        )
+        modules = _fake_random_modules(config=config)
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert config.num_labels == 3
+        assert config.id2label == {0: "alpha", 1: "beta", 2: "gamma"}
+        assert config.label2id == {"alpha": 0, "beta": 1, "gamma": 2}
+        assert config.problem_type == "single_label_classification"
+        assert len(modules["AutoModelForSequenceClassification"].calls) == 1
+
+    @pytest.mark.parametrize(
+        ("task_type", "expected_key"),
+        [
+            ("mask", "AutoModelForMaskedLM"),
+            ("generation", "AutoModelForCausalLM"),
+            ("binary", "AutoModelForSequenceClassification"),
+            ("multiclass", "AutoModelForSequenceClassification"),
+            ("multilabel", "AutoModelForSequenceClassification"),
+            ("regression", "AutoModelForSequenceClassification"),
+            ("token", "AutoModelForTokenClassification"),
+            ("embedding", "AutoModel"),
+        ],
+    )
+    def test_random_init_task_type_auto_class_selection(self, task_type, expected_key):
+        """The random path selects the same Auto* class the pretrained task-type loader selects."""
+        # Classification task types require num_labels; the others force it to 0.
+        num_labels = None if task_type in ("mask", "generation", "embedding") else 3
+        task_config = TaskConfig(task_type=task_type, num_labels=num_labels)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert len(modules[expected_key].calls) == 1
 
 
 class TestLoadPresetModel:
