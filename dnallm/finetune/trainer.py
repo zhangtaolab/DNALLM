@@ -88,8 +88,9 @@ def _load_peft_presets() -> dict:
 
     Raises:
         ValueError: If the resource is missing or any row is malformed
-            (empty target lists, feedforward modules outside the IA³ targets,
-            or an inverted ratio band).
+            (empty or non-string ``match_names``, empty target lists,
+            feedforward modules outside the IA³ targets, or ratio bands
+            that are not a numeric ordered ``[lo, hi]`` pair).
     """
     global _PEFT_PRESET_CACHE
     if _PEFT_PRESET_CACHE is not None:
@@ -111,6 +112,16 @@ def _load_peft_presets() -> dict:
             "The packaged PEFT presets are malformed: the 'families' mapping is missing or empty."
         )
     for family, row in families.items():
+        markers = row.get("match_names")
+        if (
+            not isinstance(markers, list)
+            or not markers
+            or not all(isinstance(m, str) and m for m in markers)
+        ):
+            raise ValueError(
+                f"The PEFT preset for family '{family}' is malformed: "
+                f"'match_names' must be a non-empty list of non-empty strings."
+            )
         for key in ("lora_target_modules", "ia3_target_modules"):
             if not isinstance(row.get(key), list) or not row.get(key):
                 raise ValueError(
@@ -125,7 +136,20 @@ def _load_peft_presets() -> dict:
             )
         for key in ("ia3_ratio_band", "lora_ratio_band"):
             band = row.get(key)
-            if not isinstance(band, list) or len(band) != 2 or not band[0] <= band[1]:
+            if not isinstance(band, list) or len(band) != 2:
+                raise ValueError(
+                    f"The PEFT preset for family '{family}' is malformed: "
+                    f"'{key}' must be a [lo, hi] pair with lo <= hi."
+                )
+            # Numeric BEFORE the ordering comparison: a string band would
+            # otherwise compare lexicographically (or TypeError on mixed
+            # types) instead of failing validation.
+            if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in band):
+                raise ValueError(
+                    f"The PEFT preset for family '{family}' is malformed: "
+                    f"'{key}' must be a [lo, hi] pair of numbers."
+                )
+            if not band[0] <= band[1]:
                 raise ValueError(
                     f"The PEFT preset for family '{family}' is malformed: "
                     f"'{key}' must be a [lo, hi] pair with lo <= hi."

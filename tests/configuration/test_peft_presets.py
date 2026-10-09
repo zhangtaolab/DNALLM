@@ -161,12 +161,33 @@ class TestPeftPresets:
                 "    ia3_ratio_band: [1.0e-2, 1.0e-4]\n"
                 "    lora_ratio_band: [1.0e-4, 1.0e-2]\n"
             ),
+            "empty-match-names": (
+                "families:\n  BadFamily:\n    match_names: []\n    model_types: []\n"
+                "    lora_target_modules: [q]\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: []\n" + good_tail
+            ),
+            "nonstring-match-names": (
+                "families:\n  BadFamily:\n    match_names: [bad, 3]\n    model_types: []\n"
+                "    lora_target_modules: [q]\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: []\n" + good_tail
+            ),
+            "string-band": (
+                "families:\n  BadFamily:\n    match_names: [bad]\n    model_types: []\n"
+                "    lora_target_modules: [q]\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: []\n"
+                "    lora_r: 8\n"
+                "    ia3_ratio_band: ['1.0e-4', '1.0e-2']\n"
+                "    lora_ratio_band: [1.0e-4, 1.0e-2]\n"
+            ),
         }
         expected = {
             "missing-families": "'families' mapping is missing or empty",
             "empty-targets": "'lora_target_modules' must be a non-empty list",
             "ff-not-subset": "feedforward_modules must be a subset of ia3_target_modules",
             "inverted-band": r"\[lo, hi\] pair with lo <= hi",
+            "empty-match-names": "'match_names' must be a non-empty list of non-empty strings",
+            "nonstring-match-names": "'match_names' must be a non-empty list of non-empty strings",
+            "string-band": r"'ia3_ratio_band' must be a \[lo, hi\] pair of numbers",
         }
         for case, content in cases.items():
             with patch("importlib.resources.files", return_value=FakeResource(content)):
