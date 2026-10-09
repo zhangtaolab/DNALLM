@@ -336,6 +336,19 @@ class TestLeakageDiscipline:
 class TestEdgeBattery:
     """Matchable ValueErrors, cache path edges, dtype and write-atomicity."""
 
+    def test_fit_probe_single_class_train_split_raises_matchable(self):
+        """A train split with one label class is rejected with dnallm's own
+        matchable message, not sklearn's foreign solver error (IN-07)."""
+        rng = np.random.default_rng(0)
+        x = rng.normal(size=(8, 4)).astype(np.float32)
+        y_train = np.zeros(4, dtype=int)
+        y_test = np.array([0, 1, 0, 1])
+
+        with pytest.raises(
+            ValueError, match=r"fit_probe requires both label classes in the train split"
+        ):
+            fit_probe(x[:4], y_train, x[4:], y_test)
+
     def test_empty_sequences_raise_value_error(self, tiny_model_factory, simple_dna_tokenizer):
         """0 rows after filtering raises; no cache file is written."""
         with pytest.raises(ValueError, match=r"after filtering"):

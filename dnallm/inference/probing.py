@@ -623,7 +623,8 @@ def fit_probe(
         ProbeResult with registry-canonical held-out metrics.
 
     Raises:
-        ValueError: If ``kind`` is not ``"logistic"`` or ``"mlp"``.
+        ValueError: If ``kind`` is not ``"logistic"`` or ``"mlp"``, or the
+            train split carries fewer than two label classes.
     """
     if kind not in PROBE_KINDS:
         raise ValueError(f"Unknown probe kind '{kind}'. Valid kinds: {PROBE_KINDS}")
@@ -636,6 +637,14 @@ def fit_probe(
     x_test = np.asarray(test_embeddings, dtype=np.float32)
     y_train = np.asarray(train_labels)
     y_test = np.asarray(test_labels)
+
+    # IN-07: sklearn's single-class solver error is foreign text; surface
+    # the contract violation as a dnallm ValueError instead.
+    if len(set(y_train.tolist())) < 2:
+        raise ValueError(
+            "fit_probe requires both label classes in the train split "
+            f"(found {sorted(set(y_train.tolist()))})."
+        )
 
     # Leakage discipline (Pitfall 8): the scaler sees ONLY the train split —
     # fit on train, then apply to both splits.
