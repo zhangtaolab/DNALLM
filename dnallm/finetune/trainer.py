@@ -74,6 +74,196 @@ transformers_version = Version(str(transformers.__version__))
 # than crashing older peft with an unexpected-kwarg TypeError.
 PEFT_IA3_FIELD_NAMES = frozenset(f.name for f in dataclass_fields(IA3Config))
 
+
+def _load_peft_presets() -> dict:
+    """Load the packaged per-family PEFT presets table (PEFT-02).
+
+    Reads ``dnallm/configuration/presets/lora_targets.yaml`` via
+    importlib.resources (wheel-safe, never CWD-relative) and validates the
+    structure at load time so a corrupted table fails loudly here instead of
+    silently freezing a backbone mid-training.
+
+    Returns:
+        The ``families`` mapping: family key -> preset row dict.
+
+    Raises:
+        ValueError: If the resource is missing or any row is malformed
+            (empty target lists, feedforward modules outside the IA³ targets,
+            or an inverted ratio band).
+    """
+    global _PEFT_PRESET_CACHE
+    if _PEFT_PRESET_CACHE is not None:
+        return _PEFT_PRESET_CACHE
+
+    import yaml
+    from importlib import resources
+
+    try:
+        resource = resources.files("dnallm.configuration").joinpath("presets/lora_targets.yaml")
+        with resource.open("r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except (FileNotFoundError, ModuleNotFoundError) as e:
+        raise ValueError(f"Failed to load the packaged PEFT presets: {e}") from e
+
+    families = data.get("families") if isinstance(data, dict) else None
+    if not isinstance(families, dict) or not families:
+        raise ValueError(
+            "The packaged PEFT presets are malformed: the 'families' mapping is missing or empty."
+        )
+    for family, row in families.items():
+        for key in ("lora_target_modules", "ia3_target_modules"):
+            if not isinstance(row.get(key), list) or not row.get(key):
+                raise ValueError(
+                    f"The PEFT preset for family '{family}' is malformed: "
+                    f"'{key}' must be a non-empty list."
+                )
+        ff = row.get("feedforward_modules") or []
+        if not set(ff) <= set(row["ia3_target_modules"]):
+            raise ValueError(
+                f"The PEFT preset for family '{family}' is malformed: "
+                f"feedforward_modules must be a subset of ia3_target_modules."
+            )
+        for key in ("ia3_ratio_band", "lora_ratio_band"):
+            band = row.get(key)
+            if not isinstance(band, list) or len(band) != 2 or not band[0] <= band[1]:
+                raise ValueError(
+                    f"The PEFT preset for family '{family}' is malformed: "
+                    f"'{key}' must be a [lo, hi] pair with lo <= hi."
+                )
+    _PEFT_PRESET_CACHE = families
+    return _PEFT_PRESET_CACHE
+
+
+_PEFT_PRESET_CACHE: dict | None = None
+
+
+def _resolve_peft_preset(model: Any) -> tuple[str, dict, str]:
+    """Resolve the preset row for a live model (PEFT-02 auto-selection).
+
+    Matching is two-tier: name markers from the table against the model's
+    load path (longest marker wins), then the live ``config.model_type``.
+
+    Args:
+        model: The live backbone (its ``config`` carries ``_name_or_path``
+            and ``model_type``).
+
+    Returns:
+        (family key, preset row, human-readable match description).
+
+    Raises:
+        ValueError: If no preset row matches — the user must set
+            target_modules explicitly. Never a silent fallback.
+    """
+    families = _load_peft_presets()
+    config_obj = getattr(model, "config", None)
+    model_type = getattr(config_obj, "model_type", None)
+    if not isinstance(model_type, str):
+        model_type = None
+    name_path = getattr(config_obj, "_name_or_path", None)
+    name_blob = name_path.lower() if isinstance(name_path, str) else ""
+
+    if name_blob:
+        ranked = sorted(
+            families.items(),
+            key=lambda kv: -max(len(m) for m in kv[1].get("match_names") or []),
+        )
+        for family, row in ranked:
+            for marker in row.get("match_names") or []:
+                if marker in name_blob:
+                    return family, row, f"name marker '{marker}'"
+    if model_type:
+        for family, row in families.items():
+            if model_type in (row.get("model_types") or []):
+                return family, row, f"config.model_type '{model_type}'"
+
+    raise ValueError(
+        f"No PEFT target-module preset found for this model (load path "
+        f"'{name_blob or '<unknown>'}', model_type '{model_type}'). Set "
+        f"target_modules explicitly in the lora:/ia3: config section, or run "
+        f"with finetune.peft_dry_run=true to inspect the module names."
+    )
+
+
+def _peft_dry_run_report(model: Any, target_modules: list[str]) -> list[str]:
+    """Match target_modules against the live model's modules (D-03).
+
+    Mirrors peft's own matching rule (exact name or dotted-suffix match) and
+    raises on zero matches — the silent-module-skip countermeasure.
+
+    Args:
+        model: The live backbone to inspect.
+        target_modules: The final (preset- or user-resolved) target names.
+
+    Returns:
+        The matched module names.
+
+    Raises:
+        ValueError: If no module matches (wrong names for this backbone).
+    """
+    matched = []
+    module_names = [name for name, _ in model.named_modules()]
+    for name in module_names:
+        if any(name == target or name.endswith("." + target) for target in target_modules):
+            matched.append(name)
+    if not matched:
+        raise ValueError(
+            f"PEFT dry run: target_modules {target_modules} matched 0 of "
+            f"{len(module_names)} modules — attaching the adapter would "
+            f"silently freeze the whole model. Check the module names against "
+            f"this backbone (finetune.peft_dry_run)."
+        )
+    shown = ", ".join(matched[:10])
+    more = f" ... and {len(matched) - 10} more" if len(matched) > 10 else ""
+    print(
+        f"[Info] PEFT dry run: {len(matched)} modules matched target_modules "
+        f"{target_modules}: {shown}{more}"
+    )
+    return matched
+
+
+def _guard_trainable_ratio(
+    model: Any, preset_family: str | None, preset_row: dict | None, adapter_kind: str
+) -> tuple[int, int, float]:
+    """Enforce the trainable-parameter ratio after adapter attach (D-04).
+
+    Computed directly from requires_grad tensors (never parsed from
+    print_trainable_parameters output). With a preset active the preset's
+    ratio band is enforced; with user-supplied target_modules the guard
+    enforces ratio > 0 (a fully frozen model is always wrong).
+
+    Args:
+        model: The adapter-wrapped model.
+        preset_family: Family key when auto-selection fired, else None.
+        preset_row: The preset row when auto-selection fired, else None.
+        adapter_kind: "ia3" or "lora".
+
+    Returns:
+        (trainable count, total count, ratio).
+
+    Raises:
+        ValueError: Outside the preset band, or zero trainable parameters.
+    """
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    ratio = trainable / max(total, 1)
+    if preset_row is not None:
+        lo, hi = preset_row[f"{adapter_kind}_ratio_band"]
+        if not (lo <= ratio <= hi):
+            raise ValueError(
+                f"PEFT preset '{preset_family}' attached {trainable}/{total} "
+                f"trainable parameters (ratio {ratio:.2e}); expected band "
+                f"[{lo:.2e}, {hi:.2e}]. A silent module-skip is the likely "
+                f"cause — check target_modules against this backbone."
+            )
+    elif trainable == 0:
+        raise ValueError(
+            f"The PEFT adapter attached 0 trainable parameters out of {total}: "
+            f"the model is fully frozen. target_modules matched no modules — "
+            f"check the module names against this backbone."
+        )
+    return trainable, total, ratio
+
+
 # Pure-timing keys trainer.predict reports alongside metrics; evaluate(split=...)
 # separates them into the JSON "runtime" block instead of the canonical
 # metric-names dict (they are not metric-registry names).
@@ -187,6 +377,40 @@ class DNATrainer:
                 "when finetune.use_ia3 is true."
             )
 
+        # Shared PEFT target resolution: preset auto-selection (PEFT-02) and
+        # the dry-run validator (D-03) run ahead of either adapter branch so
+        # LoRA and IA³ share one resolution path.
+        peft_kind = "lora" if use_lora else ("ia3" if self.train_config.use_ia3 else None)
+        preset_family: str | None = None
+        preset_row: dict | None = None
+        if peft_kind is not None:
+            section = config["lora"] if peft_kind == "lora" else config.get("ia3", Ia3Config())
+            if peft_kind == "ia3" and "ia3" not in config:
+                # Register the default section so the IA³ branch below (and
+                # preset injection) mutate the same object the config carries.
+                config["ia3"] = section
+            targets = getattr(section, "target_modules", None)
+            if targets is None:
+                preset_family, preset_row, matched_by = _resolve_peft_preset(model)
+                targets = list(
+                    preset_row["ia3_target_modules"]
+                    if peft_kind == "ia3"
+                    else preset_row["lora_target_modules"]
+                )
+                if peft_kind == "ia3" and getattr(section, "feedforward_modules", None) is None:
+                    section.feedforward_modules = list(preset_row.get("feedforward_modules") or [])
+                section.target_modules = targets
+                kind_label = "IA³" if peft_kind == "ia3" else "LoRA"
+                print(
+                    f"[Info] {kind_label} preset '{preset_family}' selected "
+                    f"(matched by {matched_by}): target_modules={targets}"
+                )
+            if self.train_config.peft_dry_run:
+                _peft_dry_run_report(model, section.target_modules)
+                print("[Info] PEFT dry run complete — no training performed.")
+                self._peft_dry_run = True
+                return
+
         # LoRA / QLoRA
         if use_lora:
             from ..models.model import peft_forward_compatiable
@@ -204,6 +428,7 @@ class DNATrainer:
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
             self.model.print_trainable_parameters()
+            _guard_trainable_ratio(self.model, preset_family, preset_row, "lora")
 
         # IA³ (no k-bit prep: use_ia3 x use_qlora is rejected at config time)
         if self.train_config.use_ia3:
@@ -219,6 +444,7 @@ class DNATrainer:
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, ia3_config)
             self.model.print_trainable_parameters()
+            _guard_trainable_ratio(self.model, preset_family, preset_row, "ia3")
 
         # Multi-GPU support
         if torch.cuda.device_count() > 1:
@@ -490,6 +716,9 @@ class DNATrainer:
             Dictionary containing training metrics including loss, learning
             rate, etc.
         """
+        if getattr(self, "_peft_dry_run", False):
+            print("[Info] Skipping the training loop: finetune.peft_dry_run=true.")
+            return {}
         self.model.train()
         train_result = self.trainer.train()
         metrics: dict[str, float] = train_result.metrics

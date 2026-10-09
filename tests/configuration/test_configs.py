@@ -1044,6 +1044,7 @@ class TestIa3Config:
         assert config.fan_in_fan_out is False
         assert config.init_ia3_weights is True
         assert config.modules_to_save is None
+        assert config.task_type == "SEQ_CLS"
 
     def test_ia3_config_custom_values(self):
         """All six fields accept explicit values."""

@@ -462,6 +462,13 @@ class Ia3Config(BaseModel):
             "saved in the final checkpoint (e.g. classification heads)."
         ),
     )
+    task_type: str | None = Field(
+        default="SEQ_CLS",
+        description=(
+            "The task type for PEFT, mirroring LoraConfig. Keeps the sequence-"
+            "classification head (the wrapper's 'score' module) trainable."
+        ),
+    )
 
 
 class VepConfig(BaseModel):
