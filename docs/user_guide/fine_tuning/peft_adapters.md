@@ -149,6 +149,15 @@ model, tokenizer = load_model_and_tokenizer(
     },
 )
 
+datasets = DNADataset.load_local_data(
+    "data/train.csv",
+    seq_col="sequence",
+    label_col="label",
+    max_length=512,
+)
+datasets.split_data(test_size=0.2, val_size=0.1)
+datasets.encode_sequences(tokenizer=tokenizer)
+
 trainer = DNATrainer(
     model=model,
     config=config,
