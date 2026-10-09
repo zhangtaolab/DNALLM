@@ -61,9 +61,15 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   3. `resolve(name)` on the new `dnallm/tasks/metric_registry.py` returns the canonical metric function for every metric key used across the benchmark task set; unknown names raise a matchable ValueError; historical aliases (`eval_auroc`, `eval_spearman_r`, …) are recognized but never emitted; `metrics.py` emits exclusively through the registry; the module imports without torch/sklearn and its coverage row is measured (same-change proof it sits outside the vendored `dnallm/tasks/metrics/` omit glob)
   4. The docs build stays green under the docs-validation gate with terminology unified to "DNA large language models", `validate_sequences` carrying a docstring plus the cross-model `valid_chars` comparability warning with a dropped-row count log line, and one CHANGELOG entry per revision fix each traceable to its commit (rebuttal-letter evidence chain opened; the IA³-chapter section completes in Phase 12 after PEFT-01)
   5. The scaffolding pass is committed as one change — Pydantic config stubs (Ia3Config/VepConfig/SweepConfig skeletons), pyproject package-data entries, any new skip-allowlist rows — and the REV-08 long pole has started (`dnallm/inference/vep.py` core: `align_variant` same-slot rule + CLM/MLM scoring kernels with unit tests); `pyproject.toml` dependency lists are unchanged (zero new dependencies) and `dnallm/__init__.py` carries no new re-exports
-**Plans**: TBD
+**Plans**: 4
 
-**Wave structure (owner-fixed):** 4 parallel agents with zero file overlap — A1 trainer.py+configs.py (REV-01); A2 tasks/ registry (REV-02); A3 docs (REV-03); A4 new inference/vep.py core (REV-08 start). The plan encodes the per-agent file-ownership map. Standard patterns only — no plan-time research needed.
+Plans:
+- [ ] 10-01-trainer-eval-guard-scaffolding-PLAN.md — A1: EVAL-01 trainer guard + evaluate(split=) + one-pass config scaffolding (Ia3Config/VepConfig/SweepConfig, use_ia3, pyproject package-data)
+- [ ] 10-02-metric-registry-contract-PLAN.md — A2: METR-01 registry at dnallm/tasks/metric_registry.py + metrics.py exclusive emission + coverage/import-light proofs
+- [ ] 10-03-docs-terminology-changelog-PLAN.md — A3: DOCS-01 terminology sweep + validate_sequences comparability warning + LoRA/QLoRA/IA³ chapter + CHANGELOG evidence chain
+- [ ] 10-04-vep-core-kernels-PLAN.md — A4: REV-08 head start — vep.py core (align_variant same-slot rule + CLM/MLM kernels) at the ≥96% standard
+
+**Wave structure (owner-fixed):** 4 parallel agents with zero file overlap — A1 trainer.py+configs.py (REV-01); A2 tasks/ registry (REV-02); A3 docs (REV-03); A4 new inference/vep.py core (REV-08 start). The plan encodes the per-agent file-ownership map (CHANGELOG.md is the single sanctioned shared append surface per the D-09 same-commit entry mechanism). Standard patterns only — no plan-time research needed.
 
 ### Phase 11: PEFT Adaptation, Baselines & New Evaluation Capabilities
 **Goal**: Every reviewer-experiment capability works end-to-end — users can fine-tune with IA³ or preset-directed LoRA targets, load from-scratch baselines, probe frozen embeddings, score variants zero-shot from VCF, and run multi-seed sweeps with uncertainty aggregates
