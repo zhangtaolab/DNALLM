@@ -37,6 +37,11 @@ Features:
 1. ``aggregate_seeds`` — pure, torch-free mean/sd/ci95 with the n-guard:
    no interval below 3 seeds, a Student-t interval for 3-9 seeds, and a
    seeded percentile bootstrap only from 10 seeds on.
+2. ``run_seeds`` — the sweep orchestrator: one fully-seeded run per seed
+   under ``{out_root}/{model}/{task}/seed_{s}/``, then the aggregate
+   ``statistics.json`` under ``{out_root}/{model}/{task}/``.
+3. ``run_sweep_from_config`` — adapter mapping a ``SweepConfig``
+   (``dnallm.configuration.configs``) verbatim onto ``run_seeds``.
 
 Example:
     >>> from dnallm.finetune.sweep import aggregate_seeds
@@ -54,8 +59,11 @@ Example:
 
 from __future__ import annotations
 
+import json
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
-from collections.abc import Sequence
 
 import numpy as np
 from scipy import stats
@@ -150,3 +158,282 @@ def aggregate_seeds(
         out["ci95"] = None
         out["method"] = "omitted"
     return out
+
+
+# Aggregate output filename under {out_root}/{model}/{task}/.
+STATISTICS_FILENAME = "statistics.json"
+
+# Per-seed result filename inside each seed_{s}/ directory; mirrors the
+# Phase-10 trainer result-JSON shape {split -> seed, timestamp, metrics}.
+SEED_RESULT_FILENAME = "seed_result.json"
+
+# Characters a single directory segment must never contain (V12: model and
+# task names come from config/user strings and flow into a recursive mkdir).
+_FORBIDDEN_SEGMENT_CHARS = ("/", "\\", "\0")
+
+
+def _sanitize_path_segment(name: str, field: str) -> str:
+    """Validate one directory segment of the sweep output protocol.
+
+    Args:
+        name: The candidate segment (a model or task name).
+        field: Which config field ``name`` came from, for the error message.
+
+    Returns:
+        The validated segment, unchanged.
+
+    Raises:
+        ValueError: If ``name`` is empty/blank, is ``.`` or ``..``, or
+            contains a path separator — any of which would escape the
+            per-run directory protocol under ``out_root``.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError(f"sweep {field} must be a non-empty path segment, got {name!r}.")
+    if name in (".", ".."):
+        raise ValueError(
+            f"sweep {field} must not be the special segment {name!r}: it would "
+            f"not create a distinct per-{field} directory under out_root."
+        )
+    bad = sorted(ch for ch in _FORBIDDEN_SEGMENT_CHARS if ch in name)
+    if bad:
+        raise ValueError(
+            f"sweep {field} {name!r} must not contain path separators "
+            f"({', '.join(repr(c) for c in bad)}): it is used as a single "
+            f"directory segment under the sweep out_root."
+        )
+    return name
+
+
+def run_seeds(
+    fn: Callable[[int, Path], Mapping[str, Any]],
+    seeds: Iterable[int],
+    out_root: str | Path,
+    *,
+    model_name: str,
+    task_name: str,
+    metric_keys: list[str] | None = None,
+    n_bootstrap: int = 2000,
+    bootstrap_seed: int = 42,
+    small_n_ci: str = "t-interval",
+) -> dict[str, Any]:
+    """Run one fully-seeded training run per seed and aggregate statistics.
+
+    Directory protocol: each seed ``s`` runs inside
+    ``{out_root}/{model_name}/{task_name}/seed_{s}/`` (created with
+    ``parents=True, exist_ok=True``); after all seeds,
+    ``{out_root}/{model_name}/{task_name}/statistics.json`` receives the
+    statistics block per the module docstring spec for every aggregated
+    metric, plus the per-seed result paths.
+
+    Seed semantics (D-16, same-split-across-seeds): ``run_seeds`` threads
+    ONE seed into every stochastic stage of a run via ``fn`` —
+    initialization and data-order/shuffle effects — while the dataset
+    split stays fixed across seeds. The split must be performed ONCE by
+    the caller (before the sweep, or with a dataset-derived fixed seed
+    inside ``fn``'s closure), so seed-to-seed variance measures
+    init/shuffle only, never split variance. ``run_seeds`` itself takes
+    no dataset argument and cannot re-split per seed; ``fn`` receives the
+    pre-split dataset via its closure and must not derive the split from
+    the sweep seed. ``fn`` is called exactly once per seed as
+    ``fn(seed, seed_dir)``.
+
+    Determinism contract: identical seeds plus a deterministic ``fn``
+    produce byte-identical ``statistics.json`` content on CPU. GPU kernel
+    nondeterminism is explicitly out of contract — same-seed CUDA runs
+    may differ in low-order bits; the canonical reproducibility guarantee
+    is CPU-scoped.
+
+    Args:
+        fn: Callable running ONE fully-seeded training run; receives the
+            sweep seed and the run's ``seed_{s}`` directory, and returns a
+            mapping of metric name to numeric value (e.g. the dict from
+            ``DNATrainer.evaluate(split=...)``).
+        seeds: Sweep seeds to run (at least one).
+        out_root: Root directory for the sweep output (never the current
+            working directory — an empty path is rejected).
+        model_name: Model label used as one directory segment (must not
+            contain path separators).
+        task_name: Task label used as one directory segment (must not
+            contain path separators).
+        metric_keys: Metric names to aggregate. When ``None``, every
+            numeric key reported by ALL seeds is aggregated (sorted for
+            deterministic output order).
+        n_bootstrap: Bootstrap resample count, forwarded to
+            :func:`aggregate_seeds`.
+        bootstrap_seed: Bootstrap RNG seed, forwarded to
+            :func:`aggregate_seeds`.
+        small_n_ci: Small-n interval policy, forwarded to
+            :func:`aggregate_seeds`.
+
+    Returns:
+        The statistics payload written to ``statistics.json``:
+        ``{"model_name", "task_name", "seeds", "per_seed", "statistics"}``
+        where ``per_seed`` entries carry ``{"seed", "path", "metrics"}``
+        with paths relative to the ``{model}/{task}/`` directory (so the
+        payload is byte-identical across equal runs regardless of where
+        ``out_root`` lives) and ``statistics`` maps each metric to the
+        :func:`aggregate_seeds` block.
+
+    Raises:
+        ValueError: If ``out_root`` is empty, ``seeds`` is empty,
+            ``model_name``/``task_name`` are invalid path segments,
+            ``small_n_ci`` is not a valid policy, or ``metric_keys``
+            names a metric some seed did not report.
+    """
+    if out_root is None or not str(out_root).strip():
+        raise ValueError(
+            "sweep out_root must be a non-empty path; refusing to fall back "
+            "to the current working directory."
+        )
+    if small_n_ci not in SMALL_N_CI_CHOICES:
+        raise ValueError(f"small_n_ci must be one of {SMALL_N_CI_CHOICES}, got {small_n_ci!r}.")
+    model_name = _sanitize_path_segment(model_name, "model_name")
+    task_name = _sanitize_path_segment(task_name, "task_name")
+    seed_list = list(seeds)
+    if not seed_list:
+        raise ValueError(
+            "run_seeds requires at least one seed so the protocol always reports a real run."
+        )
+    # Lazy import keeps the module's aggregation layer import-light (no
+    # torch needed to import dnallm.finetune.sweep for statistics-only use).
+    from ..utils import get_logger
+
+    logger = get_logger("dnallm.finetune.sweep")
+
+    task_root = Path(out_root) / model_name / task_name
+    task_root.mkdir(parents=True, exist_ok=True)
+    per_seed: list[dict[str, Any]] = []
+    for seed in seed_list:
+        seed_dir = task_root / f"seed_{seed}"
+        seed_dir.mkdir(parents=True, exist_ok=True)
+        metrics = dict(fn(seed, seed_dir))
+        result_path = seed_dir / SEED_RESULT_FILENAME
+        result_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(result_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "model_name": model_name,
+                    "task_name": task_name,
+                    "seed": seed,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "metrics": metrics,
+                },
+                f,
+                indent=2,
+            )
+        per_seed.append({
+            "seed": seed,
+            "path": f"seed_{seed}/{SEED_RESULT_FILENAME}",
+            "metrics": metrics,
+        })
+
+    if metric_keys is None:
+        common = set(per_seed[0]["metrics"])
+        for entry in per_seed[1:]:
+            common &= set(entry["metrics"])
+        keys: list[str] = sorted(common)
+    else:
+        keys = list(metric_keys)
+        for key in keys:
+            missing = [entry["seed"] for entry in per_seed if key not in entry["metrics"]]
+            if missing:
+                raise ValueError(
+                    f"metric_keys requested '{key}' but seed(s) {missing} did "
+                    f"not report it; every aggregated metric must be present "
+                    f"in every seed's result."
+                )
+    statistics: dict[str, dict[str, Any]] = {}
+    for key in keys:
+        values: list[float] = []
+        numeric = True
+        for entry in per_seed:
+            value = entry["metrics"][key]
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                logger.info(
+                    f"[Info] Metric '{key}' is not numeric "
+                    f"({type(value).__name__}); skipping its aggregation."
+                )
+                numeric = False
+                break
+            values.append(float(value))
+        if not numeric:
+            continue
+        statistics[key] = aggregate_seeds(
+            values,
+            n_bootstrap=n_bootstrap,
+            bootstrap_seed=bootstrap_seed,
+            small_n_ci=small_n_ci,
+        )
+
+    payload: dict[str, Any] = {
+        "model_name": model_name,
+        "task_name": task_name,
+        "seeds": seed_list,
+        "per_seed": per_seed,
+        "statistics": statistics,
+    }
+    stats_path = task_root / STATISTICS_FILENAME
+    stats_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    logger.info(
+        f"[Success] Sweep over {len(seed_list)} seed(s) for {model_name}/{task_name} "
+        f"written to {stats_path}"
+    )
+    return payload
+
+
+def run_sweep_from_config(
+    sweep_config: Any,
+    fn: Callable[[int, Path], Mapping[str, Any]],
+    *,
+    model_name: str,
+    task_name: str,
+    metric_keys: list[str] | None = None,
+) -> dict[str, Any]:
+    """Adapt a ``SweepConfig`` onto :func:`run_seeds` arguments verbatim.
+
+    ``SweepConfig`` (``dnallm.configuration.configs``, the Phase-10
+    scaffold) is consumed as-is: ``seeds`` and ``out_root`` positionally,
+    ``n_bootstrap``/``bootstrap_seed``/``small_n_ci`` as the aggregation
+    knobs. No configuration fields are added or interpreted beyond that.
+
+    Args:
+        sweep_config: The ``SweepConfig`` section of a loaded config.
+        fn: Per-seed run callable, forwarded to :func:`run_seeds`.
+        model_name: Model directory label, forwarded to :func:`run_seeds`.
+        task_name: Task directory label, forwarded to :func:`run_seeds`.
+        metric_keys: Optional metric allowlist, forwarded to
+            :func:`run_seeds`.
+
+    Returns:
+        The statistics payload from :func:`run_seeds`.
+
+    Raises:
+        ValueError: If ``sweep_config`` is not a ``SweepConfig`` or its
+            ``out_root`` is unset (plus everything :func:`run_seeds`
+            raises).
+    """
+    from ..configuration.configs import SweepConfig
+
+    if not isinstance(sweep_config, SweepConfig):
+        raise ValueError(
+            f"run_sweep_from_config expects a SweepConfig, got {type(sweep_config).__name__}."
+        )
+    if not sweep_config.out_root:
+        raise ValueError(
+            "sweep.out_root is not set: run_seeds needs an explicit output "
+            "root and never falls back to the current working directory. "
+            "Set sweep.out_root in the config."
+        )
+    return run_seeds(
+        fn,
+        sweep_config.seeds,
+        sweep_config.out_root,
+        model_name=model_name,
+        task_name=task_name,
+        metric_keys=metric_keys,
+        n_bootstrap=sweep_config.n_bootstrap,
+        bootstrap_seed=sweep_config.bootstrap_seed,
+        small_n_ci=sweep_config.small_n_ci,
+    )
