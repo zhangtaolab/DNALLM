@@ -236,8 +236,8 @@ MODEL_INFO = {
         "default": ("lgq12697/caduceus-ps_seqlen-1k_d_model-118_n_layer-4_lr-8e-3"),
     },
     "PlantCaduceus": {
-        "title": "Cross-species modeling of plant genomes at"
-        "single-nucleotide resolution using a pretrained DNA large language model",
+        "title": "Cross-species modeling of plant genomes at "
+        "single-nucleotide resolution using a pretrained DNA language model",
         "reference": "https://www.pnas.org/doi/10.1073/pnas.2421738122",
         "model_architecture": "CaduceusForMaskedLM",
         "model_tags": ["l20", "l24", "l28", "l32"],
@@ -314,8 +314,8 @@ MODEL_INFO = {
         "default": "lgq12697/DNABERT-S",
     },
     "GENA-LM": {
-        "title": "GENA-LM: a family of open-source"
-        "foundational DNA large language models for long sequences",
+        "title": "GENA-LM: a family of open-source "
+        "foundational DNA language models for long sequences",
         "reference": "https://doi.org/10.1093/nar/gkae1310",
         "model_architecture": "BertForMaskedLM",
         "model_tags": [
@@ -348,8 +348,8 @@ MODEL_INFO = {
         "default": "lgq12697/gena-lm-bert-base",
     },
     "GENA-LM-BigBird": {
-        "title": "GENA-LM: a family of open-source"
-        "foundational DNA large language models for long sequences",
+        "title": "GENA-LM: a family of open-source "
+        "foundational DNA language models for long sequences",
         "reference": "https://doi.org/10.1093/nar/gkae1310",
         "model_architecture": "BigBirdForMaskedLM",
         "model_tags": ["base-sparse", "base-sparse-t2t", "base-t2t"],
@@ -414,7 +414,7 @@ MODEL_INFO = {
         "default": "lgq12697/GenomeOcean-100M",
     },
     "GPN": {
-        "title": "DNA large language models arepowerful predictors of genome-wide variant effects",
+        "title": "DNA language models are powerful predictors of genome-wide variant effects",
         "reference": "https://doi.org/10.1073/pnas.2311219120",
         "model_architecture": "ConvNetForMaskedLM",
         "model_tags": ["brassicales"],
@@ -426,7 +426,7 @@ MODEL_INFO = {
         "dependencies": "pipinstall git+https://github.com/songlab-cal/gpn.git",
     },
     "GROVER": {
-        "title": "DNA large language model GROVER learnssequence context in the human genome",
+        "title": "DNA language model GROVER learns sequence context in the human genome",
         "reference": "https://doi.org/10.1038/s42256-024-00872-0",
         "model_architecture": "BertForMaskedLM",
         "model_tags": ["base"],
