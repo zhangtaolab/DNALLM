@@ -264,6 +264,23 @@ class TestRunSeeds:
         assert "m" in payload["statistics"]
         assert "name" not in payload["statistics"]
 
+    def test_run_seeds_explicit_non_numeric_metric_rejected(self, tmp_path):
+        # IN-09: a metric the caller explicitly requested via metric_keys
+        # but that a seed reports non-numeric hard-fails instead of
+        # silently vanishing from statistics (auto-discovery soft-skips).
+        def mixed_fn(seed: int, seed_dir: Path) -> dict[str, object]:
+            return {"m": float(seed), "name": f"run-{seed}"}
+
+        with pytest.raises(ValueError, match=r"requested 'name'.*non-numeric"):
+            run_seeds(
+                mixed_fn,
+                [1, 2],
+                tmp_path,
+                model_name="m",
+                task_name="t",
+                metric_keys=["name"],
+            )
+
     def test_run_seeds_invalid_small_n_ci_rejected(self, tmp_path):
         with pytest.raises(ValueError, match=r"small_n_ci must be one of"):
             run_seeds(

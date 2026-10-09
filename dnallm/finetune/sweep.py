@@ -278,7 +278,9 @@ def run_seeds(
         ValueError: If ``out_root`` is empty, ``seeds`` is empty,
             ``model_name``/``task_name`` are invalid path segments,
             ``small_n_ci`` is not a valid policy, or ``metric_keys``
-            names a metric some seed did not report.
+            names a metric some seed did not report or reported as
+            non-numeric (auto-discovered non-numeric metrics keep the
+            soft skip).
     """
     if out_root is None or not str(out_root).strip():
         raise ValueError(
@@ -348,6 +350,19 @@ def run_seeds(
         for entry in per_seed:
             value = entry["metrics"][key]
             if isinstance(value, bool) or not isinstance(value, (int, float)):
+                if metric_keys is not None:
+                    # IN-09: an explicitly requested metric that IS present
+                    # but non-numeric is a contract violation on the
+                    # caller's side (e.g. a numeric-producing fn returning
+                    # np.int64, which is not a Python int) — hard-fail
+                    # instead of silently dropping it from statistics.
+                    # Auto-discovery keeps the soft skip below.
+                    raise ValueError(
+                        f"metric_keys requested '{key}' but seed {entry['seed']} "
+                        f"reported a non-numeric value "
+                        f"({type(value).__name__}): {value!r}. Every "
+                        "aggregated metric must be numeric."
+                    )
                 logger.info(
                     f"[Info] Metric '{key}' is not numeric "
                     f"({type(value).__name__}); skipping its aggregation."
