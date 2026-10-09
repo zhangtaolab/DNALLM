@@ -263,13 +263,6 @@ class DNATrainer:
             else:
                 eval_dataset = None
                 self.training_args.eval_strategy = "no"
-                if self.training_args.load_best_model_at_end:
-                    raise ValueError(
-                        "load_best_model_at_end requires an evaluation split, but no "
-                        "dev split is present and the test split is excluded from "
-                        "evaluation (allow_test_as_eval is False). Provide a "
-                        "dev/validation split or set finetune.allow_test_as_eval=true."
-                    )
                 print(
                     "[Warning] No dev split present: the test split is excluded from "
                     "evaluation and per-step evaluation is disabled. This differs "
@@ -280,6 +273,18 @@ class DNATrainer:
         else:
             eval_dataset = None
             self.training_args.eval_strategy = "no"
+        # EVAL-01: best-model selection needs an evaluation set no matter which
+        # branch above excluded evaluation (held-out test split, train-only
+        # split, or unsplit dataset) — fail loudly instead of silently never
+        # selecting a best model (this mutation happens after
+        # TrainingArguments.__post_init__, so transformers cannot catch it).
+        if eval_dataset is None and self.training_args.load_best_model_at_end:
+            raise ValueError(
+                "load_best_model_at_end requires an evaluation split, but none is "
+                "available (no dev split present, and the test split — if any — is "
+                "excluded from evaluation when allow_test_as_eval is False). Provide "
+                "a dev/validation split or set finetune.allow_test_as_eval=true."
+            )
 
         # Convert warmup_ratio to warmup_steps (warmup_ratio was removed in transformers v5)
         if self._warmup_ratio and not self.training_args.warmup_steps:

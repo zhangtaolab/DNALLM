@@ -148,6 +148,7 @@ class TestDatasetSplitWiring:
     def test_unsplit_dataset_used_as_train_without_eval(self, trainer_config, mock_hf_boundary):
         """An unsplit dataset trains on itself with evaluation disabled."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
         datasets = make_datasets([None])
 
         DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
@@ -182,6 +183,7 @@ class TestDatasetSplitWiring:
     def test_train_only_split_disables_evaluation(self, trainer_config, mock_hf_boundary):
         """A lone train split disables the eval strategy."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
 
         DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
 
@@ -238,6 +240,7 @@ class TestEvalSemanticsGuard:
     def test_train_only_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
         """A lone train split keeps today's behavior with no flip warning."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
 
         with patch("builtins.print") as mock_print:
             DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
@@ -253,6 +256,7 @@ class TestEvalSemanticsGuard:
     def test_unsplit_dataset_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
         """An unsplit dataset keeps today's behavior with no flip warning."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
 
         with patch("builtins.print") as mock_print:
             DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets([None]))
@@ -311,6 +315,20 @@ class TestEarlyStoppingCollision:
             DNATrainer(
                 model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
             )
+
+    @pytest.mark.parametrize("splits", [["train"], [None]], ids=["train-only", "unsplit"])
+    def test_load_best_model_at_end_collision_raises_without_test_split(
+        self, trainer_config, mock_hf_boundary, splits
+    ):
+        """The collision guard also covers the train-only and unsplit paths."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = True
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="load_best_model_at_end requires an evaluation split"),
+        ):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(splits))
 
     def test_opt_in_early_stopping_does_not_raise(self, trainer_config, mock_hf_boundary):
         """Opting into test-as-eval keeps early stopping working (opt-in edge)."""
@@ -835,6 +853,7 @@ class TestWarmupConversion:
         args_cls.return_value.gradient_accumulation_steps = 1
         args_cls.return_value.num_train_epochs = 1
         args_cls.return_value.max_steps = -1
+        args_cls.return_value.load_best_model_at_end = False
         for key, value in attrs.items():
             setattr(args_cls.return_value, key, value)
 
