@@ -452,6 +452,12 @@ class DNATrainer:
                 _peft_dry_run_report(model, peft_section.target_modules)
                 print("[Info] PEFT dry run complete — no training performed.")
                 self._peft_dry_run = True
+                # IN-08: no half-constructed trainer — set the attribute to
+                # None (not leave it absent) and make the trainer-dependent
+                # public methods fail with a matchable ValueError instead of
+                # a bare AttributeError.
+                self.trainer = None
+                self.training_args = None
                 return
 
         # LoRA / QLoRA
@@ -745,6 +751,23 @@ class DNATrainer:
 
         return hp_space
 
+    def _raise_if_dry_run(self) -> None:
+        """Guard trainer-dependent public methods after a PEFT dry run (IN-08).
+
+        Raises:
+            ValueError: If the trainer was constructed with
+                ``finetune.peft_dry_run=true`` and exited before the HF
+                Trainer was built — a matchable error instead of a bare
+                AttributeError on the missing trainer state.
+        """
+        if getattr(self, "_peft_dry_run", False):
+            raise ValueError(
+                "not available after finetune.peft_dry_run=true: the dry run "
+                "validated adapter targets and exited before the trainer was "
+                "constructed. Re-run with finetune.peft_dry_run=false to "
+                "train, then call this method."
+            )
+
     def train(self, save_tokenizer: bool = True) -> dict[str, float]:
         """Train the model and return training metrics.
 
@@ -808,6 +831,7 @@ class DNATrainer:
             raise ImportError(
                 "Optuna is required for hyperparameter search. Install it with: pip install optuna"
             )
+        self._raise_if_dry_run()
 
         search_config = self.train_config.hyperparameter_search
         if not search_config or search_config.n_trials <= 0:
@@ -900,8 +924,10 @@ class DNATrainer:
         Raises:
             ValueError: If ``split`` is not a key of the dataset dict, or if
                 ``finetune.output_dir`` is not set (the result JSON would
-                otherwise land in the current working directory).
+                otherwise land in the current working directory), or the
+                trainer exited via ``finetune.peft_dry_run=true``.
         """
+        self._raise_if_dry_run()
         if split is None:
             legacy_kwargs: dict[str, Any] = {}
             if eval_dataset is not None:
@@ -962,6 +988,7 @@ class DNATrainer:
                 metrics if test dataset exists,
             otherwise empty dictionary
         """
+        self._raise_if_dry_run()
         self.model.eval()
         result = {}
         if "test" in self.data_split:
@@ -992,6 +1019,7 @@ class DNATrainer:
 
         from dnallm.utils.training_plots import plot_loss_curve, plot_lr_schedule
 
+        self._raise_if_dry_run()
         plot_dir = output_dir or self.train_config.output_dir or "."
         plot_path = Path(plot_dir)
         plot_path.mkdir(parents=True, exist_ok=True)

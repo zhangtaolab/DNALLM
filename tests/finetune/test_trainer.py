@@ -818,6 +818,40 @@ class TestIa3Wiring:
         assert "PEFT dry run complete — no training performed." in logged
         assert "Skipping the training loop: finetune.peft_dry_run=true." in logged
 
+    def test_peft_dry_run_trainer_dependent_methods_raise_matchable(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """evaluate/infer/plot_history/search on a dry-run trainer raise a
+        matchable ValueError instead of a bare AttributeError, and the
+        trainer attribute exists (None) rather than being absent (IN-08)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["query"])
+        trainer_config["lora"] = LoraConfig()
+        model = FakeTree({"backbone.layer.0.attention.self": ["query", "key"]})
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model"),
+            patch("builtins.print"),
+        ):
+            trainer = DNATrainer(
+                model=model,
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert trainer.trainer is None
+        for method in (
+            trainer.evaluate,
+            trainer.infer,
+            trainer.plot_history,
+            trainer.search,
+        ):
+            with pytest.raises(
+                ValueError, match=r"not available after finetune\.peft_dry_run=true"
+            ):
+                method()
+
     def test_peft_dry_run_without_adapter_raises_matchable_error(
         self, trainer_config, mock_hf_boundary
     ):
