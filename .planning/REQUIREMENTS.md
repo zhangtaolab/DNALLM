@@ -21,24 +21,24 @@ Requirements for milestone v1.2 "Paper Revision Suite Support". Each maps to roa
 
 ### PEFT Adapters (PEFT)
 
-- [ ] **PEFT-01** (REV-04): IA³ adapter support — `Ia3Config` (Pydantic) + `TrainingConfig.use_ia3`; trainer init branch symmetric to LoRA (trainer.py:153-170 shape) sharing the adapter save/reload path (PeftModel reuse at inference.py:111-131); `use_ia3 × use_qlora` rejected at Pydantic config time with a matchable `ValueError`; acceptance: one transformer model AND one Mamba model each fine-tune one task; IA³ adapter save/reload roundtrip test (peft #2429 corruption class); `lora × ia3` combination likewise rejected
-- [ ] **PEFT-02** (REV-05): Per-model PEFT target-module presets — `dnallm/configuration/presets/lora_targets.yaml` packaged in the wheel (`[tool.setuptools.package-data]` + importlib.resources; NOT repo-root `configs/` which is unpackaged), recording `target_modules` and recommended `r` per architecture family (BERT/GPT/Mamba/Gemma/Llama/hybrid), derived from real `config.json` module names (never guessed); `target_modules=None` auto-selects by family with a log line; a dry-run validator errors on wrong module names (peft silently skips non-matching modules on Mamba/hybrid — the validator plus a runtime trainable-parameter-count guard are the countermeasures); ~44 benchmark models covered; presets-table regression tests
+- [x] **PEFT-01** (REV-04): IA³ adapter support — `Ia3Config` (Pydantic) + `TrainingConfig.use_ia3`; trainer init branch symmetric to LoRA (trainer.py:153-170 shape) sharing the adapter save/reload path (PeftModel reuse at inference.py:111-131); `use_ia3 × use_qlora` rejected at Pydantic config time with a matchable `ValueError`; acceptance: one transformer model AND one Mamba model each fine-tune one task; IA³ adapter save/reload roundtrip test (peft #2429 corruption class); `lora × ia3` combination likewise rejected
+- [x] **PEFT-02** (REV-05): Per-model PEFT target-module presets — `dnallm/configuration/presets/lora_targets.yaml` packaged in the wheel (`[tool.setuptools.package-data]` + importlib.resources; NOT repo-root `configs/` which is unpackaged), recording `target_modules` and recommended `r` per architecture family (BERT/GPT/Mamba/Gemma/Llama/hybrid), derived from real `config.json` module names (never guessed); `target_modules=None` auto-selects by family with a log line; a dry-run validator errors on wrong module names (peft silently skips non-matching modules on Mamba/hybrid — the validator plus a runtime trainable-parameter-count guard are the countermeasures); ~44 benchmark models covered; presets-table regression tests
 
 ### From-Scratch Baselines (BASE)
 
-- [ ] **BASE-01** (REV-06): `load_model_and_tokenizer(..., random_init=True)` — `AutoConfig.from_pretrained` + `AutoModel*.from_config` (never `from_pretrained`), skipping pretrained weights and re-initializing; a loud "randomly initialized" log plus parameter-hash proof; acceptance: per-tensor hashes differ from the pretrained path (a single global hash passes with leftover pretrained tensors), CPU-canonical seeding, same-seed reproducibility, no-download assertion, tokenizer still loads normally; supported on generic Auto* families only — special-family handlers raise an explicit `ValueError`; two architectures covered by tests
+- [x] **BASE-01** (REV-06): `load_model_and_tokenizer(..., random_init=True)` — `AutoConfig.from_pretrained` + `AutoModel*.from_config` (never `from_pretrained`), skipping pretrained weights and re-initializing; a loud "randomly initialized" log plus parameter-hash proof; acceptance: per-tensor hashes differ from the pretrained path (a single global hash passes with leftover pretrained tensors), CPU-canonical seeding, same-seed reproducibility, no-download assertion, tokenizer still loads normally; supported on generic Auto* families only — special-family handlers raise an explicit `ValueError`; two architectures covered by tests
 
 ### Probing (PROB)
 
-- [ ] **PROB-01** (REV-07): `dnallm/inference/probing.py` — `extract_embeddings(...)` (reuses the scoring embedding path; layer and pooling selectable) + `fit_probe(kind='logistic'|'mlp')` (sklearn, fixed hyperparameters, scaler fit on train split only); probe metrics emitted through the METR-01 registry; embeddings cached to npz keyed by (model, dataset, layer, pooling) with second-run cache hits asserted; acceptance: any model × any binary classification task end-to-end; output schema documented for the dnallmmark F4 lane
+- [x] **PROB-01** (REV-07): `dnallm/inference/probing.py` — `extract_embeddings(...)` (reuses the scoring embedding path; layer and pooling selectable) + `fit_probe(kind='logistic'|'mlp')` (sklearn, fixed hyperparameters, scaler fit on train split only); probe metrics emitted through the METR-01 registry; embeddings cached to npz keyed by (model, dataset, layer, pooling) with second-run cache hits asserted; acceptance: any model × any binary classification task end-to-end; output schema documented for the dnallmmark F4 lane
 
 ### Zero-Shot VEP (VEP)
 
-- [ ] **VEP-01** (REV-08): `dnallm/inference/vep.py` — `align_variant(seq,pos,ref,alt,tokenizer)` same-slot evaluability rule (ref/alt must tokenize into the identical token slot; otherwise the variant is explicitly skipped with reason + count — the skip fraction is itself reported as a finding; this is the protocol answer to reviewer R1-3e①); `score_variant(paradigm='clm'|'mlm')` reusing the mutagenesis.py:258/312 kernels with a paradigm↔architecture mismatch guard; `evaluate_vcf(...)` (VCF reading via scikit-allel `read_vcf` — owner decision 2026-10-09 supersedes the stdlib-reader plan: Windows cp310–313 wheels and numpy 1.26.4/2.2.0 compatibility verified empirically; INFO parsing (ClinVar CLNSIG) natively covered; cyvcf2/pysam remain rejected: no Windows wheels) yielding per-variant scores + skip accounting + AUROC/AUPRC via the registry, with VCF coordinate-system fixtures; a CLI entry point; scoring formulas written into docstrings and README (protocol declaration); acceptance: ClinVar 1k-sample × ≥5 models (CLM/MLM mix) producing literature-magnitude AUROCs, same-slot-differs-by-exactly-one asserted in tests
+- [x] **VEP-01** (REV-08): `dnallm/inference/vep.py` — `align_variant(seq,pos,ref,alt,tokenizer)` same-slot evaluability rule (ref/alt must tokenize into the identical token slot; otherwise the variant is explicitly skipped with reason + count — the skip fraction is itself reported as a finding; this is the protocol answer to reviewer R1-3e①); `score_variant(paradigm='clm'|'mlm')` reusing the mutagenesis.py:258/312 kernels with a paradigm↔architecture mismatch guard; `evaluate_vcf(...)` (VCF reading via scikit-allel `read_vcf` — owner decision 2026-10-09 supersedes the stdlib-reader plan: Windows cp310–313 wheels and numpy 1.26.4/2.2.0 compatibility verified empirically; INFO parsing (ClinVar CLNSIG) natively covered; cyvcf2/pysam remain rejected: no Windows wheels) yielding per-variant scores + skip accounting + AUROC/AUPRC via the registry, with VCF coordinate-system fixtures; a CLI entry point; scoring formulas written into docstrings and README (protocol declaration); acceptance: ClinVar 1k-sample × ≥5 models (CLM/MLM mix) producing literature-magnitude AUROCs, same-slot-differs-by-exactly-one asserted in tests
 
 ### Multi-Seed Protocol (SEED)
 
-- [ ] **SEED-01** (REV-09): `dnallm/finetune/sweep.py` — `run_seeds(fn, seeds, out_root)` with the directory protocol `{model}/{task}/seed_{s}/`; `aggregate_seeds(...)` as a pure function returning mean/sd/ci95 via a SEEDED percentile bootstrap (BCa degenerates at n=3) with an n<10 guard (omit CI or t-interval — never a vacuous bootstrap); a result-JSON `statistics` block spec; acceptance: aggregation unit tests against constructed known arrays; ≥3-seed trial run of one small task end-to-end; directory protocol consistent with dnallmmark F2
+- [x] **SEED-01** (REV-09): `dnallm/finetune/sweep.py` — `run_seeds(fn, seeds, out_root)` with the directory protocol `{model}/{task}/seed_{s}/`; `aggregate_seeds(...)` as a pure function returning mean/sd/ci95 via a SEEDED percentile bootstrap (BCa degenerates at n=3) with an n<10 guard (omit CI or t-interval — never a vacuous bootstrap); a result-JSON `statistics` block spec; acceptance: aggregation unit tests against constructed known arrays; ≥3-seed trial run of one small task end-to-end; directory protocol consistent with dnallmmark F2
 
 ### Motif Matching (MOTIF)
 
@@ -80,12 +80,12 @@ Filled at roadmap creation (2026-10-09). Phase mapping follows the research-reco
 | EVAL-01 | Phase 10 | Complete |
 | METR-01 | Phase 10 | Complete |
 | DOCS-01 | Phase 10 | Complete |
-| PEFT-01 | Phase 11 | Pending |
-| PEFT-02 | Phase 11 | Pending |
-| BASE-01 | Phase 11 | Pending |
-| PROB-01 | Phase 11 | Pending |
-| VEP-01 | Phase 11 | Pending |
-| SEED-01 | Phase 11 | Pending |
+| PEFT-01 | Phase 11 | Complete |
+| PEFT-02 | Phase 11 | Complete |
+| BASE-01 | Phase 11 | Complete |
+| PROB-01 | Phase 11 | Complete |
+| VEP-01 | Phase 11 | Complete |
+| SEED-01 | Phase 11 | Complete |
 | MOTIF-01 | Phase 12 | Pending |
 | MCPE-01 | Phase 12 | Pending |
 

@@ -11,7 +11,7 @@
     {
       "number": "11",
       "name": "PEFT Adaptation, Baselines & New Evaluation Capabilities",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "12",
@@ -21,8 +21,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step (plan phase 11)",
-    "reason": "Phase 11 of 3 — needs a plan"
+    "label": "Advance to the next step (plan phase 12)",
+    "reason": "Phase 12 of 3 — needs a plan"
   },
-  "updated_at": "2026-10-09T12:36:31.296Z"
+  "updated_at": "2026-10-09T15:55:45.667Z"
 }
