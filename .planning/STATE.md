@@ -54,7 +54,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - VEP-01 maps to Phase 11 (completes/verifies there); its core (`align_variant` + scoring kernels) starts in Phase 10's scaffolding pass as the long-pole head start
 - DOCS-01 maps to Phase 10; its IA³-chapter section completes in Phase 12 after PEFT-01
 - Metric registry lives at `dnallm/tasks/metric_registry.py` (sibling of metrics.py) — never inside the vendored `dnallm/tasks/metrics/` coverage/ruff/mypy-excluded glob
-- Zero new dependencies; no new `dnallm/__init__.py` re-exports (facade byte-stable); per-module ≥96% coverage standard verified at phase verification; every new module coverage-gated via mocked fast-lane tests; new skips typed and allowlisted same-change
+- Zero new dependencies beyond scikit-allel (owner-approved 2026-10-09 for VEP-01 VCF reading, supersedes the stdlib-reader research decision: Windows cp310–313 wheels exist and numpy 1.26.4/2.2.0 both verified empirically before approval; only new required transitive dep is dask[array]; lands in Phase 11 agent B5); no new `dnallm/__init__.py` re-exports (facade byte-stable); per-module ≥96% coverage standard verified at phase verification; every new module coverage-gated via mocked fast-lane tests; new skips typed and allowlisted same-change
 - Commits carry no Co-Authored-By trailers (repo convention)
 - Research flags: Phase 11 REV-08 lane needs `--research-phase` (tokenizer alignment semantics, ClinVar filtering); Phase 12 REV-10 calibration choice needs a plan-time spike
 

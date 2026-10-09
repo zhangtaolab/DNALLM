@@ -34,7 +34,7 @@ Requirements for milestone v1.2 "Paper Revision Suite Support". Each maps to roa
 
 ### Zero-Shot VEP (VEP)
 
-- [ ] **VEP-01** (REV-08): `dnallm/inference/vep.py` — `align_variant(seq,pos,ref,alt,tokenizer)` same-slot evaluability rule (ref/alt must tokenize into the identical token slot; otherwise the variant is explicitly skipped with reason + count — the skip fraction is itself reported as a finding; this is the protocol answer to reviewer R1-3e①); `score_variant(paradigm='clm'|'mlm')` reusing the mutagenesis.py:258/312 kernels with a paradigm↔architecture mismatch guard; `evaluate_vcf(...)` (stdlib VCF reader — ~100 lines, gzip+str-splitting; cyvcf2/pysam rejected: no Windows wheels) yielding per-variant scores + skip accounting + AUROC/AUPRC via the registry, with VCF coordinate-system fixtures; a CLI entry point; scoring formulas written into docstrings and README (protocol declaration); acceptance: ClinVar 1k-sample × ≥5 models (CLM/MLM mix) producing literature-magnitude AUROCs, same-slot-differs-by-exactly-one asserted in tests
+- [ ] **VEP-01** (REV-08): `dnallm/inference/vep.py` — `align_variant(seq,pos,ref,alt,tokenizer)` same-slot evaluability rule (ref/alt must tokenize into the identical token slot; otherwise the variant is explicitly skipped with reason + count — the skip fraction is itself reported as a finding; this is the protocol answer to reviewer R1-3e①); `score_variant(paradigm='clm'|'mlm')` reusing the mutagenesis.py:258/312 kernels with a paradigm↔architecture mismatch guard; `evaluate_vcf(...)` (VCF reading via scikit-allel `read_vcf` — owner decision 2026-10-09 supersedes the stdlib-reader plan: Windows cp310–313 wheels and numpy 1.26.4/2.2.0 compatibility verified empirically; INFO parsing (ClinVar CLNSIG) natively covered; cyvcf2/pysam remain rejected: no Windows wheels) yielding per-variant scores + skip accounting + AUROC/AUPRC via the registry, with VCF coordinate-system fixtures; a CLI entry point; scoring formulas written into docstrings and README (protocol declaration); acceptance: ClinVar 1k-sample × ≥5 models (CLM/MLM mix) producing literature-magnitude AUROCs, same-slot-differs-by-exactly-one asserted in tests
 
 ### Multi-Seed Protocol (SEED)
 
@@ -66,7 +66,7 @@ Deferred (v1.3+, tracked for the rebuttal letter's "future versions" commitments
 | dnallmmark repository changes (F1–F10) | Companion repo, tracked in its own plan; cross-repo contract tests import THIS repo's registry |
 | Manuscript text edits (E#) | Revision plan v1/v2 docs own these |
 | Benchmark re-run compute | Owner-scheduled after the P0 contract layer lands |
-| cyvcf2 / pysam | No Windows wheels — would break the Windows CI leg; stdlib reader instead |
+| cyvcf2 / pysam | No Windows wheels — would break the Windows CI leg; scikit-allel instead (owner-approved 2026-10-09: Windows cp310–313 wheels + numpy 1.26.4/2.2.0 verified empirically) |
 | biopython / statsmodels / torchmetrics / any VEP framework | Wrong footprint; scipy+sklearn+stdlib suffice (STACK.md rejected list) |
 | mcp SDK 2.x upgrade | Out of milestone; current pin `>=1.3.0,<2` covers all needs |
 | New `dnallm/__init__.py` re-exports | Facade stays byte-stable; parallel-agent collision avoidance (research convergence) |
