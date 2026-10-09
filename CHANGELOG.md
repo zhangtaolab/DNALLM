@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Metric registry contract at `dnallm.tasks.metric_registry`: a single {canonical: (fn, aliases)} registry with resolve()/canonical_name(); `dnallm.tasks.metrics` now emits exclusively canonical registry names, historical aliases (eval_auroc, eval_spearman_r, ...) are recognized but never emitted (REV-02, R1-2d)
+
 ### Changed
 
 - Evaluation semantics: the trainer no longer silently evaluates on the test split when no dev split exists; evaluation is disabled with a loud warning unless `finetune.allow_test_as_eval: true` is set, and the new `DNATrainer.evaluate(split=...)` evaluates any split through the predict path writing a result JSON (REV-01, R1-2c)
