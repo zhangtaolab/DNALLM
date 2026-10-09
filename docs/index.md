@@ -8,7 +8,7 @@ DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning an
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA large language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
