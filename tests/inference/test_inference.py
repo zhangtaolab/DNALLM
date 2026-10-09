@@ -1708,7 +1708,7 @@ class TestConstructionBranches:
             "dnallm.inference.inference._get_model_path_and_imports",
             side_effect=OSError("cannot resolve"),
         ):
-            with pytest.raises(ValueError, match=r"Failed to load LoRA adapter"):
+            with pytest.raises(ValueError, match=r"Failed to load PEFT adapter"):
                 _build_engine(mock_model, mock_tokenizer, config, lora_adapter=str(adapter_dir))
 
 
