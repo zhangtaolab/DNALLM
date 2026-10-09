@@ -11,6 +11,9 @@ files_modified:
   - tests/finetune/test_trainer.py
   - tests/configuration/test_configs.py
   - CHANGELOG.md
+coupling_justified:
+  - "10-02: CHANGELOG.md is the one sanctioned shared append surface (D-09) — both lanes idempotently ensure the ## [Unreleased] block exists (create-if-absent above ## [0.7.1]), then append their own distinct REV-ID bullet via unique-anchor insert, re-reading the file immediately before editing; either landing order yields the correct changelog and a git-level conflict is resolved by re-appending the missing bullet"
+  - "10-03: CHANGELOG.md shared append surface (D-09) — same idempotent create-if-absent + unique-anchor append discipline as the 10-02 entry; order irrelevant"
 autonomous: true
 requirements: [EVAL-01]
 user_setup: []
@@ -236,7 +239,7 @@ YAML loading already uses yaml.safe_load (existing mitigation, unchanged).
 - `uv run --no-sync pytest tests/ -x -q` fast lane stays green (no regressions outside the lane)
 - `uv run --no-sync python scripts/check_code.py` (ruff + mypy per pre-commit config) green
 - `git diff origin..HEAD -- pyproject.toml` touches only the package-data block
-- Cross-lane contract note (no import dependency): evaluate(split) canonical keys = current unprefixed metric spellings; plan 10-02's registry anchors exactly those spellings, so the phase verifier can cross-check evaluate() JSON keys against `metric_registry.registered_names()` after both lanes land
+- Cross-lane canonical-name contract (automated, run once BOTH lanes have landed — each lane's own task tests stay lane-local and do not import the registry): `uv run --no-sync pytest tests/tasks/test_metrics.py tests/finetune/test_trainer.py -q -k "TestRegistryEmissionContract or TestEvaluateSplit"` plus `uv run --no-sync python -c "import dnallm.tasks.metric_registry as r; from dnallm.finetune import trainer; assert set(r.registered_names()) >= {'accuracy', 'AUROC', 'mse', 'spearmanr'}; print('CROSS-LANE-CONTRACT-OK')"`. Together they enforce the contract end to end: every factory-emitted spelling is a registered canonical name (10-02's suite) and evaluate(split=...) strips the predict prefix onto exactly those spellings and writes them to the result JSON (this lane's suite) — drift on either side fails the composite
 </verification>
 
 <success_criteria>

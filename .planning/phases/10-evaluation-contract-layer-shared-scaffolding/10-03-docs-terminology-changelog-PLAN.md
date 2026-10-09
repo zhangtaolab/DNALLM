@@ -26,6 +26,9 @@ files_modified:
   - docs/user_guide/fine_tuning/peft_adapters.md
   - tests/datahandling/test_dna_dataset.py
   - CHANGELOG.md
+coupling_justified:
+  - "10-01: CHANGELOG.md is the one sanctioned shared append surface (D-09) — both lanes idempotently ensure the ## [Unreleased] block exists (create-if-absent above ## [0.7.1]), then append their own distinct REV-ID bullet via unique-anchor insert, re-reading the file immediately before editing; either landing order yields the correct changelog and a git-level conflict is resolved by re-appending the missing bullet"
+  - "10-02: CHANGELOG.md shared append surface (D-09) — same idempotent create-if-absent + unique-anchor append discipline as the 10-01 entry; order irrelevant"
 autonomous: true
 requirements: [DOCS-01]
 user_setup: []
@@ -34,6 +37,9 @@ estimate:
   raw_tokens: 30000
   tasks: 3
   confidence: low   # 0 calibration samples (first phase of v1.2); factor 1 per estimate-calibration
+  # Scope note: the ~20+ files_modified entries expand to ~45-50 touched files via the docs/ glob —
+  # this is the D-08 locked single-lane sweep (NOT split); per-file context cost is grep hit lines +
+  # one scoped Edit, never a whole-file read. See "Context budget strategy" below the objective.
 
 must_haves:
   truths:
@@ -73,6 +79,29 @@ Agent lane A3 (owner-fixed wave structure): land DOCS-01 — the full-surface te
 Purpose: DOCS-01 (REV-03, reviewers Ed-2/Ed-6/R1-3c) makes the revision docs surface honest and opens the rebuttal-letter evidence chain; the mkdocstrings-rendered API pages only show the new terminology if the docstrings are swept (D-08 rationale).
 Output: swept surface, warned-and-logged validate_sequences, new chapter, REV-03 CHANGELOG entry.
 </objective>
+
+### Context budget strategy (why ~45-50 touched files fit a 30k-token plan)
+
+The file count is high but the edit profile is mechanical, and D-08 locks this sweep into ONE
+lane — no split. Three properties keep context cost commensurate with edit complexity:
+
+1. **Grep-driven discovery, never whole-file reads.** Task 2 does not read the swept files:
+   `grep -rlniE "DNA[ -]language[ -]model"` enumerates the hit files; per-file `grep -n` fetches
+   only the matching lines (plus a few context lines to make a unique `Edit` anchor); the
+   longest-first mapping is applied as scoped single-line replacements; re-running the same grep
+   to zero is the completion proof. Per-file context cost ≈ hit lines, not file size. Authored
+   (generated-from-scratch) content is confined to four small surfaces: the validate_sequences
+   docstring + one log line, the peft_adapters.md page, one mkdocs.yml nav line, one CHANGELOG
+   bullet.
+2. **No reflow, no reformat — by gate, not by discipline.** The mirror byte-identity gate
+   (check_docs_sync.py) and validate_docs_snippets both punish broad diffs, so every replacement
+   is the smallest scoped Edit — which is also the cheapest possible diff in context.
+3. **Per-task projection: Task 1 ≈ 9k (data.py method + tests), Task 2 ≈ 13k (sweep across
+   ~31 docs pages + docs/example wrappers, README, the mirror pair, 13 docstring files),
+   Task 3 ≈ 8k (chapter + nav + CHANGELOG) — total ≈ 30k, matching the estimate block.** The
+   sweep is resumable by construction (one file's scoped replacement at a time, grep re-run
+   between files), so context never spikes even if the enumerated hit list runs larger than
+   expected.
 
 <execution_context>
 @~/.claude/gsd-core/workflows/execute-plan.md

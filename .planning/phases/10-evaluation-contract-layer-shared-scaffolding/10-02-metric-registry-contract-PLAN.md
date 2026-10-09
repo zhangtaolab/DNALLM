@@ -10,6 +10,9 @@ files_modified:
   - tests/tasks/test_metric_registry.py
   - tests/tasks/test_metrics.py
   - CHANGELOG.md
+coupling_justified:
+  - "10-01: CHANGELOG.md is the one sanctioned shared append surface (D-09) — both lanes idempotently ensure the ## [Unreleased] block exists (create-if-absent above ## [0.7.1]), then append their own distinct REV-ID bullet via unique-anchor insert, re-reading the file immediately before editing; either landing order yields the correct changelog and a git-level conflict is resolved by re-appending the missing bullet"
+  - "10-03: CHANGELOG.md shared append surface (D-09) — same idempotent create-if-absent + unique-anchor append discipline as the 10-01 entry; order irrelevant"
 autonomous: true
 requirements: [METR-01]
 user_setup: []
@@ -202,7 +205,7 @@ Threat IDs continue after plan 10-01 (T-10-01..02, T-10-SC reserved).
 - `uv run --no-sync pytest tests/tasks/ -q` green
 - Coverage row proof above; module >=96%
 - `uv run --no-sync python scripts/check_code.py` green (ruff line-length 100, mypy)
-- Cross-lane contract: canonical names == current unprefixed emitted keys == plan 10-01's evaluate() JSON keys (phase verifier cross-checks after both lanes land)
+- Cross-lane canonical-name contract (automated, run once BOTH lanes have landed — each lane's own task tests stay lane-local and do not import the trainer): `uv run --no-sync pytest tests/tasks/test_metrics.py tests/finetune/test_trainer.py -q -k "TestRegistryEmissionContract or TestEvaluateSplit"` plus `uv run --no-sync python -c "import dnallm.tasks.metric_registry as r; from dnallm.finetune import trainer; assert set(r.registered_names()) >= {'accuracy', 'AUROC', 'mse', 'spearmanr'}; print('CROSS-LANE-CONTRACT-OK')"` — this lane's suite proves every factory-emitted spelling is a registered canonical name, 10-01's suite proves evaluate(split=...) emits exactly those spellings after prefix-stripping; drift on either side fails the composite
 </verification>
 
 <success_criteria>
