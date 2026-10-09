@@ -7,6 +7,13 @@
 # modelscope git ls-remote; hf rows: HF main via the mirror API). The
 # prefix must match the using notebook's ACTIVE source= route (ms ⇒
 # source="modelscope", hf ⇒ source="huggingface"; D-15 alignment).
+# Multiple pins — and at most one unpinned legacy row — for the SAME
+# repo-id are expected, not an error: each row's comment names the lane
+# it was validated for, and registry-head drift between phases
+# legitimately produces distinct shas (e.g. plant-dnagpt-BPE-promoter:
+# unpinned legacy, @1311a7f… example notebooks, @78184ac… VEP
+# acceptance). Trust the row whose comment names your lane; older pins
+# are kept so each lane's validated revision stays discoverable.
 # The original ten rows (immediately below this header) predate pinning and
 # stay unpinned; every row added since carries a @sha pin.
 hf  microsoft/DialoGPT-small                         # tests/models/test_model.py::test_download_real_huggingface_connection
