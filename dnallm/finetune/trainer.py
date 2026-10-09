@@ -588,7 +588,9 @@ class DNATrainer:
             names when ``split`` is given).
 
         Raises:
-            ValueError: If ``split`` is not a key of the dataset dict.
+            ValueError: If ``split`` is not a key of the dataset dict, or if
+                ``finetune.output_dir`` is not set (the result JSON would
+                otherwise land in the current working directory).
         """
         if split is None:
             legacy_kwargs: dict[str, Any] = {}
@@ -605,6 +607,13 @@ class DNATrainer:
             raise ValueError(
                 f"Split '{split}' not found in dataset; available splits: {sorted(self.data_split)}"
             )
+        if self.train_config.output_dir is None:
+            raise ValueError(
+                f"evaluate(split='{split}') writes eval_{split}_result.json under "
+                "finetune.output_dir, but finetune.output_dir is not set. Set "
+                "finetune.output_dir in the config so the result JSON has a "
+                "deterministic home instead of the current working directory."
+            )
         self.model.eval()
         predict_result = self.trainer.predict(
             self.datasets.dataset[split],  # type: ignore
@@ -617,7 +626,7 @@ class DNATrainer:
             key: stripped.pop(key) for key in PREDICT_RUNTIME_KEYS if key in stripped
         }
         metrics: dict[str, float] = stripped
-        result_path = Path(self.train_config.output_dir or ".") / f"eval_{split}_result.json"
+        result_path = Path(self.train_config.output_dir) / f"eval_{split}_result.json"
         result_path.parent.mkdir(parents=True, exist_ok=True)
         with open(result_path, "w", encoding="utf-8") as f:
             json.dump(

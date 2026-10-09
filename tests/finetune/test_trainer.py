@@ -422,6 +422,19 @@ class TestEvaluateSplit:
         with pytest.raises(ValueError, match="Split 'nonexistent' not found in dataset"):
             trainer.evaluate(split="nonexistent")
 
+    def test_missing_output_dir_raises_instead_of_cwd_fallback(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """Without finetune.output_dir the result JSON has no CWD fallback."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].output_dir = None
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+
+        with pytest.raises(ValueError, match=r"finetune\.output_dir is not set"):
+            trainer.evaluate(split="test")
+
+        trainer_cls.return_value.predict.assert_not_called()
+
     def test_no_args_calls_trainer_evaluate_with_no_kwargs(self, trainer_config, mock_hf_boundary):
         """evaluate() with no arguments delegates with no kwargs (D-01)."""
         trainer_cls, _ = mock_hf_boundary
