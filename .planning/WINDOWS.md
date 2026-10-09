@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 8
+open_count: 9
 waived_count: 3
 fixed_count: 9
-total_count: 20
-last_updated: 2026-10-09T11:07:16.415Z
+total_count: 21
+last_updated: 2026-10-09T11:15:30.000Z
 ---
 
 # Broken Windows Ledger
@@ -35,6 +35,7 @@ last_updated: 2026-10-09T11:07:16.415Z
 | 18 | quick-261008-env | deviation | pyproject.toml |  | Windows fla installability gap (env adaptation 2026-10-08): pip install -e '.[fla]' on Windows succeeds but leaves fla broken - torch Windows wheels declare no triton dependency (Linux pulls it) and fla-core requires triton only under its [cuda]/[cpu] extras which the pyproject deliberately avoids, so fla imports top-level but fla.ops.* raises ModuleNotFoundError and test_chunk_kda_importable_when_fla_installed FAILS instead of skipping. Remedy installed in dnallm-cuda: triton-windows==3.7.1.post27 (community wheels; upstream triton ships no win_amd64) - KDA chunk kernel proven compiling+executing on RTX 5080 sm_120. Open owner decision: whether to declare triton-windows behind a Windows platform marker in the fla extra (third-party fork enters declared deps) or document the manual step | open |  | 2026-10-08T04:30:00.000Z |  |
 | 19 | quick-261008-wfx | deviation | tests/examples/test_plant_helixseek_showcase.py |  | CRE showcase execution test requires the bedtools CLI and fails loud by design (test line ~480 asserts shutil.which('bedtools')); bedtools has no Windows build, so local Windows full-example runs must --deselect test_cre_notebook_executes_within_selection_bands (workaround in daily use since 2026-10-08). Open question: WSL-scope bedtools provisioning or permanent documented deselect; Linux nightly lanes unaffected | open |  | 2026-10-08T08:00:06.495Z |  |
 | 20 | 10 | deviation | dnallm/inference/vep.py |  | Plan 10-04 coverage-proof substitution: pytest --cov=<module> fails repo-wide in the current shared dev venv — coverage 7.16.2 source_pkgs resolution imports dnallm under the active tracer and the utils-shims→torch→numpy 2.5.3 chain trips numpy's 'cannot load module more than once per process' C-extension guard during conftest import (reproduces on untouched test_mutagenesis.py and a minimal Coverage(source=['dnallm'])+import numpy probe; nothing installed by the plan). vep.py measured 100% (62/62) via 'coverage run --include=dnallm/inference/vep.py' — same instrument, no source import at start. CI legs (numpy 1.26.4/2.2.0) unaffected; open question: local venv numpy pin vs coverage interplay fix | open |  | 2026-10-09T11:07:16.415Z |  |
+| 21 | 10 | stub | docs/user_guide/fine_tuning/peft_adapters.md | 163 | IA³ chapter section is an honest forward pointer by plan design (REV-03 split delivery, 10-03 D-08/plan prohibitions): finetune.use_ia3 and the ia3 YAML section exist as config surface, but the trainer branch, per-model target presets, and working examples complete in Phase 11-12 after PEFT-01 — the section names no nonexistent API and must be completed (then marked fixed) when the IA³ trainer branch ships | open |  | 2026-10-09T11:15:30.000Z |  |
 
 ````json
 [
@@ -295,6 +296,19 @@ last_updated: 2026-10-09T11:07:16.415Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-09T11:07:16.415Z",
+    "resolved_at": null,
+    "milestone": "v1.2"
+  },
+  {
+    "id": 21,
+    "kind": "stub",
+    "phase": "10",
+    "file": "docs/user_guide/fine_tuning/peft_adapters.md",
+    "line": 163,
+    "description": "IA³ chapter section is an honest forward pointer by plan design (REV-03 split delivery, 10-03 D-08/plan prohibitions): finetune.use_ia3 and the ia3 YAML section exist as config surface, but the trainer branch, per-model target presets, and working examples complete in Phase 11-12 after PEFT-01 — the section names no nonexistent API and must be completed (then marked fixed) when the IA³ trainer branch ships",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-09T11:15:30.000Z",
     "resolved_at": null,
     "milestone": "v1.2"
   }
