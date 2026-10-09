@@ -3,6 +3,22 @@
 Out-of-scope discoveries logged by executor agents (per GSD scope boundary).
 Do not fix in-phase; surfaced for owner disposition.
 
+## From plan 10-02 (metric registry, 2026-10-09)
+
+Pre-existing local-env failure: `pytest --cov=<dotted.dnallm.target>` (pytest-cov
+7.1.0, torch 2.11.0+cu130, Python 3.13, venv unchanged since 2026-09-29) crashes at
+conftest load with `RuntimeError: function '_has_torch_function' already has a
+docstring` (torch.overrides double-execution) once pytest-cov resolves the dotted
+cov target and imports the `dnallm` package early; the pandas/numpy ImportError
+shown first is a masking cascade. Reproduces with ANY `--cov=dnallm.*` target
+(e.g. `--cov=dnallm.utils.sequence`), i.e. unrelated to this plan's changes; bare
+`--cov` (source_pkgs from pyproject) works, and `coverage run -m pytest` +
+`coverage report` works. Workaround used for the 10-02 same-change coverage-row
+proof (metric_registry.py 99%, metrics.py 100%): the coverage CLI. Not fixed
+in-phase (environment-level, affects the whole repo, out of scope per rules).
+Note: 10-03's table above lists tests/tasks/test_metrics.py old-terminology hits
+as owned by 10-02 — those were swept in commit fad6a33 (module docstring).
+
 ## From plan 10-03 (docs/terminology/changelog, 2026-10-09)
 
 Old "DNA language model(s)" terminology persists in repo surfaces OUTSIDE the
