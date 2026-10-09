@@ -1281,6 +1281,19 @@ class TestEvaluateVcfEdgeCases:
         with pytest.raises(ValueError, match="contains no sequences"):
             evaluate_vcf(model, simple_dna_tokenizer, FIXTURE_VCF, str(path), paradigm="mlm")
 
+    def test_unnamed_fasta_record_raises_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A degenerate bare '>' header is a malformed reference — rejected
+        with a matchable error, not silently parsed into an empty-name
+        record (IN-05)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        path = tmp_path / "unnamed.txt"
+        path.write_text(">chrT\nACGT\n>\nTGCA\n", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="unnamed record"):
+            evaluate_vcf(model, simple_dna_tokenizer, FIXTURE_VCF, str(path), paradigm="mlm")
+
     def test_multirecord_fasta_loads_every_chromosome(
         self, tiny_model_factory, simple_dna_tokenizer, tmp_path
     ):

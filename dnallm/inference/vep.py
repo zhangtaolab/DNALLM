@@ -465,8 +465,9 @@ def _load_reference(reference: str | Path | Mapping[str, str]) -> dict[str, str]
         lowercase until window building uppercases it).
 
     Raises:
-        ValueError: If ``reference`` is a path that does not exist or a
-            FASTA containing no records.
+        ValueError: If ``reference`` is a path that does not exist, a FASTA
+            containing no records, or a FASTA with an unnamed (bare ``>``)
+            record.
     """
     if isinstance(reference, Mapping):
         return dict(reference)
@@ -483,7 +484,13 @@ def _load_reference(reference: str | Path | Mapping[str, str]) -> dict[str, str]
             if line.startswith(">"):
                 if name is not None:
                     sequences[name] = "".join(chunks)
-                name = line[1:].split()[0] if line[1:].split() else ""
+                header = line[1:].split()
+                if not header:
+                    raise ValueError(
+                        f"Reference FASTA '{path}' has an unnamed record "
+                        "(a header line with no name before the first whitespace)."
+                    )
+                name = header[0]
                 chunks = []
             elif name is not None:
                 chunks.append(line.strip())
