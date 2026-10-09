@@ -540,6 +540,31 @@ def _build_window(ref_seq: str, pos0: int, context_window: int) -> tuple[str, in
     return window, pos0 - start
 
 
+#: HF ``model_type`` values that are decoder-only by construction. Needed
+#: because fine-tuned checkpoints keep their ORIGINAL ``architectures``
+#: list (e.g. ``GPT2ForSequenceClassification`` on a plant DNAGPT model
+#: loaded through ``AutoModelForCausalLM``), so architecture-name markers
+#: alone cannot recognize a causal backbone whose config never said
+#: ``CausalLM``/``LMHeadModel``.
+_CAUSAL_MODEL_TYPES = frozenset({
+    "gpt2",
+    "gpt_neo",
+    "gptj",
+    "gpt_neox",
+    "llama",
+    "mistral",
+    "mixtral",
+    "qwen2",
+    "falcon",
+    "bloom",
+    "pythia",
+    "gemma",
+    "mamba",
+    "olmo",
+    "phi",
+})
+
+
 def _is_causal_model(model: Any) -> bool:
     """Decide from config-declared evidence whether a model is causal.
 
@@ -549,7 +574,12 @@ def _is_causal_model(model: Any) -> bool:
     1. ``config.is_decoder is True`` (transformers decoder configs), or
     2. any entry of ``config.architectures`` containing a causal marker
        (``CausalLM``, ``LMHeadModel``, ``Mamba`` — covers
-       ``GPT2LMHeadModel``, ``MambaForCausalLM``, and the DNA LM heads).
+       ``GPT2LMHeadModel``, ``MambaForCausalLM``, and the DNA LM heads),
+       or
+    3. ``config.model_type`` naming a decoder-only HF family (a GPT-2
+       checkpoint fine-tuned for classification still keeps
+       ``model_type='gpt2'`` even though its ``architectures`` list no
+       longer mentions a causal head).
 
     Args:
         model: Torch model (or model-like object) to inspect.
@@ -564,7 +594,9 @@ def _is_causal_model(model: Any) -> bool:
         return True
     architectures = getattr(config, "architectures", None) or []
     markers = ("CausalLM", "LMHeadModel", "Mamba")
-    return any(any(marker in str(arch) for marker in markers) for arch in architectures)
+    if any(any(marker in str(arch) for marker in markers) for arch in architectures):
+        return True
+    return str(getattr(config, "model_type", "")) in _CAUSAL_MODEL_TYPES
 
 
 def _check_paradigm_compatible(model: Any, tokenizer: Any, paradigm: str) -> None:
@@ -711,6 +743,12 @@ def evaluate_vcf(
       mlm_slot_log_prob(ref_id)`` at the alignment slot (log-odds).
     - ``"clm"``: ``delta = clm_log_likelihood(alt_window) -
       clm_log_likelihood(ref_window)`` (delta-log-likelihood).
+
+    Deltas are alt-minus-ref, so deleterious variants carry NEGATIVE
+    deltas; AUROC/AUPRC are computed over the deleteriousness score
+    ``-delta`` (higher = more pathogenic — the evo2-clinvar/GPN field
+    convention), which places discriminating models above the random
+    floor.
 
     Args:
         model: DNA large language model (per-position logits).
@@ -861,13 +899,20 @@ def evaluate_vcf(
 
     labels = [r.label for r in records if r.delta is not None]
     deltas = [r.delta for r in records if r.delta is not None]
+    # Deltas are alt-minus-ref (log-odds / delta-log-likelihood), so a
+    # deleterious variant carries a NEGATIVE delta: the model finds the
+    # alternate less likely than the reference. AUROC/AUPRC therefore run
+    # over the deleteriousness score -delta (higher = more pathogenic) —
+    # the evo2-clinvar/GPN field convention — so a discriminating model
+    # scores ABOVE the random floor instead of below it.
+    deleteriousness = [-d for d in deltas]
     metrics: dict[str, float] | None = None
     if evaluated > 0 and len(set(labels)) == 2:
         from ..tasks.metric_registry import resolve
 
         metrics = {
-            "AUROC": float(resolve("AUROC")(labels, deltas)),
-            "AUPRC": float(resolve("AUPRC")(labels, deltas)),
+            "AUROC": float(resolve("AUROC")(labels, deleteriousness)),
+            "AUPRC": float(resolve("AUPRC")(labels, deleteriousness)),
         }
 
     convention = {
@@ -878,6 +923,10 @@ def evaluate_vcf(
             f"{sorted(clnsig_filter.negative_labels)}=0"
         ),
         "star_floor": clnsig_filter.star_floor,
+        "score_direction": (
+            "delta = logP(alt) - logP(ref); AUROC/AUPRC computed over the "
+            "deleteriousness score -delta (higher = more pathogenic)"
+        ),
         "excluded": (
             "non-SNV CLNVC, CLNSIG outside the label whitelist "
             "(VUS/conflicting/novel), CLNREVSTAT below the star floor"

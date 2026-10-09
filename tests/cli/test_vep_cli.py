@@ -211,3 +211,31 @@ class TestVepCli:
         assert outcome.exit_code == 0, outcome.output
         assert eval_mock.call_args.kwargs["paradigm"] == "clm"
         assert eval_mock.call_args.kwargs["context_window"] == 64
+
+    def test_config_load_failure_exits_one_with_stderr(
+        self, runner, vcf_file, reference_file, tmp_path
+    ):
+        """A malformed --config YAML exits 1 through the config error
+        channel."""
+        bad = tmp_path / "bad.yaml"
+        bad.write_text("vep: [not, a, mapping]\n")
+        with patch(
+            "dnallm.models.load_model_and_tokenizer",
+            side_effect=AssertionError("must not be reached"),
+        ):
+            outcome = runner.invoke(
+                main,
+                [
+                    "--config",
+                    str(bad),
+                    "--vcf",
+                    vcf_file,
+                    "--reference",
+                    reference_file,
+                    "--model-name",
+                    "m",
+                ],
+            )
+
+        assert outcome.exit_code == 1
+        assert f"Error loading config '{bad}'" in outcome.output

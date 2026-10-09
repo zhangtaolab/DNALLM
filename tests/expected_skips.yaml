@@ -29,6 +29,12 @@ allowed:
   - prefix: "network-unavailable:"
     category: network
 
+  # Typed network skip for the Phase-11 ClinVar acceptance lane
+  # (tests/inference/test_vep.py::TestClinVarAcceptance): fires when the
+  # canonical ClinVar/UCSC download hosts are unreachable on the slow leg.
+  - prefix: "clinvar-unavailable:"
+    category: network
+
   # Typed-skip helper environment_unavailable_skip in
   # tests/examples/_execution.py (Phase 8 skip decisions per D-06:
   # environment infeasibility with recorded evidence).

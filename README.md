@@ -536,6 +536,8 @@ DNALLM scores variants zero-shot from a VCF (`dnallm-vep` CLI, `dnallm.inference
 - **Masked-LM (log-odds)**: `delta = log P(alt_token | masked context) − log P(ref_token | masked context)` at the single alignment slot.
 - **Causal-LM (delta-log-likelihood)**: `delta = log P(alt_window) − log P(ref_window)` over the context window with the allele substituted at the variant position.
 
+Deltas are alt-minus-ref, so deleterious variants carry negative deltas; AUROC/AUPRC are computed over the deleteriousness score `−delta` (higher = more pathogenic — the evo2-clinvar/GPN field convention), placing discriminating models above the random floor.
+
 **Same-slot evaluability rule**: a variant is scoreable only when the tokenized reference and alternate sequences have equal length and differ at exactly ONE token slot. Variants failing the same-slot rule are reported as structured skips with machine-readable reasons (`length-changing allele`, `multi-slot token difference`, `no change`) — skip-as-data with per-reason counts and a skip fraction reported as a finding, never a silent drop, and never mixed into the label/paradigm error channels. Scoring windows are uppercased (soft-masked reference input must not silently tokenize to `<unk>`) and clipped symmetrically around the variant; ref and alt always share one identical window.
 
 **Paradigm↔architecture guard**: requesting `--paradigm clm` on a bidirectional model, or `--paradigm mlm` with a tokenizer that has no mask token, raises a `ValueError` — a misconfiguration must not masquerade as a near-random result.

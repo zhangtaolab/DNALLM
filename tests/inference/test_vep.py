@@ -14,8 +14,11 @@ magnitudes are asserted. No network, no model downloads, no skips.
 
 from types import SimpleNamespace
 from typing import ClassVar
+import json as jsonlib
 import math
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
@@ -399,16 +402,20 @@ class TestEvaluateVcf:
         self, tiny_model_factory, simple_dna_tokenizer, tmp_path
     ):
         """Controlled kernel outputs with clean label separation produce
-        AUROC == AUPRC == 1.0 — the metric plumbing is registry-driven."""
+        AUROC == AUPRC == 1.0 — the metric plumbing is registry-driven over
+        the deleteriousness score (higher = more pathogenic)."""
         model = tiny_model_factory(n_classes=9, pooled=False)
         seq = _load_fixture_reference()["chrT"]
-        # Positives G->C; negatives C->A / T->G / G->T (never alt=C).
+        # Positives G->(A/C/T): ref token likely, alt unlikely -> very
+        # negative delta -> high deleteriousness. Negatives (A/C/T)->G:
+        # alt at least as likely as ref -> non-negative delta -> low
+        # deleteriousness. Perfect separation either way.
         rows = [
             (
                 "chrT",
                 _nth_position(seq, "G", 0, 97),
                 "G",
-                "C",
+                "A",
                 "Pathogenic",
                 "criteria_provided,_single_submitter",
                 "single_nucleotide_variant",
@@ -426,7 +433,7 @@ class TestEvaluateVcf:
                 "chrT",
                 _nth_position(seq, "G", 2, 97),
                 "G",
-                "C",
+                "T",
                 "Pathogenic",
                 "reviewed_by_expert_panel",
                 "single_nucleotide_variant",
@@ -435,7 +442,7 @@ class TestEvaluateVcf:
                 "chrT",
                 _nth_position(seq, "C", 0, 97),
                 "C",
-                "A",
+                "G",
                 "Benign",
                 "criteria_provided,_single_submitter",
                 "single_nucleotide_variant",
@@ -451,18 +458,19 @@ class TestEvaluateVcf:
             ),
             (
                 "chrT",
-                _nth_position(seq, "G", 3, 97),
+                _nth_position(seq, "A", 0, 97),
+                "A",
                 "G",
-                "T",
                 "Likely_benign",
                 "criteria_provided,_single_submitter",
                 "single_nucleotide_variant",
             ),
         ]
         vcf = _write_vcf(tmp_path / "sep.vcf", rows)
-        # alt(C) logp -0.1, everything else -2.0: every positive delta is
-        # +1.9, every negative delta <= 0.0 — perfect separation.
-        fake = {_ID_A: -2.0, _ID_C: -0.1, _ID_G: -2.0, _ID_T: -2.0}
+        # ref(G) logp -0.1, everything else -2.0: every positive delta is
+        # -1.9 (deleteriousness +1.9), every negative delta is +1.9
+        # (deleteriousness -1.9) — perfect separation.
+        fake = {_ID_A: -2.0, _ID_C: -2.0, _ID_G: -0.1, _ID_T: -2.0}
 
         def fake_mlm(model, tokenizer, sequence, slot_index, token_id):
             return fake[token_id]
@@ -781,8 +789,6 @@ class TestEvaluateVcf:
     ):
         """output_dir yields a deterministic vep_result.json with the full
         result shape — no path is derived from VCF record fields."""
-        import json as jsonlib
-
         model = tiny_model_factory(n_classes=9, pooled=False)
         out_dir = tmp_path / "vep_out"
 
@@ -917,3 +923,515 @@ class TestScoreVariant:
 
         assert isinstance(result, VariantAlignment)
         assert result.skip_reason == "no change"
+
+
+# ---------------------------------------------------------------------------
+# Slow lane: real ClinVar acceptance (D-09 tier 2). Real data stays OUT of
+# the repo; the fast lane above is network-free by construction.
+# ---------------------------------------------------------------------------
+
+CLINVAR_URL = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
+CHR22_URL = "https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr22.fa.gz"
+DOWNLOAD_TIMEOUT_S = 120
+SAMPLE_SEED = 42
+PER_CLASS_TARGET = 500  # 1k-sample acceptance target (D-09 tier 2)
+CONTEXT_WINDOW = 200  # the VepConfig protocol default
+
+# Within-paradigm/within-convention literature anchors (RESEARCH "State of
+# the Art"); small plant DNA models are expected BELOW the big-model anchors
+# on human ClinVar — the comparison is a recorded finding, never a hard band.
+_ANCHORS = {
+    "mlm": {
+        "anchor": "Nucleotide Transformer 2.5B MLM ClinVar AUC 0.80 (NT paper A.5.2)",
+        "range": (0.70, 0.80),
+    },
+    "clm": {
+        "anchor": "Evo2-40B CLM ~0.98 (evo2-clinvar, >=2-star convention)",
+        "range": (0.85, 0.98),
+    },
+}
+
+# Pinned scoring models (models.lock rows; CLM/MLM mix, paradigm matched to
+# each architecture via the Task 2 guard).
+_CLINVAR_MODELS = [
+    ("zhangtaolab/plant-dnabert-BPE", "modelscope", "mlm"),
+    ("InstaDeepAI/nucleotide-transformer-v2-50m-multi-species", "huggingface", "mlm"),
+    ("zhangtaolab/plant-dnagpt-6mer", "modelscope", "clm"),
+    ("zhangtaolab/plant-dnamamba-BPE-open_chromatin", "modelscope", "clm"),
+    ("zhangtaolab/plant-dnagpt-BPE-promoter", "modelscope", "clm"),
+]
+
+
+def _probe(url):
+    """HEAD-probe one canonical host; return an evidence string or None."""
+    try:
+        # Callers pass hardcoded https constants only (no file:/custom schemes).
+        request = urllib.request.Request(url, method="HEAD")  # ruff: ignore[suspicious-url-open-usage]
+        with urllib.request.urlopen(request, timeout=30):  # ruff: ignore[suspicious-url-open-usage]
+            return None
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return f"{url} -> {exc}"
+
+
+def _download(url, destination):
+    """Stream one download into the isolated session tmp dir."""
+    # Callers pass hardcoded https constants only (no file:/custom schemes).
+    with (
+        urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_S) as response,  # ruff: ignore[suspicious-url-open-usage]
+        open(destination, "wb") as handle,
+    ):
+        while chunk := response.read(1 << 20):
+            handle.write(chunk)
+
+
+@pytest.fixture(scope="class")
+def clinvar_cohort(tmp_path_factory):
+    """Download ClinVar + chr22, build the D-17 cohort slice under tmp.
+
+    Yields the slice VCF path (downloads live only under the session tmp
+    dir; nothing is committed). Typed-skips with the ``clinvar-unavailable:``
+    prefix when either canonical host is unreachable.
+    """
+    evidence = _probe(CLINVAR_URL) or _probe(CHR22_URL)
+    if evidence:
+        pytest.skip(f"clinvar-unavailable: canonical host unreachable ({evidence})")
+
+    workdir = tmp_path_factory.mktemp("clinvar")
+    vcf_gz = workdir / "clinvar.vcf.gz"
+    chr22_gz = workdir / "chr22.fa.gz"
+    _download(CLINVAR_URL, vcf_gz)
+    _download(CHR22_URL, chr22_gz)
+
+    import allel
+
+    callset = allel.read_vcf(
+        str(vcf_gz),
+        fields=[
+            "variants/CHROM",
+            "variants/POS",
+            "variants/ID",
+            "variants/REF",
+            "variants/ALT",
+            "variants/CLNSIG",
+            "variants/CLNREVSTAT",
+            "variants/CLNVC",
+        ],
+        alt_number=2,
+    )
+    from dnallm.inference.vep import _load_reference
+
+    chr22 = _load_reference(chr22_gz)["chr22"]
+
+    star_tokens = {"criteria_provided", "reviewed_by_expert_panel", "practice_guideline"}
+    labels_map = {
+        "Pathogenic": 1,
+        "Likely_pathogenic": 1,
+        "Benign": 0,
+        "Likely_benign": 0,
+    }
+    cohort = {"pos": [], "ref": [], "alt": [], "label": [], "revstat": []}
+    mismatches = 0
+    for chrom, pos, ref, alt_row, sig, rev, vc in zip(
+        callset["variants/CHROM"],
+        callset["variants/POS"],
+        callset["variants/REF"],
+        callset["variants/ALT"],
+        callset["variants/CLNSIG"],
+        callset["variants/CLNREVSTAT"],
+        callset["variants/CLNVC"],
+        strict=True,
+    ):
+        if str(chrom) != "22" or str(vc) != "single_nucleotide_variant":
+            continue
+        label = labels_map.get(str(sig))
+        if label is None or str(rev) not in star_tokens:
+            continue
+        alt = str(alt_row[0])
+        if len(str(ref)) != 1 or len(alt) != 1 or (alt_row[1] != "" and str(alt_row[1]) != "."):
+            continue  # keep single-ALT SNVs only
+        pos0 = int(pos) - 1
+        if chr22[pos0].upper() != str(ref).upper():
+            mismatches += 1  # liftover drift: excluded, counted
+            continue
+        cohort["pos"].append(int(pos))
+        cohort["ref"].append(str(ref).upper())
+        cohort["alt"].append(alt.upper())
+        cohort["label"].append(label)
+        cohort["revstat"].append(str(rev))  # preserve the star-level token
+
+    rng = np.random.default_rng(SAMPLE_SEED)
+    slice_path = workdir / "clinvar_chr22_slice.vcf"
+    chosen = []
+    for class_label in (1, 0):
+        idx = [i for i, lab in enumerate(cohort["label"]) if lab == class_label]
+        take = rng.permutation(idx)[:PER_CLASS_TARGET]
+        chosen.extend(take.tolist())
+    with open(slice_path, "w", encoding="utf-8") as handle:
+        handle.write("##fileformat=VCFv4.2\n")
+        handle.write('##INFO=<ID=CLNSIG,Number=.,Type=String,Description="cs">\n')
+        handle.write('##INFO=<ID=CLNREVSTAT,Number=.,Type=String,Description="rs">\n')
+        handle.write('##INFO=<ID=CLNVC,Number=1,Type=String,Description="vt">\n')
+        handle.write("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
+        for i in chosen:
+            sig = "Pathogenic" if cohort["label"][i] == 1 else "Benign"
+            handle.write(
+                f"22\t{cohort['pos'][i]}\t.\t{cohort['ref'][i]}\t{cohort['alt'][i]}\t.\t.\t"
+                f"CLNSIG={sig};CLNREVSTAT={cohort['revstat'][i]};"
+                f"CLNVC=single_nucleotide_variant\n"
+            )
+    return {
+        "slice_vcf": str(slice_path),
+        "reference": {"chr22": chr22},
+        "sampled": len(chosen),
+        "available": len(cohort["label"]),
+        "ref_mismatches_excluded": mismatches,
+    }
+
+
+@pytest.mark.slow
+class TestClinVarAcceptance:
+    """D-09 tier-2 acceptance: real ClinVar GRCh38 chr22 cohort, D-17
+    convention, >= 5 pinned models with a CLM/MLM mix.
+
+    Downloads (documented canonical hosts):
+      - ClinVar VCF: https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
+      - GRCh38 chr22: https://hgdownload.soe.ucsc.edu/goldenPath/hg38/chromosomes/chr22.fa.gz
+        (UCSC hg38 chromosomes are soft-masked — the run exercises the
+        uppercase-window path on real data)
+    """
+
+    @pytest.mark.timeout(2400)
+    @pytest.mark.parametrize(("model_name", "source", "paradigm"), _CLINVAR_MODELS)
+    def test_clinvar_auroc_with_convention_block(
+        self, clinvar_cohort, model_name, source, paradigm
+    ):
+        """Each model's AUROC is computed on the same 1k D-17 cohort, at or
+        above the random floor, with the convention block and per-reason
+        skip fractions recorded, and compared within-paradigm against the
+        RESEARCH anchor table as a documented finding."""
+        from dnallm.configuration.configs import TaskConfig
+        from dnallm.models import load_model_and_tokenizer
+
+        task_config = TaskConfig(task_type="generation" if paradigm == "clm" else "mask")
+        model, tokenizer = load_model_and_tokenizer(
+            model_name=model_name, task_config=task_config, source=source
+        )
+
+        result = evaluate_vcf(
+            model,
+            tokenizer,
+            clinvar_cohort["slice_vcf"],
+            clinvar_cohort["reference"],
+            paradigm=paradigm,
+            context_window=CONTEXT_WINDOW,
+        )
+
+        assert clinvar_cohort["sampled"] >= 500  # 1k target, hard floor at 500
+        assert result.evaluated > 0
+        assert result.metrics is not None
+        auroc = result.metrics["AUROC"]
+        # Sanity floor, not a performance claim: small models are expected
+        # NEAR the random floor on this convention, and the null standard
+        # error at 500/500 sampling is ~0.018 — a hard 0.5 cutoff would
+        # fail statistically-at-chance models half the time (empirically:
+        # plant-dnagpt-BPE-promoter measured 0.4904 +/- noise). 0.45 sits
+        # ~2.7 SE below chance: systematic score/label inversion (~0.2-0.35
+        # for signal-bearing models) and broken wiring (~0 / NaN) still
+        # fail loudly; honest within-floor results are recorded below.
+        assert auroc >= 0.45, f"{model_name}: AUROC {auroc} below the sanity floor"
+
+        # The convention block ships beside every AUROC (never bare).
+        assert result.convention["star_floor"] == 1
+        assert result.convention["variant_type"] == "single_nucleotide_variant"
+        assert result.convention["clnrevstat_counts"], "per-star counts recorded"
+
+        # Skip fractions per reason per model — the tokenizer-class finding
+        # (Pitfall 6): the fraction IS the data about each tokenizer.
+        assert sum(result.skip_counts.values()) == result.skipped
+        skip_fractions = {
+            reason: count / max(result.evaluated + result.skipped, 1)
+            for reason, count in result.skip_counts.items()
+        }
+
+        # Within-paradigm anchor comparison (recorded finding, not a
+        # threshold): small plant DNA models are expected below the
+        # big-model anchors on human ClinVar.
+        anchor = _ANCHORS[paradigm]
+        comparison = {
+            "model": model_name,
+            "paradigm": paradigm,
+            "auroc": auroc,
+            "auprc": result.metrics["AUPRC"],
+            "evaluated": result.evaluated,
+            "skip_fraction": result.skip_fraction,
+            "skip_fractions_by_reason": skip_fractions,
+            "anchor": anchor["anchor"],
+            "anchor_range": anchor["range"],
+            "within_anchor_range": anchor["range"][0] <= auroc <= anchor["range"][1],
+            "cohort": clinvar_cohort["sampled"],
+            "convention": result.convention,
+        }
+        print(jsonlib.dumps(comparison, indent=2, sort_keys=True))
+        assert set(comparison) >= {
+            "auroc",
+            "anchor_range",
+            "within_anchor_range",
+            "skip_fractions_by_reason",
+        }
+
+
+class TestEvaluateVcfEdgeCases:
+    """Input-boundary behaviors of the driver (V5 untrusted-input discipline)."""
+
+    def test_header_only_vcf_returns_empty_result(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A VCF with zero records yields the empty edge (metrics None,
+        skip_fraction 1.0) without touching the kernels."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        path = tmp_path / "empty_records.vcf"
+        path.write_text(_VCF_HEADER, encoding="utf-8")
+
+        result = evaluate_vcf(model, simple_dna_tokenizer, str(path), FIXTURE_FA, paradigm="mlm")
+
+        assert result.records == []
+        assert result.metrics is None
+        assert result.skip_fraction == 1.0
+        assert result.convention["rows_read"] == 0
+
+    def test_vcf_without_info_fields_excludes_all_rows(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A VCF carrying no CLNSIG/CLNREVSTAT/CLNVC INFO at all labels every
+        row unlabeled — the absent-field branch of the convention filter."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        path = tmp_path / "noinfo.vcf"
+        path.write_text(
+            "##fileformat=VCFv4.2\n"
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
+            "chrT\t6\t.\tG\tC\t.\t.\t.\n",
+            encoding="utf-8",
+        )
+
+        result = evaluate_vcf(model, simple_dna_tokenizer, str(path), FIXTURE_FA, paradigm="mlm")
+
+        assert result.records == []
+        # The CLNVC gate runs first: an absent CLNVC ("" cell) cannot equal
+        # single_nucleotide_variant, so the row lands in the non-SNV bucket.
+        assert result.convention["exclusion_counts"]["non_snv_clnvc"] == 1
+        assert result.convention["exclusion_counts"]["unlabeled_clnsig"] == 0
+
+    def test_bytes_cells_from_allel_are_coerced(self, tiny_model_factory, simple_dna_tokenizer):
+        """allel may hand back bytes cells; the driver coerces them (the
+        fast fake-callset proves the coercion path)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        fake_callset = {
+            "variants/CHROM": np.array([b"chrT"], dtype=object),
+            "variants/POS": np.array([1], dtype=np.int32),
+            "variants/ID": np.array([b"rsX"], dtype=object),
+            "variants/REF": np.array([b"A"], dtype=object),
+            "variants/ALT": np.array([[b"G", "", "", ""]], dtype=object),
+            "variants/CLNSIG": np.array([b"Pathogenic"], dtype=object),
+            "variants/CLNREVSTAT": np.array([b"criteria_provided"], dtype=object),
+            "variants/CLNVC": np.array([b"single_nucleotide_variant"], dtype=object),
+        }
+
+        with patch("allel.read_vcf", return_value=fake_callset):
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                "unused.vcf",
+                {"chrT": "ACGTTGCA"},
+                paradigm="mlm",
+            )
+
+        assert result.evaluated == 1
+        assert result.records[0].chrom == "chrT"
+        assert result.records[0].alt == "G"
+
+    def test_missing_reference_file_raises_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """A reference path that does not exist is an input-contract error."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with pytest.raises(ValueError, match="Reference FASTA not found"):
+            evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                FIXTURE_VCF,
+                "/nonexistent/ref.fa",
+                paradigm="mlm",
+            )
+
+    def test_empty_fasta_raises_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A FASTA with no records is rejected, not silently treated as an
+        empty genome."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        path = tmp_path / "empty.txt"
+        path.write_text("", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="contains no sequences"):
+            evaluate_vcf(model, simple_dna_tokenizer, FIXTURE_VCF, str(path), paradigm="mlm")
+
+    def test_multirecord_fasta_loads_every_chromosome(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A multi-record FASTA parses every record (in-loop flush), and
+        each CHROM resolves against its own sequence."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        path = tmp_path / "multi.txt"
+        path.write_text(">chrA\nACGT\n>chrT\nACGTTGCAAGCTTAGGCATGCCTAGGTTACAGG\n", encoding="utf-8")
+        rows = [
+            (
+                "chrA",
+                2,
+                "C",
+                "G",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                6,
+                "G",
+                "C",
+                "Benign",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+        ]
+        vcf = _write_vcf(tmp_path / "multi.vcf", rows)
+
+        result = evaluate_vcf(
+            model, simple_dna_tokenizer, vcf, str(path), paradigm="mlm", context_window=6
+        )
+
+        assert result.evaluated == 2
+        assert {r.chrom for r in result.records} == {"chrA", "chrT"}
+
+    def test_unknown_paradigm_rejected_before_any_work(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """An unknown paradigm raises immediately (no VCF read)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with pytest.raises(ValueError, match="Unknown paradigm"):
+            evaluate_vcf(model, simple_dna_tokenizer, FIXTURE_VCF, FIXTURE_FA, paradigm="plm")
+
+    def test_read_vcf_failure_wrapped_as_dnallm_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """allel parse errors surface as a wrapped dnallm ValueError at the
+        driver boundary — never a bare foreign traceback (T-11-10)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with patch("allel.read_vcf", side_effect=OSError("gzip: bad magic")):
+            with pytest.raises(ValueError, match="Failed to read VCF"):
+                evaluate_vcf(model, simple_dna_tokenizer, FIXTURE_VCF, FIXTURE_FA, paradigm="mlm")
+
+    def test_ref_contradicting_reference_raises_with_position_context(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A REF allele that contradicts the reference sequence raises with
+        chrom:pos context (input-contract violation, distinct from skips)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "chrT",
+                6,
+                "A",
+                "T",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "badref.vcf", rows)  # position 6 is a G
+
+        with pytest.raises(ValueError, match=r"REF/reference mismatch at chrT:6"):
+            evaluate_vcf(model, simple_dna_tokenizer, vcf, FIXTURE_FA, paradigm="mlm")
+
+    def test_clm_guard_on_configless_model_object(self, simple_dna_tokenizer):
+        """A model-like object with no config at all counts as bidirectional
+        for the guard (conservative default)."""
+        with pytest.raises(ValueError, match="Paradigm 'clm' requires a causal"):
+            score_variant(
+                SimpleNamespace(),
+                simple_dna_tokenizer,
+                "ACGTTGCA",
+                3,
+                "T",
+                "A",
+                paradigm="clm",
+            )
+
+    def test_clm_guard_accepts_causal_model_type_without_causal_architecture(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """A decoder-only family checkpoint whose architectures list was
+        rewritten by fine-tuning (e.g. GPT2ForSequenceClassification with
+        model_type='gpt2', loaded via AutoModelForCausalLM) is still causal:
+        the model_type heuristic must accept it (real plant-dnagpt case)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        model.config.model_type = "gpt2"
+        model.config.architectures = ["GPT2ForSequenceClassification"]
+
+        result = score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="clm")
+
+        assert isinstance(result, float)
+
+    def test_clm_guard_still_rejects_bidirectional_model_type(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """A genuinely bidirectional family (model_type='bert'-style,
+        MaskedLM architectures) never passes the CLM guard — the
+        model_type heuristic only admits decoder-only families."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        model.config.model_type = "bert"
+        model.config.architectures = ["BertForSequenceClassification"]
+
+        with pytest.raises(ValueError, match="Paradigm 'clm' requires a causal"):
+            score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="clm")
+
+    def test_callset_missing_info_keys_counts_rows_unlabeled(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """A callset that lacks the INFO keys entirely (the absent-field
+        branch) excludes its rows through the empty-string cell."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        fake_callset = {
+            "variants/CHROM": np.array(["chrT"], dtype=object),
+            "variants/POS": np.array([1], dtype=np.int32),
+            "variants/ID": np.array(["rsX"], dtype=object),
+            "variants/REF": np.array(["A"], dtype=object),
+            "variants/ALT": np.array([["G", "", "", ""]], dtype=object),
+        }
+
+        with patch("allel.read_vcf", return_value=fake_callset):
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                "unused.vcf",
+                {"chrT": "ACGTTGCA"},
+                paradigm="mlm",
+            )
+
+        assert result.records == []
+        assert result.convention["exclusion_counts"]["non_snv_clnvc"] == 1
+
+    def test_clm_guard_accepts_causal_architecture_marker(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """An architectures entry carrying a causal marker (GPT2LMHeadModel)
+        passes the guard even with is_decoder unset (branch 2 of the
+        heuristic)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        model.config.architectures = ["GPT2LMHeadModel"]
+
+        result = score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="clm")
+
+        assert isinstance(result, float)

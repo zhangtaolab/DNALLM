@@ -132,5 +132,5 @@ def main(config, vcf, reference, model_name, source, paradigm, output):
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - console-script entry
     main()
