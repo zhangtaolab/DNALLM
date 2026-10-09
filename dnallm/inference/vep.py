@@ -795,11 +795,12 @@ def evaluate_vcf(
 
     Raises:
         ValueError: If scikit-allel is not installed, the VCF cannot be
-            read, a VCF chromosome is missing from the reference, or
-            per-variant scoring fails. REF/reference contradictions are
-            relabeled with the variant's coordinates; every other
-            per-variant ``ValueError`` is wrapped with the coordinates but
-            keeps its original message (WR-04).
+            read, a VCF chromosome is missing from the reference, a VCF
+            position lies beyond the reference chromosome length
+            (assembly mismatch), or per-variant scoring fails.
+            REF/reference contradictions are relabeled with the variant's
+            coordinates; every other per-variant ``ValueError`` is wrapped
+            with the coordinates but keeps its original message (WR-04).
     """
     try:
         import allel
@@ -875,6 +876,15 @@ def evaluate_vcf(
         chrom_key = _resolve_chromosome(sequences, chrom)
         ref_seq = sequences[chrom_key]
         pos0 = pos1 - 1  # 1-based VCF POS -> 0-based align_variant contract
+        # IN-06: a coordinate past the chromosome end would otherwise fall
+        # through to an empty window and surface as a REF-mismatch
+        # misdiagnosis; report the actual defect (assembly mismatch is the
+        # usual cause — ClinVar coordinates on a different reference build).
+        if pos0 >= len(ref_seq):
+            raise ValueError(
+                f"VCF position {pos1} on {chrom} exceeds the reference length "
+                f"{len(ref_seq)} (key '{chrom_key}') — assembly mismatch?"
+            )
         window, local_pos = _build_window(ref_seq, pos0, context_window)
 
         alt_row = callset["variants/ALT"][i]

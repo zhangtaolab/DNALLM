@@ -1373,6 +1373,29 @@ class TestEvaluateVcfEdgeCases:
         with pytest.raises(ValueError, match=r"REF/reference mismatch at chrT:6"):
             evaluate_vcf(model, simple_dna_tokenizer, vcf, FIXTURE_FA, paradigm="mlm")
 
+    def test_pos_beyond_reference_end_raises_honest_error(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A POS past the chromosome end reports the coordinate and the
+        reference length — never a REF-mismatch misdiagnosis through the
+        empty-window path (IN-06; the ClinVar vs assembly-mismatch case)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "chrT",
+                200,
+                "A",
+                "G",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "past_end.vcf", rows)  # chrT length is 160
+
+        with pytest.raises(ValueError, match=r"exceeds the reference length 160"):
+            evaluate_vcf(model, simple_dna_tokenizer, vcf, FIXTURE_FA, paradigm="mlm")
+
     def test_tokenizer_error_not_relabelled_as_ref_mismatch(self, tiny_model_factory, tmp_path):
         """A plain ValueError raised by the tokenizer mid-scoring surfaces as
         'Scoring failed at <coord>' with its original text preserved — never
