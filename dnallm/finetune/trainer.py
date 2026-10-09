@@ -392,13 +392,18 @@ class DNATrainer:
             )
         preset_family: str | None = None
         preset_row: dict | None = None
+        peft_section: Any = None
         if peft_kind is not None:
-            section = config["lora"] if peft_kind == "lora" else config.get("ia3", Ia3Config())
-            if peft_kind == "ia3" and "ia3" not in config:
-                # Register the default section so the IA³ branch below (and
-                # preset injection) mutate the same object the config carries.
-                config["ia3"] = section
-            targets = getattr(section, "target_modules", None)
+            raw_section = config["lora"] if peft_kind == "lora" else config.get("ia3", Ia3Config())
+            # WR-02: resolve on a COPY — the ctor never mutates the caller's
+            # config Mapping or its section objects. An immutable mapping
+            # (e.g. MappingProxyType) must construct fine, and a config dict
+            # reused for a second DNATrainer must re-resolve presets instead
+            # of silently observing trainer-internal injected targets. A
+            # shallow model_copy suffices: preset injection only rebinds
+            # target_modules / feedforward_modules to freshly built lists.
+            peft_section = raw_section.model_copy()
+            targets = getattr(peft_section, "target_modules", None)
             if targets is None:
                 preset_family, preset_row, matched_by = _resolve_peft_preset(model)
                 targets = list(
@@ -406,16 +411,21 @@ class DNATrainer:
                     if peft_kind == "ia3"
                     else preset_row["lora_target_modules"]
                 )
-                if peft_kind == "ia3" and getattr(section, "feedforward_modules", None) is None:
-                    section.feedforward_modules = list(preset_row.get("feedforward_modules") or [])
-                section.target_modules = targets
+                if (
+                    peft_kind == "ia3"
+                    and getattr(peft_section, "feedforward_modules", None) is None
+                ):
+                    peft_section.feedforward_modules = list(
+                        preset_row.get("feedforward_modules") or []
+                    )
+                peft_section.target_modules = targets
                 kind_label = "IA³" if peft_kind == "ia3" else "LoRA"
                 print(
                     f"[Info] {kind_label} preset '{preset_family}' selected "
                     f"(matched by {matched_by}): target_modules={targets}"
                 )
             if self.train_config.peft_dry_run:
-                _peft_dry_run_report(model, section.target_modules)
+                _peft_dry_run_report(model, peft_section.target_modules)
                 print("[Info] PEFT dry run complete — no training performed.")
                 self._peft_dry_run = True
                 return
@@ -433,7 +443,9 @@ class DNATrainer:
                 print("[Info] Preparing model for 4-bit QLoRA training...")
                 model = prepare_model_for_kbit_training(model)
 
-            lora_config = LoraConfig(**config["lora"].dict())
+            # WR-02: consume the ctor-resolved copy (carries preset-injected
+            # targets), never the caller's config object.
+            lora_config = LoraConfig(**peft_section.dict())
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
             self.model.print_trainable_parameters()
@@ -445,9 +457,8 @@ class DNATrainer:
 
             print("[Info] Applying IA³ to the model...")
 
-            ia3_section = config.get("ia3", Ia3Config())
             peft_kwargs = {
-                k: v for k, v in ia3_section.model_dump().items() if k in PEFT_IA3_FIELD_NAMES
+                k: v for k, v in peft_section.model_dump().items() if k in PEFT_IA3_FIELD_NAMES
             }
             ia3_config = IA3Config(**peft_kwargs)
             model = peft_forward_compatiable(model)

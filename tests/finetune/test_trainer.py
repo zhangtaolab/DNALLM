@@ -12,6 +12,8 @@ pytest tmp_path.
 
 import json
 import os
+from types import MappingProxyType
+from typing import ClassVar
 from unittest.mock import Mock, patch
 
 import pytest
@@ -876,6 +878,89 @@ class TestIa3Wiring:
 
         with pytest.raises(ValidationError, match="use_ia3"):
             load_config(str(config_path))
+
+
+class TestCtorConfigImmutability:
+    """The ctor resolves PEFT targets on copies — never caller-owned state (WR-02)."""
+
+    PRESET_ROW: ClassVar[dict] = {
+        "lora_target_modules": ["q_proj", "v_proj"],
+        "ia3_target_modules": ["key", "value"],
+        "feedforward_modules": ["value"],
+        "ia3_ratio_band": [1e-6, 1.0],
+        "lora_ratio_band": [1e-6, 1.0],
+    }
+
+    def test_ia3_preset_injection_leaves_caller_config_untouched(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """Preset targets reach the adapter via an internal copy; the caller's
+        section object is byte-identical after construction, so a second
+        DNATrainer from the same dict re-resolves presets."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(target_modules=None, feedforward_modules=None)
+        before_ia3 = trainer_config["ia3"].model_dump()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["key", "value"]
+        assert mock_ia3_config.call_args.kwargs["feedforward_modules"] == ["value"]
+        assert trainer_config["ia3"].model_dump() == before_ia3
+
+    def test_lora_preset_injection_leaves_caller_section_untouched(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """Same contract on the LoRA branch: injected targets reach peft's
+        LoraConfig, the caller's lora section stays untouched."""
+        trainer_config["lora"] = LoraConfig()
+        before_lora = trainer_config["lora"].model_dump()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.LoraConfig") as mock_lora_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+                use_lora=True,
+            )
+
+        assert mock_lora_config.call_args.kwargs["target_modules"] == ["q_proj", "v_proj"]
+        assert trainer_config["lora"].model_dump() == before_lora
+
+    def test_immutable_config_mapping_constructs_fine(self, trainer_config, mock_hf_boundary):
+        """A read-only config Mapping (ia3 section absent, so the old code
+        path wrote config['ia3']) constructs without TypeError."""
+        trainer_config["finetune"].use_ia3 = True
+        assert "ia3" not in trainer_config
+        frozen = MappingProxyType(trainer_config)
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config"),
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(model=Mock(), config=frozen, datasets=make_datasets(["train", "val"]))
+
+        assert "ia3" not in trainer_config
 
 
 class TestMultiGpu:
