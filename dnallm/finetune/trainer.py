@@ -168,6 +168,16 @@ class DNATrainer:
         self.extra_args = extra_args
         self.use_lora = use_lora
 
+        # D-07 interim window: use_ia3 is accepted by the config but not yet
+        # wired to a trainer branch — fail loudly about the no-op instead of
+        # training silently with different semantics than the user requested.
+        if self.train_config.use_ia3:
+            print(
+                "[Warning] finetune.use_ia3=true has no effect yet: IA³ training "
+                "support arrives with the next release's trainer branch. The "
+                "trainer will run LoRA/full fine-tuning as configured."
+            )
+
         # LoRA / QLoRA
         if use_lora:
             from ..models.model import peft_forward_compatiable

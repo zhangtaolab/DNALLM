@@ -566,6 +566,37 @@ class TestEarlyStopping:
 class TestLoraWiring:
     """LoRA / QLoRA model wrapping at the peft boundary."""
 
+    def test_use_ia3_warns_no_effect_yet(self, trainer_config, mock_hf_boundary):
+        """use_ia3=true during the interim window warns instead of no-op silently."""
+        trainer_config["finetune"].use_ia3 = True
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
+            )
+
+        warn_calls = [
+            call
+            for call in mock_print.call_args_list
+            if "[Warning]" in "".join(str(arg) for arg in call.args)
+            and "use_ia3" in "".join(str(arg) for arg in call.args)
+            and "no effect yet" in "".join(str(arg) for arg in call.args)
+        ]
+        assert len(warn_calls) == 1
+
+    def test_use_ia3_default_does_not_warn(self, trainer_config, mock_hf_boundary):
+        """The default use_ia3=false keeps construction quiet about IA³."""
+        with patch("builtins.print") as mock_print:
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
+            )
+
+        assert not [
+            call
+            for call in mock_print.call_args_list
+            if "use_ia3" in "".join(str(arg) for arg in call.args)
+        ]
+
     def test_use_lora_wraps_model_via_peft(self, trainer_config, mock_hf_boundary):
         """use_lora applies LoraConfig + get_peft_model and trains the wrapper."""
         trainer_cls, _ = mock_hf_boundary
