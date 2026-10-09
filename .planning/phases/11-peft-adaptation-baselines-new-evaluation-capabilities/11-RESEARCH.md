@@ -455,7 +455,9 @@ MLP_EARLY_STOP = True        # sklearn early stopping uses an internal train-spl
 | A6 | The mamba allowlist member (D-06) means a Plant DNAMamba-family model exercising the trust_remote_code `from_config` branch (mamba is NOT a `_handle_*` special family — verified absent from model.py dispatch) | Pattern 3 / B2 | Low — if the owner intended a literal `_handle_*` family instead, the allowlist member choice changes (e.g., a DNABERT-2-family model); planner should confirm which pinned small mamba model to use (models.lock has `plant-dnamamba-BPE-open_chromatin`, ms route) |
 | A7 | scikit-allel lands as a REQUIRED dependency (STATE.md: "only new required transitive dep is dask[array]"), not behind an extra | Standard Stack | Low — if the owner prefers a `vep` extra, B5 adds an import guard instead; dependency placement is a one-line planner decision |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All four resolved downstream of this research: Q1 lora×ia3 → trainer-init gate (plan 11-01); Q2 ClinVar star floor → owner decision D-17 (≥1 star); Q3 sweep module location → dnallm/finetune/sweep.py (plan 11-04); Q4 acceptance models → models.lock rows verified by the plan checker.
 
 1. **Where does the `lora × ia3` rejection live?**
    - What we know: `use_lora` is a `DNATrainer.__init__` kwarg, NOT a TrainingConfig field (verified: no `use_lora` in configs.py). `use_ia3` IS a TrainingConfig field. The `use_ia3 × use_qlora` rejection is Pydantic-time (both fields present).
