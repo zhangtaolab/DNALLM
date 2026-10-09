@@ -816,6 +816,32 @@ class TestIa3Wiring:
         assert "PEFT dry run complete — no training performed." in logged
         assert "Skipping the training loop: finetune.peft_dry_run=true." in logged
 
+    def test_peft_dry_run_without_adapter_raises_matchable_error(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """peft_dry_run=true with neither use_lora nor finetune.use_ia3 is a
+        loud failure, not a silent full fine-tune (the flag's documented
+        purpose is validate-and-exit)."""
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_cls, _ = mock_hf_boundary
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model"),
+            patch("builtins.print"),
+        ):
+            with pytest.raises(
+                ValueError,
+                match=r"peft_dry_run=true requires an adapter method.*use_lora=True.*"
+                r"finetune.use_ia3=true",
+            ):
+                DNATrainer(
+                    model=Mock(),
+                    config=trainer_config,
+                    datasets=make_datasets(["train", "val"]),
+                )
+
+        trainer_cls.assert_not_called()
+
     def test_lora_and_ia3_rejected_at_trainer_init(self, trainer_config, mock_hf_boundary):
         """use_lora=True ctor kwarg x finetune.use_ia3=true raises a matchable
         ValueError naming both flags (the ctor kwarg is invisible to Pydantic)."""

@@ -381,6 +381,15 @@ class DNATrainer:
         # the dry-run validator (D-03) run ahead of either adapter branch so
         # LoRA and IA³ share one resolution path.
         peft_kind = "lora" if use_lora else ("ia3" if self.train_config.use_ia3 else None)
+        # WR-01: the dry-run flag is validate-and-exit by contract; without
+        # an adapter method there is nothing to validate, and proceeding
+        # would silently run the FULL fine-tune the user asked not to run.
+        if self.train_config.peft_dry_run and peft_kind is None:
+            raise ValueError(
+                "finetune.peft_dry_run=true requires an adapter method: pass "
+                "use_lora=True or set finetune.use_ia3=true. Refusing to start a "
+                "full training run under a dry-run flag."
+            )
         preset_family: str | None = None
         preset_row: dict | None = None
         if peft_kind is not None:
