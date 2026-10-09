@@ -2,9 +2,14 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Paper Revision Suite Support
+current_phase: 10
+current_phase_name: first of three v1.2 phases
 status: planning
-last_updated: "2026-10-09T09:27:58.000Z"
+stopped_at: Phase 10 context gathered
+last_updated: "2026-10-09T09:52:42.504Z"
 last_activity: 2026-10-09
+last_activity_desc: v1.2 roadmap created (3 phases, 11/11 requirements mapped)
+state_head: 2757906fd9f17cdc896ab8533f4d06b17ab09f9e
 progress:
   total_phases: 3
   completed_phases: 0
@@ -76,9 +81,9 @@ Items acknowledged and deferred at milestone close, most recent first (full v1.1
 
 ## Session Continuity
 
-Last session: 2026-10-09
-Stopped at: v1.2 roadmap created (ROADMAP.md, STATE.md, REQUIREMENTS.md traceability) — awaiting orchestrator presentation/approval, then plan Phase 10
-Resume file: None
+Last session: 2026-10-09T09:52:42.491Z
+Stopped at: Phase 10 context gathered
+Resume file: .planning/phases/10-evaluation-contract-layer-shared-scaffolding/10-CONTEXT.md
 
 ## Deferred Verification
 
