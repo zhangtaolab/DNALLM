@@ -57,16 +57,23 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 v1.2 Paper Revision Suite Support (defined 2026-10-09, full REQ-IDs in `.planning/REQUIREMENTS.md`):
 
-- [ ] Evaluation-semantics leak guard + explicit `evaluate(split=...)` (REV-01; R1-2c)
-- [ ] Metric registry contract shared with dnallmmark (REV-02; R1-2d)
-- [ ] Docs/terminology/comparability warnings (REV-03; Ed-2/Ed-6/R1-3c)
 - [ ] IA³ adapter + per-model PEFT target presets (REV-04/05; R2-2)
 - [ ] `random_init=True` from-scratch loading (REV-06; R2-5)
 - [ ] Frozen-embedding probing component (REV-07; R2-2)
-- [ ] Zero-shot VEP module with token-slot alignment (REV-08; R2-3/R1-3e①)
+- [ ] Zero-shot VEP module with token-slot alignment (REV-08; R2-3/R1-3e①) — core kernels (`align_variant` + CLM/MLM) landed Phase 10; Phase 11 B5 completes (`evaluate_vcf` via scikit-allel, CLI, ClinVar acceptance)
 - [ ] Multi-seed sweep protocol + uncertainty aggregation (REV-09; R1-2a/R2-4)
 - [ ] JASPAR/CIS-BP PWM matching module (REV-10; R1-3d)
 - [ ] MCP tools: ism_scan/hotspots/zero_shot_score (REV-11; R2-7 narrative/Ed-6)
+
+### Validated — v1.2 (Paper Revision Suite Support, in progress)
+
+Shipped in Phase 10 (Evaluation Contract Layer & Shared Scaffolding, 2026-10-09):
+
+- ✓ Evaluation-semantics leak guard + explicit `evaluate(split=...)` (EVAL-01/REV-01): trainer can never silently evaluate on the test split — atomic `eval_strategy="no"` + `eval_dataset=None`, `allow_test_as_eval` loud opt-in, symmetric collision ValueErrors (early-stopping/best-model/train-only/unsplit), predict-path `evaluate(split=...)` with canonical-keyed result JSON (`eval_{split}_result.json`, runtime block separated)
+- ✓ Metric registry contract (METR-01/REV-02): `dnallm/tasks/metric_registry.py` — 28 canonical names, aliases recognized-never-emitted, frozen mapping, import-light (AST-proven), 99% coverage, provably outside the vendored omit glob; `metrics.py` emits exclusively through it with byte-identical emitted keys
+- ✓ Docs/terminology/comparability honesty (DOCS-01/REV-03): full-surface "DNA large language models" sweep (docs+README+13 docstrings+example pair, 0 residual; verbatim paper titles sanctioned exception), `validate_sequences` docstring + dropped-row count log, PEFT chapter with honest IA³ pointer, CHANGELOG REV-ID-inline evidence chain opened
+- ✓ One-pass scaffolding for Phase 11: `use_ia3` field-first, field-complete Ia3Config/VepConfig/SweepConfig + `load_config()` registration, presets package-data; zero new dependencies in Phase 10, facades byte-stable
+- Verifier verdict: passed — 24/24 must-haves, 3/3 requirement IDs, 0 gaps; code review converged 12→2→0 findings (14 atomic fixes); coverage proofs metric_registry 99% / metrics.py 100% / vep.py 100%
 
 ### Validated — v1.1 (Example Execution Testing & Repair, shipped 2026-10-07)
 
@@ -150,6 +157,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| VCF reading via scikit-allel (supersedes stdlib-reader research decision) | Original premise (VCF libs break Windows CI) disproven empirically 2026-10-09: scikit-allel 1.3.13 has Windows cp310–313 wheels and numpy 1.26.4/2.2.0 verified live; only new required transitive dep is dask[array]; INFO parsing (ClinVar CLNSIG) natively covered | ✓ Owner-approved 2026-10-09; lands Phase 11 B5 (ROADMAP/REQUIREMENTS/STATE amended) |
+| Single-tree concurrent wave execution with pathspec commits | Owner-fixed v1.2 mode (v1.1 Phase 8 proven); shared-index commit race in Phase 10 Wave 1 (c751df6 swept a sibling's staged files, no content loss) showed plain `git commit` commits the whole index | ✓ Wave 1 completed 4/4; all subsequent commits pathspec-limited; mandated in Phase 11/12 dispatch prompts |
+| CHANGELOG.md as the single sanctioned cross-lane append surface | D-09 same-commit REV-ID entries vs 4-lane file-disjointness resolved via coupling_justified declaration + idempotent unique-anchor append discipline | ✓ Checker-verified; three REV entries coexisted intact across concurrent lanes |
 | Coverage denominator: whole `dnallm/` excluding vendored dirs and unimportable adapters | Vendored code is upstream and excluded from lint/mypy; adapters cannot import in CI — including them makes 90% unattainable | ✓ Landed Phase 1 (7-entry omit list; baseline 45.92% on 7,383 stmts) |
 | Audit first, then fix | Gap report drives test-writing priorities and surfaces real bugs before mass test authoring | ✓ Landed Phase 1 (43-row ranked worklist from measured artifacts) |
 | CI hard gate `--cov-fail-under=90`, run includes slow tests | Prevents coverage regression; owner accepts network downloads and longer CI runs for real coverage | ✓ Landed Phase 4 (fail_under=90 native via pyproject; green 96.27–96.30%; red-proven PR #39; branch protection on dev+main) |
@@ -186,4 +196,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-09 after milestone v1.2 kickoff (paper revision intake)*
+*Last updated: 2026-10-09 after Phase 10 (evaluation contract layer shipped: EVAL-01/METR-01/DOCS-01)*

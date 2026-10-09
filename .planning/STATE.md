@@ -25,7 +25,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Ship the suite-side capabilities the paper revision requires (evaluation-semantics guard, metric registry, IA³/PEFT presets, from-scratch loading, probing, zero-shot VEP, multi-seed sweeps, motif matching, MCP tools) with the test suite, coverage gate, and CI honesty fully green throughout.
-**Current focus:** Phase 10 — Evaluation Contract Layer & Shared Scaffolding
+**Current focus:** Phase 11 — PEFT Adaptation, Baselines & New Evaluation Capabilities
 
 ## Current Position
 
@@ -81,9 +81,9 @@ Items acknowledged and deferred at milestone close, most recent first (full v1.1
 
 ## Session Continuity
 
-Last session: 2026-10-09T09:52:42.491Z
-Stopped at: Phase 10 complete, ready to plan Phase 11
-Resume file: .planning/phases/10-evaluation-contract-layer-shared-scaffolding/10-CONTEXT.md
+Last session: 2026-10-09T12:36:31Z
+Stopped at: Phase 10 complete (verifier passed 24/24), autonomous run continuing to Phase 11 discuss
+Resume file: None
 
 ## Deferred Verification
 
