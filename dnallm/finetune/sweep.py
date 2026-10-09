@@ -308,7 +308,6 @@ def run_seeds(
         seed_dir.mkdir(parents=True, exist_ok=True)
         metrics = dict(fn(seed, seed_dir))
         result_path = seed_dir / SEED_RESULT_FILENAME
-        result_path.parent.mkdir(parents=True, exist_ok=True)
         with open(result_path, "w", encoding="utf-8") as f:
             json.dump(
                 {
@@ -373,7 +372,6 @@ def run_seeds(
         "statistics": statistics,
     }
     stats_path = task_root / STATISTICS_FILENAME
-    stats_path.parent.mkdir(parents=True, exist_ok=True)
     with open(stats_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     logger.info(
