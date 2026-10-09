@@ -14,10 +14,10 @@ logger = get_logger("dnallm.cli")
 @click.version_option()
 def cli():
     """
-    DNALLM - A toolkit for fine-tuning and inference with DNA Language Models
+    DNALLM - A toolkit for fine-tuning and inference with DNA Large Language Models
 
     This toolkit provides tools for:
-    - Training DNA language models
+    - Training DNA large language models
     - Running inference and analysis
     - Benchmarking model performance
     - In-silico mutagenesis analysis
@@ -43,7 +43,7 @@ def cli():
     help="Output directory for training results",
 )
 def train(config, model, data, output):
-    """Train a DNA language model"""
+    """Train a DNA large language model"""
     from ..finetune import DNATrainer
     from ..configuration import load_config
 
@@ -92,7 +92,7 @@ def train(config, model, data, output):
 )
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
 def inference(config, model, input, output):
-    """Run inference with a trained DNA language model"""
+    """Run inference with a trained DNA large language model"""
     from ..inference import DNAInference
     from ..configuration import load_config
 
@@ -145,7 +145,7 @@ def inference(config, model, input, output):
     help="Output directory for benchmark results",
 )
 def benchmark(config, model, data, output):
-    """Run benchmark evaluation on a DNA language model"""
+    """Run benchmark evaluation on a DNA large language model"""
     from ..inference import Benchmark
     from ..configuration import load_config
 

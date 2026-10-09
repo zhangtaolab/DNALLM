@@ -32,7 +32,7 @@ jupyter lab example/notebooks/
 
 ### Fine-Tuning Notebooks
 
-Learn how to fine-tune DNA language models for specific tasks.
+Learn how to fine-tune DNA large language models for specific tasks.
 
 - **Binary Classification** - Train a binary classifier for promoter prediction
 - **Multi-Label Classification** - Predict multiple labels per sequence

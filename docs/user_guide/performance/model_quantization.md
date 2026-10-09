@@ -1,6 +1,6 @@
 # Model Quantization
 
-Model quantization reduces the memory footprint and inference latency of DNA language models by representing weights with lower-precision data types.
+Model quantization reduces the memory footprint and inference latency of DNA large language models by representing weights with lower-precision data types.
 
 ## Overview
 

@@ -263,6 +263,7 @@ include = ["dnallm*"]
 
 [tool.setuptools.package-data]
 "dnallm" = ["*.yaml", "*.yml", "*.json"]
+"dnallm.configuration" = ["presets/*.yaml"]
 
 [project.scripts]
 dnallm = "dnallm.cli.cli:cli"

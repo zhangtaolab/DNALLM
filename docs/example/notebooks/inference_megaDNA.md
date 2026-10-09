@@ -5,7 +5,7 @@ sync_check: true
 
 # MegaDNA Models Inference
 
-This tutorial demonstrates sequence generation and scoring with megaDNA, a specialized DNA language model that uses a custom architecture.
+This tutorial demonstrates sequence generation and scoring with megaDNA, a specialized DNA large language model that uses a custom architecture.
 
 ## Full Notebook
 

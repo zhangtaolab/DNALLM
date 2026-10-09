@@ -5,7 +5,7 @@ sync_check: true
 
 # Multi-Label Classification Fine-Tuning
 
-This tutorial demonstrates how to fine-tune a DNA language model for multi-label classification, where each sequence can have multiple labels simultaneously.
+This tutorial demonstrates how to fine-tune a DNA large language model for multi-label classification, where each sequence can have multiple labels simultaneously.
 
 ## Full Notebook
 

@@ -1,7 +1,7 @@
 """DNA Model loading and management utilities.
 
 This module provides functions for downloading, loading, and
-    managing DNA language models
+    managing DNA large language models
 from various sources including Hugging Face Hub, ModelScope, and local storage.
 """
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false

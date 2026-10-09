@@ -1,6 +1,6 @@
 # Tokenization in Genomics
 
-Before a DNA language model can process a sequence, the raw string of nucleotides (`"GATTACA..."`) must be converted into a series of numerical inputs. This process is called **tokenization**. A tokenizer breaks down the sequence into smaller units called **tokens** and then maps each token to a unique integer ID.
+Before a DNA large language model can process a sequence, the raw string of nucleotides (`"GATTACA..."`) must be converted into a series of numerical inputs. This process is called **tokenization**. A tokenizer breaks down the sequence into smaller units called **tokens** and then maps each token to a unique integer ID.
 
 ## 1. What is a Tokenizer?
 

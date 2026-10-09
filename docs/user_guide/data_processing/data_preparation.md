@@ -1,6 +1,6 @@
 # Data Preparation for DNALLM
 
-The quality and structure of your training data are critical for the success of your DNA language model. This guide covers the types of data you can use, where to find it, and how to organize it for use with DNALLM.
+The quality and structure of your training data are critical for the success of your DNA large language model. This guide covers the types of data you can use, where to find it, and how to organize it for use with DNALLM.
 
 ## 1. Types of Training Data
 

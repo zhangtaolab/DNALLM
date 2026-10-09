@@ -15,7 +15,7 @@ including:
 Architecture:
     The server is built on top of the FastMCP framework, which provides MCP
     protocol implementation with multiple transport options (stdio, SSE,
-    HTTP). The server manages DNA language models through a ModelManager and
+    HTTP). The server manages DNA large language models through a ModelManager and
     handles configuration through a ConfigManager.
 
 Transport Protocols:
@@ -70,12 +70,12 @@ class DNALLMMCPServer:
     """DNALLM MCP Server implementation using FastMCP framework with SSE
     support.
 
-    This class provides a comprehensive MCP server for DNA language model
+    This class provides a comprehensive MCP server for DNA large language model
     inference and analysis. It supports multiple transport protocols and
     provides real-time streaming capabilities for DNA sequence prediction
     tasks.
 
-    The server manages multiple DNA language models and provides various
+    The server manages multiple DNA large language models and provides various
     prediction modes including single sequence prediction, batch processing,
     and multi-model comparison. All operations support progress reporting
     through streaming transports for real-time user feedback.
@@ -177,7 +177,7 @@ class DNALLMMCPServer:
         2. Loads and validates server configuration
         3. Creates the FastMCP application instance
         4. Registers all MCP tools
-        5. Loads all enabled DNA language models
+        5. Loads all enabled DNA large language models
 
         The initialization is asynchronous because model loading can be
         time-consuming, especially for large transformer models.

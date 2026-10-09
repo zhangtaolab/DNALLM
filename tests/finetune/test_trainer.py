@@ -95,6 +95,8 @@ class TestTrainingArgumentsMapping:
             "callbacks",
             "hyperparameter_search",
             "use_qlora",
+            "use_ia3",
+            "allow_test_as_eval",
             "quantization_config",
             "save_safetensors",
             "warmup_ratio",

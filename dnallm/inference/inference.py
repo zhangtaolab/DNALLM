@@ -1,4 +1,4 @@
-"""DNA Language Model Inference Module.
+"""DNA Large Language Model Inference Module.
 
 This module implements core model inference functionality, including:
 
@@ -61,7 +61,7 @@ class DNAInference:
     """DNA sequence inference engine using fine-tuned models.
 
     This class provides comprehensive functionality for performing inference
-    using DNA language models. It handles model loading, inference, result
+    using DNA large language models. It handles model loading, inference, result
     processing, and various output formats including hidden states and
     attention weights for model interpretability.
 

@@ -134,7 +134,7 @@ from dnallm.finetune import DNATrainer
 
 ## Contributing New Models
 
-To add support for new DNA language models:
+To add support for new DNA large language models:
 
 1. Ensure the model is publicly available
 2. Test compatibility with DNALLM's architecture

@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
-DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 📦 Quick Installation
 
@@ -20,7 +20,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
@@ -31,7 +31,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🧬 Supported Models
 
-DNALLM-Suite supports a wide range of DNA language models including:
+DNALLM-Suite supports a wide range of DNA large language models including:
 
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S

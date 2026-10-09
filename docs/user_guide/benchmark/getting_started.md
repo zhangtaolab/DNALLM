@@ -1,11 +1,11 @@
 # Getting Started with Benchmarking
 
-This guide will walk you through the basics of benchmarking DNA language models using DNALLM. You'll learn how to set up your first benchmark, configure models and datasets, and interpret results.
+This guide will walk you through the basics of benchmarking DNA large language models using DNALLM. You'll learn how to set up your first benchmark, configure models and datasets, and interpret results.
 
 ## Overview
 
 Benchmarking in DNALLM allows you to:
-- Compare multiple DNA language models on the same tasks
+- Compare multiple DNA large language models on the same tasks
 - Evaluate performance across different datasets
 - Measure accuracy, speed, and resource usage
 - Generate comprehensive performance reports

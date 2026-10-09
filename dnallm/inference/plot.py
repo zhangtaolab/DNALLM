@@ -1,6 +1,6 @@
-"""DNA Language Model Visualization and Plotting Module.
+"""DNA Large Language Model Visualization and Plotting Module.
 
-This module provides comprehensive plotting capabilities for DNA language model
+This module provides comprehensive plotting capabilities for DNA large language model
 results,
 including metrics visualization, attention maps, embeddings, and
     mutation effects analysis.

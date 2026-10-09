@@ -316,6 +316,14 @@ class TrainingConfig(BaseModel):
             "reported as held-out performance."
         ),
     )
+    use_ia3: bool = Field(
+        default=False,
+        description=(
+            "Whether to use IA³ (Infused Adapter by Inhibiting and Amplifying Inner "
+            "Activations) adapters for parameter-efficient fine-tuning. IA³ training "
+            "support arrives with the next release's trainer branch."
+        ),
+    )
     use_qlora: bool = Field(
         default=False,
         description="Whether to use 4-bit quantized LoRA (QLoRA). Requires bitsandbytes.",
@@ -377,6 +385,116 @@ class LoraConfig(BaseModel):
     task_type: str | None = Field(
         default="SEQ_CLS",
         description="The task type for PEFT. E.g., 'CAUSAL_LM', 'TOKEN_CLS'.",
+    )
+
+
+class Ia3Config(BaseModel):
+    """Configuration for IA³ (Infused Adapter by Inhibiting and Amplifying Inner
+    Activations), mirroring peft's IA3Config field set.
+
+    The IA³ trainer branch lands in a later phase; this section finalizes the
+    YAML surface so downstream phases never touch this file's registration.
+    """
+
+    target_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "The names of the modules to apply IA³ vectors to. If None, the "
+            "trainer's per-model preset (shipped as packaged YAML) is used."
+        ),
+    )
+    feedforward_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "The names of the feedforward modules in target_modules. IA³ vectors "
+            "applied to feedforward modules rescale activations rather than keys/values."
+        ),
+    )
+    init_ia3_weights: bool = Field(
+        default=True,
+        description="Whether to initialize IA³ vectors to 1.0 (identity rescaling).",
+    )
+    modules_to_save: list[str] | None = Field(
+        default=None,
+        description=(
+            "List of modules apart from IA³ vectors whose weights are trained and "
+            "saved in the final checkpoint (e.g. classification heads)."
+        ),
+    )
+
+
+class VepConfig(BaseModel):
+    """Configuration for zero-shot variant effect prediction (VEP).
+
+    Field-complete scaffold for the VEP module; the scoring kernels and the
+    token-slot alignment rule land with the module itself in a later phase.
+    """
+
+    paradigm: str = Field(
+        default="mlm",
+        pattern="^(clm|mlm)$",
+        description=(
+            "Scoring paradigm: 'mlm' scores variants via masked-language-model "
+            "pseudo-log-likelihood; 'clm' scores via causal next-token log-probabilities."
+        ),
+    )
+    context_window: int = Field(
+        default=200,
+        ge=1,
+        description=(
+            "Number of reference bases kept on each side of the variant locus when "
+            "building the model context window."
+        ),
+    )
+    output_dir: str | None = Field(
+        default=None,
+        description="Directory for VEP result files. If None, the caller decides.",
+    )
+
+
+class SweepConfig(BaseModel):
+    """Configuration for the multi-seed sweep protocol with uncertainty
+    aggregation.
+
+    Field-complete scaffold for the sweep runner; the aggregation utilities
+    land with the sweep module in a later phase.
+    """
+
+    seeds: list[int] = Field(
+        default_factory=lambda: [42, 43, 44],
+        min_length=1,
+        description=(
+            "Random seeds to run, one full training run per seed. At least one "
+            "seed is required so the protocol always reports a real run."
+        ),
+    )
+    out_root: str | None = Field(
+        default=None,
+        description=(
+            "Root directory holding one output dir per seed run. If None, the caller decides."
+        ),
+    )
+    n_bootstrap: int = Field(
+        default=2000,
+        ge=1,
+        description=(
+            "Number of bootstrap resamples for seed-level confidence intervals. "
+            "Ignored when the seed count falls below the small-n guard, which "
+            "switches to the small_n_ci policy instead."
+        ),
+    )
+    bootstrap_seed: int = Field(
+        default=42,
+        description="Random seed for the bootstrap resampling (reproducibility).",
+    )
+    small_n_ci: str = Field(
+        default="t-interval",
+        pattern="^(t-interval|omit)$",
+        description=(
+            "Policy when fewer than 10 seeds are run (small-n guard): "
+            "'t-interval' reports a Student-t interval over the seeds; 'omit' "
+            "reports only point estimates without an interval."
+        ),
     )
 
 
@@ -476,7 +594,7 @@ class OutputConfig(BaseModel):
 
 class BenchmarkConfig(BaseModel):
     """
-    Top-level configuration for the DNA Language Model benchmark.
+    Top-level configuration for the DNA Large Language Model benchmark.
     This class validates and structures the entire YAML configuration file,
     where each top-level key in the YAML corresponds to an attribute of this
     class.
@@ -516,6 +634,9 @@ class DNALLMConfig(TypedDict, total=False):
     model: dict[str, Any]
     finetune: TrainingConfig
     lora: LoraConfig
+    ia3: Ia3Config
+    vep: VepConfig
+    sweep: SweepConfig
     benchmark: BenchmarkConfig
 
 
@@ -551,6 +672,18 @@ def load_config(config_path: str) -> DNALLMConfig:
     # Configurations for LoRA (Optional)
     if "lora" in config_dict:
         configs["lora"] = LoraConfig(**config_dict["lora"])
+
+    # Configurations for IA³ (Optional)
+    if "ia3" in config_dict:
+        configs["ia3"] = Ia3Config(**config_dict["ia3"])
+
+    # Configurations for zero-shot variant effect prediction (Optional)
+    if "vep" in config_dict:
+        configs["vep"] = VepConfig(**config_dict["vep"])
+
+    # Configurations for the multi-seed sweep protocol (Optional)
+    if "sweep" in config_dict:
+        configs["sweep"] = SweepConfig(**config_dict["sweep"])
 
     # Configurations for benchmark (Optional)
     if "benchmark" in config_dict:

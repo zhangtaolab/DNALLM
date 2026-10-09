@@ -22,7 +22,7 @@ For computational purposes, we typically represent a DNA sequence by one of its 
 AGCTAGCTAGCT
 ```
 
-This string `AGCTAGCTAGCT` is the fundamental data type that DNA Language Models, like those in the DNALLM framework, are designed to understand and process.
+This string `AGCTAGCTAGCT` is the fundamental data type that DNA Large Language Models, like those in the DNALLM framework, are designed to understand and process.
 
 ## 2. The Central Dogma of Molecular Biology
 

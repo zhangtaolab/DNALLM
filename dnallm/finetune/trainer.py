@@ -1,6 +1,6 @@
-"""DNA Language Model Trainer Module.
+"""DNA Large Language Model Trainer Module.
 
-This module implements the training process management for DNA language models,
+This module implements the training process management for DNA large language models,
     with the following main features:
 
 1. DNATrainer Class
@@ -67,10 +67,10 @@ transformers_version = Version(str(transformers.__version__))
 
 
 class DNATrainer:
-    """DNA Language Model Trainer that supports multiple model types.
+    """DNA Large Language Model Trainer that supports multiple model types.
 
     This trainer class provides a unified interface for training, evaluating,
-    and predicting with DNA language models. It supports various task types
+    and predicting with DNA large language models. It supports various task types
     including classification, regression, and masked language modeling.
     Early stopping is supported via the callbacks configuration in TrainingConfig.
     QLoRA (4-bit quantized LoRA) is supported via use_qlora in TrainingConfig.
@@ -88,7 +88,7 @@ class DNATrainer:
         final-epoch weights.
 
     Attributes:
-        model: The DNA language model to be trained
+        model: The DNA large language model to be trained
         task_config: Configuration for the specific task
         train_config: Configuration for training parameters
         datasets: Dataset for training and evaluation
@@ -149,7 +149,7 @@ class DNATrainer:
         """Initialize the DNA trainer.
 
         Args:
-            model: The DNA language model to be trained
+            model: The DNA large language model to be trained
                         config: Configuration dictionary containing task and
                 training settings
             datasets: Dataset for training and evaluation
@@ -212,6 +212,7 @@ class DNATrainer:
         training_args.pop("callbacks", None)
         training_args.pop("hyperparameter_search", None)
         training_args.pop("use_qlora", None)
+        training_args.pop("use_ia3", None)
         training_args.pop("allow_test_as_eval", None)
         training_args.pop("quantization_config", None)
         self._save_safetensors = training_args.pop("save_safetensors", True)

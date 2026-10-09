@@ -1,10 +1,10 @@
 # Training Concepts in Machine Learning
 
-Training is the fundamental process in machine learning where a model learns patterns from data to make predictions or perform tasks. This document explains the core concepts of training as they apply to DNA language models. For hands-on DNALLM fine-tuning walkthroughs, see the Fine-tuning guide (`user_guide/fine_tuning/`) and the worked case studies (`user_guide/case_studies/`).
+Training is the fundamental process in machine learning where a model learns patterns from data to make predictions or perform tasks. This document explains the core concepts of training as they apply to DNA large language models. For hands-on DNALLM fine-tuning walkthroughs, see the Fine-tuning guide (`user_guide/fine_tuning/`) and the worked case studies (`user_guide/case_studies/`).
 
 ## What is Training in Machine Learning?
 
-Training is the process of optimizing a model's parameters (weights and biases) to minimize a loss function, enabling the model to learn meaningful patterns from data. In the context of DNA language models, training involves:
+Training is the process of optimizing a model's parameters (weights and biases) to minimize a loss function, enabling the model to learn meaningful patterns from data. In the context of DNA large language models, training involves:
 
 - **Parameter Optimization**: Adjusting model weights to minimize prediction errors
 - **Pattern Learning**: Discovering biological patterns and relationships in DNA sequences

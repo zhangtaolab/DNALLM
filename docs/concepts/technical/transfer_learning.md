@@ -15,7 +15,7 @@ Transfer learning revolutionizes this process. It involves two main stages:
 ![Transfer Learning Diagram](https://images.prismic.io/superpupertest/c3002fcf-fc12-42aa-853c-b4c61981437c_04.webp?auto=compress,format&dpr=3)
 *Image Credit: Mad Devs*
 
-## 2. Transfer Learning and DNA Language Models
+## 2. Transfer Learning and DNA Large Language Models
 
 This two-stage process is perfectly suited for genomics. The "language" of DNA is universal, but its "dialects" (i.e., the functions of specific sequences) are diverse.
 

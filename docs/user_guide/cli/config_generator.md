@@ -40,7 +40,7 @@ The configuration type is not a command-line option — it is selected interacti
 
 ### 1. Fine-tuning Configuration
 
-Generates configuration for training/fine-tuning DNA language models.
+Generates configuration for training/fine-tuning DNA large language models.
 
 **Includes:**
 - Task configuration (task type, labels, threshold)
@@ -111,7 +111,7 @@ Generates configuration for benchmarking multiple models.
 ```yaml
 benchmark:
   name: DNA Model Benchmark
-  description: Comparing DNA language models
+  description: Comparing DNA large language models
 models:
   - name: Plant DNABERT
     path: zhangtaolab/plant-dnabert-BPE-promoter

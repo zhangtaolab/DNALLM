@@ -1,6 +1,6 @@
 # Installation
 
-DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. This guide will help you install DNALLM and its dependencies.
+DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. This guide will help you install DNALLM and its dependencies.
 
 ## Prerequisites
 

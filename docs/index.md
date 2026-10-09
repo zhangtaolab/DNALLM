@@ -4,11 +4,11 @@
   <img src="pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
-DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
@@ -19,7 +19,7 @@ DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning an
 
 ## 🧬 Supported Models
 
-DNALLM-Suite supports a wide range of DNA language models including:
+DNALLM-Suite supports a wide range of DNA large language models including:
 
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S

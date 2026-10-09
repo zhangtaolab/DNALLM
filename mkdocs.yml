@@ -1,5 +1,5 @@
 site_name: DNALLM Documentation
-site_description: A comprehensive toolkit for fine-tuning and inference with DNA Language Models
+site_description: A comprehensive toolkit for fine-tuning and inference with DNA Large Language Models
 site_author: Zhangtaolab
 # site_url: https://zhangtaolab.org/DNALLM/
 repo_url: https://github.com/zhangtaolab/DNALLM

@@ -1,6 +1,6 @@
 # GPU Performance Optimization
 
-Training and running large DNA language models can be computationally intensive. Optimizing GPU usage is key to achieving faster results and handling larger models. This guide covers several techniques to boost GPU performance within the DNALLM framework.
+Training and running large DNA large language models can be computationally intensive. Optimizing GPU usage is key to achieving faster results and handling larger models. This guide covers several techniques to boost GPU performance within the DNALLM framework.
 
 ## 1. Mixed-Precision Training (FP16/BF16)
 

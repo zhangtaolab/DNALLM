@@ -5,7 +5,7 @@ sync_check: true
 
 # Binary Classification Fine-Tuning
 
-This tutorial demonstrates how to fine-tune a DNA language model for binary classification, using promoter prediction as an example.
+This tutorial demonstrates how to fine-tune a DNA large language model for binary classification, using promoter prediction as an example.
 
 ## Full Notebook
 

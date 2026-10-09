@@ -1,6 +1,6 @@
 # Model Guides
 
-This page provides access to comprehensive guides for different DNA language model architectures and their usage with DNALLM.
+This page provides access to comprehensive guides for different DNA large language model architectures and their usage with DNALLM.
 
 ## Model Architecture Guides
 
