@@ -10,6 +10,7 @@ No test here performs a skip call, touches the network, or writes outside
 pytest tmp_path.
 """
 
+import json
 import os
 from unittest.mock import Mock, patch
 
@@ -261,6 +262,144 @@ class TestEvalSemanticsGuard:
             for call in mock_print.call_args_list
             if "allow_test_as_eval" in "".join(str(arg) for arg in call.args)
         ]
+
+
+class TestEarlyStoppingCollision:
+    """EVAL-01 collisions: best-model selection without an evaluation split."""
+
+    def test_early_stopping_without_eval_split_raises(self, trainer_config, mock_hf_boundary):
+        """Early stopping over a guarded test-only dataset raises with both remedies."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=1)
+        )
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="Early stopping requires an evaluation split"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+    def test_early_stopping_train_only_raises(self, trainer_config, mock_hf_boundary):
+        """Early stopping over a train-only dataset raises the same ValueError."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=2)
+        )
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="Early stopping requires an evaluation split"),
+        ):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
+
+    def test_load_best_model_at_end_collision_raises(self, trainer_config, mock_hf_boundary):
+        """A user-set load_best_model_at_end never survives the guard silently."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = True
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="load_best_model_at_end requires an evaluation split"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+    def test_opt_in_early_stopping_does_not_raise(self, trainer_config, mock_hf_boundary):
+        """Opting into test-as-eval keeps early stopping working (opt-in edge)."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].allow_test_as_eval = True
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=1)
+        )
+
+        with (
+            patch("builtins.print"),
+            patch("dnallm.finetune.trainer.EarlyStoppingCallback"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+        # An eval set exists (test), so the force-enable path still works.
+        assert args_cls.return_value.load_best_model_at_end is True
+
+
+class TestEvaluateSplit:
+    """evaluate(split=...) predict routing, canonical keys and result JSON."""
+
+    def _guarded_trainer(self, trainer_config, mock_hf_boundary, splits=("train", "test")):
+        """Build a DNATrainer over the given splits with the guard active."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        datasets = make_datasets(list(splits))
+        with patch("builtins.print"):
+            return DNATrainer(model=Mock(), config=trainer_config, datasets=datasets), datasets
+
+    def test_split_routes_through_predict_and_writes_result_json(
+        self, trainer_config, mock_hf_boundary, tmp_path
+    ):
+        """split='test' predicts (never trainer.evaluate) and writes the JSON."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.predict.return_value.metrics = {
+            "test_accuracy": 0.9,
+            "test_AUROC": 0.8,
+        }
+        output_dir = tmp_path / "outputs"
+        trainer_config["finetune"].output_dir = str(output_dir)
+
+        trainer, datasets = self._guarded_trainer(trainer_config, mock_hf_boundary)
+        result = trainer.evaluate(split="test")
+
+        trainer_cls.return_value.predict.assert_called_once_with(
+            datasets.dataset["test"], ignore_keys=None
+        )
+        trainer_cls.return_value.evaluate.assert_not_called()
+        assert result == {"accuracy": 0.9, "AUROC": 0.8}
+
+        result_path = output_dir / "eval_test_result.json"
+        assert result_path.exists()
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        assert payload["split"] == "test"
+        assert "timestamp" in payload
+        assert payload["metrics"] == {"accuracy": 0.9, "AUROC": 0.8}
+
+    def test_unknown_split_raises_listing_available(self, trainer_config, mock_hf_boundary):
+        """An absent split key raises a ValueError naming the available splits."""
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+
+        with pytest.raises(ValueError, match="Split 'nonexistent' not found in dataset"):
+            trainer.evaluate(split="nonexistent")
+
+    def test_no_args_calls_trainer_evaluate_with_no_kwargs(self, trainer_config, mock_hf_boundary):
+        """evaluate() with no arguments delegates with no kwargs (D-01)."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.evaluate.return_value = {"eval_loss": 0.3}
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary, ("train", "val"))
+
+        assert trainer.evaluate() == {"eval_loss": 0.3}
+        trainer_cls.return_value.evaluate.assert_called_once_with()
+
+    def test_legacy_kwargs_forward_unchanged(self, trainer_config, mock_hf_boundary):
+        """Legacy HF kwargs pass through to trainer.evaluate (signature compat)."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.evaluate.return_value = {"eval_loss": 0.2}
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary, ("train", "val"))
+        eval_dataset = Mock()
+
+        trainer.evaluate(
+            eval_dataset=eval_dataset, ignore_keys=["logits"], metric_key_prefix="valid"
+        )
+
+        trainer_cls.return_value.evaluate.assert_called_once_with(
+            eval_dataset=eval_dataset, ignore_keys=["logits"], metric_key_prefix="valid"
+        )
 
 
 class TestTaskTypeWiring:

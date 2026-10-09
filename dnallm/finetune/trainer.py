@@ -44,6 +44,8 @@ from pathlib import Path
 from collections.abc import Mapping
 from typing import Any
 from collections.abc import Callable
+from datetime import datetime, timezone
+import json
 import math
 import torch
 from datasets import DatasetDict
@@ -72,6 +74,18 @@ class DNATrainer:
     including classification, regression, and masked language modeling.
     Early stopping is supported via the callbacks configuration in TrainingConfig.
     QLoRA (4-bit quantized LoRA) is supported via use_qlora in TrainingConfig.
+
+    Evaluation semantics:
+        The evaluation split is the first non-train/non-test split
+        (dev/validation) present in the dataset. The test split is held out
+        from evaluation unless ``finetune.allow_test_as_eval: true`` is set —
+        when no dev split exists, per-step evaluation is disabled (with a
+        loud warning) instead of silently evaluating on the test split, so
+        held-out test metrics cannot leak into per-step evaluation or
+        best-model selection. ``evaluate(split=...)`` evaluates the model
+        you ended training with — the best checkpoint when
+        load_best_model_at_end or early stopping fired, otherwise
+        final-epoch weights.
 
     Attributes:
         model: The DNA language model to be trained
@@ -315,6 +329,15 @@ class DNATrainer:
             and self.train_config.callbacks.early_stopping
             and self.train_config.callbacks.early_stopping.patience is not None
         ):
+            # EVAL-01: best-model selection cannot be resurrected without an
+            # eval set (PITFALLS #1 neighbor path).
+            if eval_dataset is None:
+                raise ValueError(
+                    "Early stopping requires an evaluation split, but no eval dataset "
+                    "is available (no dev split, and the test split is excluded from "
+                    "evaluation unless allow_test_as_eval=true). Provide a "
+                    "dev/validation split or set finetune.allow_test_as_eval=true."
+                )
             callbacks.append(
                 EarlyStoppingCallback(
                     early_stopping_patience=self.train_config.callbacks.early_stopping.patience,
@@ -512,18 +535,83 @@ class DNATrainer:
 
         return result
 
-    def evaluate(self) -> dict[str, float]:
-        """Evaluate the model on the evaluation dataset.
+    def evaluate(
+        self,
+        split: str | None = None,
+        eval_dataset: Any | None = None,
+        ignore_keys: list[str] | None = None,
+        metric_key_prefix: str = "eval",
+    ) -> dict[str, float]:
+        """Evaluate the model on a named split or the configured evaluation set.
 
-        This method runs evaluation on the configured evaluation dataset and
-        returns task-specific metrics.
+        With ``split=None`` this keeps the Hugging Face ``Trainer.evaluate``
+        calling convention for external HF-ecosystem callers: the legacy
+        kwargs (``eval_dataset``, ``ignore_keys``, ``metric_key_prefix``)
+        are forwarded to ``self.trainer.evaluate`` unchanged, and calling
+        ``evaluate()`` with no arguments invokes ``self.trainer.evaluate()``
+        with no kwargs.
 
-                Returns:
-        Dictionary containing evaluation metrics for the current model state
+        With ``split`` set to any split key present in the dataset dict, the
+        held-out split is routed through ``self.trainer.predict`` — never
+        ``trainer.evaluate`` — the ``test_`` predict prefix is stripped from
+        the metric keys to produce canonical, unprefixed names, and a result
+        JSON ``eval_{split}_result.json`` containing ``{"split", "timestamp",
+        "metrics"}`` is written under the finetune ``output_dir``. This
+        evaluates the weights the trainer currently holds; no checkpoint is
+        reloaded and no checkpoint parameter exists.
+
+        Args:
+            split: Dataset split key to evaluate (e.g. "test", "val"). Any
+                key present in the dataset dict is accepted.
+            eval_dataset: Legacy kwarg forwarded to ``trainer.evaluate``
+                (ignored when ``split`` is given).
+            ignore_keys: Keys to ignore during evaluation/prediction.
+            metric_key_prefix: Metric prefix for the legacy
+                ``trainer.evaluate`` path.
+
+        Returns:
+            Dictionary of evaluation metrics (canonical, unprefixed metric
+            names when ``split`` is given).
+
+        Raises:
+            ValueError: If ``split`` is not a key of the dataset dict.
         """
+        if split is None:
+            legacy_kwargs: dict[str, Any] = {}
+            if eval_dataset is not None:
+                legacy_kwargs["eval_dataset"] = eval_dataset
+            if ignore_keys is not None:
+                legacy_kwargs["ignore_keys"] = ignore_keys
+            if metric_key_prefix != "eval":
+                legacy_kwargs["metric_key_prefix"] = metric_key_prefix
+            self.model.eval()
+            result: dict[str, float] = self.trainer.evaluate(**legacy_kwargs)
+            return result
+        if split not in self.data_split:
+            raise ValueError(
+                f"Split '{split}' not found in dataset; available splits: {sorted(self.data_split)}"
+            )
         self.model.eval()
-        result: dict[str, float] = self.trainer.evaluate()
-        return result
+        predict_result = self.trainer.predict(
+            self.datasets.dataset[split],  # type: ignore
+            ignore_keys=ignore_keys,
+        )
+        metrics: dict[str, float] = {
+            key.removeprefix("test_"): value for key, value in predict_result.metrics.items()
+        }
+        result_path = Path(self.train_config.output_dir or ".") / f"eval_{split}_result.json"
+        result_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(result_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "split": split,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "metrics": metrics,
+                },
+                f,
+                indent=2,
+            )
+        return metrics
 
     def infer(self) -> dict[str, float]:
         """Generate inference results on the test dataset.
