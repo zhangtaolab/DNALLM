@@ -9,6 +9,7 @@ kernels run on the real tiny per-position torch module so every score is a
 real model output. No network, no model downloads, no skips.
 """
 
+from types import SimpleNamespace
 from typing import ClassVar
 import math
 
@@ -19,6 +20,7 @@ from dnallm.inference.vep import (
     VariantAlignment,
     align_variant,
     clm_log_likelihood,
+    get_model_device,
     mlm_slot_log_prob,
 )
 
@@ -240,3 +242,23 @@ class TestMlmSlotLogProb:
         assert masked[0, 2].item() == simple_dna_tokenizer.mask_token_id
         assert torch.equal(masked[0, :2], original_ids[0, :2])
         assert torch.equal(masked[0, 3:], original_ids[0, 3:])
+
+
+class TestGetModelDevice:
+    """get_model_device resolution order (mirrors mutagenesis.py:241-255)."""
+
+    def test_device_attribute_wins(self):
+        """A model-like object exposing .device resolves to that device."""
+        model = SimpleNamespace(device=torch.device("meta"))
+
+        assert get_model_device(model) == torch.device("meta")
+
+    def test_parameters_fallback(self, tiny_model_factory):
+        """A plain nn.Module (no .device attr) resolves via its parameters."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        assert get_model_device(model) == torch.device("cpu")
+
+    def test_plain_object_falls_back_to_cpu(self):
+        """An object with neither .device nor .parameters assumes CPU."""
+        assert get_model_device(object()) == torch.device("cpu")
