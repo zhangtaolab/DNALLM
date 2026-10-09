@@ -1,45 +1,32 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-09T08:50:58.823Z",
+  "timestamp": "2026-10-09T09:36:00.000Z",
   "phase": null,
   "phase_name": null,
   "phase_dir": null,
   "plan": null,
   "task": null,
   "total_tasks": null,
-  "status": "paused",
-  "workflow_in_progress": "gsd-new-milestone v1.2 'Paper Revision Suite Support' — paused at Step 8 of 11 (research decision)",
+  "status": "completed",
+  "workflow_in_progress": null,
   "completed_tasks": [
-    {"id": 1, "name": "Reviewer-comment code assessment (DNALLM + dnallmmark evidence)", "status": "done", "commit": "uncommitted-then-46366e1"},
-    {"id": 2, "name": "Alignment doc 261009-paper-revision-suite-plan.md (REV-01..11, adjudications D1-D4)", "status": "done", "commit": "46366e1"},
-    {"id": 3, "name": "PROJECT.md: Current Milestone v1.2 + Active requirements", "status": "done", "commit": "46366e1"},
-    {"id": 4, "name": "STATE.md milestone-switch v1.1 -> v1.2 (status: planning)", "status": "done", "commit": "46366e1"},
-    {"id": 5, "name": "v1.1 phase archive check (phases.clear -> cleared: 0, already archived)", "status": "done", "commit": "46366e1"},
-    {"id": 6, "name": "Milestone summary confirmed by owner + scope decisions recorded", "status": "done"},
-    {"id": 7, "name": "Step 8 research decision AskUserQuestion", "status": "in_progress", "progress": "question shown, user rejected tool call and invoked pause-work — decision still open"}
+    {"id": 1, "name": "v1.2 kickoff Steps 1-7 (context, goals, version, PROJECT.md, STATE.md, archive+commit)", "status": "done", "commit": "46366e1"},
+    {"id": 2, "name": "Step 8 research decision: owner chose Research first; 4 researchers + synthesizer run", "status": "done", "commit": "5149518"},
+    {"id": 3, "name": "Step 9 REQUIREMENTS.md (11 REQ-IDs, 10 categories, 1:1 with REV-01..11)", "status": "done", "commit": "663dbcd"},
+    {"id": 4, "name": "Step 10 roadmap approved (3 phases 10-12; single-tree parallel constraint in invariants)", "status": "done", "commit": "b2eb1a8"},
+    {"id": 5, "name": "Step 10.5 pending-todo scan: none pending", "status": "done"},
+    {"id": 6, "name": "Step 11 done; pushed origin/revision", "status": "done"}
   ],
-  "remaining_tasks": [
-    {"id": 8, "name": "Step 8: research decision (skip recommended; intake doc has two-pass code-level alignment)", "status": "pending"},
-    {"id": 9, "name": "Step 9: REQUIREMENTS.md from REV-01..11 (categories: EVAL/METR/DOCS/PEFT/BASE/PROB/VEP/SEED/MOTIF/MCPE), present, commit 'docs: define milestone v1.2 requirements'", "status": "not_started"},
-    {"id": 10, "name": "Step 10: spawn gsd-roadmapper (agents installed, models 'inherit' — omit model param; phases start at 10), approve, commit roadmap+STATE+REQUIREMENTS, rm .planning/.gsd-ws-arg", "status": "not_started"},
-    {"id": 11, "name": "Step 10.5: scan .planning/todos/pending/ for resolves_phase matches", "status": "not_started"},
-    {"id": 12, "name": "Step 11: milestone-initialized banner; next up /gsd-discuss-phase 10 or /gsd-plan-phase 10", "status": "not_started"}
-  ],
-  "blockers": [
-    {"description": "Owner decision pending: run 4-researcher pass or skip research before requirements (new-milestone Step 8)", "type": "human_action", "workaround": "Re-ask on resume; recommendation was Skip (intake doc .planning/research/261009-paper-revision-suite-plan.md already encodes design decisions from two aligned review passes)"}
-  ],
+  "remaining_tasks": [],
+  "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [
-    {"action": "Answer research decision (skip vs research-first)", "context": "Rejected AskUserQuestion triggered this pause; everything downstream (requirements, roadmap) waits on it", "blocking": true}
-  ],
+  "human_actions_pending": [],
   "decisions": [
-    {"decision": "v1.2 scope = ALL 11 REV items including P2 (REV-10 JASPAR module, REV-11 MCP tools)", "rationale": "Owner selected '纳入 v1.2' over Future/v2", "phase": "v1.2-kickoff"},
-    {"decision": "Execution = parallel compression: scope/acceptance retained, 4-5 parallel implementation agents in waves, calendar target ~1-1.5 days", "rationale": "Owner selected '并行压缩(推荐)' after 1-day constraint stated; REV-07/08/10 flagged as overflow risk", "phase": "v1.2-kickoff"},
-    {"decision": "Phase numbering continues from 09 (first v1.2 phase = Phase 10)", "rationale": "No --reset-phase-numbers flag; GSD default continuation", "phase": "v1.2-kickoff"},
-    {"decision": "All commits: NO Co-Authored-By trailer; commit then push to origin/revision", "rationale": "Explicit owner instruction given twice mid-session; repo-local git identity set (Tao Zhang <forrest_zhang@163.com>)", "phase": "v1.2-kickoff"}
+    {"decision": "Research-first chosen at Step 8 (overriding Skip recommendation); research landed as 4 lanes + SUMMARY.md", "rationale": "Owner selection", "phase": "v1.2-kickoff"},
+    {"decision": "Wave parallelism = concurrent background executor agents in the single working tree; NO per-agent git worktrees, NO GSD workstreams for v1.2", "rationale": "File-disjoint waves make worktrees pure cost (merge/env/atomic-commit breakage); v1.1 Phase 8 precedent", "phase": "v1.2-kickoff"}
   ],
-  "uncommitted_files": ["?? .planning/.gsd-ws-arg"],
-  "uncommitted_files_note": "gsd workflow-internal temp file holding empty GSD_WS; DO NOT commit — Steps 9/10 consume it and Step 10 removes it",
-  "next_action": "Resume /gsd-new-milestone at Step 8: ask the research decision (recommend Skip), then proceed to requirements definition from .planning/research/261009-paper-revision-suite-plan.md REV-01..11",
-  "context_notes": "Milestone v1.2 driven by paper revision. Intake doc contains per-item acceptance criteria and the owner-fixed parallel-compression strategy; requirements categories already sketched. gsd-tools must be invoked as: node $HOME/.claude/gsd-core/bin/gsd-tools.cjs <verb> (bash functions do not persist between Bash tool calls)."
+  "uncommitted_files": [".planning/graphs/", ".planning/tmp/"],
+  "uncommitted_files_note": "Untracked runtime artifacts, not GSD planning output; leave as-is",
+  "next_action": "Milestone v1.2 initialized. Next: /gsd-discuss-phase 10 or /gsd-plan-phase 10 (REV-08 lane in Phase 11 wants --research-phase)",
+  "context_notes": "Kickoff completed 2026-10-09. Research at .planning/research/{STACK,FEATURES,ARCHITECTURE,PITFALLS,SUMMARY}.md; intake at 261009-paper-revision-suite-plan.md. gsd-tools invocation: node $HOME/.claude/gsd-core/bin/gsd-tools.cjs <verb>."
 }
