@@ -173,6 +173,24 @@ class TestExtractEmbeddings:
         cls = extract_embeddings(model, simple_dna_tokenizer, sequences, labels, pooling="cls")
         assert not np.allclose(mean.embeddings, cls.embeddings)
 
+    def test_extraction_restores_output_hidden_states_flag(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """The config flip is temporary: the externally owned model is handed
+        back with its prior output_hidden_states value in both directions
+        (IN-04) — later forwards must not keep materializing the stack."""
+        sequences, labels = _synthetic_binary_data()
+
+        model = tiny_model_factory()
+        model.config.output_hidden_states = False
+        extract_embeddings(model, simple_dna_tokenizer, sequences, labels)
+        assert model.config.output_hidden_states is False
+
+        model = tiny_model_factory()
+        model.config.output_hidden_states = True
+        extract_embeddings(model, simple_dna_tokenizer, sequences, labels)
+        assert model.config.output_hidden_states is True
+
     def test_f4_row_schema(self, tiny_model_factory, simple_dna_tokenizer):
         """to_row() carries the documented F4 keys including layer/pooling/kind."""
         sequences, labels = _synthetic_binary_data()

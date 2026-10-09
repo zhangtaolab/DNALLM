@@ -68,6 +68,8 @@ import json
 import os
 import uuid
 import warnings
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -372,6 +374,44 @@ def _hidden_states_from_outputs(outputs: Any) -> list[Any] | None:
     return [hiddens]
 
 
+_UNSET = object()
+"""Sentinel distinguishing 'attribute was absent' from an explicit None."""
+
+
+@contextmanager
+def _temporarily_enabled_hidden_states(model: Any) -> Generator[None, None, None]:
+    """Flip ``model.config.output_hidden_states`` on for the block only (IN-04).
+
+    Unlike ``DNAInference`` (which owns its engine's lifecycle), probing
+    receives an externally owned frozen model, so the caller's prior value
+    is restored on exit — later forwards must not keep materializing the
+    full hidden-state stack. When the attribute cannot be set, the legacy
+    behavior applies: a warning is emitted and the block runs anyway.
+    """
+    if not hasattr(model, "config"):
+        yield
+        return
+    prior = getattr(model.config, "output_hidden_states", _UNSET)
+    try:
+        model.config.output_hidden_states = True
+    except (ValueError, AttributeError) as e:
+        warnings.warn(f"Cannot enable output_hidden_states on config: {e}", stacklevel=3)
+        yield
+        return
+    try:
+        yield
+    finally:
+        # Restore exactly what the caller's config carried; an attribute
+        # that did not exist before is removed again.
+        if prior is _UNSET:
+            try:
+                del model.config.output_hidden_states
+            except (ValueError, AttributeError):
+                pass
+        else:
+            model.config.output_hidden_states = prior
+
+
 def extract_embeddings(
     model: Any,
     tokenizer: Any,
@@ -479,14 +519,11 @@ def extract_embeddings(
         p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()
     )
     forward_kwargs: dict[str, Any] = {"output_hidden_states": True} if accepts_kwarg else {}
-    if hasattr(model, "config"):
-        try:
-            model.config.output_hidden_states = True
-        except (ValueError, AttributeError) as e:
-            warnings.warn(f"Cannot enable output_hidden_states on config: {e}", stacklevel=2)
-
+    # IN-04: the config flip is scoped to the extraction below (see
+    # _temporarily_enabled_hidden_states) — the caller's model keeps its
+    # own output_hidden_states value afterwards.
     pooled_batches: list[np.ndarray] = []
-    with torch.no_grad():
+    with torch.no_grad(), _temporarily_enabled_hidden_states(model):
         for start in range(0, len(kept_sequences), batch_size):
             batch = kept_sequences[start : start + batch_size]
             inputs = dict(tokenizer(batch, return_tensors="pt", padding=True, truncation=True))
