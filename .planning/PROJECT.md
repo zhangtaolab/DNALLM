@@ -57,15 +57,21 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 v1.2 Paper Revision Suite Support (defined 2026-10-09, full REQ-IDs in `.planning/REQUIREMENTS.md`):
 
-- [ ] IA³ adapter + per-model PEFT target presets (REV-04/05; R2-2)
-- [ ] `random_init=True` from-scratch loading (REV-06; R2-5)
-- [ ] Frozen-embedding probing component (REV-07; R2-2)
-- [ ] Zero-shot VEP module with token-slot alignment (REV-08; R2-3/R1-3e①) — core kernels (`align_variant` + CLM/MLM) landed Phase 10; Phase 11 B5 completes (`evaluate_vcf` via scikit-allel, CLI, ClinVar acceptance)
-- [ ] Multi-seed sweep protocol + uncertainty aggregation (REV-09; R1-2a/R2-4)
 - [ ] JASPAR/CIS-BP PWM matching module (REV-10; R1-3d)
 - [ ] MCP tools: ism_scan/hotspots/zero_shot_score (REV-11; R2-7 narrative/Ed-6)
 
 ### Validated — v1.2 (Paper Revision Suite Support, in progress)
+
+Shipped in Phase 11 (PEFT Adaptation, Baselines & New Evaluation Capabilities, 2026-10-09):
+
+- ✓ IA³ adapter + per-model PEFT target presets (PEFT-01/PEFT-02/REV-04+05): IA³ fine-tunes exactly as LoRA (transformer AND Mamba slow-acceptance proven), config-time `use_ia3×use_qlora` + trainer-init `lora×ia3` matchable rejections, 35/35-family `lora_targets.yaml` presets with FFN⊆IA³ invariants, `peft_dry_run` validator (loud on no-adapter), `requires_grad` ratio guard, seed-pinned IA³ roundtrip (peft #2429 class covered)
+- ✓ `random_init=True` from-scratch loading (BASE-01/REV-06): from_config-only path (no download, proven), loud banner + per-tensor sha256 proof with counted exceptions, allowlist frozenset + matchable ValueError, same-seed reproducibility, two-architecture acceptance (BERT generic + mamba allowlist)
+- ✓ Frozen-embedding probing (PROB-01/REV-07): layer/pooling-selectable extraction, fixed-hyperparameter logistic/mlp probes, train-only scaler (spy-tested), registry-only metrics, atomic sha256-keyed npz cache with hit assertions, F4 schema documented; real-model slow acceptance
+- ✓ Zero-shot VEP (VEP-01/REV-08): `evaluate_vcf` via scikit-allel (owner-approved dep, bounded `<2`), D-17 ClinVar convention (≥1 star/SNV/P-LP-vs-B-LB reported alongside), uppercase-window soft-mask guard, skip-as-data accounting per reason, paradigm↔architecture ValueError, `dnallm-vep` CLI, formula docstrings + README protocol; ClinVar chr22 1k × 5-model GPU acceptance — magnitude clause owner-overridden 2026-10-09 (small-model near-floor AUROCs 0.490–0.581 honest finding; same-scale BPE anchor matched 0.543 vs 0.538)
+- ✓ Multi-seed sweep (SEED-01/REV-09): `run_seeds` {model}/{task}/seed_{s}/ protocol with D-16 same-split semantics, pure `aggregate_seeds` (n<3 omit, 3≤n<10 t-interval, n≥10 seeded bootstrap), boundary matrix n=2/3/9/10, 3-seed end-to-end trial with statistics block
+- Review chain: 3 iterations, 15 findings all fixed, disposition 0 open; full fast lane 2253P/0F (CI gate shape); regression gate over Phase-10 files 530P; verifier 8/9 truths + 1 owner override recorded
+
+Shipped in Phase 10 (Evaluation Contract Layer & Shared Scaffolding, 2026-10-09):
 
 Shipped in Phase 10 (Evaluation Contract Layer & Shared Scaffolding, 2026-10-09):
 
@@ -196,4 +202,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-09 after Phase 10 (evaluation contract layer shipped: EVAL-01/METR-01/DOCS-01)*
+*Last updated: 2026-10-09 after Phase 11 (PEFT/baselines/probing/VEP/sweep shipped: 5 REQ-IDs, VEP magnitude owner-overridden)*

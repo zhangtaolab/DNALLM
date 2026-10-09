@@ -25,7 +25,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-09)
 
 **Core value:** Ship the suite-side capabilities the paper revision requires (evaluation-semantics guard, metric registry, IA³/PEFT presets, from-scratch loading, probing, zero-shot VEP, multi-seed sweeps, motif matching, MCP tools) with the test suite, coverage gate, and CI honesty fully green throughout.
-**Current focus:** Phase 11 — PEFT Adaptation, Baselines & New Evaluation Capabilities
+**Current focus:** Phase 12 — Motif Matching, MCP Tools & Milestone Closeout
 
 ## Current Position
 
