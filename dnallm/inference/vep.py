@@ -40,6 +40,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import torch
+
 
 @dataclass(frozen=True)
 class VariantAlignment:
@@ -166,3 +168,116 @@ def align_variant(sequence: str, pos: int, ref: str, alt: str, tokenizer: Any) -
         alt_token_id=alt_ids[slot_index],
         skip_reason=None,
     )
+
+
+def get_model_device(model: Any) -> torch.device:
+    """Get the device a model lives on.
+
+    Mirrors ``Mutagenesis.get_model_device``
+    (``dnallm/inference/mutagenesis.py:241-255``): prefer the model's own
+    ``device`` attribute, fall back to the device of the first parameter,
+    and finally assume CPU.
+
+    Args:
+        model: Torch model (or model-like object) to inspect.
+
+    Returns:
+        torch.device the model's tensors live on.
+    """
+    device: torch.device
+    if hasattr(model, "device"):
+        device = model.device
+    elif hasattr(model, "parameters"):
+        device = next(model.parameters()).device
+    else:
+        device = torch.device("cpu")
+    return device
+
+
+@torch.no_grad()
+def clm_log_likelihood(model: Any, tokenizer: Any, sequence: str) -> float:
+    """Full-sequence causal log-likelihood.
+
+    Scoring formula::
+
+        log P(sequence) = sum_t log P(token_t | tokens_<t)
+
+    computed by one forward pass, shifting the logits left by one position
+    so each position predicts its next token, taking the log-softmax, and
+    gathering the log-probabilities of the actual token ids. This is the
+    same scoring math as ``Mutagenesis.clm_evaluate``
+    (``dnallm/inference/mutagenesis.py:311-347``), adapted into a pure
+    single-sequence kernel.
+
+    Causal-LM variant-effect paradigm: a variant is scored as
+    ``clm_log_likelihood(model, tokenizer, alt_sequence) -
+    clm_log_likelihood(model, tokenizer, ref_sequence)`` — the
+    delta-log-likelihood consumed by the next phase's ``score_variant``.
+
+    Args:
+        model: Causal DNA large language model returning per-position
+            logits (batch, seq_len, vocab) from a forward call.
+        tokenizer: Hugging Face-style callable tokenizer.
+        sequence: DNA sequence to score.
+
+    Returns:
+        The causal log-likelihood of the full sequence (a float <= 0).
+    """
+    device = get_model_device(model)
+    toks = tokenizer(sequence, return_tensors="pt", add_special_tokens=True).to(device)
+    input_ids = toks["input_ids"]
+    outputs = model(**toks)
+    logits = outputs.logits  # (1, L, V)
+
+    # Shift for causal LM: predict token t given tokens < t.
+    shift_logits = logits[:, :-1, :].contiguous()
+    shift_labels = input_ids[:, 1:].contiguous()
+    log_probs = torch.nn.functional.log_softmax(shift_logits, dim=-1)
+    token_logps = log_probs.gather(-1, shift_labels.unsqueeze(-1)).squeeze(-1)  # (1, L-1)
+    return float(token_logps.sum().item())
+
+
+@torch.no_grad()
+def mlm_slot_log_prob(
+    model: Any, tokenizer: Any, sequence: str, slot_index: int, token_id: int
+) -> float:
+    """Masked-slot log-probability of one target token.
+
+    Scoring formula::
+
+        log P(token_id | masked context)
+
+    computed by masking position ``slot_index`` of the tokenized sequence
+    with the tokenizer's mask token, running one forward pass, taking the
+    log-softmax over the vocabulary at that slot, and reading off the
+    log-probability of ``token_id``. This is the same mask-and-predict math
+    as ``Mutagenesis.mlm_evaluate``
+    (``dnallm/inference/mutagenesis.py:257-309``), restricted to the single
+    slot a variant occupies.
+
+    Masked-LM variant-effect paradigm: a variant is scored at the
+    alignment slot reported by ``align_variant`` as
+    ``mlm_slot_log_prob(model, tokenizer, sequence, slot_index, alt_token_id) -
+    mlm_slot_log_prob(model, tokenizer, sequence, slot_index, ref_token_id)``
+    — the log-odds of the alternate token against the reference token.
+
+    Args:
+        model: Masked DNA large language model returning per-position
+            logits (batch, seq_len, vocab) from a forward call.
+        tokenizer: Hugging Face-style callable tokenizer with a
+            ``mask_token_id``.
+        sequence: DNA sequence providing the context.
+        slot_index: Token slot to mask (from ``align_variant``).
+        token_id: Target token id whose log-probability to read.
+
+    Returns:
+        The log-probability of ``token_id`` at the masked slot (float <= 0).
+    """
+    device = get_model_device(model)
+    toks = tokenizer(sequence, return_tensors="pt", add_special_tokens=True).to(device)
+    masked = toks["input_ids"].clone()
+    masked[0, slot_index] = tokenizer.mask_token_id
+    outputs = model(**{"input_ids": masked})
+    logits = outputs.logits
+    logp = torch.nn.functional.log_softmax(logits[0, slot_index], dim=-1)
+    return float(logp[token_id].item())

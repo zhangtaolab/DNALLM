@@ -10,10 +10,27 @@ real model output. No network, no model downloads, no skips.
 """
 
 from typing import ClassVar
+import math
 
 import pytest
+import torch
 
-from dnallm.inference.vep import VariantAlignment, align_variant
+from dnallm.inference.vep import (
+    VariantAlignment,
+    align_variant,
+    clm_log_likelihood,
+    mlm_slot_log_prob,
+)
+
+
+def _clm(model, tokenizer, sequence):
+    """Score one sequence with the causal kernel."""
+    return clm_log_likelihood(model, tokenizer, sequence)
+
+
+def _mlm(model, tokenizer, sequence, slot_index, token_id):
+    """Score one masked slot with the MLM kernel."""
+    return mlm_slot_log_prob(model, tokenizer, sequence, slot_index, token_id)
 
 
 class _ChecksumTokenizer:
@@ -132,3 +149,94 @@ class TestAlignVariant:
         # FrozenInstanceError subclasses AttributeError.
         with pytest.raises(AttributeError):
             result.evaluatable = False
+
+
+class TestClmLogLikelihood:
+    """clm_log_likelihood on the real per-position tiny model."""
+
+    def test_returns_finite_nonpositive_float(self, tiny_model_factory, simple_dna_tokenizer):
+        """A valid sequence scores a finite log-likelihood <= 0."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        score = _clm(model, simple_dna_tokenizer, "ACGTA")
+
+        assert isinstance(score, float)
+        assert math.isfinite(score)
+        assert score <= 0.0
+
+    def test_deterministic_repeated_calls(self, tiny_model_factory, simple_dna_tokenizer):
+        """Two calls on identical input give bit-identical scores."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        first = _clm(model, simple_dna_tokenizer, "ACGTTGCA")
+        second = _clm(model, simple_dna_tokenizer, "ACGTTGCA")
+
+        assert first == second
+
+    def test_different_sequence_scores_differently(self, tiny_model_factory, simple_dna_tokenizer):
+        """A changed base changes the causal log-likelihood (the signal the
+        delta-log-likelihood paradigm depends on)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        ref_score = _clm(model, simple_dna_tokenizer, "ACGTTGCA")
+        alt_score = _clm(model, simple_dna_tokenizer, "ACGATGCA")
+
+        assert ref_score != alt_score
+
+
+class TestMlmSlotLogProb:
+    """mlm_slot_log_prob on the real per-position tiny model."""
+
+    def test_returns_finite_nonpositive_float(self, tiny_model_factory, simple_dna_tokenizer):
+        """A valid slot/token pair scores a finite log-prob <= 0."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        score = _mlm(model, simple_dna_tokenizer, "ACGTA", 2, 7)
+
+        assert isinstance(score, float)
+        assert math.isfinite(score)
+        assert score <= 0.0
+
+    def test_deterministic_repeated_calls(self, tiny_model_factory, simple_dna_tokenizer):
+        """Two calls on identical input give bit-identical scores."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        first = _mlm(model, simple_dna_tokenizer, "ACGTA", 2, 7)
+        second = _mlm(model, simple_dna_tokenizer, "ACGTA", 2, 7)
+
+        assert first == second
+
+    def test_competing_token_ids_discriminate(self, tiny_model_factory, simple_dna_tokenizer):
+        """Ref and alt token ids at the same slot get different log-probs —
+        the ref/alt discrimination the log-odds paradigm depends on."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        # G (id 7) occupies slot 2 of "ACGTA"; T (id 8) is the alt base.
+        ref_logp = _mlm(model, simple_dna_tokenizer, "ACGTA", 2, 7)
+        alt_logp = _mlm(model, simple_dna_tokenizer, "ACGTA", 2, 8)
+
+        assert ref_logp != alt_logp
+
+    def test_masking_touches_only_target_slot(self, tiny_model_factory, simple_dna_tokenizer):
+        """The masked input the model receives equals the original ids with
+        ONLY the target slot replaced by the mask id (clone check)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        captured = []
+        original_forward = model.forward
+
+        def spy_forward(*args, **kwargs):
+            captured.append(kwargs["input_ids"].clone())
+            return original_forward(*args, **kwargs)
+
+        model.forward = spy_forward
+
+        sequence = "ACGTA"
+        original_ids = simple_dna_tokenizer(sequence, return_tensors="pt", add_special_tokens=True)[
+            "input_ids"
+        ]
+        _mlm(model, simple_dna_tokenizer, sequence, 2, 7)
+
+        assert len(captured) == 1
+        masked = captured[0]
+        assert masked[0, 2].item() == simple_dna_tokenizer.mask_token_id
+        assert torch.equal(masked[0, :2], original_ids[0, :2])
+        assert torch.equal(masked[0, 3:], original_ids[0, 3:])
