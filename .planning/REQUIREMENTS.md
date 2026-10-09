@@ -9,15 +9,15 @@ Requirements for milestone v1.2 "Paper Revision Suite Support". Each maps to roa
 
 ### Evaluation Semantics (EVAL)
 
-- [ ] **EVAL-01** (REV-01): The trainer never silently uses the test split as the eval set — when no dev split exists, `eval_strategy="no"` AND `eval_dataset=None` are set atomically and `load_best_model_at_end` defaults to False; an explicit opt-in override (`allow_test_as_eval=True`) WARNs loudly; the guard covers the early-stopping neighbor path (trainer.py:298-303, which force-enables `load_best_model_at_end`) and raises a descriptive `ValueError` on collision with user-set best-model loading; a new `evaluate(split="test"|"dev"|...)` explicit entry point evaluates via the predict path; unit tests cover dev+test / test-only / train-only × default/override plus the early-stopping collision case; trainer docstring documents eval-set selection and held-out semantics
+- [x] **EVAL-01** (REV-01): The trainer never silently uses the test split as the eval set — when no dev split exists, `eval_strategy="no"` AND `eval_dataset=None` are set atomically and `load_best_model_at_end` defaults to False; an explicit opt-in override (`allow_test_as_eval=True`) WARNs loudly; the guard covers the early-stopping neighbor path (trainer.py:298-303, which force-enables `load_best_model_at_end`) and raises a descriptive `ValueError` on collision with user-set best-model loading; a new `evaluate(split="test"|"dev"|...)` explicit entry point evaluates via the predict path; unit tests cover dev+test / test-only / train-only × default/override plus the early-stopping collision case; trainer docstring documents eval-set selection and held-out semantics
 
 ### Metric Contract (METR)
 
-- [ ] **METR-01** (REV-02): A metric registry lands at `dnallm/tasks/metric_registry.py` (sibling of `metrics.py`, OUTSIDE the vendored `dnallm/tasks/metrics/` coverage/ruff/mypy-excluded glob — same-change check that the registry row is coverage-visible): a single `{canonical_name: (fn, aliases)}` mapping with a `resolve(name)` API raising a matchable `ValueError`; canonical names anchor CURRENT spellings (`AUROC`/`AUPRC`/`spearmanr`/`pearsonr`); aliases (`eval_auroc`, `eval_spearman_r`, …) are recognition-only and never emitted; `metrics.py` emits exclusively through the registry; contract unit tests cover every metric key used across the benchmark task set; the module is import-light (no torch/sklearn at import) so dnallmmark CI can import it cheaply
+- [x] **METR-01** (REV-02): A metric registry lands at `dnallm/tasks/metric_registry.py` (sibling of `metrics.py`, OUTSIDE the vendored `dnallm/tasks/metrics/` coverage/ruff/mypy-excluded glob — same-change check that the registry row is coverage-visible): a single `{canonical_name: (fn, aliases)}` mapping with a `resolve(name)` API raising a matchable `ValueError`; canonical names anchor CURRENT spellings (`AUROC`/`AUPRC`/`spearmanr`/`pearsonr`); aliases (`eval_auroc`, `eval_spearman_r`, …) are recognition-only and never emitted; `metrics.py` emits exclusively through the registry; contract unit tests cover every metric key used across the benchmark task set; the module is import-light (no torch/sklearn at import) so dnallmmark CI can import it cheaply
 
 ### Documentation (DOCS)
 
-- [ ] **DOCS-01** (REV-03): Terminology unified to "DNA large language models"; `validate_sequences` gains a docstring + docs cross-model `valid_chars` comparability warning including a dropped-row count log line (D3 adjudication: unified-subset filtering itself stays pipeline-side); a LoRA/QLoRA/IA³ usage chapter (IA³ part completes after PEFT-01); CHANGELOG records one entry per revision fix, each traceable to its commit (rebuttal-letter evidence chain); docs build stays green under the docs-validation gate
+- [x] **DOCS-01** (REV-03): Terminology unified to "DNA large language models"; `validate_sequences` gains a docstring + docs cross-model `valid_chars` comparability warning including a dropped-row count log line (D3 adjudication: unified-subset filtering itself stays pipeline-side); a LoRA/QLoRA/IA³ usage chapter (IA³ part completes after PEFT-01); CHANGELOG records one entry per revision fix, each traceable to its commit (rebuttal-letter evidence chain); docs build stays green under the docs-validation gate
 
 ### PEFT Adapters (PEFT)
 
@@ -77,9 +77,9 @@ Filled at roadmap creation (2026-10-09). Phase mapping follows the research-reco
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EVAL-01 | Phase 10 | Pending |
-| METR-01 | Phase 10 | Pending |
-| DOCS-01 | Phase 10 | Pending |
+| EVAL-01 | Phase 10 | Complete |
+| METR-01 | Phase 10 | Complete |
+| DOCS-01 | Phase 10 | Complete |
 | PEFT-01 | Phase 11 | Pending |
 | PEFT-02 | Phase 11 | Pending |
 | BASE-01 | Phase 11 | Pending |
