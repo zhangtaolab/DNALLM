@@ -107,9 +107,14 @@ Plans:
   3. The `--host/--port` CLI flags take precedence over yaml config on BOTH sse and streamable-http paths (the v1.1-audit deferred bug), proven by CLI-precedence tests on each transport
   4. The milestone closes green — the IA³/LoRA/QLoRA usage chapter completes the DOCS-01 docs (finalizing the one-entry-per-fix CHANGELOG evidence chain), the fast lane is fully passing with every new skip typed and allowlisted same-change, the coverage gate is green with every new module at the ≥96% per-module standard, docs-validation is green, and zero new dependencies landed across the milestone beyond the approved scikit-allel addition (Phase 11, owner decision 2026-10-09)
 
-**Plans**: TBD
+**Plans**: 3
 
-**Wave structure (owner-fixed):** 3 agents — C1 REV-10 (`dnallm/interpret/` motifs; freestanding, may be pulled forward into Phase 11 idle capacity since it touches nothing Wave B owns); C2 REV-11 (MCP tools + host/port fix); C3 integration closeout (IA³ docs chapter completing REV-03, CHANGELOG finalization, coverage-expectation docs update, census re-pin if test counts are hard-asserted). **Research flag:** the REV-10 empirical-null vs exact-DP calibration choice deserves a short plan-time spike and must be documented honestly either way.
+Plans:
+- [ ] 12-01-motif-matching-fimo-scanner-PLAN.md — C1: MOTIF-01 — dnallm/interpret/motifs.py FIMO-convention scanner (exact-DP calibration per D-01/D-02, GC background, both strands, BH full-set per D-03), stdlib JASPAR client + CIS-BP local parse, owner-gated HBG1/BCL11A golden harness
+- [ ] 12-02-mcp-tools-host-port-fix-PLAN.md — C2: MCPE-01 — ism_scan/hotspots/zero_shot_score MCP tools (D-04/D-05/D-06, skip accounting verbatim) + the --host/--port CLI-precedence fix on both transports with flipped tests
+- [ ] 12-03-milestone-closeout-docs-changelog-PLAN.md — C3: DOCS-01 completion — IA³ chapter (D-08), measured coverage-expectation docs (D-07), CHANGELOG REV-01..11 SHA backfill, census verify
+
+**Wave structure (owner-fixed):** 3 agents — Wave 1: C1 (`dnallm/interpret/` + `tests/interpret/`) and C2 (`dnallm/mcp/server.py` + `tests/mcp/`) run file-disjoint in parallel (CHANGELOG.md is the single sanctioned shared append surface via the D-09 same-commit mechanism, declared coupling_justified in both plans); Wave 2: C3 integration closeout (needs C1/C2 commits for SHA backfill and their modules for the measured coverage number). **Research flag (resolved):** the REV-10 calibration spike is closed — D-01 exact-DP per FIMO/MEME source, transcribed in 12-RESEARCH.md Pattern 1; documented honestly in the module docstring per REQUIREMENTS.
 
 ## Progress
 
@@ -120,7 +125,7 @@ Phases execute in numeric order: 10 → 11 → 12
 |-------|-----------|----------------|--------|-----------|
 | 10. Evaluation Contract Layer & Shared Scaffolding | v1.2 | 4/4 | Complete    | 2026-10-09 |
 | 11. PEFT Adaptation, Baselines & New Evaluation Capabilities | v1.2 | 5/5 | Complete    | 2026-10-09 |
-| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 0/TBD | Not started | - |
+| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 0/3 | In planning | - |
 
 ---
 
