@@ -66,6 +66,7 @@ config = load_config("lora_finetune_config.yaml")
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
+    source="huggingface",
 )
 
 datasets = DNADataset.load_local_data(
@@ -139,6 +140,7 @@ config = load_config("qlora_finetune_config.yaml")
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
+    source="huggingface",
     quantization_config={
         "load_in_4bit": True,
         "bnb_4bit_compute_dtype": "float16",
