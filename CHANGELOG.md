@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+- Evaluation semantics: the trainer no longer silently evaluates on the test split when no dev split exists; evaluation is disabled with a loud warning unless `finetune.allow_test_as_eval: true` is set, and the new `DNATrainer.evaluate(split=...)` evaluates any split through the predict path writing a result JSON (REV-01, R1-2c)
+
 ## [0.7.1] - 2026-10-08
 
 ### Overview

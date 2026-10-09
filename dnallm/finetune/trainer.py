@@ -198,6 +198,7 @@ class DNATrainer:
         training_args.pop("callbacks", None)
         training_args.pop("hyperparameter_search", None)
         training_args.pop("use_qlora", None)
+        training_args.pop("allow_test_as_eval", None)
         training_args.pop("quantization_config", None)
         self._save_safetensors = training_args.pop("save_safetensors", True)
         # transformers v5 removed warmup_ratio from TrainingArguments;
@@ -235,7 +236,32 @@ class DNATrainer:
         if eval_key:
             eval_dataset = self.datasets.dataset[eval_key[0]]
         elif "test" in self.data_split:
-            eval_dataset = self.datasets.dataset["test"]
+            # EVAL-01 guard: the test split is held out unless explicitly opted in.
+            if self.train_config.allow_test_as_eval:
+                eval_dataset = self.datasets.dataset["test"]
+                print(
+                    "[Warning] allow_test_as_eval=true: the test split will serve as "
+                    "the evaluation set for per-step evaluation and best-model "
+                    "selection. Metrics computed on it are leaked and must not be "
+                    "reported as held-out performance."
+                )
+            else:
+                eval_dataset = None
+                self.training_args.eval_strategy = "no"
+                if self.training_args.load_best_model_at_end:
+                    raise ValueError(
+                        "load_best_model_at_end requires an evaluation split, but no "
+                        "dev split is present and the test split is excluded from "
+                        "evaluation (allow_test_as_eval is False). Provide a "
+                        "dev/validation split or set finetune.allow_test_as_eval=true."
+                    )
+                print(
+                    "[Warning] No dev split present: the test split is excluded from "
+                    "evaluation and per-step evaluation is disabled. This differs "
+                    "from previous dnallm versions, which silently used the test "
+                    "split as the evaluation set. Set finetune.allow_test_as_eval="
+                    "true to evaluate on the test split explicitly."
+                )
         else:
             eval_dataset = None
             self.training_args.eval_strategy = "no"

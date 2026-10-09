@@ -307,6 +307,15 @@ class TrainingConfig(BaseModel):
         default_factory=HyperparameterSearchConfig,
         description="Hyperparameter search configuration. Disabled when n_trials=0.",
     )
+    allow_test_as_eval: bool = Field(
+        default=False,
+        description=(
+            "Allow the test split to serve as the evaluation set when no dev split "
+            "exists. Enabling this lets per-step evaluation and best-model selection "
+            "run on the test split — those metrics are leaked and must not be "
+            "reported as held-out performance."
+        ),
+    )
     use_qlora: bool = Field(
         default=False,
         description="Whether to use 4-bit quantized LoRA (QLoRA). Requires bitsandbytes.",

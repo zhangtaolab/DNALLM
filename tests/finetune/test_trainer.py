@@ -163,14 +163,18 @@ class TestDatasetSplitWiring:
 
         assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["val"]
 
-    def test_eval_falls_back_to_test_split(self, trainer_config, mock_hf_boundary):
-        """Without a validation split, test serves as the eval dataset."""
-        trainer_cls, _ = mock_hf_boundary
+    def test_eval_excludes_test_split_without_opt_in(self, trainer_config, mock_hf_boundary):
+        """Without a dev split and allow_test_as_eval unset, the test split is
+        excluded from evaluation (EVAL-01 guard)."""
+        trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
         datasets = make_datasets(["train", "test"])
 
-        DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+        with patch("builtins.print"):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
 
-        assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["test"]
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
 
     def test_train_only_split_disables_evaluation(self, trainer_config, mock_hf_boundary):
         """A lone train split disables the eval strategy."""
@@ -185,6 +189,78 @@ class TestDatasetSplitWiring:
         """A split dict without train is rejected."""
         with pytest.raises(KeyError, match="Cannot find train data"):
             DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["val"]))
+
+
+class TestEvalSemanticsGuard:
+    """EVAL-01: the test split can never silently become the eval set."""
+
+    def test_test_only_default_fires_flip_warn_exactly_once(self, trainer_config, mock_hf_boundary):
+        """The guard WARN fires once at construction time, carrying all three facts."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+        flip_calls = [
+            call
+            for call in mock_print.call_args_list
+            if all(
+                fact in "".join(str(arg) for arg in call.args)
+                for fact in ("[Warning]", "test split", "previous", "allow_test_as_eval")
+            )
+        ]
+        assert len(flip_calls) == 1
+
+    def test_opt_in_uses_test_as_eval_with_leak_warning(self, trainer_config, mock_hf_boundary):
+        """allow_test_as_eval=True restores test-as-eval with a loud leak warning."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].allow_test_as_eval = True
+        datasets = make_datasets(["train", "test"])
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["test"]
+        opt_in_calls = [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval=true" in "".join(str(arg) for arg in call.args)
+            and "leaked" in "".join(str(arg) for arg in call.args)
+        ]
+        assert len(opt_in_calls) == 1
+
+    def test_train_only_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
+        """A lone train split keeps today's behavior with no flip warning."""
+        trainer_cls, args_cls = mock_hf_boundary
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
+        assert not [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval" in "".join(str(arg) for arg in call.args)
+        ]
+
+    def test_unsplit_dataset_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
+        """An unsplit dataset keeps today's behavior with no flip warning."""
+        trainer_cls, args_cls = mock_hf_boundary
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets([None]))
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
+        assert not [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval" in "".join(str(arg) for arg in call.args)
+        ]
 
 
 class TestTaskTypeWiring:
@@ -730,11 +806,15 @@ class TestInfer:
 
     def test_infer_predicts_on_test_split(self, trainer_config, mock_hf_boundary):
         """infer() predicts over the test split when present."""
-        trainer_cls, _ = mock_hf_boundary
+        trainer_cls, args_cls = mock_hf_boundary
+        # Default TrainingConfig leaves best-model selection off, so the
+        # eval-semantics guard disables evaluation instead of colliding.
+        args_cls.return_value.load_best_model_at_end = False
         trainer_cls.return_value.predict.return_value = {"metrics": {"test_loss": 0.2}}
         datasets = make_datasets(["train", "test"])
 
-        trainer = DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+        with patch("builtins.print"):
+            trainer = DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
         result = trainer.infer()
 
         trainer_cls.return_value.predict.assert_called_once_with(datasets.dataset["test"])
