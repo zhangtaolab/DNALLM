@@ -6,13 +6,20 @@ real tokenizations (single-character substitutions are same-slot by
 construction); the multi-slot skip path — unreachable with any char-level
 vocabulary — runs on a minimal stub tokenizer defined below. The scoring
 kernels run on the real tiny per-position torch module so every score is a
-real model output. No network, no model downloads, no skips.
+real model output. The evaluate_vcf driver runs end-to-end on the committed
+synthetic VCF fixture (tests/inference/data/) with real kernels for
+structural semantics and with mocked kernels where deterministic score
+magnitudes are asserted. No network, no model downloads, no skips.
 """
 
 from types import SimpleNamespace
 from typing import ClassVar
 import math
+import sys
+from pathlib import Path
+from unittest.mock import patch
 
+import numpy as np
 import pytest
 import torch
 
@@ -20,9 +27,85 @@ from dnallm.inference.vep import (
     VariantAlignment,
     align_variant,
     clm_log_likelihood,
+    evaluate_vcf,
     get_model_device,
     mlm_slot_log_prob,
 )
+
+DATA_DIR = Path(__file__).parent / "data"
+FIXTURE_VCF = DATA_DIR / "synthetic_variants.vcf"
+# The sidecar is FASTA by content but .txt by name: .gitignore excludes
+# genome extensions (*.fa/*.fna/*.fasta) wholesale, and this lane does not
+# own .gitignore.
+FIXTURE_FA = DATA_DIR / "synthetic_reference.txt"
+
+# Token ids of the shared SimpleDNATokenizer vocabulary (tests/conftest.py).
+_ID_A, _ID_C, _ID_G, _ID_T = 5, 6, 7, 8
+
+_VCF_HEADER = (
+    "##fileformat=VCFv4.2\n"
+    "##contig=<ID=chrT,length=160>\n"
+    '##INFO=<ID=CLNSIG,Number=.,Type=String,Description="cs">\n'
+    '##INFO=<ID=CLNREVSTAT,Number=.,Type=String,Description="rs">\n'
+    '##INFO=<ID=CLNVC,Number=1,Type=String,Description="vt">\n'
+    "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
+)
+
+
+def _write_vcf(path, rows):
+    """Write a minimal ClinVar-style VCF; rows are (chrom, pos, ref, alt,
+    clnsig, clnrevstat, clnvc) tuples."""
+    lines = [_VCF_HEADER]
+    for i, (chrom, pos, ref, alt, sig, rev, vc) in enumerate(rows, 1):
+        lines.append(
+            f"{chrom}\t{pos}\trsX{i}\t{ref}\t{alt}\t.\t.\t"
+            f"CLNSIG={sig};CLNREVSTAT={rev};CLNVC={vc}\n"
+        )
+    Path(path).write_text("".join(lines), encoding="utf-8")
+    return str(path)
+
+
+def _load_fixture_reference():
+    """Parse the committed fixture FASTA into {name: sequence}."""
+    sequences, name, chunks = {}, None, []
+    for line in FIXTURE_FA.read_text(encoding="utf-8").splitlines():
+        if line.startswith(">"):
+            if name is not None:
+                sequences[name] = "".join(chunks)
+            name, chunks = line[1:].split()[0], []
+        else:
+            chunks.append(line.strip())
+    if name is not None:
+        sequences[name] = "".join(chunks)
+    return sequences
+
+
+def _nth_position(sequence, base, n, lo=1, hi=None):
+    """1-based position of the n-th `base` (case-insensitive) in [lo, hi]."""
+    hi = hi or len(sequence)
+    hits = [i + 1 for i, ch in enumerate(sequence) if ch.upper() == base and lo <= i + 1 <= hi]
+    return hits[n]
+
+
+class _TensorEncoding(dict):
+    """Dict encoding with a no-op ``.to`` — the minimum kernel contract."""
+
+    def to(self, device):
+        return self
+
+
+class _CaseSensitiveTokenizer:
+    """Char-level tokenizer WITHOUT case folding: lowercase bases map to
+    UNK, reproducing the empirically verified real-tokenizer behavior that
+    makes un-uppercased soft-masked windows silently skip as 'no change'."""
+
+    base_ids: ClassVar[dict[str, int]] = {"A": 5, "C": 6, "G": 7, "T": 8}
+    mask_token_id = 4
+    vocab_size = 9
+
+    def __call__(self, seq, return_tensors=None, add_special_tokens=True, **kwargs):
+        ids = [self.base_ids.get(ch, 1) for ch in seq]
+        return _TensorEncoding({"input_ids": torch.tensor([ids], dtype=torch.long)})
 
 
 def _clm(model, tokenizer, sequence):
@@ -262,3 +345,475 @@ class TestGetModelDevice:
     def test_plain_object_falls_back_to_cpu(self):
         """An object with neither .device nor .parameters assumes CPU."""
         assert get_model_device(object()) == torch.device("cpu")
+
+
+class TestEvaluateVcf:
+    """The VCF-level driver on the committed fixture and purpose-built VCFs.
+
+    Real kernels prove structure (counts, skips, conventions); mocked
+    kernels prove deterministic score magnitudes (AUROC shape, coordinate
+    plumbing) — the D-09 tier-1 split.
+    """
+
+    def test_fixture_end_to_end_real_mlm_kernels(self, tiny_model_factory, simple_dna_tokenizer):
+        """The committed fixture flows through evaluate_vcf into per-variant
+        deltas + skip counts + registry metrics with real model scores."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            FIXTURE_VCF,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=12,
+        )
+
+        # 8 single-SNV rows + 4 ALTs of the 4-allelic row + 1 mis-annotated
+        # indel row (CLNVC says SNV) = 13 considered per-allele records.
+        assert len(result.records) == 13
+        assert result.evaluated == 11
+        assert result.skipped == 2
+        assert result.skip_fraction == pytest.approx(2 / 13)
+        assert result.skip_counts == {
+            "length-changing allele": 2,
+            "multi-slot token difference": 0,
+            "no change": 0,
+        }
+        # Convention exclusions (D-17): honest indel, VUS + conflicting
+        # labels, 0-star review status — each counted in its own bucket.
+        assert result.convention["exclusion_counts"] == {
+            "non_snv_clnvc": 1,
+            "unlabeled_clnsig": 2,
+            "below_star_floor": 1,
+        }
+        assert result.metrics is not None
+        assert set(result.metrics) == {"AUROC", "AUPRC"}
+        for value in result.metrics.values():
+            assert 0.0 <= value <= 1.0
+        assert result.convention["star_floor"] == 1
+        assert result.convention["rows_read"] == 14
+
+    def test_perfect_separation_mocked_mlm_gives_unit_auroc(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """Controlled kernel outputs with clean label separation produce
+        AUROC == AUPRC == 1.0 — the metric plumbing is registry-driven."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        seq = _load_fixture_reference()["chrT"]
+        # Positives G->C; negatives C->A / T->G / G->T (never alt=C).
+        rows = [
+            (
+                "chrT",
+                _nth_position(seq, "G", 0, 97),
+                "G",
+                "C",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                _nth_position(seq, "G", 1, 97),
+                "G",
+                "C",
+                "Likely_pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                _nth_position(seq, "G", 2, 97),
+                "G",
+                "C",
+                "Pathogenic",
+                "reviewed_by_expert_panel",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                _nth_position(seq, "C", 0, 97),
+                "C",
+                "A",
+                "Benign",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                _nth_position(seq, "T", 0, 97),
+                "T",
+                "G",
+                "Benign",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                _nth_position(seq, "G", 3, 97),
+                "G",
+                "T",
+                "Likely_benign",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+        ]
+        vcf = _write_vcf(tmp_path / "sep.vcf", rows)
+        # alt(C) logp -0.1, everything else -2.0: every positive delta is
+        # +1.9, every negative delta <= 0.0 — perfect separation.
+        fake = {_ID_A: -2.0, _ID_C: -0.1, _ID_G: -2.0, _ID_T: -2.0}
+
+        def fake_mlm(model, tokenizer, sequence, slot_index, token_id):
+            return fake[token_id]
+
+        with patch("dnallm.inference.vep.mlm_slot_log_prob", side_effect=fake_mlm):
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                vcf,
+                FIXTURE_FA,
+                paradigm="mlm",
+                context_window=6,
+            )
+
+        assert result.evaluated == 6
+        assert result.metrics == {"AUROC": 1.0, "AUPRC": 1.0}
+
+    def test_clm_delta_comes_from_the_clm_kernel_on_one_window(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """CLM scoring substitutes the alt INSIDE the one reference window
+        (identical left context) and reports alt - ref log-likelihood."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        seq = _load_fixture_reference()["chrT"]
+        pos1 = _nth_position(seq, "G", 0, 97)
+        rows = [
+            (
+                "chrT",
+                pos1,
+                "G",
+                "C",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "clm.vcf", rows)
+        context = 12
+        pos0 = pos1 - 1
+        ref_window = seq[pos0 - context : pos0 + 1 + context].upper()
+        local = context  # interior position: local index equals the context
+        alt_window = ref_window[:local] + "C" + ref_window[local + 1 :]
+        calls = []
+
+        def fake_clm(model, tokenizer, sequence):
+            calls.append(sequence)
+            return -3.0 if sequence == ref_window else -5.0
+
+        with patch("dnallm.inference.vep.clm_log_likelihood", side_effect=fake_clm):
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                vcf,
+                FIXTURE_FA,
+                paradigm="clm",
+                context_window=context,
+            )
+
+        assert sorted(calls) == sorted([ref_window, alt_window])
+        assert result.evaluated == 1
+        assert result.records[0].delta == pytest.approx(-2.0)
+
+    def test_pos1_converts_to_zero_based_first_base(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A POS=1 record scores the FIRST base of the window (VCF 1-based
+        -> align_variant 0-based), proven by the kernel's received args."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "chrT",
+                1,
+                "A",
+                "G",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "pos1.vcf", rows)
+        calls = []
+
+        def fake_mlm(model, tokenizer, sequence, slot_index, token_id):
+            calls.append((sequence, slot_index, token_id))
+            return -1.0
+
+        with patch("dnallm.inference.vep.mlm_slot_log_prob", side_effect=fake_mlm):
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                vcf,
+                FIXTURE_FA,
+                paradigm="mlm",
+                context_window=6,
+            )
+
+        seq = _load_fixture_reference()["chrT"]
+        assert calls[0] == (seq[:7], 0, _ID_G)  # alt call: first base, slot 0
+        assert calls[1][2] == _ID_A  # ref call: reference token id
+        assert result.records[0].delta == pytest.approx(0.0)  # -1.0 - (-1.0)
+
+    def test_lowercase_context_scored_not_skipped(self, tiny_model_factory):
+        """The soft-masked record (lowercase reference context) is SCORED:
+        the driver uppercases every window, so a case-sensitive tokenizer
+        (lowercase -> <unk>) never sees the trap (Pitfall 5)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        tokenizer = _CaseSensitiveTokenizer()
+
+        result = evaluate_vcf(
+            model,
+            tokenizer,
+            FIXTURE_VCF,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=12,
+        )
+
+        # rsT4 of the committed fixture: pos 68, REF=G ALT=C over lowercase
+        # reference context — must carry a real delta, not a skip reason.
+        record = next(r for r in result.records if r.pos == 68)
+        assert record.delta is not None
+        assert record.skip_reason is None
+        assert result.skip_counts["no change"] == 0
+
+    def test_indel_skip_accounting_and_channel_separation(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """Length-changing alleles land in the alignment skip channel; the
+        honestly-annotated indel is a CLNVC convention exclusion instead —
+        the two channels never mix."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            FIXTURE_VCF,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=12,
+        )
+
+        skipped = [r for r in result.records if r.skip_reason == "length-changing allele"]
+        # The mis-annotated row (REF=AT ALT=A under an SNV CLNVC) and the
+        # insertion ALT of the multi-allelic row.
+        assert {(r.ref, r.alt) for r in skipped} == {("AT", "A"), ("A", "AT")}
+        # The honest indel row (REF=ATG, CLNVC=Deletion) never reaches
+        # alignment: it is counted in the convention block only.
+        assert all(r.ref != "ATG" for r in result.records)
+        assert result.convention["exclusion_counts"]["non_snv_clnvc"] == 1
+
+    def test_multiallelic_row_expands_per_alt(self, tiny_model_factory, simple_dna_tokenizer):
+        """The 4-allelic row yields one record per ALT: three scored SNV
+        alts plus the insertion alt skipped as length-changing."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            FIXTURE_VCF,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=12,
+        )
+
+        by_pos: dict[int, list] = {}
+        for record in result.records:
+            by_pos.setdefault(record.pos, []).append(record)
+        multi = next(records for pos, records in by_pos.items() if len(records) == 4)
+        assert {r.alt for r in multi} == {"C", "G", "T", "AT"}
+        assert sum(1 for r in multi if r.delta is not None) == 3
+
+    def test_all_rows_excluded_returns_none_metrics_and_full_skip_fraction(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A VCF with zero scorable variants reports evaluated=0, the full
+        skip-count table, skip_fraction 1.0 and metrics None — no crash, no
+        fabricated AUROC (the empty edge)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "chrT",
+                6,
+                "G",
+                "C",
+                "Uncertain_significance",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+            (
+                "chrT",
+                10,
+                "G",
+                "A",
+                "Conflicting_classifications_of_pathogenicity",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            ),
+        ]
+        vcf = _write_vcf(tmp_path / "vus.vcf", rows)
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            vcf,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=6,
+        )
+
+        assert result.evaluated == 0
+        assert result.metrics is None
+        assert result.skip_fraction == 1.0
+        assert result.records == []
+        assert result.skip_counts == {
+            "length-changing allele": 0,
+            "multi-slot token difference": 0,
+            "no change": 0,
+        }
+
+    def test_read_vcf_called_with_deliberately_sized_alt_number(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """allel.read_vcf receives alt_number >= 4 (the default 3 silently
+        truncates 4+-allelic rows) and the ClinVar INFO field list."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        fake_callset = {
+            "variants/CHROM": np.array(["chrT"], dtype=object),
+            "variants/POS": np.array([1], dtype=np.int32),
+            "variants/ID": np.array(["rsX"], dtype=object),
+            "variants/REF": np.array(["A"], dtype=object),
+            "variants/ALT": np.array([["G", "", "", ""]], dtype=object),
+            "variants/CLNSIG": np.array(["Pathogenic"], dtype=object),
+            "variants/CLNREVSTAT": np.array(["criteria_provided"], dtype=object),
+            "variants/CLNVC": np.array(["single_nucleotide_variant"], dtype=object),
+        }
+
+        with patch("allel.read_vcf", return_value=fake_callset) as read_vcf:
+            result = evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                "unused.vcf",
+                {"chrT": "ACGTTGCA"},
+                paradigm="mlm",
+                context_window=6,
+            )
+
+        kwargs = read_vcf.call_args.kwargs
+        assert kwargs["alt_number"] >= 4
+        for field in ("variants/CLNSIG", "variants/CLNREVSTAT", "variants/CLNVC"):
+            assert field in kwargs["fields"]
+        assert result.evaluated == 1
+
+    def test_chrom_prefix_fallback_resolves_clinvar_style_names(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A CHROM value without the 'chr' prefix resolves against a
+        'chr'-prefixed reference (ClinVar '22' vs UCSC 'chr22')."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "T",
+                6,
+                "G",
+                "C",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "chrom.vcf", rows)
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            vcf,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=6,
+        )
+
+        assert result.evaluated == 1
+        assert result.records[0].chrom == "T"
+
+    def test_missing_chromosome_raises_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """A VCF chromosome absent from the reference is surfaced as a
+        dnallm ValueError naming the available chromosomes."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        rows = [
+            (
+                "chrX",
+                6,
+                "A",
+                "G",
+                "Pathogenic",
+                "criteria_provided,_single_submitter",
+                "single_nucleotide_variant",
+            )
+        ]
+        vcf = _write_vcf(tmp_path / "chrX.vcf", rows)
+
+        with pytest.raises(ValueError, match="not found in the reference"):
+            evaluate_vcf(
+                model,
+                simple_dna_tokenizer,
+                vcf,
+                FIXTURE_FA,
+                paradigm="mlm",
+                context_window=6,
+            )
+
+    def test_output_dir_writes_deterministic_result_json(
+        self, tiny_model_factory, simple_dna_tokenizer, tmp_path
+    ):
+        """output_dir yields a deterministic vep_result.json with the full
+        result shape — no path is derived from VCF record fields."""
+        import json as jsonlib
+
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        out_dir = tmp_path / "vep_out"
+
+        result = evaluate_vcf(
+            model,
+            simple_dna_tokenizer,
+            FIXTURE_VCF,
+            FIXTURE_FA,
+            paradigm="mlm",
+            context_window=12,
+            output_dir=out_dir,
+        )
+
+        out_path = out_dir / "vep_result.json"
+        assert out_path.is_file()
+        payload = jsonlib.loads(out_path.read_text(encoding="utf-8"))
+        assert payload.keys() == result.to_dict().keys()
+        assert payload["evaluated"] == result.evaluated
+        assert payload["convention"]["star_floor"] == 1
+
+    def test_missing_scikit_allel_raises_helpful_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """Without the dependency the driver raises dnallm's own ValueError
+        naming the extra — never a bare ImportError traceback."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with patch.dict(sys.modules, {"allel": None}):
+            with pytest.raises(ValueError, match="scikit-allel"):
+                evaluate_vcf(
+                    model,
+                    simple_dna_tokenizer,
+                    FIXTURE_VCF,
+                    FIXTURE_FA,
+                    paradigm="mlm",
+                )
