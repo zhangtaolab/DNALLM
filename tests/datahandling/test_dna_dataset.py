@@ -660,7 +660,82 @@ class TestDNADatasetSequenceProcessing:
         # Should filter out sequences with N and extreme GC content
         assert len(dna_ds.dataset) < 5
 
-    def test_process_missing_data_basic(self):
+    def test_validate_sequences_logs_dropped_count(self, capsys):
+        """Dropped rows produce exactly one [Warning] line with the count."""
+        test_data = {
+            "sequence": ["ATCG", "GCTA", "TAGC", "NNNN", "AT"],
+            "labels": [0, 1, 0, 1, 0],
+        }
+        ds = Dataset.from_dict(test_data)
+        dna_ds = DNADataset(ds)
+
+        capsys.readouterr()  # reset capture buffer before the call under test
+
+        dna_ds.validate_sequences(minl=3, maxl=5, valid_chars="ACGT")
+
+        out = capsys.readouterr().out
+        warning_lines = [
+            line for line in out.splitlines() if "[Warning] validate_sequences" in line
+        ]
+        assert len(warning_lines) == 1
+        # "NNNN" (charset) and "AT" (length) drop; the 3 valid rows remain
+        assert "dropped 2 of 5 rows" in warning_lines[0]
+        assert "valid_chars='ACGT'" in warning_lines[0]
+        assert len(dna_ds.dataset) == 3
+
+    def test_validate_sequences_silent_when_nothing_dropped(self, capsys):
+        """Zero dropped rows logs nothing (documented boundary choice)."""
+        test_data = {
+            "sequence": ["ATCG", "GCTA", "TAGC"],
+            "labels": [0, 1, 0],
+        }
+        ds = Dataset.from_dict(test_data)
+        dna_ds = DNADataset(ds)
+
+        dna_ds.validate_sequences(minl=3, maxl=5, valid_chars="ACGT")
+
+        out = capsys.readouterr().out
+        assert "[Warning] validate_sequences" not in out
+        assert len(dna_ds.dataset) == 3
+
+    def test_validate_sequences_all_rows_dropped(self, capsys):
+        """Every row dropped: full count logged, empty dataset, no error."""
+        test_data = {
+            "sequence": ["NNNN", "NAT"],
+            "labels": [0, 1],
+        }
+        ds = Dataset.from_dict(test_data)
+        dna_ds = DNADataset(ds)
+
+        dna_ds.validate_sequences(minl=3, maxl=5, valid_chars="ACGT")
+
+        out = capsys.readouterr().out
+        warning_lines = [
+            line for line in out.splitlines() if "[Warning] validate_sequences" in line
+        ]
+        assert len(warning_lines) == 1
+        assert "dropped 2 of 2 rows" in warning_lines[0]
+        assert len(dna_ds.dataset) == 0
+
+    def test_validate_sequences_dataset_dict_logs_total_dropped(self, capsys):
+        """DatasetDict drops are summed across splits in the warning count."""
+        dd = DatasetDict({
+            "train": Dataset.from_dict({"sequence": ["ATCG", "NNNN"], "labels": [0, 1]}),
+            "test": Dataset.from_dict({"sequence": ["AT", "GCTA"], "labels": [0, 1]}),
+        })
+        dna_ds = DNADataset(dd)
+
+        dna_ds.validate_sequences(minl=3, maxl=5, valid_chars="ACGT")
+
+        out = capsys.readouterr().out
+        warning_lines = [
+            line for line in out.splitlines() if "[Warning] validate_sequences" in line
+        ]
+        assert len(warning_lines) == 1
+        # "NNNN" in train + "AT" in test drop; total counted across splits
+        assert "dropped 2 of 4 rows" in warning_lines[0]
+        assert len(dna_ds.dataset["train"]) == 1
+        assert len(dna_ds.dataset["test"]) == 1
         """Test basic processing of missing data."""
         test_data = {
             "sequence": ["ATCG", "", "TAGC", None, "GCTA"],
