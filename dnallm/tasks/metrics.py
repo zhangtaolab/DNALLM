@@ -1,9 +1,14 @@
-"""DNA Language Model Evaluation Metrics Module.
+"""DNA Large Language Model Evaluation Metrics Module.
 
-This module provides comprehensive evaluation metrics for DNA language models
-across
+This module provides comprehensive evaluation metrics for DNA large language
+models across
 various task types including classification, regression, and
     token classification.
+
+All emitted metric keys are canonical names resolved through
+``dnallm.tasks.metric_registry``: every compute path validates its emitted
+keys against the registry before returning, so an unregistered (or aliased)
+spelling fails loudly at emission time.
 
 Supported task types:
 - Binary classification: accuracy, precision, recall, F1, MCC, AUROC, AUPRC
@@ -40,8 +45,26 @@ from sklearn.metrics import multilabel_confusion_matrix
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import evaluate
 from ..configuration.configs import TaskConfig
+from .metric_registry import validate_emission
 
 metrics_path = os.path.join(os.path.dirname(__file__), "metrics") + "/"
+
+
+def _emit(metrics: dict) -> dict:
+    """Validate emitted keys against the metric registry, then return the dict.
+
+    Every metrics compute path in this module returns through this gate so an
+    unregistered (or aliased) key fails loudly at emission time instead of
+    silently drifting into downstream consumers.
+
+    Args:
+        metrics: The metric dict a compute path is about to return.
+
+    Returns:
+        The same dict, unchanged, after key validation.
+    """
+    validate_emission(metrics.keys())
+    return metrics
 
 
 # Define evaluation metrics
@@ -70,7 +93,7 @@ def calculate_metric_with_sklearn(eval_pred):
     valid_predictions = predictions[valid_mask]
     valid_labels = labels[valid_mask]
     print(valid_labels.shape, valid_predictions.shape)
-    return {
+    return _emit({
         "accuracy": accuracy_score(valid_labels, valid_predictions),
         "f1": f1_score(valid_labels, valid_predictions, average="macro", zero_division=0),
         "matthews_correlation": matthews_corrcoef(valid_labels, valid_predictions),
@@ -78,7 +101,7 @@ def calculate_metric_with_sklearn(eval_pred):
             valid_labels, valid_predictions, average="macro", zero_division=0
         ),
         "recall": recall_score(valid_labels, valid_predictions, average="macro", zero_division=0),
-    }
+    })
 
 
 # Load evaluate metrics locally to avoid downloading from Hugging Face
@@ -147,7 +170,7 @@ def classification_metrics(plot: bool = False):
                 "precision": precision,
                 "recall": recall,
             }
-        return metrics
+        return _emit(metrics)
 
     return compute_metrics
 
@@ -228,7 +251,7 @@ def regression_metrics(plot: bool = False) -> Callable:
                     "predicted": predicted,
                     "experiment": labels,
                 }
-        return metrics
+        return _emit(metrics)
 
     return compute_metrics
 
@@ -382,7 +405,7 @@ def multi_classification_metrics(label_list: list, plot: bool = False) -> Callab
                 "precision": precision,
                 "recall": recall,
             }
-        return metrics
+        return _emit(metrics)
 
     return compute_metrics
 
@@ -492,7 +515,7 @@ def multi_labels_metrics(label_list: list, plot: bool = False) -> Callable:
                     "recall": pr_data[label][1],
                     "AUPRC": pr_auc[label],
                 }
-        return metrics
+        return _emit(metrics)
 
     return compute_metrics
 
@@ -546,12 +569,12 @@ def token_classification_metrics(
             scheme=scheme,
         )
 
-        return {
+        return _emit({
             "accuracy": result["overall_accuracy"],
             "precision": result["overall_precision"],
             "recall": result["overall_recall"],
             "f1": result["overall_f1"],
-        }
+        })
 
     return compute_metrics
 
@@ -609,13 +632,15 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
         if task.lower() == "regression":
             r2 = r2_metric.compute(references=labels, predictions=logits[0])
             spearman = spm_metric.compute(references=labels, predictions=logits[0])
-            return {"r2": r2, "spearmanr": spearman["spearmanr"]}
+            return _emit({"r2": r2, "spearmanr": spearman["spearmanr"]})
         else:
             if task.lower() == "classification":
                 predictions = torch.argmax(torch.from_numpy(logits[0]), dim=-1)
-                return cast(
-                    dict[str, Any],
-                    clf_metrics.compute(predictions=predictions, references=labels),
+                return _emit(
+                    cast(
+                        dict[str, Any],
+                        clf_metrics.compute(predictions=predictions, references=labels),
+                    )
                 )
             else:
                 pred_probs = softmax(logits[0], axis=1)
@@ -636,14 +661,14 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
                     prediction_scores=pred_probs,
                     multi_class="ovo",
                 )
-                return {
+                return _emit({
                     **precision,
                     **recall,
                     **f1,
                     **mcc,
                     "AUROC_ovr": roc_auc_ovr["roc_auc"],
                     "AUROC_ovo": roc_auc_ovo["roc_auc"],
-                }
+                })
 
     preprocessing = preprocess_logits_for_metrics
 
