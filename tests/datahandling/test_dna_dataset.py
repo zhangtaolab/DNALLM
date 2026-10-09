@@ -736,6 +736,8 @@ class TestDNADatasetSequenceProcessing:
         assert "dropped 2 of 4 rows" in warning_lines[0]
         assert len(dna_ds.dataset["train"]) == 1
         assert len(dna_ds.dataset["test"]) == 1
+
+    def test_process_missing_data_basic(self):
         """Test basic processing of missing data."""
         test_data = {
             "sequence": ["ATCG", "", "TAGC", None, "GCTA"],
