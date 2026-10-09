@@ -73,27 +73,31 @@ Deferred (v1.3+, tracked for the rebuttal letter's "future versions" commitments
 
 ## Traceability
 
-Filled at roadmap creation. Phase mapping follows the research-recommended three-phase structure (contract layer → adaptation+evaluation → narrative), phases starting at Phase 10.
+Filled at roadmap creation (2026-10-09). Phase mapping follows the research-recommended three-phase structure (contract layer → adaptation+evaluation → narrative+closeout), phases 10–12 continuing v1.1's Phase 9.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EVAL-01 | TBD | Pending |
-| METR-01 | TBD | Pending |
-| DOCS-01 | TBD | Pending |
-| PEFT-01 | TBD | Pending |
-| PEFT-02 | TBD | Pending |
-| BASE-01 | TBD | Pending |
-| PROB-01 | TBD | Pending |
-| VEP-01 | TBD | Pending |
-| SEED-01 | TBD | Pending |
-| MOTIF-01 | TBD | Pending |
-| MCPE-01 | TBD | Pending |
+| EVAL-01 | Phase 10 | Pending |
+| METR-01 | Phase 10 | Pending |
+| DOCS-01 | Phase 10 | Pending |
+| PEFT-01 | Phase 11 | Pending |
+| PEFT-02 | Phase 11 | Pending |
+| BASE-01 | Phase 11 | Pending |
+| PROB-01 | Phase 11 | Pending |
+| VEP-01 | Phase 11 | Pending |
+| SEED-01 | Phase 11 | Pending |
+| MOTIF-01 | Phase 12 | Pending |
+| MCPE-01 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 11 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 11 (until roadmap creation) ⚠️
+- Mapped to phases: 11/11
+- Unmapped: 0
+
+Split-delivery notes (mapping stays 1:1 — each requirement verifies in its mapped phase):
+- VEP-01 maps to Phase 11 (where it completes and verifies); its core (`align_variant` + scoring kernels) starts in Phase 10's scaffolding pass as the long-pole head start.
+- DOCS-01 maps to Phase 10; its IA³-chapter section completes in Phase 12 after PEFT-01, per the requirement text.
 
 ---
 *Requirements defined: 2026-10-09*
-*Last updated: 2026-10-09 after research synthesis (SUMMARY.md) and owner confirmation*
+*Last updated: 2026-10-09 — traceability filled at roadmap creation (Phases 10–12)*
