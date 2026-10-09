@@ -540,6 +540,145 @@ def _build_window(ref_seq: str, pos0: int, context_window: int) -> tuple[str, in
     return window, pos0 - start
 
 
+def _is_causal_model(model: Any) -> bool:
+    """Decide from config-declared evidence whether a model is causal.
+
+    Heuristics (conservative — unknown configurations count as
+    bidirectional, so the D-11 guard errs toward raising):
+
+    1. ``config.is_decoder is True`` (transformers decoder configs), or
+    2. any entry of ``config.architectures`` containing a causal marker
+       (``CausalLM``, ``LMHeadModel``, ``Mamba`` — covers
+       ``GPT2LMHeadModel``, ``MambaForCausalLM``, and the DNA LM heads).
+
+    Args:
+        model: Torch model (or model-like object) to inspect.
+
+    Returns:
+        True only when the config declares causal/decoder evidence.
+    """
+    config = getattr(model, "config", None)
+    if config is None:
+        return False
+    if getattr(config, "is_decoder", False) is True:
+        return True
+    architectures = getattr(config, "architectures", None) or []
+    markers = ("CausalLM", "LMHeadModel", "Mamba")
+    return any(any(marker in str(arch) for marker in markers) for arch in architectures)
+
+
+def _check_paradigm_compatible(model: Any, tokenizer: Any, paradigm: str) -> None:
+    """Guard the paradigm↔architecture pairing (D-11) BEFORE scoring.
+
+    Mismatched-paradigm AUROCs are expected near-random (a bidirectional
+    model scored causally sees broken context; an MLM score without a mask
+    token is undefined) — a silent skip would let a misconfiguration
+    masquerade as a finding, so the guard raises instead. This channel is
+    deliberately distinct from skip-as-data, which stays reserved for the
+    same-slot alignment rule alone.
+
+    Args:
+        model: Torch model (or model-like object).
+        tokenizer: Hugging Face-style callable tokenizer.
+        paradigm: ``"clm"`` or ``"mlm"``.
+
+    Raises:
+        ValueError: If the paradigm cannot be computed on this
+            model/tokenizer pair (dnallm's own message — never foreign
+            library text).
+    """
+    if paradigm == "clm" and not _is_causal_model(model):
+        config = getattr(model, "config", None)
+        raise ValueError(
+            "Paradigm 'clm' requires a causal (decoder-only) model, but this "
+            "model's config declares a bidirectional architecture "
+            f"(model_type={getattr(config, 'model_type', None)!r}, "
+            f"architectures={getattr(config, 'architectures', None)!r}). "
+            "Scoring a bidirectional model with the causal paradigm yields "
+            "near-random variant scores — use paradigm='mlm' instead."
+        )
+    if paradigm == "mlm" and getattr(tokenizer, "mask_token_id", None) is None:
+        raise ValueError(
+            "Paradigm 'mlm' requires a tokenizer with a mask token "
+            "(mask_token_id), but this tokenizer has none — use "
+            "paradigm='clm' with a causal model instead."
+        )
+
+
+def score_variant(
+    model: Any,
+    tokenizer: Any,
+    sequence: str,
+    pos: int,
+    ref: str,
+    alt: str,
+    *,
+    paradigm: str = "mlm",
+) -> float | VariantAlignment:
+    """Score one variant through either zero-shot paradigm.
+
+    Scoring formulas (the protocol declaration, mirrored in the README):
+
+    - ``paradigm="mlm"`` (log-odds)::
+
+        delta = log P(alt_token | masked context at slot)
+              - log P(ref_token | masked context at slot)
+
+      evaluated at the single alignment slot reported by ``align_variant``.
+
+    - ``paradigm="clm"`` (delta-log-likelihood)::
+
+        delta = log P(alt_sequence) - log P(ref_sequence)
+
+      over the full window with the allele substituted at ``pos`` (ref and
+      alt share identical left context by construction).
+
+    The paradigm↔architecture guard runs first (see
+    ``_check_paradigm_compatible``); a variant that fails the same-slot
+    rule comes back as the ``VariantAlignment`` skip record — data, not an
+    exception — with the machine-readable reason preserved.
+
+    Args:
+        model: DNA large language model (per-position logits).
+        tokenizer: Hugging Face-style callable tokenizer.
+        sequence: Reference DNA sequence (the scoring window).
+        pos: 0-based position of the variant in ``sequence``.
+        ref: Reference allele; must equal ``sequence[pos:pos + len(ref)]``.
+        alt: Alternate allele.
+        paradigm: ``"mlm"`` (default) or ``"clm"``.
+
+    Returns:
+        The delta score as a float when the variant is evaluatable;
+        otherwise the ``VariantAlignment`` skip record carrying
+        ``skip_reason``.
+
+    Raises:
+        ValueError: If the paradigm is unknown or mismatches the
+            model/tokenizer architecture (D-11), or ``ref`` contradicts
+            ``sequence`` at ``pos``.
+    """
+    if paradigm not in ("mlm", "clm"):
+        raise ValueError(f"Unknown paradigm '{paradigm}'; expected 'clm' or 'mlm'.")
+    _check_paradigm_compatible(model, tokenizer, paradigm)
+    alignment = align_variant(sequence, pos, ref, alt, tokenizer)
+    if not alignment.evaluatable:
+        return alignment
+    if paradigm == "mlm":
+        return float(
+            mlm_slot_log_prob(
+                model, tokenizer, sequence, alignment.slot_index, alignment.alt_token_id
+            )
+            - mlm_slot_log_prob(
+                model, tokenizer, sequence, alignment.slot_index, alignment.ref_token_id
+            )
+        )
+    alt_sequence = sequence[:pos] + alt + sequence[pos + len(ref) :]
+    return float(
+        clm_log_likelihood(model, tokenizer, alt_sequence)
+        - clm_log_likelihood(model, tokenizer, sequence)
+    )
+
+
 def evaluate_vcf(
     model: Any,
     tokenizer: Any,
@@ -613,6 +752,10 @@ def evaluate_vcf(
         clnsig_filter = ClinVarFilter()
     if paradigm not in ("mlm", "clm"):
         raise ValueError(f"Unknown paradigm '{paradigm}'; expected 'clm' or 'mlm'.")
+    # Fail fast on a paradigm↔architecture mismatch (D-11) before any
+    # scoring — the per-variant wrap below then only ever sees genuine
+    # REF/reference mismatches.
+    _check_paradigm_compatible(model, tokenizer, paradigm)
 
     try:
         callset = allel.read_vcf(
@@ -678,13 +821,15 @@ def evaluate_vcf(
             if not alt or alt == ".":
                 continue
             try:
-                alignment = align_variant(window, local_pos, ref, alt, tokenizer)
+                outcome = score_variant(
+                    model, tokenizer, window, local_pos, ref, alt, paradigm=paradigm
+                )
             except ValueError as exc:
                 raise ValueError(
                     f"REF/reference mismatch at {chrom}:{pos1} (REF={ref}, ALT={alt}): {exc}"
                 ) from exc
-            if not alignment.evaluatable:
-                skip_counts[alignment.skip_reason] += 1
+            if isinstance(outcome, VariantAlignment):
+                skip_counts[outcome.skip_reason] += 1
                 records.append(
                     VepVariantRecord(
                         chrom=chrom,
@@ -693,21 +838,10 @@ def evaluate_vcf(
                         alt=alt,
                         label=label,
                         delta=None,
-                        skip_reason=alignment.skip_reason,
+                        skip_reason=outcome.skip_reason,
                     )
                 )
                 continue
-            if paradigm == "mlm":
-                delta = mlm_slot_log_prob(
-                    model, tokenizer, window, alignment.slot_index, alignment.alt_token_id
-                ) - mlm_slot_log_prob(
-                    model, tokenizer, window, alignment.slot_index, alignment.ref_token_id
-                )
-            else:  # "clm" — delta-log-likelihood over the substituted window
-                alt_window = window[:local_pos] + alt + window[local_pos + len(ref) :]
-                delta = clm_log_likelihood(model, tokenizer, alt_window) - clm_log_likelihood(
-                    model, tokenizer, window
-                )
             records.append(
                 VepVariantRecord(
                     chrom=chrom,
@@ -715,7 +849,7 @@ def evaluate_vcf(
                     ref=ref,
                     alt=alt,
                     label=label,
-                    delta=float(delta),
+                    delta=outcome,
                     skip_reason=None,
                 )
             )

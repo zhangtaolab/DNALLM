@@ -30,6 +30,7 @@ from dnallm.inference.vep import (
     evaluate_vcf,
     get_model_device,
     mlm_slot_log_prob,
+    score_variant,
 )
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -485,6 +486,7 @@ class TestEvaluateVcf:
         """CLM scoring substitutes the alt INSIDE the one reference window
         (identical left context) and reports alt - ref log-likelihood."""
         model = tiny_model_factory(n_classes=9, pooled=False)
+        model.config.is_decoder = True  # declare causal-ness for the D-11 guard
         seq = _load_fixture_reference()["chrT"]
         pos1 = _nth_position(seq, "G", 0, 97)
         rows = [
@@ -817,3 +819,101 @@ class TestEvaluateVcf:
                     FIXTURE_FA,
                     paradigm="mlm",
                 )
+
+
+class TestScoreVariant:
+    """score_variant: both paradigms, the D-11 paradigm↔architecture guard,
+    and the skip-as-data passthrough."""
+
+    def test_clm_on_bidirectional_model_raises_value_error(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """The guard fires BEFORE scoring: CLM paradigm on a config without
+        decoder/architecture evidence raises a matchable dnallm ValueError
+        (never a silent skip that would masquerade as a near-random
+        finding)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)  # no decoder markers
+
+        with pytest.raises(ValueError, match="Paradigm 'clm' requires a causal"):
+            score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="clm")
+
+    def test_mlm_without_mask_token_raises_value_error(self, tiny_model_factory):
+        """MLM paradigm with a tokenizer lacking mask_token_id raises a
+        matchable dnallm ValueError."""
+
+        class _MasklessTokenizer(_CaseSensitiveTokenizer):
+            mask_token_id = None
+
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with pytest.raises(ValueError, match="mask_token_id"):
+            score_variant(model, _MasklessTokenizer(), "ACGTTGCA", 3, "T", "A", paradigm="mlm")
+
+    def test_unknown_paradigm_raises_value_error(self, tiny_model_factory, simple_dna_tokenizer):
+        """An unrecognized paradigm is rejected before anything runs."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        with pytest.raises(ValueError, match="Unknown paradigm"):
+            score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "A", paradigm="plm")
+
+    def test_mlm_happy_path_matches_manual_kernel_computation(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """MLM score equals the manual slot log-prob difference of the
+        landed kernel (log-odds of alt against ref)."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        sequence, pos, ref, alt = "ACGTTGCA", 3, "T", "A"
+
+        result = score_variant(model, simple_dna_tokenizer, sequence, pos, ref, alt, paradigm="mlm")
+
+        alignment = align_variant(sequence, pos, ref, alt, simple_dna_tokenizer)
+        expected = mlm_slot_log_prob(
+            model, simple_dna_tokenizer, sequence, alignment.slot_index, alignment.alt_token_id
+        ) - mlm_slot_log_prob(
+            model, simple_dna_tokenizer, sequence, alignment.slot_index, alignment.ref_token_id
+        )
+        assert isinstance(result, float)
+        assert result == pytest.approx(expected)
+
+    def test_clm_happy_path_matches_manual_kernel_computation(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """CLM score equals the manual full-sequence delta log-likelihood
+        of the landed kernel on the substituted window."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+        model.config.is_decoder = True  # declare causal-ness for the guard
+        sequence, pos, ref, alt = "ACGTTGCA", 3, "T", "A"
+
+        result = score_variant(model, simple_dna_tokenizer, sequence, pos, ref, alt, paradigm="clm")
+
+        alt_sequence = sequence[:pos] + alt + sequence[pos + len(ref) :]
+        expected = clm_log_likelihood(
+            model, simple_dna_tokenizer, alt_sequence
+        ) - clm_log_likelihood(model, simple_dna_tokenizer, sequence)
+        assert isinstance(result, float)
+        assert result == pytest.approx(expected)
+
+    def test_length_changing_allele_returns_skip_record_as_data(
+        self, tiny_model_factory, simple_dna_tokenizer
+    ):
+        """A length-changing allele returns the VariantAlignment skip
+        record (reason preserved) — the module's skip-as-data channel."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        result = score_variant(
+            model, simple_dna_tokenizer, "ACGTTGCA", 3, "T", "TG", paradigm="mlm"
+        )
+
+        assert isinstance(result, VariantAlignment)
+        assert result.evaluatable is False
+        assert result.skip_reason == "length-changing allele"
+
+    def test_no_change_returns_skip_record_as_data(self, tiny_model_factory, simple_dna_tokenizer):
+        """ref == alt tokenizes identically and returns a 'no change' skip
+        record rather than a fabricated zero delta."""
+        model = tiny_model_factory(n_classes=9, pooled=False)
+
+        result = score_variant(model, simple_dna_tokenizer, "ACGTTGCA", 2, "G", "G", paradigm="mlm")
+
+        assert isinstance(result, VariantAlignment)
+        assert result.skip_reason == "no change"

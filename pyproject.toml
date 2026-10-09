@@ -276,6 +276,7 @@ dnallm-inference = "dnallm.cli.inference:main"
 dnallm-model-config-generator = "dnallm.cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
 dnallm-mutagenesis = "dnallm.cli.mutagenesis:main"
+dnallm-vep = "dnallm.cli.vep:main"
 
 # Ruff configuration
 [tool.ruff]
