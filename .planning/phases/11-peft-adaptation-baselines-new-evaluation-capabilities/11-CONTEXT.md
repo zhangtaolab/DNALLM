@@ -81,7 +81,9 @@ Everything motif/MCP/closeout belongs to Phase 12.
 <specifics>
 ## Specific Ideas
 
-- REV-08 lane carries the milestone's highest research flag (ROADMAP): tokenizer-class alignment semantics (char/k-mer/BPE), ClinVar filtering conventions for literature-comparable AUROCs, split-token alignment — run plan-time research for this phase before the planner.
+- **D-17 (owner-confirmed 2026-10-09):** ClinVar acceptance convention: **≥1 review star + SNVs only + Pathogenic/Likely-pathogenic vs Benign/Likely-benign** (VUS/conflicting/0-star excluded), reported alongside results — GPN-precedent floor, magnitudes comparable to the NT/evo2 anchors pinned in RESEARCH.md.
+- **D-18 (factual amendment to D-01):** peft's real IA³ surface field is **`feedforward_modules`** (subset of target_modules), not `feedforward_only` — D-01's intent (explicit per-family target lists) is unchanged; implemented via the real field. The installed peft is 0.21.1.
+- REV-08 lane carries the milestone's highest research flag (ROADMAP): tokenizer-class alignment semantics (char/k-mer/BPE), ClinVar filtering conventions for literature-comparable AUROCs, split-token alignment — research COMPLETED (11-RESEARCH.md, 0d62e1f): lowercase-window `<unk>` trap (evaluate_vcf must uppercase), 1-bp indels are length-changing skips on every tokenizer class, `alt_number` must be sized deliberately for multi-allelic rows.
 - The ClinVar ascertainment-bias trap (Pitfall #7): the acceptance "literature-magnitude AUROCs" must use the same filtering conventions as the reference literature or magnitudes are incomparable — the research pass should pin those conventions.
 - IA³ docs chapter section stays a Phase-12 C3 completion (forward pointer already in peft_adapters.md).
 
