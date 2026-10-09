@@ -1,167 +1,146 @@
 # Project Research Summary
 
-**Project:** DNALLM — milestone v1.1 "Example Execution Testing & Repair"
-**Domain:** Real-execution testing of Jupyter/marimo example artifacts under pytest + PlantHelixSeek genomics showcase (prediction-vs-experimental-truth presentation) on an existing CI-hardened ML toolkit
-**Researched:** 2026-10-01
-**Confidence:** HIGH overall — findings are grounded in direct repo inspection, empirical probes of the installed venv (nbclient 0.11.0, marimo 0.25.0, kernelspec, CLI behavior), PyPI JSON API, and official docs. Environment-specific unknowns (aarch64 toolchains, transformers-5 remote code) are named as gaps below rather than guessed at.
+**Project:** DNALLM — v1.2 "Paper Revision Suite Support" (REV-01…REV-11)
+**Domain:** Quality/feature milestone on an existing PyPI-published DNA-LM toolkit (pytest-hardened, 96%+ coverage, CI-gated)
+**Researched:** 2026-10-09
+**Confidence:** HIGH (stack claims verified by direct execution in the installed venv; architecture/pitfall claims verified against the working tree on branch `revision`)
 
 ## Executive Summary
 
-This milestone adds two things to an already-mature pytest/CI system: (1) a real-execution test layer that runs all ~21 `example/` notebooks, 3 marimo apps, `generate_bpe_dataset.py`, and every example YAML through real `load_config()` on the self-hosted nightly GPU runner — fixing every error that surfaces; and (2) a PlantHelixSeek showcase vertical — CRE and Anno notebooks that run sliding-window inference on committed ≤200 kb Arabidopsis loci and assert *substantial* agreement against PlantDHS / TAIR10 ground truth. Experts build exactly this as a thin pytest layer over **nbclient used as a library** (the engine under nbmake/nbconvert, minus the plugin), one kernel per notebook, tmp-sandbox cwd isolation, partial-notebook failure artifacts, layered per-cell/per-test timeouts, and a preregistered model cache (`models.lock`). The existing repo machinery — `slow` marker leg split, typed-skip allowlist + `audit_skips.py`, junit artifacts, `hashFiles('models.lock')` cache key — already provides every CI seam this needs; no new markers, no new frameworks.
+This milestone adds eleven paper-revision-driven capabilities (REV-01…REV-11) to an existing, battle-tested codebase — it is integration work, not greenfield. The research converges on four load-bearing conclusions. First, **zero new dependencies**: every REV is satisfiable with the existing pins (peft >=0.14 already covers `IA3Config` by 10 minor versions; scipy >=1.15.2 covers `bootstrap` and `false_discovery_control`; the only apparent gaps — VCF and JASPAR/PWM parsing — resolve to ~100-line stdlib readers because cyvcf2/pysam have no Windows wheels and biopython is the wrong footprint). Second, **the REV-02 metric registry must NOT live at `dnallm/tasks/metrics/registry.py`** (the intake's sketch) — three researchers independently flagged that this directory is the vendored-code glob omitted from coverage, ruff, AND mypy, so the contract layer would ship invisible to every gate. Place it at `dnallm/tasks/metric_registry.py` beside `metrics.py`. Third, **REV-08 (zero-shot VEP) is the long pole** (~2 days), and its same-slot alignment rule (ref/alt must occupy the identical token slot, else explicit skip with reason + count) is the protocol answer to reviewer R1-3e(1) — it must start in Wave 1 despite being P1. Fourth, **the eval-semantics guard (REV-01) must cover its neighbors**, not just trainer.py:234-241: the early-stopping path at trainer.py:298-303 force-enables `load_best_model_at_end`, so the guard must set `eval_strategy="no"` AND `eval_dataset=None` atomically and raise a descriptive `ValueError` when user-set best-model-loading/early-stopping collides with a missing dev split.
 
-The recommended approach: harness mechanics in a private `tests/examples/_execution.py` + locally-scoped `conftest.py` (never root conftest, never `dnallm/`); marimo apps via subprocess; PlantHelixSeek-CRE/-Anno onboarded through **generic registry entries + the existing task-type loader route** (verified: no special-handler substring collision, only hard remote-code dep is `einops` which is core; `fla`/`flash_attn` are guarded with pure-torch fallbacks); showcase rendering via **static altair** (already installed, survives nbconvert→HTML into the docs mirror) with **stdlib GFF3 parsing + pyfastx** (1-based inclusive, same convention as GFF3) and pyBigWig as an *optional* emission step; agreement asserted as **thresholded Jaccard/F1 floors**, never exact outputs (transformers spans 4.49–5.x). WR-08/WR-09 (false-green docs gate, missing `mcp` extra) are fixed first so all subsequent repair rides an enforced lane.
+The recommended structure is three sequential waves of 4–5 parallel agents (~2 days serial, ~1.5 days pipelined — matching the owner's 1–1.5-day target): **Wave/Phase A** (contract layer: REV-01/02/03 plus shared-file scaffolding and a REV-08 head start), **Wave/Phase B** (adaptation + evaluation: REV-04/05, 06, 07, 08-completion, 09 as five file-disjoint agents), **Wave/Phase C** (narrative: REV-10/11 + docs closeout). Both the architecture and pitfalls researchers independently produced conflict matrices; reconciled, they agree on one rule: **Phase A pre-creates all shared-file scaffolding (Pydantic config stubs, `__init__.py` re-export decision, pyproject changes) in ONE plan so Phase B agents only fill modules**, and `dnallm/__init__.py` gets NO new re-exports in v1.2 (import via full paths; keeps the facade byte-stable and conflict-free). Two hot files (`configs.py`, `trainer.py`) change ownership cleanly from Wave 1 (REV-01) to Wave 2 (REV-04/05, deliberately one agent because they share every hot file).
 
-The dominant risks are environmental, not conceptual: (a) **leaked jupyter kernels** after hung/timed-out tests poison the *persistent* runner's VRAM (pytest-timeout kills the pytest process, not the process group) — mitigate with `NotebookClient` context-manager use, timeout layering where the nbclient cell timeout fires *first*, and a nightly `pkill`/VRAM hygiene step; (b) **timeout arithmetic** — ~24 new slow tests with naive ceilings sum to 14–48 h against a 900-min job, so per-artifact budgets must be measured, not assumed; (c) **GitHub's 10 GB cache quota** — evo-1 is a 29.7 GB repo whose blind inclusion evicts the existing warm cache (filter to safetensors ≈12.9 GB, hold giants on-disk outside the cached paths); (d) **evo/evo2/megaDNA toolchain infeasibility on the aarch64 GB10 box** (flash-attn x86 wheels, Transformer Engine pre-Blackwell, FP8-needs-Hopper) — these are environment-gated, not content-gated: feasibility-spike first, typed `environment-unavailable:` skips otherwise; (e) **silently-empty genomic results** from 0-based/1-based and `Chr1` vs `1` chrom-naming mismatches — one shared, unit-tested normalization helper plus non-emptiness assertions and a negative-control locus; and (f) **showcase overfitting framing** — loci are chosen because they agree, so the notebook must present "illustrative loci + selection criteria," never accuracy claims. Flipping WR-08 honest detonates accumulated docs-mirror drift — inventory and close drift in the same unit as the gate flip.
+Key risks and mitigations: silent PEFT failures on Mamba/hybrid backbones (peft silently skips non-matching `target_modules` — presets must be derived from real `config.json` module names with a dry-run validator and a trainable-parameter-count runtime guard); `random_init` accidentally loading pretrained weights (use `from_config`, never `from_pretrained`; per-tensor hash comparison, not one global hash; CPU-canonical seeding); and the 90% gate NOT catching under-tested new modules (a 400-line `vep.py` with zero tests only drops ~96.4% → ~94.9% — the working standard is 96%+ per module, verified at phase verification, plus the owner's same-change-pytest rule).
 
 ## Key Findings
 
-### Recommended Stack
+### Recommended Stack (STACK.md — HIGH, execution-verified)
 
-Every addition was verified against the installed venv and PyPI; the pre-validated stack (pytest 8.4+/cov/timeout/asyncio, torch 2.11 cu130, transformers 4.49–5.x, HF/ModelScope loading, `dnallm-nightly` runner) is untouched. Only three extras change: `nbclient>=0.10` → `notebook`, `langchain-ollama>=1.1.0` → `mcp` (the actually-missing import, currently shell-magic-installed by a notebook cell), `pyBigWig>=0.3.26; platform_system != 'Windows'` → `dev`.
+**Zero new runtime and zero new dev/test dependencies.** Every feature rides existing pins plus the stdlib. The milestone's "addition" is a what-NOT-to-add list.
 
-**Core technologies:**
-- **nbclient 0.11.0 (already installed) as a library** — executes the ~21 `.ipynb` as parametrized pytest tests; default `allow_errors=False` stops at the first failing cell with `CellTimeoutError`/`CellExecutionError` carrying source + traceback (the exact repair signal); `resources={"metadata": {"path": ...}}` sets kernel cwd. Chosen over nbmake (new plugin semantics, duplicate timeout machinery — violates no-new-frameworks) and `nbconvert --execute` (subprocess opacity).
-- **marimo via subprocess** — `marimo export html app.py` (0.25.0, verified: executes headlessly, HTML artifact) or script mode `python app.py` (verified: UI elements yield `value=` defaults, exit 1 on cell error). Subprocess is mandatory — `App.run()` executes in-process, leaking app state/CUDA into pytest (Pitfall 7).
-- **pyfastx 2.3.1 (already in `dev`)** — FASTA region slicing; `fetch(name, (start, end))` is 1-based inclusive, identical to GFF3 coordinates, with reverse-complement in the same call.
-- **stdlib GFF3 reader/writer + bisect interval math** — GFF3 is nine tab-separated columns; at ≤200 kb loci a ~60-line strict parser beats gffutils/BCBio (dependency weight for nothing) and feeds agreement metrics *and* track rendering.
-- **altair 6.3 + vl-convert-python 1.9 (already installed via `altair[all]`)** — static track/gene-model figures; `chart.save("png")` embeds `image/png` that survives nbconvert→HTML and the mkdocs-jupyter mirror. **Ruled out:** pyGenomeTracks (GPL-3.0 in an MIT project, `matplotlib<3.9` pin conflicts with installed 3.11.2, external bedtools binary, no documented GFF3), jbrowse-anywidget (not on PyPI — CI-non-reproducible), igv-notebook in gated cells (widget output doesn't survive nbconvert; optional non-gated appendix only).
-- **pyBigWig 0.3.26** — BigWig emission from CRE score tracks; default zoom levels on `close()` (never `maxZooms=0`). **See Gap 1: aarch64 wheel availability on the GB10 runner is unverified — treat as optional/guarded.**
-- **ollama as runner infrastructure (not a pip package)** — systemd service on `127.0.0.1:11434`, `OLLAMA_MODELS` drop-in cache dir, pre-pulled `qwen3.6:latest`, readiness probe `curl -sf localhost:11434/api/tags` → typed `network-unavailable:` skip.
-- **Env hygiene** — `MPLBACKEND=Agg`, `MPLCONFIGDIR=$(mktemp -d)`, `WANDB_MODE=disabled` in the kernel env (belt-and-braces against config drift to wandb hanging the nightly on a login prompt).
+**Core technologies (all existing):**
+- **peft** (`>=0.14.0` → 0.21.1 installed) — REV-04 IA3; `IA3Config` needs only >=0.4.0; end-to-end smoke-verified on a BERT-style transformer AND a mambapy Mamba backbone under transformers 5.17
+- **scipy** (`>=1.15.2`) — REV-09 `stats.bootstrap` (percentile, seeded) and REV-10 `false_discovery_control` (BH) — both verified working
+- **scikit-learn** — entire REV-07 probing component (LogisticRegression/MLPClassifier/StandardScaler)
+- **transformers** (`>=4.49.0,<6`) — REV-06 via `AutoConfig.from_pretrained` + `AutoModel*.from_config` (stable across the span, exercised under 5.17)
+- **mcp SDK** (`>=1.3.0,<2`) — REV-11 tools via the existing `app.tool()` + `_with_timeout_wrapper` pattern; **do NOT upgrade to 2.x in this milestone**
+- **Stdlib additions:** ~100-line VCF reader (`gzip` + str-splitting; bgzipped ClinVar verified readable), ~50-line JASPAR fetch/parser (`urllib.request`; **host has moved to `jaspar.elixir.no`** — genereg.net 301s; prefer `format=meme`; parameterize base URL), `hashlib` param hashes
 
-### Expected Features
+**Explicitly rejected:** cyvcf2/pysam (no Windows wheels — would break the Windows CI leg), biopython, statsmodels, mcp 2.x, any VEP framework, torchmetrics, and **`dnallm/tasks/metrics/registry.py` as a placement** (vendored-dir omit hazard).
 
-**Must have (table stakes, all P1):**
-- [EXEC] nbclient harness: per-notebook parametrized tests, per-cell + per-test timeouts, tmp-cwd isolation, kernel cleanup, partial-notebook failure artifacts uploaded `if: always()` — the spine everything hangs on
-- [CI] Execution tests `slow`-marked into the nightly census only (marker deselection = zero new fast-leg skips); `models.lock` extended with revision pins; typed skips reused/extended (`network-unavailable:`, one new `optional-dep:`/`environment-unavailable:` prefix)
-- [EXEC] Real execution of 20–21 notebooks, 3 marimo apps, `generate_bpe_dataset.py`, all YAMLs through real `load_config()`
-- [REPAIR] Every surfaced error fixed (examples, docs mirror, library) with regression tests — the milestone's core value
-- [CI] WR-08 (remove docs-validation `continue-on-error` false green) + WR-09 (add `mcp` extra) — cheap, unblock honest enforcement
-- [REG] `model_info.yaml` entries for PlantHelixSeek-CRE (binary, 2 labels) and -Anno (token, 17 BILOU) via the generic loader route
-- [SHOW] Both showcase notebooks: committed ≤200 kb loci, side-by-side prediction-vs-truth presentation, Jaccard/F1 statistics, test-asserted agreement floors, docs-mirror sync
+### Expected Features (FEATURES.md)
 
-**Should have (differentiators, v1.x):**
-- models.lock consistency guard (fast-leg test cross-checking notebook model literals against lock entries)
-- Executed-notebook write-back / rendered figures in the docs mirror for the two showcase notebooks only (highest-leverage credibility artifact)
-- In-notebook peak calling (mean±1.5σ → BED/narrowPeak) so Jaccard operates on called peaks; RC-TTA toggle
+**Must have (P0 / Phase A — gates the benchmark re-run):**
+- REV-01: default `eval_strategy="no"` + `load_best_model_at_end=False` when dev absent; explicit `allow_test_as_eval=True` override with WARN; `evaluate(split=...)` via the predict path. Anti-feature: auto-creating a dev split.
+- REV-02: `{canonical: (fn, aliases)}` registry + `resolve()` raising matchable ValueError; canonical = CURRENT spellings (`AUROC`, `AUPRC`, `spearmanr`, `pearsonr`); aliases recognize-only, never emitted; import-light (no torch/sklearn at module import) so dnallmmark CI can import it cheaply.
+- REV-03: terminology sweep to "DNA large language models", `validate_sequences` comparability warning (+ dropped-row count log line), CHANGELOG-per-fix with commits.
 
-**Defer (v2+):**
-- Notebook parallelism (only if a second GPU runner appears), output-regression testing (nbval-style), additional species' loci, per-cell timing diagnostics
+**Must have (P1 / Phase B):**
+- REV-05→REV-04 (that order): presets YAML verified from real module names with dry-run validator + explicit "unsupported" family entries; then IA3 as one branch beside LoRA sharing the PeftModel save/reload path; `use_ia3 x use_qlora` rejected at config validation.
+- REV-06: `random_init=True` on generic Auto* families only (ValueError + allowlist for special families); loud log + parameter hash; per-tensor proof.
+- REV-07: frozen backbone, fixed-hyperparameter LR/MLP probes, scaler fit on train only, layer selection exposed, npz cache keyed (model, dataset, layer, pooling).
+- REV-08: `align_variant` same-slot rule + skip accounting; CLM delta-log-lik and MLM log-odds paradigms reusing `mutagenesis.py` kernels; `evaluate_vcf` + CLI; formulas written into docstrings (protocol declaration). **Skip fraction is itself a finding** — report it.
+- REV-09: `run_seeds` dir protocol `{model}/{task}/seed_{s}/`; `aggregate_seeds` pure function (mean/sd/seeded-bootstrap-CI); n<10 guard (omit or t-interval, never vacuous bootstrap at n=3).
 
-**Anti-features (research is emphatic):** `allow_errors=True` (cascading noise — stop-at-first-error is the repair signal); xdist on the single GPU (VRAM flake on exactly the run that must be trustworthy); mutating notebooks under test; committing executed notebooks for all 21; IDR scoring (replicate-concordance tool, wrong question); exact-output assertions (guaranteed-flaky across the transformers span); a `special/` PlantHelixSeek handler (dispatch risk for zero capability — the CrossDNA bug lived in that chain); full-genome inference (CUDA-mandatory, hours-scale, blows the 200 kB rule).
+**Should have (P2 / Phase C):** REV-10 hotspot-window PWM scan with FIMO conventions (GC-matched background, p<1e-4 threshold, BH over the full test set, both strands, HBG1/BCL11A golden test); REV-11 three MCP tools (`ism_scan`, `hotspots`, `zero_shot_score`) with skip accounting in result JSON + the `--host/--port` CLI-precedence fix on BOTH sse and streamable-http paths.
 
-### Architecture Approach
+**Defer:** GPN-style tokenizer-less models in VEP (extension point), indels/multi-allelic, significance-testing machinery, TF-MoDISco integration, genome-wide scanning, mcp 2.x, cross-repo version-locking mechanism (intake open question #3 — coordination, not this repo's code).
 
-The additions slot in as **one new nightly-only test layer** and **one new example vertical**; the fast leg's semantics are untouched (structural tests + `load_config()` auto-cover new files via `rglob` from commit #1). The loader needs **no changes** — registry metadata plus the generic `_load_model_by_task_type` route covers both checkpoints (`trust_remote_code=True` already forwarded to model and tokenizer).
+### Architecture Approach (ARCHITECTURE.md — HIGH, tree-verified)
 
-**Major components:**
-1. `tests/examples/_execution.py` + `tests/examples/conftest.py` — private harness mechanics (nbclient wrapper, marimo subprocess runner, `seed_sandbox`, `assert_tree_clean`) and locally-scoped fixtures; mirrors the `dnallm/mcp/tests/_network_skip.py` seam. A `NOTEBOOK_EXEC_SPECS` dict is the single per-artifact timeout/input tuning table.
-2. Four new test modules — `test_notebook_execution.py` (parametrized over all notebooks), `test_marimo_execution.py`, `test_example_script_execution.py`, `test_plant_helixseek_examples.py` (execution + truth-agreement asserts, including `id2label` equality).
-3. Showcase vertical — `example/notebooks/plant_helixseek_{cre,anno}/` with notebook + YAML + committed `data/` fragments (FASTA + truth GFF/GFF3 slices) + per-dir `.gitignore` for download scratch.
-4. Support-contract extensions — `models.lock` (~8+ ids, `hf`/`ms` prefix matching each notebook's actual `source=`, revision pins), `model_info.yaml` `finetuned:` entries, `expected_skips.yaml` (+1 typed prefix), docs mirror + `mkdocs.yml` nav (currently drifted — see below).
+Four integration shapes: behavioral guards in existing facades (REV-01), a new contract module beside existing dispatch (REV-02), new sibling modules composing existing kernels (REV-05/07/08/09/10 — all NEW FILES, which is what makes waves conflict-free), and config+branch extensions to PEFT/loading seams (REV-04/06). Nothing restructures a layer.
 
-**Key patterns:** tmp-copy + cwd-redirect sandboxing (kernel cwd = sandbox; never execute in-place; belt-and-braces `git status --porcelain` guard); timeout ladder with nbclient cell timeout (~600–900 s) as the *inner* guard below the pytest mark (1800 inference / 3600 showcase / 7200 finetune) below the 900-min job; truth-in-the-loop — loci selected during the phase for substantial agreement, floors asserted nightly thereafter.
+**Major components / placements:**
+1. `dnallm/tasks/metric_registry.py` — sibling of `metrics.py`, NOT inside vendored `metrics/` (coverage-omit + ruff + mypy exclusion; verify with `coverage report | grep registry` after merge)
+2. `dnallm/inference/vep.py` (REV-08), `probing.py` (REV-07), `dnallm/finetune/sweep.py` (REV-09), `dnallm/finetune/presets.py` (REV-05) — new files composing `mutagenesis` kernels, `get_embeddings`, `extra_args={"seed": s}` read-only
+3. `dnallm/configuration/presets/lora_targets.yaml` — packaged data (importlib.resources) + `[tool.setuptools.package-data]` entry; NOT repo-root `configs/` (not in the wheel)
+4. New `dnallm/interpret/` subpackage (REV-10); do NOT move `dnallm/inference/interpret.py`
+5. `dnallm/models/model.py`: `random_init` implemented inside `_load_model_by_task_type` only; special-family handlers out of scope by design
+6. No new `dnallm/__init__.py` re-exports in v1.2 (byte-stable facade; avoids the one file every agent would touch)
+7. Test layering: **every new module reaches the coverage bar via mocked fast-lane tests** (`pytest -m "not slow" --cov` is the PR gate); slow tests are acceptance only
 
-### Critical Pitfalls
+### Critical Pitfalls (PITFALLS.md — top items)
 
-1. **Leaked kernels poison the persistent runner** (Critical #1) — pytest-timeout kills the pytest process, never the process group; orphan `ipykernel_launcher` holds VRAM and failures appear as random OOM in *unrelated* tests the next night. Use `NotebookClient` as a context manager, `shutdown_kernel="immediate"` where graceful hangs, layer timeouts so the cell timeout fires first, and add a nightly `pkill -f ipykernel_launcher || true` + `nvidia-smi` hygiene step. Ship with a deliberate-hang kill test.
-2. **Timeout-arithmetic and cache-quota economics** (Critical #2, #4) — naive per-test ceilings sum to 14–48 h vs the 900-min job (job kill = no junit + cache forfeit); GitHub's 10 GB/repo cache quota is LRU-evicted *regardless of runner type* — one 29.7 GB evo-1 fetch evicts the existing warm cache. Measure budgets in Phase 1; filter evo-1 to safetensors via `allow_patterns`; split cache tiers (quota-bounded cache for small/medium, persistent on-disk dir for giants).
-3. **Environment-gated families: evo/evo2/megaDNA cannot ever run on aarch64 GB10 as-shipped** (Critical #5) — flash-attn ships x86_64 wheels, Transformer Engine 2.3.0 predates Blackwell, evo2's big tiers need FP8-on-Hopper; megaDNA's `git clone && pip install -e .` is unpinned arbitrary setup.py. Feasibility-spike first, typed `environment-unavailable:` skips for the infeasible, smallest-viable variants otherwise, and revision-pin everything (`trust_remote_code` + mutable refs = unreviewed code execution on the box — Critical #8).
-4. **Hermeticity and the cwd false-repair** (Critical #3) — notebooks assume their own directory (`load_config("./x.yaml")`), write `ath_cds.csv`/tensorboard events/BEDs to cwd, and shell-magic `!wget`/`!uv pip install`; the #1 false positive is a `FileNotFoundError` misread as a notebook bug and "fixed" by editing the notebook. Copy-to-tmp + cwd redirect + tree-clean guard + pre-extended `.gitignore`; triage harness-bug vs content-bug explicitly.
-5. **Silent emptiness in genomics code** (Critical #11, #12, #13) — 0-based half-open bigWig vs 1-based closed GFF3, case-sensitive `Chr1` vs `1` chrom names (wrong name returns `[]`, not an error), arabidopsis.org serving HTML-as-`.gz` to non-browser clients, and cherry-picked-loci-as-benchmark framing. One shared unit-tested normalization helper, non-emptiness assertions everywhere, magic-byte download validation, committed-artifact loci selection with a rationale doc, and a negative-control region.
-6. **Mirror drift detonates when WR-08 flips honest** (Critical #14) — `check_docs_sync.py` exits 1 *today* (wrapper `.md` handling, drifted outputs, missing script mirror); removing `continue-on-error` without closing drift blocks unrelated PRs. Inventory drift first, flip the gate with the closure in one reviewable unit, then regenerate mirror MD as part of every notebook repair.
+1. **REV-01 guard bypassed by its neighbors** (trainer.py:298-303 early stopping force-enables `load_best_model_at_end`; transformers silently defaults `metric_for_best_model="loss"`) — guard atomically sets strategy+dataset, raises descriptive ValueError on collision; the early-stopping neighbor test is the one most likely to be forgotten.
+2. **Registry in the vendored dir ships unmeasured** — relocate + same-change coverage-row check; aliases are one-directional (recognize historical, emit canonical only) or drift recurs.
+3. **Silent PEFT failures on Mamba/hybrid** (peft skips non-matching target_modules; peft #3554/#2556; IA3x4-bit raises version-dependently) — config-time rejection, per-family dry-run tests, trainable-count runtime guard, IA3-specific roundtrip test (peft #2429 corruption class).
+4. **random_init partially loading pretrained weights / lying hash** — `from_config` only, per-tensor comparison, CPU-canonical seed, no-download assertion, tokenizer-loads-normally assertion; tied-weight/meta-tensor traps on 5.x.
+5. **VEP slot misalignment fails silently with plausible AUROCs** — alignment asserted to differ in exactly ONE slot; skip-reason fixtures; paradigm guard (causal vs bidirectional); VCF coordinate fixtures; frozen score goldens. Near-random AUROC is an EXPECTED outcome of protocol mismatch — treat as protocol bug first.
+6. **Parallel-agent collisions** (configs.py x4 REVs, `__init__.py` x5 modules, `expected_skips.yaml`, pyproject, test collection) — Phase A scaffolding pass + roadmap-level file-ownership map + same-change skip allowlisting.
+7. **The 90% gate won't catch under-tested new modules** (~96.4% → ~94.9% stays green) — per-module 96%+ standard verified at phase verification; also: don't pin foreign exception strings (version-span rule); real-model tests are `slow` + models.lock rows from birth.
 
 ## Implications for Roadmap
 
-Suggested phase structure (5 phases; Phases 1 and 2 are independent and parallelizable; 3 depends on 2; 4 depends on 1; 5 validates all):
+Phases start at Phase 10. Three phases matching the owner-fixed full-scope strategy; each phase's plan encodes its wave's agent/file-ownership map.
 
-### Phase 1: Execution Harness, Honest Gates & Runner Feasibility
-**Rationale:** The harness is the spine everything hangs on, and the two honesty repairs (WR-08/09) must land before any repair work rides an enforced lane. The GB10 feasibility verdicts must exist *before* execution tests are written for evo/megaDNA/marimo families — tests written for models that cannot ever run there are pure waste.
-**Delivers:** `tests/examples/_execution.py` + local `conftest.py` (tmp-sandbox, timeout layering, kernel-cleanup kill test, tree-clean guard, artifact capture); `.gitignore` extensions; typed skip prefixes (`optional-dep:`/`environment-unavailable:`) + allowlist entries; `models.lock` revision-pin scheme; WR-08/WR-09 fixed together with the mirror-drift inventory and closure; feasibility verdict matrix for evo-1/evo2/megaDNA/marimo/pyBigWig on the actual box; harness piloted green on 1–2 already-healthy notebooks.
-**Addresses:** [CI] WR-08/09, [EXEC] harness table-stakes, [CI] marker/skip discipline
-**Avoids:** Pitfalls 1, 2, 3, 5, 6, 7 (pattern), 8, 14 — all marked "Phase 1" in the pitfall-to-phase mapping
+### Phase 10 (Phase A): Contract layer + scaffolding (P0, ~0.5 day, 4 agents)
+**Rationale:** REV-02 gates the entire benchmark re-run (F3) and REV-07/08 consume its registry; REV-01 prevents reproducing the leak in the re-run; the scaffolding pass is the single highest-leverage structural decision for parallel safety; REV-08's long pole starts here.
+**Delivers:** REV-01 guard + `evaluate(split=)` + neighbor tests; REV-02 registry + metrics.py rewire + contract tests; REV-03 docs/terminology/CHANGELOG (IA3 chapter completes in Phase 12); shared-file stubs (Ia3Config/VepConfig/SweepConfig skeletons, pyproject package-data, any skip-allowlist entries); REV-08 core (`align_variant` + scoring kernels + unit tests).
+**Avoids:** Pitfalls 1, 2, 8, 9.
+**Agent ownership:** W1-A trainer.py+configs.py (REV-01); W1-B tasks/ (REV-02); W1-C docs (REV-03); W1-D new inference/vep.py (REV-08 core). Zero file overlap.
 
-### Phase 2: Model Registry & Showcase Data Curation
-**Rationale:** Registry entries are dependency-free and unblock everything; loci selection is the long pole of the showcase (prediction-truth agreement must be *measurable* to select loci, and the committed fragments are a precondition of both notebooks' final form). Coordinate/chrom normalization must exist before any notebook is written against the data.
-**Delivers:** `model_info.yaml` entries for CRE/-Anno with label lists frozen from checkpoint `config.id2label` (dnallm *overrides* id2label from config — a permuted 17-BILOU list silently permutes predictions); smoke-load test via the generic route (transformers 5.17 dev env first — the one genuine compat risk); shared GFF3/BigWig coordinate + chrom-name normalization helper with unit-tested tiny fixtures; loci-selection script (live downloads OK inside it, magic-byte validated) producing committed ≤200 kb fragments + truth slices + selection-rationale doc + one negative-control locus.
-**Addresses:** [REG] entries, [SHOW] committed loci precondition
-**Avoids:** Pitfalls 11, 12, 13 (data-acquisition half), Architecture Anti-Pattern 4 (label-order guessing)
+### Phase 11 (Phase B): Adaptation + evaluation (P1, ~1 day, 5 agents)
+**Rationale:** Consumes Phase 10's registry and freed hot files; splits into file-disjoint agents per the reconciled conflict matrix.
+**Delivers:** B1 = REV-04+REV-05 as ONE agent (they share configs.py/trainer.py/inference.py:111-131: Ia3Config, presets YAML + resolver, IA3 branch, config-time `use_ia3 x use_qlora` rejection); B2 = REV-06 (model.py sole owner); B3 = REV-07 probing (new file, registry read-only, cache keyed with layer+pooling, disjoint split asserts); B4 = REV-09 sweep (new file, pure aggregation first, seed-semantics documented, n-guard); B5 = REV-08 completion (`evaluate_vcf`, CLI, ClinVar slow test with typed network skips + models.lock rows).
+**Avoids:** Pitfalls 3, 4, 5, 6, 7, 10, 13, 14, 15.
+**Note:** the two B-waves in the researchers' matrices (B1–B4 vs W2-A..E) differ only in whether REV-08 completion rides Phase B or a Phase B.5 — either is safe; REV-08 solely owns cli.py, so no contention exists.
 
-### Phase 3: PlantHelixSeek Showcase Notebooks
-**Rationale:** Needs registry (Phase 2) for inference and committed loci for truth; produces the milestone's flagship user-facing artifacts.
-**Delivers:** CRE notebook (500 bp/50 stride/50 bin sliding-window scan via `DNAInference`, score track + optional guarded pyBigWig emission + altair side-by-side vs PlantDHS, peak-overlap Jaccard); Anno notebook (8192/4096 both-strand scan, BILOU span decode → structurally valid GFF3, nucleotide/exon-level P/R/F1 vs TAIR10, exon/intron block diagrams); YAMLs valid for the fast-leg `load_config` gate from the first commit; "illustrative loci + selection criteria" framing; docs-mirror + mkdocs nav entries.
-**Addresses:** [SHOW] CRE + Anno table-stakes; differentiator: rendered figures path
-**Avoids:** Pitfalls 11 (rendering half), 13 (framing), 10 (tolerance bands not exact asserts)
-
-### Phase 4: Full Execution Rollout & Repair Loop
-**Rationale:** Needs the proven harness (Phase 1) and repaired gates; the repair loop is the open-ended unknown-unknowns sink, so it comes last-among-content phases with the harness stable beneath it.
-**Delivers:** Parametrized execution of all notebooks + 3 marimo apps (subprocess, cheap-default assertions) + `generate_bpe_dataset.py` + real YAML validation; ollama runner setup (loopback systemd unit, idempotent `qwen3.6:latest` pre-pull, port plan vs the 6 MCP live-server probes on :8000); `models.lock` extension with correct `hf`/`ms` prefixes per actual route; fix-everything-surfaced loop with regression tests and per-fix mirror regeneration; invariant/tolerance assertion conventions (valid DNA alphabet, finite in-range scores, `defs` shape asserts — never prose or exact values).
-**Addresses:** [EXEC] real execution of everything, [REPAIR] fix-all loop, [CI] models.lock preregistration
-**Avoids:** Pitfalls 4 (cache tiers — the first evo-class run is the one that evicts), 7, 9, 10; per-notebook timeboxing keeps the repair loop bounded
-
-### Phase 5: CI Wiring & Census Verification
-**Rationale:** Last because it validates everything: nightly collection of the new slow tests, warm-cache behavior, runtime budget, and audit gates can only be verified against the finished test set.
-**Delivers:** Nightly census collecting all new slow tests; junit + `audit_skips.py` green *with* the new skip categories present; cache-size/`gh cache list` report step; kernel/VRAM hygiene steps; timeout-arithmetic comment updated and sum-of-ceilings review checklist; documented coverage expectation (kernel subprocesses are unmeasured by design — the 96.30% gate neither rises nor falls from example execution).
-**Addresses:** [CI] nightly integration end-to-end
-**Avoids:** Pitfalls 1 (hygiene), 2 (arithmetic review), 6 (skip-count growth as review trigger)
+### Phase 12 (Phase C): Narrative surface + closeout (P2, ~0.5 day, 3 agents)
+**Rationale:** REV-11's `zero_shot_score` wraps the Phase-11 vep module; REV-10 is freestanding and can be pulled forward into Phase 11 idle capacity if calendar pressure demands (touches nothing Phase B owns).
+**Delivers:** C1 = REV-10 (`dnallm/interpret/` motifs, FIMO conventions, HBG1 golden test); C2 = REV-11 (3 MCP tools, timeout-wrapper structure test, event-loop liveness test, host/port fix on BOTH transports); C3 = integration closeout (IA3/LoRA docs chapter completing REV-03, CHANGELOG finalization, census-count re-pin if test counts hard-assert, coverage-expectation docs update).
+**Avoids:** Pitfalls 11, 12, 13.
 
 ### Phase Ordering Rationale
 
-- **Dependency chains from FEATURES.md:** showcase notebooks ← registry entries + committed loci + harness; repair loop ← harness + artifact capture + honest gates (WR-08/09 first, or fixes ride an unenforced lane); rendered docs figures ← both notebooks green.
-- **Pitfalls demand harness-before-rollout:** every "Phase 1" pitfall (kernel leaks, timeout layering, hermeticity, skip taxonomy, feasibility, provenance pins) is a property of the harness, and each is cheapest to build in on day one — retrofitting isolation into 24 red tests is the failure mode.
-- **Grouping follows the architecture's two verticals:** test-layer work (Phases 1, 4, 5) and example-vertical work (Phases 2, 3) touch disjoint files and can proceed in parallel or in either order where staffing allows.
-- **Post-MVP differentiators stay out:** models.lock consistency guard, executed-notebook write-back, peak calling, per-cell timing are v1.x — after the lock entry set stabilizes and the showcase content stops churning.
+- REV-02 before everything metric-emitting (REV-07/08/09) — landing them first means never re-touching outputs (intake Phase A gating, confirmed by FEATURES dependency graph).
+- REV-05 before REV-04 (IA3 target defaults come from presets), and both in ONE agent because every hot file is shared.
+- REV-11 after REV-08/10 — "a tool surface is a contract; wrap working code."
+- Hot files change ownership cleanly across waves: configs.py/trainer.py W1→W2; the orchestrator commits between waves.
+- Every wave: new skips allowlisted same-change, new models.lock rows, per-module coverage at the 96% working standard, no foreign-exception test matches.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning (`/gsd-plan-phase --research-phase`):
-- **Phase 2 (showcase data curation):** the densest open questions converge here — pyBigWig-on-aarch64 resolution (Gap 1), chrom-naming harmonization against the *actual* committed files, threshold-calibration methodology, arabidopsis.org/plantdhs.org acquisition reliability. Loci selection is a methodology, not a pattern.
-- **Phase 4 (partially — ollama/GB10 specifics):** runner service ops (systemd drop-ins, VRAM co-residency with torch models, port serialization vs MCP probes) are environment-specific and under-documented; a short research pass or in-phase spike is warranted. The repair loop itself is not researchable.
+Phases likely needing deeper research (`/gsd-plan-phase --research-phase`):
+- **Phase 11 / REV-08 lane:** highest flag weight — tokenizer-class coverage breadth (char/3-mer/6-mer/BPE alignment semantics), ClinVar filtering conventions for literature-comparable AUROCs, and the split-token alignment scheme details (Mut-BPE).
+- **Phase 12 / REV-10:** empirical-null calibration choice (FIMO exact DP vs shuffle-null + BH) deserves a short plan-time spike; must be documented honestly either way.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1 (harness):** nbclient/marimo semantics were verified *empirically in the project venv* (traits, cwd handling, per-cell timeout firing, script-mode exit codes); the repo's own precedents (`_network_skip.py`, tmp-path PDF fix, timeout ladder) are the spec.
-- **Phase 3 (notebooks):** upstream pipeline parameters (500/50/50 CRE; 8192/4096 17-BILOU Anno) are verified from the upstream repo; altair rendering is already exercised by `dnallm/inference/plot.py`.
-- **Phase 5 (CI wiring):** pure extension of existing workflow patterns.
+- **Phase 10 (all of REV-01/02/03 + scaffolding):** verified anchors, house patterns, no unknowns.
+- **Phase 11 REV-04/05/06/07/09 lanes:** official docs + execution-verified smoke tests + tree-verified seams cover them.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | MEDIUM-HIGH | Everything cross-verified against installed venv + PyPI JSON + official docs; weak seams are web-only single-channel claims (pyBigWig write API details) and the aarch64 gap below |
-| Features | HIGH | Project-grounded items read directly from repo (test_examples.py, expected_skips.yaml, ci.yml, models.lock, model_info.yaml); ecosystem patterns cross-checked |
-| Architecture | HIGH | Repo-verified + empirical probes (marimo script mode, nbclient semantics, dispatch-chain inspection, remote-code reading); upstream model facts MEDIUM (single-org) |
-| Pitfalls | HIGH | Direct repo inspection + official docs (pytest-timeout issues, GitHub cache limits, pyBigWig coordinates note, ollama security, evo2 requirements); runner arch verified via `nvidia-smi` |
+| Stack | HIGH | Headline claims verified by direct execution against the installed venv + live JASPAR API probes (host migration confirmed 2026-10-09) |
+| Features | HIGH | PEFT IA3 and FIMO semantics from official docs (fetched directly); multi-source cross-checks elsewhere; LOW only on isolated illustrative numbers (not load-bearing) |
+| Architecture | HIGH | Every integration point verified against the working tree on branch `revision` with line anchors |
+| Pitfalls | HIGH | Repo-grounded facts verified in source; installed-library behavior (peft 0.21.x, transformers 5.x) source-verified; cross-version-span claims MEDIUM where only the installed version was inspected |
 
-**Overall confidence:** HIGH — an unusually well-grounded research set. Residual uncertainty is concentrated in the named environment facts below; none block the roadmap structure.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Gap 1 — pyBigWig on aarch64 (cross-file conflict, resolve in Phase 1 spike):** STACK.md verified pyBigWig 0.3.26 ships manylinux **x86_64** wheels only and proposed `platform_system != 'Windows'` on the assumption of an x86_64 runner; PITFALLS.md verified the nightly runner is **aarch64 GB10**, where that marker does not protect (sdist compile, needs toolchain + libcurl headers); FEATURES.md's "linux/mac/win wheels" claim is the outlier. Mitigation is already structural — BigWig *emission* is the only pyBigWig consumer (plots need numpy/altair only), so keep it an optional guarded cell until the spike proves the import on the runner.
-- **Gap 2 — evo/evo2/megaDNA feasibility on GB10 (LOW confidence):** flash-attn x86-only wheels, TE pre-Blackwell, FP8-requires-Hopper, unpinned megaDNA clone. Default posture: typed `environment-unavailable:` skip; enabling any of them is a stretch goal behind a Phase 1 capability spike.
-- **Gap 3 — PlantHelixSeek remote code under transformers 5.x:** upstream pins 4.49; remote code imports `transformers.cache_utils.Cache`. Dev env is 5.17 — smoke-load locally in Phase 2 before freezing anything; fallback is a typed skip + upstream issue, not a dnallm shim.
-- **Gap 4 — marimo execution flavor:** STACK prefers `marimo export html` subprocess (full runtime path, HTML artifact); ARCHITECTURE prefers script-mode `python app.py` (empirically verified). Both subprocess-based. Spot-check one `mo.ui`-bearing app under both in the Phase 1 pilot and standardize.
-- **Gap 5 — nightly runtime budget:** ~24 new slow tests; worst-case serial ceilings (14–48 h) far exceed the 900-min job. Phase 1 must measure real per-artifact runtimes; the escalation path (separate/sharded nightly job for example execution) should be pre-approved in the roadmap.
-- **Gap 6 — ollama/`langchain-ollama` wiring:** STACK verified the notebook shell-magics `!uv pip install -U langchain-ollama` (add to `mcp` extra + repair the cell); ARCHITECTURE's import scan didn't see it. Also unresolved: VRAM co-residency ordering with torch models, and the :8000 port plan vs the 6 MCP live-server probes. Settle in Phase 4 planning.
-- **Gap 7 — agreement thresholds:** inherently un-researchable — calibrated at loci-selection time with recorded observed values, tolerance bands for cross-device float drift, and re-derivation tied to any model-revision rotation.
+- **Cross-repo version locking (intake open question #3):** how dnallmmark pins the dnallm registry/sweep contracts — coordination decision needed at requirements time; recommend dependency-light registry + dnallm-side public-surface test.
+- **GPN-class tokenizer-less models in VEP (open question #4):** research says keep v1.2 tokenizer-based; extension point design deferred.
+- **Probing output schema for F4:** emitted columns must be agreed when dnallmmark F4 is written — document in probing.py.
+- **peft 0.14–0.16 floor behavior:** IA3x4-bit and no-match-raise behaviors verified on 0.21.x only; mitigated by config-time rejection + own-error-surface tests, not version pins.
+- **REV-08 alignment under real BPE tokenizers beyond the smoke set:** covered by plan-time research flag, not by stack smoke tests.
 
 ## Sources
 
+Aggregated from the four research files (full source lists there):
+
 ### Primary (HIGH confidence)
-- Direct repo inspection (2026-10-01): `tests/examples/test_examples.py`, `tests/configuration/test_yaml_load.py`, `tests/expected_skips.yaml`, `scripts/audit_skips.py`, `.github/workflows/ci.yml` + `docs-validation.yml`, `models.lock`, `pyproject.toml`, `dnallm/models/{model_info.yaml,model.py,tokenizer.py}`, `dnallm/models/special/`, `scripts/check_docs_sync.py` (run: exit 1), `example/` notebooks/marimo/apps (side-effect greps, committed-output audit, evo/megaDNA/ollama cell sources), `.gitignore`, per-dir example `.gitignore`s, `dnallm/utils/support.py`
-- Empirical probes in the project venv: nbclient 0.11.0 traits + cwd handling + per-cell `CellTimeoutError`; marimo 0.25.0 script mode (UI defaults, exit codes) + CLI help + `App.run` signature; venv kernelspec content; vl-convert importability; `pytest.mark.timeout` availability; `nvidia-smi` (GB10); bedtools absent from runner PATH
-- PyPI JSON API (fetched 2026-10-01): versions/wheels for nbclient, pyBigWig, pyfastx, marimo, ipykernel, vl-convert-python, langchain-ollama, gffutils, bcbio-gff, pyfaidx, papermill, nbmake, ollama, pygenometracks, igv-notebook; jbrowse-anywidget absent from PyPI (deterministic check)
-- Official docs: nbclient client/reference; pytest-timeout issues #134/#159; GitHub Actions limits + actions/cache (+Nov 2025 >10 GB changelog); pyBigWig README coordinate note; GFF3 spec v1.26; ollama docs (install/OpenAI-compat/security issue #16236); W&B headless mode; evo2 PyPI/GitHub requirements; HF `togethercomputer/evo-1-131k-base` file listing (29.7 GB incl. redundant 16.8 GB `.pt`)
+- Direct execution in installed venv (peft 0.21.1/0.21.2, transformers 5.17/5.19, scipy 1.18.1, torch 2.11): IA3Config smoke on transformer + mambapy, `from_config`, bootstrap/FDR calls
+- Working tree on branch `revision` (line-anchored): trainer.py, metrics.py, configs.py, model.py, inference.py, mutagenesis.py, data.py, mcp/server.py, pyproject.toml, ci.yml
+- Live JASPAR API probe (jaspar.elixir.no, `format=pfm|meme`), 2026-10-09
+- Official docs: HF PEFT IA3, FIMO/MEME Suite, FastMCP tools, HF Trainer/training_args source
 
 ### Secondary (MEDIUM confidence)
-- Upstream PlantHelixSeek: github.com/zhangtaolab/PlantHelixSeek (`scripts/cis_regulatory` 500/50/50, `scripts/gene_annotation` 8192/4096 17-BILOU) + HF model cards + raw remote-code inspection (single-org, cross-checked); ModelScope twin existence
-- marimo docs (testing/CLI), jupyter_client kernelspec docs, matplotlib backends FAQ, altair saving docs, nbmake docs, upload-artifact #328
-- Field conventions: bedtools jaccard; GffCompare sensitivity/precision/F1; Enformer/ChromBPNet/AlphaGenome track-presentation norms; pyGenomeTracks docs
-- Community evidence for TAIR `Chr1` vs Ensembl `1` naming (verify against actual committed files at selection time)
-
-### Tertiary (LOW confidence)
-- arabidopsis.org SPA/login-wall behavior (repo-internal milestone knowledge + TAIR portal state reports; mitigations valid regardless)
-- evo2-on-GB10 impact (requirements HIGH, arch inference MEDIUM); pyBigWig under matrix numpy 1.26.4 (flagged for phase spike)
+- Mut-BPE, DART-Eval, GPN, BEND, NT, Evo2 calibration studies (zero-shot VEP protocol + alignment pitfall); Varoquaux & Colliot (multi-seed reporting); peft issues #1289/#2429/#2432/#2556/#3554; ssm-peft ICML25; pysam/cyvcf2 Windows-support findings; Geneformer silent-scratch incident
 
 ---
-*Research completed: 2026-10-01*
+*Research completed: 2026-10-09*
 *Ready for roadmap: yes*
