@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Evaluation semantics: the trainer no longer silently evaluates on the test split when no dev split exists; evaluation is disabled with a loud warning unless `finetune.allow_test_as_eval: true` is set, and the new `DNATrainer.evaluate(split=...)` evaluates any split through the predict path writing a result JSON (REV-01, R1-2c)
+- Docs: terminology unified to "DNA large language models" across the documentation, README, and API docstrings; `validate_sequences` now documents the cross-model `valid_chars` comparability hazard and logs a dropped-row count; new LoRA/QLoRA/IA³ usage chapter (REV-03, Ed-2/Ed-6/R1-3c)
 
 ## [0.7.1] - 2026-10-08
 
