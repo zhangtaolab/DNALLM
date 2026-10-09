@@ -515,7 +515,9 @@ def _resolve_chromosome(sequences: Mapping[str, str], chrom: str) -> str:
     candidates = [chrom]
     if not chrom.startswith("chr"):
         candidates.append(f"chr{chrom}")
-    elif chrom.startswith("chr"):
+    else:
+        # Reached only when chrom.startswith("chr") holds — the branch
+        # condition is always true here, so a plain else suffices.
         candidates.append(chrom[3:])
     for candidate in candidates:
         if candidate in sequences:
