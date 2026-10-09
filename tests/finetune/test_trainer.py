@@ -15,6 +15,7 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
+import yaml
 from conftest import SimpleDNATokenizer
 from datasets import Dataset, DatasetDict
 from packaging.version import Version
@@ -23,6 +24,7 @@ from dnallm.configuration.configs import (
     CallbackConfig,
     EarlyStoppingConfig,
     HyperparameterSearchConfig,
+    Ia3Config,
     LoraConfig,
     SearchSpaceDistribution,
     TaskConfig,
@@ -96,6 +98,7 @@ class TestTrainingArgumentsMapping:
             "hyperparameter_search",
             "use_qlora",
             "use_ia3",
+            "peft_dry_run",
             "allow_test_as_eval",
             "quantization_config",
             "save_safetensors",
@@ -567,37 +570,6 @@ class TestEarlyStopping:
 class TestLoraWiring:
     """LoRA / QLoRA model wrapping at the peft boundary."""
 
-    def test_use_ia3_warns_no_effect_yet(self, trainer_config, mock_hf_boundary):
-        """use_ia3=true during the interim window warns instead of no-op silently."""
-        trainer_config["finetune"].use_ia3 = True
-
-        with patch("builtins.print") as mock_print:
-            DNATrainer(
-                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
-            )
-
-        warn_calls = [
-            call
-            for call in mock_print.call_args_list
-            if "[Warning]" in "".join(str(arg) for arg in call.args)
-            and "use_ia3" in "".join(str(arg) for arg in call.args)
-            and "no effect yet" in "".join(str(arg) for arg in call.args)
-        ]
-        assert len(warn_calls) == 1
-
-    def test_use_ia3_default_does_not_warn(self, trainer_config, mock_hf_boundary):
-        """The default use_ia3=false keeps construction quiet about IA³."""
-        with patch("builtins.print") as mock_print:
-            DNATrainer(
-                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
-            )
-
-        assert not [
-            call
-            for call in mock_print.call_args_list
-            if "use_ia3" in "".join(str(arg) for arg in call.args)
-        ]
-
     def test_use_lora_wraps_model_via_peft(self, trainer_config, mock_hf_boundary):
         """use_lora applies LoraConfig + get_peft_model and trains the wrapper."""
         trainer_cls, _ = mock_hf_boundary
@@ -642,6 +614,121 @@ class TestLoraWiring:
             )
 
         mock_prep.assert_called_once_with(model)
+
+
+class TestIa3Wiring:
+    """IA³ model wrapping at the peft boundary (mocked fast lane)."""
+
+    def test_use_ia3_wraps_model_via_peft(self, trainer_config, mock_hf_boundary):
+        """use_ia3=true applies IA3Config + get_peft_model and trains the wrapper."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(
+            target_modules=["key", "value"],
+            feedforward_modules=["value"],
+        )
+        wrapped = Mock()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=wrapped) as mock_gpm,
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print") as mock_print,
+        ):
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["key", "value"]
+        assert mock_ia3_config.call_args.kwargs["feedforward_modules"] == ["value"]
+        assert mock_gpm.call_args.args[1] is mock_ia3_config.return_value
+        assert trainer_cls.call_args.kwargs["model"] is wrapped
+        wrapped.print_trainable_parameters.assert_called_once()
+        info_calls = [
+            "".join(str(arg) for arg in call.args)
+            for call in mock_print.call_args_list
+        ]
+        assert any("[Info] Applying IA³" in msg for msg in info_calls)
+
+    def test_use_ia3_defaults_when_section_absent(self, trainer_config, mock_hf_boundary):
+        """A YAML without an ia3: section still trains IA³ with field defaults."""
+        trainer_config["finetune"].use_ia3 = True
+        assert "ia3" not in trainer_config
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=Mock()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] is None
+        assert mock_ia3_config.call_args.kwargs["init_ia3_weights"] is True
+
+    def test_use_ia3_kwargs_filtered_to_peft_surface(self, trainer_config, mock_hf_boundary):
+        """Only field names peft's IA3Config accepts are passed through."""
+        from dnallm.finetune.trainer import PEFT_IA3_FIELD_NAMES
+
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["key"], modules_to_save=["score"])
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=Mock()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert set(mock_ia3_config.call_args.kwargs) <= PEFT_IA3_FIELD_NAMES
+
+    def test_lora_and_ia3_rejected_at_trainer_init(self, trainer_config, mock_hf_boundary):
+        """use_lora=True ctor kwarg x finetune.use_ia3=true raises a matchable
+        ValueError naming both flags (the ctor kwarg is invisible to Pydantic)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["lora"] = LoraConfig()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=Mock()),
+            patch("dnallm.finetune.trainer.IA3Config"),
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+        ):
+            with pytest.raises(ValueError, match="use_lora"):
+                DNATrainer(
+                    model=Mock(),
+                    config=trainer_config,
+                    datasets=make_datasets(["train", "val"]),
+                    use_lora=True,
+                )
+
+    def test_use_ia3_x_use_qlora_rejection_fires_at_config_load_time(self, tmp_path):
+        """The Pydantic rejection fires inside load_config, before any
+        DNATrainer construction (config-time is the first line of defense)."""
+        from pydantic import ValidationError
+
+        config_path = tmp_path / "bad_ia3_config.yaml"
+        config_path.write_text(
+            yaml.safe_dump(
+                {
+                    "task": {"task_type": "binary", "num_labels": 2},
+                    "finetune": {"use_ia3": True, "use_qlora": True},
+                }
+            )
+        )
+
+        with pytest.raises(ValidationError, match="use_ia3"):
+            load_config(str(config_path))
 
 
 class TestMultiGpu:

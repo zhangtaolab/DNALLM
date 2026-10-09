@@ -992,19 +992,38 @@ class TestTrainingConfigScaffoldFields:
         assert config.allow_test_as_eval is False
 
     def test_use_ia3_defaults_false(self):
-        """use_ia3 lands field-first with a False default (D-07)."""
+        """use_ia3 lands with a False default."""
         config = TrainingConfig()
         assert config.use_ia3 is False
 
-    def test_use_ia3_has_no_cross_field_rejection_yet(self):
-        """D-07 interim window: use_ia3 x use_qlora is not rejected in Phase 10.
+    def test_use_ia3_with_use_qlora_rejected_naming_both_fields(self):
+        """use_ia3 x use_qlora is rejected at Pydantic time with a message
+        naming both config fields (PEFT-01; peft only raises at merge time)."""
+        with pytest.raises(ValidationError, match="use_ia3"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
 
-        The cross-field validators belong to the Phase 11 IA³ trainer branch;
-        this test pins that Phase 10 adds the field only.
-        """
-        config = TrainingConfig(use_ia3=True, use_qlora=True)
-        assert config.use_ia3 is True
-        assert config.use_qlora is True
+        with pytest.raises(ValidationError, match="use_qlora"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_with_use_qlora_rejection_names_the_cause(self):
+        """The rejection message states the 4-bit merge limitation (matchable)."""
+        with pytest.raises(ValidationError, match="4-bit"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_and_use_qlora_alone_still_construct(self):
+        """Each flag on its own is a valid configuration."""
+        assert TrainingConfig(use_ia3=True).use_ia3 is True
+        assert TrainingConfig(use_qlora=True).use_qlora is True
+
+    def test_peft_dry_run_defaults_false(self):
+        """peft_dry_run defaults to False (training runs normally)."""
+        config = TrainingConfig()
+        assert config.peft_dry_run is False
+
+    def test_peft_dry_run_settable_from_plain_kwargs(self):
+        """The field is constructible from kwargs as YAML section data would be."""
+        config = TrainingConfig(peft_dry_run=True)
+        assert config.peft_dry_run is True
 
     def test_allow_test_as_eval_settable_from_plain_kwargs(self):
         """The field is constructible from kwargs as YAML section data would be."""
@@ -1020,23 +1039,36 @@ class TestIa3Config:
         config = Ia3Config()
 
         assert config.target_modules is None
+        assert config.exclude_modules is None
         assert config.feedforward_modules is None
+        assert config.fan_in_fan_out is False
         assert config.init_ia3_weights is True
         assert config.modules_to_save is None
 
     def test_ia3_config_custom_values(self):
-        """All four fields accept explicit values."""
+        """All six fields accept explicit values."""
         config = Ia3Config(
             target_modules=["query", "key"],
+            exclude_modules=["classifier"],
             feedforward_modules=["key"],
+            fan_in_fan_out=True,
             init_ia3_weights=False,
             modules_to_save=["classifier"],
         )
 
         assert config.target_modules == ["query", "key"]
+        assert config.exclude_modules == ["classifier"]
         assert config.feedforward_modules == ["key"]
+        assert config.fan_in_fan_out is True
         assert config.init_ia3_weights is False
         assert config.modules_to_save == ["classifier"]
+
+    def test_ia3_config_dump_fields_match_peft_surface(self):
+        """Every dnallm Ia3Config field name is accepted by peft's IA3Config
+        (full pass-through; nothing is dropped by the trainer's filter)."""
+        from dnallm.finetune.trainer import PEFT_IA3_FIELD_NAMES
+
+        assert set(Ia3Config().model_dump()) <= PEFT_IA3_FIELD_NAMES
 
 
 class TestVepConfig:

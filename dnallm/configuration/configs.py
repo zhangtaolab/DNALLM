@@ -320,8 +320,19 @@ class TrainingConfig(BaseModel):
         default=False,
         description=(
             "Whether to use IA³ (Infused Adapter by Inhibiting and Amplifying Inner "
-            "Activations) adapters for parameter-efficient fine-tuning. IA³ training "
-            "support arrives with the next release's trainer branch."
+            "Activations) adapters for parameter-efficient fine-tuning, symmetric to "
+            "LoRA: the trainer injects IA³ vectors via peft.get_peft_model and the "
+            "resulting adapter shares the LoRA save/reload path."
+        ),
+    )
+    peft_dry_run: bool = Field(
+        default=False,
+        description=(
+            "Validate PEFT target-module resolution against the live model's module "
+            "names and exit before training. When true (with use_ia3 or LoRA), the "
+            "trainer resolves the final adapter config, matches target_modules "
+            "against the model's named modules, prints a report, raises on zero "
+            "matches, and performs no training. Handled inside DNATrainer."
         ),
     )
     use_qlora: bool = Field(
@@ -352,6 +363,23 @@ class TrainingConfig(BaseModel):
         if "all" in v and len(v) > 1:
             raise ValueError("'all' cannot be combined with other trackers")
         return v
+
+    @model_validator(mode="after")
+    def reject_ia3_with_qlora(self):
+        """Reject the use_ia3 x use_qlora combination at config-load time.
+
+        peft only raises when merging IA³ vectors on a 4-bit quantized model
+        (version-dependent foreign errors); rejecting here surfaces a matchable
+        dnallm error before any training starts.
+        """
+        if self.use_ia3 and self.use_qlora:
+            raise ValueError(
+                "finetune.use_ia3 and finetune.use_qlora cannot be combined: "
+                "IA³ cannot be merged on 4-bit quantized models (peft raises only "
+                "at merge time). Set finetune.use_ia3=false for QLoRA or "
+                "finetune.use_qlora=false for IA³."
+            )
+        return self
 
 
 class LoraConfig(BaseModel):
@@ -390,24 +418,37 @@ class LoraConfig(BaseModel):
 
 class Ia3Config(BaseModel):
     """Configuration for IA³ (Infused Adapter by Inhibiting and Amplifying Inner
-    Activations), mirroring peft's IA3Config field set.
+    Activations), mirroring peft's IA3Config field set (peft 0.21.1 surface).
 
-    The IA³ trainer branch lands in a later phase; this section finalizes the
-    YAML surface so downstream phases never touch this file's registration.
+    Fields pass through into ``peft.tuners.ia3.IA3Config``; the FFN subset is
+    the explicit ``feedforward_modules`` list (peft has no feedforward-only
+    boolean — D-01/D-18), and peft enforces
+    ``feedforward_modules ⊆ target_modules`` at construction time.
     """
 
     target_modules: list[str] | None = Field(
         default=None,
         description=(
             "The names of the modules to apply IA³ vectors to. If None, the "
-            "trainer's per-model preset (shipped as packaged YAML) is used."
+            "trainer's per-family preset (packaged YAML) is used."
         ),
+    )
+    exclude_modules: list[str] | None = Field(
+        default=None,
+        description="The names of modules to exclude from IA³ adaptation.",
     )
     feedforward_modules: list[str] | None = Field(
         default=None,
         description=(
             "The names of the feedforward modules in target_modules. IA³ vectors "
             "applied to feedforward modules rescale activations rather than keys/values."
+        ),
+    )
+    fan_in_fan_out: bool = Field(
+        default=False,
+        description=(
+            "Set to True if the layer the IA³ vectors are applied to stores its "
+            "weight matrix in (fan_out, fan_in) order."
         ),
     )
     init_ia3_weights: bool = Field(

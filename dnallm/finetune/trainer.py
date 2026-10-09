@@ -28,6 +28,8 @@ This module implements the training process management for DNA large language mo
    - Learning rate and weight decay configuration
    - Distributed training support
    - LoRA (Low-Rank Adaptation) for efficient fine-tuning
+   - IA³ (Infused Adapter by Inhibiting and Amplifying Inner Activations)
+     for parameter-efficient fine-tuning, symmetric to LoRA
 
 Usage Example:
     ```python
@@ -44,6 +46,7 @@ from pathlib import Path
 from collections.abc import Mapping
 from typing import Any
 from collections.abc import Callable
+from dataclasses import fields as dataclass_fields
 from datetime import datetime, timezone
 import json
 import math
@@ -52,18 +55,24 @@ from datasets import DatasetDict
 from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 import transformers
 from packaging.version import Version
-from peft import get_peft_model, LoraConfig
+from peft import get_peft_model, LoraConfig, IA3Config
 
 try:
     import optuna
 except ImportError:
     optuna = None  # type: ignore[assignment]
 
+from ..configuration.configs import Ia3Config
 from ..datahandling.data import DNADataset
 from ..tasks.metrics import compute_metrics
 from ..tasks.metrics import preprocess_logits_for_metrics as preprocess_logits
 
 transformers_version = Version(str(transformers.__version__))
+
+# Field names peft's IA3Config actually accepts (peft 0.14-0.21 span: exclude_modules
+# landed mid-span) — dnallm's Ia3Config fields outside this set are dropped rather
+# than crashing older peft with an unexpected-kwarg TypeError.
+PEFT_IA3_FIELD_NAMES = frozenset(f.name for f in dataclass_fields(IA3Config))
 
 # Pure-timing keys trainer.predict reports alongside metrics; evaluate(split=...)
 # separates them into the JSON "runtime" block instead of the canonical
@@ -168,14 +177,14 @@ class DNATrainer:
         self.extra_args = extra_args
         self.use_lora = use_lora
 
-        # D-07 interim window: use_ia3 is accepted by the config but not yet
-        # wired to a trainer branch — fail loudly about the no-op instead of
-        # training silently with different semantics than the user requested.
-        if self.train_config.use_ia3:
-            print(
-                "[Warning] finetune.use_ia3=true has no effect yet: IA³ training "
-                "support arrives with the next release's trainer branch. The "
-                "trainer will run LoRA/full fine-tuning as configured."
+        # The ctor kwarg is invisible to Pydantic (use_lora is not a
+        # TrainingConfig field), so the LoRA x IA³ combination is rejected
+        # here, at trainer-init time, with a matchable message.
+        if use_lora and self.train_config.use_ia3:
+            raise ValueError(
+                "use_lora=True cannot be combined with finetune.use_ia3=true: "
+                "LoRA and IA³ are alternative adapter methods. Pass use_lora=False "
+                "when finetune.use_ia3 is true."
             )
 
         # LoRA / QLoRA
@@ -194,6 +203,21 @@ class DNATrainer:
             lora_config = LoraConfig(**config["lora"].dict())
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
+            self.model.print_trainable_parameters()
+
+        # IA³ (no k-bit prep: use_ia3 x use_qlora is rejected at config time)
+        if self.train_config.use_ia3:
+            from ..models.model import peft_forward_compatiable
+
+            print("[Info] Applying IA³ to the model...")
+
+            ia3_section = config.get("ia3", Ia3Config())
+            peft_kwargs = {
+                k: v for k, v in ia3_section.model_dump().items() if k in PEFT_IA3_FIELD_NAMES
+            }
+            ia3_config = IA3Config(**peft_kwargs)
+            model = peft_forward_compatiable(model)
+            self.model = get_peft_model(model, ia3_config)
             self.model.print_trainable_parameters()
 
         # Multi-GPU support
@@ -228,6 +252,7 @@ class DNATrainer:
         training_args.pop("hyperparameter_search", None)
         training_args.pop("use_qlora", None)
         training_args.pop("use_ia3", None)
+        training_args.pop("peft_dry_run", None)
         training_args.pop("allow_test_as_eval", None)
         training_args.pop("quantization_config", None)
         self._save_safetensors = training_args.pop("save_safetensors", True)
@@ -239,7 +264,9 @@ class DNATrainer:
         )
         self.training_args.remove_unused_columns = (
             False
-            if self.use_lora or "DNALLMforSequenceClassification" in self.model.__class__.__name__
+            if self.use_lora
+            or self.train_config.use_ia3
+            or "DNALLMforSequenceClassification" in self.model.__class__.__name__
             else self.training_args.remove_unused_columns
         )
 

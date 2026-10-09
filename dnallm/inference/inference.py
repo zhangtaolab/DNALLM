@@ -119,7 +119,7 @@ class DNAInference:
             try:
                 lora_adapter_path, _ = _get_model_path_and_imports(lora_adapter, source)
             except Exception as e:
-                raise ValueError(f"Failed to load LoRA adapter from {lora_adapter}: {e}") from e
+                raise ValueError(f"Failed to load PEFT adapter from {lora_adapter}: {e}") from e
 
             if model is not None:
                 self.accepted_args = self._get_accepted_forward_args(model)
@@ -128,7 +128,7 @@ class DNAInference:
 
             model = peft_forward_compatiable(model)
             self.model = PeftModel.from_pretrained(model, lora_adapter_path)
-            logger.info(f"Loaded LoRA adapter from {lora_adapter}")
+            logger.info(f"Loaded PEFT adapter from {lora_adapter}")
         else:
             self.model = model
             if model is not None:
