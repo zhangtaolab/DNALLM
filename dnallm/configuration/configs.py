@@ -16,6 +16,15 @@ class HeadConfig(BaseModel):
         description=("Whether to freeze the model except the head during training."),
     )
     task_type: str = Field(default="binary", description="Task type (default is binary)")
+    num_classes: int | None = Field(
+        default=2,
+        description=(
+            "Number of output classes of the head. Read by the classification "
+            "wrapper when the head's logits width disagrees with the backbone "
+            "config's num_labels (common for checkpoints shipped with a "
+            "different-sized classification head)."
+        ),
+    )
     hidden_dims: list[int] | None = Field(
         default=None,
         description=(
@@ -72,13 +81,11 @@ class HeadConfig(BaseModel):
         default=None,
         description=("List of embedding dimensions for model with multi-scale features."),
     )
-    custom_head: Any | None = (
-        Field(
-            default=None,
-            description=(
-                "Custom head class. If provided, this will override other "
-                "head configuration parameters."
-            ),
+    custom_head: Any | None = Field(
+        default=None,
+        description=(
+            "Custom head class. If provided, this will override other "
+            "head configuration parameters."
         ),
     )
     loss_function: str | None = Field(

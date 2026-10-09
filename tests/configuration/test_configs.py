@@ -21,6 +21,7 @@ from dnallm.configuration.configs import (
     DatasetConfig,
     EarlyStoppingConfig,
     EvaluationConfig,
+    HeadConfig,
     Ia3Config,
     InferenceConfig,
     LoraConfig,
@@ -1100,6 +1101,26 @@ class TestVepConfig:
         """context_window is ge=1: zero is rejected."""
         with pytest.raises(ValidationError):
             VepConfig(context_window=0)
+
+
+class TestHeadConfigFields:
+    """HeadConfig field hygiene (regressions found by the IA³ acceptance)."""
+
+    def test_head_config_dict_is_json_serializable(self):
+        """head_config.__dict__ feeds model configs that transformers
+        serializes to JSON at train begin — a FieldInfo default there crashes
+        training (fixed: custom_head was a tuple-wrapped Field)."""
+        import json
+
+        head = HeadConfig(head="mlp")
+        json.dumps(head.__dict__)
+        assert head.__dict__["custom_head"] is None
+
+    def test_head_config_num_classes_field(self):
+        """The classification wrapper reads head_config["num_classes"] when the
+        head's logits width disagrees with the checkpoint's num_labels."""
+        assert HeadConfig().num_classes == 2
+        assert HeadConfig(head="mlp", num_classes=3).num_classes == 3
 
 
 class TestSweepConfig:

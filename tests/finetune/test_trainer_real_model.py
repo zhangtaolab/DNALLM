@@ -699,6 +699,206 @@ def test_qlora_config_validation():
     assert config_with_quant.quantization_config["load_in_4bit"] is True
 
 
+# ---------------------------------------------------------------------------
+# IA³ acceptance (PEFT-01): one transformer + one Mamba fine-tune on
+# models.lock-pinned small models, plus the IA³ save/reload roundtrip
+# guarding the peft #2429 corruption class.
+# ---------------------------------------------------------------------------
+
+_ia3_model_transformer = "zhangtaolab/plant-dnabert-BPE"
+_ia3_model_mamba = "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+_ia3_dataset = "zhangtaolab/plant-multi-species-core-promoters"
+
+
+def _ia3_training_config(tmp_path, sampling_head=False):
+    """Load the tracked fixture config shaped for a tiny IA³ run."""
+    import copy
+
+    from dnallm import load_config
+    from dnallm.configuration.configs import HeadConfig
+
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    config = copy.deepcopy(load_config(os.path.join(test_dir, "test_finetune_config.yaml")))
+    config["finetune"].num_train_epochs = 1
+    config["finetune"].max_steps = 20
+    config["finetune"].eval_strategy = "no"
+    config["finetune"].save_strategy = "no"
+    config["finetune"].load_best_model_at_end = False
+    config["finetune"].use_ia3 = True
+    config["finetune"].output_dir = str(tmp_path / "ia3-outputs")
+    # No "ia3" section: target_modules=None exercises the preset auto-selection
+    # on the real backbone (PEFT-02 acceptance rides along).
+    assert "ia3" not in config
+    if sampling_head:
+        # The Mamba checkpoint ships a 3-class classification head; a custom
+        # head_config routes through the wrapper (AutoModel backbone + fresh
+        # score head) instead of resizing the checkpoint head.
+        config["task"].head_config = HeadConfig(head="mlp", num_classes=2)
+    return config
+
+
+def _ia3_sampled_datasets(tokenizer, fraction=0.05):
+    """Load and sample the pinned core-promoters dataset."""
+    from dnallm import DNADataset
+
+    datasets = DNADataset.from_modelscope(
+        _ia3_dataset,
+        seq_col="sequence",
+        label_col="label",
+        tokenizer=tokenizer,
+        max_length=512,
+    )
+    datasets.encode_sequences()
+    return datasets.sampling(fraction, overwrite=True)
+
+
+def _ia3_ratio(model):
+    """Trainable/total ratio computed from requires_grad tensors."""
+    import torch
+
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    return trainable / max(total, 1)
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(3600)
+def test_ia3_training_transformer(tmp_path):
+    """IA³ fine-tunes one task on the transformer-family pinned model with
+    target_modules=None (preset auto-selection) and an in-band ratio."""
+    from dnallm import DNATrainer, load_model_and_tokenizer
+    from dnallm.finetune.trainer import _load_peft_presets
+
+    config = _ia3_training_config(tmp_path)
+    model, tokenizer = load_model_and_tokenizer(
+        _ia3_model_transformer,
+        task_config=config["task"],
+        source="modelscope",
+    )
+    trainer = DNATrainer(
+        model=model,
+        config=config,
+        datasets=_ia3_sampled_datasets(tokenizer),
+    )
+    metrics = trainer.train()
+
+    assert metrics, "IA³ transformer training produced no metrics"
+    ratio = _ia3_ratio(trainer.model)
+    band = _load_peft_presets()["Plant DNABERT"]["ia3_ratio_band"]
+    assert band[0] <= ratio <= band[1], (
+        f"transformer IA³ ratio {ratio:.2e} outside preset band {band}"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(3600)
+def test_ia3_training_mamba(tmp_path):
+    """IA³ fine-tunes one task on the Mamba pinned model — the silent-skip
+    proving ground (pre-presets, IA³ on Mamba froze the backbone)."""
+    from dnallm import DNATrainer, load_model_and_tokenizer
+    from dnallm.finetune.trainer import _load_peft_presets
+
+    config = _ia3_training_config(tmp_path, sampling_head=True)
+    model, tokenizer = load_model_and_tokenizer(
+        _ia3_model_mamba,
+        task_config=config["task"],
+        source="modelscope",
+    )
+    trainer = DNATrainer(
+        model=model,
+        config=config,
+        datasets=_ia3_sampled_datasets(tokenizer),
+    )
+    metrics = trainer.train()
+
+    assert metrics, "IA³ mamba training produced no metrics"
+    ratio = _ia3_ratio(trainer.model)
+    band = _load_peft_presets()["Plant DNAMamba"]["ia3_ratio_band"]
+    assert band[0] <= ratio <= band[1], (
+        f"mamba IA³ ratio {ratio:.2e} outside preset band {band} "
+        f"(silent module-skip would pin the ratio near zero)"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(3600)
+def test_ia3_adapter_save_reload_roundtrip(tmp_path):
+    """IA³ adapter save -> DNAInference(lora_adapter=...) reload reproduces
+    identical outputs on a fixed input (peft #2429 corruption class)."""
+    import torch
+
+    from dnallm import DNATrainer, DNAInference, load_config, load_model_and_tokenizer
+
+    # Seed both base-model loads identically: the checkpoint ships no
+    # pooler/classifier weights, so those modules are randomly initialized at
+    # load time — the roundtrip comparison is only meaningful when both sides
+    # start from the same random draw.
+    load_seed = 20261009
+    config = _ia3_training_config(tmp_path)
+    torch.manual_seed(load_seed)
+    model, tokenizer = load_model_and_tokenizer(
+        _ia3_model_transformer,
+        task_config=config["task"],
+        source="modelscope",
+    )
+    trainer = DNATrainer(
+        model=model,
+        config=config,
+        datasets=_ia3_sampled_datasets(tokenizer, fraction=0.02),
+    )
+    trainer.train()
+
+    adapter_dir = tmp_path / "ia3-adapter"
+    trainer.model.save_pretrained(adapter_dir)
+
+    # A fresh base model + the saved IA³ adapter, reloaded through the shared
+    # adapter seam (the lora_adapter kwarg is adapter-kind-agnostic).
+    inference_yaml = tmp_path / "ia3_inference_config.yaml"
+    inference_yaml.write_text(
+        "task:\n"
+        "  task_type: binary\n"
+        "  num_labels: 2\n"
+        "inference:\n"
+        "  batch_size: 2\n"
+        "  device: cpu\n"
+        "  max_length: 128\n"
+        "  num_workers: 0\n"
+    )
+    inference_config = load_config(str(inference_yaml))
+    torch.manual_seed(load_seed)
+    base_model, base_tokenizer = load_model_and_tokenizer(
+        _ia3_model_transformer,
+        task_config=inference_config["task"],
+        source="modelscope",
+    )
+    engine = DNAInference(
+        model=base_model,
+        tokenizer=base_tokenizer,
+        config=inference_config,
+        lora_adapter=str(adapter_dir),
+    )
+
+    sequence = "ACGTTGACCTGATCGATCGATTACAGGATC" * 3
+    inputs = base_tokenizer(sequence, return_tensors="pt")
+    filtered = {k: v for k, v in inputs.items() if k in engine.accepted_args}
+
+    trained = trainer.model
+    trained.eval()
+    trained.to("cpu")
+    engine.model.eval()
+    with torch.no_grad():
+        expected = trained(**filtered).logits
+        reloaded = engine.model(**filtered).logits
+
+    torch.testing.assert_close(
+        reloaded,
+        expected,
+        rtol=1e-4,
+        atol=1e-5,
+        msg="IA³ adapter save/reload roundtrip changed the model outputs",
+    )
+
+
 @pytest.mark.slow
 @pytest.mark.timeout(7200)
 def test_with_config_file():

@@ -122,36 +122,60 @@ class TestPeftPresets:
                 trainer_module._PEFT_PRESET_CACHE = None
 
     def test_malformed_row_fails_loud_at_load(self):
-        """A corrupted table (empty target list) is rejected at load time."""
+        """Corrupted tables are rejected at load time with the exact defect."""
 
         class FakeResource:
+            def __init__(self, content):
+                self._content = content
+
             def open(self, *args, **kwargs):
                 import io
 
-                return io.StringIO(
-                    "families:\n  BadFamily:\n"
-                    "    match_names: [bad]\n"
-                    "    model_types: []\n"
-                    "    lora_target_modules: []\n"
-                    "    ia3_target_modules: [key]\n"
-                    "    feedforward_modules: []\n"
-                    "    lora_r: 8\n"
-                    "    ia3_ratio_band: [1.0e-4, 1.0e-2]\n"
-                    "    lora_ratio_band: [1.0e-4, 1.0e-2]\n"
-                )
+                return io.StringIO(self._content)
 
             def joinpath(self, _path):
                 return self
 
-        with patch("importlib.resources.files", return_value=FakeResource()):
-            trainer_module._PEFT_PRESET_CACHE = None
-            try:
-                with pytest.raises(
-                    ValueError, match="'lora_target_modules' must be a non-empty list"
-                ):
-                    _load_peft_presets()
-            finally:
+        good_tail = (
+            "    lora_r: 8\n"
+            "    ia3_ratio_band: [1.0e-4, 1.0e-2]\n"
+            "    lora_ratio_band: [1.0e-4, 1.0e-2]\n"
+        )
+        cases = {
+            "missing-families": "not_families: {}\n",
+            "empty-targets": (
+                "families:\n  BadFamily:\n    match_names: [bad]\n    model_types: []\n"
+                "    lora_target_modules: []\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: []\n" + good_tail
+            ),
+            "ff-not-subset": (
+                "families:\n  BadFamily:\n    match_names: [bad]\n    model_types: []\n"
+                "    lora_target_modules: [q]\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: [not_a_target]\n" + good_tail
+            ),
+            "inverted-band": (
+                "families:\n  BadFamily:\n    match_names: [bad]\n    model_types: []\n"
+                "    lora_target_modules: [q]\n    ia3_target_modules: [key]\n"
+                "    feedforward_modules: []\n"
+                "    lora_r: 8\n"
+                "    ia3_ratio_band: [1.0e-2, 1.0e-4]\n"
+                "    lora_ratio_band: [1.0e-4, 1.0e-2]\n"
+            ),
+        }
+        expected = {
+            "missing-families": "'families' mapping is missing or empty",
+            "empty-targets": "'lora_target_modules' must be a non-empty list",
+            "ff-not-subset": "feedforward_modules must be a subset of ia3_target_modules",
+            "inverted-band": r"\[lo, hi\] pair with lo <= hi",
+        }
+        for case, content in cases.items():
+            with patch("importlib.resources.files", return_value=FakeResource(content)):
                 trainer_module._PEFT_PRESET_CACHE = None
+                try:
+                    with pytest.raises(ValueError, match=expected[case]):
+                        _load_peft_presets()
+                finally:
+                    trainer_module._PEFT_PRESET_CACHE = None
 
 
 class TestPresetResolution:

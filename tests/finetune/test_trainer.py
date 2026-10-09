@@ -51,6 +51,21 @@ def fake_peft_model(trainable=True):
     return fake
 
 
+class FakeTree(torch.nn.Module):
+    """Tiny module tree for dry-run matching (mirrors test_peft_presets)."""
+
+    def __init__(self, leaves):
+        super().__init__()
+        for path, names in leaves.items():
+            node = self
+            for part in path.split("."):
+                if not hasattr(node, part):
+                    setattr(node, part, torch.nn.Module())
+                node = getattr(node, part)
+            for name in names:
+                setattr(node, name, torch.nn.Linear(4, 4))
+
+
 def make_datasets(splits, tmp_path=None):
     """Build a real DNADataset over tiny splits with a save-capable tokenizer.
 
@@ -768,6 +783,38 @@ class TestIa3Wiring:
                     config=trainer_config,
                     datasets=make_datasets(["train", "val"]),
                 )
+
+    def test_peft_dry_run_reports_and_skips_training(self, trainer_config, mock_hf_boundary):
+        """peft_dry_run=true validates the resolved targets against the live
+        model's module names, prints the report, and performs no training
+        (no adapter attach, no Trainer construction, train() no-ops)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["query"])
+        trainer_config["lora"] = LoraConfig()
+        model = FakeTree({"backbone.layer.0.attention.self": ["query", "key"]})
+        trainer_cls, _ = mock_hf_boundary
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model") as mock_gpm,
+            patch("builtins.print") as mock_print,
+        ):
+            trainer = DNATrainer(
+                model=model,
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+            metrics = trainer.train()
+
+        mock_gpm.assert_not_called()
+        trainer_cls.assert_not_called()
+        assert metrics == {}
+        logged = " ".join(
+            "".join(str(arg) for arg in call.args) for call in mock_print.call_args_list
+        )
+        assert "modules matched target_modules" in logged
+        assert "PEFT dry run complete — no training performed." in logged
+        assert "Skipping the training loop: finetune.peft_dry_run=true." in logged
 
     def test_lora_and_ia3_rejected_at_trainer_init(self, trainer_config, mock_hf_boundary):
         """use_lora=True ctor kwarg x finetune.use_ia3=true raises a matchable
