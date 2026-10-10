@@ -56,6 +56,45 @@ logger = get_logger("dnallm.inference.inference")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+# Mirrors the file types DNADataset._load_single_data dispatches on
+# (dnallm/datahandling/data.py) minus "dict" (a literal-dict input, not a
+# file extension). Must stay in sync with that dispatch.
+_DATA_FILE_EXTENSIONS: frozenset[str] = frozenset({
+    "csv",
+    "tsv",
+    "json",
+    "parquet",
+    "arrow",
+    "pkl",
+    "pickle",
+    "fa",
+    "fna",
+    "fas",
+    "fasta",
+    "txt",
+})
+
+
+def _is_path_like_string(value: str) -> bool:
+    """Check whether a string looks like a file path rather than a sequence.
+
+    A value is path-like when it contains a path separator (``/`` or ``\\``)
+    or carries a known data-file extension. Separator presence is a sufficient
+    signal because the IUPAC nucleic alphabet (ACGTURYSWKMBDHVN plus the gap
+    ``-``) contains neither character.
+
+    Args:
+        value: Candidate string to classify.
+
+    Returns:
+        True if the string should be treated as a file path, False if it
+        should be treated as a sequence.
+    """
+    if "/" in value or "\\" in value:
+        return True
+    suffix = os.path.splitext(value)[1]
+    return suffix.lstrip(".").lower() in _DATA_FILE_EXTENSIONS
+
 
 class DNAInference:
     """DNA sequence inference engine using fine-tuned models.
@@ -431,14 +470,21 @@ class DNAInference:
                 - DataLoader: DataLoader object for batch processing
 
         Raises:
-            ValueError: If input is neither a file path nor a list of sequences
+            ValueError: If input is neither a file path nor a list of
+                sequences, or if a path-shaped string (separator present or
+                known data-file extension) does not exist as a file
         """
         # Initialize dataset to None to avoid unbound variable issues
         dataset = None
 
         if isinstance(seq_or_path, str):
-            suffix = seq_or_path.split(".")[-1]
-            if suffix and os.path.isfile(seq_or_path):
+            if _is_path_like_string(seq_or_path):
+                if not os.path.isfile(seq_or_path):
+                    raise ValueError(
+                        f"Input {seq_or_path!r} looks like a file path but no such "
+                        "file exists. Please provide an existing file path or a "
+                        "list of sequences."
+                    )
                 sequences = []
                 dataset = DNADataset.load_local_data(
                     seq_or_path,

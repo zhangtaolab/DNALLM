@@ -247,6 +247,40 @@ task:
         assert len(dataset) == 1
         assert dataset.dataset["sequence"] == ["ATGGCCTA"]
 
+    def test_is_path_like_string_truth_table(self):
+        """Test the _is_path_like_string discriminator truth table."""
+        from dnallm.inference.inference import _is_path_like_string
+
+        path_like = [
+            "data/seqs.csv",
+            "/abs/path/x.fa",
+            "seqs.tsv",
+            "runs.pkl",
+            "C:\\data\\x.json",
+            "genome.fasta",
+            "notes.txt",
+            "x.parquet",
+            "train.arrow",
+            "s.pickle",
+            "a.fna",
+            "b.fas",
+        ]
+        sequence_like = [
+            "ATCG",
+            "ATGGCCTA",
+            "acgtn",
+            "ACGTRYSWKMBDHVN",
+            "ACGT-N",
+            "",  # empty string keeps sequence-branch behavior
+            "ATC.G",  # unknown-dot suffix keeps sequence treatment
+        ]
+        for s in path_like:
+            with self.subTest(path_like=s):
+                assert _is_path_like_string(s), s
+        for s in sequence_like:
+            with self.subTest(sequence_like=s):
+                assert not _is_path_like_string(s), s
+
     def test_logits_to_preds_binary(self):
         """Test logits to predictions conversion for binary classification."""
         logits = torch.tensor([[1.0, 2.0], [0.5, 1.5], [2.0, 1.0]])
