@@ -912,10 +912,14 @@ def search_motifs(
         timeout: Per-attempt socket timeout in seconds.
         max_try: Maximum attempts per page request.
         page_size: Results per page (pagination follows ``page`` up to
-            ``_JASPAR_MAX_PAGES`` pages).
+            ``_JASPAR_MAX_PAGES`` pages; when more results exist past the
+            bound, the truncated set is returned and a warning is logged).
 
     Returns:
-        Records ``{"matrix_id": ..., "name": ...}`` across all pages.
+        Records ``{"matrix_id": ..., "name": ...}`` across all pages — at
+        most ``_JASPAR_MAX_PAGES * page_size`` of them. Hitting the page
+        bound with more results available is never silent: a truncation
+        warning is logged naming the bound and the returned count.
 
     Raises:
         ValueError: If the name is empty, the collection is outside the
@@ -957,4 +961,13 @@ def search_motifs(
             records.append({"matrix_id": matrix_id, "name": item_name})
         if len(results) < page_size or payload.get("next") is None:
             break
+    else:
+        # The loop ran to the page bound without the completion break, so
+        # the last page was full with `next` still non-null — more results
+        # exist. Never truncate silently: flag it.
+        logger.warning(
+            f"JASPAR search for '{name}' hit the {_JASPAR_MAX_PAGES}-page bound "
+            f"with more results available; returning the first {len(records)} "
+            f"records (truncated)."
+        )
     return records

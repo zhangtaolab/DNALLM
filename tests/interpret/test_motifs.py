@@ -841,6 +841,38 @@ class TestJasparClientSearch:
         assert len(opener.calls) == 2
         assert "page=2&" in opener.calls[1][0] + "&"
 
+    def test_client_search_truncation_at_page_bound_is_logged(self):
+        # IN-02: exhausting the page bound with `next` still non-null must
+        # not be silent — the partial set is returned WITH a truncation
+        # warning; a clean stop (next=null) never warns.
+        truncated_pages = [
+            _FakeResponse(_jaspar_page([{"matrix_id": f"MA000{i}.1", "name": "TF"}], next_url="x"))
+            for i in range(motifs._JASPAR_MAX_PAGES)
+        ]
+        opener = _FakeOpener(truncated_pages)
+        with (
+            patch("dnallm.interpret.motifs._JASPAR_OPENER", opener),
+            patch("dnallm.interpret.motifs.logger") as mock_logger,
+        ):
+            records = search_motifs("TF", page_size=1)
+        assert len(records) == motifs._JASPAR_MAX_PAGES
+        assert len(opener.calls) == motifs._JASPAR_MAX_PAGES
+        mock_logger.warning.assert_called_once()
+        assert "truncated" in mock_logger.warning.call_args.args[0]
+
+        clean_pages = [
+            _FakeResponse(_jaspar_page([{"matrix_id": "MA0001.1", "name": "TF"}], next_url="x")),
+            _FakeResponse(_jaspar_page([{"matrix_id": "MA0002.1", "name": "TF"}])),
+        ]
+        opener = _FakeOpener(clean_pages)
+        with (
+            patch("dnallm.interpret.motifs._JASPAR_OPENER", opener),
+            patch("dnallm.interpret.motifs.logger") as mock_logger,
+        ):
+            records = search_motifs("TF", page_size=1)
+        assert len(records) == 2
+        mock_logger.warning.assert_not_called()
+
     def test_client_search_invalid_collection_rejected_before_network(self):
         opener = _FakeOpener([])
         with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
