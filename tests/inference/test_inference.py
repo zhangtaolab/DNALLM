@@ -220,6 +220,7 @@ task:
             "missing_data.csv",  # bare filename with a known data extension
             "data/missing_seqs.fa",  # relative path with a separator
             os.path.join(tempfile.gettempdir(), "vo6_no_such", "x.tsv"),  # absolute
+            r"C:\no_such_dir\x.tsv",  # Windows-style drive path: repr doubles backslashes
         ]
         for missing in missing_paths:
             with self.subTest(missing=missing):
