@@ -45,14 +45,22 @@ Provenance: MEME Suite 4.8.1 source (``src/pssm.h:13``, ``src/pssm.c``
 documentation (meme-suite.org/meme/doc/fimo.html), read 2026-10-10.
 """
 
+import json
 import math
 import re
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 
 import numpy as np
 from scipy.stats import false_discovery_control
 
+from ..utils import get_logger
 from ..utils.sequence import reverse_complement
+
+logger = get_logger("dnallm.interpret.motifs")
 
 # --- FIMO constants (provenance: MEME Suite 4.8.1 source, read 2026-10-10) ---
 # FIMO's internal integer-score granularity for scaled log-odds PSSMs
@@ -74,8 +82,26 @@ MAX_MOTIF_WIDTH = 100
 # the MEME tools likewise require strictly positive background frequencies.
 BG_FLOOR = 1e-3
 
+# --- JASPAR REST client constants (endpoints live-probed 2026-10-10) ---
+# Canonical ELIXIR-hosted API root (the genereg.net host is legacy);
+# parameterized per REQUIREMENTS MOTIF-01, defaulting here.
+JASPAR_BASE = "https://jaspar.elixir.no/api/v1"
+# Release pinned on every search so the motif set is frozen for fixture
+# reproducibility (2024 and 2026 are both active; matrix sets differ between
+# releases -- the paper's release is pending owner input, tracked in the
+# HBG1/BCL11A golden-fixture manifest).
+JASPAR_DEFAULT_RELEASE = "2024"
+# Closed set of JASPAR collection values (API docs, /api/v1/docs).
+JASPAR_COLLECTIONS = frozenset({"CORE", "PENDING", "UNVALIDATED"})
+# Response read cap: network input is untrusted and size-bounded (T-12-01).
+MAX_RESPONSE_BYTES = 1_000_000
+# Search pagination bound: a hard stop against hostile/huge result sets.
+_JASPAR_MAX_PAGES = 20
+
 _LETTERS = "ACGT"
 _LETTER_INDEX = {letter: index for index, letter in enumerate(_LETTERS)}
+
+_MATRIX_ID_RE = re.compile(r"^MA\d{4}\.\d+$")
 
 _MATRIX_HEADER_RE = re.compile(
     r"alength=\s*(?P<alength>\d+)\s+w=\s*(?P<w>\d+)\s+nsites=\s*(?P<nsites>-?\d+)"
@@ -741,3 +767,184 @@ def scan(
         p_threshold=p_threshold,
         q_threshold=q_threshold,
     )
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Refuse HTTP redirects (T-12-02: no redirect-following to arbitrary hosts)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        raise urllib.error.URLError(f"redirect to {newurl} refused (redirects disabled)")
+
+
+_JASPAR_OPENER = urllib.request.build_opener(_NoRedirectHandler)
+
+
+def _validate_base_url(base_url: str) -> str:
+    """Validate a JASPAR base URL (https only) and strip any trailing slash.
+
+    The host itself is operator/module-owned -- per-call arguments never form
+    it (the SSRF-adjacent guard); this check only enforces the https scheme.
+
+    Raises:
+        ValueError: If the URL is not an https URL with a network location.
+    """
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"JASPAR base URL must be an https URL, got '{base_url}'.")
+    return base_url.rstrip("/")
+
+
+def _jaspar_request(
+    path_and_query: str,
+    *,
+    base_url: str,
+    timeout: float,
+    max_try: int,
+) -> bytes:
+    """GET ``{base_url}{path_and_query}`` with the retry-with-backoff house pattern.
+
+    Mirrors ``dnallm.models.model.download_model`` (max_try attempts with
+    ``time.sleep(2 ** (attempt - 1))`` between them, final matchable
+    ``ValueError`` chained from the cause). Reads are size-capped and
+    redirects are refused.
+
+    Args:
+        path_and_query: Path plus already-encoded query string; must never
+            contain a host.
+        base_url: https API root.
+        timeout: Per-attempt socket timeout in seconds.
+        max_try: Maximum attempts (non-200 responses are deterministic and
+            raise immediately without retry).
+
+    Returns:
+        The response body (at most ``MAX_RESPONSE_BYTES`` bytes).
+
+    Raises:
+        ValueError: On a non-200 response, or after exhausting retries on
+            network errors.
+    """
+    url = f"{_validate_base_url(base_url)}{path_and_query}"
+    last_error: Exception | None = None
+    for attempt in range(1, max_try + 1):
+        try:
+            with _JASPAR_OPENER.open(url, timeout=timeout) as response:
+                status = response.status
+                body = response.read(MAX_RESPONSE_BYTES)
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            last_error = error
+            if attempt < max_try:
+                logger.warning(f"JASPAR request attempt {attempt}/{max_try} failed: {error}")
+                time.sleep(2 ** (attempt - 1))
+            continue
+        if status != 200:
+            raise ValueError(f"JASPAR returned HTTP {status} for '{url}'.")
+        return body
+    raise ValueError(f"JASPAR fetch failed for {url}: {last_error}") from last_error
+
+
+def fetch_meme_motif(
+    matrix_id: str,
+    *,
+    base_url: str = JASPAR_BASE,
+    timeout: float = 30.0,
+    max_try: int = 3,
+) -> str:
+    """Fetch one JASPAR matrix in MEME format (``?format=meme``).
+
+    Args:
+        matrix_id: JASPAR matrix id matching ``MA####.#`` (validated BEFORE
+            any URL construction or network access).
+        base_url: https API root; defaults to the canonical ELIXIR host.
+        timeout: Per-attempt socket timeout in seconds.
+        max_try: Maximum attempts (retry-with-backoff house pattern).
+
+    Returns:
+        The MEME-format response text (parse it with :func:`parse_meme`).
+
+    Raises:
+        ValueError: If the matrix id is malformed, the base URL is not
+            https, the response status is not 200, or retries are exhausted.
+    """
+    if not isinstance(matrix_id, str) or not _MATRIX_ID_RE.match(matrix_id):
+        raise ValueError(
+            f"Invalid JASPAR matrix id '{matrix_id}' (expected MA####.# e.g. MA2324.1)."
+        )
+    body = _jaspar_request(
+        f"/matrix/{matrix_id}/?format=meme",
+        base_url=base_url,
+        timeout=timeout,
+        max_try=max_try,
+    )
+    return body.decode("utf-8")
+
+
+def search_motifs(
+    name: str,
+    *,
+    collection: str = "CORE",
+    release: str = JASPAR_DEFAULT_RELEASE,
+    base_url: str = JASPAR_BASE,
+    timeout: float = 30.0,
+    max_try: int = 3,
+    page_size: int = 100,
+) -> list[dict[str, str]]:
+    """Search JASPAR matrices by TF name within a pinned collection/release.
+
+    Every search passes ``release`` (frozen default ``JASPAR_DEFAULT_RELEASE``)
+    so the matrix set is reproducible across the live database drifting
+    between releases.
+
+    Args:
+        name: TF name to search for (e.g. ``BCL11A``).
+        collection: One of ``CORE``/``PENDING``/``UNVALIDATED`` (closed set).
+        release: JASPAR release year string.
+        base_url: https API root; defaults to the canonical ELIXIR host.
+        timeout: Per-attempt socket timeout in seconds.
+        max_try: Maximum attempts per page request.
+        page_size: Results per page (pagination follows ``page`` up to
+            ``_JASPAR_MAX_PAGES`` pages).
+
+    Returns:
+        Records ``{"matrix_id": ..., "name": ...}`` across all pages.
+
+    Raises:
+        ValueError: If the name is empty, the collection is outside the
+            closed set, the base URL is not https, a response is non-200,
+            retries are exhausted, or the JSON payload is malformed.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("JASPAR search requires a non-empty motif name.")
+    if collection not in JASPAR_COLLECTIONS:
+        raise ValueError(
+            f"Invalid JASPAR collection '{collection}' "
+            f"(expected one of {sorted(JASPAR_COLLECTIONS)})."
+        )
+    records: list[dict[str, str]] = []
+    for page in range(1, _JASPAR_MAX_PAGES + 1):
+        query = urllib.parse.urlencode({
+            "name": name.strip(),
+            "collection": collection,
+            "release": str(release),
+            "version": "latest",
+            "page": page,
+            "page_size": page_size,
+        })
+        body = _jaspar_request(
+            f"/matrix/?{query}", base_url=base_url, timeout=timeout, max_try=max_try
+        )
+        try:
+            payload = json.loads(body)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise ValueError(f"JASPAR search returned malformed JSON: {error}") from error
+        results = payload.get("results") if isinstance(payload, dict) else None
+        if not isinstance(results, list):
+            raise ValueError("JASPAR search response is missing its 'results' list.")
+        for item in results:
+            matrix_id = item.get("matrix_id") if isinstance(item, dict) else None
+            item_name = item.get("name") if isinstance(item, dict) else None
+            if not isinstance(matrix_id, str) or not isinstance(item_name, str):
+                raise ValueError("JASPAR search result item is missing matrix_id/name strings.")
+            records.append({"matrix_id": matrix_id, "name": item_name})
+        if len(results) < page_size or payload.get("next") is None:
+            break
+    return records

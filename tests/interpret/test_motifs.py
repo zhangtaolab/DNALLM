@@ -15,13 +15,17 @@ Coverage lanes (one class per function under test):
 """
 
 import math
+import urllib.error
+import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from dnallm.interpret import motifs
 from dnallm.interpret.motifs import (
     Motif,
+    fetch_meme_motif,
     gc_background,
     log_odds_matrix,
     parse_cisbp,
@@ -29,6 +33,7 @@ from dnallm.interpret.motifs import (
     pvalue_table,
     scan,
     scan_single_strand,
+    search_motifs,
     threshold_bits,
 )
 
@@ -600,3 +605,224 @@ class TestParseCisbp:
         site = [h for h in hits if h["start"] == 4 and h["end"] == 11]
         assert site
         assert site[0]["p"] == pytest.approx(0.25**7)
+
+
+class _FakeResponse:
+    """Context-manager stand-in for a urlopen response (records read sizes)."""
+
+    def __init__(self, body: bytes = b"", status: int = 200):
+        self.status = status
+        self._body = body
+        self.read_args: list[int] = []
+
+    def read(self, n: int = -1) -> bytes:
+        self.read_args.append(n)
+        return self._body if n < 0 else self._body[:n]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _FakeOpener:
+    """Scripted opener: pops one outcome (response or exception) per call."""
+
+    def __init__(self, outcomes):
+        self.outcomes = list(outcomes)
+        self.calls: list[tuple[str, float | None]] = []
+
+    def open(self, url, timeout=None):
+        self.calls.append((url, timeout))
+        outcome = self.outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+
+def _jaspar_page(items: list[dict], *, next_url: str | None = None) -> bytes:
+    import json
+
+    return json.dumps({"count": len(items), "next": next_url, "results": items}).encode()
+
+
+class TestJasparClientFetch:
+    """Mocked fetch_meme_motif: retry/backoff, error surface, SSRF guards."""
+
+    def test_client_fetch_success_first_try(self):
+        body = (FIXTURES / "meme_motif.txt").read_bytes()
+        opener = _FakeOpener([_FakeResponse(body)])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            text = fetch_meme_motif("MA2324.1")
+        assert text.startswith("MEME version 4")
+        assert len(opener.calls) == 1
+        url, timeout = opener.calls[0]
+        assert url == "https://jaspar.elixir.no/api/v1/matrix/MA2324.1/?format=meme"
+        assert timeout == 30.0
+
+    def test_client_fetch_retry_then_success_sleeps_between_attempts(self):
+        body = (FIXTURES / "meme_motif.txt").read_bytes()
+        opener = _FakeOpener([urllib.error.URLError("connection reset"), _FakeResponse(body)])
+        with (
+            patch("dnallm.interpret.motifs._JASPAR_OPENER", opener),
+            patch("dnallm.interpret.motifs.time.sleep") as sleep,
+        ):
+            text = fetch_meme_motif("MA2324.1")
+        assert text.startswith("MEME version 4")
+        assert len(opener.calls) == 2
+        sleep.assert_called_once_with(1)  # 2 ** (attempt - 1) backoff
+
+    def test_client_fetch_exhausted_retries_raises_matchable_error(self):
+        opener = _FakeOpener([urllib.error.URLError("down")] * 3)
+        with (
+            patch("dnallm.interpret.motifs._JASPAR_OPENER", opener),
+            patch("dnallm.interpret.motifs.time.sleep"),
+        ):
+            with pytest.raises(ValueError, match=r"JASPAR fetch failed for .*MA2324.1"):
+                fetch_meme_motif("MA2324.1")
+        assert len(opener.calls) == 3
+
+    def test_client_fetch_non_200_raises_without_retry(self):
+        opener = _FakeOpener([_FakeResponse(b"", status=404)])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"JASPAR returned HTTP 404"):
+                fetch_meme_motif("MA2324.1")
+        assert len(opener.calls) == 1
+
+    def test_client_fetch_invalid_matrix_id_rejected_before_network(self):
+        opener = _FakeOpener([])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            # The plan-locked grammar is ^MA\d{4}\.\d+$ -- multi-digit
+            # versions (MA0001.10) are VALID by that grammar and absent here.
+            for bad_id in ("MA2324", "ma2324.1", "MA23241.1", "../evil", ""):
+                with pytest.raises(ValueError, match=r"Invalid JASPAR matrix id"):
+                    fetch_meme_motif(bad_id)
+        assert opener.calls == []
+
+    def test_client_fetch_non_https_base_url_rejected(self):
+        opener = _FakeOpener([])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"must be an https URL"):
+                fetch_meme_motif("MA2324.1", base_url="http://jaspar.elixir.no/api/v1")
+        assert opener.calls == []
+
+    def test_client_fetch_size_caps_reads(self):
+        body = (FIXTURES / "meme_motif.txt").read_bytes()
+        response = _FakeResponse(body)
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", _FakeOpener([response])):
+            fetch_meme_motif("MA2324.1")
+        assert response.read_args == [motifs.MAX_RESPONSE_BYTES]
+
+    def test_client_fetch_output_feeds_parse_meme(self):
+        body = (FIXTURES / "meme_motif.txt").read_bytes()
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", _FakeOpener([_FakeResponse(body)])):
+            motif = parse_meme(fetch_meme_motif("MA2324.1"))[0]
+        assert motif.motif_id == "MA2324.1"
+
+
+class TestJasparClientSearch:
+    """Mocked search_motifs: records, pagination, closed-set params, guards."""
+
+    def test_client_search_parses_matrix_records_with_pinned_query(self):
+        opener = _FakeOpener([
+            _FakeResponse(
+                _jaspar_page([
+                    {"matrix_id": "MA2324.1", "name": "BCL11A"},
+                    {"matrix_id": "MA2504.1", "name": "BCL11A"},
+                ])
+            )
+        ])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            records = search_motifs("BCL11A")
+        assert records == [
+            {"matrix_id": "MA2324.1", "name": "BCL11A"},
+            {"matrix_id": "MA2504.1", "name": "BCL11A"},
+        ]
+        url, _timeout = opener.calls[0]
+        assert url == (
+            "https://jaspar.elixir.no/api/v1/matrix/?name=BCL11A&collection=CORE"
+            "&release=2024&version=latest&page=1&page_size=100"
+        )
+
+    def test_client_search_paginates_until_next_is_null(self):
+        # page_size=1 keeps the partial-page break condition consistent: each
+        # full page returns exactly page_size results, page 2 ends on next=null.
+        page1 = _FakeResponse(
+            _jaspar_page([{"matrix_id": "MA2324.1", "name": "BCL11A"}], next_url="x")
+        )
+        page2 = _FakeResponse(_jaspar_page([{"matrix_id": "MA2504.1", "name": "BCL11A"}]))
+        opener = _FakeOpener([page1, page2])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            records = search_motifs("BCL11A", page_size=1)
+        assert [r["matrix_id"] for r in records] == ["MA2324.1", "MA2504.1"]
+        assert len(opener.calls) == 2
+        assert "page=2&" in opener.calls[1][0] + "&"
+
+    def test_client_search_invalid_collection_rejected_before_network(self):
+        opener = _FakeOpener([])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"Invalid JASPAR collection 'BOGUS'"):
+                search_motifs("BCL11A", collection="BOGUS")
+        assert opener.calls == []
+
+    def test_client_search_empty_name_rejected(self):
+        opener = _FakeOpener([])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"non-empty motif name"):
+                search_motifs("   ")
+        assert opener.calls == []
+
+    def test_client_search_malformed_json_raises(self):
+        opener = _FakeOpener([_FakeResponse(b"<html>not json</html>")])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"malformed JSON"):
+                search_motifs("BCL11A")
+        assert len(opener.calls) == 1
+
+    def test_client_search_missing_results_list_raises(self):
+        opener = _FakeOpener([_FakeResponse(b'{"count": 0}')])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"missing its 'results' list"):
+                search_motifs("BCL11A")
+
+    def test_client_search_result_item_missing_fields_raises(self):
+        opener = _FakeOpener([_FakeResponse(_jaspar_page([{"matrix_id": 1}]))])
+        with patch("dnallm.interpret.motifs._JASPAR_OPENER", opener):
+            with pytest.raises(ValueError, match=r"missing matrix_id/name strings"):
+                search_motifs("BCL11A")
+
+
+def _skip_if_jaspar_unreachable() -> None:
+    """Typed skip when the canonical JASPAR host is unreachable (slow leg)."""
+    probe_url = motifs.JASPAR_BASE + "/releases/"
+    try:
+        # Connectivity probe only: the host is the module constant (https),
+        # never caller input.
+        request = urllib.request.Request(  # ruff: ignore[suspicious-url-open-usage]
+            probe_url, method="GET"
+        )
+        with urllib.request.urlopen(request, timeout=10.0):  # ruff: ignore[suspicious-url-open-usage]
+            pass
+    except Exception as error:
+        pytest.skip(
+            f"jaspar-unreachable: {motifs.JASPAR_BASE} unreachable ({type(error).__name__})"
+        )
+
+
+@pytest.mark.slow
+class TestJasparLive:
+    """Live JASPAR round trips (slow lane; typed jaspar-unreachable: skips)."""
+
+    def test_jaspar_live_fetch_meme_motif_round_trip(self):
+        _skip_if_jaspar_unreachable()
+        motif = parse_meme(fetch_meme_motif("MA2324.1"))[0]
+        assert motif.motif_id == "MA2324.1"
+        assert motif.name == "BCL11A"
+        assert motif.width == 7
+
+    def test_jaspar_live_search_bcl11a_core_release(self):
+        _skip_if_jaspar_unreachable()
+        records = search_motifs("BCL11A")
+        ids = {record["matrix_id"] for record in records}
+        assert {"MA2324.1", "MA2504.1"} <= ids
