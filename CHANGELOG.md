@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-10
+
+### Overview
+
+Paper revision suite release: the eleven reviewer-requested capabilities (REV-01..REV-11) land on the hardened 0.7.x base — evaluation-semantics leak guard, shared metric registry, IA³ + per-model PEFT presets, from-scratch baselines, frozen-embedding probing, zero-shot VEP from VCF, multi-seed sweeps, FIMO-convention motif scanning, and three new MCP analysis tools with the `--host/--port` precedence fix. Milestone v1.2: 11/11 requirements, 3/3 phases verified (2 owner-accepted overrides: VEP magnitude at small scale, HBG1/BCL11A golden-fixture deferral tracked in issue #44), 0 audit blockers; fast lane 2404 passed / 0 failed, coverage 96.72% against the unchanged `fail_under=90` gate, full CI matrix green.
+
 ### Added
 
 - Metric registry contract at `dnallm.tasks.metric_registry`: a single {canonical: (fn, aliases)} registry with resolve()/canonical_name(); `dnallm.tasks.metrics` now emits exclusively canonical registry names, historical aliases (eval_auroc, eval_spearman_r, ...) are recognized but never emitted (REV-02, R1-2d) ([58bbf41](https://github.com/zhangtaolab/DNALLM/commit/58bbf41e59b9a48834f4e6c28f760f277d53b3ae))
