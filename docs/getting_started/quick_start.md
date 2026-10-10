@@ -4,7 +4,7 @@ This guide will help you get started with DNALLM quickly. DNALLM is a comprehens
 
 ## Prerequisites
 
-- Python 3.10 or higher (Python 3.12 recommended)
+- Python 3.11 or higher (Python 3.12 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:

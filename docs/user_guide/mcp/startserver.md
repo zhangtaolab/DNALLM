@@ -6,7 +6,7 @@ This guide covers how to start the DNALLM MCP (Model Context Protocol) server, i
 
 Before starting the MCP server, ensure you have:
 
-- Python 3.10+ installed
+- Python 3.11+ installed
 - DNALLM package installed
 - Sufficient system resources (RAM, disk space)
 - Network access for model downloading (if using remote models)

@@ -248,7 +248,7 @@ See the [Model Selection Guide](../resources/model_selection.md) for detailed gu
 ### Q: What are the system requirements for DNALLM?
 
 **Answer**:
-- **Python**: 3.10 or higher (Python 3.11 or higher recommended)
+- **Python**: 3.11 or higher
 - **GPU**: NVIDIA GPU with at least 8GB VRAM recommended for optimal performance
 - **Memory**: 16GB RAM minimum, 32GB+ recommended for large models
 - **Storage**: At least 10GB free space for model downloads and cache

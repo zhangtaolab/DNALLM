@@ -23,7 +23,7 @@ This project adheres to a code of conduct that we expect all contributors to fol
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - Git
 - [uv](https://docs.astral.sh/uv/) package manager (recommended)
 - CUDA-compatible GPU (optional, for GPU acceleration)

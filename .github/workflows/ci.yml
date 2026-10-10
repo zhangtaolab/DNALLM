@@ -13,8 +13,7 @@ on:
       # matrix on phs pushes closes that gap; deploy stays main/master
       # only and the nightly legs stay dispatch/schedule-gated.
       # 2026-10-10: same reasoning for the v1.2 revision branch.
-      - phs
-      - revision
+      # 2026-10-10: phs and revision both deleted; entries removed.
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:

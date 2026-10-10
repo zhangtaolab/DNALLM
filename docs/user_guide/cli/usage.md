@@ -278,7 +278,7 @@ DNALLM/
 1. **Development Environment**: Ensure you're running commands from the project root directory
 2. **Dependencies**: Make sure all dependencies are properly installed
 3. **Path Configuration**: Use absolute paths or paths relative to the project root
-4. **Python Version**: Requires Python 3.10 or higher
+4. **Python Version**: Requires Python 3.11 or higher
 
 ## Troubleshooting
 
