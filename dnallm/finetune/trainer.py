@@ -47,7 +47,7 @@ from collections.abc import Mapping
 from typing import Any
 from collections.abc import Callable
 from dataclasses import fields as dataclass_fields
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 import json
 import math
 import torch
@@ -968,7 +968,7 @@ class DNATrainer:
             json.dump(
                 {
                     "split": split,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "metrics": metrics,
                     "runtime": runtime,
                 },

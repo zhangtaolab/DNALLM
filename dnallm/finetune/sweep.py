@@ -61,7 +61,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -316,7 +316,7 @@ def run_seeds(
                     "model_name": model_name,
                     "task_name": task_name,
                     "seed": seed,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "metrics": metrics,
                 },
                 f,

@@ -3,7 +3,7 @@ name = "dnallm"
 version = "1.2.1"
 description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = ["dna", "language-model", "bioinformatics", "machine-learning", "genomics"]
 authors = [
     {name = "Zhangtaolab", email = "forrest_zhang@163.com"}
@@ -14,7 +14,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -326,8 +325,8 @@ exclude = [
 line-length = 100
 indent-width = 4
 
-# Assume Python 3.10+
-target-version = "py310"
+# Assume Python 3.11+
+target-version = "py311"
 
 # Enable preview features
 preview = true
@@ -423,7 +422,7 @@ exclude = [
 
 # MyPy configuration
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = false
 warn_unused_configs = true
 disallow_untyped_defs = false

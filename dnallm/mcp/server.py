@@ -50,7 +50,7 @@ import tempfile
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 from pathlib import Path
 
@@ -459,7 +459,7 @@ class DNALLMMCPServer:
                     status="success",
                 )
                 return result
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 duration_ms = (time.perf_counter() - start) * 1000
                 self._structured_log(
                     "error",
@@ -517,7 +517,7 @@ class DNALLMMCPServer:
         loguru_level = level.upper()
         if self._log_format == "json":
             log_entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "level": loguru_level,
                 "message": message,
             }
@@ -976,7 +976,7 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -1120,7 +1120,7 @@ class DNALLMMCPServer:
                 "streamed": stream_progress,
             }
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
@@ -1244,7 +1244,7 @@ class DNALLMMCPServer:
             )
             return result_dict
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             duration_ms = (time.perf_counter() - start) * 1000
             self._structured_log(
                 "error",
