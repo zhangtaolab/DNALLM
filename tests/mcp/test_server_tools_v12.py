@@ -736,15 +736,20 @@ class TestZeroShotScoreContracts:
         assert mock_kernel.call_args.args[2] == str(vcf)
         assert mock_kernel.call_args.kwargs["clnsig_filter"] is None
 
-    async def test_zero_shot_explicit_clnsig_filter_override(self, v12_server, reference_fasta):
-        """A caller filter maps to ClinVarFilter fields (non-ClinVar opt-out)."""
+    async def test_zero_shot_explicit_clnsig_filter_override(
+        self, v12_server, reference_fasta, tmp_path
+    ):
+        """A caller filter maps to ClinVarFilter fields (non-ClinVar
+        opt-out). Full override is the documented vcf_path-mode use."""
+        vcf = tmp_path / "clinvar.vcf"
+        vcf.write_text("##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\n")
         with patch(
             "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
         ) as mock_kernel:
             result = await v12_server._zero_shot_score(
                 model_name="test-model",
                 fasta_path=str(reference_fasta),
-                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                vcf_path=str(vcf),
                 clnsig_filter={
                     "variant_type": "my_type",
                     "positive_labels": ["a", "b"],
@@ -759,6 +764,50 @@ class TestZeroShotScoreContracts:
         assert kernel_filter.positive_labels == frozenset({"a", "b"})
         assert kernel_filter.negative_labels == frozenset({"c"})
         assert kernel_filter.star_floor == 2
+
+    async def test_zero_shot_inline_conflicting_variant_type_rejected(
+        self, v12_server, reference_fasta
+    ):
+        """WR-02: inline mode keeps the inline_variant sentinel. A caller
+        filter replacing variant_type (e.g. a plausible "turn off
+        filtering" attempt) would revert to the D-17 default and exclude
+        every inline row as non_snv_clnvc — rejected with a matchable
+        error naming the required value."""
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                clnsig_filter={"variant_type": "single_nucleotide_variant"},
+            )
+
+        assert result["isError"] is True
+        assert "clnsig_filter.variant_type" in result["error"]
+        assert "inline_variant" in result["error"]
+        mock_kernel.assert_not_called()
+
+    async def test_zero_shot_inline_partial_filter_keeps_sentinel_base(
+        self, v12_server, reference_fasta
+    ):
+        """WR-02: a partial inline-mode override merges with the sentinel,
+        not the D-17 defaults — variant_type stays inline_variant (rows stay
+        admitted) and unset fields fall back to the sentinel values."""
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
+        ) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                clnsig_filter={"star_floor": 0},
+            )
+
+        assert not result.get("isError")
+        kernel_filter = mock_kernel.call_args.kwargs["clnsig_filter"]
+        assert kernel_filter.variant_type == "inline_variant"
+        assert kernel_filter.positive_labels == frozenset({"not_analyzed"})
+        assert kernel_filter.negative_labels == frozenset()
+        assert kernel_filter.star_floor == 0
 
     async def test_zero_shot_both_modes_rejected(self, v12_server, reference_fasta, tmp_path):
         """Passing both variants and vcf_path is a matchable error."""

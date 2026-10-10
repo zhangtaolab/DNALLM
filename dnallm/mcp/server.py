@@ -148,6 +148,19 @@ _INLINE_SENTINEL_INFO = (
     f"CLNSIG={_INLINE_SENTINEL_CLNSIG};CLNREVSTAT=criteria_provided;CLNVC={_INLINE_SENTINEL_CLNVC}"
 )
 
+#: The kernel filter admitting the sentinel rows (A8 pass-through
+#: convention). MANDATORY base in inline-variants mode: every temp-VCF row
+#: carries ``CLNVC=inline_variant`` by construction, so any other
+#: ``variant_type`` excludes every row as ``non_snv_clnvc`` (evaluated == 0)
+#: — a caller ``clnsig_filter`` may only tune the labels/star_floor on top
+#: of this base, never replace its ``variant_type``.
+_INLINE_SENTINEL_FILTER = ClinVarFilter(
+    variant_type=_INLINE_SENTINEL_CLNVC,
+    positive_labels=frozenset({_INLINE_SENTINEL_CLNSIG}),
+    negative_labels=frozenset(),
+    star_floor=1,
+)
+
 
 class DNALLMMCPServer:
     """DNALLM MCP Server implementation using FastMCP framework with SSE
@@ -2192,6 +2205,8 @@ class DNALLMMCPServer:
     @staticmethod
     def _build_clnsig_filter(
         clnsig_filter: dict[str, Any] | None,
+        *,
+        inline_mode: bool = False,
     ) -> tuple[ClinVarFilter | None, str | None]:
         """Validate and build the kernel convention filter.
 
@@ -2199,12 +2214,21 @@ class DNALLMMCPServer:
             clnsig_filter: Caller-supplied override mapping to
                 ``vep.ClinVarFilter`` fields, or ``None`` for the D-17
                 defaults.
+            inline_mode: Inline-variants mode: ``_INLINE_SENTINEL_FILTER``
+                is the mandatory base. Every inline temp-VCF row carries
+                ``CLNVC=inline_variant`` by construction, so
+                ``variant_type`` is always the sentinel — an explicit
+                conflicting value is a matchable error naming the required
+                value — and the caller's other fields override the sentinel,
+                not the D-17 defaults.
 
         Returns:
             Tuple of (filter-or-None, error-text). Exactly one element is
             None; the error text is for the tool's matchable error dict.
         """
         if clnsig_filter is None:
+            if inline_mode:
+                return _INLINE_SENTINEL_FILTER, None
             return None, None
         allowed_keys = {"variant_type", "positive_labels", "negative_labels", "star_floor"}
         if not isinstance(clnsig_filter, dict) or not set(clnsig_filter) <= allowed_keys:
@@ -2225,16 +2249,26 @@ class DNALLMMCPServer:
             not isinstance(star_floor, int) or isinstance(star_floor, bool) or star_floor < 0
         ):
             return None, "clnsig_filter.star_floor must be an integer >= 0"
-        base = ClinVarFilter()
+        if inline_mode and variant_type is not None and variant_type != _INLINE_SENTINEL_CLNVC:
+            return None, (
+                f"clnsig_filter.variant_type must be '{_INLINE_SENTINEL_CLNVC}' in "
+                f"inline-variants mode (got {variant_type!r}): inline temp-VCF rows "
+                f"carry CLNVC={_INLINE_SENTINEL_CLNVC} by construction, so any other "
+                f"variant_type excludes every row as non_snv_clnvc"
+            )
+        base = _INLINE_SENTINEL_FILTER if inline_mode else ClinVarFilter()
         # Resolve each field ONCE and treat a key present with a JSON null
         # as absent: dict.get(key, default) returns None (not the default)
         # for present-but-null, which used to crash frozenset(None) into
         # the generic error or silently pass None into the kernel.
         positive = clnsig_filter.get("positive_labels")
         negative = clnsig_filter.get("negative_labels")
-        star_floor = clnsig_filter.get("star_floor")
         built = ClinVarFilter(
-            variant_type=clnsig_filter.get("variant_type") or base.variant_type,
+            variant_type=(
+                _INLINE_SENTINEL_CLNVC
+                if inline_mode
+                else (clnsig_filter.get("variant_type") or base.variant_type)
+            ),
             positive_labels=frozenset(positive) if positive is not None else base.positive_labels,
             negative_labels=frozenset(negative) if negative is not None else base.negative_labels,
             star_floor=star_floor if star_floor is not None else base.star_floor,
@@ -2313,6 +2347,12 @@ class DNALLMMCPServer:
         Pass ``clnsig_filter`` (fields: variant_type, positive_labels,
         negative_labels, star_floor — mapping to ``vep.ClinVarFilter``) to
         override the D-17 defaults, e.g. for non-ClinVar ``vcf_path`` input.
+        In inline-variants mode the pass-through sentinel is the mandatory
+        base: ``variant_type`` is always ``inline_variant`` (an explicit
+        conflicting value is a matchable error naming the required value)
+        and the caller's other fields override the sentinel, not the D-17
+        defaults — any other ``variant_type`` would exclude every inline
+        row as ``non_snv_clnvc``.
 
         Variant count is capped at 500 per call; sequences are capped at
         2000 bases for the ISM tools. ``fasta_path``/``vcf_path`` are
@@ -2335,7 +2375,8 @@ class DNALLMMCPServer:
             clnsig_filter (dict[str, Any] | None): Optional ClinVar
                 convention override (see above); ``None`` keeps the D-17
                 defaults for vcf_path mode and the pass-through convention
-                for inline mode.
+                for inline mode. In inline mode the sentinel
+                ``variant_type`` is mandatory (see above).
 
         Returns:
             dict[str, Any]: Zero-shot scoring results in MCP format:
@@ -2402,16 +2443,11 @@ class DNALLMMCPServer:
                     "isError": True,
                 }
 
-            kernel_filter, filter_error = self._build_clnsig_filter(clnsig_filter)
+            kernel_filter, filter_error = self._build_clnsig_filter(
+                clnsig_filter, inline_mode=inline_mode
+            )
             if filter_error is not None:
                 return {"error": filter_error, "isError": True}
-            if inline_mode and kernel_filter is None:
-                kernel_filter = ClinVarFilter(
-                    variant_type=_INLINE_SENTINEL_CLNVC,
-                    positive_labels=frozenset({_INLINE_SENTINEL_CLNSIG}),
-                    negative_labels=frozenset(),
-                    star_floor=1,
-                )
 
             if inline_mode:
                 if not isinstance(variants, list) or not variants:
