@@ -567,5 +567,7 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 90   # Phase 4 ratchet (GATE-01). Suite landed at 96.30% (Phase 3).
+fail_under = 90   # Phase 4 ratchet (GATE-01) — the floor, never the achievement.
+                  # Fast-lane suite measured 96.72% at the v1.2 closeout (2026-10-10;
+                  # was 96.30% at Phase 3) — the Phase 11/12 modules moved the number.
                   # Applies to every `--cov` invocation — use `--no-cov` for scoped runs.

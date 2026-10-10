@@ -23,13 +23,21 @@ Line coverage of the `dnallm` package is enforced by a hard gate in [`pyproject.
 ```toml
 [tool.coverage.report]
 show_missing = true
-fail_under = 90   # Phase 4 ratchet (GATE-01). Suite landed at 96.30% (Phase 3).
+fail_under = 90   # Phase 4 ratchet (GATE-01) — the floor, never the achievement.
+                  # Fast-lane suite measured 96.72% at the v1.2 closeout (2026-10-10;
+                  # was 96.30% at Phase 3) — the Phase 11/12 modules moved the number.
                   # Applies to every `--cov` invocation — use `--no-cov` for scoped runs.
 ```
 
-The `fail_under = 90` value is a ratchet floor, not the achievement: the in-process suite landed at **96.30%**, and any `--cov` invocation — local or in CI — whose total drops below 90 fails. Scoped runs of a subset of the suite should drop `--cov` or pass `--no-cov`, because the floor applies to every coverage invocation regardless of how many tests ran.
+The `fail_under = 90` value is a ratchet floor, not the achievement: the
+in-process fast lane measured **96.72%** at the v1.2 milestone closeout
+(2026-10-10; it was 96.30% when the gate landed in Phase 3 — the Phase 11/12
+modules and their tests moved the number), and any `--cov` invocation — local
+or in CI — whose total drops below 90 fails. Scoped runs of a subset of the
+suite should drop `--cov` or pass `--no-cov`, because the floor applies to
+every coverage invocation regardless of how many tests ran.
 
-**What the gate measures — and what it does not (the AUDIT-04 design note).** The example-execution tests run their notebooks in *kernel subprocesses*: each notebook is executed by a separate IPython kernel process, and kernel subprocess coverage is not measured, by design. The example lane therefore **does not move the 96.30% coverage gate** — a green `example-nightly` run certifies that the notebooks executed end to end, not that additional package lines were counted. Conversely, the coverage total never says anything about notebook executability: that guarantee comes from the example census, which is its own lane with its own pass/fail contract. Do not expect example executions to raise the reported coverage total, and do not read the coverage total as evidence about them.
+**What the gate measures — and what it does not (the AUDIT-04 design note).** The example-execution tests run their notebooks in *kernel subprocesses*: each notebook is executed by a separate IPython kernel process, and kernel subprocess coverage is not measured, by design. The example lane therefore **does not move the 96.72% coverage gate** — a green `example-nightly` run certifies that the notebooks executed end to end, not that additional package lines were counted. Conversely, the coverage total never says anything about notebook executability: that guarantee comes from the example census, which is its own lane with its own pass/fail contract. Do not expect example executions to raise the reported coverage total, and do not read the coverage total as evidence about them.
 
 For how to run the censuses locally (fast leg, full census, scoped runs) see [`tests/TESTING.md`](https://github.com/zhangtaolab/DNALLM/blob/main/tests/TESTING.md).
 
