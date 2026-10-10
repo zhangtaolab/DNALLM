@@ -36,9 +36,10 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 # The complete registration set, enumerated one-for-one from the
-# _register_tools() calls in dnallm/mcp/server.py:251-278: ten
+# _register_tools() calls in dnallm/mcp/server.py: ten
 # timeout-wrapped tools plus the three streaming tools registered
-# directly. FastMCP derives each wire name from the function __name__
+# directly, plus the two Phase 12 analysis tools (ism_scan, hotspots).
+# FastMCP derives each wire name from the function __name__
 # (functools.update_wrapper inside _with_timeout_wrapper), so the names
 # carry the leading underscore of the implementing method.
 EXPECTED_TOOLS = {
@@ -55,6 +56,8 @@ EXPECTED_TOOLS = {
     "_dna_stream_multi_model_predict",
     "_dna_mutagenesis",
     "_dna_interpret",
+    "_ism_scan",
+    "_hotspots",
 }
 
 _UNSET = object()
@@ -166,7 +169,7 @@ class TestInMemoryProtocolRoundTrip:
             result = await session.list_tools()
         names = {tool.name for tool in result.tools}
         assert names == EXPECTED_TOOLS
-        assert len(names) == 13
+        assert len(names) == 15
 
     async def test_call_tool_health_check(self, real_server):
         """call_tool executes a registered tool and returns its payload."""
@@ -178,6 +181,126 @@ class TestInMemoryProtocolRoundTrip:
         assert payload["health"]["status"] == "healthy"
         assert payload["health"]["loaded_models"] == 0
         assert payload["health"]["server_name"] == "Transport Test Server"
+
+    async def test_round_trip_ism_scan_unconfigured_model_error_dict(self, real_server):
+        """ism_scan: an unknown model returns the matchable error dict."""
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_ism_scan",
+                {
+                    "model_name": "ghost-model",
+                    "sequence": "ATGC",
+                    "mutation_type": "single_base_substitution",
+                    "positions": [0],
+                },
+            )
+
+        assert result.isError is False  # error dict, not a protocol raise
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not configured" in payload["error"]
+
+    async def test_round_trip_ism_scan(self, real_server):
+        """ism_scan: happy path through the full protocol with a mock engine."""
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls,
+        ):
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = {
+                "raw": {"sequence": "ATGC", "pred": [0.1], "score": 0.0},
+                "mut_0_A_T": {
+                    "sequence": "TTGC",
+                    "pred": [0.2],
+                    "logfc": [0.5],
+                    "diff": [0.1],
+                    "score": 0.5,
+                },
+            }
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_ism_scan",
+                    {
+                        "model_name": "test-model",
+                        "sequence": "ATGC",
+                        "mutation_type": "single_base_substitution",
+                        "positions": [0],
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["model_name"] == "test-model"
+        assert payload["affected_positions"] == [0]
+        assert payload["original_prediction"]["sequence"] == "ATGC"
+        assert payload["mutated_prediction"]["count"] == 1
+
+    async def test_round_trip_hotspots_missing_fasta_error_dict(self, real_server, tmp_path):
+        """hotspots: a missing reference FASTA returns the matchable error dict."""
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_hotspots",
+                {
+                    "model_name": "test-model",
+                    "coordinates": {"chrom": "chr1", "start": 0, "end": 50},
+                    "fasta_path": str(tmp_path / "missing.fasta"),
+                },
+            )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not found" in payload["error"]
+        assert "hotspots" in payload["error"]
+
+    async def test_round_trip_hotspots(self, real_server, tmp_path):
+        """hotspots: windows derive from model x coordinates + fasta_path."""
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)  # 64 bases
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls,
+        ):
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = {"raw": {"sequence": "ACGT", "score": 0.0}}
+            mock_mut.find_hotspots.return_value = [(10, 20)]
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_hotspots",
+                    {
+                        "model_name": "test-model",
+                        "coordinates": {"chrom": "chr1", "start": 4, "end": 40},
+                        "fasta_path": str(fasta),
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["hotspots"] == [[10, 20]]
+        assert payload["hotspots_genomic"] == [{"chrom": "chr1", "start": 14, "end": 24}]
+        assert payload["sequence_length"] == 36
+        assert payload["model_name"] == "test-model"
+        # The ISM slice comes from the requested coordinates (0-based, then
+        # uppercased by the vep window convention).
+        call = mock_mut.mutate_sequence.call_args
+        assert call.args[0] == "ACGT" * 9  # 36 bases from offset 4
 
     async def test_session_delete_issued_on_close(self, real_server):
         """Client exit issues the terminating session DELETE request."""
@@ -225,6 +348,19 @@ class TestInMemoryProtocolRoundTrip:
         """Run initialize() in a fully-managed context and return its result."""
         async with TestInMemoryProtocolRoundTrip._client_session(real_server) as session:
             return await session.initialize()
+
+
+def _mock_ism_engine():
+    """Minimal mock DNAInference for the ISM-based tool happy paths.
+
+    The flight lock lives on the (real) ModelManager, which the caller
+    patches separately only when the manager itself is a Mock.
+    """
+    engine = Mock()
+    engine.model = Mock()
+    engine.tokenizer = Mock()
+    engine.config = {"task": Mock(task_type="binary"), "inference": Mock(max_length=512)}
+    return engine
 
 
 def _streamable_client(asgi_app):
