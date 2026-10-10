@@ -369,6 +369,27 @@ class TestScanSingleStrand:
         # Every reported hit sits at or above the reporting threshold in bits.
         assert all(hit["score_bits"] >= reported_threshold for hit in hits)
 
+    def test_single_strand_x_threshold_is_the_authoritative_screen(self):
+        # IN-01: the stored scaled threshold IS the position screen. Because
+        # pv is non-increasing, {s : s >= x_threshold} is exactly
+        # {s : pv[s] < FIMO_P_THRESHOLD}, so the stored value and the
+        # reported hit set cannot drift apart.
+        motif = _sharp_motif("CCGGGCC")
+        window = "AAAACCGGGCCAAAA"
+        pssm = motifs._build_pssm(motif, UNIFORM_BG, motifs.FIMO_P_THRESHOLD)
+        by_scaled = {
+            pos for pos, s in motifs._iter_position_scores(window, pssm) if s >= pssm.x_threshold
+        }
+        by_pvalue = {
+            pos
+            for pos, s in motifs._iter_position_scores(window, pssm)
+            if pssm.pv[s] < motifs.FIMO_P_THRESHOLD
+        }
+        assert by_scaled == by_pvalue
+        assert {
+            hit["start"] for hit in scan_single_strand(window, motif, background=UNIFORM_BG)
+        } == by_scaled
+
     def test_single_strand_scan_returns_empty_when_no_pvalue_passes(self):
         # A weak w=4 motif cannot reach p < 1e-4 anywhere (min p = 0.25**4).
         rows = [[0.3, 0.25, 0.25, 0.2]] * 4

@@ -432,7 +432,15 @@ def threshold_bits(
 
 @dataclass
 class _Pssm:
-    """Internal scaled scoring model for one motif under one background."""
+    """Internal scaled scoring model for one motif under one background.
+
+    Attributes:
+        x_threshold: Minimal passing scaled score (the AUTHORITATIVE
+            position screen used by both scan entry points:
+            ``s >= x_threshold`` is exactly ``pv[s] < p_threshold`` because
+            ``pv`` is non-increasing — filtering on the stored value keeps
+            the threshold and the rule from drifting apart).
+    """
 
     motif_id: str
     w: int
@@ -543,8 +551,9 @@ def scan_single_strand(
     pssm = _build_pssm(motif, background, FIMO_P_THRESHOLD)
     hits: list[dict[str, object]] = []
     for pos, s in _iter_position_scores(window, pssm):
-        p = pssm.pv[s]
-        if p < FIMO_P_THRESHOLD:
+        # Authoritative screen: s >= x_threshold is exactly p < threshold.
+        if s >= pssm.x_threshold:
+            p = pssm.pv[s]
             hits.append({
                 "motif_id": motif.motif_id,
                 "start": pos,
@@ -746,7 +755,8 @@ def scan(
         motif_index, window_index, strand, start, end, s = record
         pssm = pssms[motif_index]
         p = pssm.pv[s]
-        if p < p_threshold and q < q_threshold:
+        # Authoritative screen: s >= x_threshold is exactly p < p_threshold.
+        if s >= pssm.x_threshold and q < q_threshold:
             hits.append({
                 "motif_id": pssm.motif_id,
                 "window": window_index,
