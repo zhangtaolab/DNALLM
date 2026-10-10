@@ -20,10 +20,7 @@ NETWORK_ERRORS = (httpx.TransportError,)
 def _network_leaves(exc: BaseException) -> list[BaseException]:
     """Flatten an ExceptionGroup tree to its leaf exceptions.
 
-    Duck-typed via the ``exceptions`` attribute so the helper works on
-    Python 3.10 (where the ``exceptiongroup`` backport installed by
-    anyio provides the same attribute) without importing
-    ``BaseExceptionGroup``, which only exists on 3.11+.
+    Duck-typed via the ``exceptions`` attribute.
 
     Args:
         exc: the exception to flatten.

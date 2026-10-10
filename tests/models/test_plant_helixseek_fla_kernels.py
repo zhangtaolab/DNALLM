@@ -10,15 +10,10 @@ the import path stable across fla upgrades.
 """
 
 import re
-import sys
+import tomllib
 from pathlib import Path
 
 import pytest
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # tomllib is stdlib-only from 3.11; pyproject-declaration tests skip on 3.10
-    tomllib = None
 
 _META_EXTRA_RE = re.compile(r"^dnallm\[([^\]]*)\]$")
 
@@ -74,11 +69,6 @@ class TestMetaExtraParser:
 class TestFlaExtraDeclared:
     """The fla kernel extra must stay declared and reachable from ``all``."""
 
-    @pytest.mark.skipif(
-        tomllib is None,
-        reason="environment-unavailable: tomllib requires Python >= 3.11 "
-        "(pyproject declaration tests need it)",
-    )
     def test_fla_extra_declared_with_bounded_range(self):
         extras = _load_pyproject()["project"]["optional-dependencies"]
         assert "fla" in extras, "the fla kernel extra must stay declared in pyproject.toml"
@@ -86,11 +76,6 @@ class TestFlaExtraDeclared:
             "flash-linear-attention>=0.5.2" in spec and "<0.6" in spec for spec in extras["fla"]
         ), "fla spec must carry the 0.5.x floor and minor bound (chunk_kda stability)"
 
-    @pytest.mark.skipif(
-        tomllib is None,
-        reason="environment-unavailable: tomllib requires Python >= 3.11 "
-        "(pyproject declaration tests need it)",
-    )
     def test_fla_reachable_from_all(self):
         extras = _load_pyproject()["project"]["optional-dependencies"]
         assert any("fla" in _meta_extra_names(spec) for spec in extras["all"]), (
