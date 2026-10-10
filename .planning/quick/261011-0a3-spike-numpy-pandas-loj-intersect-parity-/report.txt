@@ -1,0 +1,57 @@
+================================================================================
+spike: numpy loj intersect parity vs bedtools (quick-261011-0a3)
+================================================================================
+python 3.13.15 | numpy 2.5.3 | seed 20261011 | cases 2000
+bedtools binary: /home/linuxbrew/.linuxbrew/bin/bedtools (source: PATH)
+bedtools version: bedtools v2.31.1
+--- empirical pins ---
+pin null-B fill (live oracle, no-hit A rows, per B column variant):
+  B columns 3: literals ['.', '-1', '-1'] numpy-emit PASS
+  B columns 4: literals ['.', '-1', '-1', '.'] numpy-emit PASS
+  B columns 5 score col '0': literals ['.', '-1', '-1', '.', '-1'] numpy-emit PASS
+  B columns 5 score col 'exon': literals ['.', '-1', '-1', '.', '.'] numpy-emit PASS
+  B columns 6 score col 'exon': literals ['.', '-1', '-1', '.', '-1', '.'] numpy-emit PASS
+  B columns 6 score col '0': literals ['.', '-1', '-1', '.', '-1', '.'] numpy-emit PASS
+  B columns 7 score col '0': literals ['.', '-1', '-1', '.', '.', '.', '.'] numpy-emit PASS
+  B columns 7 score col 'exon': literals ['.', '-1', '-1', '.', '.', '.', '.'] numpy-emit PASS
+  empty B file: ['.', '-1', '-1'] (column count unknowable — oracle emits the 3-column null form) numpy-emit PASS
+  pinned per-column-type map: chrom-col '.' | start-col '-1' | end-col '-1' | name-col/B4 '.' | score-col/B5 '-1' or '.' (content-dependent at count 5 only) | strand-and-beyond '.'
+  pinned content rule: B count 5 score slot is '-1' iff column 5 parses as int, else '.'; B count 6 is ALWAYS '-1' and B count >= 7 ALWAYS '.' (both verified with numeric and non-numeric content) — the NER 6-column surface is content-independent
+  NER shape (6-col B): iv.fields[10] == B column 5 == '-1' -> the consumer's `name == '-1'` intergenic branch FIRES under the pinned encoding
+pin output order (unsorted A across 2 chroms, multi-hit rows, sorted B):
+  gate numpy-sequence vs plain -loj raw: PASS (5 A rows, 9 output lines)
+  -sorted variant on sorted copies: sequence DIFFERS from plain -loj (same 9 lines, same multiset)
+  gate numpy-sequence vs -sorted oracle on sorted copies: PASS
+  pinned rule: plain -loj emits output lines in A-file order; per A row the B hits appear in B-file order (verified on this probe: unsorted A, B-file order == start order here; unsorted-B order is exercised by the corpus)
+pin sorted-input requirement (observed, gated on nothing per plan):
+  plain -loj on unsorted input: ACCEPTED (exit 0)
+  -loj -sorted on unsorted input: REJECTED (first stderr: ERROR: chromomsome sort ordering for file <tmpdir>/pinsort_a.bed is inconsistent with other files. Record was:)
+  -loj -sorted on sorted copies: ACCEPTED (exit 0)
+  finding: plain -loj needs no sorted input (the NER consumer's unsorted tokens_bed is legal); -sorted demands sorted input
+pin multiplicity (1 A row x 3 distinct B rows + 1 exact-duplicate B row, A row duplicated):
+  oracle lines total 8 == 2 duplicate-A copies x 4 B hits each (3 distinct B rows + 1 exact-duplicate copy)
+  gate canonical PASS | gate sequence PASS | structural counts PASS
+  pinned: exact-duplicate rows on either side join per copy — never merged, never coalesced
+pins: PASS (sorted-requirement probe records only, gated on nothing)
+--- handcrafted edge cases ---
+case 1 empty-A: mode=raw lines 0 canonical PASS sequence PASS
+case 2 empty-B: mode=raw lines 3 canonical PASS sequence PASS
+case 3 all-overlap: mode=raw lines 9 canonical PASS sequence PASS
+case 4 no-overlap: mode=raw lines 2 canonical PASS sequence PASS
+case 5 strict-containment-A-in-B: mode=raw lines 2 canonical PASS sequence PASS
+case 6 multiplicity-one-A-multi-B: mode=raw lines 3 canonical PASS sequence PASS
+case 7 boundary-touching-no-hit: mode=raw lines 2 canonical PASS sequence PASS
+case 8 same-coords-different-chrom-names: mode=raw lines 1 canonical PASS sequence PASS
+case 9 duplicate-rows-both-sides: mode=raw lines 8 canonical PASS sequence PASS
+case 10 unsorted-A-B-multi-hit: mode=raw lines 9 canonical PASS sequence PASS
+case 11 ner-realistic-per-gene-iteration-order: mode=raw lines 8 canonical PASS sequence PASS
+--- randomized property cases ---
+seed 20261011 | cases 2000 | pattern cycle mixed/dense/containment/adjacency/disjoint/duplicates | shuffled every 4th case | per-side rows <= 30 | NER shape 6+6 columns
+randomized: compared 2000 | pass 2000 | mismatch 0
+GATE-canonical (sorted full-row equality incl. multiplicity): 2000/2000 pass
+GATE-sequence (exact output line sequence): 2000/2000 pass
+shuffled cases: 500 randomized | raw probed 502 (2 of them handcrafted) | raw rejected 0 | pre-sorted by policy 0
+sort handling: plain -loj accepted every probed raw file (unsorted A and unsorted B included — see pins); the numpy side always reads files exactly as written
+mismatches: none
+RUNTIME: 3.8s
+VERDICT: PARITY

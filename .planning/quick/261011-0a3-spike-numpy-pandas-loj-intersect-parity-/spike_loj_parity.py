@@ -1282,6 +1282,7 @@ def run_corpus(bedtools_bin: str, cases: int, seed: int) -> dict[str, object]:
     hand_compared = 0
     hand_pass = 0
     hand_dropped = 0
+    hand_shuffled_raw = 0
     for number, case in enumerate(handcrafted_cases(), start=1):
         label = f"hand{number}"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1322,6 +1323,8 @@ def run_corpus(bedtools_bin: str, cases: int, seed: int) -> dict[str, object]:
         canonical_ok = bool(result.get("canonical", True))
         sequence_ok = bool(result.get("sequence", True))
         suffix = "" if ok else f" MISMATCH reproduction {result['repro']}"
+        if case["shuffled"] and result["mode"] == "raw":
+            hand_shuffled_raw += 1
         print(
             f"case {number} {case['name']}: mode={result['mode']} lines "
             f"{len(result['np_lines'])} canonical {'PASS' if canonical_ok else 'FAIL'} "
@@ -1382,10 +1385,11 @@ def run_corpus(bedtools_bin: str, cases: int, seed: int) -> dict[str, object]:
     print(f"GATE-canonical (sorted full-row equality incl. multiplicity): {canonical_pass}/{cases} pass")
     print(f"GATE-sequence (exact output line sequence): {sequence_pass}/{cases} pass")
     shuffled_total = sum(1 for i in range(cases) if i % 4 == 3)
+    rand_raw_probed = max(0, int(state["raw_probed"]) - hand_shuffled_raw)
     print(
-        f"shuffled cases: {shuffled_total} | raw probed {state['raw_probed']} | "
-        f"raw rejected {state['raw_errored']} | "
-        f"pre-sorted by policy {shuffled_total - int(state['raw_probed'])}"
+        f"shuffled cases: {shuffled_total} randomized | raw probed {state['raw_probed']} "
+        f"({hand_shuffled_raw} of them handcrafted) | raw rejected {state['raw_errored']} | "
+        f"pre-sorted by policy {shuffled_total - rand_raw_probed}"
     )
     if state["rejection_note"] is not None:
         print(
