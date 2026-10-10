@@ -556,6 +556,13 @@ class TestScanEdges:
         assert result.n_tested_positions == 0
         assert result.n_motifs == 1
 
+    def test_edge_empty_motif_list_raises(self):
+        # IN-03: zero PSSMs would return an all-zero ScanResult that looks
+        # like "no hits" — the sibling entry points reject empty inputs, so
+        # a mistaken call must fail matchably instead.
+        with pytest.raises(ValueError, match=r"scan requires at least one motif"):
+            scan(["ACGTACGT"], [], background=UNIFORM_BG)
+
     def test_edge_zero_pass_threshold_empty_table_reports_counts(self):
         # Weak w=4 motif: no position anywhere reaches p < 1e-4.
         rows = [[0.3, 0.25, 0.25, 0.2]] * 4

@@ -714,7 +714,17 @@ def scan(
     Returns:
         A :class:`ScanResult` whose ``hits`` may be empty while still
         reporting the tested-motif/tested-position counts.
+
+    Raises:
+        ValueError: If ``motifs`` is empty. An empty motif set would build
+            zero PSSMs and return an all-zero :class:`ScanResult` — an
+            almost-certainly-mistaken call must not masquerade as "no
+            hits" (the sibling entry points reject their empty inputs the
+            same way). An empty ``windows`` list with ``background=None``
+            raises via :func:`gc_background`.
     """
+    if not motifs:
+        raise ValueError("scan requires at least one motif.")
     upper_windows = [window.upper() for window in windows]
     if background is None:
         background = gc_background(upper_windows)
