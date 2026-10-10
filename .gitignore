@@ -141,10 +141,14 @@ tests/inference/pdf/
 
 .cache
 __pycache__
-# graphify tool working output (derived, regenerable; durable graph lives in .planning/graphs/)
+# graphify tool working output (derived, regenerable; .planning/graphs/ build artifacts also ignored below)
 graphify-out/
 
 # local runtime dirs (jupyter kernelspecs, GSD capability sync mirrors, remember plugin memory)
 .jupyter/
 .gsd/
 .remember/
+
+# graphify build artifacts (29MB regenerable graph JSON/snapshot) and GSD scratch notes
+.planning/graphs/
+.planning/tmp/
