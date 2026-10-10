@@ -66,6 +66,7 @@ import hashlib
 import inspect
 import json
 import os
+import time
 import uuid
 import warnings
 from collections.abc import Generator
@@ -260,7 +261,18 @@ def _write_cache(cache_path: Path, embeddings: np.ndarray, labels: np.ndarray, m
     try:
         with open(tmp_path, "wb") as handle:
             np.savez(handle, embeddings=embeddings, labels=labels, meta=np.array(json.dumps(meta)))
-        os.replace(tmp_path, cache_path)
+        # Windows raises PermissionError (WinError 5) when os.replace targets a
+        # file another thread briefly holds open (av/defender or a concurrent
+        # reader): retry briefly, then let the loser's unlink below clean up --
+        # either way exactly one valid entry remains.
+        for attempt in range(5):
+            try:
+                os.replace(tmp_path, cache_path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
     except OSError:
         # Never leave a temp file behind on a failed write.
         tmp_path.unlink(missing_ok=True)
