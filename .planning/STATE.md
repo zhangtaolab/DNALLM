@@ -2,38 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v1.2
 milestone_name: Paper Revision Suite Support
-current_phase: 12
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T09:51:24.251Z"
+last_updated: "2026-10-10T10:24:19.698Z"
 last_activity: 2026-10-10
-last_activity_desc: Phase 12 complete
-state_head: 70a5ecbdcafa1ee6da7651512eea54a4b56aeb78
+last_activity_desc: Milestone v1.2 completed and archived
+state_head: da5caaea620772a1bd674cc880820310e5eba710
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 12
   completed_plans: 12
   percent: 100
+current_phase: 12
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-09)
+See: .planning/PROJECT.md (updated 2026-10-10)
 
 **Core value:** Ship the suite-side capabilities the paper revision requires (evaluation-semantics guard, metric registry, IA³/PEFT presets, from-scratch loading, probing, zero-shot VEP, multi-seed sweeps, motif matching, MCP tools) with the test suite, coverage gate, and CI honesty fully green throughout.
-**Current focus:** Phase 12 — Motif Matching, MCP Tools & Milestone Closeout
+**Current focus:** v1.2 shipped 2026-10-10 — awaiting next milestone (/gsd-new-milestone)
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-10 — Phase 12 complete
-
-Progress: [██████████] 100%
+Phase: Milestone v1.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-10 — Milestone v1.2 completed and archived
 
 ## Performance Metrics
 
@@ -67,10 +65,16 @@ None — milestone freshly planned.
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close, most recent first (full v1.1 ledger: `milestones/v1.1-MILESTONE-AUDIT.md`):
+Items acknowledged and deferred at milestone close, most recent first (full ledgers: `milestones/v1.2-MILESTONE-AUDIT.md`, `milestones/v1.1-MILESTONE-AUDIT.md`):
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| deferred_items | 12/deferred-items: MOTIF-01 golden fixture — HBG1/BCL11A Fig 4a owner inputs (issue #44; activation fixture-files-only) | owner-deferred (option B) | 2026-10-10 | v1.2 |
+| deferred_items | 12/deferred-items: mkdocs --strict 15 pre-existing warnings (marimo mirrors + CONTRIBUTING link; CI gate unaffected) | acknowledged | 2026-10-10 | v1.2 |
+| deferred_items | 12/deferred-items: numpy 2.5.x cannot be instrumented by coverage on py3.13 (matrix pins protect CI; numpy ceiling call when 1.26.4 leg retires) | acknowledged | 2026-10-10 | v1.2 |
+| deferred_items | 10/deferred-items: old-terminology prose hits outside check surface (pyproject description, 3 test docstrings, ui/ default, root cli/ shims + 2 example configs — reshaped table→bullets at close; acknowledged as one block) | acknowledged | 2026-10-10 | v1.2 |
+| deferred_items | 10/deferred-items: pytest-cov dotted-target env crash (torch.overrides double-execution; coverage CLI workaround) | acknowledged | 2026-10-10 | v1.2 |
+| uat_gaps | carried from v1.1 close (1 item) | acknowledged (prior close) | 2026-10-07 | v1.1 |
 | deferred_items | MCP `--host/--port` silently overridden by yaml (server.py) | IN v1.2 SCOPE — MCPE-01, Phase 12 | 2026-10-06 | v1.1 |
 | deferred_items | 09: test_plot_for_regression fast-lane failure | resolved 2026-10-06 (550d311; WINDOWS id 16) | 2026-10-06 | v1.1 |
 | deferred_items | 05: `uv run pytest` resolver failure under uv 0.12.20 (use `--no-sync`) | acknowledged | 2026-10-06 | v1.1 |
@@ -92,4 +96,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-plan-phase 10` — Phase 10 needs no plan-time research (standard patterns per research SUMMARY); the `--research-phase` flag applies to the Phase 11 REV-08 lane and the Phase 12 REV-10 spike
+- Start the next milestone with /gsd-new-milestone

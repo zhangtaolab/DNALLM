@@ -1,5 +1,25 @@
 # Milestones
 
+## v1.2 Paper Revision Suite Support (Shipped: 2026-10-10)
+
+**Phases completed:** 3 phases, 12 plans, 18 tasks
+
+**Delivered:** the eleven paper-revision capabilities (REV-01..REV-11) — eval-semantics leak guard, shared metric registry, IA³ + 35-family PEFT presets, random-init baselines, frozen-embedding probing, zero-shot VEP from ClinVar VCFs (scikit-allel, the only sanctioned dep addition), n-guarded multi-seed aggregation, FIMO-convention motif scanning with a stdlib JASPAR client, and three MCP analysis tools closing the v1.1 `--host/--port` audit item — with the CHANGELOG REV-ID→SHA evidence chain fully verified and all three phases re-verified at a zero-code-change milestone fixpoint. Package bumped 0.7.1 → 0.8.0.
+
+**Stats:** 2 days (2026-10-09 → 2026-10-10) · git range `46366e1..da5caae+close` (149+ commits, 168 files, +26,549/−1,364) · closeout audit `tech_debt` verdict with 0 critical gaps (11/11 requirements, 9/9 integration seams, 4/4 E2E flows — see `milestones/v1.2-MILESTONE-AUDIT.md`) · fast lane 2404P/0F, coverage 96.72%, full CI matrix green
+
+Known verification overrides: 13 newly acknowledged, 6 carried forward from a prior close (see STATE.md Deferred Items); 2 owner-accepted VERIFICATION frontmatter overrides (P11 VEP-01 magnitude, P12 MOTIF-01 golden-fixture deferral → issue #44)
+
+**Key accomplishments:**
+- EVAL-01 evaluation-semantics contract in the trainer — the test split can never silently become the eval set (`allow_test_as_eval` opt-in, collision ValueErrors, `evaluate(split=...)` predict-routing with canonical-keyed result JSON) — plus the one-pass Phase 11 scaffolding (`use_ia3` field, Ia3Config/VepConfig/SweepConfig stubs, `load_config` registration, presets package-data).
+- Single-name-authority metric registry at `dnallm.tasks.metric_registry` (28 canonical names + eval_-prefixed/historical aliases, frozen surface, import-light) with every metrics.py compute path gated through `validate_emission` — proven coverage-visible at 99% with same-commit CHANGELOG evidence.
+- Full-surface "DNA large language models" terminology unification (61 files), validate_sequences cross-model comparability warning with dropped-row count logging, new LoRA/QLoRA/IA³ chapter, and the REV-03 CHANGELOG evidence entry — all five docs-validation gate steps green.
+- layer/pooling-selectable frozen-embedding extraction with a (model, dataset, layer, pooling)-keyed atomic npz cache, plus fixed-hyperparameter logistic/MLP probes with train-only scaling emitting registry-canonical metrics — 100% module coverage and a pinned real-model × binary-task acceptance at two layers.
+- IA³ adapter support symmetric to LoRA (transformer + Mamba proven, config-time rejections, seed-pinned roundtrip) and per-family PEFT target presets with the mamba silent-skip trap closed by three countermeasures; random-init baselines with per-tensor sha256 no-pretrained-weights proof; zero-shot VEP `evaluate_vcf` with D-17 ClinVar convention and skip-as-data accounting feeding both the `dnallm-vep` CLI and the MCP `zero_shot_score` tool verbatim.
+- FIMO-convention motif scanner (exact-DP p-values, GC-matched background, single BH call) with a stdlib JASPAR REST client, and the MCP ism_scan/hotspots/zero_shot_score trio under timeout-wrapper + error-dict conventions with the `--host/--port` CLI>YAML precedence fixed on both transports.
+
+---
+
 ## v1.1 Example Execution Testing & Repair (Shipped: 2026-10-07)
 
 **Phases completed:** 5 phases, 24 plans, 64 tasks

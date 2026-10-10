@@ -21,6 +21,7 @@
   no milestone reopen.
 - **Tracking:** GitHub issue #44 "Golden fixture: HBG1/BCL11A Fig 4a owner
   inputs (MOTIF-01 deferred activation)" (2026-10-10, against `revision`).
+  status: acknowledged
 
 ## [Out-of-scope discovery — 12-03 Task 1] mkdocs --strict fails on 15 pre-existing warnings
 
@@ -43,6 +44,7 @@
   mkdocs nav/strict validation, regenerate the marimo mirrors with absolute
   doc paths, or accept and switch the strict gate on after fixing the
   CONTRIBUTING link. Recorded here per the executor scope-boundary rule.
+  status: acknowledged
 
 ## [Code review — Phase 12 IN-05] numpy 2.5.x cannot be instrumented by coverage on Python 3.13
 
@@ -64,4 +66,4 @@
   explicit numpy ceiling co-located with the pyarrow cap comment in
   `pyproject.toml`, or pin the dev venv; at minimum record the
   incompatibility in a comment next to the numpy floor.
-
+  status: acknowledged

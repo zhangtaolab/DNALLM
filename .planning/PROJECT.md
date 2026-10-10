@@ -2,27 +2,25 @@
 
 ## What This Is
 
-DNALLM (`dnallm` v0.7.0) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Milestone v1.1 (shipped 2026-10-07) made every artifact under `example/` execute for real — 21 notebooks, 3 marimo apps, the helper script, every YAML — on the nightly GPU runner, fixed every error it surfaced with same-change regression tests, delivered the PlantHelixSeek showcase notebooks over committed Arabidopsis loci, and brought the execution tests under formal nightly gating.
+DNALLM (`dnallm` v0.8.0) is a Python toolkit for fine-tuning, inference, and benchmarking of DNA large language models (150+ pretrained models from HF/ModelScope), plus an MCP server exposing them to LLM agents. Milestone v1 (shipped 2026-10-01) was a quality-engineering cycle on that existing codebase: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Milestone v1.1 (shipped 2026-10-07) made every artifact under `example/` execute for real — 21 notebooks, 3 marimo apps, the helper script, every YAML — on the nightly GPU runner, fixed every error it surfaced with same-change regression tests, delivered the PlantHelixSeek showcase notebooks over committed Arabidopsis loci, and brought the execution tests under formal nightly gating. Milestone v1.2 (shipped 2026-10-10) delivered the paper-revision suite: the eleven reviewer-requested capabilities REV-01..REV-11 (eval-semantics guard, metric registry, IA³ + PEFT presets, from-scratch baselines, probing, zero-shot VEP, multi-seed sweeps, FIMO motif scanning, MCP tool expansion) with the suite, gate, and CI honest-green throughout.
 
 ## Core Value
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: v1.2 Paper Revision Suite Support
+## Current Milestone: none active — v1.2 shipped 2026-10-10
 
-**Goal:** Ship the suite-side capabilities the paper revision requires — evaluation-semantics leak guard, metric registry contract, IA³/PEFT presets, from-scratch loading, frozen probing, zero-shot VEP, multi-seed protocol, JASPAR motif matching, and MCP tool expansion — so the dnallmmark full re-run and the new reviewer-requested experiments (E1'–E8') can start.
-
-**Target features:**
+**v1.2 delivered (all 11 REQ-IDs, full ledger in `milestones/v1.2-REQUIREMENTS.md` after archival):**
 - Evaluation semantics: no silent test-as-eval (REV-01), metric registry contract (REV-02), docs/terminology/comparability warnings (REV-03)
 - Adaptation & baselines: IA³ adapter (REV-04), per-model PEFT target presets (REV-05), `random_init=True` from-scratch loading (REV-06)
 - New evaluation capabilities: frozen-embedding probing (REV-07), zero-shot VEP module with token-slot alignment rules (REV-08), multi-seed sweep protocol with uncertainty aggregation (REV-09)
 - Interpretation & agent surface: JASPAR/CIS-BP PWM matching (REV-10), MCP tools for ISM/hotspots/zero-shot scoring (REV-11)
 
-**Execution strategy (owner decision 2026-10-09):** full scope, acceptance criteria retained, calendar time compressed to ~1–1.5 days via 4–5 parallel implementation agents in waves. Intake material: `.planning/research/261009-paper-revision-suite-plan.md`.
+**Next milestone goals:** not yet defined — `/gsd-new-milestone` when the paper revision's next needs are known (candidate intake: golden-fixture activation inputs (issue #44), dnallmmark re-run findings, v1.3+ future-requirement ledger in `milestones/v1.2-REQUIREMENTS.md`).
 
 ## Current State
 
-v1.1 shipped 2026-10-07 (32/32 requirements, 5/5 phases verified, milestone audit: 0 blockers / 13 deferred items — see `.planning/milestones/v1.1-MILESTONE-AUDIT.md` after archival). v1.2 started 2026-10-09 driven by the paper revision (reviewer comments R1/R2 + editor; suite-repo scope only — dnallmmark pipeline fixes F1–F10 and manuscript edits are tracked in companion docs, not this repo). Known carried debt: runner-box operational items (ollama loopback re-apply, cache-quota decision, `$HOME` cleanup), the MCP `--host/--port` flag-override bug (owner-scope ledger; folded into REV-11 scope), one stale `.github/workflows/README.md` sentence, and the giants-lane manual-execution policy (W1).
+v1.2 shipped 2026-10-10 (11/11 requirements, 3/3 phases verified at the milestone fixpoint, audit 0 blockers / 2 owner-accepted overrides / tech-debt ledger in `milestones/v1.2-MILESTONE-AUDIT.md`). Package at 0.8.0. Fast lane at close: 2404 passed / 0 failed; coverage 96.72% against `fail_under=90`; full CI matrix green (3.11/3.12/3.13 × numpy 1.26.4/2.2.0 + windows). Zero new dependencies beyond owner-approved scikit-allel; facade byte-stable; zero Co-Authored-By trailers. Known carried debt (owner-tracked): golden-fixture activation inputs (GitHub issue #44 — fixture-files-only when the manuscript values arrive), mkdocs --strict 15 pre-existing warnings, numpy 2.5.x/coverage py3.13 instrumentation incompatibility (numpy ceiling call when the 1.26.4 matrix leg retires), pytest-cov dotted-target env crash (workaround: coverage CLI), old-terminology prose hits outside the check surface, runner-box operational items carried from v1.1 (ollama loopback re-apply, cache-quota, `$HOME` cleanup), giants-lane manual-execution policy (W1).
 
 ## Requirements
 
@@ -55,12 +53,21 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-v1.2 Paper Revision Suite Support (defined 2026-10-09, full REQ-IDs in `.planning/REQUIREMENTS.md`):
+(Next milestone not yet defined — run `/gsd-new-milestone`; candidate inputs listed under Current Milestone above.)
 
-- [ ] JASPAR/CIS-BP PWM matching module (REV-10; R1-3d)
-- [ ] MCP tools: ism_scan/hotspots/zero_shot_score (REV-11; R2-7 narrative/Ed-6)
+### Validated — v1.2 (Paper Revision Suite Support, shipped 2026-10-10)
 
-### Validated — v1.2 (Paper Revision Suite Support, in progress)
+Milestone headline — 11/11 REQ-IDs satisfied (full ledger in `milestones/v1.2-REQUIREMENTS.md` after archival; 2 owner-accepted overrides):
+
+- ✓ All eleven reviewer capabilities REV-01..REV-11 shipped and verified end-to-end (per-phase detail in the Validated sections below)
+- ✓ Cross-phase integration audit-clean: 9/9 seams, 4/4 E2E flows, one evaluate_vcf kernel feeding CLI + MCP verbatim, metric-name registry validated at every emission, CHANGELOG SHA chain fully verified
+- ✓ Quality gates held throughout: 2404 fast-lane tests 0 failed (+151 vs v1.1 close), 96.72% coverage, every new module ≥96% per-module, full CI matrix green, zero new deps beyond scikit-allel
+
+Shipped in Phase 12 (Motif Matching, MCP Tools & Milestone Closeout, 2026-10-10):
+
+- ✓ FIMO-convention motif scanning + JASPAR client (MOTIF-01/REV-10): exact-DP p-values (MEME 4.8.1 recipe), GC-matched background, both strands, single BH call full-set, E-values; stdlib REST client on jaspar.elixir.no with retry/size-cap/matchable errors; paper-exact Fig 4a clause owner-deferred (issue #44) — harness committed + green on synthetic stand-in, activation fixture-files-only
+- ✓ MCP analysis tools + host/port fix (MCPE-01/REV-11): ism_scan/hotspots/zero_shot_score under timeout-wrapper + error-dict conventions, one evaluate_vcf kernel with verbatim skip accounting; `--host/--port` CLI>YAML precedence fixed on both transports (single `_resolve_bind_address` consumption point)
+- ✓ Milestone closeout: IA³ docs chapter completed (DOCS-01 split delivery closed), CHANGELOG REV-01..11 SHA-linked evidence chain, coverage expectation updated (96.72%)
 
 Shipped in Phase 11 (PEFT Adaptation, Baselines & New Evaluation Capabilities, 2026-10-09):
 
@@ -70,8 +77,6 @@ Shipped in Phase 11 (PEFT Adaptation, Baselines & New Evaluation Capabilities, 2
 - ✓ Zero-shot VEP (VEP-01/REV-08): `evaluate_vcf` via scikit-allel (owner-approved dep, bounded `<2`), D-17 ClinVar convention (≥1 star/SNV/P-LP-vs-B-LB reported alongside), uppercase-window soft-mask guard, skip-as-data accounting per reason, paradigm↔architecture ValueError, `dnallm-vep` CLI, formula docstrings + README protocol; ClinVar chr22 1k × 5-model GPU acceptance — magnitude clause owner-overridden 2026-10-09 (small-model near-floor AUROCs 0.490–0.581 honest finding; same-scale BPE anchor matched 0.543 vs 0.538)
 - ✓ Multi-seed sweep (SEED-01/REV-09): `run_seeds` {model}/{task}/seed_{s}/ protocol with D-16 same-split semantics, pure `aggregate_seeds` (n<3 omit, 3≤n<10 t-interval, n≥10 seeded bootstrap), boundary matrix n=2/3/9/10, 3-seed end-to-end trial with statistics block
 - Review chain: 3 iterations, 15 findings all fixed, disposition 0 open; full fast lane 2253P/0F (CI gate shape); regression gate over Phase-10 files 530P; verifier 8/9 truths + 1 owner override recorded
-
-Shipped in Phase 10 (Evaluation Contract Layer & Shared Scaffolding, 2026-10-09):
 
 Shipped in Phase 10 (Evaluation Contract Layer & Shared Scaffolding, 2026-10-09):
 
@@ -140,6 +145,8 @@ Shipped in Phase 4 (CI Gate Enforcement, 2026-10-01):
 
 ## Context
 
+Shipped v1.2 on 2026-10-10 (145 commits over v1.1; 3 phases, 12 plans): the paper-revision suite (REV-01..REV-11) landed in three sequential waves of file-disjoint parallel agents under pathspec-commit discipline, with every phase verified at the milestone fixpoint (zero code changes between regenerations). Two owner-accepted overrides recorded in phase VERIFICATION frontmatter: VEP-01 literature-magnitude (small ≤50M plant models honestly at the random floor; same-scale BPE anchor matched) and MOTIF-01 Fig 4a coordinates (golden-fixture deferral, issue #44). Fast lane at close: 2404 passed / 0 failed; coverage 96.72%; full CI matrix green including Windows.
+
 Shipped v1.1 on 2026-10-07 (373 commits over v1; 5 phases, 24 plans): the whole `example/` tree executes for real behind a staged example-nightly job (census hard gate pinned at 197/206 collected, hygiene floors ≥35 GiB, fail-soft summary with a hard non-zero exit), the docs mirror is byte-identical under `check_docs_sync.py`, and the showcase notebooks assert truth-agreement floors parsed from `selection.md`. Fast lane at close: 1,933 passed / 1 allowlisted skip; coverage-nightly 96.42% against the unchanged `fail_under=90` gate.
 
 Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% line coverage** (7,133/7,407 stmts) on a denominator byte-stable since Phase 1, `fail_under = 90` enforced through the pytest exit code and required-check branch protection on dev+main.
@@ -163,6 +170,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| Owner overrides instead of silent scope reduction (P11 VEP magnitude, P12 MOTIF-01 golden fixture) | Plans may add to, never subtract from, roadmap SCs; unmet acceptances must not pass silently — the owner adjudicates with the evidence on record | ✓ 2 overrides recorded in phase VERIFICATION frontmatter with reasons/timestamps; golden fixture tracked as GitHub issue #44 (fixture-files-only activation, no milestone reopen) |
+| Stale verifications regenerate at the milestone fixpoint | Phase 11/12 edits invalidated earlier covered-file digests; regenerating with zero code changes between proves the truths still hold at the shipped HEAD | ✓ Phase 10 re-verified 24/24 at 1e77a87; Phase 11 regenerated at the same fixpoint at close |
+| Zero new dependencies beyond scikit-allel (milestone invariant) | Reviewer capabilities fit the existing scipy/sklearn/stdlib footprint; the only addition (VCF reading) owner-approved with empirical Windows/numpy verification | ✓ Held — pyproject delta over the milestone is exactly 2 constraint changes on existing transitive deps (pyarrow<26, pydantic-ai>=1.107.0,<2 CI-drift fixes) |
 | VCF reading via scikit-allel (supersedes stdlib-reader research decision) | Original premise (VCF libs break Windows CI) disproven empirically 2026-10-09: scikit-allel 1.3.13 has Windows cp310–313 wheels and numpy 1.26.4/2.2.0 verified live; only new required transitive dep is dask[array]; INFO parsing (ClinVar CLNSIG) natively covered | ✓ Owner-approved 2026-10-09; lands Phase 11 B5 (ROADMAP/REQUIREMENTS/STATE amended) |
 | Single-tree concurrent wave execution with pathspec commits | Owner-fixed v1.2 mode (v1.1 Phase 8 proven); shared-index commit race in Phase 10 Wave 1 (c751df6 swept a sibling's staged files, no content loss) showed plain `git commit` commits the whole index | ✓ Wave 1 completed 4/4; all subsequent commits pathspec-limited; mandated in Phase 11/12 dispatch prompts |
 | CHANGELOG.md as the single sanctioned cross-lane append surface | D-09 same-commit REV-ID entries vs 4-lane file-disjointness resolved via coupling_justified declaration + idempotent unique-anchor append discipline | ✓ Checker-verified; three REV entries coexisted intact across concurrent lanes |
@@ -202,4 +212,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-09 after Phase 11 (PEFT/baselines/probing/VEP/sweep shipped: 5 REQ-IDs, VEP magnitude owner-overridden)*
+*Last updated: 2026-10-10 after v1.2 milestone (paper revision suite shipped 0.8.0: 11/11 REQ-IDs, 2 owner overrides, audit 0 blockers)*
