@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.1] - 2026-10-10
+
+### Overview
+
+This release carries the numpy `>=2.0.0` support floor and the `pyarrow` cap removal (numpy 1.x retired 2026-10-10; the CI matrix now runs numpy 2.2.0 only). The product version now follows milestone-aligned 1.2.x numbering — the jump from 0.8.0 is deliberate versioning alignment, not 400 minor versions of code.
+
+### Changed
+
+- **Breaking**: numpy support floor raised from `>=1.26.0` to `>=2.0.0` (numpy 1.x retired 2026-10-10; the CI matrix now runs numpy 2.2.0 only) and the `pyarrow>=15,<26` cap removed — its documented retirement condition (the numpy 1.26.4 CI matrix leg) is met. Environments on numpy 1.x must stay on the 0.8.x series.
 
 ## [0.8.0] - 2026-10-10
 

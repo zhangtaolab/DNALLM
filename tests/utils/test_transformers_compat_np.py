@@ -4,9 +4,10 @@
 1.14 with "use frombuffer instead"). stripedhyena's ``CharLevelTokenizer``
 (the evo-1 family tokenizer) still calls it, so ``dnallm`` installs an
 absence-gated shim that restores the historical binary-mode behavior. The
-tests below hold the rung to the same three-part discipline as the nine
-transformers shims: absence gate, idempotency sentinel, no-op when the
-library already provides the API.
+tests below cover the surviving rungs: absence gate (fallback install),
+raising-stub replacement, idempotency sentinel, and missing-module no-op;
+the numpy 1.x no-op rung (native ``fromstring`` left untouched) retired with
+the ``>=2.0.0`` floor (2026-10-10).
 """
 
 import sys
@@ -31,21 +32,6 @@ class TestNumpyFromstringShim:
         assert callable(_patch_fn())
         apply_src = transformers_compat.apply_patches.__code__.co_names
         assert "_patch_numpy_fromstring" in apply_src
-
-    def test_patch_noops_when_numpy_provides_fromstring(self, monkeypatch):
-        """numpy 1.x (has fromstring) must be left byte-identically untouched."""
-
-        def original(*args, **kwargs):
-            return None
-
-        fake = types.ModuleType("numpy")
-        fake.fromstring = original
-        monkeypatch.setitem(sys.modules, "numpy", fake)
-
-        _patch_fn()()
-
-        assert fake.fromstring is original
-        assert getattr(fake, "_dnallm_fromstring_patch", False) is False
 
     def test_patch_installs_fallback_when_absent(self, monkeypatch):
         """numpy 2.x (no fromstring) gets the vendored fallback attached."""
@@ -132,19 +118,6 @@ class TestNumpyFromstringFallbackBehavior:
         transformers_compat.apply_patches()
         assert hasattr(np, "fromstring")
         assert np.fromstring(b"ACGT", dtype=np.uint8).tolist() == [65, 67, 71, 84]
-
-    def test_binary_mode_str_input_matches_historical_behavior(self):
-        """str input (stripedhyena's shape) yields its byte values.
-
-        ``CharLevelTokenizer.tokenize(self, text: str)`` passes a bare str;
-        historical numpy 1.x binary mode accepted str as its ASCII byte
-        values, so the shim must encode rather than trip frombuffer's
-        bytes-only contract (CR-01 gate 3 live failure).
-        """
-        fromstring = self._fallback()
-        result = fromstring("ACGT", dtype=np.uint8)
-        assert result.tolist() == [65, 67, 71, 84]
-        assert result.dtype == np.uint8
 
     def test_binary_mode_str_count_is_honored(self):
         """The count argument truncates str input exactly like bytes input."""
