@@ -172,7 +172,7 @@ MCP enables AI assistants to:
 The DNALLM MCP Server provides different access points depending on the transport protocol:
 
 #### Default Configuration
-- **Host**: `0.0.0.0` (listens on all interfaces)
+- **Host**: `127.0.0.1` (CLI `--host` > transport-specific YAML > server YAML > `127.0.0.1`; pass `--host 0.0.0.0` to bind all interfaces)
 - **Port**: `8000`
 - **Base URL**: `http://localhost:8000`
 

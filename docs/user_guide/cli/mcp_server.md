@@ -180,7 +180,7 @@ location: `model.path` (e.g., `zhangtaolab/plant-dnabert-BPE-promoter`) and
 ## Client Access Points
 
 ### Default Configuration
-- **Host**: `0.0.0.0` (listens on all interfaces)
+- **Host**: `127.0.0.1` (CLI `--host` > transport-specific YAML > server YAML > `127.0.0.1`; pass `--host 0.0.0.0` to bind all interfaces)
 - **Port**: `8000`
 - **Base URL**: `http://localhost:8000`
 
@@ -276,7 +276,7 @@ SSE app is always mounted at `/mcp`, so the SSE message endpoint is always
 The MCP server provides the following tools:
 
 #### 1. Health Check
-- **Tool**: `health_check`
+- **Tool**: `_health_check`
 - **Description**: Check server and model status
 - **Returns**: Server health information and loaded models
 
@@ -299,7 +299,7 @@ The MCP server provides the following tools:
 
 ```python
 # Health check
-{"tool": "health_check", "arguments": {}}
+{"tool": "_health_check", "arguments": {}}
 
 # DNA sequence prediction
 {
@@ -344,7 +344,7 @@ eventSource.onmessage = function(event) {
 };
 
 // The MCP server exposes tools via the SSE transport
-// Use an MCP client library to call tools like dna_sequence_predict
+// Use an MCP client library to call tools like _dna_sequence_predict
 ```
 
 ## Troubleshooting

@@ -136,7 +136,7 @@ dataset = DNADataset.load_local_data(
 )
 
 # Validate data quality
-dataset.validate_sequences(min_length=50, max_length=1000, valid_chars=["A", "T", "G", "C"])
+dataset.validate_sequences(minl=50, maxl=1000, valid_chars="ACGT")
 
 # Check label distribution
 from collections import Counter
@@ -227,7 +227,7 @@ model, tokenizer = load_model_and_tokenizer(
 
 # 3. Load and process dataset
 datasets = DNADataset.from_modelscope(
-    data_name="zhangtaolab/plant-multi-species-core-promoters",
+    dataset_name="zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -301,7 +301,7 @@ def main():
 
     # Load data
     datasets = DNADataset.from_modelscope(
-        data_name=args.data,
+        dataset_name=args.data,
         seq_col="sequence",
         label_col="label",
         tokenizer=tokenizer,
@@ -484,7 +484,6 @@ dataset = DNADataset.load_local_data(
     label_col="tags",
     tokenizer=tokenizer,
     max_length=128,
-    task_type="token",  # Specify as token classification task
 )
 
 # Encode
@@ -561,7 +560,7 @@ model, tokenizer = load_model_and_tokenizer(
 
 # Load dataset
 datasets = DNADataset.from_modelscope(
-    data_name="zhangtaolab/plant-multi-species-core-promoters",
+    dataset_name="zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -667,9 +666,10 @@ result = inference_engine.infer(sequence)
 print(f"Inference result: {result}")
 
 # Get probabilities
-print(f"Negative class probability: {result['probabilities'][0]:.4f}")
-print(f"Positive class probability: {result['probabilities'][1]:.4f}")
-print(f"Predicted label: {result['predicted_label']}")
+# infer() returns {index: {"sequence": str, "label": str, "scores": {class_name: probability}}}
+first = result[0]
+print(f"Class probabilities: {first['scores']}")
+print(f"Predicted label: {first['label']}")
 ```
 
 ### 6.3 Batch Inference
@@ -683,7 +683,7 @@ test_data = pd.read_csv("./data/test.csv")
 sequences = test_data["sequence"].tolist()
 
 # Batch inference
-results = inference_engine.batch_infer(sequences, show_progress=True)
+results = inference_engine.infer(sequences=sequences)
 
 # Save results
 results_df = pd.DataFrame(results)

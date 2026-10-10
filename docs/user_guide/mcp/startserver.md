@@ -285,10 +285,10 @@ Options:
 # For SSE/HTTP transports
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}'
 
 # For STDIO transport
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}' | dnallm-mcp-server
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}' | dnallm-mcp-server
 ```
 
 ### 2. List Available Models
@@ -296,7 +296,7 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "he
 ```bash
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_loaded_models", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_list_loaded_models", "arguments": {}}}'
 ```
 
 ### 3. Test DNA Prediction
@@ -304,7 +304,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
 ```bash
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
 ```
 
 ## Python Client Example
