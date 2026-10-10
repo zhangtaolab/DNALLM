@@ -22,7 +22,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from dnallm.inference.vep import VepResult, VepVariantRecord
+from dnallm.inference.vep import ClinVarFilter, VepResult, VepVariantRecord
 from dnallm.mcp.server import (
     DNALLMMCPServer,
     HOTSPOT_MAX_REGION_LENGTH,
@@ -927,6 +927,33 @@ class TestZeroShotScoreContracts:
         )
         assert result["isError"] is True
         assert "positive_labels" in result["error"]
+
+    async def test_zero_shot_clnsig_filter_null_members_treated_as_absent(
+        self, v12_server, reference_fasta, tmp_path
+    ):
+        """WR-01: keys present with a JSON null fall back to the defaults
+        instead of crashing into the generic error (frozenset(None)) or
+        silently passing None into the kernel."""
+        vcf = tmp_path / "clinvar.vcf"
+        vcf.write_text("##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\n")
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
+        ) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                vcf_path=str(vcf),
+                clnsig_filter={
+                    "variant_type": None,
+                    "positive_labels": None,
+                    "negative_labels": None,
+                    "star_floor": None,
+                },
+            )
+
+        assert not result.get("isError")
+        kernel_filter = mock_kernel.call_args.kwargs["clnsig_filter"]
+        assert kernel_filter == ClinVarFilter()  # D-17 defaults, no crash
 
     async def test_zero_shot_model_errors(self, v12_server, reference_fasta):
         """Registry and engine gates produce their matchable dicts."""

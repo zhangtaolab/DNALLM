@@ -2226,11 +2226,18 @@ class DNALLMMCPServer:
         ):
             return None, "clnsig_filter.star_floor must be an integer >= 0"
         base = ClinVarFilter()
+        # Resolve each field ONCE and treat a key present with a JSON null
+        # as absent: dict.get(key, default) returns None (not the default)
+        # for present-but-null, which used to crash frozenset(None) into
+        # the generic error or silently pass None into the kernel.
+        positive = clnsig_filter.get("positive_labels")
+        negative = clnsig_filter.get("negative_labels")
+        star_floor = clnsig_filter.get("star_floor")
         built = ClinVarFilter(
-            variant_type=clnsig_filter.get("variant_type", base.variant_type),
-            positive_labels=frozenset(clnsig_filter.get("positive_labels", base.positive_labels)),
-            negative_labels=frozenset(clnsig_filter.get("negative_labels", base.negative_labels)),
-            star_floor=clnsig_filter.get("star_floor", base.star_floor),
+            variant_type=clnsig_filter.get("variant_type") or base.variant_type,
+            positive_labels=frozenset(positive) if positive is not None else base.positive_labels,
+            negative_labels=frozenset(negative) if negative is not None else base.negative_labels,
+            star_floor=star_floor if star_floor is not None else base.star_floor,
         )
         return built, None
 
