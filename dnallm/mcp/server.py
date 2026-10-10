@@ -121,6 +121,14 @@ ZERO_SHOT_MAX_CONTEXT_WINDOW = 10_000
 #: the filesystem entirely.
 INLINE_VCF_BASENAME = "inline_variants.vcf"
 
+#: Whitespace-free chromosome-name pattern for inline-variant ``chrom``
+#: values: a chrom carrying tabs or newlines would escape its VCF field and
+#: inject POS/REF/ALT/INFO columns or whole extra data rows, defeating the
+#: pattern-validated alleles, the variant cap, and the inline no-ClinVar
+#: guarantee. The class covers conventional names (chr1, chrX, chrM,
+#: chrUn_GL000220v1, NC_000001.11-style accessions, alt/decoy pipes).
+_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()-]+$")
+
 #: Pass-through CLNSIG marker written into the inline temp VCF. The kernel's
 #: convention gates require a CLNSIG/CLNREVSTAT/CLNVC triple; inline
 #: variants carry no ClinVar annotation by construction, so they are marked
@@ -2308,8 +2316,9 @@ class DNALLMMCPServer:
             fasta_path (str): Server-side reference FASTA path
                 (.fasta/.fa/.fa.gz/.fna) for window building.
             variants (list[dict[str, Any]] | None): Inline variants, each
-                {"chrom": str, "pos": int (1-based), "ref": ACGT str, "alt":
-                ACGT str}. Mutually exclusive with vcf_path.
+                {"chrom": str (whitespace-free chromosome name), "pos": int
+                (1-based), "ref": ACGT str, "alt": ACGT str}. Mutually
+                exclusive with vcf_path.
             vcf_path (str | None): Server-side ClinVar-style VCF path.
                 Mutually exclusive with variants.
             paradigm (str): "mlm" (log-odds, default) or "clm"
@@ -2427,9 +2436,12 @@ class DNALLMMCPServer:
                     pos = variant.get("pos")
                     ref = variant.get("ref")
                     alt = variant.get("alt")
-                    if not isinstance(chrom, str) or not chrom:
+                    if not isinstance(chrom, str) or not _CHROM_PATTERN.match(chrom):
                         return {
-                            "error": f"variants[{i}].chrom must be a non-empty string",
+                            "error": (
+                                f"variants[{i}].chrom must be a whitespace-free "
+                                f"chromosome name (got {chrom!r})"
+                            ),
                             "isError": True,
                         }
                     if not isinstance(pos, int) or isinstance(pos, bool) or pos < 1:

@@ -605,14 +605,17 @@ class TestZeroShotScoreContracts:
             result = await v12_server._zero_shot_score(
                 model_name="test-model",
                 fasta_path=str(reference_fasta),
-                variants=[{"chrom": "chr1", "pos": 10, "ref": "ac", "alt": "GT"}],
+                variants=[
+                    {"chrom": "chr1", "pos": 10, "ref": "ac", "alt": "GT"},
+                    {"chrom": "chr1", "pos": 62, "ref": "T", "alt": "A"},
+                ],
             )
 
         assert not result.get("isError")
         text = captured["text"]
         assert "##fileformat=VCFv4.2" in text
         assert "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" in text
-        data_line = next(line for line in text.splitlines() if line.startswith("chr1\t"))
+        data_line = next(line for line in text.splitlines() if line.startswith("chr1\t10\t"))
         fields = data_line.split("\t")
         assert fields[0] == "chr1"
         assert fields[1] == "10"  # 1-based VCF coordinate preserved
@@ -620,6 +623,10 @@ class TestZeroShotScoreContracts:
         assert fields[4] == "GT"
         assert "CLNSIG=not_analyzed" in fields[7]
         assert "CLNVC=inline_variant" in fields[7]
+        # Belt-and-braces (CR-01): exactly one data line per accepted
+        # variant — no field can smuggle extra rows past the variant cap.
+        data_lines = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
+        assert len(data_lines) == 2
         # temp dir cleaned up after the call
         assert not Path(captured["path"]).exists()
 
@@ -658,6 +665,56 @@ class TestZeroShotScoreContracts:
         assert Path(path).parent.name.startswith("dnallm_zero_shot_")
         for record_string in ("chrZZSECURITYPROBE", "ACGTTACG", "TTTTGGGG"):
             assert record_string not in path
+
+    async def test_zero_shot_security_tab_injected_chrom_rejected(
+        self, v12_server, reference_fasta
+    ):
+        """CR-01 injection regression: a tab-bearing chrom must be rejected
+        before the temp VCF is written — materialized, the tab row would
+        override the validated POS/REF/ALT with client-chosen fields and
+        attach a client-chosen ClinVar label."""
+        injected_chrom = (
+            "chr1\t20\t.\tA\tT\t.\t.\t"
+            "CLNSIG=Pathogenic;CLNREVSTAT=criteria_provided;"
+            "CLNVC=single_nucleotide_variant"
+        )
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": injected_chrom, "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert "whitespace-free" in result["error"]
+        assert "variants[0].chrom" in result["error"]
+        mock_kernel.assert_not_called()
+
+    async def test_zero_shot_security_newline_injected_chrom_rejected(
+        self, v12_server, reference_fasta
+    ):
+        """CR-01 injection regression: one accepted variant whose chrom
+        embeds newline-separated fully-formatted rows must be rejected —
+        otherwise the variant cap and the inline no-ClinVar guarantee are
+        bypassable by a single record."""
+        smuggled_chrom = "\n".join([
+            "chr1",
+            *[
+                "chr1\t20\t.\tA\tT\t.\t.\tCLNSIG=Benign;"
+                "CLNREVSTAT=criteria_provided;CLNVC=single_nucleotide_variant"
+                for _ in range(30)
+            ],
+        ])
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": smuggled_chrom, "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert "whitespace-free" in result["error"]
+        mock_kernel.assert_not_called()
 
     async def test_zero_shot_vcf_path_happy_path_uses_d17_default_filter(
         self, v12_server, reference_fasta, tmp_path
