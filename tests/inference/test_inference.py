@@ -232,8 +232,11 @@ task:
                         batch_size=2,
                         do_encode=False,  # Skip encoding to avoid tokenizer issues
                     )
-                # The error must name the offending input
-                assert missing in str(excinfo.value)
+                # The message embeds the input via repr (f-string !r in
+                # generate_dataset, same convention as generate()), so on
+                # Windows backslashes double in the message; only the repr
+                # form of the input is guaranteed present on every platform.
+                assert repr(missing) in str(excinfo.value)
 
     def test_generate_dataset_single_sequence_string(self):
         """Test dataset generation from a single bare sequence string."""
