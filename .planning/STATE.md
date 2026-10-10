@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.2
-milestone_name: Paper Revision Suite Support
 status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T10:24:19.698Z"
+last_updated: "2026-10-10T12:12:25.983Z"
 last_activity: 2026-10-10
 last_activity_desc: Milestone v1.2 completed and archived
-state_head: da5caaea620772a1bd674cc880820310e5eba710
+state_head: 834f9e2a0fdcfd527f9a34558e84eab3737e1474
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 12
   completed_plans: 12
   percent: 100
+milestone_name: Paper Revision Suite Support
 current_phase: 12
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 Phase: Milestone v1.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-10 — Milestone v1.2 completed and archived
+Last activity: 2026-10-10 - Completed quick task 261010-rpa: retire numpy 1.x support (floor >=2.0.0, pyarrow cap removed, CI matrix numpy 2.2.0 only)
 
 ## Performance Metrics
 
@@ -62,6 +62,12 @@ Carried open ledger items from the v1.1 handoff (owner-scoped): python floor dec
 ### Blockers/Concerns
 
 None — milestone freshly planned.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261010-rpa | Retire numpy 1.x support: floor >=2.0.0, drop pyarrow cap, CI matrix numpy 2.2.0 only | 2026-10-10 | 834f9e2 | [261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py](./quick/261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py/) |
 
 ## Deferred Items
 
