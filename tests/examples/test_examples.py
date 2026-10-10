@@ -277,7 +277,9 @@ class TestNotebookExamples:
                     while tb is not None and tb.tb_next is not None:
                         tb = tb.tb_next
                     if tb is not None:
-                        origin_frame = f" [raised in {tb.tb_frame.f_code.co_filename}:{tb.tb_lineno}]"
+                        origin_frame = (
+                            f" [raised in {tb.tb_frame.f_code.co_filename}:{tb.tb_lineno}]"
+                        )
                     failed.append(f"{stmt}: {e}{origin_frame}")
 
         if failed:
