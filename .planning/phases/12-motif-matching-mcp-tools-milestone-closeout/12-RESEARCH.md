@@ -499,7 +499,9 @@ def start_server(self, host: str | None = None, port: int | None = None,
 | A7 | BCL11A motif for the fixture is one of MA2324.1 / MA2504.1 (both JASPAR CORE, live-verified) | Pitfall 5 | Medium: paper may use a CIS-BP BCL11A PWM or another JASPAR version; owner pins |
 | A8 | `evaluate_vcf`'s D-17 ClinVar convention applies by default in the MCP tool; non-ClinVar callers pass an override | Pattern 4 | Low: parameter surface detail within C2 discretion; documented in the tool docstring |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Q3 temp-VCF route adopted by plan 12-02 Task 3; Q1/Q2 (Fig 4a coordinates, motif ID, JASPAR release, tolerance) are owner-input-gated by design — tracked via the 12-01 manifest.yaml pending-input mechanism and SUMMARY escalation.
 
 1. **The paper's exact Fig 4a coordinates + motif identity (BLOCKING for the golden test only)**
    - What we know: acceptance = "HBG1/BCL11A motif hit coordinates match the paper's Fig 4a annotation"; literature anchors are BCL11A +58 enhancer core GRCh38 chr2:60,495,219-60,495,336 (GATA1/GATAA motif core, Canver 2015 PMC4644101) and the HBG1/HBG2 promoter BCL11A site ~−115 from TSS; JASPAR has MA2324.1 (w=7) and MA2504.1 for BCL11A.

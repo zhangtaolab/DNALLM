@@ -110,8 +110,11 @@ Plans:
 **Plans**: 3
 
 Plans:
+**Wave 1**
 - [ ] 12-01-motif-matching-fimo-scanner-PLAN.md — C1: MOTIF-01 — dnallm/interpret/motifs.py FIMO-convention scanner (exact-DP calibration per D-01/D-02, GC background, both strands, BH full-set per D-03), stdlib JASPAR client + CIS-BP local parse, owner-gated HBG1/BCL11A golden harness
 - [ ] 12-02-mcp-tools-host-port-fix-PLAN.md — C2: MCPE-01 — ism_scan/hotspots/zero_shot_score MCP tools (D-04/D-05/D-06, skip accounting verbatim) + the --host/--port CLI-precedence fix on both transports with flipped tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 12-03-milestone-closeout-docs-changelog-PLAN.md — C3: DOCS-01 completion — IA³ chapter (D-08), measured coverage-expectation docs (D-07), CHANGELOG REV-01..11 SHA backfill, census verify
 
 **Wave structure (owner-fixed):** 3 agents — Wave 1: C1 (`dnallm/interpret/` + `tests/interpret/`) and C2 (`dnallm/mcp/server.py` + `tests/mcp/`) run file-disjoint in parallel (CHANGELOG.md is the single sanctioned shared append surface via the D-09 same-commit mechanism, declared coupling_justified in both plans); Wave 2: C3 integration closeout (needs C1/C2 commits for SHA backfill and their modules for the measured coverage number). **Research flag (resolved):** the REV-10 calibration spike is closed — D-01 exact-DP per FIMO/MEME source, transcribed in 12-RESEARCH.md Pattern 1; documented honestly in the module docstring per REQUIREMENTS.
