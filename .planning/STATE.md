@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.2
 status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T14:59:34.839Z"
+last_updated: "2026-10-10T16:04:13.711Z"
 last_activity: 2026-10-10
 last_activity_desc: Milestone v1.2 completed and archived
-state_head: 67953b63fa478de837c8a1a29bad0f1f24b2f818
+state_head: 454623eb204db540249173e6d9c9db3a4ecde4d9
 progress:
   total_phases: 3
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 Phase: Milestone v1.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-10 - Completed quick task 261010-w6a: repr-based platform-independent assertion in test_generate_dataset_missing_path_raises (+Windows backslash literal case; test-only fix for CI run 38061733263 test-windows job)
+Last activity: 2026-10-10 - Completed quick task 261010-wx2: numpy interval-jaccard parity spike vs bedtools v2.31.1 — VERDICT PARITY (frozen pair integer-exact, 3008/3008 cases, 0 mismatches); #19 platform-split evidence secured
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ None — milestone freshly planned.
 | 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError — honor label_column from dataset config instead of hardcoding 'labels' (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0-fix-window-14-benchmark-run-label-column](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
 | 261010-vo6 | Fix latent bug: DNAInference.generate_dataset silently treated non-file path strings as single sequences (path-shaped strings now raise descriptive ValueError; genuine sequences unchanged) | 2026-10-10 | 67953b6 | [261010-vo6-fix-latent-bug-dnainference-generate-dat](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
 | 261010-w6a | Fix Windows-only CI failure in test_generate_dataset_missing_path_raises: repr-based platform-independent message assertion + Windows backslash literal case (test-only; Windows proof = CI test-windows job on pushed run) | 2026-10-10 | 3b99359 | [261010-w6a-fix-windows-only-ci-failure-in-test-gene](./quick/261010-w6a-fix-windows-only-ci-failure-in-test-gene/) |
+| 261010-wx2 | Spike: numpy interval-jaccard parity vs bedtools v2.31.1 — VERDICT PARITY (frozen pair integer-exact 15872/48878, delta 0.0; 8/8 edge + 3000/3000 seeded cases, 0 mismatches); enabling evidence for #19 platform-split | 2026-10-11 | 454623e | [261010-wx2-spike-numpy-interval-jaccard-parity-vs-b](./quick/261010-wx2-spike-numpy-interval-jaccard-parity-vs-b/) |
 
 ## Deferred Items
 
