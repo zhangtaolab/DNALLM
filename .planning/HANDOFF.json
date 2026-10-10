@@ -1,35 +1,36 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-10T12:37:28.363Z",
+  "timestamp": "2026-10-10T13:14:00.000Z",
   "phase": null,
   "phase_name": "post-milestone quick tasks (v1.2 archived; no active phase)",
   "phase_dir": ".planning",
   "plan": null,
   "task": null,
   "total_tasks": 0,
-  "status": "paused",
+  "status": "complete",
   "completed_tasks": [
-    {"id": 1, "name": "revision -> dev merge #1 (PR #45, squash)", "status": "done", "commit": "92a8106"},
+    {"id": 1, "name": "revision -> dev merge #1 (PR #45, squash) + CI verification", "status": "done", "commit": "92a8106"},
     {"id": 2, "name": "numpy 1.x retirement deep evaluation (8/8 resolution proofs + runtime smoke)", "status": "done", "commit": null},
     {"id": 3, "name": "quick 261010-rpa: retire numpy 1.x (floor >=2.0.0, drop pyarrow cap, CI matrix 6->3 legs)", "status": "done", "commit": "834f9e2"},
     {"id": 4, "name": "quick 261010-s3k: bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering)", "status": "done", "commit": "526d539"},
-    {"id": 5, "name": "revision -> dev merge #2 (conflicts resolved to revision side, tree verified byte-identical to 10a47b4)", "status": "done", "commit": "05b788e"}
+    {"id": 5, "name": "revision -> dev merge #2 (phantom conflicts resolved to revision side, empty-diff tree proof)", "status": "done", "commit": "05b788e"},
+    {"id": 6, "name": "verify dev merge CI runs", "status": "done", "commit": null},
+    {"id": 7, "name": "quick 261010-sv2: requires-python >=3.11 (ruff py311 + mypy 3.11 sync, 3.10 dead code removed, ci.yml dead triggers phs/revision cleaned)", "status": "done", "commit": "a859a2e"},
+    {"id": 8, "name": "branch retirement: revision deleted local+remote (10a47b4 verified ancestor of dev)", "status": "done", "commit": null}
   ],
-  "remaining_tasks": [
-    {"id": 6, "name": "verify dev merge CI runs 38052483090 (CI) + 38052483063 (Docs Validation) completed success", "status": "in_progress", "progress": "both in_progress at pause; expected green (tree == CI-verified 10a47b4 content)"},
-    {"id": 7, "name": "requires-python floor >=3.11 decision (3.10 EOL 2026-10-31) - deliberately NOT bundled with numpy retirement", "status": "not_started"}
-  ],
+  "remaining_tasks": [],
   "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "REV-10/11 golden-test inputs (Fig 4a coordinates, BCL11A motif ID, JASPAR release, tolerance)", "context": "pre-existing, tracked in issue #44; not new this session", "blocking": false}
+    {"action": "REV-10/11 golden-test inputs (Fig 4a coordinates, BCL11A motif ID, JASPAR release, tolerance)", "context": "pre-existing, tracked in issue #44; not part of this session", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Retire numpy 1.x support; floor numpy>=2.0.0; remove pyarrow<26 cap", "rationale": "deep evaluation: zero packages pin numpy<2 among 42 audited; 8/8 uv resolution proofs across py3.10-3.13 incl. CI-pinned numpy==2.2.0 and 426-package extras union; pyarrow 26 + numpy 2.2 runtime smoke passed; py3.13 had no numpy 1.26.4 wheels at all (source-built unsupported combo)", "phase": null},
-    {"decision": "Package version 0.8.0 -> 1.2.1, switching to milestone-aligned 1.2.x numbering", "rationale": "owner instruction; the jump absorbs the numpy>=2.0.0 breaking floor; CHANGELOG [Unreleased] folded into [1.2.1] - 2026-10-10 with alignment note", "phase": null},
-    {"decision": "Future revision->dev PRs use 'Create a merge commit', never squash", "rationale": "PR #45 squash severed ancestry; merge-base fell back to old dev lineage causing phantom conflicts on the second merge despite superset content", "phase": null}
+    {"decision": "Retire numpy 1.x support; floor numpy>=2.0.0; remove pyarrow<26 cap", "rationale": "evidence-based: zero numpy<2 pins among 42 audited packages; 8/8 uv resolution proofs; pyarrow26+numpy2.2 runtime smoke passed", "phase": null},
+    {"decision": "Package version 0.8.0 -> 1.2.1, milestone-aligned 1.2.x numbering", "rationale": "owner instruction; jump absorbs the numpy breaking floor", "phase": null},
+    {"decision": "requires-python floor >=3.11 (ruff py311, mypy 3.11)", "rationale": "3.10 EOL 2026-10-31; decided 2026-10-10 morning; kept separate from numpy retirement for atomicity", "phase": null},
+    {"decision": "revision branch deleted after v1.2 closeout; post-milestone work lands directly on dev", "rationale": "content fully in dev (true merge 05b788e preserved ancestry); per-milestone working branch no longer needed", "phase": null}
   ],
   "uncommitted_files": ["?? .planning/graphs/", "?? .planning/tmp/"],
-  "next_action": "Verify dev merge CI: gh run list --branch dev --limit 2 — runs 38052483090 (CI) and 38052483063 (Docs Validation) must both be completed success. If green, everything from this session is closed; nothing else is in flight.",
-  "context_notes": "Session was post-milestone ops: merge verification, numpy retirement, version bump, second merge. Local dev == origin/dev == 05b788e (merge commit whose tree is byte-identical to revision tip 10a47b4). Local revision == origin/revision == 10a47b4. Working tree clean except two never-staged untracked runtime dirs (.planning/graphs/, .planning/tmp/). The dev CI monitor was session-bound and dies with this session — re-check runs manually or re-arm on resume."
+  "next_action": "Nothing queued. All session work is CI-verified green on origin/dev (HEAD bf4656f at handoff-write time). Natural candidates when the owner wants them: PyPI publish of 1.2.1, issue #44 golden-test inputs, next milestone planning (/gsd-new-milestone).",
+  "context_notes": "Session complete. dev == origin/dev; every push today (numpy retirement, 1.2.1 bump, merge 05b788e, python floor, docs pushes) verified green across the full matrix. Untracked runtime dirs .planning/graphs/ and .planning/tmp/ are intentionally never staged. .claude/CLAUDE.md is gitignored (.gitignore:116) — its 3.11 sync lives on disk only."
 }
