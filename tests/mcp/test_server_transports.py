@@ -36,9 +36,10 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 # The complete registration set, enumerated one-for-one from the
-# _register_tools() calls in dnallm/mcp/server.py: ten
-# timeout-wrapped tools plus the three streaming tools registered
-# directly, plus the two Phase 12 analysis tools (ism_scan, hotspots).
+# _register_tools() calls in dnallm/mcp/server.py: thirteen
+# timeout-wrapped tools (including the three Phase 12 analysis tools:
+# ism_scan, hotspots, zero_shot_score) plus the three streaming tools
+# registered directly.
 # FastMCP derives each wire name from the function __name__
 # (functools.update_wrapper inside _with_timeout_wrapper), so the names
 # carry the leading underscore of the implementing method.
