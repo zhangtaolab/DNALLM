@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 Phase: Milestone v1.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-10 - Completed quick task 261010-vo6: generate_dataset path-shaped strings raise descriptive ValueError instead of silent single-sequence fallback (+3 regression tests, census 05-06 root cause closed)
+Last activity: 2026-10-10 - Completed quick task 261010-w6a: repr-based platform-independent assertion in test_generate_dataset_missing_path_raises (+Windows backslash literal case; test-only fix for CI run 38061733263 test-windows job)
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ None — milestone freshly planned.
 | 261010-sv2 | Raise requires-python floor to >=3.11 (3.10 EOL); ruff py311 + mypy 3.11 sync; dead 3.10 code removed; ci.yml dead branch triggers (phs/revision) cleaned | 2026-10-10 | e3a5e94 | [261010-sv2-raise-requires-python-floor-to-3-11-3-10](./quick/261010-sv2-raise-requires-python-floor-to-3-11-3-10/) |
 | 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError — honor label_column from dataset config instead of hardcoding 'labels' (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0-fix-window-14-benchmark-run-label-column](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
 | 261010-vo6 | Fix latent bug: DNAInference.generate_dataset silently treated non-file path strings as single sequences (path-shaped strings now raise descriptive ValueError; genuine sequences unchanged) | 2026-10-10 | 67953b6 | [261010-vo6-fix-latent-bug-dnainference-generate-dat](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
+| 261010-w6a | Fix Windows-only CI failure in test_generate_dataset_missing_path_raises: repr-based platform-independent message assertion + Windows backslash literal case (test-only; Windows proof = CI test-windows job on pushed run) | 2026-10-10 | 3b99359 | [261010-w6a-fix-windows-only-ci-failure-in-test-gene](./quick/261010-w6a-fix-windows-only-ci-failure-in-test-gene/) |
 
 ## Deferred Items
 
@@ -94,8 +95,8 @@ Items acknowledged and deferred at milestone close, most recent first (full ledg
 
 ## Session Continuity
 
-Last session: 2026-10-09T12:36:31Z
-Stopped at: Phase 12 complete — all phases complete
+Last session: 2026-10-10T15:18:28Z
+Stopped at: Quick task 261010-w6a complete — Windows repr assertion fix pushed (3b99359); orchestrator watching CI test-windows job
 Resume file: None
 
 ## Deferred Verification
