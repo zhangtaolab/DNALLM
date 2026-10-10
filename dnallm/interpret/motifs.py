@@ -49,6 +49,11 @@ import math
 import re
 from dataclasses import dataclass
 
+import numpy as np
+from scipy.stats import false_discovery_control
+
+from ..utils.sequence import reverse_complement
+
 # --- FIMO constants (provenance: MEME Suite 4.8.1 source, read 2026-10-10) ---
 # FIMO's internal integer-score granularity for scaled log-odds PSSMs
 # (MEME 4.8.1 src/pssm.h:13 -- `#define PSSM_RANGE 100`).
@@ -58,6 +63,9 @@ PSSM_RANGE = 100
 FIMO_PSEUDOCOUNT = 0.1
 # fimo --thresh default: report matches with p-value < 1e-4.
 FIMO_P_THRESHOLD = 1e-4
+# Reported rows additionally require BH q < 0.05 over the full test set
+# (decision D-03; FIMO --qv-thresh uses the same 0.05 default).
+BH_Q_THRESHOLD = 0.05
 # Motif width bound enforced at parse time (matches the DP array bound the
 # FIMO recipe assumes; w * PSSM_RANGE stays a small pure-Python table).
 MAX_MOTIF_WIDTH = 100
@@ -520,3 +528,216 @@ def scan_single_strand(
                 "p": p,
             })
     return hits
+
+
+def parse_cisbp(text: str, *, motif_id: str | None = None, name: str | None = None) -> Motif:
+    """Parse a CIS-BP per-motif PWM table (``Pos A C G T`` rows).
+
+    CIS-BP exposes no REST API (bulk ZIPs only), so CIS-BP motifs are a
+    LOCAL-parse input: a metadata preamble of tab-separated ``key<TAB>value``
+    lines (``Motif ID`` / ``TF Name`` are captured when present) followed by
+    the ``Pos A C G T`` header and one ``<pos> <fA> <fC> <fG> <fT>`` row per
+    position, with tabs or spaces as separators. The table carries no site
+    count, so the returned motif has ``nsites == 0`` (probability-form
+    pseudocount branch in :func:`log_odds_matrix`).
+
+    Args:
+        text: CIS-BP PWM table content.
+        motif_id: Explicit motif id; overrides the ``Motif ID`` metadata line.
+        name: Explicit motif name; overrides the ``TF Name`` metadata line.
+
+    Returns:
+        The parsed :class:`Motif`.
+
+    Raises:
+        ValueError: If the table has no ``Pos A C G T`` header, a row is
+            non-numeric, has the wrong arity, or has values outside ``[0, 1]``;
+            or if no motif id can be resolved (neither argument nor metadata).
+    """
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("CIS-BP table text is empty.")
+    metadata: dict[str, str] = {}
+    rows: list[list[float]] = []
+    header_seen = False
+    for lineno, raw in enumerate(text.splitlines(), start=1):
+        line = raw.strip()
+        if not line:
+            continue
+        tokens = line.split()
+        if not header_seen:
+            if tokens == ["Pos", "A", "C", "G", "T"]:
+                header_seen = True
+                continue
+            # Metadata keys are word-like ("TF Name", "Motif ID"); a numeric
+            # first field means a data row appeared before the header.
+            if "\t" in raw and any(char.isalpha() for char in raw.partition("\t")[0]):
+                key, _, value = raw.partition("\t")
+                metadata[key.strip()] = value.strip()
+                continue
+            raise ValueError(
+                f"CIS-BP line {lineno}: expected the 'Pos A C G T' header or a "
+                f"tab-separated metadata line, got '{line[:60]}'."
+            )
+        if len(tokens) != 5:
+            raise ValueError(
+                f"CIS-BP line {lineno}: probability row must be "
+                f"'<pos> <A> <C> <G> <T>', got '{line[:60]}'."
+            )
+        try:
+            int(tokens[0])
+            values = [float(token) for token in tokens[1:]]
+        except ValueError as e:
+            raise ValueError(
+                f"CIS-BP line {lineno}: non-numeric probability row '{line[:60]}'."
+            ) from e
+        if any(value < 0.0 or value > 1.0 for value in values):
+            raise ValueError(
+                f"CIS-BP line {lineno}: probability row values must be in "
+                f"[0, 1], got '{line[:60]}'."
+            )
+        rows.append(values)
+    if not header_seen:
+        raise ValueError("CIS-BP table has no 'Pos A C G T' header.")
+    if not rows:
+        raise ValueError("CIS-BP table has no probability rows after the header.")
+    resolved_id = motif_id or metadata.get("Motif ID")
+    if not resolved_id:
+        raise ValueError(
+            "CIS-BP table provides no motif id: pass motif_id= or include a "
+            "'Motif ID<TAB>...' metadata line."
+        )
+    resolved_name = name or metadata.get("TF Name") or resolved_id
+    return Motif(motif_id=resolved_id, name=resolved_name, freq_rows=rows, nsites=0)
+
+
+@dataclass
+class ScanResult:
+    """Full FIMO-convention scan output over a window x motif set.
+
+    Attributes:
+        hits: Reported rows as dicts with ``motif_id``, ``window`` (index into
+            the scanned window list), ``start``/``end`` (forward-window frame,
+            0-based, end-exclusive), ``strand`` (``+``/``-``), ``score_bits``
+            (quantization-inverted bits), ``p``, ``q`` (BH over the FULL test
+            set), and ``e_value`` (``p * n_tested_positions``).
+        n_motifs: Number of motifs in the scan set.
+        n_windows: Number of windows in the scan set.
+        n_tested_positions: Total scorable positions evaluated across every
+            motif x window x strand combination (the BH test-set size and the
+            E-value multiplier).
+        n_excluded_short_windows: Number of (window, motif) pairs excluded
+            because the window is shorter than the motif width.
+        p_threshold: P-value threshold applied.
+        q_threshold: BH q-value threshold applied.
+    """
+
+    hits: list[dict[str, object]]
+    n_motifs: int
+    n_windows: int
+    n_tested_positions: int
+    n_excluded_short_windows: int
+    p_threshold: float
+    q_threshold: float
+
+
+def scan(
+    windows: list[str],
+    motifs: list[Motif],
+    *,
+    background: dict[str, float] | None = None,
+    p_threshold: float = FIMO_P_THRESHOLD,
+    q_threshold: float = BH_Q_THRESHOLD,
+) -> ScanResult:
+    """Scan windows against motifs on both strands under FIMO conventions.
+
+    Every motif is scored on the window as given (strand ``+``) and on its
+    reverse complement (strand ``-``, coordinates mapped back to the
+    forward-window frame). Palindromic motifs therefore produce hits on BOTH
+    strands at the same coordinates -- the two rows are reported separately
+    with their strand field, never deduplicated or merged. Windows shorter
+    than a motif are excluded from that motif's tests (counted in the
+    result); positions whose k-mer contains non-ACGT characters are not
+    tested.
+
+    Significance: positions with ``p < p_threshold`` survive the FIMO
+    threshold screen; ONE Benjamini-Hochberg call over the concatenated
+    p-vector of the FULL window x motif x strand test set (decision D-03 --
+    never per-sequence/per-window) assigns ``q``; rows with
+    ``q < q_threshold`` are reported. ``e_value = p * n_tested_positions``.
+
+    Args:
+        windows: Target DNA windows (case-insensitive).
+        motifs: Motifs to scan with.
+        background: Background frequencies; when ``None`` a zero-order
+            GC-matched background is computed from ALL windows (one
+            background per scan set, shared by every motif's DP so p-values
+            are cross-motif comparable; there is deliberately no uniform
+            default).
+        p_threshold: P-value threshold (FIMO default 1e-4).
+        q_threshold: BH q-value threshold (default 0.05).
+
+    Returns:
+        A :class:`ScanResult` whose ``hits`` may be empty while still
+        reporting the tested-motif/tested-position counts.
+    """
+    upper_windows = [window.upper() for window in windows]
+    if background is None:
+        background = gc_background(upper_windows)
+    pssms = [_build_pssm(motif, background, p_threshold) for motif in motifs]
+    # (motif_index, window_index, strand, start, end, scaled) per TESTED
+    # position, aligned 1:1 with all_p -- BH runs over every tested position,
+    # not just the threshold survivors.
+    records: list[tuple[int, int, str, int, int, int]] = []
+    all_p: list[float] = []
+    n_excluded = 0
+    for motif_index, pssm in enumerate(pssms):
+        for window_index, window in enumerate(upper_windows):
+            if len(window) < pssm.w:
+                n_excluded += 1
+                continue
+            length = len(window)
+            for strand, seq in (("+", window), ("-", reverse_complement(window))):
+                for pos, s in _iter_position_scores(seq, pssm):
+                    all_p.append(pssm.pv[s])
+                    if strand == "+":
+                        start, end = pos, pos + pssm.w
+                    else:
+                        start, end = length - pos - pssm.w, length - pos
+                    records.append((motif_index, window_index, strand, start, end, s))
+    n_tested = len(all_p)
+    # Float accumulation in the reverse cumsum can leave pv[0] a hair above
+    # 1.0 (observed at w=100); scipy requires p-values in [0, 1] strictly,
+    # so clamp the drift away before the single BH call.
+    q_values = (
+        false_discovery_control(
+            np.clip(np.asarray(all_p, dtype=float), 0.0, 1.0), method="bh"
+        ).tolist()
+        if all_p
+        else []
+    )
+    hits: list[dict[str, object]] = []
+    for record, q in zip(records, q_values, strict=True):
+        motif_index, window_index, strand, start, end, s = record
+        pssm = pssms[motif_index]
+        p = pssm.pv[s]
+        if p < p_threshold and q < q_threshold:
+            hits.append({
+                "motif_id": pssm.motif_id,
+                "window": window_index,
+                "start": start,
+                "end": end,
+                "strand": strand,
+                "score_bits": s / pssm.scale + pssm.w * pssm.offset,
+                "p": p,
+                "q": float(q),
+                "e_value": p * n_tested,
+            })
+    return ScanResult(
+        hits=hits,
+        n_motifs=len(pssms),
+        n_windows=len(upper_windows),
+        n_tested_positions=n_tested,
+        n_excluded_short_windows=n_excluded,
+        p_threshold=p_threshold,
+        q_threshold=q_threshold,
+    )

@@ -22,9 +22,12 @@ import pytest
 from dnallm.interpret import motifs
 from dnallm.interpret.motifs import (
     Motif,
+    gc_background,
     log_odds_matrix,
+    parse_cisbp,
     parse_meme,
     pvalue_table,
+    scan,
     scan_single_strand,
     threshold_bits,
 )
@@ -332,3 +335,268 @@ class TestScanSingleStrand:
         hits = scan_single_strand(window, motif)
         site_hits = [h for h in hits if h["start"] == 9 and h["end"] == 16]
         assert site_hits, "consensus site at [9, 16) must be reported"
+
+
+class TestStrandScanning:
+    """Both-strand mechanics: palindromic adjacency + non-palindromic canary."""
+
+    def test_strand_palindromic_motif_hits_both_strands_same_coordinates(self):
+        # "AGTATACT" is its own reverse complement; its PWM built from
+        # _sharp_motif is therefore column-symmetric.
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        result = scan(["GGGAGTATACTGGG"], [motif], background=UNIFORM_BG)
+        site_rows = [h for h in result.hits if h["start"] == 3 and h["end"] == 11]
+        # FIMO convention (adjacency edge predicate): BOTH strand rows are
+        # reported at the same coordinates -- never deduplicated or merged.
+        assert {(h["strand"]) for h in site_rows} == {"+", "-"}
+        assert len(site_rows) == 2
+        assert all(h["p"] == pytest.approx(0.25**8) for h in site_rows)
+
+    def test_strand_palindromic_tied_p_gets_equal_q(self):
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        result = scan(["GGGAGTATACTGGG"], [motif], background=UNIFORM_BG)
+        site_rows = [h for h in result.hits if h["start"] == 3]
+        assert site_rows[0]["q"] == site_rows[1]["q"]
+
+    def test_strand_non_palindromic_forward_site_only(self):
+        # Revcomp-bug canary: "CCGGGCC" is not palindromic, so a window
+        # carrying the forward site must yield exactly one '+' row and no
+        # '-' rows.
+        motif = _sharp_motif("CCGGGCC", motif_id="FWD")
+        result = scan(["AAAACCGGGCCAAAA"], [motif], background=UNIFORM_BG)
+        assert result.hits, "forward site must be reported"
+        assert {h["strand"] for h in result.hits} == {"+"}
+        assert result.hits[0]["start"] == 4
+        assert result.hits[0]["end"] == 11
+
+    def test_strand_non_palindromic_reverse_site_maps_to_forward_frame(self):
+        # The same motif against the reverse-complement window: the '-' hit
+        # must land at the SAME forward-window coordinates [4, 11).
+        motif = _sharp_motif("CCGGGCC", motif_id="FWD")
+        result = scan(["TTTTGGCCCGGTTTT"], [motif], background=UNIFORM_BG)
+        assert len(result.hits) == 1
+        hit = result.hits[0]
+        assert hit["strand"] == "-"
+        assert hit["start"] == 4
+        assert hit["end"] == 11
+
+
+class TestGcBackground:
+    """Zero-order GC-matched background over ALL target-window bases."""
+
+    def test_background_gc_matched_letter_frequencies(self):
+        bg = gc_background(["ACGT", "ACGT"])
+        assert bg == pytest.approx(UNIFORM_BG)
+
+    def test_background_ignores_non_acgt_characters(self):
+        bg = gc_background(["ACGTNnn-X"])
+        assert bg == pytest.approx(UNIFORM_BG)
+
+    def test_background_aggregates_across_all_windows(self):
+        # Only the absent letter (T) hits the floor: raw A=.5, C=.25, G=.25,
+        # T=BG_FLOOR -> denominator = 1 + BG_FLOOR after renormalization.
+        bg = gc_background(["AAAA", "CCGG"])
+        assert bg["A"] == pytest.approx(0.5 / (1.0 + motifs.BG_FLOOR))
+        assert bg["C"] == pytest.approx(0.25 / (1.0 + motifs.BG_FLOOR))
+        assert bg["T"] == pytest.approx(motifs.BG_FLOOR / (1.0 + motifs.BG_FLOOR))
+        assert sum(bg.values()) == pytest.approx(1.0)
+
+    def test_background_floors_absent_letters(self):
+        bg = gc_background(["GCGCGCGC"])
+        assert bg["A"] > 0.0
+        assert bg["T"] > 0.0
+        assert sum(bg.values()) == pytest.approx(1.0)
+        assert bg["G"] == pytest.approx(0.5 / 1.002)
+
+    def test_background_empty_acgt_raises(self):
+        with pytest.raises(ValueError, match=r"windows contain no A/C/G/T bases"):
+            gc_background(["NNNN"])
+
+    def test_background_changes_hit_set_on_gc_skewed_windows(self):
+        # GC-heavy consensus in a GC-skewed window: significant under a
+        # uniform background, NOT significant under the GC-matched
+        # background that the scan computes from the windows themselves.
+        motif = _sharp_motif("GCGCGCG", motif_id="GC")
+        window = "GGGGCGCGCGGGGG"
+        uniform = scan([window], [motif], background=UNIFORM_BG)
+        matched = scan([window], [motif])
+        uniform_site = [h for h in uniform.hits if h["start"] == 3 and h["end"] == 10]
+        matched_site = [h for h in matched.hits if h["start"] == 3 and h["end"] == 10]
+        assert uniform_site, "site must be reported under the uniform background"
+        assert not matched_site, "GC-heavy site must lose significance under GC match"
+        assert uniform.hits != matched.hits
+
+
+class TestBhFdr:
+    """One BH call over the FULL window x motif x strand p-vector (D-03)."""
+
+    def test_bh_q_values_match_full_set_single_call_semantics(self):
+        motif_a = _sharp_motif("AGTATACT", motif_id="A8")  # w=8, palindromic
+        motif_b = _sharp_motif("CCGGGCC", motif_id="B7")  # w=7, non-palindromic
+        window = "AGTATACTCCGGGCC"
+        result = scan([window], [motif_a, motif_b], background=UNIFORM_BG)
+        # Tests: A -> 2 strands x (15-7)=8 positions = 16; B -> 2 x 9 = 18.
+        assert result.n_tested_positions == 34
+        hits_a = sorted(
+            (h for h in result.hits if h["motif_id"] == "A8"), key=lambda h: h["strand"]
+        )
+        hits_b = [h for h in result.hits if h["motif_id"] == "B7"]
+        assert len(hits_a) == 2
+        assert len(hits_b) == 1
+        # Sorted ps: [pA, pA, pB]. scipy BH: tied pair at ranks 1-2 -> q = p*n/2;
+        # pB at rank 3 -> q = p*n/3. These exact values hold ONLY for the
+        # full-set single call (a per-motif correction would give pA*16/2 and
+        # pB*18/1 -- different numbers).
+        n = 34
+        assert hits_a[0]["q"] == pytest.approx(0.25**8 * n / 2)
+        assert hits_a[1]["q"] == pytest.approx(0.25**8 * n / 2)
+        assert hits_b[0]["q"] == pytest.approx(0.25**7 * n / 3)
+        # Ordering: the stronger (smaller-p) hits get the smaller q.
+        assert hits_a[0]["q"] < hits_b[0]["q"]
+
+
+class TestEValue:
+    """E-value = p x total tested positions (FIMO-paper convention, A4)."""
+
+    def test_evalue_equals_p_times_tested_positions(self):
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        result = scan(["GGGAGTATACTGGG"], [motif], background=UNIFORM_BG)
+        assert result.n_tested_positions == 14
+        for hit in result.hits:
+            assert hit["e_value"] == pytest.approx(hit["p"] * result.n_tested_positions)
+        # And numerically: p = 0.25**8 over 14 tested positions.
+        assert all(hit["e_value"] == pytest.approx(0.25**8 * 14) for hit in result.hits)
+
+
+class TestScanEdges:
+    """Specless edge predicates: short-window exclusion + empty-but-counted."""
+
+    def test_edge_short_window_excluded_with_count(self):
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        result = scan(["AT", "GGGAGTATACTGGG"], [motif], background=UNIFORM_BG)
+        assert result.n_excluded_short_windows == 1
+        assert result.hits
+        assert all(hit["window"] == 1 for hit in result.hits)
+        assert result.n_tested_positions == 14
+
+    def test_edge_all_windows_short_returns_empty_counted_table(self):
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        result = scan(["A"], [motif], background=UNIFORM_BG)
+        assert result.hits == []
+        assert result.n_excluded_short_windows == 1
+        assert result.n_tested_positions == 0
+        assert result.n_motifs == 1
+
+    def test_edge_zero_pass_threshold_empty_table_reports_counts(self):
+        # Weak w=4 motif: no position anywhere reaches p < 1e-4.
+        rows = [[0.3, 0.25, 0.25, 0.2]] * 4
+        weak = Motif(motif_id="W", name="W", freq_rows=rows, nsites=20000)
+        result = scan(["ACGTACGTACGTACGTACGT"], [weak], background=UNIFORM_BG)
+        assert result.hits == []
+        assert result.n_tested_positions == 2 * (20 - 4 + 1)
+        assert result.n_motifs == 1
+        assert result.n_excluded_short_windows == 0
+
+    def test_edge_zero_survive_bh_empty_table_reports_counts(self):
+        # Loose p threshold admits every position; every BH q stays above
+        # 0.05, so the table is empty but still counted.
+        rows = [[0.3, 0.25, 0.25, 0.2]] * 4
+        weak = Motif(motif_id="W", name="W", freq_rows=rows, nsites=20000)
+        result = scan(
+            ["ACGTACGTACGTACGTACGT"],
+            [weak],
+            background=UNIFORM_BG,
+            p_threshold=1.0,
+        )
+        assert result.hits == []
+        assert result.n_tested_positions == 34
+        assert result.n_motifs == 1
+
+    def test_edge_window_with_n_skips_unscorable_positions(self):
+        motif = _sharp_motif("AGTATACT", motif_id="PAL")
+        window = "GGGNAGTATACTGGG"
+        result = scan([window], [motif], background=UNIFORM_BG)
+        site = [h for h in result.hits if h["start"] == 4 and h["end"] == 12]
+        assert site, "site downstream of N must still be reported"
+        # 2 strands x 8 positions minus the 4 N-overlapping positions per
+        # strand = 8 tested positions.
+        assert result.n_tested_positions == 8
+
+    def test_edge_wide_motif_at_width_cap_runs_dp_without_overflow(self):
+        consensus = ("AGTATACT" * 13)[:100]
+        motif = _sharp_motif(consensus, motif_id="WIDE")
+        window = "GGG" + consensus + "GGG"
+        result = scan([window], [motif], background=UNIFORM_BG)
+        site = [
+            h for h in result.hits if h["start"] == 3 and h["end"] == 103 and h["strand"] == "+"
+        ]
+        assert site
+        assert site[0]["p"] == pytest.approx(0.25**100, rel=1e-6)
+
+
+class TestParseCisbp:
+    """CIS-BP local PWM table parsing: fixture + parse-or-reject."""
+
+    def test_cisbp_fixture_parses_with_metadata(self):
+        text = (FIXTURES / "cisbp_motif.txt").read_text(encoding="utf-8")
+        motif = parse_cisbp(text)
+        assert motif.motif_id == "M5085_1.02"
+        assert motif.name == "BCL11A"
+        assert motif.width == 7
+        assert motif.nsites == 0
+        assert motif.freq_rows[0] == pytest.approx([0.20, 0.40, 0.20, 0.20])
+
+    def test_cisbp_explicit_id_overrides_metadata(self):
+        text = (FIXTURES / "cisbp_motif.txt").read_text(encoding="utf-8")
+        motif = parse_cisbp(text, motif_id="CUSTOM.1", name="CustomName")
+        assert motif.motif_id == "CUSTOM.1"
+        assert motif.name == "CustomName"
+
+    def test_cisbp_name_defaults_to_id_when_absent(self):
+        text = "Pos\tA\tC\tG\tT\n1\t0.25\t0.25\t0.25\t0.25\n"
+        motif = parse_cisbp(text, motif_id="X")
+        assert motif.name == "X"
+
+    def test_cisbp_missing_id_raises(self):
+        text = "Pos\tA\tC\tG\tT\n1\t0.25\t0.25\t0.25\t0.25\n"
+        with pytest.raises(ValueError, match=r"CIS-BP table provides no motif id"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_missing_header(self):
+        text = "TF Name\tBCL11A\n1\t0.25\t0.25\t0.25\t0.25\n"
+        with pytest.raises(ValueError, match=r"expected the 'Pos A C G T' header"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_non_numeric_row(self):
+        text = "Pos\tA\tC\tG\tT\n1\t0.25\tabc\t0.25\t0.25\n"
+        with pytest.raises(ValueError, match=r"non-numeric probability row"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_out_of_range_row(self):
+        text = "Pos\tA\tC\tG\tT\n1\t1.5\t0.0\t0.0\t0.0\n"
+        with pytest.raises(ValueError, match=r"values must be in \[0, 1\]"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_wrong_arity_row(self):
+        text = "Pos\tA\tC\tG\tT\n1\t0.25\t0.25\t0.25\n"
+        with pytest.raises(ValueError, match=r"probability row must be"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_header_only_table(self):
+        text = "Pos\tA\tC\tG\tT\n"
+        with pytest.raises(ValueError, match=r"no probability rows"):
+            parse_cisbp(text)
+
+    def test_cisbp_rejects_empty_text(self):
+        with pytest.raises(ValueError, match=r"CIS-BP table text is empty"):
+            parse_cisbp("  \n")
+
+    def test_cisbp_motif_scans_through_the_same_engine(self):
+        # nsites == 0 selects the probability-form pseudocount branch; the
+        # parsed CIS-BP motif flows through the identical scan path.
+        text = (FIXTURES / "cisbp_motif.txt").read_text(encoding="utf-8")
+        motif = parse_cisbp(text)
+        hits = scan_single_strand("AAAACCGGGCCAAAA", motif, background=UNIFORM_BG)
+        site = [h for h in hits if h["start"] == 4 and h["end"] == 11]
+        assert site
+        assert site[0]["p"] == pytest.approx(0.25**7)
