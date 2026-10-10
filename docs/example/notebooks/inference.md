@@ -14,7 +14,7 @@ This tutorial demonstrates how to run inference with a pre-trained DNA large lan
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

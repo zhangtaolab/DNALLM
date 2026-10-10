@@ -21,7 +21,7 @@ conda install -c bioconda bedtools
 # or on macOS: brew install bedtools
 
 # Install Python dependencies
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 uv pip install pyfastx pybedtools
 ```
 

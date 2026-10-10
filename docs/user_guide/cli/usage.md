@@ -144,7 +144,7 @@ Start MCP (Model Context Protocol) server.
 **Options:**
 - `--config, -c`: Path to configuration file
 - `--port`: Server port (default: 8000)
-- `--host`: Server host (default: 0.0.0.0)
+- `--host`: Server host (default: `127.0.0.1`; pass `--host 0.0.0.0` to bind all interfaces)
 
 **Examples:**
 ```bash
@@ -244,10 +244,15 @@ datasets:
     format: "csv"
     task: "binary_classification"
 
+metrics: ["accuracy", "precision", "recall", "f1", "mcc"]
+
 evaluation:
-  metrics: ["accuracy", "precision", "recall", "f1", "mcc"]
+  batch_size: 32
+  device: "auto"
+
+output:
+  path: "./benchmark_results"
   save_predictions: true
-  output_dir: "./benchmark_results"
 ```
 
 ## Project Structure

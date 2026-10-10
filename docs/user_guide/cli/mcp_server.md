@@ -289,9 +289,11 @@ The MCP server provides the following tools:
     loaded models (required)
 
 #### 3. Model Information
-- **Tool**: `get_model_info`
-- **Description**: Get information about available models
-- **Returns**: List of loaded models and their capabilities
+- **Tool**: `_get_model_info`
+- **Description**: Get detailed information about a specific model
+- **Parameters**:
+  - `model_name`: Name of the model to inspect (required)
+- **Returns**: Detailed information about the requested model
 
 ### Example API Usage
 
@@ -306,7 +308,7 @@ The MCP server provides the following tools:
 }
 
 # Get model information
-{"tool": "get_model_info", "arguments": {}}
+{"tool": "_get_model_info", "arguments": {"model_name": "promoter_model"}}
 ```
 
 ## Integration Examples
@@ -385,7 +387,7 @@ The MCP server does not expose REST endpoints. Use the MCP protocol
 
 ```bash
 # Check server is running by connecting via MCP client
-# The server exposes tools: dna_sequence_predict, dna_batch_predict, dna_multi_model_predict
+# The server exposes tools: _dna_sequence_predict, _dna_batch_predict, _dna_multi_model_predict
 ```
 
 ## Performance Optimization

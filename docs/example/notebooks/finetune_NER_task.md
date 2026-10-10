@@ -13,10 +13,10 @@ This tutorial demonstrates how to fine-tune a DNA large language model for Named
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 For generating NER training data from scratch, see the [NER Data Generation](https://github.com/zhangtaolab/DNALLM/blob/main/example/notebooks/finetune_NER_task/data_generation_and_inference.ipynb) tutorial.

@@ -12,7 +12,7 @@ This interactive demo shows how to fine-tune a DNA large language model with a c
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
 uv pip install -e '.[base,cuda124]'

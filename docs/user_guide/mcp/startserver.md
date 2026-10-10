@@ -267,7 +267,9 @@ dnallm-mcp-server [OPTIONS]
 
 Options:
   --config, -c PATH          Path to MCP server configuration file
-  --host TEXT                Host to bind the server to (default: 0.0.0.0)
+  --host TEXT                Host to bind HTTP/SSE transports to (when omitted:
+                             transport-specific YAML > server YAML > 127.0.0.1;
+                             pass --host 0.0.0.0 to bind all interfaces)
   --port INTEGER             Port to bind the server to (default: 8000)
   --transport [stdio|sse|streamable-http]  Transport protocol (default: stdio)
   --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]  Logging level (default: INFO)

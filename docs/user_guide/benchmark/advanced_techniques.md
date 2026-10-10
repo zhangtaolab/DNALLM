@@ -47,7 +47,7 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
                     model_info["model"],
                     model_info["tokenizer"],
                     val_data,
-                    metrics_list=["accuracy", "f1_score", "precision", "recall"],
+                    metrics_list=["accuracy", "f1", "precision", "recall"],
                 )
 
                 fold_scores.append(fold_result)
@@ -56,8 +56,8 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
             cv_results[model_name][dataset_name] = {
                 "mean_accuracy": np.mean([s["accuracy"] for s in fold_scores]),
                 "std_accuracy": np.mean([s["accuracy"] for s in fold_scores]),
-                "mean_f1": np.mean([s["f1_score"] for s in fold_scores]),
-                "std_f1": np.std([s["f1_score"] for s in fold_scores]),
+                "mean_f1": np.mean([s["f1"] for s in fold_scores]),
+                "std_f1": np.std([s["f1"] for s in fold_scores]),
                 "fold_results": fold_scores,
             }
 
@@ -431,7 +431,7 @@ def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
 
         # Evaluate performance
         result = benchmark.evaluate_single_model(
-            model, tokenizer, test_data, metrics_list=["accuracy", "f1_score"]
+            model, tokenizer, test_data, metrics_list=["accuracy", "f1"]
         )
 
         temporal_results.append({

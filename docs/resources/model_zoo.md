@@ -30,14 +30,14 @@ The following table shows all currently supported models and their fine-tuning/i
 | GENA-LM | MaskedLM | BERT | ✅ | AIRI-Institute | 150M / 500M | 7 | [Nucleic Acids Research](https://doi.org/10.1093/nar/gkae1310) |
 | GENA-LM-BigBird | MaskedLM | BigBird | ✅ | AIRI-Institute | 150M | 3 | [Nucleic Acids Research](https://doi.org/10.1093/nar/gkae1310) |
 | GENERator | CausalLM | Llama | ✅ | GenerTeam | 1.2B / 3B | 2 | [arXiv](https://doi.org/10.48550/arXiv.2502.07272) |
-| GENERanno | CausalLM | Generanno | ✅ | GenerTeam | 0.5B | 2 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.06.04.656517) |
+| GENERanno | MaskedLM | GenerannoForMaskedLM | ✅ | GenerTeam | 0.5B | 2 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.06.04.656517) |
 | GenomeOcean | CausalLM | Mistral | ✅ | DOEJGI | 100M / 500M / 4B | 3 | [bioRxiv](https://doi.org/10.1101/2025.01.30.635558) |
 | GPN | MaskedLM | ConvNet | ✅ | songlab | 60M | 1 | [PNAS](https://doi.org/10.1073/pnas.2311219120) |
 | GROVER | MaskedLM | BERT | ✅ | PoetschLab | 100M | 1 | [Nature Machine Intelligence](https://doi.org/10.1038/s42256-024-00872-0) |
 | HyenaDNA | CausalLM | HyenaDNA | ✅ | LongSafari | 0.5M / 0.7M / 2M / 4M / 15M / 30M / 55M | 7 | [arXiv](https://doi.org/10.48550/arXiv.2306.15794) |
 | LucaOne | MaskedLM | LucaGPLM | ⭕ | LucaGroup | 5.6M / 17.6M / 36M | 4 | [Nature Machine Intelligence](https://www.nature.com/articles/s42256-025-01044-4) |
 | Jamba-DNA | CausalLM | Jamba | ✅ | RaphaelMourad | 114M | 1 | [GitHub](https://github.com/raphaelmourad/LLM-for-genomics-training) |
-| Mistral-DNA | CausalLM | Mistral | ✅ | RaphaelMourad | 1M / 17M / 138M / 417M / 422M | 10 | [GitHub](https://github.com/raphaelmourad/Mistral-DNA) |
+| Mistral-DNA | CausalLM | MixtralForCausalLM | ✅ | RaphaelMourad | 1M / 17M / 138M / 417M / 422M | 10 | [GitHub](https://github.com/raphaelmourad/Mistral-DNA) |
 | ModernBert-DNA | MaskedLM | ModernBert | ✅ | RaphaelMourad | 37M | 3 | [GitHub](https://github.com/raphaelmourad/LLM-for-genomics-training) |
 | megaDNA | CausalLM | MEGADNA | ⭕ | lingxusb | 78M / 145M / 277M | 3 | [arXiv](https://doi.org/10.48550/arXiv.2505.17257) |
 | MutBERT | MaskedLM | RoPEBert | ✅ | JadenLong | 86M | 3 | [bioRxiv](https://www.biorxiv.org/content/10.1101/2025.01.23.634452v2) |
@@ -84,7 +84,7 @@ The following table shows all currently supported models and their fine-tuning/i
 ## Usage Guidelines
 
 ### Fine-tuning Support
-- ✅ **Native Supported**: 35 models with full fine-tuning capabilities based on its own model implementation
+- ✅ **Native Supported**: 34 models with full fine-tuning capabilities based on its own model implementation
 - ⭕ **Custom Supported**: 2 models (LucaOne, megaDNA) with fine-tuning capabilities based on custom implementation for sequence classification
 - ❌ **Not Supported**: 2 models (EVO-1, EVO-2) - inference only
 

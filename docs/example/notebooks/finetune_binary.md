@@ -13,10 +13,10 @@ This tutorial demonstrates how to fine-tune a DNA large language model for binar
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

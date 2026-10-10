@@ -111,7 +111,7 @@ streamable_http:
 - `port`: Port number (1024-65535)
 - `path`: URL path of the single MCP endpoint (default `"/mcp"`)
 
-The `streamable_http` block is optional. When omitted, the server falls back to the `server.host` and `server.port` values with path `/mcp`. Configuring both `sse` and `streamable_http` logs a warning — valid for transitional deployments but unusual in production.
+The `streamable_http` block is optional. When omitted, the server falls back to the `server.host` and `server.port` values with path `/mcp`.
 
 ### Logging Configuration
 
@@ -399,7 +399,7 @@ dnallm-mcp-server --config mcp_server_config.yaml --host 127.0.0.1 --port 8000 \
 ```
 
 - `--config`, `-c`: Path to the server configuration file (default: `dnallm/mcp/configs/mcp_server_config.yaml`)
-- `--host`: Host to bind the server to (default: `0.0.0.0`)
+- `--host`: Host to bind HTTP/SSE transports to. When omitted: transport-specific YAML (`streamable_http` block) > `server` YAML > `127.0.0.1`. An explicit flag always wins over the YAML config; pass `--host 0.0.0.0` to bind all interfaces
 - `--port`: Port to bind the server to (default: `8000`)
 - `--log-level`: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (default: `INFO`)
 - `--transport`: `stdio`, `sse`, or `streamable-http` (default: `stdio`)

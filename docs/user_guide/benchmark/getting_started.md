@@ -114,9 +114,11 @@ dnallm benchmark --config benchmark_config.yaml
 # Generate detailed report
 dnallm benchmark --config config.yaml --output report.html
 
-# Run with custom parameters
-dnallm benchmark --config config.yaml --batch-size 32 --device cuda
+# Run without a config file (--model and --data are then required)
+dnallm benchmark --model zhangtaolab/plant-dnabert-BPE --data sequences.json --output results/
 ```
+
+Run parameters such as batch size and device are not CLI flags — they are configured in the benchmark YAML configuration file.
 
 ## Understanding Results
 

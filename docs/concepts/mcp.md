@@ -192,8 +192,6 @@ The DNALLM MCP Server provides different access points depending on the transpor
 - **Main Endpoint**: `http://localhost:8000/mcp`
 - **Available Endpoints**:
   - `http://localhost:8000/mcp` - Main MCP protocol endpoint
-  - `http://localhost:8000/mcp/tools` - Tool listing endpoint
-  - `http://localhost:8000/mcp/messages` - MCP message handling endpoint
 - **Usage**: REST API integrations and HTTP-based clients
 
 ## Use Cases
@@ -236,7 +234,7 @@ const response = await fetch('/mcp/messages/', {
 #### Using Streamable HTTP Transport
 ```javascript
 // Direct HTTP API calls
-const response = await fetch('http://localhost:8000/mcp/messages', {
+const response = await fetch('http://localhost:8000/mcp', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({

@@ -4,7 +4,7 @@ DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and infe
 
 ## Prerequisites
 
-- Python 3.10 or higher (Python 3.13 recommended)
+- Python 3.11 or higher (Python 3.13 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:

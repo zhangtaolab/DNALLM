@@ -14,7 +14,7 @@ This tutorial demonstrates how to benchmark multiple DNA large language models o
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,benchmark,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

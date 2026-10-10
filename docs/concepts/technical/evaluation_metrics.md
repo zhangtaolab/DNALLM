@@ -58,7 +58,7 @@ Regression tasks involve predicting a continuous value.
 
 In your DNALLM configuration files (for training or benchmarking), you can specify which metrics to compute. The framework will automatically select the appropriate calculation based on the `task_type`.
 
-**Recommendation**: For a new classification problem, always look at **F1-Score**, **AUROC**, and **AUPRC**, especially if your data might be imbalanced. Don't rely on accuracy alone.
+**Recommendation**: For a new classification problem, always look at **F1-Score**, **AUROC**, and **AUPRC**, especially if your data might be imbalanced. Don't rely on accuracy alone. All three are emitted automatically by the classification `compute_metrics` factories in `dnallm/tasks/metrics.py` for binary, multiclass, and multilabel tasks (metric keys `f1`, `AUROC`, `AUPRC`, computed with scikit-learn's `f1_score`, `roc_auc_score`, and `average_precision_score`).
 
 ---
 
