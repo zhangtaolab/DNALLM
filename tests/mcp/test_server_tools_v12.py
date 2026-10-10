@@ -258,6 +258,47 @@ class TestIsmScanContracts:
         assert result["isError"] is True
         assert "mutation_type" in result["error"]
 
+    async def test_sequence_and_sequences_both_provided_rejected(self, v12_server):
+        """WR-04: passing both inputs is a matchable error — `sequence`
+        must not be silently dropped in favor of `sequences`."""
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
+            result = await v12_server._ism_scan(
+                model_name="test-model",
+                sequence="AAAA",
+                sequences=["ATGC"],
+                positions=[0],
+            )
+
+        assert result["isError"] is True
+        assert "not both" in result["error"]
+        mock_mut_cls.assert_not_called()
+
+    async def test_empty_sequences_list_rejected(self, v12_server):
+        """WR-04: an empty sequences list is rejected like missing input —
+        consistent with the empty-positions rejection — instead of
+        succeeding with an empty batch; empty member strings too."""
+        for sequences in ([], [""]):
+            result = await v12_server._ism_scan(
+                model_name="test-model",
+                sequences=sequences,
+                positions=[0],
+            )
+            assert result["isError"] is True, sequences
+            assert "non-empty list of non-empty strings" in result["error"]
+
+    async def test_non_string_sequence_rejected_matchably(self, v12_server):
+        """WR-04: a non-string sequence is a matchable validation error,
+        not a TypeError into the generic failure dict."""
+        result = await v12_server._ism_scan(
+            model_name="test-model",
+            sequence=12345,
+            positions=[0],
+        )
+
+        assert result["isError"] is True
+        assert "error" in result  # matchable dict, not content-only generic
+        assert "non-empty strings" in result["error"]
+
     async def test_engine_exception_returns_generic_error_dict(self, v12_server):
         """A raising engine is caught; nothing crosses the protocol boundary."""
         with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:

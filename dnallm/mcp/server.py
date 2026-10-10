@@ -1813,10 +1813,13 @@ class DNALLMMCPServer:
 
         Args:
             model_name (str): Name of the loaded model to scan with.
-            sequence (str | None): Single DNA sequence to scan. If provided,
-                it is processed as a one-element list internally.
-            sequences (list[str] | None): List of DNA sequences to scan.
-                Either sequence or sequences must be provided.
+            sequence (str | None): Single DNA sequence to scan. Mutually
+                exclusive with ``sequences`` (passing both is a matchable
+                error; the single sequence is otherwise processed as a
+                one-element list internally).
+            sequences (list[str] | None): Non-empty list of non-empty DNA
+                sequence strings to scan. Mutually exclusive with
+                ``sequence``; an empty list is rejected like missing input.
             mutation_type (str): One of "single_base_substitution",
                 "multi_base_substitution", "deletion", "insertion", "combo".
             positions (list[int] | None): 0-based positions of interest;
@@ -1872,6 +1875,11 @@ class DNALLMMCPServer:
                         "isError": True,
                     }
 
+            if sequence is not None and sequences is not None:
+                return {
+                    "error": "Provide either sequence or sequences, not both",
+                    "isError": True,
+                }
             if sequence is None and sequences is None:
                 return {
                     "error": "Either sequence or sequences must be provided",
@@ -1879,6 +1887,11 @@ class DNALLMMCPServer:
                 }
             if sequences is None:
                 sequences = [sequence]
+            if not sequences or not all(isinstance(seq, str) and seq for seq in sequences):
+                return {
+                    "error": "sequences must be a non-empty list of non-empty strings",
+                    "isError": True,
+                }
 
             dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
             for i, seq in enumerate(sequences):
