@@ -20,7 +20,7 @@ from dnallm.mcp.client import DNALLMMCPClient
 
 if sys.version_info < (3, 11):
     # ExceptionGroup is builtin from 3.11; the backport is 3.10-only.
-    from exceptiongroup import ExceptionGroup  # noqa: F401
+    from exceptiongroup import ExceptionGroup
 
 if TYPE_CHECKING:
     from collections.abc import Callable
