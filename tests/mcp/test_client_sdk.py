@@ -582,7 +582,11 @@ async def test_connection_failure_surfaces_through_exception_group():
     never a bare httpx exception type.
     """
     import httpx
-    from exceptiongroup import ExceptionGroup
+
+    try:  # ExceptionGroup is builtin on py3.11+; the backport is 3.10-only.
+        from exceptiongroup import ExceptionGroup
+    except ModuleNotFoundError:
+        pass
 
     from dnallm.mcp.tests._network_skip import _network_leaves
 
