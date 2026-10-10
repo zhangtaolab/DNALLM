@@ -870,6 +870,44 @@ class TestZeroShotScoreContracts:
         assert "ACGT" in result["error"]
         mock_kernel.assert_not_called()
 
+    @pytest.mark.parametrize(
+        "chrom",
+        [
+            "chr1",
+            "chrX",
+            "chrM",
+            "chrEBV",
+            "chrUn_gl000220",
+            "chrUn_GL000220v1",
+            "chr1_KI270706v1_random",
+            "NC_000001.11",
+            "GL000220.1",
+            "1",
+            # WR-06: hs38DH (GRCh38 full analysis set + decoy + HLA) ALT
+            # contigs carry "*" and ":" — legal assembly names, not injection.
+            "HLA-A*01:01:01:01",
+            "HLA-DRB1*07:01:01:01",
+        ],
+    )
+    async def test_zero_shot_mainstream_chrom_names_accepted(
+        self, v12_server, reference_fasta, chrom
+    ):
+        """WR-06: the chrom allowlist must cover the real-world contig
+        alphabet — every mainstream name, including the ``*``/``:``-bearing
+        HLA ALT contigs of hs38DH, reaches the kernel instead of a matchable
+        over-rejection."""
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
+        ) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": chrom, "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert not result.get("isError"), result.get("error")
+        assert mock_kernel.call_count == 1
+
     async def test_zero_shot_vcf_path_happy_path_uses_d17_default_filter(
         self, v12_server, reference_fasta, tmp_path
     ):

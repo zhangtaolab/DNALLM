@@ -130,11 +130,15 @@ INLINE_VCF_BASENAME = "inline_variants.vcf"
 #: inject POS/REF/ALT/INFO columns or whole extra data rows, defeating the
 #: pattern-validated alleles, the variant cap, and the inline no-ClinVar
 #: guarantee. The class covers conventional names (chr1, chrX, chrM,
-#: chrUn_GL000220v1, NC_000001.11-style accessions, alt/decoy pipes).
+#: chrUn_GL000220v1, NC_000001.11-style accessions, alt/decoy pipes) and
+#: the ``*``-bearing HLA ALT contigs of the GRCh38 full-analysis-set-plus-
+#: decoy-HLA reference (hs38DH: HLA-A*01:01:01:01). ``#`` stays rejected:
+#: no mainstream reference uses it in CHROM, and a leading ``#`` would
+#: render a data line header-like to VCF parsers.
 #: Anchored with ``\Z`` (not ``$``): ``$`` also matches just before a
 #: trailing newline, which would defeat the whole point of a whitespace-free
 #: check on exactly the row-splitting character.
-_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()-]+\Z")
+_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()*-]+\Z")
 
 #: Pass-through CLNSIG marker written into the inline temp VCF. The kernel's
 #: convention gates require a CLNSIG/CLNREVSTAT/CLNVC triple; inline
