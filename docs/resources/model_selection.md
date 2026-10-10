@@ -1,6 +1,6 @@
 # Model Selection Guide
 
-Choosing the right DNA language model is crucial for the success of your analysis. DNALLM supports a wide array of models, each with unique architectures, training data, and strengths. This guide will help you understand the different model types, browse the available options, and select the best model for your task.
+Choosing the right DNA large language model is crucial for the success of your analysis. DNALLM supports a wide array of models, each with unique architectures, training data, and strengths. This guide will help you understand the different model types, browse the available options, and select the best model for your task.
 
 **Related Documents**:
 - [Model Zoo](model_zoo.md)
@@ -8,7 +8,7 @@ Choosing the right DNA language model is crucial for the success of your analysi
 
 ## 1. Overview of DNA LLM Categories
 
-DNA language models primarily fall into two categories based on their training objective:
+DNA large language models primarily fall into two categories based on their training objective:
 
 ### Causal Language Models (CLM)
 

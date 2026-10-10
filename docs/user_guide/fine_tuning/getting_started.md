@@ -1,11 +1,11 @@
 # Getting Started with Fine-tuning
 
-This guide will walk you through the basics of fine-tuning DNA language models using DNALLM. You'll learn how to set up your first fine-tuning experiment, configure models and datasets, and monitor training progress.
+This guide will walk you through the basics of fine-tuning DNA large language models using DNALLM. You'll learn how to set up your first fine-tuning experiment, configure models and datasets, and monitor training progress.
 
 ## Overview
 
 Fine-tuning in DNALLM allows you to:
-- Adapt pre-trained DNA language models to your specific tasks
+- Adapt pre-trained DNA large language models to your specific tasks
 - Leverage transfer learning for better performance on small datasets
 - Customize models for domain-specific DNA analysis
 - Achieve state-of-the-art results with minimal data

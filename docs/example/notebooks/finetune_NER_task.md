@@ -5,7 +5,7 @@ sync_check: true
 
 # NER Fine-Tuning
 
-This tutorial demonstrates how to fine-tune a DNA language model for Named Entity Recognition (NER) on genomic sequences, identifying features such as exons and introns at the token level.
+This tutorial demonstrates how to fine-tune a DNA large language model for Named Entity Recognition (NER) on genomic sequences, identifying features such as exons and introns at the token level.
 
 ## Full Notebook
 

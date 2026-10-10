@@ -6,7 +6,7 @@ This guide provides a comprehensive introduction to performing inference with DN
 
 ### What is Inference?
 
-Inference is the process of using a trained machine learning model to make predictions on new, unseen data. In the context of DNALLM, it means applying a pre-trained DNA language model to analyze DNA sequences, predict their functional properties (like whether a sequence is a promoter), or extract meaningful biological features.
+Inference is the process of using a trained machine learning model to make predictions on new, unseen data. In the context of DNALLM, it means applying a pre-trained DNA large language model to analyze DNA sequences, predict their functional properties (like whether a sequence is a promoter), or extract meaningful biological features.
 
 ### Why is it Important?
 

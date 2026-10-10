@@ -92,6 +92,45 @@
 
 ---
 
+## Milestone: v1.2 — Paper Revision Suite Support
+
+**Shipped:** 2026-10-10
+**Phases:** 3 | **Plans:** 12 | **Sessions:** ~3 (2026-10-09 → 2026-10-10)
+
+### What Was Built
+- The eleven reviewer capabilities (REV-01..REV-11) behind the paper revision: eval-semantics leak guard, metric-name registry, IA³ + 35-family PEFT presets, random-init baselines with per-tensor hash proof, frozen-embedding probing, zero-shot VEP from ClinVar VCFs (scikit-allel, the milestone's only sanctioned dep), n-guarded multi-seed aggregation, FIMO-convention motif scanning with a stdlib JASPAR client, and three MCP analysis tools closing the v1.1 `--host/--port` audit item
+- A milestone-long honesty chain: CHANGELOG REV-ID→SHA evidence links (integration-checker verified all), two owner-adjudicated overrides recorded in VERIFICATION frontmatter rather than silently scoped down, and a GitHub-tracked golden-fixture deferral (#44) whose activation is fixture-files-only
+- 145 commits / 168 files (+26.5k/−1.4k) in 2 calendar days via three sequential waves of file-disjoint parallel agents, all phases verified at a zero-code-change fixpoint
+
+### What Worked
+- The owner-fixed wave strategy compressed a 3-phase milestone to ~2 days without a single cross-agent file collision (pathspec commits after the one Wave-1 shared-index lesson, c751df6)
+- Frontmatter overrides as the owner-decision channel: both adjudications (VEP magnitude, Fig 4a deferral) carried reasons, timestamps, and a reopen-free activation path — the audit consumed them mechanically
+- Trace-origin forensics in test failures (notebook-import test surfacing `raised in <file>:<line>`) turned an 8-iteration CI dependency-drift hunt (pyarrow<26, pydantic-ai silent backtrack to 1.22.0) into a same-day fix with the diagnostic left in the tree
+- Fixpoint verification regeneration (the v1.1 lesson, practiced this time): re-verify stale phases only after ALL code lands, zero changes between
+
+### What Was Inefficient
+- The extras-guard same-change rule was violated once (guard expectation drifted behind two pin changes) — caught by self-audit, fixed same-commit-after; a pre-commit-time guard sync check would have caught it at edit time
+- Two attribution-only commit races (README riding a sibling's commit) despite pathspec discipline on content — `git log --follow` archaeology was needed at close; a post-wave attribution audit is now cheap enough to run per-wave
+- The audit acknowledge writer cannot anchor GFM table rows in deferred-items.md (reader/writer shape drift) — the Phase 10 terminology table needed a content-preserving bullet reshape at close; an upstream fix or a house "never tables in deferred-items" convention would remove the friction
+- Golden-fixture inputs were requested too late in the run (first surfaced at verification); asking at plan time would have given the owner a week of slack instead of a close-time decision
+
+### Patterns Established
+- REV-ID→commit SHA links in CHANGELOG as the standing rebuttal-letter evidence chain
+- Owner-input-gated acceptances ship as pending-manifest fixtures (harness green on synthetic stand-ins, activation fixture-files-only, GitHub-tracked) instead of blocking phase close
+- Metric emissions validate names against the registry at every emit (`validate_emission`) — name-authority contract, compute stays native
+
+### Key Lessons
+1. Owner-input-gated acceptances are a scheduling problem, not a verification problem — sequence the input request at plan time, ship the harness, and the deferral becomes a one-issue footnote
+2. Dependency floors need the same review as ceilings: a silent resolver backtrack (pydantic-ai <3 → broken 1.22.0) reds CI exactly like an upper-bound break, and only fails LOUD once you floor at the dev-green series
+3. Small-model evaluation honesty beats anchor-matching: recording `within_anchor_range: false` with the same-scale anchor comparison preserved both the criterion and the truth
+
+### Cost Observations
+- Model mix: not tracked this milestone
+- Sessions: ~3 daily sessions over 2 calendar days (2026-10-09 → 2026-10-10); 145 commits
+- Notable: verification-regeneration cascades from v1.1 avoided by practicing the fixpoint rule; the dominant unplanned cost was CI dependency-drift diagnosis (~8 iterations) before the trace-origin forensics tool existed
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -100,6 +139,7 @@
 |-----------|----------|--------|------------|
 | v1 | ~6 | 4 | First GSD milestone on this repo: audit-first, gate-last wave discipline; behavior-first authoring rule |
 | v1.1 | ~7 | 5 | Execute-for-real milestone: census→repair→gate loop; frozen-contract metrics; family rollout with per-repair census reconciliation |
+| v1.2 | ~3 | 3 | Paper-revision suite: file-disjoint parallel waves; owner overrides in VERIFICATION frontmatter; fixpoint verification regeneration practiced from the start |
 
 ### Cumulative Quality
 
@@ -107,6 +147,7 @@
 |-----------|-------|----------|-------------------|
 | v1 | 1,657 (7 allowlisted skips) | 96.30% | 0 — no new test frameworks (constraint held) |
 | v1.1 | fast lane 1,933 (1 allowlisted skip) + nightly example census 196/1S/0F | 96.42% | 0 — nbclient/marimo ride existing dev/test extras (constraint held) |
+| v1.2 | fast lane 2,404 (0 failed) | 96.72% | 1 — scikit-allel only (owner-approved, empirically verified); everything else on the existing scipy/sklearn/stdlib footprint |
 
 ### Top Lessons (Verified Across Milestones)
 

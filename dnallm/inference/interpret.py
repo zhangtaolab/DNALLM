@@ -95,7 +95,7 @@ class _CaptumWrapperInputEmbeds(nn.Module):
 
 class DNAInterpret:
     """
-    A class for interpreting DNA language models using Captum.
+    A class for interpreting DNA large language models using Captum.
 
     Usage:
     >>> model, tokenizer = load_model_and_tokenizer(...)

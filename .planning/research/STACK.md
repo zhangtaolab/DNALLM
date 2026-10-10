@@ -1,161 +1,130 @@
 # Stack Research
 
-**Domain:** Example-execution testing (real-model .ipynb/marimo execution under pytest) + genomics track I/O and visualization for PlantHelixSeek-CRE/-Anno showcase notebooks, on an existing pytest/torch/HF Python toolkit
-**Researched:** 2026-10-01
-**Confidence:** MEDIUM overall — every recommendation is cross-verified against the installed venv (deterministic local introspection) AND official docs/PyPI JSON; the GSD source-hierarchy seam assigns LOW to single-channel webfetch claims and MEDIUM to websearch-verified ones, so web-only items are flagged inline. Nothing below rests on training-data recall alone.
+**Domain:** Paper-revision feature suite for an existing PyPI-published DNA-LM toolkit (fine-tuning / inference / benchmarking / MCP server)
+**Researched:** 2026-10-09
+**Confidence:** HIGH (headline claims verified by direct execution against the installed venv — peft 0.21.1, transformers 5.17.0, torch 2.11.0, scipy 1.18.1, sklearn 1.9.1, numpy 2.5.3 — plus live JASPAR API probes; web sources cross-checked)
 
-**Scope guard:** the pre-validated stack (pytest 8.4+/pytest-cov/pytest-timeout/pytest-asyncio, markers, torch 2.11 cu130, transformers 4.49–5.x compat, HF/ModelScope loading, `notebook` extra, self-hosted `dnallm-nightly` GPU runner) is NOT re-researched. This file covers only additions for the three new capabilities.
+## Headline Verdict
+
+**Zero new runtime dependencies. Zero new dev/test dependencies. Every REV-01…REV-11 feature is satisfiable with the existing pinned stack plus the Python standard library.** The only two questions that could have forced an addition (VCF parsing, JASPAR/PWM handling) resolve to stdlib because (a) the only mature VCF libraries have no Windows wheels and this project ships a Windows CI leg, and (b) the JASPAR REST API natively returns directly-parseable text formats. The recommended "addition" for this milestone is therefore **discipline**: requirements should encode a what-NOT-to-add list (below) so the minimal footprint survives phase planning.
 
 ## Recommended Stack
 
-### Core Technologies (new capabilities)
+### Core Technologies (all already pinned in `pyproject.toml` — no changes)
 
-| Technology | Version | Purpose | Why Recommended |
-|------------|---------|---------|-----------------|
-| **nbclient** | 0.11.0 (latest; already installed) | Execute the ~21 `.ipynb` files as pytest tests | It *is* the execution engine under both `nbconvert --execute` and nbmake — use it directly as a library (in-scope per the no-new-test-frameworks constraint). Verified on the installed dist: `NotebookClient` traitlets `allow_errors=False` (raises `CellExecutionError` on the first failing cell = fail-loud, exactly the milestone's "real execution finds real errors" goal), `timeout=None`, `kernel_name=''` (falls back to notebook metadata → `python3`), `startup_timeout=60`. `nbclient.execute(nb, cwd=...)` convenience exists; `resources={"metadata": {"path": nb_dir}}` sets the kernel cwd so notebooks that load `./inference_config.yaml` relative to their own directory work (verified in installed `client.py:431,535`). |
-| **marimo `export html` CLI** | 0.25.0 (latest == installed) | Headless execution of the 3 marimo apps | `marimo export html app.py -o out.html` **runs** the app headlessly (help text: "Run a notebook and export it as an HTML file" — verified locally on the installed CLI). Subprocess invocation from a pytest test gives full engine semantics (marimo runtime, UI elements, app-level `--sandbox`/args), kernel isolation mirroring the nbclient approach, exit-code-based assertion, and an HTML artifact for debugging. `marimo export session` also executes (snapshots; `--continue-on-error` default). Zero new dependencies — marimo is already in the `notebook` extra. |
-| **pyBigWig** | 0.3.26 (latest) | Write BigWig signal tracks from sliding-window CRE scores | The standard write-capable bigWig library (C extension, MIT). **Verified wheel coverage:** manylinux_2_27/2_28 x86_64 wheels for cp310–cp313 on PyPI — no compiler needed on the Linux x86_64 GPU runner. Write API per official README: `bw = pyBigWig.open(p,"w")` → `bw.addHeader([("Chr1", len), ...])` (ordered chrom/length list) → `bw.addEntries(chroms, starts, ends=..., values=...)` (bedGraph-style; sorted order required; `validate=True` default) → `bw.close()` (builds index + up-to-10 zoom levels; `maxZooms=0` produces an IGV-breaking intervals-only file — do not use). numpy arrays accepted for `values`. |
-| **pyfastx** | 2.3.1 (already in `dev` extra) | FASTA region slicing for Arabidopsis genome windows | Already the project's FASTA library (the committed `.fxi` index in `example/notebooks/finetune_generation/` proves the precedent). C extension + sqlite index → indexed random access into the (gitignored) full TAIR10 FASTA without loading it. Killer property for this milestone: `fa.fetch(name, (start, end))` is **1-based inclusive — identical to GFF3 coordinates** — so region extraction and GFF3 comparison share one coordinate convention with no off-by-one translation. `strand="-"` gives reverse complement in the same call. |
-| **stdlib GFF3 reader/writer + interval math** | Python stdlib (no version) | Write predicted Anno gene models; parse predicted + TAIR10 truth; compute agreement | GFF3 is nine tab-separated columns with 1-based inclusive coords, `##gff-version 3` first line, percent-encoded attributes (spec v1.26 verified — see Sources). The showcase scale is ≤200 kb loci → tens-to-hundreds of features; a ~60-line strict reader (dataclass + `str.split("\t", 8)`) plus sorted-list/bisect overlap math does prediction-vs-truth comparison with **zero dependencies**, and the identical parser feeds the agreement metrics *and* the track rendering (see Track Display). Writing is f-string formatting. gffutils/BCBio.GFF add dependency weight for queries this scale never needs. |
-| **altair + vl-convert-python (already present)** | altair 6.3.0 / vl-convert-python 1.9.0 | Static track + gene-model figures inside the showcase notebooks | **Zero new dependency — verified:** dnallm depends on `altair[all]`, whose `all` extra pins `vl-convert-python>=1.9.0`; `vl_convert` 1.9.0 is importable in the dev venv right now, and `dnallm/inference/plot.py:380` already calls `chart.save(...)` — the headless-save code path is already exercised by the suite. `chart.save("track.png")` produces `image/png` outputs that survive nbconvert→HTML and the mkdocs-jupyter docs mirror deterministically (Rust renderer, no browser, no kernel comm). |
-| **ollama (runner service — not a pip package)** | current stable, via official `install.sh` | Local LLM backend for the 2 MCP client notebooks | One-time runner bootstrap: `curl -fsSL https://ollama.com/install.sh | sh` installs the `ollama.service` systemd unit listening on `127.0.0.1:11434`. Verified against official docs: OpenAI-compatible base URL `http://localhost:11434/v1/` supports `/v1/chat/completions` and `/v1/models` with an ignored-but-required API key — exactly the `OllamaProvider(base_url="http://localhost:11434/v1")` + `OpenAIChatModel` path the pydantic-ai notebook already uses. Model provisioning: `ollama pull qwen3.6:latest` (the tag both notebooks reference) or `POST /api/pull`; readiness probe `curl -sf localhost:11434/api/tags`. Keep it out of pyproject — it is runner infrastructure, like the HF cache. |
+| Technology | Version (pin → installed) | Purpose in v1.2 | Why Recommended |
+|------------|---------------------------|-----------------|-----------------|
+| peft | `>=0.14.0` → 0.21.1 (latest 0.21.2) | REV-04 IA³ adapter | `IA3Config` has existed since peft 0.4.0 (Dec 2023) — the floor pin already covers it with 10 minor versions of margin. Verified locally: full config surface, bitsandbytes dispatch file `peft/tuners/ia3/bnb.py` present, end-to-end `get_peft_model` + forward passed under transformers 5.17.0 on both a BERT-style transformer **and** a mambapy Mamba backbone (REV-04's two acceptance targets) |
+| scipy | `>=1.15.2` → 1.18.1 | REV-09 bootstrap CI; REV-10 FDR | `scipy.stats.bootstrap` (since 1.7) covers ci95-bootstrap aggregation; `scipy.stats.false_discovery_control` (since 1.11, BH + BY methods) covers motif-scan multiple testing. Both verified working on the installed version. The 1.15.2 floor is comfortably above both introduction versions |
+| scikit-learn | `>=1.4.0` → 1.9.1 | REV-07 frozen-embedding probing | `LogisticRegression`, `MLPClassifier`, `StandardScaler`, `train_test_split`, `roc_auc_score`, `average_precision_score` — the entire probing component is one `sklearn` import block. Nothing beyond what's installed |
+| transformers | `>=4.49.0,<6` → 5.17.0 | REV-06 `random_init=True` | Canonical from-scratch path is `AutoConfig.from_pretrained` + `AutoModel*.from_config(config)` — stable across the whole 4.49–5.x span; `from_config` exercised locally under 5.17 in the IA³ smoke test. Also REV-01's `TrainingArguments` semantics (`eval_strategy`, `load_best_model_at_end`) are Trainer-side config, no library change |
+| numpy | `>=1.26.0` → 2.5.3 local / 1.26.4 & 2.2.0 CI matrix | REV-08 scoring math; REV-10 PWM log-odds scan; REV-07 `.npz` embedding cache | Vectorized PWM scanning (log-odds via strided windows or `numpy.lib.stride_tricks`), VEP Δlog-likelihood arithmetic, `savez` cache. The 1.26.4 CI leg is safe: everything used here is decade-stable numpy core API |
+| mcp SDK | `>=1.3.0,<2` → 1.30.0 (latest 2.x = 2.3.0, deliberately not taken) | REV-11 three new tools | New tools are plain methods registered via the existing `self.app.tool()(self._with_timeout_wrapper(fn, name))` pattern (`dnallm/mcp/server.py:264-291`). The `app.tool()` registration API is stable across the 1.x pin. mcp 2.x exists but upgrading is orthogonal risk with zero feature need for REV-11 — do not bundle it into this milestone |
+| pyyaml | `>=6.0` → installed | REV-05 presets table; REV-02 alias table | `configs/presets/lora_targets.yaml` (per-family target_modules + recommended r) and any metric-alias YAML are plain `yaml.safe_load` documents |
 
-### Supporting Libraries
+### Standard Library Components (the actual "additions" — all `import x` with no install)
+
+| Component | Module | Purpose | Integration Point |
+|-----------|--------|---------|-------------------|
+| Minimal VCF reader | `gzip` + `str` splitting | REV-08 `evaluate_vcf`: parse CHROM/POS/ID/REF/ALT + INFO (e.g. ClinVar `CLNSIG`) from text VCF | New `dnallm/inference/vep.py`, ~100 lines: skip `##` meta-lines, read `#CHROM` header, split fixed fields on tab, split multi-allelic ALT on comma, extract label from INFO by key. **Critical fact verified:** bgzipped VCF (ClinVar's distribution format) is multi-member gzip — stdlib `gzip.open` reads it sequentially, no index needed for a scoring sweep |
+| JASPAR fetch + PWM parser | `urllib.request` + ~50-line parser | REV-10 motif ingestion | New `dnallm/interpret/motifs.py`. **Live-verified 2026-10-09:** canonical host has moved — `jaspar.genereg.net` 301s to **`jaspar.elixir.no`**; `GET /api/v1/matrix/{MA_ID}?format=pfm\|meme\|transfac\|jaspar\|json\|yaml\|bed`. `format=pfm` returns raw ACGT count rows; `format=meme` returns MEME4 letter-probability with `strands: + -`, background frequencies, `nsites`, and E-value. Prefer `meme` (single fetch carries strands + background metadata needed for correct log-odds); compute GC-matched background from query sequences when uniform 0.25 is not acceptable |
+| Benjamini-Hochberg FDR | `scipy.stats.false_discovery_control` | REV-10 FDR over scan hits | Already in scipy floor (≥1.11 < 1.15.2 pin); verified locally |
+| Bootstrap CI | `scipy.stats.bootstrap` | REV-09 `aggregate_seeds` → mean/sd/ci95 | New `dnallm/finetune/sweep.py`, pure function; mean/sd via `numpy` (`std(ddof=1)`) |
+| Parameter hashing | `hashlib` | REV-06 "randomly initialized" proof (parameter hash differs from pretrained) | `dnallm/models/model.py` `load_model_and_tokenizer(..., random_init=True)` |
+| Metric registry | plain dict + YAML aliases | REV-02 canonical names + alias resolution | New module — **placement warning:** do NOT put it at `dnallm/tasks/metrics/registry.py` as the intake plan sketches. `dnallm/tasks/metrics/` is the vendored dir omitted from `[tool.coverage.run]`, ruff, and mypy — a registry there is invisible to the 90% hard gate and unlinted, exactly what this project's ethos forbids. Place at `dnallm/tasks/metric_registry.py` (or `dnallm/tasks/registry.py`), outside the omit glob |
+
+### Supporting Libraries (existing, referenced by new features)
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| **ipykernel** | 7.3.0 installed (latest 7.4.0) | Provides the `python3` kernel nbclient launches | Already transitive via the `jupyter` metapackage in the `notebook` extra. The venv ships its kernelspec at `{sys.prefix}/share/jupyter/kernels/python3` with `argv: ["python", ...]` — correct as long as the venv `bin` is on PATH (CI's `uv run` satisfies this; assert in the test if paranoid). No new pin needed; 7.4.0 requires Python ≥3.11, harmless for the 3.11–3.13 matrix (uv resolves 6.x for 3.10). |
-| **langchain-ollama** | 1.1.0 | The actually-missing import of `mcp_client_ollama_langchain_agents.ipynb` | The notebook currently shell-magics `!uv pip install -U langchain-ollama` in a cell (side-effecting, upgrade-mutating, network-dependent — hostile to hermetic CI). Add `langchain-ollama>=1.1.0` to the `mcp` extra (deps: `langchain-core>=1.2.21,<2` + `ollama>=0.6.1,<1` — compatible with installed langchain 1.4.3) and repair the notebook cell to a plain import. This is the concrete "missing mcp extra" repair (WR-09-adjacent). |
-| **pytest-timeout (existing)** | 2.4.0 | Per-test timeout override for slow execution tests | Verified: `pytest.mark.timeout` marker is available in the installed 2.4.0. The global `--timeout=300` stays; real-model notebook tests get `@pytest.mark.timeout(3600)` (signal method works on the Linux runner). This replaces nbmake's `--nbmake-timeout` entirely. |
-| openai (already installed, 3.20.0) | — | Readiness/assertion calls against ollama's `/v1` endpoint in tests | Only if a test wants to assert the LLM actually answered; plain `curl` in the workflow or stdlib `urllib` on `/api/tags` suffices for the skip-guard. Do not add the `ollama` pip package — no example imports it. |
+| torch | `>=2.4.0,<2.12` → 2.11.0+cu130 | `torch.nn.init` re-init for REV-06; scoring kernels for REV-08 already exist in `mutagenesis.py:258/312` (`mlm_evaluate`/`clm_evaluate`) and `inference.py:1746` (`scoring`) | REV-08 reuses these kernels — no new scoring code paths |
+| peft `prepare_model_for_kbit_training` | 0.21.1 | IA³ + QLoRA combination | If `use_ia3` is combined with 4-bit: peft ships `tuners/ia3/bnb.py` (Linear4bit/Linear8bitLt variants registered for IA³), and the correct call order — `prepare_model_for_kbit_training(model)` **before** `get_peft_model` — is already what `trainer.py:157-164` does for LoRA. IA³ rides the identical path; no new ordering code |
+| click | existing | REV-08 CLI entry (`dnallm-vep` or subcommand in `dnallm/cli/cli.py` with lazy import per house convention) | Follow `dnallm/cli/cli.py` lazy-import pattern |
 
-### Development / Runner Tools (environment, not packages)
+### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| `MPLBACKEND=Agg` + `MPLCONFIGDIR=$(mktemp -d)` | Deterministic headless matplotlib | Official docs: Agg is the non-interactive backend auto-selected on Linux without X/Wayland; `MPLBACKEND` overrides any matplotlibrc; isolated `MPLCONFIGDIR` avoids font-cache races/writes in `$HOME`. Set in the execution-test fixture (and/or nightly workflow env). matplotlib is 3.11.2 here — no pin interaction. |
-| ollama systemd drop-in | Persistent, re-install-safe model cache | `sudo systemctl edit ollama.service` → `[Service] Environment="OLLAMA_MODELS=/opt/cache/ollama"` then `daemon-reload && systemctl restart ollama`. Direct unit edits are overwritten by re-running `install.sh`; drop-ins are the documented-safe mechanism. Runner-ops memory note applies: restart services with sanitized env (`env -i`) on `dnallm-nightly`. |
-| Typed skip guard for ollama | Keep the skip-audit gate honest | Execution tests for the 2 MCP notebooks gate on `curl -sf localhost:11434/api/tags` and otherwise skip with the project's typed-prefix discipline (e.g. `network-unavailable: ollama service not reachable`) and an `expected_skips.yaml` entry — matching the existing census machinery. Same pattern if VRAM contention with torch models forces ordering constraints. |
-
-## Track Display for PlantHelixSeek Notebooks (owner-added scope)
-
-**Hard gate (owner requirement): the chosen option must support GFF3** — the Anno pipeline outputs GFF3 gene models and truth is TAIR10 GFF3; side-by-side gene-model display is the core showcase.
-
-Evaluation axes: (a) headless execution under nbclient without hanging; (b) rendered result survives nbconvert→HTML into the mkdocs docs mirror (mkdocs-jupyter); (c) dependency footprint; (d) license compat (dnallm is MIT); (e) interactive value live vs static publication value.
-
-| Option | GFF3 (gate) | (a) Headless nbclient | (b) mkdocs-mirror survival | (c) Footprint | (d) License | (e) Value | Verdict |
-|---|---|---|---|---|
-| **Static altair from parsed GFF3** (altair 6.3 + vl-convert 1.9, both already installed) | **By construction** — the notebook must parse predicted + TAIR10 GFF3 anyway for the agreement metrics; the same DataFrame draws boxes/arrows | Deterministic: pure Python + Rust vl-convert, no browser, no kernel comm, no hang surface | **Yes** — `chart.save("png")` embeds `image/png`, rendered by any template incl. mkdocs-jupyter | **Zero new deps** | MIT-compatible stack | Interactive in live Jupyter (altair tooltips/zoom), static in docs | **RECOMMENDED PRIMARY** |
-| igv-notebook 0.6.2 (igv.js 3.1.4) | Native — `format: "gff3"` annotation tracks; tabix `.tbi` indexing strongly recommended for anything nontrivial (MEDIUM, websearch-verified) | Unverified — README has no headless/CI guidance; emits frontend JS with no browser present | **No** — `to_svg()` is documented "Jupyter Notebook only" (not JupyterLab); widget/JS output does not survive nbconvert→HTML into the mirror | Light (ipykernel/ipython/requests, MIT) | MIT | Best-in-class interactivity live | **Optional interactive add-on, OUTSIDE gated cells** |
-| jbrowse-anywidget 0.3.0 | Native — bigWig + tabix-GFF3 + DataFrame tracks | Not pytest-proven — README itself: "pytest never opens one"; their headless runner needs puppeteer + a sibling jbrowse-components checkout | No — GPU anywidget needs a live widget frontend | **Not on PyPI** (verified — PyPI lookup fails); git-only `pip install jbrowse-anywidget @ git+...` | Apache-2.0 | Highest (GPU view, region sync) | **RULED OUT this milestone** — no PyPI pin possible = CI non-reproducible; labeled Prototype |
-| pyGenomeTracks 3.9 | **Fails the gate as documented** — track list says "bed/gtf", GFF3 not documented; needs a GFF3→GTF/bed12 conversion step | Yes (matplotlib-based, CI-proven in the community) | Yes (PNG/PDF/SVG) | Heavy: `matplotlib<3.9` pin (**hard conflict** with installed 3.11.2), pysam, hicmatrix, bx-python, pybedtools, gffutils + **external bedtools binary since 3.5** (verified absent from the runner PATH) | **GPL-3.0** — real contamination concern for an MIT project's published extras | Publication-grade static tracks (the field's standard look) | **RULED OUT** — GPL + matplotlib pin + bedtools binary + GFF3 conversion friction |
-
-**Recommendation: primary = static altair rendering; optional add-on = igv-notebook, only in cells excluded from gated execution.**
-
-Rationale: the notebook must already hold predicted-vs-truth GFF3 as DataFrames to compute the "substantially consistent" agreement asserts — rendering gene models (rect marks for genes/exons, arrow/text for strand) and per-bin CRE scores from those DataFrames is incremental code, not a new subsystem. Side-by-side tracks are two `vconcat` charts sharing the x-scale (truth on top, prediction below). The BigWig + GFF3 **files** remain the interchange artifacts for users who want a real genome browser — the visualization is a view, not the product. If interactive browsing is wanted for demos, add an igv-notebook appendix cell (or a companion non-executed markdown snippet) referencing the same BigWig/GFF3 outputs; do not put it in the CI-gated path, and expect tabix-indexed (`bgzip` + `tabix -p gff`) files if it loads the full truth track. Re-evaluate jbrowse-anywidget when it lands on PyPI with a stable tag.
+| pytest + pytest-cov (existing) | Tests for all new modules behind the `fail_under=90` gate | No new frameworks (hard constraint). New pure-Python modules (vep reader, registry, sweep, motifs parser) are unit-testable offline with committed fixtures: a tiny synthetic VCF (plain + gzipped), a committed JASPAR `meme`-format snippet, constructed seed arrays |
+| Typed network skips (existing pattern) | Live JASPAR fetch tests | Follow the repo's `network-unavailable:` typed-skip + `expected_skips.yaml` allowlist machinery; deterministic offline tests parse committed fixtures, one live probe test behind the gate |
 
 ## Installation
 
 ```bash
-# pyproject.toml changes (extras only — no new frameworks, no new runners)
-[project.optional-dependencies]
-notebook = [
-    "jupyter>=1.1.1",
-    "marimo>=0.16.3",
-    "nbclient>=0.10",                      # ADD: make the (today transitive) dep explicit; tests import it
-]
-mcp = [
-    # ... existing ...
-    "langchain-ollama>=1.1.0",             # ADD: import used by mcp_client_ollama_langchain_agents.ipynb
-]
-dev = [
-    # ... existing ...
-    "pyBigWig>=0.3.26; platform_system != 'Windows'",   # ADD: precedent = pybedtools marker;
-                                                          # wheels are linux x86_64 only (cp310-313)
-]
-
-# One-time GPU-runner bootstrap (NOT pyproject — runner infrastructure)
-curl -fsSL https://ollama.com/install.sh | sh
-sudo systemctl edit ollama.service        # [Service] Environment="OLLAMA_MODELS=/opt/cache/ollama"
-sudo systemctl daemon-reload && sudo systemctl restart ollama
-ollama pull qwen3.6:latest                # tag referenced by both MCP notebooks
+# NOTHING TO INSTALL. The milestone adds zero dependencies.
+# Existing floors already exceed every feature's requirement:
+#   peft>=0.14.0   (IA3Config needs >=0.4.0)
+#   scipy>=1.15.2  (false_discovery_control needs >=1.11; bootstrap needs >=1.7)
+#   scikit-learn>=1.4.0, numpy>=1.26.0, pyyaml>=6.0, mcp>=1.3.0,<2
 ```
-
-Where each addition lands (quality-gate ask): `nbclient` → `notebook` (used by tests via the dev→notebook chain, but it is a notebook-runtime lib); `pyBigWig` → `dev` (bio tooling lives there per pyfastx/pybedtools precedent; needed at notebook runtime on the runner, which installs dev); `langchain-ollama` → `mcp` (it is the MCP-example import). Nothing goes into `test` — the execution harness is plain pytest + existing plugins.
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| nbclient as a library | **nbmake / pytest-nbmake 1.5.5** (`pytest --nbmake --nbmake-timeout=N`) | If you wanted zero harness code and per-cell timeouts from a flag. Rejected: it is a pytest *plugin* adding collection semantics on top of a suite that already has strict-markers, a global `--timeout=300`, typed-skip audits, and a coverage denominator — duplicate timeout machinery and a second execution-config surface for no capability nbclient lacks. |
-| nbclient as a library | **`nbconvert --execute` CLI** (nbconvert 7.17.1 installed) | nbconvert's `--execute` is a subprocess CLI around the very same `NotebookClient`; pytest sees only a process exit code, stack traces are buried in converted-notebook output, and per-notebook cwd/resources control is clumsier. Use nbconvert only for *rendering* executed notebooks to HTML for the docs mirror. |
-| nbclient as a library | **papermill 2.7.0** | Parametrized notebook *pipelines* (parameters cell, cloud I/O). No parametrization need here; adds a dependency for nothing. |
-| `marimo export html` subprocess | **In-process `marimo.App.run(defs=None)`** (signature verified on installed 0.25.0: returns `(outputs, defs)`) | If a test must assert on specific marimo defs, `App.run()` after importing the app module works and skips a subprocess. Primary stays the CLI because it exercises marimo's own full runtime path (UI elements, app wiring) and is the documented headless command; the official pytest guide documents only reactive test cells, not `App.run` — so in-process is the less-proven route. |
-| stdlib GFF3 handling | **gffutils 0.14** (pure Python; pulls pyfaidx, argh, argcomplete, simplejson) | If later phases need a sqlite `FeatureDB` with interval queries over whole-genome annotations. At ≤200 kb loci it is dependency weight for nothing. |
-| stdlib GFF3 handling | **BCBio.GFF / bcbio-gff 0.7.1** (pure Python parser/writer) | A reasonable middle ground if hand-parsing is rejected in review; still an external dep for a TSV. |
-| pyfastx | **pyfaidx 0.9.0.4** (pure Python, samtools-compatible `.fai`, 0-based python slicing / 1-based `get_seq`) | If a no-C-extension constraint ever appears (pyfaidx compiles nothing). Otherwise redundant with an existing, already-indexed dependency. |
-| runner ollama service | **`ollama` pip package 0.6.3** | Only if Python-level orchestration of pulls/chats is wanted; the notebooks use OpenAI-compat HTTP + langchain-ollama, and the workflow can `curl`/`ollama pull`. |
-| no action | **`altair_saver`** | Deprecated upstream since altair 5; vl-convert-python (already installed) supersedes it. |
+| Stdlib VCF reader (~100 lines) | **cyvcf2** (0.34.0) | Only if random-access via `.tbi`/`.csi` indexes or BCF (binary) input ever becomes a requirement, **and** Windows support is dropped or the dep is made a Linux/macOS-only optional extra. cyvcf2 has Python 3.13 + numpy-2 wheels — but Linux/macOS only |
+| Stdlib VCF reader | **pysam** (0.23.3/0.24.0) | Same conditions. pysam's maintainers explicitly do not support Windows ("Have you tried WSL?"); PyPI can't publish their MSVC-incompatible builds. Both alternatives would break the `test-windows` lane or force conditional deps — disqualifying for a published package with this CI matrix |
+| `urllib.request` + custom parser for JASPAR | **biopython** `Bio.motifs` (1.88) | Only if JASPAR/TRANSFAC/MEME format zoo handling grows beyond the 2 formats needed. Biopython is a C-extension package added to parse a format the API already serves in trivially-splitting text — wrong footprint trade |
+| `urllib.request` + custom parser | **jaspar-fetch** client / **meme.io** | Never for this milestone — thin wrappers over a one-endpoint REST API; meme.io is a web tool, not a library fit |
+| `scipy.stats.false_discovery_control` | **statsmodels** `multipletests` (0.15.0) | Only if non-BH/BY procedures (e.g. Holm step-down with specific conventions, or a need to match statsmodels output byte-for-byte in a comparison) become a reviewer requirement. BH via scipy is the standard citation-grade answer |
+| `scipy.stats.bootstrap` | Manual bootstrap loop in numpy | Neither needs adding; scipy's version is battle-tested, seeded, and offers percentile/BCa — prefer it. (A manual loop is acceptable only if the aggregation JSON must record the exact resample indices, an exotic need) |
+| Existing mcp 1.x pin | mcp 2.3.0 | Only as a separate, dedicated milestone with its own regression scope — the server, transports, and example notebooks all currently run on 1.30.0. REV-11 needs nothing from 2.x |
+| `AutoConfig.from_pretrained` + `AutoModel*.from_config` | `from_pretrained(..., state_dict={})` hacks or manual `post_init` | Never — `from_config` is the documented from-scratch path across 4.49–5.x |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| pyGenomeTracks as a dependency | GPL-3.0 in an MIT project's published extras; `matplotlib<3.9` pin conflicts with installed 3.11.2 (resolver downgrade would destabilize seaborn/logomaker/dnallm plots); requires external `bedtools` binary (absent from the runner, verified); GFF3 not a documented track type (needs GFF3→GTF/bed12 conversion) | altair static rendering; note in docs that our BigWig/BED/GFF3 outputs render fine in pyGenomeTracks for users who have it |
-| jbrowse-anywidget | Not on PyPI (git-only), labeled Prototype, no pytest-proven headless path, puppeteer + sibling checkout for its own runner | Watchlist; revisit on PyPI release. altair meanwhile |
-| igv-notebook in CI-gated cells | `to_svg()` classic-Notebook-only; output does not survive nbconvert→HTML/mkdocs mirror; no headless guarantees documented | Optional interactive appendix outside gated execution, pointing at the same output files |
-| nbmake/pytest-nbmake | New pytest plugin semantics + duplicate timeout machinery; adds nothing over direct nbclient | nbclient called from parametrized pytest tests |
-| `ollama` pip client | Nothing imports it; REST/OpenAI-compat endpoints already cover readiness + chat | curl / openai client / langchain-ollama |
-| Kernel auto-resolution assumptions in CI | The venv `python3` kernelspec uses bare `python` from PATH; a workflow that runs pytest without the venv on PATH would launch a *different* interpreter's kernel | Ensure `uv run` (or explicit PATH) in the nightly job; optionally pass `kernel_name="python3"` and assert `jupyter kernelspec list` in-test |
-| `maxZooms=0` when writing BigWig | Produces an intervals-only file that breaks IGV and other zoom-dependent viewers | Default zoom levels (built on `close()`) |
-| Notebook cells that shell-install (`!uv pip install -U ...`) | Mutates the env mid-run, upgrades unrelated pins, needs network at cell-execution time | Declare deps in extras; repair the cell to a plain import |
+| cyvcf2 / pysam as core deps | No Windows wheels (htslib/MSVC mismatch); breaks the Windows CI leg; ~30 MB C baggage for 5 fields of a text format | Stdlib reader in `dnallm/inference/vep.py` |
+| biopython | C-extension dependency added for a ~50-line parse of a text format the JASPAR API serves directly | `urllib.request` + custom `meme`/`pfm` parser |
+| statsmodels | One function (`multipletests`) duplicating `scipy.stats.false_discovery_control` already inside the floor pin | scipy |
+| mcp SDK 2.x upgrade inside this milestone | Zero feature need; server/transports/notebooks validated on 1.30.0; unrelated regression surface during a time-boxed revision cycle | Stay on `mcp>=1.3.0,<2` |
+| Any VEP framework (Ensembl VEP, gpn, dart-eval as deps) | Suite-side scoring is Δlog-lik / log-odds over existing kernels; frameworks are heavyweight, GPL/service-bound, or model-specific | Reuse `mutagenesis.py:258/312` + `inference.py:1746` kernels behind the new alignment layer |
+| torchmetrics / ignite | Metric emission already has a house path (`dnallm/tasks/metrics.py` → REV-02 registry); a second metrics framework fragments the contract the milestone exists to tighten | REV-02 registry over sklearn/scipy functions |
+| Putting REV-02 registry inside `dnallm/tasks/metrics/` | That directory is the vendored-code omit in `[tool.coverage.run]`, ruff, and mypy — new code there escapes the 90% gate and lint, silently | `dnallm/tasks/metric_registry.py` outside the omit glob |
+| New test frameworks | Hard project constraint (pytest + pytest-cov only) | Existing pytest config/markers |
 
 ## Stack Patterns by Variant
 
-**If the job is the fast PR leg (`coverage-gate`, no GPU):**
-- Execution tests are `slow`-marked and deselected there (existing mechanism). Nothing new needed; pyBigWig/nbclient still install fine.
+**If IA³ is combined with QLoRA 4-bit (REV-04 × existing `use_qlora`):**
+- Call order `prepare_model_for_kbit_training(model)` → `get_peft_model(model, ia3_config)` (peft ships `ia3/bnb.py`; verified present in 0.21.1)
+- Watch the known gradient-checkpointing `use_reentrant` interaction — same caveat as the existing LoRA path, not IA³-specific; keep the trainer's current handling
 
-**If the job is the nightly GPU census (`coverage-nightly` on `dnallm-nightly`):**
-- Run execution tests with `@pytest.mark.timeout(3600)` overrides, `resources.metadata.path` set per notebook dir, `MPLBACKEND=Agg`, `MPLCONFIGDIR` tmp; HF models from the models.lock-keyed cache; ollama service pre-started with `qwen3.6:latest` pre-pulled into `OLLAMA_MODELS` cache; MCP server fixture bound to `:8000/mcp` for the 2 client notebooks.
-- Sequencing pitfall: ollama and torch models share GPU VRAM — run the 2 MCP notebooks after (or apart from) heavy model tests, or cap ollama parallelism.
+**If IA³ targets a Mamba/hybrid family (REV-04 acceptance requires one Mamba model):**
+- Works mechanically — IA³ wraps `nn.Linear` by name. Smoke-proven on mambapy `Mamba` with `target_modules=['in_proj','x_proj','out_proj'], feedforward_modules=['x_proj']` (448 trainable params, forward OK)
+- The authoritative per-family module lists belong in the REV-05 presets YAML (derived from each model's `config.json`/module names, per the intake plan's "no guessing" rule) — not hardcoded in trainer.py
 
-**If the platform is Windows (ungated matrix leg) or aarch64 Linux:**
-- `pyBigWig` is excluded by the `platform_system != 'Windows'` marker (no wheels → sdist would need MSVC+libcurl); execution tests are skipped there anyway (no GPU/no runner services). GFF3/FASTA/altair paths stay cross-platform.
+**If the JASPAR fetch must run in CI or offline:**
+- Default to committed fixture PWMs for unit tests; live fetches go behind the typed network-skip pattern. Host must be `jaspar.elixir.no` (genereg.net now 301s); make the base URL a parameter for mirror/proxy environments (the project already runs CI with `HF_ENDPOINT=hf-mirror.com` precedent)
 
-**If a notebook needs its executed form in the docs mirror:**
-- Execute with nbclient (in-place), then `nbconvert --to html` (or write the nbformat node) for the mirror; embedded `image/png` outputs from matplotlib/vl-convert render everywhere. Widget/JS outputs do not.
+**If seed count is small (n=3) for REV-09 bootstrap:**
+- Use `method='percentile'` (BCa can degenerate at tiny n); fix `n_resamples` (e.g. 10,000) and `random_state` in the protocol so the JSON `statistics` block is reproducible; document the method choice in the sweep docstring (reviewers will ask)
+
+**If REV-06 `random_init=True` meets a special family (EVO, Enformer, …):**
+- `from_config` is the generic-transformers path; special-family loaders (`dnallm/models/special/*`) have bespoke load flows — restrict `random_init` initially to generic `Auto*` families and raise `ValueError` with a clear message for special families, rather than half-supporting re-init inside handlers (scope control, matches house error conventions)
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| pyBigWig 0.3.26 | Python 3.9–3.13 via manylinux_2_27/2_28 **x86_64 wheels** | No Windows/aarch64 wheels → platform marker mandatory; numpy support present (README-documented array `values`) — works under the matrix numpy 1.26.4/2.2.0 (C extension is numpy-version-tolerant via its own bindings; flagged MEDIUM — confirm in phase spike if the matrix pins bite) |
-| langchain-ollama 1.1.0 | langchain-core ≥1.2.21,<2 (installed langchain 1.4.3 OK); pulls `ollama` 0.6.x client | Python ≥3.10 — matches requires-python |
-| nbclient 0.10+ | Python ≥3.10; jupyter-client 8.x (installed 8.10.0) | No pinned ceiling needed; 0.11.0 is current |
-| ipykernel 7.4.0 | Python ≥3.11 | Matrix is 3.11–3.13 → fine; 3.10 users resolve 6.x via uv (library baseline unaffected) |
-| marimo 0.25.0 | Python ≥3.10 | `notebook` extra already `>=0.16.3`; runner installs latest — CLI surface verified on 0.25.0 |
-| vl-convert-python 1.9.0 | ships as `altair[all]`/`[save]` extra content | Already installed; Rust binary wheel, no browser/node needed |
-| pytest-timeout 2.4.0 marker | existing `--timeout=300` global | Per-test marker overrides upward for slow notebook tests (signal method on Linux) |
+| peft `IA3Config` (needs ≥0.4.0) | floor `peft>=0.14.0` | Margin of 10 minors. Verified on 0.21.1 under transformers 5.17.0 + torch 2.11.0; also on mambapy backbone |
+| `scipy.stats.false_discovery_control` (needs ≥1.11) | floor `scipy>=1.15.2` | Pure-Python over numpy — no ABI concerns on either numpy CI leg |
+| `scipy.stats.bootstrap` (needs ≥1.7) | floor `scipy>=1.15.2` | Same |
+| sklearn probing APIs (LogisticRegression/MLPClassifier) | floor `scikit-learn>=1.4.0`, numpy 1.26.4 & 2.2.0 legs | On the numpy-2.2.0 leg the resolver naturally picks sklearn ≥1.5 (numpy-2-compatible); 1.4.x self-caps below numpy 2 — the floor self-corrects, no pin change needed |
+| transformers 4.49–5.x `from_config` + Trainer eval semantics | existing `>=4.49.0,<6` span | `from_config` exercised locally under 5.17; Trainer `eval_strategy`/`load_best_model_at_end` are config-level (REV-01 is pure dnallm code) |
+| mcp `app.tool()` registration | `mcp>=1.3.0,<2` (1.30.0 installed) | Stable across 1.x; 2.3.0 exists but is explicitly out of scope |
+| JASPAR API `?format=` | live, versioned `/api/v1/` | Host migration verified 2026-10-09 (genereg.net → elixir.no); pin nothing, parameterize base URL |
+| Python 3.11/3.12/3.13 matrix + requires-python ≥3.10 | all stdlib components used (`gzip`, `urllib.request`, `hashlib`) | stdlib API is stable since 3.10; nothing new constrains the floor |
 
 ## Sources
 
-- PyPI JSON API (authoritative for versions/wheels; fetched 2026-10-01): nbclient 0.11.0, nbmake 1.5.5, pyBigWig 0.3.26 (+ wheel file list), gffutils 0.14 (+ requires_dist), bcbio-gff 0.7.1, pyfaidx 0.9.0.4, pyfastx 2.3.1, ollama 0.6.3, marimo 0.25.0, ipykernel 7.4.0, vl-convert-python 1.9.0, papermill 2.7.0, langchain-ollama 1.1.0, pygenometracks 3.9 (GPL + matplotlib<3.9 pin + pybedtools dep), igv-notebook 0.6.2 (MIT, ipykernel/ipython/requests), anywidget 0.11.0; jbrowse-anywidget **absent from PyPI** — HIGH (deterministic API check)
-- Local introspection of the installed venv (deterministic — HIGH): nbclient traits (`allow_errors=False`, `timeout=None`, `kernel_name=''`, `startup_timeout=60`) + `resources.metadata.path` handling (`client.py:431,535`) + in-place execute; marimo 0.25.0 CLI help (`export html` "Run a notebook…", `export session`, `run --headless`) + `App.run(defs=None)` signature; venv `share/jupyter/kernels/python3/kernel.json` content; vl-convert-python 1.9.0 importable; altair 6.3.0 `all`-extra contents; `pytest.mark.timeout` available; bedtools NOT on runner PATH; langchain-ollama NOT installed
-- pyBigWig official README (github.com/deeptools/pyBigWig) — write API, zoom levels, validate/sorted-order, close() semantics — MEDIUM (single webfetch channel; API additionally matches upstream deeptools docs convention)
-- altair saving-charts docs (altair-viz.github.io) — vl-convert requirement, ppi/scale_factor, deprecated altair_saver — MEDIUM
-- matplotlib backends FAQ (matplotlib.org, stable) — MPLBACKEND / Agg / matplotlib.use precedence — MEDIUM
-- jupyter_client kernels docs (jupyter-client.readthedocs.io, stable) — kernelspec search paths, kernel.json format — MEDIUM
-- GFF3 spec v1.26 (Sequence Ontology Specifications, gff3.md) — columns, 1-based inclusive, escaping, directives — MEDIUM
-- ollama official docs (docs.ollama.com/openai — verified; install/FAQ via docs.ollama.com/linux + /faq) — `curl -fsSL https://ollama.com/install.sh | sh`, systemd `ollama.service`, `OLLAMA_MODELS` drop-in pattern, `http://localhost:11434/v1/` endpoints — MEDIUM
-- marimo docs (docs.marimo.io/guides/testing/, /pytest/) — reactive test cells; no `App.run` documented there (CLI behavior verified locally instead) — MEDIUM
-- nbmake (github.com/treebeardtech/nbmake via websearch) — `--nbmake`, `--nbmake-timeout`, nbclient-based — MEDIUM
-- pyfastx README (github.com/lmdu/pyfastx) — `fetch` 1-based inclusive, strand, indexing — MEDIUM; pyfaidx README (github.com/mdshw5/pyfaidx) — pure Python, 0-based slicing — MEDIUM
-- pyGenomeTracks (github.com/deeptools/pyGenomeTracks README + readthedocs) — GPL-3.0, bedtools required since 3.5, pdf/png/svg outputs, "bed/gtf" track list — MEDIUM
-- igv-notebook README (github.com/igvteam/igv-notebook) — 0.6.2/igv.js 3.1.4, to_svg "Jupyter Notebook only", JupyterLab local-path restriction — MEDIUM; igv.js GFF3+tabix support via igv.js wiki/issues (websearch) — MEDIUM
-- jbrowse-anywidget README (github.com/GMOD/jbrowse-anywidget) — Prototype label, git-only install, puppeteer headless runner, "pytest never opens one", Apache-2.0 — MEDIUM
-
-Open items for phase-level spikes (flagged, not blockers): pyBigWig under matrix numpy 1.26.4 on the runner; whether marimo demo apps containing `mo.ui` elements behave identically under `marimo export html` vs live `marimo run` (spot-check one app first).
+- **Local execution against installed venv (highest confidence, 2026-10-09):** `IA3Config` field surface + instantiation (peft 0.21.1); IA³ end-to-end smoke on BERT-style transformer (transformers 5.17.0, `SEQ_CLS`, trainable 546/36,292 params) and on mambapy `Mamba` (448 trainable params); `peft/tuners/ia3/bnb.py` presence; `scipy.stats.bootstrap` (BCa) and `scipy.stats.false_discovery_control` working calls; sklearn probe estimator imports; `AutoModelForSequenceClassification.from_config` under transformers 5.17
+- **Live JASPAR API probe (first-party, HIGH):** `https://jaspar.elixir.no/api/v1/matrix/MA0004.1?format=pfm` and `?format=meme` responses captured 2026-10-09; API format list (json/jsonp/jaspar/meme/transfac/pfm/yaml/bed) from `https://jaspar.genereg.net/api/`
+- [peft 0.4.0 release notes](https://newreleases.io/project/pypi/peft/release/0.4.0) — IA³ introduced alongside QLoRA support (cross-checked with [IA3Config source at v0.19.0](https://github.com/huggingface/peft/blob/v0.19.0/src/peft/tuners/ia3/config.py) and [HF peft IA3 docs](https://huggingface.co/docs/peft/package_reference/ia3)) — MEDIUM-HIGH
+- [peft IA3 bnb dispatch listing](https://leeroopedia.com/index.php/?title=Environment:Huggingface_Peft_BitsAndBytes_Quantization&oldid=27093) (IA3 among bnb-supported methods) + local file check — HIGH (cross-verified)
+- [pysam GitHub issue #1137](https://github.com/pysam-developers/pysam/issues/1137) (maintainer: no Windows support), [pysam release notes](https://pysam.readthedocs.io/en/v0.24.0/release.html) (3.13/3.14 wheels Linux/macOS), [cyvcf2 changelog](https://data.safetycli.com/packages/pypi/cyvcf2/changelog?page=1) (numpy-2 fix in 0.31.1, wheels through cp314, no Windows) — MEDIUM (multi-source consistent)
+- PyPI JSON API live checks (2026-10-09): latest versions — mcp 2.3.0, peft 0.21.2, statsmodels 0.15.0, biopython 1.88 — HIGH (first-party registry)
 
 ---
-*Stack research for: example-execution testing + PlantHelixSeek genomics showcases*
-*Researched: 2026-10-01*
+*Stack research for: DNALLM v1.2 Paper Revision Suite Support (REV-01…REV-11)*
+*Researched: 2026-10-09*

@@ -5,7 +5,7 @@ sync_check: true
 
 # Fine-Tuning Data Preparation
 
-This tutorial covers how to prepare and load training data for fine-tuning DNA language models. DNALLM supports multiple data sources and task formats.
+This tutorial covers how to prepare and load training data for fine-tuning DNA large language models. DNALLM supports multiple data sources and task formats.
 
 ## Full Notebook
 

@@ -23,9 +23,9 @@ Model Context Protocol (MCP) is an open standard promoted by Anthropic, specific
 
 ## Why Does DNALLM Integrate MCP?
 
-### 1. Solving DNA Language Model Integration Challenges
+### 1. Solving DNA Large Language Model Integration Challenges
 
-Traditional DNA language models typically exist as standalone scripts or Jupyter Notebooks, lacking standardized service interfaces:
+Traditional DNA large language models typically exist as standalone scripts or Jupyter Notebooks, lacking standardized service interfaces:
 
 - **Integration Difficulties**: Hard to integrate with other tools and systems
 - **Inconsistent Interfaces**: Each model has its own calling method
@@ -140,7 +140,7 @@ MCP enables AI assistants to:
 ### Core Components
 
 1. **MCP Server**: Server implementation based on FastMCP framework
-2. **Model Manager**: Manages loading and calling of multiple DNA language models
+2. **Model Manager**: Manages loading and calling of multiple DNA large language models
 3. **Config Manager**: Handles server and model configuration
 4. **Transport Layer**: Supports multiple transport protocols (STDIO, SSE, HTTP)
 

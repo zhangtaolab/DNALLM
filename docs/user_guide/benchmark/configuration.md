@@ -286,7 +286,7 @@ All fields of `OutputConfig`:
 ```yaml
 benchmark:
   name: "Promoter Prediction Benchmark"
-  description: "Comparing DNA language models on promoter prediction tasks"
+  description: "Comparing DNA large language models on promoter prediction tasks"
 
 models:
   - name: "Plant DNABERT"

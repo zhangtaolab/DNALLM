@@ -1,0 +1,48 @@
+# HBG1/BCL11A golden fixture manifest (MOTIF-01 / REV-10, Fig 4a acceptance)
+#
+# STATUS: PENDING OWNER INPUT. The paper-exact assertion activates by a
+# fixture-files-only drop-in (see TestGoldenHBG1BCL11A in
+# tests/interpret/test_motifs.py): replace window_fasta/motif_meme with the
+# owner-supplied FASTA window and the frozen JASPAR MEME file, set
+# pending: false, and fill expected_hits/tolerance_bp from the manuscript.
+# ZERO harness code changes are required. No paper coordinates are guessed
+# anywhere in this fixture (Pitfall 5).
+
+pending: true
+
+owner_inputs:
+  fig4a_window_coordinates:
+    status: pending
+    description: >-
+      Exact Fig 4a hotspot window definition (locus, flank size, assembly)
+      from the manuscript figure. Literature anchors only (NOT a substitute
+      for owner input): BCL11A +58 enhancer core GRCh38
+      chr2:60,495,219-60,495,336 (Canver 2015); HBG1/HBG2 promoter BCL11A
+      site ~-115 from TSS (chr11 ~5.27 Mb, GRCh38).
+    owner_action: supply the window coordinates verbatim (exact match applies)
+  motif_id:
+    status: pending
+    candidates: ["MA2324.1", "MA2504.1"]
+    candidates_note: both JASPAR CORE BCL11A matrices, live-verified 2026-10-10
+    owner_action: confirm which matrix the paper used (or supply a CIS-BP PWM)
+  jaspar_release:
+    status: pending
+    candidates: ["2024", "2026"]
+    candidates_note: both releases active; matrix sets differ between them
+    owner_action: confirm the JASPAR release the paper searched against
+  coordinate_tolerance_policy:
+    exact_supplied: 0 bp (owner supplies the window coordinates verbatim)
+    figure_derived: +-2 bp (figure-annotated coordinates read to the nearest tick)
+
+# The committed stand-ins: hand-derivable by construction. A palindromic
+# consensus (AGTATACT, w=8) is embedded at offset 30 of a 60 bp window whose
+# letter counts are exactly 15/15/15/15 (uniform background by construction),
+# so the expected hits on BOTH strands at [30, 38) follow analytically.
+fixture:
+  window_fasta: synthetic_window.fasta
+  motif_meme: synthetic_motif.meme
+  motif_id: "SYNTH.1"
+  expected_hits:
+    - {motif_id: "SYNTH.1", strand: "+", start: 30, end: 38}
+    - {motif_id: "SYNTH.1", strand: "-", start: 30, end: 38}
+  tolerance_bp: 0

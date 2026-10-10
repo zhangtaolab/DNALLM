@@ -62,10 +62,25 @@ def main():
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
-        help="Host to bind the server to",
+        default=None,
+        help=(
+            "Host to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 127.0.0.1. An explicit flag always wins over "
+            "the YAML config."
+        ),
     )
-    parser.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help=(
+            "Port to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 8000. An explicit flag always wins over the "
+            "YAML config."
+        ),
+    )
     parser.add_argument(
         "--log-level",
         type=str,
@@ -106,8 +121,14 @@ def main():
         logger.info(f"Loaded models: {info['loaded_models']}")
         logger.info(f"Enabled models: {info['enabled_models']}")
 
-        # Start server (this is blocking and runs outside asyncio)
-        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        # Start server (this is blocking and runs outside asyncio). Host/port
+        # stay None-sentinels when not passed so start_server resolves them
+        # from the YAML config with CLI precedence (Phase 12 REV-11).
+        logger.info(
+            f"Starting server with {args.transport} transport "
+            f"(host: {args.host if args.host is not None else 'from config'}, "
+            f"port: {args.port if args.port is not None else 'from config'})"
+        )
         server.start_server(host=args.host, port=args.port, transport=args.transport)
 
     except KeyboardInterrupt:

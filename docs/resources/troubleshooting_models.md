@@ -1,6 +1,6 @@
 # Troubleshooting Models
 
-This guide addresses common issues you might encounter when loading and using DNA language models with DNALLM.
+This guide addresses common issues you might encounter when loading and using DNA large language models with DNALLM.
 
 **Related Documents**:
 - [Model Selection Guide](./model_selection.md)

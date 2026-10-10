@@ -1,0 +1,22 @@
+MEME version 4
+
+ALPHABET= ACGT
+
+strands: + -
+
+Background letter frequencies
+A 0.25 C 0.25 G 0.25 T 0.25
+
+MOTIF SYNTH.1 SyntheticPalindrome
+
+letter-probability matrix: alength= 4 w= 8 nsites= 20000 E= 0
+  0.40  0.20  0.20  0.20
+  0.20  0.20  0.40  0.20
+  0.20  0.20  0.20  0.40
+  0.40  0.20  0.20  0.20
+  0.20  0.20  0.20  0.40
+  0.40  0.20  0.20  0.20
+  0.20  0.40  0.20  0.20
+  0.20  0.20  0.20  0.40
+
+URL https://jaspar.elixir.no/synthetic-stand-in

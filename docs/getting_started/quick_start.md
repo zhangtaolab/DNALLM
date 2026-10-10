@@ -1,6 +1,6 @@
 # Quick Start
 
-This guide will help you get started with DNALLM quickly. DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models.
+This guide will help you get started with DNALLM quickly. DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models.
 
 ## Prerequisites
 

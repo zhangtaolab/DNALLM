@@ -5,7 +5,7 @@ sync_check: true
 
 # Model Benchmarking
 
-This tutorial demonstrates how to benchmark multiple DNA language models on the same dataset, comparing their performance across standard metrics and generating publication-ready visualizations.
+This tutorial demonstrates how to benchmark multiple DNA large language models on the same dataset, comparing their performance across standard metrics and generating publication-ready visualizations.
 
 ## Full Notebook
 

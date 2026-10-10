@@ -15,7 +15,7 @@ including:
 Architecture:
     The server is built on top of the FastMCP framework, which provides MCP
     protocol implementation with multiple transport options (stdio, SSE,
-    HTTP). The server manages DNA language models through a ModelManager and
+    HTTP). The server manages DNA large language models through a ModelManager and
     handles configuration through a ConfigManager.
 
 Transport Protocols:
@@ -45,6 +45,8 @@ import asyncio
 import functools
 import json
 import re
+import shutil
+import tempfile
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -64,18 +66,146 @@ from .config_manager import MCPConfigManager
 from .model_manager import ModelManager
 from ..inference.mutagenesis import Mutagenesis
 from ..inference.interpret import DNAInterpret
+from ..inference.vep import (
+    ClinVarFilter,
+    VepResult,
+    _load_reference,
+    _resolve_chromosome,
+    evaluate_vcf,
+)
+
+#: Documented fallback bind address when neither the CLI nor any YAML block
+#: supplies one. Unified in Phase 12 (REV-11): the argparse default used to
+#: be ``0.0.0.0`` while ``start_server`` documented ``127.0.0.1`` — one
+#: loopback-safe default now applies everywhere; pass ``--host 0.0.0.0`` to
+#: bind all interfaces explicitly.
+DEFAULT_BIND_HOST = "127.0.0.1"
+
+#: Documented fallback bind port (see ``DEFAULT_BIND_HOST``).
+DEFAULT_BIND_PORT = 8000
+
+#: Tool-boundary input caps (Phase 12 REV-11, T-12-06). Enforced BEFORE any
+#: engine call so the timeout wrapper's "reduce inputs" suggestion stays
+#: actionable: single-base-substitution ISM costs 3 forward passes per base
+#: (a 2000-base scan is already ~6000 passes against a 30s tool timeout).
+ISM_MAX_SEQUENCE_LENGTH = 2000
+
+#: Maximum mutated positions accepted by ``ism_scan`` per call. Bounds the
+#: REQUESTED position list — and therefore the reported mutated entries
+#: (at most three substitution entries per position) — not the compute: the
+#: engine scans every position of every sequence, so the bound on forward
+#: passes is solely ``ISM_MAX_SEQUENCE_LENGTH``.
+ISM_MAX_POSITIONS = 100
+
+#: Maximum region length (bases) accepted by ``hotspots`` per call — the
+#: region is ISM-scanned in full, so the same pass-count math applies.
+HOTSPOT_MAX_REGION_LENGTH = 2000
+
+#: FASTA suffix allowlist for the per-call ``fasta_path`` parameter
+#: (T-12-04/T-12-08: client-named files are operator-trust-boundary reads).
+FASTA_SUFFIXES = (".fasta", ".fa", ".fa.gz", ".fna")
+
+#: VCF suffix allowlist for the per-call ``vcf_path`` parameter (T-12-04).
+VCF_SUFFIXES = (".vcf", ".vcf.gz")
+
+#: Maximum inline variants accepted by ``zero_shot_score`` per call (T-12-06).
+ZERO_SHOT_MAX_VARIANTS = 500
+
+#: Maximum accepted server-side VCF size in bytes (T-12-04: size-capped
+#: read of untrusted client-named files).
+ZERO_SHOT_MAX_VCF_BYTES = 64 * 1024 * 1024
+
+#: Maximum per-side context window for ``zero_shot_score`` (bounds the
+#: per-variant window strings the kernel builds).
+ZERO_SHOT_MAX_CONTEXT_WINDOW = 10_000
+
+#: Fixed sanitized basename for the materialized inline-variants temp VCF.
+#: NEVER derived from VCF/variant record fields (T-12-05: no record-derived
+#: string may appear in any path); a fixed name keeps record content out of
+#: the filesystem entirely.
+INLINE_VCF_BASENAME = "inline_variants.vcf"
+
+#: Whitespace-free chromosome-name pattern for inline-variant ``chrom``
+#: values: a chrom carrying tabs or newlines would escape its VCF field and
+#: inject POS/REF/ALT/INFO columns or whole extra data rows, defeating the
+#: pattern-validated alleles, the variant cap, and the inline no-ClinVar
+#: guarantee. The class covers conventional names (chr1, chrX, chrM,
+#: chrUn_GL000220v1, NC_000001.11-style accessions, alt/decoy pipes) and
+#: the ``*``-bearing HLA ALT contigs of the GRCh38 full-analysis-set-plus-
+#: decoy-HLA reference (hs38DH: HLA-A*01:01:01:01). ``#`` stays rejected:
+#: no mainstream reference uses it in CHROM, and a leading ``#`` would
+#: render a data line header-like to VCF parsers.
+#: Anchored with ``\Z`` (not ``$``): ``$`` also matches just before a
+#: trailing newline, which would defeat the whole point of a whitespace-free
+#: check on exactly the row-splitting character.
+_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()*-]+\Z")
+
+#: Pass-through CLNSIG marker written into the inline temp VCF. The kernel's
+#: convention gates require a CLNSIG/CLNREVSTAT/CLNVC triple; inline
+#: variants carry no ClinVar annotation by construction, so they are marked
+#: with these clearly-non-ClinVar sentinels and admitted under
+#: ``_INLINE_SENTINEL_FILTER`` below. The convention block in the response
+#: reports exactly what was applied (labels "['not_analyzed']=1 vs []=0"),
+#: and metrics stay None by construction (single label class).
+_INLINE_SENTINEL_CLNSIG = "not_analyzed"
+
+#: Sentinel CLNVC marker matching ``_INLINE_SENTINEL_FILTER.variant_type``.
+_INLINE_SENTINEL_CLNVC = "inline_variant"
+
+#: Sentinel INFO string for every inline temp-VCF row. ``criteria_provided``
+#: satisfies the kernel's hardcoded >=1-star floor token check; the injected
+#: value is visible verbatim in the response's ``convention.clnrevstat_counts``.
+_INLINE_SENTINEL_INFO = (
+    f"CLNSIG={_INLINE_SENTINEL_CLNSIG};CLNREVSTAT=criteria_provided;CLNVC={_INLINE_SENTINEL_CLNVC}"
+)
+
+#: The kernel filter admitting the sentinel rows (A8 pass-through
+#: convention). MANDATORY base in inline-variants mode: every temp-VCF row
+#: carries ``CLNVC=inline_variant`` by construction, so any other
+#: ``variant_type`` excludes every row as ``non_snv_clnvc`` (evaluated == 0)
+#: — a caller ``clnsig_filter`` may only tune the labels/star_floor on top
+#: of this base, never replace its ``variant_type``.
+_INLINE_SENTINEL_FILTER = ClinVarFilter(
+    variant_type=_INLINE_SENTINEL_CLNVC,
+    positive_labels=frozenset({_INLINE_SENTINEL_CLNSIG}),
+    negative_labels=frozenset(),
+    star_floor=1,
+)
+
+
+def _ism_entry_position(name: str) -> int | None:
+    """Parse the 0-based sequence position from a Mutagenesis entry name.
+
+    Entry names follow the engine's ``{kind}_{i}_...`` convention:
+    ``mut_{i}_{base}_{alt}``, ``del_{i}_{size}``, ``ins_{i}_{seq}``,
+    ``cut_{i}_{size}``. Returns ``None`` for unparseable names (e.g.
+    ``raw``) — entries with no resolvable position are never filtered in.
+
+    Args:
+        name: Entry key from a ``Mutagenesis.evaluate`` result dict.
+
+    Returns:
+        The 0-based position the entry mutates, or ``None``.
+    """
+    parts = name.split("_")
+    if len(parts) >= 2 and parts[0] in ("mut", "del", "ins", "cut"):
+        try:
+            return int(parts[1])
+        except ValueError:
+            return None
+    return None
 
 
 class DNALLMMCPServer:
     """DNALLM MCP Server implementation using FastMCP framework with SSE
     support.
 
-    This class provides a comprehensive MCP server for DNA language model
+    This class provides a comprehensive MCP server for DNA large language model
     inference and analysis. It supports multiple transport protocols and
     provides real-time streaming capabilities for DNA sequence prediction
     tasks.
 
-    The server manages multiple DNA language models and provides various
+    The server manages multiple DNA large language models and provides various
     prediction modes including single sequence prediction, batch processing,
     and multi-model comparison. All operations support progress reporting
     through streaming transports for real-time user feedback.
@@ -177,7 +307,7 @@ class DNALLMMCPServer:
         2. Loads and validates server configuration
         3. Creates the FastMCP application instance
         4. Registers all MCP tools
-        5. Loads all enabled DNA language models
+        5. Loads all enabled DNA large language models
 
         The initialization is asynchronous because model loading can be
         time-consuming, especially for large transformer models.
@@ -289,6 +419,11 @@ class DNALLMMCPServer:
         # Register mutagenesis and interpretation tools (wrapped with timeout)
         self.app.tool()(self._with_timeout_wrapper(self._dna_mutagenesis, "dna_mutagenesis"))
         self.app.tool()(self._with_timeout_wrapper(self._dna_interpret, "dna_interpret"))
+
+        # Register Phase 12 analysis tools (wrapped with timeout, D-06)
+        self.app.tool()(self._with_timeout_wrapper(self._ism_scan, "ism_scan"))
+        self.app.tool()(self._with_timeout_wrapper(self._hotspots, "hotspots"))
+        self.app.tool()(self._with_timeout_wrapper(self._zero_shot_score, "zero_shot_score"))
 
         logger.info("Registered MCP tools successfully")
 
@@ -1300,7 +1435,7 @@ class DNALLMMCPServer:
                 sequences = [sequence]
 
             # Validate DNA sequence content
-            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
             for i, seq in enumerate(sequences):
                 if not dna_pattern.match(seq):
                     return {
@@ -1483,7 +1618,7 @@ class DNALLMMCPServer:
         """
         try:
             # Validate DNA sequence content
-            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
             if not dna_pattern.match(sequence):
                 return {
                     "error": (
@@ -1638,6 +1773,901 @@ class DNALLMMCPServer:
                 "isError": True,
             }
 
+    def _ism_engine_guard(self, model_name: str) -> dict[str, Any] | tuple[Any, Any, Any]:
+        """Shared model gate for the Phase 12 ISM-based tools.
+
+        Args:
+            model_name: Caller-supplied model name.
+
+        Returns:
+            An error dict when the model is not configured on this server or
+            has no loaded inference engine; otherwise the tuple
+            ``(model, tokenizer, config)`` of the loaded engine.
+        """
+        if self.model_manager.config_manager.get_model_config(model_name) is None:
+            return {
+                "error": f"Model {model_name} is not configured on this server",
+                "isError": True,
+            }
+        inference_engine = self.model_manager.get_inference_engine(model_name)
+        if inference_engine is None:
+            return {"error": f"Model {model_name} not loaded", "isError": True}
+        return (
+            inference_engine.model,
+            inference_engine.tokenizer,
+            inference_engine.config,
+        )
+
+    async def _ism_scan(
+        self,
+        model_name: str,
+        sequence: str | None = None,
+        sequences: list[str] | None = None,
+        mutation_type: str = "single_base_substitution",
+        positions: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Run a bounded in silico mutagenesis (ISM) scan on DNA sequences.
+
+        Mirrors the ``dna_mutagenesis`` engine surface with tool-boundary
+        input caps so a scan cannot silently expand past the tool timeout:
+        sequences are capped at 2000 bases and the requested position list
+        at 100 entries per call (single-base-substitution ISM costs 3
+        forward passes per base). The engine itself scans every position of
+        every sequence — the bound on COMPUTE is the sequence cap — while
+        the REPORTED mutated entries are restricted to the requested
+        positions. Reduce the inputs or raise ``tool_timeout_seconds`` in
+        the server config when a larger scan is genuinely needed.
+
+        Args:
+            model_name (str): Name of the loaded model to scan with.
+            sequence (str | None): Single DNA sequence to scan. Mutually
+                exclusive with ``sequences`` (passing both is a matchable
+                error; the single sequence is otherwise processed as a
+                one-element list internally).
+            sequences (list[str] | None): Non-empty list of non-empty DNA
+                sequence strings to scan. Mutually exclusive with
+                ``sequence``; an empty list is rejected like missing input.
+            mutation_type (str): One of "single_base_substitution",
+                "multi_base_substitution", "deletion", "insertion", "combo".
+            positions (list[int] | None): 0-based positions of interest;
+                validated against every sequence's length and echoed in the
+                response. Must be non-empty. The reported mutated entries
+                (and the delta averages) are restricted to these positions;
+                the engine still scans every position of every sequence, so
+                the bound on compute is the sequence cap, not this list.
+
+        Returns:
+            dict[str, Any]: ISM scan results in MCP format:
+                - On success: Contains 'content', 'original_prediction',
+                  'mutated_prediction', 'delta', 'affected_positions',
+                  'mutation_type', 'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            if not model_name:
+                return {"error": "model_name is required", "isError": True}
+
+            allowed_types = {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "deletion",
+                "insertion",
+                "combo",
+            }
+            if mutation_type not in allowed_types:
+                return {
+                    "error": (
+                        f"Invalid mutation_type: {mutation_type}. Must be one of: {allowed_types}"
+                    ),
+                    "isError": True,
+                }
+
+            if positions is None or len(positions) == 0:
+                return {
+                    "error": "positions must be a non-empty list of integers",
+                    "isError": True,
+                }
+            if len(positions) > ISM_MAX_POSITIONS:
+                return {
+                    "error": (
+                        f"ism_scan accepts at most {ISM_MAX_POSITIONS} positions "
+                        f"(got {len(positions)}). Reduce the position list."
+                    ),
+                    "isError": True,
+                }
+            for pos in positions:
+                if not isinstance(pos, int) or isinstance(pos, bool) or pos < 0:
+                    return {
+                        "error": (f"positions must be non-negative integers (got {pos!r})"),
+                        "isError": True,
+                    }
+
+            if sequence is not None and sequences is not None:
+                return {
+                    "error": "Provide either sequence or sequences, not both",
+                    "isError": True,
+                }
+            if sequence is None and sequences is None:
+                return {
+                    "error": "Either sequence or sequences must be provided",
+                    "isError": True,
+                }
+            if sequences is None:
+                sequences = [sequence]
+            if not sequences or not all(isinstance(seq, str) and seq for seq in sequences):
+                return {
+                    "error": "sequences must be a non-empty list of non-empty strings",
+                    "isError": True,
+                }
+
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
+            for i, seq in enumerate(sequences):
+                if not dna_pattern.match(seq):
+                    return {
+                        "error": (
+                            f"Sequence at index {i} contains invalid "
+                            f"characters. Only A, C, G, T, N "
+                            f"(case-insensitive) are allowed."
+                        ),
+                        "isError": True,
+                    }
+                if len(seq) > ISM_MAX_SEQUENCE_LENGTH:
+                    return {
+                        "error": (
+                            f"Sequence at index {i} exceeds the ism_scan cap "
+                            f"of {ISM_MAX_SEQUENCE_LENGTH} bases (got "
+                            f"{len(seq)}). Shorten the sequence or increase "
+                            f"tool_timeout_seconds in the server config."
+                        ),
+                        "isError": True,
+                    }
+                for pos in positions:
+                    if pos >= len(seq):
+                        return {
+                            "error": (
+                                f"Position {pos} is out of range for sequence "
+                                f"at index {i} (length {len(seq)})."
+                            ),
+                            "isError": True,
+                        }
+
+            guard = self._ism_engine_guard(model_name)
+            if isinstance(guard, dict):
+                return guard
+            model, tokenizer, config = guard
+
+            replace_mut = mutation_type in {
+                "single_base_substitution",
+                "multi_base_substitution",
+                "combo",
+            }
+            delete_size = 1 if mutation_type == "deletion" else 0
+            insert_seq = "N" if mutation_type == "insertion" else None
+            scan_sequences = sequences
+
+            def _run_ism_scan() -> list[dict[str, Any]]:
+                # ISM builds a DataLoader (num_workers may exceed 0) and so
+                # shares the fork-unsafe window that predicts serialize on
+                # (ModelManager CR-01 note): the flight lock is acquired
+                # INSIDE the executor-submitted closure, keeping the event
+                # loop live (health_check stays responsive) while the torch
+                # work runs off-loop.
+                with self.model_manager._infer_thread_lock:
+                    eval_results = []
+                    for seq in scan_sequences:
+                        mutagenesis = Mutagenesis(model, tokenizer, config)
+                        mutagenesis.mutate_sequence(
+                            seq,
+                            replace_mut=replace_mut,
+                            delete_size=delete_size,
+                            insert_seq=insert_seq,
+                        )
+                        eval_results.append(mutagenesis.evaluate(do_pred=True))
+                    return eval_results
+
+            loop = asyncio.get_running_loop()
+            eval_results = await loop.run_in_executor(None, _run_ism_scan)
+
+            results = []
+            wanted_positions = set(positions)
+            for seq, eval_result in zip(sequences, eval_results, strict=True):
+                raw = eval_result.get("raw", {})
+                original_prediction = {
+                    "sequence": raw.get("sequence", seq),
+                    "prediction": raw.get("pred", {}),
+                    "score": raw.get("score", 0.0),
+                }
+                # Restrict the REPORTED entries to the requested positions
+                # (entry names encode `mut_{i}_...`/`del_{i}_...`/
+                # `ins_{i}_...`/`cut_{i}_...`). The engine still scans every
+                # position — the compute bound is the sequence cap — but the
+                # reported entries, count, and delta averages all come from
+                # this filtered set, so the echoed positions and the results
+                # cannot disagree.
+                mutated_entries = [
+                    value
+                    for name, value in eval_result.items()
+                    if name != "raw" and _ism_entry_position(name) in wanted_positions
+                ]
+                mutated_prediction = {
+                    "count": len(mutated_entries),
+                    "predictions": [
+                        {
+                            "sequence": e.get("sequence", ""),
+                            "prediction": e.get("pred", {}),
+                            "logfc": e.get("logfc", 0.0),
+                            "diff": e.get("diff", 0.0),
+                            "score": e.get("score", 0.0),
+                        }
+                        for e in mutated_entries
+                    ],
+                }
+                if mutated_entries:
+                    avg_logfc = float(
+                        np.mean([
+                            float(np.mean(e.get("logfc", 0)))
+                            if hasattr(e.get("logfc", 0), "__len__")
+                            else float(e.get("logfc", 0))
+                            for e in mutated_entries
+                        ])
+                    )
+                    avg_diff = float(
+                        np.mean([
+                            float(np.mean(e.get("diff", 0)))
+                            if hasattr(e.get("diff", 0), "__len__")
+                            else float(e.get("diff", 0))
+                            for e in mutated_entries
+                        ])
+                    )
+                else:
+                    avg_logfc = 0.0
+                    avg_diff = 0.0
+
+                results.append({
+                    "original_prediction": original_prediction,
+                    "mutated_prediction": mutated_prediction,
+                    "delta": {
+                        "average_logfc": avg_logfc,
+                        "average_diff": avg_diff,
+                    },
+                })
+
+            result_payload: dict[str, Any]
+            if len(results) == 1:
+                result_payload = results[0]
+            else:
+                result_payload = {
+                    "batch_results": results,
+                    "sequence_count": len(sequences),
+                }
+
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"ISM scan complete: {mutation_type} "
+                            f"at positions {positions} using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                **result_payload,
+                "affected_positions": positions,
+                "mutation_type": mutation_type,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in ism_scan: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "ISM scan failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
+
+    async def _hotspots(
+        self,
+        model_name: str,
+        coordinates: dict[str, Any],
+        fasta_path: str,
+        strategy: str = "maxabs",
+        window_size: int = 10,
+        percentile_threshold: float = 90.0,
+    ) -> dict[str, Any]:
+        """Identify mutational hotspot windows for a genomic region.
+
+        Computes hotspots from the model itself (in silico mutagenesis over
+        the requested reference slice followed by sliding-window
+        aggregation) — never from a precomputed window file. The reference
+        sequence is read from a per-call server-side ``fasta_path``.
+
+        Args:
+            model_name (str): Name of the loaded model to scan with.
+            coordinates (dict[str, Any]): Region to scan, as
+                ``{"chrom": str, "start": int, "end": int}`` with 0-based
+                half-open coordinates (Python slicing convention). The
+                region length is capped at 2000 bases per call.
+            fasta_path (str): Server-side reference FASTA path
+                (.fasta/.fa/.fa.gz/.fna) containing the chromosome. This is
+                an operator-trust-boundary file read, not a client upload.
+            strategy (str): Per-base score aggregation, one of "maxabs",
+                "min", "max", "mean". Defaults to "maxabs".
+            window_size (int): Sliding-window size (bases) for hotspot
+                detection. Defaults to 10.
+            percentile_threshold (float): Rolling-window percentile above
+                which a window is a hotspot (0 < p <= 100). Defaults to 90.
+
+        Returns:
+            dict[str, Any]: Hotspot scan results in MCP format:
+                - On success: Contains 'content', 'hotspots' (0-based
+                  half-open [start, end) pairs relative to the region),
+                  'hotspots_genomic' (absolute coordinates),
+                  'window_count', 'coordinates', 'sequence_length',
+                  'strategy', 'window_size', 'percentile_threshold',
+                  'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        try:
+            if not model_name:
+                return {"error": "model_name is required", "isError": True}
+
+            if not isinstance(coordinates, dict):
+                return {
+                    "error": "coordinates must be an object with 'chrom', 'start', 'end' fields",
+                    "isError": True,
+                }
+            chrom = coordinates.get("chrom")
+            start = coordinates.get("start")
+            end = coordinates.get("end")
+            if not isinstance(chrom, str) or not chrom:
+                return {
+                    "error": "coordinates.chrom must be a non-empty string",
+                    "isError": True,
+                }
+            if not isinstance(start, int) or isinstance(start, bool) or start < 0:
+                return {
+                    "error": "coordinates.start must be an integer >= 0",
+                    "isError": True,
+                }
+            if not isinstance(end, int) or isinstance(end, bool) or end <= start:
+                return {
+                    "error": (f"coordinates.end must be an integer greater than start ({start})"),
+                    "isError": True,
+                }
+            if end - start > HOTSPOT_MAX_REGION_LENGTH:
+                return {
+                    "error": (
+                        f"hotspots region length (end - start = {end - start}) "
+                        f"exceeds the cap of {HOTSPOT_MAX_REGION_LENGTH} bases. "
+                        f"Narrow the coordinates or increase "
+                        f"tool_timeout_seconds in the server config."
+                    ),
+                    "isError": True,
+                }
+
+            if not isinstance(fasta_path, str) or not fasta_path:
+                return {
+                    "error": "fasta_path is required (server-side reference FASTA)",
+                    "isError": True,
+                }
+            if not fasta_path.endswith(FASTA_SUFFIXES):
+                return {
+                    "error": (
+                        f"hotspots: fasta_path must end with one of "
+                        f"{FASTA_SUFFIXES} (got '{fasta_path}')"
+                    ),
+                    "isError": True,
+                }
+            if not Path(fasta_path).is_file():
+                return {
+                    "error": f"hotspots: reference FASTA not found at '{fasta_path}'.",
+                    "isError": True,
+                }
+
+            allowed_strategies = {"maxabs", "min", "max", "mean"}
+            if strategy not in allowed_strategies:
+                return {
+                    "error": (
+                        f"Invalid strategy: {strategy}. Must be one of: {allowed_strategies}"
+                    ),
+                    "isError": True,
+                }
+            if not isinstance(window_size, int) or isinstance(window_size, bool) or window_size < 1:
+                return {
+                    "error": "window_size must be an integer >= 1",
+                    "isError": True,
+                }
+            if (
+                not isinstance(percentile_threshold, (int, float))
+                or isinstance(percentile_threshold, bool)
+                or not 0 < percentile_threshold <= 100
+            ):
+                return {
+                    "error": "percentile_threshold must be a number in (0, 100]",
+                    "isError": True,
+                }
+
+            guard = self._ism_engine_guard(model_name)
+            if isinstance(guard, dict):
+                return guard
+            model, tokenizer, config = guard
+
+            def _run_hotspot_scan() -> tuple[list[tuple[int, int]], int]:
+                # Same off-loop, single-flight contract as _ism_scan: the
+                # reference read, slice, ISM, and window extraction all run
+                # in the executor under the fork-unsafe flight lock.
+                with self.model_manager._infer_thread_lock:
+                    reference = _load_reference(fasta_path)
+                    chrom_key = _resolve_chromosome(reference, chrom)
+                    ref_seq = reference[chrom_key]
+                    if end > len(ref_seq):
+                        raise ValueError(
+                            f"hotspots: coordinates end {end} exceeds the "
+                            f"length of {chrom} in the reference "
+                            f"({len(ref_seq)} bases) — assembly mismatch?"
+                        )
+                    seq = ref_seq[start:end].upper()
+                    mutagenesis = Mutagenesis(model, tokenizer, config)
+                    mutagenesis.mutate_sequence(seq, replace_mut=True)
+                    preds = mutagenesis.evaluate(do_pred=True)
+                    windows = mutagenesis.find_hotspots(
+                        preds,
+                        strategy=strategy,
+                        window_size=window_size,
+                        percentile_threshold=percentile_threshold,
+                    )
+                    return windows, len(seq)
+
+            loop = asyncio.get_running_loop()
+            try:
+                windows, seq_len = await loop.run_in_executor(None, _run_hotspot_scan)
+            except ValueError as e:
+                # Matchable parse/coordinate failures from the vep loaders
+                # (missing chromosome, malformed FASTA, out-of-bounds region).
+                return {"error": f"hotspots: {e}", "isError": True}
+
+            hotspot_pairs = [[int(s), int(e)] for s, e in windows]
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Hotspot scan complete: {len(hotspot_pairs)} "
+                            f"hotspot window(s) on {chrom}:{start}-{end} "
+                            f"using model {model_name}"
+                        ),
+                    }
+                ],
+                "hotspots": hotspot_pairs,
+                "hotspots_genomic": [
+                    {"chrom": chrom, "start": int(start) + s, "end": int(start) + e}
+                    for s, e in hotspot_pairs
+                ],
+                "window_count": len(hotspot_pairs),
+                "coordinates": {"chrom": chrom, "start": start, "end": end},
+                "sequence_length": seq_len,
+                "strategy": strategy,
+                "window_size": window_size,
+                "percentile_threshold": percentile_threshold,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in hotspots: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Hotspot scan failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
+
+    @staticmethod
+    def _build_clnsig_filter(
+        clnsig_filter: dict[str, Any] | None,
+        *,
+        inline_mode: bool = False,
+    ) -> tuple[ClinVarFilter | None, str | None]:
+        """Validate and build the kernel convention filter.
+
+        Args:
+            clnsig_filter: Caller-supplied override mapping to
+                ``vep.ClinVarFilter`` fields, or ``None`` for the D-17
+                defaults.
+            inline_mode: Inline-variants mode: ``_INLINE_SENTINEL_FILTER``
+                is the mandatory base. Every inline temp-VCF row carries
+                ``CLNVC=inline_variant`` by construction, so
+                ``variant_type`` is always the sentinel — an explicit
+                conflicting value is a matchable error naming the required
+                value — and the caller's other fields override the sentinel,
+                not the D-17 defaults.
+
+        Returns:
+            Tuple of (filter-or-None, error-text). Exactly one element is
+            None; the error text is for the tool's matchable error dict.
+        """
+        if clnsig_filter is None:
+            if inline_mode:
+                return _INLINE_SENTINEL_FILTER, None
+            return None, None
+        allowed_keys = {"variant_type", "positive_labels", "negative_labels", "star_floor"}
+        if not isinstance(clnsig_filter, dict) or not set(clnsig_filter) <= allowed_keys:
+            return None, (
+                f"clnsig_filter must be an object with a subset of keys {sorted(allowed_keys)}"
+            )
+        for list_field in ("positive_labels", "negative_labels"):
+            value = clnsig_filter.get(list_field)
+            if value is not None and (
+                not isinstance(value, list) or not all(isinstance(v, str) for v in value)
+            ):
+                return None, f"clnsig_filter.{list_field} must be a list of strings"
+        variant_type = clnsig_filter.get("variant_type")
+        if variant_type is not None and not isinstance(variant_type, str):
+            return None, "clnsig_filter.variant_type must be a string"
+        star_floor = clnsig_filter.get("star_floor")
+        if star_floor is not None and (
+            not isinstance(star_floor, int) or isinstance(star_floor, bool) or star_floor < 0
+        ):
+            return None, "clnsig_filter.star_floor must be an integer >= 0"
+        if inline_mode and variant_type is not None and variant_type != _INLINE_SENTINEL_CLNVC:
+            return None, (
+                f"clnsig_filter.variant_type must be '{_INLINE_SENTINEL_CLNVC}' in "
+                f"inline-variants mode (got {variant_type!r}): inline temp-VCF rows "
+                f"carry CLNVC={_INLINE_SENTINEL_CLNVC} by construction, so any other "
+                f"variant_type excludes every row as non_snv_clnvc"
+            )
+        base = _INLINE_SENTINEL_FILTER if inline_mode else ClinVarFilter()
+        # Resolve each field ONCE and treat a key present with a JSON null
+        # as absent: dict.get(key, default) returns None (not the default)
+        # for present-but-null, which used to crash frozenset(None) into
+        # the generic error or silently pass None into the kernel.
+        positive = clnsig_filter.get("positive_labels")
+        negative = clnsig_filter.get("negative_labels")
+        built = ClinVarFilter(
+            variant_type=(
+                _INLINE_SENTINEL_CLNVC
+                if inline_mode
+                else (clnsig_filter.get("variant_type") or base.variant_type)
+            ),
+            positive_labels=frozenset(positive) if positive is not None else base.positive_labels,
+            negative_labels=frozenset(negative) if negative is not None else base.negative_labels,
+            star_floor=star_floor if star_floor is not None else base.star_floor,
+        )
+        return built, None
+
+    def _write_inline_vcf(self, variants: list[dict[str, Any]]) -> Path:
+        """Materialize inline variants to a temp VCF (fixed sanitized name).
+
+        Both input modes of ``zero_shot_score`` route through the same
+        ``vep.evaluate_vcf`` kernel (D-04), so inline variants are written
+        to a server-side temp VCF first. The file lives under a
+        ``tempfile.mkdtemp`` directory and carries the FIXED basename
+        ``INLINE_VCF_BASENAME`` — no path segment is ever derived from
+        record fields (T-12-05). Rows carry the pass-through CLNSIG/CLNVC/
+        CLNREVSTAT sentinels documented on ``_INLINE_SENTINEL_CLNSIG``.
+
+        Args:
+            variants: Pre-validated inline variant dicts ({chrom, pos, ref,
+                alt}; pos is the 1-based VCF coordinate).
+
+        Returns:
+            Path to the written temp VCF (caller owns cleanup of the
+            containing directory).
+        """
+        temp_dir = tempfile.mkdtemp(prefix="dnallm_zero_shot_")
+        vcf_path = Path(temp_dir) / INLINE_VCF_BASENAME
+        lines = [
+            "##fileformat=VCFv4.2",
+            (
+                "##INFO=<ID=CLNSIG,Number=.,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            (
+                "##INFO=<ID=CLNREVSTAT,Number=.,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            (
+                "##INFO=<ID=CLNVC,Number=1,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO",
+        ]
+        for variant in variants:
+            lines.append(
+                f"{variant['chrom']}\t{variant['pos']}\t.\t"
+                f"{variant['ref'].upper()}\t{variant['alt'].upper()}\t.\t.\t"
+                f"{_INLINE_SENTINEL_INFO}"
+            )
+        vcf_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return vcf_path
+
+    async def _zero_shot_score(
+        self,
+        model_name: str,
+        fasta_path: str,
+        variants: list[dict[str, Any]] | None = None,
+        vcf_path: str | None = None,
+        paradigm: str = "mlm",
+        context_window: int = 200,
+        clnsig_filter: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Score zero-shot variant effects (dual-mode, D-04).
+
+        Accepts EITHER an inline ``variants`` list of {chrom, pos, ref, alt}
+        objects (pos is the 1-based VCF coordinate; materialized to a
+        server-side temp VCF with a fixed sanitized name) OR a server-side
+        ``vcf_path`` (.vcf/.vcf.gz, size-capped). Both modes route through
+        the SAME ``dnallm.inference.vep.evaluate_vcf`` kernel, so skip
+        accounting (skip_counts, skipped, skip_fraction) and the convention
+        block are identical and surfaced verbatim in the response.
+
+        Inline variants carry no ClinVar annotation, so they are admitted
+        under a pass-through convention (labels "not_analyzed"=1, metrics
+        None by construction — see the convention block in the response).
+        Pass ``clnsig_filter`` (fields: variant_type, positive_labels,
+        negative_labels, star_floor — mapping to ``vep.ClinVarFilter``) to
+        override the D-17 defaults, e.g. for non-ClinVar ``vcf_path`` input.
+        In inline-variants mode the pass-through sentinel is the mandatory
+        base: ``variant_type`` is always ``inline_variant`` (an explicit
+        conflicting value is a matchable error naming the required value)
+        and the caller's other fields override the sentinel, not the D-17
+        defaults — any other ``variant_type`` would exclude every inline
+        row as ``non_snv_clnvc``.
+
+        Variant count is capped at 500 per call; sequences are capped at
+        2000 bases for the ISM tools. ``fasta_path``/``vcf_path`` are
+        operator-trust-boundary server-side file reads, never uploads.
+
+        Args:
+            model_name (str): Name of the loaded model to score with.
+            fasta_path (str): Server-side reference FASTA path
+                (.fasta/.fa/.fa.gz/.fna) for window building.
+            variants (list[dict[str, Any]] | None): Inline variants, each
+                {"chrom": str (whitespace-free chromosome name), "pos": int
+                (1-based), "ref": ACGT str, "alt": ACGT str}. Mutually
+                exclusive with vcf_path.
+            vcf_path (str | None): Server-side ClinVar-style VCF path.
+                Mutually exclusive with variants.
+            paradigm (str): "mlm" (log-odds, default) or "clm"
+                (delta-log-likelihood).
+            context_window (int): Reference bases kept on each side of a
+                variant. Defaults to 200.
+            clnsig_filter (dict[str, Any] | None): Optional ClinVar
+                convention override (see above); ``None`` keeps the D-17
+                defaults for vcf_path mode and the pass-through convention
+                for inline mode. In inline mode the sentinel
+                ``variant_type`` is mandatory (see above).
+
+        Returns:
+            dict[str, Any]: Zero-shot scoring results in MCP format:
+                - On success: Contains 'content', 'records' (per-variant
+                  scores/skips), 'skip_counts', 'evaluated', 'skipped',
+                  'skip_fraction', 'metrics', 'convention' (all verbatim
+                  from the kernel's VepResult), 'input_mode', 'paradigm',
+                  'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        temp_vcf_dir: str | None = None
+        try:
+            if not model_name:
+                return {"error": "model_name is required", "isError": True}
+
+            if variants is not None and vcf_path is not None:
+                return {
+                    "error": "Provide either variants or vcf_path, not both",
+                    "isError": True,
+                }
+            if variants is None and vcf_path is None:
+                return {
+                    "error": (
+                        "Provide either variants (inline list of "
+                        "{chrom, pos, ref, alt}) or vcf_path (server-side VCF)"
+                    ),
+                    "isError": True,
+                }
+            inline_mode = variants is not None
+
+            if paradigm not in ("mlm", "clm"):
+                return {
+                    "error": f"Invalid paradigm: {paradigm}. Must be 'mlm' or 'clm'",
+                    "isError": True,
+                }
+            if (
+                not isinstance(context_window, int)
+                or isinstance(context_window, bool)
+                or not 1 <= context_window <= ZERO_SHOT_MAX_CONTEXT_WINDOW
+            ):
+                return {
+                    "error": (
+                        f"context_window must be an integer in [1, {ZERO_SHOT_MAX_CONTEXT_WINDOW}]"
+                    ),
+                    "isError": True,
+                }
+
+            if not isinstance(fasta_path, str) or not fasta_path:
+                return {
+                    "error": "fasta_path is required (server-side reference FASTA)",
+                    "isError": True,
+                }
+            if not fasta_path.endswith(FASTA_SUFFIXES):
+                return {
+                    "error": (
+                        f"zero_shot_score: fasta_path must end with one of "
+                        f"{FASTA_SUFFIXES} (got '{fasta_path}')"
+                    ),
+                    "isError": True,
+                }
+            if not Path(fasta_path).is_file():
+                return {
+                    "error": f"zero_shot_score: reference FASTA not found at '{fasta_path}'.",
+                    "isError": True,
+                }
+
+            kernel_filter, filter_error = self._build_clnsig_filter(
+                clnsig_filter, inline_mode=inline_mode
+            )
+            if filter_error is not None:
+                return {"error": filter_error, "isError": True}
+
+            if inline_mode:
+                if not isinstance(variants, list) or not variants:
+                    return {
+                        "error": (
+                            "variants must be a non-empty list of {chrom, pos, ref, alt} objects"
+                        ),
+                        "isError": True,
+                    }
+                if len(variants) > ZERO_SHOT_MAX_VARIANTS:
+                    return {
+                        "error": (
+                            f"zero_shot_score accepts at most "
+                            f"{ZERO_SHOT_MAX_VARIANTS} variants per call "
+                            f"(got {len(variants)}). Split the batch."
+                        ),
+                        "isError": True,
+                    }
+                # \Z (not $): $ also matches before a trailing newline, which
+                # would split the materialized VCF row on exactly that newline.
+                allele_pattern = re.compile(r"^[ACGTacgt]+\Z")
+                for i, variant in enumerate(variants):
+                    if not isinstance(variant, dict):
+                        return {
+                            "error": (
+                                f"variants[{i}] must be an object with chrom/pos/ref/alt fields"
+                            ),
+                            "isError": True,
+                        }
+                    chrom = variant.get("chrom")
+                    pos = variant.get("pos")
+                    ref = variant.get("ref")
+                    alt = variant.get("alt")
+                    if not isinstance(chrom, str) or not _CHROM_PATTERN.match(chrom):
+                        return {
+                            "error": (
+                                f"variants[{i}].chrom must be a whitespace-free "
+                                f"chromosome name (got {chrom!r})"
+                            ),
+                            "isError": True,
+                        }
+                    if not isinstance(pos, int) or isinstance(pos, bool) or pos < 1:
+                        return {
+                            "error": (
+                                f"variants[{i}].pos must be an integer >= 1 "
+                                f"(1-based VCF coordinate, got {pos!r})"
+                            ),
+                            "isError": True,
+                        }
+                    for field, value in (("ref", ref), ("alt", alt)):
+                        if not isinstance(value, str) or not allele_pattern.match(value):
+                            return {
+                                "error": (
+                                    f"variants[{i}].{field} must be a non-empty "
+                                    f"ACGT string (got {value!r})"
+                                ),
+                                "isError": True,
+                            }
+                temp_vcf = self._write_inline_vcf(variants)
+                temp_vcf_dir = str(temp_vcf.parent)
+                kernel_vcf: str | Path = temp_vcf
+            else:
+                if not isinstance(vcf_path, str) or not vcf_path.endswith(VCF_SUFFIXES):
+                    return {
+                        "error": (
+                            f"zero_shot_score: vcf_path must end with one of "
+                            f"{VCF_SUFFIXES} (got '{vcf_path}')"
+                        ),
+                        "isError": True,
+                    }
+                vcf_file = Path(vcf_path)
+                if not vcf_file.is_file():
+                    return {
+                        "error": f"zero_shot_score: VCF not found at '{vcf_path}'.",
+                        "isError": True,
+                    }
+                if vcf_file.stat().st_size > ZERO_SHOT_MAX_VCF_BYTES:
+                    return {
+                        "error": (
+                            f"zero_shot_score: VCF exceeds the "
+                            f"{ZERO_SHOT_MAX_VCF_BYTES} byte cap "
+                            f"({vcf_file.stat().st_size} bytes)"
+                        ),
+                        "isError": True,
+                    }
+                kernel_vcf = vcf_path
+
+            guard = self._ism_engine_guard(model_name)
+            if isinstance(guard, dict):
+                return guard
+            model, tokenizer, _config = guard
+
+            def _run_zero_shot() -> VepResult:
+                # Scoring is torch work: same off-loop, single-flight
+                # contract as the ISM tools (fork-unsafe window under the
+                # ModelManager flight lock, acquired inside the closure).
+                with self.model_manager._infer_thread_lock:
+                    return evaluate_vcf(
+                        model,
+                        tokenizer,
+                        kernel_vcf,
+                        fasta_path,
+                        paradigm=paradigm,
+                        context_window=context_window,
+                        clnsig_filter=kernel_filter,
+                        alt_number=4,
+                    )
+
+            loop = asyncio.get_running_loop()
+            try:
+                vep_result = await loop.run_in_executor(None, _run_zero_shot)
+            except ValueError as e:
+                # Matchable kernel failures (unreadable VCF, missing
+                # chromosome, assembly mismatch, paradigm guard).
+                return {"error": f"zero_shot_score: {e}", "isError": True}
+
+            payload = vep_result.to_dict()
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Zero-shot scoring complete: "
+                            f"{vep_result.evaluated} variants scored, "
+                            f"{vep_result.skipped} skipped using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                "records": payload["records"],
+                "skip_counts": payload["skip_counts"],
+                "evaluated": payload["evaluated"],
+                "skipped": payload["skipped"],
+                "skip_fraction": payload["skip_fraction"],
+                "metrics": payload["metrics"],
+                "convention": payload["convention"],
+                "input_mode": "inline_variants" if inline_mode else "vcf_path",
+                "paradigm": paradigm,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in zero_shot_score: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Zero-shot scoring failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
+        finally:
+            if temp_vcf_dir is not None:
+                shutil.rmtree(temp_vcf_dir, ignore_errors=True)
+
     def _create_server_lifespan(self):
         """Create lifespan context manager for server graceful
         startup/shutdown.
@@ -1673,10 +2703,57 @@ class DNALLMMCPServer:
 
         return lifespan
 
+    def _resolve_bind_address(
+        self, host: str | None, port: int | None, transport: str
+    ) -> tuple[str, int]:
+        """Resolve the bind address once for both HTTP transports.
+
+        Precedence (Phase 12 REV-11 CLI-precedence fix, per field):
+
+        1. an explicitly-passed CLI value (never ``None`` here),
+        2. the transport-specific YAML block (``streamable_http`` on the
+           streamable-http transport only),
+        3. the ``server`` YAML block,
+        4. the documented default ``DEFAULT_BIND_HOST``/``DEFAULT_BIND_PORT``.
+
+        Args:
+            host: Explicit host from the caller (``None`` = not given).
+            port: Explicit port from the caller (``None`` = not given).
+            transport: One of "stdio", "sse", "streamable-http".
+
+        Returns:
+            Tuple of the final (host, port) both starters receive.
+        """
+        server_config = self.config_manager.get_server_config()
+        streamable_http_config = (
+            server_config.streamable_http
+            if server_config and hasattr(server_config, "streamable_http")
+            else None
+        )
+        # The transport-specific block refines only CONFIG-sourced values: a
+        # CLI-explicit value was never None and skips it entirely.
+        transport_block = streamable_http_config if transport == "streamable-http" else None
+
+        if host is None:
+            if transport_block is not None and transport_block.host is not None:
+                host = transport_block.host
+            elif server_config:
+                host = server_config.server.host
+        if host is None:
+            host = DEFAULT_BIND_HOST
+        if port is None:
+            if transport_block is not None and transport_block.port is not None:
+                port = transport_block.port
+            elif server_config:
+                port = server_config.server.port
+        if port is None:
+            port = DEFAULT_BIND_PORT
+        return host, port
+
     def start_server(
         self,
-        host: str = "127.0.0.1",
-        port: int = 8000,
+        host: str | None = None,
+        port: int | None = None,
         transport: str = "stdio",
     ) -> None:
         """Start the MCP server with the specified transport protocol.
@@ -1698,10 +2775,18 @@ class DNALLMMCPServer:
         headers manually.
 
         Args:
-            host (str, optional): Host address to bind the server to.
-                Defaults to "127.0.0.1". Use "0.0.0.0" for all interfaces.
-            port (int, optional): Port number to bind the server to.
-                Defaults to 8000. Only used for HTTP-based transports.
+            host (str | None, optional): Host address to bind the server to.
+                When ``None`` (the default), the value is resolved per the
+                documented chain: transport-specific YAML (``streamable_http``
+                on the streamable-http transport) > ``server`` YAML >
+                ``DEFAULT_BIND_HOST`` ("127.0.0.1"). An explicitly-passed
+                value always takes precedence over every YAML block
+                (Phase 12 REV-11 fix — previously YAML silently overrode
+                the CLI flags). Use "0.0.0.0" to bind all interfaces.
+            port (int | None, optional): Port number to bind the server to.
+                Resolved with the same precedence chain when ``None``,
+                falling back to ``DEFAULT_BIND_PORT`` (8000). Only used for
+                HTTP-based transports.
             transport (str, optional): Transport protocol to use.
                 Choices: "stdio", "streamable-http", "sse".
                 Defaults to "stdio".
@@ -1740,11 +2825,12 @@ class DNALLMMCPServer:
         if not self._initialized:
             raise RuntimeError("Server not initialized. Call initialize() first.")
 
-        # Override host/port from configuration if available
-        server_config = self.config_manager.get_server_config()
-        if server_config:
-            host = server_config.server.host
-            port = server_config.server.port
+        # Resolve the bind address ONCE (Phase 12 REV-11): CLI-explicit
+        # values win over YAML on both HTTP transports; both starters below
+        # receive the final values. The old unconditional YAML override here
+        # silently discarded the CLI flags, and the streamable-http starter
+        # then always overrode them again with the streamable_http block.
+        host, port = self._resolve_bind_address(host, port, transport)
 
         logger.info(f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport")
 
@@ -1840,7 +2926,10 @@ class DNALLMMCPServer:
 
         logger.info("Using Streamable HTTP transport")
 
-        # Read streamable_http config if available
+        # Read streamable_http config if available. Host/port resolution is
+        # NOT done here anymore (Phase 12 REV-11): start_server resolves the
+        # bind address once with CLI precedence and passes final values in;
+        # this block now contributes only the endpoint path.
         server_config = self.config_manager.get_server_config()
         streamable_http_config = (
             server_config.streamable_http
@@ -1848,16 +2937,7 @@ class DNALLMMCPServer:
             else None
         )
 
-        # Use streamable_http host/port only if server config doesn't specify
-        # them (to avoid overriding CLI args which are passed as parameters)
-        if streamable_http_config:
-            if server_config and server_config.server.host == host:
-                host = streamable_http_config.host
-            if server_config and server_config.server.port == port:
-                port = streamable_http_config.port
-            http_path = streamable_http_config.path
-        else:
-            http_path = "/mcp"
+        http_path = streamable_http_config.path if streamable_http_config else "/mcp"
 
         # Get the Streamable HTTP app from FastMCP
         if self.app is None:
@@ -1940,8 +3020,11 @@ def main():
 
     Command Line Arguments:
         --config: Path to server configuration file
-        --host: Host address to bind to (default: 0.0.0.0)
-        --port: Port number to bind to (default: 8000)
+        --host: Host to bind HTTP/SSE transports to; when omitted the value
+            resolves from the YAML config (streamable_http block on that
+            transport, else the server block), falling back to 127.0.0.1
+        --port: Port to bind HTTP/SSE transports to; same resolution chain
+            as --host, falling back to 8000
         --transport: Protocol (stdio/sse/streamable-http, default: stdio)
         --log-level: Logging verbosity (DEBUG/INFO/WARNING/ERROR/CRITICAL)
         --version: Display version information
@@ -1996,15 +3079,25 @@ Examples:
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
-        help="Host to bind the server to (default: %(default)s)",
+        default=None,
+        help=(
+            "Host to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 127.0.0.1. An explicit flag always wins over "
+            "the YAML config."
+        ),
     )
 
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind the server to (default: %(default)s)",
+        default=None,
+        help=(
+            "Port to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 8000. An explicit flag always wins over the "
+            "YAML config."
+        ),
     )
 
     parser.add_argument(
@@ -2040,8 +3133,12 @@ Examples:
     try:
         logger.info("Starting DNALLM MCP Server...")
         logger.info(f"Configuration: {config_path}")
-        logger.info(f"Host: {args.host}")
-        logger.info(f"Port: {args.port}")
+        logger.info(
+            f"Host: {args.host if args.host is not None else '(from config, default 127.0.0.1)'}"
+        )
+        logger.info(
+            f"Port: {args.port if args.port is not None else '(from config, default 8000)'}"
+        )
         logger.info(f"Transport: {args.transport}")
         logger.info(f"Log Level: {args.log_level}")
         logger.info("-" * 50)
@@ -2057,7 +3154,7 @@ Examples:
         logger.info("-" * 50)
 
         # Start server - let uvicorn handle signals for HTTP/SSE transports
-        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        logger.info(f"Starting server with {args.transport} transport")
         logger.info("Press Ctrl+C to stop the server")
 
         # Start server (uvicorn will handle signals properly)

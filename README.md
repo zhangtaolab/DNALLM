@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
-DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 📦 Quick Installation
 
@@ -20,7 +20,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
@@ -31,7 +31,20 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🧬 Supported Models
 
-DNALLM-Suite supports a wide range of DNA language models including:
+DNALLM-Suite supports a wide range of DNA large language models including:
+
+**From-scratch baselines:** any generically-loadable supported model can also be
+loaded with genuinely random weights via `load_model_and_tokenizer(...,
+random_init=True)`. The model config and tokenizer files are fetched as usual,
+but no pretrained weights are ever downloaded — weights are sampled through
+`AutoConfig.from_pretrained` + `Auto*.from_config` with CPU-canonical seeding
+(`random_init_seed`, default 42), so identical seeds reproduce identical models.
+A loud "randomly initialized" banner plus a per-tensor parameter-hash table are
+logged at INFO level as proof that no pretrained weights leaked into the
+baseline. Special model families without a from-scratch path raise a
+`ValueError`; the special-family allowlist is `RANDOM_INIT_SUPPORTED_FAMILIES`
+(currently the Mamba trust-remote-code architecture, which loads generically —
+all other generic `Auto*` families are always allowed).
 
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
@@ -513,6 +526,29 @@ DNALLM-Suite supports the following task types:
 - **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
 - **REGRESSION**: Regression task which returns a continuous score
 - **NER**: Token classification task which is usually for Named Entity Recognition
+
+## 🧬 Zero-Shot Variant Effect Prediction (VEP)
+
+DNALLM scores variants zero-shot from a VCF (`dnallm-vep` CLI, `dnallm.inference.vep`) under an explicit protocol:
+
+**Scoring formulas** (declared here and verbatim in the module docstrings):
+
+- **Masked-LM (log-odds)**: `delta = log P(alt_token | masked context) − log P(ref_token | masked context)` at the single alignment slot.
+- **Causal-LM (delta-log-likelihood)**: `delta = log P(alt_window) − log P(ref_window)` over the context window with the allele substituted at the variant position.
+
+Deltas are alt-minus-ref, so deleterious variants carry negative deltas; AUROC/AUPRC are computed over the deleteriousness score `−delta` (higher = more pathogenic — the evo2-clinvar/GPN field convention), placing discriminating models above the random floor.
+
+**Same-slot evaluability rule**: a variant is scoreable only when the tokenized reference and alternate sequences have equal length and differ at exactly ONE token slot. Variants failing the same-slot rule are reported as structured skips with machine-readable reasons (`length-changing allele`, `multi-slot token difference`, `no change`) — skip-as-data with per-reason counts and a skip fraction reported as a finding, never a silent drop, and never mixed into the label/paradigm error channels. Scoring windows are uppercased (soft-masked reference input must not silently tokenize to `<unk>`) and clipped symmetrically around the variant; ref and alt always share one identical window.
+
+**Paradigm↔architecture guard**: requesting `--paradigm clm` on a bidirectional model, or `--paradigm mlm` with a tokenizer that has no mask token, raises a `ValueError` — a misconfiguration must not masquerade as a near-random result.
+
+**ClinVar convention** (reported alongside every result — never a bare AUROC): SNVs only (`CLNVC=single_nucleotide_variant`), labels Pathogenic/Likely_pathogenic (1) vs Benign/Likely_benign (0) with VUS, conflicting, and novel CLNSIG strings excluded rather than guessed, and a ≥1 review-star floor (`CLNREVSTAT`).
+
+```bash
+dnallm-vep --model-name <model-name> --vcf variants.vcf --reference genome.fa --paradigm mlm -o result.json
+```
+
+Within-convention comparables from the literature (compare only within paradigm and within convention, never as bare thresholds): Nucleotide Transformer 2.5B MLM ClinVar AUROC ≈ 0.80; Evo2-40B CLM ≈ 0.98; BPE embedding-distance baselines ≈ 0.54–0.60.
 
 ## 🧪 Testing
 

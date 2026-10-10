@@ -10,12 +10,17 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import sys
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
 from dnallm.mcp.client import DNALLMMCPClient
+
+if sys.version_info < (3, 11):
+    # ExceptionGroup is builtin from 3.11; the backport is 3.10-only.
+    from exceptiongroup import ExceptionGroup
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -582,7 +587,6 @@ async def test_connection_failure_surfaces_through_exception_group():
     never a bare httpx exception type.
     """
     import httpx
-    from exceptiongroup import ExceptionGroup
 
     from dnallm.mcp.tests._network_skip import _network_leaves
 

@@ -1,4 +1,4 @@
-"""DNA Language Model Benchmarking Module.
+"""DNA Large Language Model Benchmarking Module.
 
 This module provides comprehensive benchmarking capabilities for DNA language
 models,
@@ -32,7 +32,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 class Benchmark:
-    """Class for benchmarking DNA Language Models.
+    """Class for benchmarking DNA Large Language Models.
 
     This class provides methods to evaluate the performance of different DNA
         language

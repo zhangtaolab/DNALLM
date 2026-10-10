@@ -21,12 +21,16 @@ from dnallm.configuration.configs import (
     DatasetConfig,
     EarlyStoppingConfig,
     EvaluationConfig,
+    HeadConfig,
+    Ia3Config,
     InferenceConfig,
     LoraConfig,
     ModelConfig,
     OutputConfig,
+    SweepConfig,
     TaskConfig,
     TrainingConfig,
+    VepConfig,
     HyperparameterSearchConfig,
     SearchSpaceDistribution,
     load_config,
@@ -980,6 +984,238 @@ class TestTrainingConfigReportToEdges:
             TrainingConfig(report_to=["all", "wandb"])
 
 
+class TestTrainingConfigScaffoldFields:
+    """EVAL-01/PEFT scaffold fields on TrainingConfig (Phase 10 one-pass)."""
+
+    def test_allow_test_as_eval_defaults_false(self):
+        """The test-as-eval opt-in is off by default (leak guard)."""
+        config = TrainingConfig()
+        assert config.allow_test_as_eval is False
+
+    def test_use_ia3_defaults_false(self):
+        """use_ia3 lands with a False default."""
+        config = TrainingConfig()
+        assert config.use_ia3 is False
+
+    def test_use_ia3_with_use_qlora_rejected_naming_both_fields(self):
+        """use_ia3 x use_qlora is rejected at Pydantic time with a message
+        naming both config fields (PEFT-01; peft only raises at merge time)."""
+        with pytest.raises(ValidationError, match="use_ia3"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+        with pytest.raises(ValidationError, match="use_qlora"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_with_use_qlora_rejection_names_the_cause(self):
+        """The rejection message states the 4-bit merge limitation (matchable)."""
+        with pytest.raises(ValidationError, match="4-bit"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_and_use_qlora_alone_still_construct(self):
+        """Each flag on its own is a valid configuration."""
+        assert TrainingConfig(use_ia3=True).use_ia3 is True
+        assert TrainingConfig(use_qlora=True).use_qlora is True
+
+    def test_peft_dry_run_defaults_false(self):
+        """peft_dry_run defaults to False (training runs normally)."""
+        config = TrainingConfig()
+        assert config.peft_dry_run is False
+
+    def test_peft_dry_run_settable_from_plain_kwargs(self):
+        """The field is constructible from kwargs as YAML section data would be."""
+        config = TrainingConfig(peft_dry_run=True)
+        assert config.peft_dry_run is True
+
+    def test_allow_test_as_eval_settable_from_plain_kwargs(self):
+        """The field is constructible from kwargs as YAML section data would be."""
+        config = TrainingConfig(allow_test_as_eval=True)
+        assert config.allow_test_as_eval is True
+
+
+class TestIa3Config:
+    """Ia3Config stub section: field-complete, peft-IA3Config-mirrored."""
+
+    def test_ia3_config_defaults(self):
+        """Default instantiation yields the peft-compatible field set."""
+        config = Ia3Config()
+
+        assert config.target_modules is None
+        assert config.exclude_modules is None
+        assert config.feedforward_modules is None
+        assert config.fan_in_fan_out is False
+        assert config.init_ia3_weights is True
+        assert config.modules_to_save is None
+        assert config.task_type == "SEQ_CLS"
+
+    def test_ia3_config_custom_values(self):
+        """All six fields accept explicit values."""
+        config = Ia3Config(
+            target_modules=["query", "key"],
+            exclude_modules=["classifier"],
+            feedforward_modules=["key"],
+            fan_in_fan_out=True,
+            init_ia3_weights=False,
+            modules_to_save=["classifier"],
+        )
+
+        assert config.target_modules == ["query", "key"]
+        assert config.exclude_modules == ["classifier"]
+        assert config.feedforward_modules == ["key"]
+        assert config.fan_in_fan_out is True
+        assert config.init_ia3_weights is False
+        assert config.modules_to_save == ["classifier"]
+
+    def test_ia3_config_dump_fields_match_peft_surface(self):
+        """Every dnallm Ia3Config field name is accepted by peft's IA3Config
+        (full pass-through; nothing is dropped by the trainer's filter)."""
+        from dnallm.finetune.trainer import PEFT_IA3_FIELD_NAMES
+
+        assert set(Ia3Config().model_dump()) <= PEFT_IA3_FIELD_NAMES
+
+
+class TestVepConfig:
+    """VepConfig stub section for the zero-shot VEP module."""
+
+    def test_vep_config_defaults(self):
+        """Default instantiation yields mlm / 200bp window / no output dir."""
+        config = VepConfig()
+
+        assert config.paradigm == "mlm"
+        assert config.context_window == 200
+        assert config.output_dir is None
+
+    def test_vep_config_custom_values(self):
+        """Explicit clm paradigm and window are accepted."""
+        config = VepConfig(paradigm="clm", context_window=1000, output_dir="/tmp/vep")
+
+        assert config.paradigm == "clm"
+        assert config.context_window == 1000
+        assert config.output_dir == "/tmp/vep"
+
+    def test_vep_config_invalid_paradigm_rejected(self):
+        """A non-(clm|mlm) paradigm is rejected at validation time."""
+        with pytest.raises(ValidationError):
+            VepConfig(paradigm="bogus")
+
+    def test_vep_config_nonpositive_window_rejected(self):
+        """context_window is ge=1: zero is rejected."""
+        with pytest.raises(ValidationError):
+            VepConfig(context_window=0)
+
+
+class TestHeadConfigFields:
+    """HeadConfig field hygiene (regressions found by the IA³ acceptance)."""
+
+    def test_head_config_dict_is_json_serializable(self):
+        """head_config.__dict__ feeds model configs that transformers
+        serializes to JSON at train begin — a FieldInfo default there crashes
+        training (fixed: custom_head was a tuple-wrapped Field)."""
+        import json
+
+        head = HeadConfig(head="mlp")
+        json.dumps(head.__dict__)
+        assert head.__dict__["custom_head"] is None
+
+    def test_head_config_num_classes_field(self):
+        """The classification wrapper reads head_config["num_classes"] when the
+        head's logits width disagrees with the checkpoint's num_labels."""
+        assert HeadConfig().num_classes == 2
+        assert HeadConfig(head="mlp", num_classes=3).num_classes == 3
+
+
+class TestSweepConfig:
+    """SweepConfig stub section for the multi-seed sweep protocol."""
+
+    def test_sweep_config_defaults(self):
+        """Defaults: 3 seeds, 2000 bootstrap resamples, t-interval small-n policy."""
+        config = SweepConfig()
+
+        assert config.seeds == [42, 43, 44]
+        assert config.out_root is None
+        assert config.n_bootstrap == 2000
+        assert config.bootstrap_seed == 42
+        assert config.small_n_ci == "t-interval"
+
+    def test_sweep_config_custom_values(self):
+        """Explicit seeds and CI policy are accepted."""
+        config = SweepConfig(
+            seeds=[7, 8],
+            out_root="/tmp/sweep",
+            n_bootstrap=500,
+            bootstrap_seed=1,
+            small_n_ci="omit",
+        )
+
+        assert config.seeds == [7, 8]
+        assert config.out_root == "/tmp/sweep"
+        assert config.n_bootstrap == 500
+        assert config.bootstrap_seed == 1
+        assert config.small_n_ci == "omit"
+
+    def test_sweep_config_empty_seeds_rejected(self):
+        """min_length=1: an empty seed list is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(seeds=[])
+
+    def test_sweep_config_invalid_small_n_ci_rejected(self):
+        """A non-(t-interval|omit) CI policy is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(small_n_ci="bogus")
+
+    def test_sweep_config_nonpositive_bootstrap_rejected(self):
+        """n_bootstrap is ge=1: zero is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(n_bootstrap=0)
+
+
+class TestStubSectionLoadConfig:
+    """load_config registration for the ia3/vep/sweep stub sections."""
+
+    def _write_yaml(self, tmp_path, body):
+        """Write a config YAML body to tmp_path and return its path."""
+        cfg_path = tmp_path / "stub_config.yaml"
+        cfg_path.write_text(body, encoding="utf-8")
+        return str(cfg_path)
+
+    def test_stub_sections_roundtrip_from_yaml(self, tmp_path):
+        """A YAML carrying ia3/vep/sweep produces the three typed sections."""
+        config_path = self._write_yaml(
+            tmp_path,
+            "ia3:\n"
+            "  target_modules: [query, key]\n"
+            "  feedforward_modules: [key]\n"
+            "vep:\n"
+            "  paradigm: clm\n"
+            "  context_window: 512\n"
+            "sweep:\n"
+            "  seeds: [1, 2, 3, 4, 5]\n"
+            "  n_bootstrap: 1000\n"
+            "  small_n_ci: omit\n",
+        )
+
+        configs = load_config(config_path)
+
+        assert isinstance(configs["ia3"], Ia3Config)
+        assert configs["ia3"].target_modules == ["query", "key"]
+        assert isinstance(configs["vep"], VepConfig)
+        assert configs["vep"].paradigm == "clm"
+        assert configs["vep"].context_window == 512
+        assert isinstance(configs["sweep"], SweepConfig)
+        assert configs["sweep"].seeds == [1, 2, 3, 4, 5]
+        assert configs["sweep"].small_n_ci == "omit"
+
+    def test_yaml_without_stubs_omits_keys(self, tmp_path):
+        """A YAML without the sections leaves the keys absent (total=False)."""
+        config_path = self._write_yaml(
+            tmp_path, "task:\n  task_type: binary\nmodel:\n  name: dummy\n"
+        )
+
+        configs = load_config(config_path)
+
+        for absent in ("ia3", "vep", "sweep"):
+            assert absent not in configs
+
+
 class TestLoadConfigTypedDict:
     """Pin the per-key DNALLMConfig TypedDict return contract of load_config()."""
 
@@ -1010,6 +1246,9 @@ lora:
         assert annotations["inference"] is InferenceConfig
         assert annotations["finetune"] is TrainingConfig
         assert annotations["lora"] is LoraConfig
+        assert annotations["ia3"] is Ia3Config
+        assert annotations["vep"] is VepConfig
+        assert annotations["sweep"] is SweepConfig
         assert annotations["benchmark"] is BenchmarkConfig
         # model stays a plain dict (spelling-tolerant: any dict[...] annotation form)
         assert typing.get_origin(annotations["model"]) is dict
@@ -1025,6 +1264,9 @@ lora:
             "model",
             "finetune",
             "lora",
+            "ia3",
+            "vep",
+            "sweep",
             "benchmark",
         })
 
@@ -1069,7 +1311,7 @@ lora:
 
         assert isinstance(configs["task"], TaskConfig)
         assert isinstance(configs["model"], dict)
-        for absent_key in ("inference", "finetune", "lora", "benchmark"):
+        for absent_key in ("inference", "finetune", "lora", "ia3", "vep", "sweep", "benchmark"):
             assert absent_key not in configs
 
 

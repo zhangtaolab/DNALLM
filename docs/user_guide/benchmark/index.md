@@ -1,6 +1,6 @@
 # Model Benchmarking
 
-This section provides comprehensive tutorials and guides for benchmarking DNA language models using DNALLM. Benchmarking allows you to compare model performance across different tasks, datasets, and evaluation metrics.
+This section provides comprehensive tutorials and guides for benchmarking DNA large language models using DNALLM. Benchmarking allows you to compare model performance across different tasks, datasets, and evaluation metrics.
 
 ## What You'll Learn
 
@@ -24,7 +24,7 @@ This section provides comprehensive tutorials and guides for benchmarking DNA la
 Before diving into benchmarking, ensure you have:
 
 - ✅ DNALLM installed and configured
-- ✅ Access to DNA language models
+- ✅ Access to DNA large language models
 - ✅ Test datasets in appropriate formats
 - ✅ Sufficient computational resources
 

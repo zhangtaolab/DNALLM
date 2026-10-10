@@ -36,9 +36,11 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 # The complete registration set, enumerated one-for-one from the
-# _register_tools() calls in dnallm/mcp/server.py:251-278: ten
-# timeout-wrapped tools plus the three streaming tools registered
-# directly. FastMCP derives each wire name from the function __name__
+# _register_tools() calls in dnallm/mcp/server.py: thirteen
+# timeout-wrapped tools (including the three Phase 12 analysis tools:
+# ism_scan, hotspots, zero_shot_score) plus the three streaming tools
+# registered directly.
+# FastMCP derives each wire name from the function __name__
 # (functools.update_wrapper inside _with_timeout_wrapper), so the names
 # carry the leading underscore of the implementing method.
 EXPECTED_TOOLS = {
@@ -55,6 +57,9 @@ EXPECTED_TOOLS = {
     "_dna_stream_multi_model_predict",
     "_dna_mutagenesis",
     "_dna_interpret",
+    "_ism_scan",
+    "_hotspots",
+    "_zero_shot_score",
 }
 
 _UNSET = object()
@@ -166,7 +171,7 @@ class TestInMemoryProtocolRoundTrip:
             result = await session.list_tools()
         names = {tool.name for tool in result.tools}
         assert names == EXPECTED_TOOLS
-        assert len(names) == 13
+        assert len(names) == 16
 
     async def test_call_tool_health_check(self, real_server):
         """call_tool executes a registered tool and returns its payload."""
@@ -178,6 +183,205 @@ class TestInMemoryProtocolRoundTrip:
         assert payload["health"]["status"] == "healthy"
         assert payload["health"]["loaded_models"] == 0
         assert payload["health"]["server_name"] == "Transport Test Server"
+
+    async def test_round_trip_ism_scan_unconfigured_model_error_dict(self, real_server):
+        """ism_scan: an unknown model returns the matchable error dict."""
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_ism_scan",
+                {
+                    "model_name": "ghost-model",
+                    "sequence": "ATGC",
+                    "mutation_type": "single_base_substitution",
+                    "positions": [0],
+                },
+            )
+
+        assert result.isError is False  # error dict, not a protocol raise
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not configured" in payload["error"]
+
+    async def test_round_trip_ism_scan(self, real_server):
+        """ism_scan: happy path through the full protocol with a mock engine."""
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls,
+        ):
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = {
+                "raw": {"sequence": "ATGC", "pred": [0.1], "score": 0.0},
+                "mut_0_A_T": {
+                    "sequence": "TTGC",
+                    "pred": [0.2],
+                    "logfc": [0.5],
+                    "diff": [0.1],
+                    "score": 0.5,
+                },
+            }
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_ism_scan",
+                    {
+                        "model_name": "test-model",
+                        "sequence": "ATGC",
+                        "mutation_type": "single_base_substitution",
+                        "positions": [0],
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["model_name"] == "test-model"
+        assert payload["affected_positions"] == [0]
+        assert payload["original_prediction"]["sequence"] == "ATGC"
+        assert payload["mutated_prediction"]["count"] == 1
+
+    async def test_round_trip_hotspots_missing_fasta_error_dict(self, real_server, tmp_path):
+        """hotspots: a missing reference FASTA returns the matchable error dict."""
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_hotspots",
+                {
+                    "model_name": "test-model",
+                    "coordinates": {"chrom": "chr1", "start": 0, "end": 50},
+                    "fasta_path": str(tmp_path / "missing.fasta"),
+                },
+            )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not found" in payload["error"]
+        assert "hotspots" in payload["error"]
+
+    async def test_round_trip_hotspots(self, real_server, tmp_path):
+        """hotspots: windows derive from model x coordinates + fasta_path."""
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)  # 64 bases
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls,
+        ):
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = {"raw": {"sequence": "ACGT", "score": 0.0}}
+            mock_mut.find_hotspots.return_value = [(10, 20)]
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_hotspots",
+                    {
+                        "model_name": "test-model",
+                        "coordinates": {"chrom": "chr1", "start": 4, "end": 40},
+                        "fasta_path": str(fasta),
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["hotspots"] == [[10, 20]]
+        assert payload["hotspots_genomic"] == [{"chrom": "chr1", "start": 14, "end": 24}]
+        assert payload["sequence_length"] == 36
+        assert payload["model_name"] == "test-model"
+        # The ISM slice comes from the requested coordinates (0-based, then
+        # uppercased by the vep window convention).
+        call = mock_mut.mutate_sequence.call_args
+        assert call.args[0] == "ACGT" * 9  # 36 bases from offset 4
+
+    async def test_round_trip_zero_shot_score_both_modes_error_dict(self, real_server, tmp_path):
+        """zero_shot_score: passing both input modes returns the error dict."""
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_zero_shot_score",
+                {
+                    "model_name": "test-model",
+                    "fasta_path": str(fasta),
+                    "variants": [{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                    "vcf_path": str(tmp_path / "clin.vcf"),
+                },
+            )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not both" in payload["error"]
+
+    async def test_round_trip_zero_shot_score_inline(self, real_server, tmp_path):
+        """zero_shot_score: inline variants route through the vep kernel."""
+        from dnallm.inference.vep import VepResult, VepVariantRecord
+
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)
+        vep_result = VepResult(
+            records=[
+                VepVariantRecord(
+                    chrom="chr1",
+                    pos=10,
+                    ref="A",
+                    alt="G",
+                    label=1,
+                    delta=-0.25,
+                    skip_reason=None,
+                )
+            ],
+            skip_counts={
+                "length-changing allele": 0,
+                "multi-slot token difference": 0,
+                "no change": 0,
+            },
+            evaluated=1,
+            skipped=0,
+            skip_fraction=0.0,
+            metrics=None,
+            convention={"cohort": "pass-through"},
+        )
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.evaluate_vcf", return_value=vep_result) as mock_kernel,
+        ):
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_zero_shot_score",
+                    {
+                        "model_name": "test-model",
+                        "fasta_path": str(fasta),
+                        "variants": [{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["input_mode"] == "inline_variants"
+        assert payload["skip_counts"] == vep_result.skip_counts
+        assert payload["convention"] == {"cohort": "pass-through"}
+        assert payload["records"][0]["delta"] == -0.25
+        kernel_kwargs = mock_kernel.call_args.kwargs
+        assert kernel_kwargs["clnsig_filter"].variant_type == "inline_variant"
 
     async def test_session_delete_issued_on_close(self, real_server):
         """Client exit issues the terminating session DELETE request."""
@@ -225,6 +429,19 @@ class TestInMemoryProtocolRoundTrip:
         """Run initialize() in a fully-managed context and return its result."""
         async with TestInMemoryProtocolRoundTrip._client_session(real_server) as session:
             return await session.initialize()
+
+
+def _mock_ism_engine():
+    """Minimal mock DNAInference for the ISM-based tool happy paths.
+
+    The flight lock lives on the (real) ModelManager, which the caller
+    patches separately only when the manager itself is a Mock.
+    """
+    engine = Mock()
+    engine.model = Mock()
+    engine.tokenizer = Mock()
+    engine.config = {"task": Mock(task_type="binary"), "inference": Mock(max_length=512)}
+    return engine
 
 
 def _streamable_client(asgi_app):
@@ -277,11 +494,14 @@ class TestStreamableHTTPConstruction:
     """Test _start_http_server assembly with patched uvicorn."""
 
     def test_config_fields_assembled_from_streamable_http_block(self, real_server, tmp_path):
-        """The streamable_http block overrides host/port and sets the path.
+        """An explicit CLI port beats the streamable_http block (REV-11 flip).
 
-        server.port (8123) matches the port start_server passes, so the
-        streamable_http port (8124) must win; the app passed to uvicorn
-        comes from the streamable-http app factory.
+        start_server is called with an explicit port 8123 while the YAML
+        carries server.port=8123 and streamable_http.port=8124 — under the
+        Phase-12 CLI-precedence fix the explicit 8123 must win (this test
+        codified the OPPOSITE, YAML-beats-CLI behavior before the fix). The
+        app passed to uvicorn still comes from the streamable-http app
+        factory.
         """
         del tmp_path  # fixture-managed by real_server; kept for signature clarity
         sentinel_app = Mock()
@@ -297,7 +517,7 @@ class TestStreamableHTTPConstruction:
         kwargs = mock_config_cls.call_args.kwargs
         assert kwargs["app"] is sentinel_app
         assert kwargs["host"] == "127.0.0.1"
-        assert kwargs["port"] == 8124
+        assert kwargs["port"] == 8123  # explicit CLI beats YAML streamable_http 8124
         assert kwargs["access_log"] is False
         assert kwargs["loop"] == "asyncio"
         assert kwargs["timeout_keep_alive"] == 5
@@ -337,11 +557,13 @@ class TestStreamableHTTPConstruction:
 class TestSSEConstruction:
     """Test _start_sse_server assembly (construction-only; see module docstring)."""
 
-    def _run_sse_start(self, server):
+    def _run_sse_start(self, server, host=None, port=None):
         """Start SSE via start_server dispatch with patched uvicorn.
 
         Driving through ``start_server(transport="sse")`` exercises the
-        dispatch line, not just the private starter.
+        dispatch line, not just the private starter. ``host``/``port``
+        default to the None sentinels so the config-resolution chain runs
+        (pass explicit values to exercise CLI precedence).
         """
         sentinel_sse_app = Mock()
         mock_app = MagicMock()
@@ -351,7 +573,7 @@ class TestSSEConstruction:
             patch("uvicorn.Config") as mock_config_cls,
             patch("uvicorn.Server") as mock_server_cls,
         ):
-            server.start_server(host="127.0.0.1", port=8123, transport="sse")
+            server.start_server(host=host, port=port, transport="sse")
         kwargs = mock_config_cls.call_args.kwargs
         return kwargs, kwargs["app"].routes, mock_server_cls, sentinel_sse_app
 
@@ -398,6 +620,108 @@ class TestSSEConstruction:
         with patch.object(real_server, "app", None):
             with pytest.raises(RuntimeError, match="FastMCP app not initialized"):
                 real_server._start_sse_server("127.0.0.1", 8000)
+
+
+class TestHostPortPrecedence:
+    """CLI-explicit > transport YAML > server YAML > documented default.
+
+    Phase 12 REV-11 regression matrix: the same resolution chain is proven
+    on BOTH HTTP transports via the patched-uvicorn construction pattern
+    (research Pitfall 2 — the old bug lived in two places with different
+    shapes and a one-sided fix desynced the transports).
+    """
+
+    # -- streamable-http transport ----------------------------------------
+
+    def test_http_explicit_cli_beats_all_yaml(self, real_server):
+        """Explicit CLI host/port win over both YAML blocks (http path)."""
+        mock_app = MagicMock()
+        with (
+            patch.object(real_server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            real_server.start_server(host="10.9.8.7", port=9999, transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "10.9.8.7"
+        assert kwargs["port"] == 9999
+
+    def test_http_yaml_only_uses_streamable_http_block(self, real_server):
+        """No CLI flags: the streamable_http block supplies host/port."""
+        mock_app = MagicMock()
+        with (
+            patch.object(real_server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            real_server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"  # streamable_http.host
+        assert kwargs["port"] == 8124  # streamable_http.port beats server.port 8123
+
+    def test_http_yaml_only_without_block_uses_server_block(self, tmp_path):
+        """No CLI flags and no streamable_http block: server block wins."""
+        config_path = _write_server_config(tmp_path, streamable_http=None)
+        with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
+            mock_load.return_value = (Mock(), Mock())
+            server = DNALLMMCPServer(str(config_path))
+            server._initialized = True  # construction only
+        with (
+            patch.object(server, "app", MagicMock()),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8123
+
+    def test_http_no_config_uses_documented_default(self, real_server):
+        """No CLI flags and no server config at all: 127.0.0.1:8000."""
+        with patch.object(real_server.config_manager, "get_server_config", return_value=None):
+            mock_app = MagicMock()
+            with (
+                patch.object(real_server, "app", mock_app),
+                patch("uvicorn.Config") as mock_config_cls,
+                patch("uvicorn.Server"),
+            ):
+                real_server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8000
+
+    # -- sse transport ------------------------------------------------------
+
+    def test_sse_explicit_cli_beats_server_yaml(self, real_server):
+        """Explicit CLI host/port win over the server YAML block (sse path)."""
+        kwargs = self._run_sse(real_server, host="10.9.8.7", port=9999)
+        assert kwargs["host"] == "10.9.8.7"
+        assert kwargs["port"] == 9999
+
+    def test_sse_yaml_only_uses_server_block(self, real_server):
+        """No CLI flags: the server YAML block supplies host/port."""
+        kwargs = self._run_sse(real_server)
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8123
+
+    def test_sse_no_config_uses_documented_default(self, real_server):
+        """No CLI flags and no server config at all: 127.0.0.1:8000."""
+        with patch.object(real_server.config_manager, "get_server_config", return_value=None):
+            kwargs = self._run_sse(real_server)
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8000
+
+    @staticmethod
+    def _run_sse(server, host=None, port=None):
+        """Run the SSE starter through dispatch and return uvicorn kwargs."""
+        mock_app = MagicMock()
+        with (
+            patch.object(server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            server.start_server(host=host, port=port, transport="sse")
+        return mock_config_cls.call_args.kwargs
 
 
 class TestStdioConstruction:

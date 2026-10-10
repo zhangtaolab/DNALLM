@@ -1,12 +1,12 @@
 # CLI Tools
 
-DNALLM provides a comprehensive set of command-line interface tools for various DNA language model tasks.
+DNALLM provides a comprehensive set of command-line interface tools for various DNA large language model tasks.
 
 ## Available Commands
 
 ### Core Commands
 
-- **`dnallm train`** - Fine-tune DNA language models
+- **`dnallm train`** - Fine-tune DNA large language models
 - **`dnallm inference`** - Run inference with trained models
 - **`dnallm benchmark`** - Compare multiple models
 - **`dnallm mutagenesis`** - Perform in silico mutagenesis

@@ -1,6 +1,6 @@
 # Common Biological Tasks with DNALLM
 
-DNA Language Models can be applied to a wide variety of computational biology problems. These tasks often involve predicting the function or properties of a DNA sequence. DNALLM is designed to handle these tasks through its flexible configuration system.
+DNA Large Language Models can be applied to a wide variety of computational biology problems. These tasks often involve predicting the function or properties of a DNA sequence. DNALLM is designed to handle these tasks through its flexible configuration system.
 
 Here are some of the most common tasks, mapped to their corresponding `task_type` in DNALLM.
 

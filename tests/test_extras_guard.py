@@ -42,7 +42,9 @@ EXPECTED_MCP_MEMBERS = frozenset({
     "langchain>=1.3.6",
     "langchain_mcp_adapters>=0.2.1",
     "nest-asyncio>=1.5.9",
-    "pydantic-ai<3",
+    # 2026-10-10: tightened from <3 to the 1.107 series (silent backtrack to
+    # 1.22.0 broke fresh CI resolves); the guard tracks the declared surface.
+    "pydantic-ai>=1.107.0,<2",
 })
 
 # The notebook-extra members before the 08-02 ipython pin; none may be

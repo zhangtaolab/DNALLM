@@ -5,16 +5,20 @@ DNA language models from various sources.
 
 """
 
+import hashlib
+import importlib
+import json
+import logging
 import os
 import sys
 import types
+from pathlib import Path
 import pytest
 import torch
 import torch.nn as nn
 from contextlib import ExitStack
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock, patch, MagicMock
-import importlib
 from typing import Any
 
 from transformers import PretrainedConfig
@@ -33,6 +37,13 @@ from dnallm.models.model import (
     _fix_bnb_quantized_layers,
     _get_device,
     _safe_num_labels,
+    _detect_special_family,
+    _gate_random_init,
+    _get_auto_modules_for_source,
+    _tensor_digest,
+    _log_random_init_fingerprint,
+    _load_random_init_model,
+    RANDOM_INIT_SUPPORTED_FAMILIES,
     DNALLMforSequenceClassification,
 )
 from dnallm.models.losses import FocalLoss
@@ -890,6 +901,749 @@ class TestLoadModelAndTokenizer:
                 match="Failed to load model: Loading failed",
             ):
                 load_model_and_tokenizer("test-model", task_config)
+
+
+# ───────────────────────── random_init (BASE-01) ─────────────────────────
+
+
+class _TinyScratchNN(nn.Module):
+    """Real tiny torch module that consumes the CPU RNG during construction.
+
+    Carries an int buffer and a bool buffer so the per-tensor hash table's
+    buffer rows and the non-float exception rules are exercisable; ``tied``
+    adds an ``lm_head`` weight aliased onto the embedding (shared storage).
+    """
+
+    def __init__(self, tied: bool = False):
+        super().__init__()
+        self.embedding = nn.Embedding(16, 8)
+        self.head = nn.Linear(8, 4)
+        self.register_buffer("position_ids", torch.arange(4, dtype=torch.long))
+        self.register_buffer("is_causal", torch.tensor(True))
+        if tied:
+            self.lm_head = nn.Linear(8, 16, bias=False)
+            self.lm_head.weight = self.embedding.weight
+        self.config = SimpleNamespace(pad_token_id=None)
+
+    def forward(self, input_ids=None, **kwargs):
+        return SimpleNamespace(logits=self.head(self.embedding(input_ids).mean(dim=1)))
+
+
+class _FakeAutoConfig:
+    """Fake AutoConfig capturing from_pretrained calls."""
+
+    def __init__(self, config=None):
+        self.config = (
+            config
+            if config is not None
+            else PretrainedConfig(
+                model_type="bert",
+                hidden_size=8,
+                num_hidden_layers=1,
+                num_attention_heads=1,
+                vocab_size=16,
+            )
+        )
+        self.calls = []
+
+    def from_pretrained(self, name, **kwargs):
+        self.calls.append((name, kwargs))
+        return self.config
+
+
+class _FakeAutoClass:
+    """Fake Auto* class whose from_config builds a fresh tiny module."""
+
+    def __init__(self, name, build_fn=None, order=None):
+        self.name = name
+        self.build_fn = build_fn or (lambda: _TinyScratchNN())
+        self.order = order
+        self.calls = []
+
+    def from_config(self, config, **kwargs):
+        self.calls.append((config, kwargs))
+        if self.order is not None:
+            self.order.append(f"build:{self.name}")
+        return self.build_fn()
+
+
+def _fake_random_modules(order=None, build_fn=None, config=None):
+    """Build the modules dict consumed by the random path, all fakes."""
+    modules = {"AutoConfig": _FakeAutoConfig(config)}
+    for name in (
+        "AutoModel",
+        "AutoModelForMaskedLM",
+        "AutoModelForCausalLM",
+        "AutoModelForSequenceClassification",
+        "AutoModelForTokenClassification",
+    ):
+        modules[name] = _FakeAutoClass(name, build_fn=build_fn, order=order)
+    fake_tokenizer_cls = Mock()
+    fake_tokenizer_cls.from_pretrained = Mock(return_value=Mock(pad_token_id=0))
+    modules["AutoTokenizer"] = fake_tokenizer_cls
+    return modules
+
+
+def _random_init_patches(modules, weight_fetch_guard=True):
+    """ExitStack of patches for a mocked-boundary random_init load."""
+    stack = ExitStack()
+    stack.enter_context(patch("dnallm.models.model._setup_huggingface_mirror"))
+    stack.enter_context(
+        patch("dnallm.models.model._get_auto_modules_for_source", return_value=modules)
+    )
+    if weight_fetch_guard:
+        stack.enter_context(
+            patch(
+                "dnallm.models.model._get_model_path_and_imports",
+                side_effect=AssertionError("weight-fetch path must never run under random_init"),
+            )
+        )
+    stack.enter_context(patch("dnallm.models.model._configure_model_padding"))
+    stack.enter_context(patch("dnallm.models.model._get_device", return_value=torch.device("cpu")))
+    return stack
+
+
+def _param_hashes_from_caplog(caplog):
+    """Parse the per-tensor param hash lines out of captured random-init logs."""
+    table = {}
+    for record in caplog.records:
+        msg = record.getMessage()
+        if msg.startswith("[random-init] param "):
+            rest = msg[len("[random-init] param ") :]
+            name, sha_field = rest.split(" sha=")
+            table[name] = sha_field.split(" ")[0]
+    return table
+
+
+def _buffer_rows_from_caplog(caplog):
+    """Parse the buffer hash rows out of captured random-init logs."""
+    rows = []
+    for record in caplog.records:
+        msg = record.getMessage()
+        if msg.startswith("[random-init] buffer "):
+            rows.append(msg)
+    return rows
+
+
+class TestRandomInit:
+    """random_init=True from-scratch loading: tracer + allowlist + mocked proofs (BASE-01)."""
+
+    def test_random_init_end_to_end_mocked_boundary(self, caplog):
+        """Tracer: kwarg -> gate -> from_config random model, banner + per-tensor hashes logged, tokenizer returned."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules), caplog.at_level(logging.INFO):
+            model, tokenizer = load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert isinstance(model, _TinyScratchNN)
+        assert tokenizer is not None
+        # Loud banner (greppable "randomly initialized") + >= 1 per-tensor hash line.
+        assert "randomly initialized" in caplog.text
+        param_table = _param_hashes_from_caplog(caplog)
+        assert len(param_table) >= 1
+        assert set(param_table) == {
+            "embedding.weight",
+            "head.weight",
+            "head.bias",
+        }
+
+    @pytest.mark.parametrize(
+        ("model_name", "family"),
+        [
+            ("evo2_7b", "evo2"),
+            ("evo-1-142m", "evo1"),
+            ("gpn-brassicales", "gpn"),
+            ("megaDNA_phage_145M", "megadna"),
+            ("Omni-DNA-20M", "omnidna"),
+            ("enformer-191k", "enformer"),
+            ("SPACE-v2", "space"),
+            ("borzoi-replicate-0", "borzoi"),
+            ("CrossDNA-8.1M", "crossdna"),
+            ("dnabert-2-117m", "dnabert2"),
+            ("DNABERT-S", "dnabert2"),
+        ],
+    )
+    def test_random_init_offlist_special_family_raises(self, model_name, family):
+        """Off-list special families raise a matchable ValueError before any handler claims the load (D-06/D-07)."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(ValueError, match="random_init=True is not supported"):
+                load_model_and_tokenizer(model_name, task_config, random_init=True)
+
+        # The message names the family and the allowlist so it is actionable.
+        with pytest.raises(ValueError, match=family) as exc_info:
+            _gate_random_init(model_name, None, None)
+        assert "RANDOM_INIT_SUPPORTED_FAMILIES" in str(exc_info.value)
+
+    def test_random_init_quantization_config_rejected(self):
+        """random_init x quantization_config has no from_config equivalent: matchable ValueError."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(
+                ValueError,
+                match="random_init=True cannot be combined with quantization_config",
+            ):
+                load_model_and_tokenizer(
+                    "test-model",
+                    task_config,
+                    quantization_config={"load_in_4bit": True},
+                    random_init=True,
+                )
+
+    def test_random_init_head_config_rejected(self):
+        """random_init x custom head_config (DNALLMforSequenceClassification heads): matchable ValueError."""
+        task_config = TaskConfig(task_type="binary", num_labels=2, head_config={"head": "mlp"})
+
+        with patch("dnallm.models.model._setup_huggingface_mirror"):
+            with pytest.raises(
+                ValueError,
+                match="random_init=True is not supported with a custom head_config",
+            ):
+                load_model_and_tokenizer("test-model", task_config, random_init=True)
+
+    def test_random_init_generic_path_from_config_never_pretrained(self):
+        """AutoConfig.from_pretrained + the task-type Auto*.from_config are the only construction calls."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        # Config fetched via AutoConfig.from_pretrained with trust_remote_code;
+        # revision=None is not forwarded (hub default).
+        assert len(modules["AutoConfig"].calls) == 1
+        name, config_kwargs = modules["AutoConfig"].calls[0]
+        assert name == "test-random-model"
+        assert config_kwargs["trust_remote_code"] is True
+        assert "revision" not in config_kwargs
+
+        # The mask task selected AutoModelForMaskedLM, via from_config only.
+        assert len(modules["AutoModelForMaskedLM"].calls) == 1
+        _, model_kwargs = modules["AutoModelForMaskedLM"].calls[0]
+        assert model_kwargs["trust_remote_code"] is True
+        for other in (
+            "AutoModel",
+            "AutoModelForCausalLM",
+            "AutoModelForSequenceClassification",
+            "AutoModelForTokenClassification",
+        ):
+            assert modules[other].calls == []
+
+    def test_random_init_classification_head_shaping_on_config(self):
+        """num_labels/id2label/label2id/problem_type are set as config attributes (A4)."""
+        task_config = TaskConfig(
+            task_type="binary", num_labels=3, label_names=["alpha", "beta", "gamma"]
+        )
+        config = PretrainedConfig(
+            model_type="bert",
+            hidden_size=8,
+            num_hidden_layers=1,
+            num_attention_heads=1,
+            vocab_size=16,
+        )
+        modules = _fake_random_modules(config=config)
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert config.num_labels == 3
+        assert config.id2label == {0: "alpha", 1: "beta", 2: "gamma"}
+        assert config.label2id == {"alpha": 0, "beta": 1, "gamma": 2}
+        assert config.problem_type == "single_label_classification"
+        assert len(modules["AutoModelForSequenceClassification"].calls) == 1
+
+    @pytest.mark.parametrize(
+        ("task_type", "expected_key"),
+        [
+            ("mask", "AutoModelForMaskedLM"),
+            ("generation", "AutoModelForCausalLM"),
+            ("binary", "AutoModelForSequenceClassification"),
+            ("multiclass", "AutoModelForSequenceClassification"),
+            ("multilabel", "AutoModelForSequenceClassification"),
+            ("regression", "AutoModelForSequenceClassification"),
+            ("token", "AutoModelForTokenClassification"),
+            ("embedding", "AutoModel"),
+        ],
+    )
+    def test_random_init_task_type_auto_class_selection(self, task_type, expected_key):
+        """The random path selects the same Auto* class the pretrained task-type loader selects."""
+        # Classification task types require num_labels; the others force it to 0.
+        num_labels = None if task_type in ("mask", "generation", "embedding") else 3
+        task_config = TaskConfig(task_type=task_type, num_labels=num_labels)
+        modules = _fake_random_modules()
+
+        with _random_init_patches(modules):
+            load_model_and_tokenizer(
+                "test-random-model", task_config, source="huggingface", random_init=True
+            )
+
+        assert len(modules[expected_key].calls) == 1
+
+    @pytest.mark.parametrize(
+        ("source", "expected_type"),
+        [
+            ("local", "huggingface-route"),
+            ("huggingface", "huggingface-route"),
+            ("modelscope", "modelscope-route"),
+        ],
+    )
+    def test_get_auto_modules_for_source_bundle(self, source, expected_type):
+        """The download-free module bundle carries the full Auto* key set per source."""
+        modules = _get_auto_modules_for_source(source)
+        assert set(modules) == {
+            "AutoConfig",
+            "AutoModel",
+            "AutoModelForMaskedLM",
+            "AutoModelForCausalLM",
+            "AutoModelForSequenceClassification",
+            "AutoModelForTokenClassification",
+            "AutoTokenizer",
+        }
+        if expected_type == "modelscope-route":
+            from transformers import AutoConfig as HFAutoConfig
+
+            # modelscope's Auto* classes are dynamic wrappers (their
+            # type's module reports 'builtins'), so assert they differ
+            # from transformers' and name modelscope in their repr.
+            assert modules["AutoConfig"] is not HFAutoConfig
+            assert "modelscope" in repr(modules["AutoConfig"])
+
+    def test_get_auto_modules_for_source_unsupported(self):
+        """Unsupported sources raise a matchable ValueError."""
+        with pytest.raises(ValueError, match="Unsupported source: bogus"):
+            _get_auto_modules_for_source("bogus")
+
+    def test_random_init_never_fetches_weights(self):
+        """No-download proof: the weight-fetch seam is never invoked under random_init.
+
+        The proof targets the weight-download path only. The config.json
+        fetch through AutoConfig.from_pretrained (and the tokenizer files)
+        is explicitly allowed and documented — config.json carries no weight
+        values, and this exclusion is what separates "no weight download"
+        from the unprovable "zero network at all".
+        """
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        guard = MagicMock(
+            side_effect=AssertionError("_get_model_path_and_imports invoked under random_init")
+        )
+        modules = _fake_random_modules()
+
+        with (
+            patch("dnallm.models.model._setup_huggingface_mirror"),
+            patch(
+                "dnallm.models.model._get_auto_modules_for_source",
+                return_value=modules,
+            ),
+            patch("dnallm.models.model._get_model_path_and_imports", guard),
+            patch("dnallm.models.model._configure_model_padding"),
+            patch(
+                "dnallm.models.model._get_device",
+                return_value=torch.device("cpu"),
+            ),
+        ):
+            model, tokenizer = load_model_and_tokenizer(
+                "test-random-model", task_config, random_init=True
+            )
+
+        guard.assert_not_called()
+        assert isinstance(model, _TinyScratchNN)
+        assert tokenizer is not None
+
+    def test_random_init_same_seed_reproducible(self, caplog):
+        """Same-seed reproducibility: identical seeds reproduce the full per-tensor hash table; a different seed does not."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        tables = []
+        for seed in (123, 123, 124):
+            modules = _fake_random_modules()
+            caplog.clear()
+            with _random_init_patches(modules), caplog.at_level(logging.INFO):
+                load_model_and_tokenizer(
+                    "test-random-model",
+                    task_config,
+                    source="huggingface",
+                    random_init=True,
+                    random_init_seed=seed,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        assert len(tables[0]) >= 2
+        assert tables[0] == tables[1]
+        assert tables[0] != tables[2]
+
+    def test_random_init_seed_applied_before_construction(self):
+        """Seed-before-init ordering: torch.manual_seed is called before the model-construction call.
+
+        A seed applied after construction would silently break
+        reproducibility — this pins the ordering edge.
+        """
+        order = []
+        modules = _fake_random_modules(order=order)
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        with (
+            _random_init_patches(modules),
+            patch("torch.manual_seed", side_effect=lambda s: order.append(("seed", s))),
+        ):
+            load_model_and_tokenizer(
+                "test-random-model",
+                task_config,
+                source="huggingface",
+                random_init=True,
+                random_init_seed=7,
+            )
+
+        assert order == [("seed", 7), "build:AutoModelForMaskedLM"]
+
+    def test_tensor_digest_byte_level_semantics(self):
+        """The digest is sha256[:10] over raw CPU tensor bytes (documented definition)."""
+        a = torch.randn(3, 4)
+        copy_of_a = a.clone()
+        different = torch.randn(3, 4)
+
+        expected = hashlib.sha256(a.detach().cpu().contiguous().numpy().tobytes()).hexdigest()[:10]
+        assert _tensor_digest(a) == expected
+        # Equal values in separate storage digest identically (byte-level,
+        # not storage-identity): deterministic and device-independent.
+        assert _tensor_digest(a) == _tensor_digest(copy_of_a)
+        assert _tensor_digest(a) != _tensor_digest(different)
+        # A contiguous view sharing storage digests identically (same bytes
+        # through the detach -> cpu -> contiguous path). A transposed copy
+        # is a different logical tensor and correctly digests differently.
+        view = a.view(12)
+        assert _tensor_digest(view) == _tensor_digest(a)
+
+    def test_tensor_digest_bfloat16_upcast_and_integer_tensors(self):
+        """bfloat16 (no numpy dtype) is upcast to float32; int/bool tensors digest directly."""
+        bf = torch.randn(2, 3).to(torch.bfloat16)
+        expected = hashlib.sha256(
+            bf.detach().cpu().contiguous().float().numpy().tobytes()
+        ).hexdigest()[:10]
+        assert _tensor_digest(bf) == expected
+
+        as_int = torch.arange(6, dtype=torch.long)
+        assert _tensor_digest(as_int) == hashlib.sha256(as_int.numpy().tobytes()).hexdigest()[:10]
+        assert len(_tensor_digest(torch.tensor(True))) == 10
+
+    def test_log_random_init_fingerprint_tied_aliases_and_buffers(self, caplog):
+        """Tied weights report identical hashes across the tie (shared storage); int/bool buffers get their own rows.
+
+        Expected behavior documented per RESEARCH A-class exception handling:
+        tied-weight aliases sharing storage and non-float buffers are the
+        explicit exceptions to "every float parameter differs from
+        pretrained"; both appear in the logged table with their own hashes.
+        """
+        model = _TinyScratchNN(tied=True)
+
+        with caplog.at_level(logging.INFO):
+            table = _log_random_init_fingerprint(model, "tiny-tied", "AutoModelForMaskedLM", 11)
+
+        assert table["embedding.weight"] == table["lm_head.weight"]
+        buffer_rows = _buffer_rows_from_caplog(caplog)
+        assert len(buffer_rows) == 2
+        assert "position_ids" in table
+        assert "is_causal" in table
+        assert "shape=" in buffer_rows[0]
+
+    def test_log_random_init_fingerprint_skips_buffer_shadowing_param(self, caplog):
+        """A buffer row whose name collides with a parameter is skipped (params win the table)."""
+        fake_model = SimpleNamespace(
+            named_parameters=lambda remove_duplicate=True: [("x.weight", torch.ones(2))],
+            named_buffers=lambda: [("x.weight", torch.ones(2))],
+        )
+
+        with caplog.at_level(logging.INFO):
+            table = _log_random_init_fingerprint(fake_model, "fake", "X", 1)
+
+        assert set(table) == {"x.weight"}
+        assert _buffer_rows_from_caplog(caplog) == []
+
+    def test_random_init_config_without_init_semantics(self, tmp_path, caplog):
+        """A minimal tmp config.json with no weight-init semantics still random-initializes (BASE-01 empty-config edge).
+
+        Runs the REAL transformers path (AutoConfig.from_pretrained on the
+        local dir + AutoModelForMaskedLM.from_config) — network-free because
+        the config is local and tiny. Two differently-seeded loads must
+        produce different hash tables; same seed reproduces.
+        """
+        minimal_config = {
+            "model_type": "bert",
+            "hidden_size": 8,
+            "num_hidden_layers": 1,
+            "num_attention_heads": 1,
+            "intermediate_size": 16,
+            "vocab_size": 32,
+        }
+        model_dir = tmp_path / "tiny-bert"
+        model_dir.mkdir()
+        (model_dir / "config.json").write_text(json.dumps(minimal_config))
+
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        tables = []
+        for seed in (5, 5, 6):
+            caplog.clear()
+            with (
+                patch("dnallm.models.model._setup_huggingface_mirror"),
+                patch(
+                    "dnallm.models.model._get_device",
+                    return_value=torch.device("cpu"),
+                ),
+                caplog.at_level(logging.INFO),
+            ):
+                _, tokenizer = load_model_and_tokenizer(
+                    str(model_dir),
+                    task_config,
+                    source="local",
+                    random_init=True,
+                    random_init_seed=seed,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        # A real tiny BertForMaskedLM: several float parameter tensors
+        # (word embeddings, position/token type embeddings, encoder, tied
+        # LM head alias) — all hashed per tensor.
+        assert len(tables[0]) >= 5
+        assert tables[0] == tables[1]
+        assert tables[0] != tables[2]
+        # Tied-weight alias visible with identical hash in a real model.
+        assert (
+            tables[0]["bert.embeddings.word_embeddings.weight"]
+            == tables[0]["cls.predictions.decoder.weight"]
+        )
+        # The real local-route tokenizer fallback (DNAOneHotTokenizer).
+        assert tokenizer is not None
+
+    @pytest.mark.parametrize(
+        ("model_name", "handler_attr"),
+        [
+            ("plant-mutbert-tiny", "tokenizer"),
+            ("basenji2-tiny", None),
+        ],
+    )
+    def test_random_init_preserves_tokenizer_post_processing(self, model_name, handler_attr):
+        """Tokenizer post-processing parity: mutbert/basenji2 handling still applies on the random path."""
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+        modules = _fake_random_modules()
+        # OneHotTokenizerWrapper calls len(tokenizer) — use a MagicMock.
+        modules["AutoTokenizer"] = MagicMock()
+        modules["AutoTokenizer"].from_pretrained.return_value = MagicMock(pad_token_id=0)
+
+        with _random_init_patches(modules):
+            _, tokenizer = load_model_and_tokenizer(
+                model_name, task_config, source="huggingface", random_init=True
+            )
+
+        if handler_attr == "tokenizer":
+            # MutBERT wrapping: the wrapper delegates attribute access.
+            assert hasattr(tokenizer, "tokenizer")
+        else:
+            # Basenji2: replaced with the one-hot tokenizer.
+            from dnallm.models.tokenizer import DNAOneHotTokenizer
+
+            assert isinstance(tokenizer, DNAOneHotTokenizer)
+
+    # ── slow lane: two-architecture acceptance (D-06) + difference proof ──
+
+    _MS_DNABERT = "zhangtaolab/plant-dnabert-BPE"
+    _MS_MAMBA = "zhangtaolab/plant-dnamamba-BPE-open_chromatin"
+
+    @staticmethod
+    def _skip_if_model_unavailable(model_id):
+        """Typed slow-lane skip: run when the model is cached, else only if the hub is reachable."""
+        cache_dir = Path.home() / ".cache" / "modelscope" / "hub" / "models" / model_id
+        if (cache_dir / "config.json").is_file():
+            return
+        import socket
+
+        try:
+            socket.create_connection(("modelscope.cn", 443), timeout=5).close()
+        except OSError as e:
+            pytest.skip(
+                f"network-unavailable: {model_id} not cached and "
+                f"modelscope.cn unreachable ({type(e).__name__})"
+            )
+
+    @staticmethod
+    def _digest_table(named_iter):
+        """Digest every tensor yielded by ``named_iter`` as {name: (digest, dtype)}."""
+        return {name: (_tensor_digest(t), t.dtype) for name, t in named_iter()}
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(900)
+    def test_random_init_generic_bert_family_modelscope(self, caplog):
+        """D-06 first member: generic AutoModel (BERT-style) from_config on the modelscope route.
+
+        Asserts banner + per-tensor hash lines, same-seed reload
+        reproducibility of the full hash table, tokenizer loading, and one
+        CPU forward pass.
+        """
+        self._skip_if_model_unavailable(self._MS_DNABERT)
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        tables = []
+        for _ in range(2):
+            caplog.clear()
+            with caplog.at_level(logging.INFO):
+                model, tokenizer = load_model_and_tokenizer(
+                    self._MS_DNABERT,
+                    task_config,
+                    source="modelscope",
+                    random_init=True,
+                    random_init_seed=42,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        assert "randomly initialized" in caplog.text
+        # Full BERT parameter census per tensor (embeddings, encoder layers,
+        # tied LM head alias) — a single global hash would hide leftovers.
+        assert len(tables[0]) >= 100
+        assert tables[0] == tables[1]
+        assert tokenizer is not None
+
+        model = model.to("cpu")
+        enc = tokenizer("ACGTACGTACGTACGTACGT", return_tensors="pt")
+        with torch.no_grad():
+            out = model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"])
+        assert tuple(out.logits.shape[:2]) == tuple(enc["input_ids"].shape[:2])
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(900)
+    def test_random_init_mamba_trust_remote_code_modelscope(self, caplog):
+        """D-06 second member (allowlist): the Mamba trust_remote_code from_config branch (A6).
+
+        Plant DNAMamba loads through the generic AutoModelForCausalLM path —
+        no special handler — and its remote-code config exercises
+        ``from_config(trust_remote_code=True)``.
+        """
+        self._skip_if_model_unavailable(self._MS_MAMBA)
+        task_config = TaskConfig(task_type="generation", num_labels=None)
+
+        tables = []
+        for _ in range(2):
+            caplog.clear()
+            with caplog.at_level(logging.INFO):
+                model, tokenizer = load_model_and_tokenizer(
+                    self._MS_MAMBA,
+                    task_config,
+                    source="modelscope",
+                    random_init=True,
+                    random_init_seed=42,
+                )
+            tables.append(_param_hashes_from_caplog(caplog))
+
+        assert "randomly initialized" in caplog.text
+        assert len(tables[0]) >= 10
+        assert tables[0] == tables[1]
+        assert tokenizer is not None
+
+        model = model.to("cpu")
+        enc = tokenizer("ACGTACGTACGTACGTACGT", return_tensors="pt")
+        with torch.no_grad():
+            out = model(input_ids=enc["input_ids"], attention_mask=enc.get("attention_mask"))
+        assert tuple(out.logits.shape[:2]) == tuple(enc["input_ids"].shape[:2])
+
+    @pytest.mark.slow
+    @pytest.mark.timeout(1200)
+    def test_random_init_per_tensor_difference_vs_pretrained(self):
+        """Pitfall 4c: every float parameter tensor's hash differs from the pretrained load.
+
+        Allowed exceptions, enumerated and counted (RESEARCH A-class):
+        1. non-float (int/bool) buffers, which are deterministic constants
+           (BERT: exactly two, ``position_ids`` and ``token_type_ids``);
+        2. tied-weight aliases sharing storage, which match *within* each
+           load (BERT: exactly two ties — the LM-head decoder weight
+           aliasing the word-embedding weight, and the decoder bias
+           aliasing the prediction bias) — all still differ from
+           pretrained.
+        Non-float parameters are also allowed to match; BERT has none.
+        """
+        self._skip_if_model_unavailable(self._MS_DNABERT)
+        task_config = TaskConfig(task_type="mask", num_labels=None)
+
+        pretrained_model, _ = load_model_and_tokenizer(
+            self._MS_DNABERT, task_config, source="modelscope"
+        )
+        # Default-arg capture binds the model at def time: ruff/pyflakes
+        # treat a lambda capturing a name later ``del``-ed in the scope as
+        # undefined (F821); _digest_table consumes the lambda immediately.
+        pre_params = self._digest_table(
+            lambda m=pretrained_model: m.named_parameters(remove_duplicate=False)
+        )
+        pre_buffers = self._digest_table(pretrained_model.named_buffers)
+        del pretrained_model
+
+        random_model, _ = load_model_and_tokenizer(
+            self._MS_DNABERT,
+            task_config,
+            source="modelscope",
+            random_init=True,
+            random_init_seed=42,
+        )
+        rnd_params = self._digest_table(
+            lambda: random_model.named_parameters(remove_duplicate=False)
+        )
+        rnd_buffers = self._digest_table(random_model.named_buffers)
+
+        common = set(pre_params) & set(rnd_params)
+        assert len(common) >= 100
+
+        # Every float parameter tensor differs (per tensor, not globally).
+        float_params = [n for n in common if rnd_params[n][1].is_floating_point]
+        matching_float = [n for n in float_params if pre_params[n][0] == rnd_params[n][0]]
+        assert matching_float == []
+
+        # Exception class 1: non-float parameters — none for BERT.
+        non_float_params = [n for n in common if not rnd_params[n][1].is_floating_point]
+        assert non_float_params == []
+
+        # Exception class 2: tied-weight aliases sharing storage, matching
+        # within each load. Storage-identity detection (data_ptr), NOT
+        # digest collisions — fresh-init LayerNorm zero/one tensors
+        # legitimately share digests across *different* tensors of equal
+        # shape. BERT ties exactly two pairs: the LM-head decoder weight
+        # aliasing the word-embedding weight, and the decoder bias
+        # aliasing the prediction bias.
+        ptr_map: dict[int, str] = {}
+        tied_aliases = set()
+        for name, p in random_model.named_parameters(remove_duplicate=False):
+            ptr = p.data_ptr()
+            if ptr in ptr_map:
+                tied_aliases.add(ptr_map[ptr])
+                tied_aliases.add(name)
+            else:
+                ptr_map[ptr] = name
+        assert sorted(tied_aliases) == [
+            "bert.embeddings.word_embeddings.weight",
+            "cls.predictions.bias",
+            "cls.predictions.decoder.bias",
+            "cls.predictions.decoder.weight",
+        ]
+        assert (
+            rnd_params["bert.embeddings.word_embeddings.weight"][0]
+            == rnd_params["cls.predictions.decoder.weight"][0]
+        )
+
+        # Buffers: any buffer matching across loads must be non-float
+        # (deterministic constants); BERT's only such buffer is
+        # position_ids (long).
+        common_buffers = set(pre_buffers) & set(rnd_buffers)
+        matching_buffers = sorted(
+            n for n in common_buffers if pre_buffers[n][0] == rnd_buffers[n][0]
+        )
+        for name in matching_buffers:
+            assert not rnd_buffers[name][1].is_floating_point
+        assert matching_buffers == [
+            "bert.embeddings.position_ids",
+            "bert.embeddings.token_type_ids",
+        ]
 
 
 class TestLoadPresetModel:

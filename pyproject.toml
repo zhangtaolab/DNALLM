@@ -1,6 +1,6 @@
 [project]
 name = "dnallm"
-version = "0.7.1"
+version = "0.8.0"
 description = "A comprehensive toolkit for fine-tuning and inference with DNA Language Models"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,6 +30,10 @@ dependencies = [
     "captum>=0.7.0",
     "colorama>=0.4.6",
     "datasets<=3.2.0",
+    # pyarrow is transitive via datasets; 26.0.0 (2026-10) added a numpy>=2.0
+    # runtime floor that breaks the numpy 1.26.4 CI matrix leg. Cap until that
+    # leg retires; 25.0.1 verified compatible with numpy 1.26.4 on 3.11.
+    "pyarrow>=15,<26",
     "einops>=0.7.0",
     "evaluate>=0.4.3",
     "huggingface-hub>=0.29.0",
@@ -54,6 +58,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0",
     "rich>=13.7.0",
+    "scikit-allel>=1.3.13,<2",
     "scikit-learn>=1.4.0",
     "scipy>=1.15.2",
     "sentencepiece>=0.2.0",
@@ -135,7 +140,14 @@ mcp = [
     # dnallm-mcp-langchain kernelspec venv isolation.
     "langchain-ollama>=1.1.0",
     "nest-asyncio>=1.5.9",
-    "pydantic-ai<3",
+    # 2026-10-10: floor at the 1.107 series. Under the previous <3 (then
+    # >=1.3.6,<2) bounds, uv silently backtracked fresh CI resolves to
+    # pydantic-ai 1.22.0, whose messages.py hard-imports opentelemetry._events
+    # (absent from the resolved otel set) and broke the pydantic_ai notebook
+    # import. 1.107.x is the dev-green series; if a transitive constraint
+    # rejects it, resolution now fails LOUDLY naming the capper instead of
+    # landing on the broken 1.22.
+    "pydantic-ai>=1.107.0,<2",
 ]
 base = [
     "dnallm[dev,test,notebook,mcp]",
@@ -263,6 +275,10 @@ include = ["dnallm*"]
 
 [tool.setuptools.package-data]
 "dnallm" = ["*.yaml", "*.yml", "*.json"]
+# Forward scaffolding: the IA³ per-model preset YAMLs land in
+# dnallm/configuration/presets/ with the next trainer phase; until then this
+# glob matches nothing and ships no files.
+"dnallm.configuration" = ["presets/*.yaml"]
 
 [project.scripts]
 dnallm = "dnallm.cli.cli:cli"
@@ -271,6 +287,7 @@ dnallm-inference = "dnallm.cli.inference:main"
 dnallm-model-config-generator = "dnallm.cli.model_config_generator:main"
 dnallm-mcp-server = "dnallm.mcp.server:main"
 dnallm-mutagenesis = "dnallm.cli.mutagenesis:main"
+dnallm-vep = "dnallm.cli.vep:main"
 
 # Ruff configuration
 [tool.ruff]
@@ -550,5 +567,7 @@ omit = [
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 90   # Phase 4 ratchet (GATE-01). Suite landed at 96.30% (Phase 3).
+fail_under = 90   # Phase 4 ratchet (GATE-01) — the floor, never the achievement.
+                  # Fast-lane suite measured 96.72% at the v1.2 closeout (2026-10-10;
+                  # was 96.30% at Phase 3) — the Phase 11/12 modules moved the number.
                   # Applies to every `--cov` invocation — use `--no-cov` for scoped runs.

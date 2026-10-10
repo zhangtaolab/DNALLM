@@ -34,7 +34,7 @@ logger = get_logger("dnallm.cli.train")
     help="Output directory for training results",
 )
 def main(config, model, data, output):
-    """Train a DNA language model."""
+    """Train a DNA large language model."""
     from ..finetune import DNATrainer
     from ..configuration import load_config
 

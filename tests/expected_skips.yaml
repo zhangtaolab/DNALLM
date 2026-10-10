@@ -29,6 +29,12 @@ allowed:
   - prefix: "network-unavailable:"
     category: network
 
+  # Typed network skip for the Phase-11 ClinVar acceptance lane
+  # (tests/inference/test_vep.py::TestClinVarAcceptance): fires when the
+  # canonical ClinVar/UCSC download hosts are unreachable on the slow leg.
+  - prefix: "clinvar-unavailable:"
+    category: network
+
   # Typed-skip helper environment_unavailable_skip in
   # tests/examples/_execution.py (Phase 8 skip decisions per D-06:
   # environment infeasibility with recorded evidence).
@@ -73,3 +79,9 @@ allowed:
   # reads /proc/self/fd; fires on the test-windows fast leg).
   - reason_like: "fd accounting needs /proc"
     category: environment
+
+  # Typed network skip for the Phase-12 JASPAR client lane
+  # (tests/interpret/test_motifs.py::TestJasparLive): fires when the canonical
+  # jaspar.elixir.no host is unreachable on the slow leg.
+  - prefix: "jaspar-unreachable:"
+    category: network

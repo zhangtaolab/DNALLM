@@ -6,7 +6,7 @@ The DNALLM MCP (Model Context Protocol) Server provides a standardized interface
 
 The MCP Server allows you to:
 
-- **Serve DNA Models**: Host multiple DNA language models simultaneously
+- **Serve DNA Models**: Host multiple DNA large language models simultaneously
 - **Real-time Prediction**: Provide fast DNA sequence predictions via MCP protocol
 - **Multiple Transport Protocols**: Support stdio, SSE, and HTTP transport methods
 - **Model Management**: Dynamically load and manage different DNA models

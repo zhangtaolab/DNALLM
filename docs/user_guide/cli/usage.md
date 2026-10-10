@@ -83,7 +83,7 @@ python -m dnallm.cli.model_config_generator --output config.yaml
 
 ### `dnallm-train`
 
-Train a DNA language model with specified configuration.
+Train a DNA large language model with specified configuration.
 
 **Options:**
 - `--config, -c`: Path to training configuration file
@@ -102,7 +102,7 @@ dnallm-train --model zhangtaolab/plant-dnagpt-BPE --data ./data --output ./outpu
 
 ### `dnallm-inference`
 
-Run inference with a trained DNA language model.
+Run inference with a trained DNA large language model.
 
 **Options:**
 - `--config, -c`: Path to inference configuration file
@@ -226,7 +226,7 @@ data:
 ```yaml
 benchmark:
   name: "DNA Model Benchmark"
-  description: "Comparing DNA language models on various tasks"
+  description: "Comparing DNA large language models on various tasks"
 
 models:
   - name: "Model 1"

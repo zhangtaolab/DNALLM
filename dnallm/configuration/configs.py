@@ -16,6 +16,15 @@ class HeadConfig(BaseModel):
         description=("Whether to freeze the model except the head during training."),
     )
     task_type: str = Field(default="binary", description="Task type (default is binary)")
+    num_classes: int | None = Field(
+        default=2,
+        description=(
+            "Number of output classes of the head. Read by the classification "
+            "wrapper when the head's logits width disagrees with the backbone "
+            "config's num_labels (common for checkpoints shipped with a "
+            "different-sized classification head)."
+        ),
+    )
     hidden_dims: list[int] | None = Field(
         default=None,
         description=(
@@ -72,13 +81,11 @@ class HeadConfig(BaseModel):
         default=None,
         description=("List of embedding dimensions for model with multi-scale features."),
     )
-    custom_head: Any | None = (
-        Field(
-            default=None,
-            description=(
-                "Custom head class. If provided, this will override other "
-                "head configuration parameters."
-            ),
+    custom_head: Any | None = Field(
+        default=None,
+        description=(
+            "Custom head class. If provided, this will override other "
+            "head configuration parameters."
         ),
     )
     loss_function: str | None = Field(
@@ -307,6 +314,34 @@ class TrainingConfig(BaseModel):
         default_factory=HyperparameterSearchConfig,
         description="Hyperparameter search configuration. Disabled when n_trials=0.",
     )
+    allow_test_as_eval: bool = Field(
+        default=False,
+        description=(
+            "Allow the test split to serve as the evaluation set when no dev split "
+            "exists. Enabling this lets per-step evaluation and best-model selection "
+            "run on the test split — those metrics are leaked and must not be "
+            "reported as held-out performance."
+        ),
+    )
+    use_ia3: bool = Field(
+        default=False,
+        description=(
+            "Whether to use IA³ (Infused Adapter by Inhibiting and Amplifying Inner "
+            "Activations) adapters for parameter-efficient fine-tuning, symmetric to "
+            "LoRA: the trainer injects IA³ vectors via peft.get_peft_model and the "
+            "resulting adapter shares the LoRA save/reload path."
+        ),
+    )
+    peft_dry_run: bool = Field(
+        default=False,
+        description=(
+            "Validate PEFT target-module resolution against the live model's module "
+            "names and exit before training. When true (with use_ia3 or LoRA), the "
+            "trainer resolves the final adapter config, matches target_modules "
+            "against the model's named modules, prints a report, raises on zero "
+            "matches, and performs no training. Handled inside DNATrainer."
+        ),
+    )
     use_qlora: bool = Field(
         default=False,
         description="Whether to use 4-bit quantized LoRA (QLoRA). Requires bitsandbytes.",
@@ -335,6 +370,23 @@ class TrainingConfig(BaseModel):
         if "all" in v and len(v) > 1:
             raise ValueError("'all' cannot be combined with other trackers")
         return v
+
+    @model_validator(mode="after")
+    def reject_ia3_with_qlora(self):
+        """Reject the use_ia3 x use_qlora combination at config-load time.
+
+        peft only raises when merging IA³ vectors on a 4-bit quantized model
+        (version-dependent foreign errors); rejecting here surfaces a matchable
+        dnallm error before any training starts.
+        """
+        if self.use_ia3 and self.use_qlora:
+            raise ValueError(
+                "finetune.use_ia3 and finetune.use_qlora cannot be combined: "
+                "IA³ cannot be merged on 4-bit quantized models (peft raises only "
+                "at merge time). Set finetune.use_ia3=false for QLoRA or "
+                "finetune.use_qlora=false for IA³."
+            )
+        return self
 
 
 class LoraConfig(BaseModel):
@@ -368,6 +420,136 @@ class LoraConfig(BaseModel):
     task_type: str | None = Field(
         default="SEQ_CLS",
         description="The task type for PEFT. E.g., 'CAUSAL_LM', 'TOKEN_CLS'.",
+    )
+
+
+class Ia3Config(BaseModel):
+    """Configuration for IA³ (Infused Adapter by Inhibiting and Amplifying Inner
+    Activations), mirroring peft's IA3Config field set (peft 0.21.1 surface).
+
+    Fields pass through into ``peft.tuners.ia3.IA3Config``; the FFN subset is
+    the explicit ``feedforward_modules`` list (peft has no feedforward-only
+    boolean — D-01/D-18), and peft enforces
+    ``feedforward_modules ⊆ target_modules`` at construction time.
+    """
+
+    target_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "The names of the modules to apply IA³ vectors to. If None, the "
+            "trainer's per-family preset (packaged YAML) is used."
+        ),
+    )
+    exclude_modules: list[str] | None = Field(
+        default=None,
+        description="The names of modules to exclude from IA³ adaptation.",
+    )
+    feedforward_modules: list[str] | None = Field(
+        default=None,
+        description=(
+            "The names of the feedforward modules in target_modules. IA³ vectors "
+            "applied to feedforward modules rescale activations rather than keys/values."
+        ),
+    )
+    fan_in_fan_out: bool = Field(
+        default=False,
+        description=(
+            "Set to True if the layer the IA³ vectors are applied to stores its "
+            "weight matrix in (fan_out, fan_in) order."
+        ),
+    )
+    init_ia3_weights: bool = Field(
+        default=True,
+        description="Whether to initialize IA³ vectors to 1.0 (identity rescaling).",
+    )
+    modules_to_save: list[str] | None = Field(
+        default=None,
+        description=(
+            "List of modules apart from IA³ vectors whose weights are trained and "
+            "saved in the final checkpoint (e.g. classification heads)."
+        ),
+    )
+    task_type: str | None = Field(
+        default="SEQ_CLS",
+        description=(
+            "The task type for PEFT, mirroring LoraConfig. Keeps the sequence-"
+            "classification head (the wrapper's 'score' module) trainable."
+        ),
+    )
+
+
+class VepConfig(BaseModel):
+    """Configuration for zero-shot variant effect prediction (VEP).
+
+    Field-complete scaffold for the VEP module; the scoring kernels and the
+    token-slot alignment rule land with the module itself in a later phase.
+    """
+
+    paradigm: str = Field(
+        default="mlm",
+        pattern="^(clm|mlm)$",
+        description=(
+            "Scoring paradigm: 'mlm' scores variants via masked-language-model "
+            "pseudo-log-likelihood; 'clm' scores via causal next-token log-probabilities."
+        ),
+    )
+    context_window: int = Field(
+        default=200,
+        ge=1,
+        description=(
+            "Number of reference bases kept on each side of the variant locus when "
+            "building the model context window."
+        ),
+    )
+    output_dir: str | None = Field(
+        default=None,
+        description="Directory for VEP result files. If None, the caller decides.",
+    )
+
+
+class SweepConfig(BaseModel):
+    """Configuration for the multi-seed sweep protocol with uncertainty
+    aggregation.
+
+    Field-complete scaffold for the sweep runner; the aggregation utilities
+    land with the sweep module in a later phase.
+    """
+
+    seeds: list[int] = Field(
+        default_factory=lambda: [42, 43, 44],
+        min_length=1,
+        description=(
+            "Random seeds to run, one full training run per seed. At least one "
+            "seed is required so the protocol always reports a real run."
+        ),
+    )
+    out_root: str | None = Field(
+        default=None,
+        description=(
+            "Root directory holding one output dir per seed run. If None, the caller decides."
+        ),
+    )
+    n_bootstrap: int = Field(
+        default=2000,
+        ge=1,
+        description=(
+            "Number of bootstrap resamples for seed-level confidence intervals. "
+            "Ignored when the seed count falls below the small-n guard, which "
+            "switches to the small_n_ci policy instead."
+        ),
+    )
+    bootstrap_seed: int = Field(
+        default=42,
+        description="Random seed for the bootstrap resampling (reproducibility).",
+    )
+    small_n_ci: str = Field(
+        default="t-interval",
+        pattern="^(t-interval|omit)$",
+        description=(
+            "Policy when fewer than 10 seeds are run (small-n guard): "
+            "'t-interval' reports a Student-t interval over the seeds; 'omit' "
+            "reports only point estimates without an interval."
+        ),
     )
 
 
@@ -467,7 +649,7 @@ class OutputConfig(BaseModel):
 
 class BenchmarkConfig(BaseModel):
     """
-    Top-level configuration for the DNA Language Model benchmark.
+    Top-level configuration for the DNA Large Language Model benchmark.
     This class validates and structures the entire YAML configuration file,
     where each top-level key in the YAML corresponds to an attribute of this
     class.
@@ -507,6 +689,9 @@ class DNALLMConfig(TypedDict, total=False):
     model: dict[str, Any]
     finetune: TrainingConfig
     lora: LoraConfig
+    ia3: Ia3Config
+    vep: VepConfig
+    sweep: SweepConfig
     benchmark: BenchmarkConfig
 
 
@@ -542,6 +727,18 @@ def load_config(config_path: str) -> DNALLMConfig:
     # Configurations for LoRA (Optional)
     if "lora" in config_dict:
         configs["lora"] = LoraConfig(**config_dict["lora"])
+
+    # Configurations for IA³ (Optional)
+    if "ia3" in config_dict:
+        configs["ia3"] = Ia3Config(**config_dict["ia3"])
+
+    # Configurations for zero-shot variant effect prediction (Optional)
+    if "vep" in config_dict:
+        configs["vep"] = VepConfig(**config_dict["vep"])
+
+    # Configurations for the multi-seed sweep protocol (Optional)
+    if "sweep" in config_dict:
+        configs["sweep"] = SweepConfig(**config_dict["sweep"])
 
     # Configurations for benchmark (Optional)
     if "benchmark" in config_dict:

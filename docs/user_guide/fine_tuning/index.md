@@ -1,6 +1,6 @@
-# Fine-tuning DNA Language Models
+# Fine-tuning DNA Large Language Models
 
-This section provides comprehensive tutorials and guides for fine-tuning DNA language models using DNALLM. Fine-tuning allows you to adapt pre-trained models to your specific DNA analysis tasks and datasets.
+This section provides comprehensive tutorials and guides for fine-tuning DNA large language models using DNALLM. Fine-tuning allows you to adapt pre-trained models to your specific DNA analysis tasks and datasets.
 
 ## What You'll Learn
 
@@ -25,7 +25,7 @@ This section provides comprehensive tutorials and guides for fine-tuning DNA lan
 Before diving into fine-tuning, ensure you have:
 
 - ✅ DNALLM installed and configured
-- ✅ Access to pre-trained DNA language models
+- ✅ Access to pre-trained DNA large language models
 - ✅ Training datasets in appropriate formats
 - ✅ Sufficient computational resources (GPU recommended)
 - ✅ Understanding of your target task and data

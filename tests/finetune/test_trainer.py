@@ -10,10 +10,15 @@ No test here performs a skip call, touches the network, or writes outside
 pytest tmp_path.
 """
 
+import json
 import os
+from types import MappingProxyType
+from typing import ClassVar
 from unittest.mock import Mock, patch
 
 import pytest
+import torch
+import yaml
 from conftest import SimpleDNATokenizer
 from datasets import Dataset, DatasetDict
 from packaging.version import Version
@@ -22,6 +27,7 @@ from dnallm.configuration.configs import (
     CallbackConfig,
     EarlyStoppingConfig,
     HyperparameterSearchConfig,
+    Ia3Config,
     LoraConfig,
     SearchSpaceDistribution,
     TaskConfig,
@@ -31,6 +37,35 @@ from dnallm.datahandling.data import DNADataset
 from dnallm.finetune.trainer import DNATrainer
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_finetune_config.yaml")
+
+
+def fake_peft_model(trainable=True):
+    """Tiny torch module standing in for a peft-wrapped model.
+
+    The ratio guard reads requires_grad tensors directly, so the fake needs
+    real torch parameters with controllable trainability.
+    """
+    fake = torch.nn.Linear(4, 4)
+    fake.print_trainable_parameters = Mock()
+    if not trainable:
+        for p in fake.parameters():
+            p.requires_grad_(False)
+    return fake
+
+
+class FakeTree(torch.nn.Module):
+    """Tiny module tree for dry-run matching (mirrors test_peft_presets)."""
+
+    def __init__(self, leaves):
+        super().__init__()
+        for path, names in leaves.items():
+            node = self
+            for part in path.split("."):
+                if not hasattr(node, part):
+                    setattr(node, part, torch.nn.Module())
+                node = getattr(node, part)
+            for name in names:
+                setattr(node, name, torch.nn.Linear(4, 4))
 
 
 def make_datasets(splits, tmp_path=None):
@@ -94,6 +129,9 @@ class TestTrainingArgumentsMapping:
             "callbacks",
             "hyperparameter_search",
             "use_qlora",
+            "use_ia3",
+            "peft_dry_run",
+            "allow_test_as_eval",
             "quantization_config",
             "save_safetensors",
             "warmup_ratio",
@@ -145,6 +183,7 @@ class TestDatasetSplitWiring:
     def test_unsplit_dataset_used_as_train_without_eval(self, trainer_config, mock_hf_boundary):
         """An unsplit dataset trains on itself with evaluation disabled."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
         datasets = make_datasets([None])
 
         DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
@@ -163,18 +202,23 @@ class TestDatasetSplitWiring:
 
         assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["val"]
 
-    def test_eval_falls_back_to_test_split(self, trainer_config, mock_hf_boundary):
-        """Without a validation split, test serves as the eval dataset."""
-        trainer_cls, _ = mock_hf_boundary
+    def test_eval_excludes_test_split_without_opt_in(self, trainer_config, mock_hf_boundary):
+        """Without a dev split and allow_test_as_eval unset, the test split is
+        excluded from evaluation (EVAL-01 guard)."""
+        trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
         datasets = make_datasets(["train", "test"])
 
-        DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+        with patch("builtins.print"):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
 
-        assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["test"]
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
 
     def test_train_only_split_disables_evaluation(self, trainer_config, mock_hf_boundary):
         """A lone train split disables the eval strategy."""
         trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
 
         DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
 
@@ -185,6 +229,271 @@ class TestDatasetSplitWiring:
         """A split dict without train is rejected."""
         with pytest.raises(KeyError, match="Cannot find train data"):
             DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["val"]))
+
+
+class TestEvalSemanticsGuard:
+    """EVAL-01: the test split can never silently become the eval set."""
+
+    def test_test_only_default_fires_flip_warn_exactly_once(self, trainer_config, mock_hf_boundary):
+        """The guard WARN fires once at construction time, carrying all three facts."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+        flip_calls = [
+            call
+            for call in mock_print.call_args_list
+            if all(
+                fact in "".join(str(arg) for arg in call.args)
+                for fact in ("[Warning]", "test split", "previous", "allow_test_as_eval")
+            )
+        ]
+        assert len(flip_calls) == 1
+
+    def test_opt_in_uses_test_as_eval_with_leak_warning(self, trainer_config, mock_hf_boundary):
+        """allow_test_as_eval=True restores test-as-eval with a loud leak warning."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].allow_test_as_eval = True
+        datasets = make_datasets(["train", "test"])
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is datasets.dataset["test"]
+        opt_in_calls = [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval=true" in "".join(str(arg) for arg in call.args)
+            and "leaked" in "".join(str(arg) for arg in call.args)
+        ]
+        assert len(opt_in_calls) == 1
+
+    def test_train_only_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
+        """A lone train split keeps today's behavior with no flip warning."""
+        trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
+        assert not [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval" in "".join(str(arg) for arg in call.args)
+        ]
+
+    def test_unsplit_dataset_emits_no_flip_warn(self, trainer_config, mock_hf_boundary):
+        """An unsplit dataset keeps today's behavior with no flip warning."""
+        trainer_cls, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+
+        with patch("builtins.print") as mock_print:
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets([None]))
+
+        assert trainer_cls.call_args.kwargs["eval_dataset"] is None
+        assert args_cls.return_value.eval_strategy == "no"
+        assert not [
+            call
+            for call in mock_print.call_args_list
+            if "allow_test_as_eval" in "".join(str(arg) for arg in call.args)
+        ]
+
+
+class TestEarlyStoppingCollision:
+    """EVAL-01 collisions: best-model selection without an evaluation split."""
+
+    def test_early_stopping_without_eval_split_raises(self, trainer_config, mock_hf_boundary):
+        """Early stopping over a guarded test-only dataset raises with both remedies."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=1)
+        )
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="Early stopping requires an evaluation split"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+    def test_early_stopping_train_only_raises(self, trainer_config, mock_hf_boundary):
+        """Early stopping over a train-only dataset raises the same ValueError."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=2)
+        )
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="Early stopping requires an evaluation split"),
+        ):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train"]))
+
+    def test_load_best_model_at_end_collision_raises(self, trainer_config, mock_hf_boundary):
+        """A user-set load_best_model_at_end never survives the guard silently."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = True
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="load_best_model_at_end requires an evaluation split"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+    @pytest.mark.parametrize("splits", [["train"], [None]], ids=["train-only", "unsplit"])
+    def test_load_best_model_at_end_collision_raises_without_test_split(
+        self, trainer_config, mock_hf_boundary, splits
+    ):
+        """The collision guard also covers the train-only and unsplit paths."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = True
+
+        with (
+            patch("builtins.print"),
+            pytest.raises(ValueError, match="load_best_model_at_end requires an evaluation split"),
+        ):
+            DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(splits))
+
+    def test_opt_in_early_stopping_does_not_raise(self, trainer_config, mock_hf_boundary):
+        """Opting into test-as-eval keeps early stopping working (opt-in edge)."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        trainer_config["finetune"].allow_test_as_eval = True
+        trainer_config["finetune"].callbacks = CallbackConfig(
+            early_stopping=EarlyStoppingConfig(patience=1)
+        )
+
+        with (
+            patch("builtins.print"),
+            patch("dnallm.finetune.trainer.EarlyStoppingCallback"),
+        ):
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "test"])
+            )
+
+        # An eval set exists (test), so the force-enable path still works.
+        assert args_cls.return_value.load_best_model_at_end is True
+
+
+class TestEvaluateSplit:
+    """evaluate(split=...) predict routing, canonical keys and result JSON."""
+
+    def _guarded_trainer(self, trainer_config, mock_hf_boundary, splits=("train", "test")):
+        """Build a DNATrainer over the given splits with the guard active."""
+        _, args_cls = mock_hf_boundary
+        args_cls.return_value.load_best_model_at_end = False
+        datasets = make_datasets(list(splits))
+        with patch("builtins.print"):
+            return DNATrainer(model=Mock(), config=trainer_config, datasets=datasets), datasets
+
+    def test_split_routes_through_predict_and_writes_result_json(
+        self, trainer_config, mock_hf_boundary, tmp_path
+    ):
+        """split='test' predicts (never trainer.evaluate) and writes the JSON."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.predict.return_value.metrics = {
+            "test_accuracy": 0.9,
+            "test_AUROC": 0.8,
+        }
+        output_dir = tmp_path / "outputs"
+        trainer_config["finetune"].output_dir = str(output_dir)
+
+        trainer, datasets = self._guarded_trainer(trainer_config, mock_hf_boundary)
+        result = trainer.evaluate(split="test")
+
+        trainer_cls.return_value.predict.assert_called_once_with(
+            datasets.dataset["test"], ignore_keys=None
+        )
+        trainer_cls.return_value.evaluate.assert_not_called()
+        assert result == {"accuracy": 0.9, "AUROC": 0.8}
+
+        result_path = output_dir / "eval_test_result.json"
+        assert result_path.exists()
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        assert payload["split"] == "test"
+        assert "timestamp" in payload
+        assert payload["metrics"] == {"accuracy": 0.9, "AUROC": 0.8}
+
+    def test_runtime_keys_separated_from_metrics(self, trainer_config, mock_hf_boundary, tmp_path):
+        """Timing keys land in a separate runtime block, not the metrics dict."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.predict.return_value.metrics = {
+            "test_accuracy": 0.9,
+            "test_loss": 0.4,
+            "test_runtime": 1.25,
+            "test_samples_per_second": 32.0,
+            "test_steps_per_second": 8.0,
+        }
+        output_dir = tmp_path / "outputs"
+        trainer_config["finetune"].output_dir = str(output_dir)
+
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+        result = trainer.evaluate(split="test")
+
+        assert result == {"accuracy": 0.9, "loss": 0.4}
+        payload = json.loads((output_dir / "eval_test_result.json").read_text(encoding="utf-8"))
+        assert payload["metrics"] == {"accuracy": 0.9, "loss": 0.4}
+        assert payload["runtime"] == {
+            "runtime": 1.25,
+            "samples_per_second": 32.0,
+            "steps_per_second": 8.0,
+        }
+
+    def test_unknown_split_raises_listing_available(self, trainer_config, mock_hf_boundary):
+        """An absent split key raises a ValueError naming the available splits."""
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+
+        with pytest.raises(ValueError, match="Split 'nonexistent' not found in dataset"):
+            trainer.evaluate(split="nonexistent")
+
+    @pytest.mark.parametrize("missing_output_dir", [None, ""], ids=["none", "empty-string"])
+    def test_missing_output_dir_raises_instead_of_cwd_fallback(
+        self, trainer_config, mock_hf_boundary, missing_output_dir
+    ):
+        """Without finetune.output_dir (None or empty string) there is no CWD fallback."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].output_dir = missing_output_dir
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary)
+
+        with pytest.raises(ValueError, match=r"finetune\.output_dir is not set"):
+            trainer.evaluate(split="test")
+
+        trainer_cls.return_value.predict.assert_not_called()
+
+    def test_no_args_calls_trainer_evaluate_with_no_kwargs(self, trainer_config, mock_hf_boundary):
+        """evaluate() with no arguments delegates with no kwargs (D-01)."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.evaluate.return_value = {"eval_loss": 0.3}
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary, ("train", "val"))
+
+        assert trainer.evaluate() == {"eval_loss": 0.3}
+        trainer_cls.return_value.evaluate.assert_called_once_with()
+
+    def test_legacy_kwargs_forward_unchanged(self, trainer_config, mock_hf_boundary):
+        """Legacy HF kwargs pass through to trainer.evaluate (signature compat)."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_cls.return_value.evaluate.return_value = {"eval_loss": 0.2}
+        trainer, _ = self._guarded_trainer(trainer_config, mock_hf_boundary, ("train", "val"))
+        eval_dataset = Mock()
+
+        trainer.evaluate(
+            eval_dataset=eval_dataset, ignore_keys=["logits"], metric_key_prefix="valid"
+        )
+
+        trainer_cls.return_value.evaluate.assert_called_once_with(
+            eval_dataset=eval_dataset, ignore_keys=["logits"], metric_key_prefix="valid"
+        )
 
 
 class TestTaskTypeWiring:
@@ -296,8 +605,8 @@ class TestLoraWiring:
     def test_use_lora_wraps_model_via_peft(self, trainer_config, mock_hf_boundary):
         """use_lora applies LoraConfig + get_peft_model and trains the wrapper."""
         trainer_cls, _ = mock_hf_boundary
-        trainer_config["lora"] = LoraConfig(r=4, lora_alpha=8)
-        wrapped = Mock()
+        trainer_config["lora"] = LoraConfig(r=4, lora_alpha=8, target_modules=["query"])
+        wrapped = fake_peft_model()
 
         with (
             patch("dnallm.finetune.trainer.get_peft_model", return_value=wrapped) as mock_gpm,
@@ -319,12 +628,12 @@ class TestLoraWiring:
 
     def test_use_qlora_prepares_kbit_model(self, trainer_config, mock_hf_boundary):
         """QLoRA prepares the 4-bit model and enables gradient checkpointing."""
-        trainer_config["lora"] = LoraConfig()
+        trainer_config["lora"] = LoraConfig(target_modules=["query"])
         trainer_config["finetune"].use_qlora = True
         model = Mock()
 
         with (
-            patch("dnallm.finetune.trainer.get_peft_model", return_value=Mock()),
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
             patch("dnallm.finetune.trainer.LoraConfig"),
             patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
             patch("peft.prepare_model_for_kbit_training", side_effect=lambda m: m) as mock_prep,
@@ -337,6 +646,355 @@ class TestLoraWiring:
             )
 
         mock_prep.assert_called_once_with(model)
+
+
+class TestIa3Wiring:
+    """IA³ model wrapping at the peft boundary (mocked fast lane)."""
+
+    def test_use_ia3_wraps_model_via_peft(self, trainer_config, mock_hf_boundary):
+        """use_ia3=true applies IA3Config + get_peft_model and trains the wrapper."""
+        trainer_cls, _ = mock_hf_boundary
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(
+            target_modules=["key", "value"],
+            feedforward_modules=["value"],
+        )
+        wrapped = fake_peft_model()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=wrapped) as mock_gpm,
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print") as mock_print,
+        ):
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["key", "value"]
+        assert mock_ia3_config.call_args.kwargs["feedforward_modules"] == ["value"]
+        assert mock_gpm.call_args.args[1] is mock_ia3_config.return_value
+        assert trainer_cls.call_args.kwargs["model"] is wrapped
+        wrapped.print_trainable_parameters.assert_called_once()
+        info_calls = ["".join(str(arg) for arg in call.args) for call in mock_print.call_args_list]
+        assert any("[Info] Applying IA³" in msg for msg in info_calls)
+
+    def test_use_ia3_defaults_when_section_absent(self, trainer_config, mock_hf_boundary):
+        """A YAML without an ia3: section still trains IA³ with field defaults."""
+        trainer_config["finetune"].use_ia3 = True
+        assert "ia3" not in trainer_config
+        preset_row = {
+            "lora_target_modules": ["query"],
+            "ia3_target_modules": ["key", "value"],
+            "feedforward_modules": [],
+            "ia3_ratio_band": [1e-6, 1.0],
+            "lora_ratio_band": [1e-6, 1.0],
+        }
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", preset_row, "test match")
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["key", "value"]
+        assert mock_ia3_config.call_args.kwargs["init_ia3_weights"] is True
+
+    def test_use_ia3_preset_auto_selection_injects_targets(self, trainer_config, mock_hf_boundary):
+        """target_modules=None resolves via the preset table with a log line
+        naming the preset, and the FFN subset rides along (PEFT-02)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(target_modules=None, feedforward_modules=None)
+        preset_row = {
+            "lora_target_modules": ["q_proj", "v_proj"],
+            "ia3_target_modules": ["k_proj", "v_proj", "up_proj"],
+            "feedforward_modules": ["up_proj"],
+            "ia3_ratio_band": [1e-5, 1.0],
+            "lora_ratio_band": [1e-5, 1.0],
+        }
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print") as mock_print,
+        ):
+            mock_resolve.return_value = ("FakeFamily", preset_row, "name marker 'fake'")
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        mock_resolve.assert_called_once()
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["k_proj", "v_proj", "up_proj"]
+        assert mock_ia3_config.call_args.kwargs["feedforward_modules"] == ["up_proj"]
+        logged = " ".join(
+            "".join(str(arg) for arg in call.args) for call in mock_print.call_args_list
+        )
+        assert "preset 'FakeFamily' selected" in logged
+        assert "name marker 'fake'" in logged
+
+    def test_use_ia3_kwargs_filtered_to_peft_surface(self, trainer_config, mock_hf_boundary):
+        """Only field names peft's IA3Config accepts are passed through."""
+        from dnallm.finetune.trainer import PEFT_IA3_FIELD_NAMES
+
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["key"], modules_to_save=["score"])
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert set(mock_ia3_config.call_args.kwargs) <= PEFT_IA3_FIELD_NAMES
+
+    def test_use_ia3_no_preset_row_raises_matchable_error(self, trainer_config, mock_hf_boundary):
+        """An unmatched backbone with target_modules=None fails loud, telling
+        the user to set target_modules explicitly — never guessed defaults."""
+        trainer_config["finetune"].use_ia3 = True
+        assert "ia3" not in trainer_config
+        model = Mock()
+        # Mock auto-attributes resolve to non-str values, so no marker and no
+        # model_type matches — exactly the unmatched-backbone path.
+        model.config.model_type = None
+        model.config._name_or_path = None
+
+        with patch("builtins.print"):
+            with pytest.raises(ValueError, match="No PEFT target-module preset found"):
+                DNATrainer(
+                    model=model,
+                    config=trainer_config,
+                    datasets=make_datasets(["train", "val"]),
+                )
+
+    def test_peft_dry_run_reports_and_skips_training(self, trainer_config, mock_hf_boundary):
+        """peft_dry_run=true validates the resolved targets against the live
+        model's module names, prints the report, and performs no training
+        (no adapter attach, no Trainer construction, train() no-ops)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["query"])
+        trainer_config["lora"] = LoraConfig()
+        model = FakeTree({"backbone.layer.0.attention.self": ["query", "key"]})
+        trainer_cls, _ = mock_hf_boundary
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model") as mock_gpm,
+            patch("builtins.print") as mock_print,
+        ):
+            trainer = DNATrainer(
+                model=model,
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+            metrics = trainer.train()
+
+        mock_gpm.assert_not_called()
+        trainer_cls.assert_not_called()
+        assert metrics == {}
+        logged = " ".join(
+            "".join(str(arg) for arg in call.args) for call in mock_print.call_args_list
+        )
+        assert "modules matched target_modules" in logged
+        assert "PEFT dry run complete — no training performed." in logged
+        assert "Skipping the training loop: finetune.peft_dry_run=true." in logged
+
+    def test_peft_dry_run_trainer_dependent_methods_raise_matchable(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """evaluate/infer/plot_history/search on a dry-run trainer raise a
+        matchable ValueError instead of a bare AttributeError, and the
+        trainer attribute exists (None) rather than being absent (IN-08)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_config["ia3"] = Ia3Config(target_modules=["query"])
+        trainer_config["lora"] = LoraConfig()
+        model = FakeTree({"backbone.layer.0.attention.self": ["query", "key"]})
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model"),
+            patch("builtins.print"),
+        ):
+            trainer = DNATrainer(
+                model=model,
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+            )
+
+        assert trainer.trainer is None
+        for method in (
+            trainer.evaluate,
+            trainer.infer,
+            trainer.plot_history,
+            trainer.search,
+        ):
+            with pytest.raises(
+                ValueError, match=r"not available after finetune\.peft_dry_run=true"
+            ):
+                method()
+
+    def test_peft_dry_run_without_adapter_raises_matchable_error(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """peft_dry_run=true with neither use_lora nor finetune.use_ia3 is a
+        loud failure, not a silent full fine-tune (the flag's documented
+        purpose is validate-and-exit)."""
+        trainer_config["finetune"].peft_dry_run = True
+        trainer_cls, _ = mock_hf_boundary
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model"),
+            patch("builtins.print"),
+        ):
+            with pytest.raises(
+                ValueError,
+                match=r"peft_dry_run=true requires an adapter method.*use_lora=True.*"
+                r"finetune.use_ia3=true",
+            ):
+                DNATrainer(
+                    model=Mock(),
+                    config=trainer_config,
+                    datasets=make_datasets(["train", "val"]),
+                )
+
+        trainer_cls.assert_not_called()
+
+    def test_lora_and_ia3_rejected_at_trainer_init(self, trainer_config, mock_hf_boundary):
+        """use_lora=True ctor kwarg x finetune.use_ia3=true raises a matchable
+        ValueError naming both flags (the ctor kwarg is invisible to Pydantic)."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["lora"] = LoraConfig()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=Mock()),
+            patch("dnallm.finetune.trainer.IA3Config"),
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+        ):
+            with pytest.raises(ValueError, match="use_lora"):
+                DNATrainer(
+                    model=Mock(),
+                    config=trainer_config,
+                    datasets=make_datasets(["train", "val"]),
+                    use_lora=True,
+                )
+
+    def test_use_ia3_x_use_qlora_rejection_fires_at_config_load_time(self, tmp_path):
+        """The Pydantic rejection fires inside load_config, before any
+        DNATrainer construction (config-time is the first line of defense)."""
+        from pydantic import ValidationError
+
+        config_path = tmp_path / "bad_ia3_config.yaml"
+        config_path.write_text(
+            yaml.safe_dump({
+                "task": {"task_type": "binary", "num_labels": 2},
+                "finetune": {"use_ia3": True, "use_qlora": True},
+            })
+        )
+
+        with pytest.raises(ValidationError, match="use_ia3"):
+            load_config(str(config_path))
+
+
+class TestCtorConfigImmutability:
+    """The ctor resolves PEFT targets on copies — never caller-owned state (WR-02)."""
+
+    PRESET_ROW: ClassVar[dict] = {
+        "lora_target_modules": ["q_proj", "v_proj"],
+        "ia3_target_modules": ["key", "value"],
+        "feedforward_modules": ["value"],
+        "ia3_ratio_band": [1e-6, 1.0],
+        "lora_ratio_band": [1e-6, 1.0],
+    }
+
+    def test_ia3_preset_injection_leaves_caller_config_untouched(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """Preset targets reach the adapter via an internal copy; the caller's
+        section object is byte-identical after construction, so a second
+        DNATrainer from the same dict re-resolves presets."""
+        trainer_config["finetune"].use_ia3 = True
+        trainer_config["ia3"] = Ia3Config(target_modules=None, feedforward_modules=None)
+        before_ia3 = trainer_config["ia3"].model_dump()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config") as mock_ia3_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(
+                model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"])
+            )
+
+        assert mock_ia3_config.call_args.kwargs["target_modules"] == ["key", "value"]
+        assert mock_ia3_config.call_args.kwargs["feedforward_modules"] == ["value"]
+        assert trainer_config["ia3"].model_dump() == before_ia3
+
+    def test_lora_preset_injection_leaves_caller_section_untouched(
+        self, trainer_config, mock_hf_boundary
+    ):
+        """Same contract on the LoRA branch: injected targets reach peft's
+        LoraConfig, the caller's lora section stays untouched."""
+        trainer_config["lora"] = LoraConfig()
+        before_lora = trainer_config["lora"].model_dump()
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.LoraConfig") as mock_lora_config,
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(
+                model=Mock(),
+                config=trainer_config,
+                datasets=make_datasets(["train", "val"]),
+                use_lora=True,
+            )
+
+        assert mock_lora_config.call_args.kwargs["target_modules"] == ["q_proj", "v_proj"]
+        assert trainer_config["lora"].model_dump() == before_lora
+
+    def test_immutable_config_mapping_constructs_fine(self, trainer_config, mock_hf_boundary):
+        """A read-only config Mapping (ia3 section absent, so the old code
+        path wrote config['ia3']) constructs without TypeError."""
+        trainer_config["finetune"].use_ia3 = True
+        assert "ia3" not in trainer_config
+        frozen = MappingProxyType(trainer_config)
+
+        with (
+            patch("dnallm.finetune.trainer.get_peft_model", return_value=fake_peft_model()),
+            patch("dnallm.finetune.trainer.IA3Config"),
+            patch("dnallm.finetune.trainer._resolve_peft_preset") as mock_resolve,
+            patch("dnallm.models.model.peft_forward_compatiable", side_effect=lambda m: m),
+            patch("builtins.print"),
+        ):
+            mock_resolve.return_value = ("FakeFamily", self.PRESET_ROW, "test match")
+            DNATrainer(model=Mock(), config=frozen, datasets=make_datasets(["train", "val"]))
+
+        assert "ia3" not in trainer_config
 
 
 class TestMultiGpu:
@@ -618,6 +1276,7 @@ class TestWarmupConversion:
         args_cls.return_value.gradient_accumulation_steps = 1
         args_cls.return_value.num_train_epochs = 1
         args_cls.return_value.max_steps = -1
+        args_cls.return_value.load_best_model_at_end = False
         for key, value in attrs.items():
             setattr(args_cls.return_value, key, value)
 
@@ -730,11 +1389,15 @@ class TestInfer:
 
     def test_infer_predicts_on_test_split(self, trainer_config, mock_hf_boundary):
         """infer() predicts over the test split when present."""
-        trainer_cls, _ = mock_hf_boundary
+        trainer_cls, args_cls = mock_hf_boundary
+        # Default TrainingConfig leaves best-model selection off, so the
+        # eval-semantics guard disables evaluation instead of colliding.
+        args_cls.return_value.load_best_model_at_end = False
         trainer_cls.return_value.predict.return_value = {"metrics": {"test_loss": 0.2}}
         datasets = make_datasets(["train", "test"])
 
-        trainer = DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
+        with patch("builtins.print"):
+            trainer = DNATrainer(model=Mock(), config=trainer_config, datasets=datasets)
         result = trainer.infer()
 
         trainer_cls.return_value.predict.assert_called_once_with(datasets.dataset["test"])

@@ -7,6 +7,13 @@
 # modelscope git ls-remote; hf rows: HF main via the mirror API). The
 # prefix must match the using notebook's ACTIVE source= route (ms ⇒
 # source="modelscope", hf ⇒ source="huggingface"; D-15 alignment).
+# Multiple pins — and at most one unpinned legacy row — for the SAME
+# repo-id are expected, not an error: each row's comment names the lane
+# it was validated for, and registry-head drift between phases
+# legitimately produces distinct shas (e.g. plant-dnagpt-BPE-promoter:
+# unpinned legacy, @1311a7f… example notebooks, @78184ac… VEP
+# acceptance). Trust the row whose comment names your lane; older pins
+# are kept so each lane's validated revision stays discoverable.
 # The original ten rows (immediately below this header) predate pinning and
 # stay unpinned; every row added since carries a @sha pin.
 hf  microsoft/DialoGPT-small                         # tests/models/test_model.py::test_download_real_huggingface_connection
@@ -34,3 +41,6 @@ hf  kuleshov-group/PlantCAD2-Small-l24-d0768@f756c255cb76e9f538c3acec04acf4214ed
 hf  arcinstitute/evo2_1b_base@2279e1df422c991037470302360edd40d0d2ea1e  # example notebook generation_evo_models (2.7GB, fits cache; evo2_1b_base.pt is its native ckpt)
 hf  togethercomputer/evo-1-8k-base@a9be7b66485080893399ade87c7d34f81ad3e249  # example notebook generation_evo_models — GIANTS tier: safetensors-only prefetch into ~/models-giants, deliberately outside the quota cache (D-14/CI-05); MS mirror exists but route unproven (OQ3)
 dataset:  zhangtaolab/plant-multi-species-core-promoters  # DNADataset.from_modelscope (trainer tests)
+ms  zhangtaolab/plant-dnabert-BPE@6e4f65b3f1758517d0cc5737dee4d1bcf4b97095  # tests/inference/test_vep.py::TestClinVarAcceptance zero-shot VEP acceptance (source=modelscope)
+ms  zhangtaolab/plant-dnamamba-BPE-open_chromatin@eadddcddf7ee2cf52517bc42437c5a00a83e54af  # tests/inference/test_vep.py::TestClinVarAcceptance zero-shot VEP acceptance (source=modelscope)
+ms  zhangtaolab/plant-dnagpt-BPE-promoter@78184ac82ff6ee27080c7aa440413575a5f7b7d6  # tests/inference/test_vep.py::TestClinVarAcceptance zero-shot VEP acceptance (source=modelscope)

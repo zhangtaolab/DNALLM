@@ -1,6 +1,6 @@
 # Task-Specific Fine-tuning Guides
 
-This guide provides detailed instructions for fine-tuning DNA language models on different types of tasks. Each task type has specific requirements, configurations, and best practices.
+This guide provides detailed instructions for fine-tuning DNA large language models on different types of tasks. Each task type has specific requirements, configurations, and best practices.
 
 ## Overview
 
