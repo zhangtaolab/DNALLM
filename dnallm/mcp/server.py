@@ -90,7 +90,11 @@ DEFAULT_BIND_PORT = 8000
 #: (a 2000-base scan is already ~6000 passes against a 30s tool timeout).
 ISM_MAX_SEQUENCE_LENGTH = 2000
 
-#: Maximum mutated positions accepted by ``ism_scan`` per call.
+#: Maximum mutated positions accepted by ``ism_scan`` per call. Bounds the
+#: REQUESTED position list — and therefore the reported mutated entries
+#: (at most three substitution entries per position) — not the compute: the
+#: engine scans every position of every sequence, so the bound on forward
+#: passes is solely ``ISM_MAX_SEQUENCE_LENGTH``.
 ISM_MAX_POSITIONS = 100
 
 #: Maximum region length (bases) accepted by ``hotspots`` per call — the
@@ -160,6 +164,29 @@ _INLINE_SENTINEL_FILTER = ClinVarFilter(
     negative_labels=frozenset(),
     star_floor=1,
 )
+
+
+def _ism_entry_position(name: str) -> int | None:
+    """Parse the 0-based sequence position from a Mutagenesis entry name.
+
+    Entry names follow the engine's ``{kind}_{i}_...`` convention:
+    ``mut_{i}_{base}_{alt}``, ``del_{i}_{size}``, ``ins_{i}_{seq}``,
+    ``cut_{i}_{size}``. Returns ``None`` for unparseable names (e.g.
+    ``raw``) — entries with no resolvable position are never filtered in.
+
+    Args:
+        name: Entry key from a ``Mutagenesis.evaluate`` result dict.
+
+    Returns:
+        The 0-based position the entry mutates, or ``None``.
+    """
+    parts = name.split("_")
+    if len(parts) >= 2 and parts[0] in ("mut", "del", "ins", "cut"):
+        try:
+            return int(parts[1])
+        except ValueError:
+            return None
+    return None
 
 
 class DNALLMMCPServer:
@@ -1776,10 +1803,13 @@ class DNALLMMCPServer:
 
         Mirrors the ``dna_mutagenesis`` engine surface with tool-boundary
         input caps so a scan cannot silently expand past the tool timeout:
-        sequences are capped at 2000 bases and positions at 100 entries per
-        call (single-base-substitution ISM costs 3 forward passes per base).
-        Reduce the inputs or raise ``tool_timeout_seconds`` in the server
-        config when a larger scan is genuinely needed.
+        sequences are capped at 2000 bases and the requested position list
+        at 100 entries per call (single-base-substitution ISM costs 3
+        forward passes per base). The engine itself scans every position of
+        every sequence — the bound on COMPUTE is the sequence cap — while
+        the REPORTED mutated entries are restricted to the requested
+        positions. Reduce the inputs or raise ``tool_timeout_seconds`` in
+        the server config when a larger scan is genuinely needed.
 
         Args:
             model_name (str): Name of the loaded model to scan with.
@@ -1791,7 +1821,10 @@ class DNALLMMCPServer:
                 "multi_base_substitution", "deletion", "insertion", "combo".
             positions (list[int] | None): 0-based positions of interest;
                 validated against every sequence's length and echoed in the
-                response. Must be non-empty.
+                response. Must be non-empty. The reported mutated entries
+                (and the delta averages) are restricted to these positions;
+                the engine still scans every position of every sequence, so
+                the bound on compute is the sequence cap, not this list.
 
         Returns:
             dict[str, Any]: ISM scan results in MCP format:
@@ -1916,6 +1949,7 @@ class DNALLMMCPServer:
             eval_results = await loop.run_in_executor(None, _run_ism_scan)
 
             results = []
+            wanted_positions = set(positions)
             for seq, eval_result in zip(sequences, eval_results, strict=True):
                 raw = eval_result.get("raw", {})
                 original_prediction = {
@@ -1923,7 +1957,18 @@ class DNALLMMCPServer:
                     "prediction": raw.get("pred", {}),
                     "score": raw.get("score", 0.0),
                 }
-                mutated_entries = [v for k, v in eval_result.items() if k != "raw"]
+                # Restrict the REPORTED entries to the requested positions
+                # (entry names encode `mut_{i}_...`/`del_{i}_...`/
+                # `ins_{i}_...`/`cut_{i}_...`). The engine still scans every
+                # position — the compute bound is the sequence cap — but the
+                # reported entries, count, and delta averages all come from
+                # this filtered set, so the echoed positions and the results
+                # cannot disagree.
+                mutated_entries = [
+                    value
+                    for name, value in eval_result.items()
+                    if name != "raw" and _ism_entry_position(name) in wanted_positions
+                ]
                 mutated_prediction = {
                     "count": len(mutated_entries),
                     "predictions": [

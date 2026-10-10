@@ -285,6 +285,85 @@ class TestIsmScanContracts:
         assert result["sequence_count"] == 2
         assert len(result["batch_results"]) == 2
 
+    async def test_positions_restrict_reported_entries(self, v12_server):
+        """WR-03: only entries at the requested positions are reported —
+        count and delta averages come from the filtered set, not the full
+        scan the engine performed."""
+        eval_result = {
+            "raw": {"sequence": "ATGC", "pred": np.array([0.1]), "score": 0.0},
+            "mut_0_A_T": {
+                "sequence": "TTGC",
+                "pred": np.array([0.2]),
+                "logfc": np.array([0.5]),
+                "diff": np.array([0.1]),
+                "score": 0.5,
+            },
+            "mut_1_T_A": {
+                "sequence": "AAGC",
+                "pred": np.array([0.3]),
+                "logfc": np.array([2.0]),
+                "diff": np.array([0.4]),
+                "score": 2.0,
+            },
+        }
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = eval_result
+            result = await v12_server._ism_scan(
+                model_name="test-model",
+                sequence="ATGC",
+                positions=[1],
+            )
+
+        assert not result.get("isError")
+        assert result["mutated_prediction"]["count"] == 1
+        assert result["mutated_prediction"]["predictions"][0]["sequence"] == "AAGC"
+        assert result["delta"] == {"average_logfc": 2.0, "average_diff": 0.4}
+        assert result["affected_positions"] == [1]
+
+    async def test_positions_filter_handles_deletion_entry_names(self, v12_server):
+        """WR-03: `del_{i}_{n}` entries filter by their position too, and
+        entries whose name carries no resolvable position are dropped."""
+        eval_result = {
+            "raw": {"sequence": "ATGC", "pred": np.array([0.1]), "score": 0.0},
+            "del_0_1": {
+                "sequence": "TGC",
+                "pred": np.array([0.2]),
+                "logfc": np.array([0.5]),
+                "diff": np.array([0.1]),
+                "score": 0.5,
+            },
+            "del_2_1": {
+                "sequence": "ATC",
+                "pred": np.array([0.3]),
+                "logfc": np.array([1.5]),
+                "diff": np.array([0.3]),
+                "score": 1.5,
+            },
+            "weird_entry": {
+                "sequence": "NNNN",
+                "pred": np.array([0.9]),
+                "logfc": np.array([9.0]),
+                "diff": np.array([9.0]),
+                "score": 9.0,
+            },
+        }
+        with patch("dnallm.mcp.server.Mutagenesis") as mock_mut_cls:
+            mock_mut = Mock()
+            mock_mut_cls.return_value = mock_mut
+            mock_mut.evaluate.return_value = eval_result
+            result = await v12_server._ism_scan(
+                model_name="test-model",
+                sequence="ATGC",
+                mutation_type="deletion",
+                positions=[2],
+            )
+
+        assert not result.get("isError")
+        assert result["mutated_prediction"]["count"] == 1
+        assert result["mutated_prediction"]["predictions"][0]["sequence"] == "ATC"
+
 
 class TestHotspotsContracts:
     """Per-tool JSON contracts for _hotspots."""
