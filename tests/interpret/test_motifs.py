@@ -177,6 +177,45 @@ class TestParseMeme:
         with pytest.raises(ValueError, match=r"incomplete MOTIF block"):
             parse_meme(text)
 
+    def test_parse_meme_rejects_background_letter_outside_acgt(self):
+        text = _minimal_meme_text().replace(
+            "MOTIF MA0001.1 TESTTF",
+            "Background letter frequencies\nN 0.25 A 0.25 C 0.25 G 0.25\nMOTIF MA0001.1 TESTTF",
+        )
+        with pytest.raises(ValueError, match=r"background letter 'N' is not in ACGT"):
+            parse_meme(text)
+
+    def test_parse_meme_rejects_non_numeric_background_frequency(self):
+        text = _minimal_meme_text().replace(
+            "MOTIF MA0001.1 TESTTF",
+            "Background letter frequencies\nA 0.25 C 0.25 G abc T 0.25\nMOTIF MA0001.1 TESTTF",
+        )
+        with pytest.raises(ValueError, match=r"background frequency 'abc' is not numeric"):
+            parse_meme(text)
+
+    def test_parse_meme_rejects_malformed_strands_line(self):
+        text = _minimal_meme_text().replace("strands: + -", "strands: * ?")
+        with pytest.raises(ValueError, match=r"malformed strands line"):
+            parse_meme(text)
+
+    def test_parse_meme_rejects_motif_line_without_id(self):
+        text = _minimal_meme_text().replace("MOTIF MA0001.1 TESTTF", "MOTIF")
+        with pytest.raises(ValueError, match=r"MOTIF line lacks an id"):
+            parse_meme(text)
+
+    def test_parse_meme_rejects_duplicate_matrix_header(self):
+        text = _minimal_meme_text().replace(
+            "MOTIF MA0001.1 TESTTF",
+            "MOTIF MA0001.1 TESTTF\nletter-probability matrix: alength= 4 w= 2 nsites= 10",
+        )
+        with pytest.raises(ValueError, match=r"duplicate letter-probability matrix"):
+            parse_meme(text)
+
+    def test_parse_meme_rejects_document_with_no_motif_blocks(self):
+        text = "MEME version 4\n\nALPHABET= ACGT\n"
+        with pytest.raises(ValueError, match=r"contains no MOTIF blocks"):
+            parse_meme(text)
+
     def test_parse_meme_rejects_matrix_without_motif_line(self):
         text = _minimal_meme_text().replace("MOTIF MA0001.1 TESTTF\n", "")
         with pytest.raises(ValueError, match=r"without a preceding MOTIF line"):
@@ -236,6 +275,10 @@ class TestPvalueTable:
         scores = [[0.0, 0.0, 0.0, 0.0]]
         with pytest.raises(ValueError, match=r"no score variation \(uniform PWM\)"):
             pvalue_table(scores, UNIFORM_BG)
+
+    def test_pvalue_table_empty_matrix_raises(self):
+        with pytest.raises(ValueError, match=r"Motif score matrix is empty"):
+            pvalue_table([], UNIFORM_BG)
 
     def test_pvalue_table_one_column_anchor(self):
         scores = log_odds_matrix([[1.0, 0.0, 0.0, 0.0]], nsites=1000, bg=UNIFORM_BG)
@@ -596,6 +639,17 @@ class TestParseCisbp:
         with pytest.raises(ValueError, match=r"CIS-BP table text is empty"):
             parse_cisbp("  \n")
 
+    def test_cisbp_metadata_only_table_raises_no_header(self):
+        text = "TF Name\tBCL11A\nMotif ID\tM1.02\n"
+        with pytest.raises(ValueError, match=r"no 'Pos A C G T' header"):
+            parse_cisbp(text)
+
+    def test_cisbp_tolerates_blank_lines_between_metadata_and_header(self):
+        text = "TF Name\tBCL11A\n\nMotif ID\tM1.02\n\nPos\tA\tC\tG\tT\n1\t0.25\t0.25\t0.25\t0.25\n"
+        motif = parse_cisbp(text)
+        assert motif.motif_id == "M1.02"
+        assert motif.name == "BCL11A"
+
     def test_cisbp_motif_scans_through_the_same_engine(self):
         # nsites == 0 selects the probability-form pseudocount branch; the
         # parsed CIS-BP motif flows through the identical scan path.
@@ -719,6 +773,13 @@ class TestJasparClientFetch:
         with patch("dnallm.interpret.motifs._JASPAR_OPENER", _FakeOpener([_FakeResponse(body)])):
             motif = parse_meme(fetch_meme_motif("MA2324.1"))[0]
         assert motif.motif_id == "MA2324.1"
+
+    def test_client_fetch_redirect_handler_refuses_redirects(self):
+        # T-12-02 mitigation: the opener never follows redirects to arbitrary
+        # hosts -- any 3xx that reaches the handler raises instead.
+        handler = motifs._NoRedirectHandler()
+        with pytest.raises(urllib.error.URLError, match=r"redirect .* refused"):
+            handler.redirect_request(None, None, 302, "Found", {}, "https://evil.example/")
 
 
 class TestJasparClientSearch:
