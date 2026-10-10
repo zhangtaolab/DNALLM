@@ -21,3 +21,25 @@
   mkdocs nav/strict validation, regenerate the marimo mirrors with absolute
   doc paths, or accept and switch the strict gate on after fixing the
   CONTRIBUTING link. Recorded here per the executor scope-boundary rule.
+
+## [Code review — Phase 12 IN-05] numpy 2.5.x cannot be instrumented by coverage on Python 3.13
+
+- **Found during:** Phase 12 code review (12-REVIEW.md, IN-05).
+- **Issue:** the `numpy>=1.26.0` floor in `pyproject.toml` is unbounded, and
+  a fresh non-matrix resolve pulls numpy 2.5.x; coverage 7.16.2 on Python
+  3.13 then fails EVERY `pytest --cov` invocation at conftest import with
+  `ImportError: cannot load module more than once per process` (numpy's
+  double-init guard), under all `COVERAGE_CORE` tracer settings. Reproduced
+  with coverage + numpy alone — no dnallm code involved. This also blocked
+  independent re-measurement of the phase's per-module coverage claims
+  during review (see the 12-REVIEW.md Summary honesty note).
+- **Why deferred:** environment observation, not a correctness defect in
+  this phase's diff. CI is protected by the explicit numpy matrix pins
+  (1.26.4 / 2.2.0 in `.github/workflows/ci.yml`); only local/ungated
+  resolves are exposed, and a dependency ceiling (`numpy<2.6` or similar) is
+  a dependency-policy call for the owner, not a review fix.
+- **Suggested owner action:** when the matrix retires the 1.26.4 leg, add an
+  explicit numpy ceiling co-located with the pyarrow cap comment in
+  `pyproject.toml`, or pin the dev venv; at minimum record the
+  incompatibility in a comment next to the numpy floor.
+
