@@ -826,3 +826,87 @@ class TestJasparLive:
         records = search_motifs("BCL11A")
         ids = {record["matrix_id"] for record in records}
         assert {"MA2324.1", "MA2504.1"} <= ids
+
+
+def _load_golden_fixture():
+    """Load the HBG1/BCL11A golden manifest, FASTA window(s), and MEME motif.
+
+    Dedicated fixture loader for TestGoldenHBG1BCL11A: reads manifest.yaml,
+    loads the declared FASTA through the house reader (vep._load_reference),
+    and parses the declared MEME file with the production parser. The loader
+    is drop-in agnostic -- it reads whatever the manifest points at, so the
+    owner-supplied files activate the paper-exact assertion with zero
+    harness changes.
+    """
+    import yaml
+
+    from dnallm.inference.vep import _load_reference
+
+    golden_dir = FIXTURES / "hbg1_bcl11a"
+    manifest = yaml.safe_load((golden_dir / "manifest.yaml").read_text(encoding="utf-8"))
+    fixture = manifest["fixture"]
+    windows = list(_load_reference(golden_dir / fixture["window_fasta"]).values())
+    parsed = parse_meme((golden_dir / fixture["motif_meme"]).read_text(encoding="utf-8"))
+    return manifest, windows, parsed
+
+
+class TestGoldenHBG1BCL11A:
+    """MOTIF-01 Fig 4a acceptance harness (owner-input-gated).
+
+    Acceptance: the HBG1/BCL11A motif hit coordinates match the paper's
+    Fig 4a annotation. The paper is under revision and not publicly indexed,
+    so the paper-exact window coordinates, motif ID, and JASPAR release are
+    PENDING OWNER INPUT -- recorded in manifest.yaml (pending: true) and
+    never guessed (Phase-12 research Pitfall 5). Until the input lands this
+    harness is proven end-to-end against the committed synthetic stand-in:
+    the loader, the scan entry, and the coordinate-comparison logic below
+    are exactly what the drop-in will drive. Activation is fixture-files-
+    only: swap the two fixture files, flip pending: false, and set the real
+    coordinates/tolerance -- ZERO harness code changes.
+    """
+
+    def test_golden_manifest_fixture_scan_matches_expected_hits(self):
+        manifest, windows, motif_list = _load_golden_fixture()
+        fixture = manifest["fixture"]
+        motif = next(m for m in motif_list if m.motif_id == fixture["motif_id"])
+        result = scan(windows, [motif])
+        tolerance = int(fixture["tolerance_bp"])
+        assert result.hits, "golden fixture scan must produce hits"
+        for expected in fixture["expected_hits"]:
+            matches = [
+                hit
+                for hit in result.hits
+                if hit["motif_id"] == expected["motif_id"]
+                and hit["strand"] == expected["strand"]
+                and abs(hit["start"] - int(expected["start"])) <= tolerance
+                and abs(hit["end"] - int(expected["end"])) <= tolerance
+            ]
+            assert matches, (
+                f"expected golden hit {expected} not found within {tolerance} bp; got {result.hits}"
+            )
+
+    def test_golden_harness_is_network_free(self):
+        # Committed files only: the loader path touches nothing outside the
+        # fixture directory (the fast lane never needs JASPAR).
+        manifest, windows, motif_list = _load_golden_fixture()
+        assert windows
+        assert motif_list
+        assert manifest["fixture"]["motif_id"] == motif_list[0].motif_id
+
+    def test_golden_manifest_records_pending_owner_inputs(self):
+        # The manifest must carry every pending owner input (Fig 4a window
+        # coordinates, motif ID, JASPAR release, tolerance policy) so the
+        # phase closeout can track them; state-independence keeps this test
+        # valid after the drop-in flips pending to false.
+        manifest, _windows, _motifs = _load_golden_fixture()
+        required = {
+            "fig4a_window_coordinates",
+            "motif_id",
+            "jaspar_release",
+            "coordinate_tolerance_policy",
+        }
+        assert required <= set(manifest["owner_inputs"])
+        assert isinstance(manifest["pending"], bool)
+        fixture = manifest["fixture"]
+        for key in ("window_fasta", "motif_meme", "expected_hits", "tolerance_bp"):
+            assert key in fixture, f"fixture block missing '{key}'"

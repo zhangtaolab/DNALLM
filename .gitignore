@@ -80,6 +80,10 @@ test_demo/
 *.zip
 *.tar
 *.tar.gz
+
+# Committed test fixtures are data BY EXCEPTION: tiny, hand-constructed,
+# network-free regression inputs (Phase-12 HBG1/BCL11A golden stand-in).
+!tests/interpret/fixtures/**/*.fasta
 *.pkl
 *.fxi
 *.csv
