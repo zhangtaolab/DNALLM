@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.2
 status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T14:41:50.557Z"
+last_updated: "2026-10-10T14:59:34.839Z"
 last_activity: 2026-10-10
 last_activity_desc: Milestone v1.2 completed and archived
-state_head: 4db85d0eb781d57bc81d9271321303b84c70d519
+state_head: 67953b63fa478de837c8a1a29bad0f1f24b2f818
 progress:
   total_phases: 3
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 Phase: Milestone v1.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-10 - Completed quick task 261010-uz0: fix window #14 Benchmark.run label-column resolution (+4 regression tests, WINDOWS id 14 closed)
+Last activity: 2026-10-10 - Completed quick task 261010-vo6: generate_dataset path-shaped strings raise descriptive ValueError instead of silent single-sequence fallback (+3 regression tests, census 05-06 root cause closed)
 
 ## Performance Metrics
 
@@ -71,6 +71,7 @@ None — milestone freshly planned.
 | 261010-s3k | Bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering; absorbs numpy>=2.0.0 breaking floor) | 2026-10-10 | 526d539 | [261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig](./quick/261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig/) |
 | 261010-sv2 | Raise requires-python floor to >=3.11 (3.10 EOL); ruff py311 + mypy 3.11 sync; dead 3.10 code removed; ci.yml dead branch triggers (phs/revision) cleaned | 2026-10-10 | e3a5e94 | [261010-sv2-raise-requires-python-floor-to-3-11-3-10](./quick/261010-sv2-raise-requires-python-floor-to-3-11-3-10/) |
 | 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError — honor label_column from dataset config instead of hardcoding 'labels' (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0-fix-window-14-benchmark-run-label-column](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
+| 261010-vo6 | Fix latent bug: DNAInference.generate_dataset silently treated non-file path strings as single sequences (path-shaped strings now raise descriptive ValueError; genuine sequences unchanged) | 2026-10-10 | 67953b6 | [261010-vo6-fix-latent-bug-dnainference-generate-dat](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
 
 ## Deferred Items
 
