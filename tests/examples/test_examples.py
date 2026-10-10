@@ -269,7 +269,16 @@ class TestNotebookExamples:
                 ):
                     skipped_optional.append(f"{stmt}: {e}")
                 else:
-                    failed.append(f"{stmt}: {e}")
+                    # Traceable root cause: exec() swallows the inner import
+                    # chain, so surface the module the failure was raised FROM.
+                    origin = getattr(e, "__traceback__", None)
+                    origin_frame = ""
+                    tb = origin
+                    while tb is not None and tb.tb_next is not None:
+                        tb = tb.tb_next
+                    if tb is not None:
+                        origin_frame = f" [raised in {tb.tb_frame.f_code.co_filename}:{tb.tb_lineno}]"
+                    failed.append(f"{stmt}: {e}{origin_frame}")
 
         if failed:
             pytest.fail(f"Failed imports in {nb_file.name}: {', '.join(failed[:3])}")
