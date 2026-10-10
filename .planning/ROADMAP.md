@@ -111,8 +111,8 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 12-01-motif-matching-fimo-scanner-PLAN.md — C1: MOTIF-01 — dnallm/interpret/motifs.py FIMO-convention scanner (exact-DP calibration per D-01/D-02, GC background, both strands, BH full-set per D-03), stdlib JASPAR client + CIS-BP local parse, owner-gated HBG1/BCL11A golden harness
-- [ ] 12-02-mcp-tools-host-port-fix-PLAN.md — C2: MCPE-01 — ism_scan/hotspots/zero_shot_score MCP tools (D-04/D-05/D-06, skip accounting verbatim) + the --host/--port CLI-precedence fix on both transports with flipped tests
+- [x] 12-01-motif-matching-fimo-scanner-PLAN.md — C1: MOTIF-01 — dnallm/interpret/motifs.py FIMO-convention scanner (exact-DP calibration per D-01/D-02, GC background, both strands, BH full-set per D-03), stdlib JASPAR client + CIS-BP local parse, owner-gated HBG1/BCL11A golden harness
+- [x] 12-02-mcp-tools-host-port-fix-PLAN.md — C2: MCPE-01 — ism_scan/hotspots/zero_shot_score MCP tools (D-04/D-05/D-06, skip accounting verbatim) + the --host/--port CLI-precedence fix on both transports with flipped tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 12-03-milestone-closeout-docs-changelog-PLAN.md — C3: DOCS-01 completion — IA³ chapter (D-08), measured coverage-expectation docs (D-07), CHANGELOG REV-01..11 SHA backfill, census verify
@@ -128,7 +128,7 @@ Phases execute in numeric order: 10 → 11 → 12
 |-------|-----------|----------------|--------|-----------|
 | 10. Evaluation Contract Layer & Shared Scaffolding | v1.2 | 4/4 | Complete    | 2026-10-09 |
 | 11. PEFT Adaptation, Baselines & New Evaluation Capabilities | v1.2 | 5/5 | Complete    | 2026-10-09 |
-| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 0/3 | In planning | - |
+| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 2/3 | In planning | - |
 
 ---
 
