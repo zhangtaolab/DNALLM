@@ -17,7 +17,7 @@ def _handle_omnidna_models(model_name: str, extra: str | None = None) -> str | N
     for m in omnidna_models:
         if m in model_name:
             try:
-                from olmo import version
+                from olmo import version  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 _ = version.VERSION
 

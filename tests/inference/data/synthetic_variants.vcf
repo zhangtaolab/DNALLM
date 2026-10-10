@@ -1,0 +1,20 @@
+##fileformat=VCFv4.2
+##contig=<ID=chrT,length=160>
+##INFO=<ID=CLNSIG,Number=.,Type=String,Description="ClinVar clinical significance">
+##INFO=<ID=CLNREVSTAT,Number=.,Type=String,Description="ClinVar review status">
+##INFO=<ID=CLNVC,Number=1,Type=String,Description="ClinVar variant type">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chrT	1	rsT1	A	G	.	.	CLNSIG=Pathogenic;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	6	rsT2	G	C	.	.	CLNSIG=Likely_pathogenic;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	49	rsT3	G	C	.	.	CLNSIG=Pathogenic;CLNREVSTAT=criteria_provided,_multiple_submitters,_no_conflicts;CLNVC=single_nucleotide_variant
+chrT	68	rsT4	G	C	.	.	CLNSIG=Likely_pathogenic;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	63	rsT5	A	C	.	.	CLNSIG=Benign;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	103	rsT6	T	A	.	.	CLNSIG=Benign;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	125	rsT7	C	T	.	.	CLNSIG=Likely_benign;CLNREVSTAT=criteria_provided,_multiple_submitters,_no_conflicts;CLNVC=single_nucleotide_variant
+chrT	160	rsT8	A	G	.	.	CLNSIG=Benign;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	119	rsT9	A	C,G,T,AT	.	.	CLNSIG=Benign;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	102	rsT10	AT	A	.	.	CLNSIG=Pathogenic;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	127	rsT11	ATG	A	.	.	CLNSIG=Benign;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=Deletion
+chrT	10	rsT12	G	A	.	.	CLNSIG=Uncertain_significance;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant
+chrT	13	rsT13	T	C	.	.	CLNSIG=Pathogenic;CLNREVSTAT=no_assertion_criteria_provided;CLNVC=single_nucleotide_variant
+chrT	69	rsT14	C	T	.	.	CLNSIG=Conflicting_classifications_of_pathogenicity;CLNREVSTAT=criteria_provided,_single_submitter;CLNVC=single_nucleotide_variant

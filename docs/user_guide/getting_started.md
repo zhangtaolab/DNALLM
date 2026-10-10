@@ -1,6 +1,6 @@
 # Getting Started with DNALLM
 
-Welcome to DNALLM! This guide will walk you through the initial setup and first steps with this powerful toolkit for DNA language models.
+Welcome to DNALLM! This guide will walk you through the initial setup and first steps with this powerful toolkit for DNA large language models.
 
 ## 1. Project Overview
 
@@ -9,7 +9,7 @@ DNALLM is an open-source toolkit designed for large language model (LLM) applica
 - **Model Training & Fine-tuning**: Supports a variety of DNA-related tasks, including classification, regression, and named entity recognition (NER).
 - **Inference & Benchmarking**: Enables efficient model inference, mutagenesis analysis, and multi-model benchmarking.
 - **Data Processing**: Includes tools for dataset generation, cleaning, formatting, and augmentation.
-- **Model Management**: Offers flexible loading of different DNA language models.
+- **Model Management**: Offers flexible loading of different DNA large language models.
 - **Extensibility**: Features a modular design for easy integration and secondary development.
 
 ## 2. Quick Start: Installation
@@ -18,7 +18,7 @@ Getting DNALLM installed is the first step. We recommend using `uv`, a fast Pyth
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - Git
 - A virtual environment manager like `venv` (built-in) or `conda`.
 

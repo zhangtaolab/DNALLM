@@ -1,9 +1,13 @@
 import os
 import json
-from typing import overload
+from typing import Any, overload
 
 import torch
 import torch.nn as nn
+
+from ..utils import get_logger
+
+logger = get_logger("dnallm.models.tokenizer")
 
 
 class DNAOneHotTokenizer:
@@ -247,3 +251,65 @@ class DNAOneHotTokenizer:
                 f"in {pretrained_model_name_or_path}. Using default init.",
             )
             return cls(**kwargs)
+
+
+def load_tokenizer_with_fallback(
+    model_name: str,
+    *,
+    auto_tokenizer_cls: Any = None,
+    trust_remote_code: bool = True,
+    add_prefix_space: bool = False,
+) -> Any:
+    """Load a tokenizer compatible with transformers 4.x/5.x.
+
+    transformers v5 faithfully rebuilds the slow tokenizer class named in
+    ``tokenizer_config.json`` (e.g. the Unigram-based ``DebertaV2Tokenizer``)
+    and crashes when ``tokenizer.json`` actually holds a BPE model; v4 mapped
+    the declared slow class straight to its fast counterpart and never hit
+    this. Fall back to ``PreTrainedTokenizerFast``, which loads the same
+    ``tokenizer.json`` file v4 loaded, then to ``DNAOneHotTokenizer``.
+
+    Capability probing only — no ``transformers.__version__`` checks.
+
+    Args:
+        model_name: Model name or local checkpoint directory.
+        auto_tokenizer_cls: Primary ``AutoTokenizer`` class to try first
+            (pass ``modules["AutoTokenizer"]`` to keep ModelScope loaders
+            working); transformers' ``AutoTokenizer`` when omitted.
+        trust_remote_code: Forwarded to every ``from_pretrained`` attempt.
+        add_prefix_space: Forwarded to every attempt (token-classification
+            tasks need it).
+
+    Returns:
+        The loaded tokenizer, or a ``DNAOneHotTokenizer`` if all attempts fail.
+    """
+    kwargs: dict[str, Any] = {"trust_remote_code": trust_remote_code}
+    if add_prefix_space:
+        kwargs["add_prefix_space"] = True
+
+    if auto_tokenizer_cls is not None:
+        try:
+            return auto_tokenizer_cls.from_pretrained(model_name, **kwargs)
+        except Exception as e:
+            logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
+    else:
+        try:
+            from transformers import AutoTokenizer  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+
+            return AutoTokenizer.from_pretrained(model_name, **kwargs)
+        except Exception as e:
+            logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
+
+    try:
+        from transformers import PreTrainedTokenizerFast  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+
+        tokenizer = PreTrainedTokenizerFast.from_pretrained(model_name, **kwargs)
+        logger.warning(
+            f"AutoTokenizer failed for {model_name}; loaded fast tokenizer from tokenizer.json."
+        )
+        return tokenizer
+    except Exception as e:
+        logger.debug(f"PreTrainedTokenizerFast also failed for {model_name}: {e!r}")
+
+    logger.warning(f"All tokenizer loading failed for {model_name}; using DNAOneHotTokenizer.")
+    return DNAOneHotTokenizer()

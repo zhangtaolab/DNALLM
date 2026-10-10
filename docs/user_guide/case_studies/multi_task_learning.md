@@ -33,19 +33,18 @@ GCGATATA...	label1,label2,label4
 ```
 
 **`multi_labels_config.yaml`:**
-In the configuration, you must define the `task_type` as `sequence_classification` and provide a `label_map` that includes all possible labels across all tasks.
+In the configuration, you must define the `task_type` as `multilabel` and provide a `label_names` list that includes all possible labels across all tasks.
 
 ```yaml
 # task configuration
 task:
-  task_type: "binary"
-  problem_type: "multi_label_classification" # Specify multi-label problem
+  task_type: "multilabel" # Multi-label classification
   num_labels: 4 # Total number of unique labels
-  label_map:
-    0: "label1"
-    1: "label2"
-    2: "label3"
-    3: "label4"
+  label_names: # All possible labels across all tasks
+    - "label1"
+    - "label2"
+    - "label3"
+    - "label4"
 
 # training configuration
 finetune:
@@ -53,14 +52,13 @@ finetune:
   num_train_epochs: 5
   per_device_train_batch_size: 16
   per_device_eval_batch_size: 16
-  warmup_steps: 100
+  warmup_ratio: 0.1
   weight_decay: 0.01
-  logging_dir: "./logs_multi_task"
   logging_steps: 20
-  evaluation_strategy: "epoch"
+  eval_strategy: "epoch"
   save_strategy: "epoch"
   load_best_model_at_end: True
-  metric_for_best_model: "f1_macro"
+  metric_for_best_model: "f1"
 ```
 
 ### Python Script
@@ -80,7 +78,7 @@ configs = load_config("./multi_labels_config.yaml")
 # We use Plant-DNAGPT as an example. Any sequence classification model can be used.
 model_name = "zhangtaolab/plant-dnagpt-BPE"
 
-# The `problem_type` in the config tells the model to handle multi-label outputs.
+# The `task_type: "multilabel"` in the config tells the model to handle multi-label outputs.
 model, tokenizer = load_model_and_tokenizer(
     model_name, task_config=configs["task"], source="modelscope"
 )
@@ -95,14 +93,13 @@ datasets = DNADataset.load_local_data(
     multi_label_sep=",",
     tokenizer=tokenizer,
     max_length=256,
-    config=configs,
 )
 
 # Tokenize the sequences
 datasets.encode_sequences()
 
 # Split the data into training, validation, and test sets
-datasets.split_data(train_size=0.8, test_size=0.1, validation_size=0.1)
+datasets.split_data(test_size=0.1, val_size=0.1)
 
 # --- 4. Fine-tune the Model ---
 # Initialize the trainer
@@ -126,7 +123,7 @@ print("Test Metrics:", test_metrics)
 During training, the model's loss will be a sum of the losses from all individual labels (typically Binary Cross-Entropy with Logits).
 
 After evaluation, the `test_metrics` dictionary will contain metrics that are averaged across all labels, such as:
--   **`test_f1_macro`**: The F1 score calculated independently for each label and then averaged. It treats all labels equally.
+-   **`test_f1`**: The F1 score calculated independently for each label and then averaged (macro average). It treats all labels equally.
 -   **`test_f1_micro`**: The F1 score calculated globally by counting the total true positives, false negatives, and false positives across all labels.
 -   **`test_accuracy`**: The subset accuracy, which is a strict metric that considers a prediction correct only if all labels for a given sequence are correctly predicted.
 
@@ -144,5 +141,5 @@ Additionally, the output might include per-label metrics, allowing you to see ho
     -   Verify that the tasks are actually related. Forcing a model to learn unrelated tasks can be detrimental.
     -   Consider grouping tasks. Instead of one model for all tasks, you could train one model for a subset of highly related tasks.
     -   Adjusting the learning rate or using a more sophisticated optimization scheme can sometimes help.
--   **Incorrect Label Preparation**: Ensure your `label_map` in the config file is complete and that the `multi_label_sep` character in `load_local_data` matches what is used in your data file. Any mismatch will lead to incorrect label parsing and poor model performance.
+-   **Incorrect Label Preparation**: Ensure your `label_names` in the config file is complete and that the `multi_label_sep` character in `load_local_data` matches what is used in your data file. Any mismatch will lead to incorrect label parsing and poor model performance.
 -   **`CUDA out of memory`**: As with other tasks, this can be resolved by reducing `per_device_train_batch_size` in the configuration file.

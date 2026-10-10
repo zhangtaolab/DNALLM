@@ -1,6 +1,6 @@
 # Troubleshooting Models
 
-This guide addresses common issues you might encounter when loading and using DNA language models with DNALLM.
+This guide addresses common issues you might encounter when loading and using DNA large language models with DNALLM.
 
 **Related Documents**:
 - [Model Selection Guide](./model_selection.md)
@@ -17,7 +17,7 @@ Some models require special packages that are not part of the base DNALLM instal
 - `ImportError: EVO-1 package is required...`
 - `ImportError: No module named 'mamba_ssm'`
 - `ImportError: No module named 'gpn'`
-- `ImportError: No module named 'ai2_olmo'`
+- `ImportError: ai2-olmo package is required...`
 - `ImportError: No module named 'fla'`
 
 **Solution**:
@@ -136,4 +136,4 @@ For a detailed guide, see the Performance Optimization tutorial.
 
 **Solution**:
 - **Verify `num_labels`**: Ensure `num_labels` in your YAML configuration correctly reflects the number of unique classes in your dataset.
-- **Check Label Encoding**: Make sure your labels are encoded as integers starting from 0 (i.e., `0, 1, 2, ...`). If your labels are strings or start from 1, they must be preprocessed correctly. The `DNADataset` class typically handles this if the `label_names` are provided.
+- **Check Label Encoding**: Make sure your labels are encoded as integers starting from 0 (i.e., `0, 1, 2, ...`). If your labels are strings or start from 1, they must be preprocessed to 0-based integers yourself — DNALLM does not encode string class labels automatically.

@@ -53,7 +53,11 @@ uv.lock
 .coverage.*
 coverage.xml
 .pytest_cache/
+pytest-junit.xml
 htmlcov/
+
+# One-off census/probe scripts (owner rule: never committed)
+.scratch/
 
 # Training outputs
 outputs/
@@ -76,6 +80,10 @@ test_demo/
 *.zip
 *.tar
 *.tar.gz
+
+# Committed test fixtures are data BY EXCEPTION: tiny, hand-constructed,
+# network-free regression inputs (Phase-12 HBG1/BCL11A golden stand-in).
+!tests/interpret/fixtures/**/*.fasta
 *.pkl
 *.fxi
 *.csv
@@ -104,8 +112,7 @@ dnallm/models/downloads/
 dnallm/data/cache/
 dnallm/ui/tmp/
 
-# Planning artifacts (dev branch only, never merged)
-.planning/
+# Claude local artifacts
 .claude/
 
 # Jupyter Notebook tmp files
@@ -130,13 +137,18 @@ results/
 
 .ruff_cache/
 
-test/inference/pdf/
-tests/inference/pdf/demo_attention_pdf.pdf
-tests/inference/pdf/demo_bars_pdf.pdf
-tests/inference/pdf/demo_curves_pdf.pdf
-tests/inference/pdf/demo_embeddings_pdf.pdf
-tests/inference/pdf/demo_scatter_pdf.pdf
-tests/inference/pdf/format_compatibility_test_pdf.pdf
+tests/inference/pdf/
 
 .cache
 __pycache__
+# graphify tool working output (derived, regenerable; .planning/graphs/ build artifacts also ignored below)
+graphify-out/
+
+# local runtime dirs (jupyter kernelspecs, GSD capability sync mirrors, remember plugin memory)
+.jupyter/
+.gsd/
+.remember/
+
+# graphify build artifacts (29MB regenerable graph JSON/snapshot) and GSD scratch notes
+.planning/graphs/
+.planning/tmp/

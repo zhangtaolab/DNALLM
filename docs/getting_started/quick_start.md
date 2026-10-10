@@ -1,10 +1,10 @@
 # Quick Start
 
-This guide will help you get started with DNALLM quickly. DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models.
+This guide will help you get started with DNALLM quickly. DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models.
 
 ## Prerequisites
 
-- Python 3.10 or higher (Python 3.12 recommended)
+- Python 3.11 or higher (Python 3.12 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:
@@ -116,7 +116,7 @@ source .venv/bin/activate
 uv pip install torch torch_npu
 ```
 
-Detailed installation method see [installation.md](./installation.md##Installation-Scenarios)
+Detailed installation method see [installation.md](./installation.md#installation-scenarios)
 
 
 ### Native Mamba Support
@@ -313,7 +313,7 @@ DNALLM supports the following task types:
 - **MULTICLASS**: Multi-class classification task that specifies which class the input belongs to (more than two)
 - **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
 - **REGRESSION**: Regression task which returns a continuous score
-- **NER**: Token classification task which is usually for Named Entity Recognition
+- **TOKEN**: Token classification task which is usually for Named Entity Recognition
 
 ## Next Steps
 
@@ -325,7 +325,7 @@ DNALLM supports the following task types:
 ## Need More Details?
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
-  - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `mcp`)
+  - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
   - Hardware-specific groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) — mutually exclusive
   - Installation scenarios for different use cases
   - Troubleshooting common issues

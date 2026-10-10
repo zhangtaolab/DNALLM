@@ -39,34 +39,31 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          uv pip install -e ".[test,dev,mcp]"
 
+      # Step failures fail the job: masked-outcome steps removed per WR-08.
+      # A failing docs check must surface, never post a false green.
       - name: Check docs/example/ sync
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           python scripts/check_docs_sync.py
 
       - name: Validate docs code snippets
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           python scripts/validate_docs_snippets.py
 
       - name: Validate YAML configs
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           python scripts/validate_yaml.py
 
       - name: Run example tests
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           pytest tests/examples/test_examples.py -v
 
       - name: Run YAML load tests
-        continue-on-error: true
         run: |
           source .venv/bin/activate
           pytest tests/configuration/test_yaml_load.py -v

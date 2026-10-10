@@ -4,11 +4,11 @@
   <img src="pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
-DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
@@ -19,7 +19,7 @@ DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning an
 
 ## 🧬 Supported Models
 
-DNALLM-Suite supports a wide range of DNA language models including:
+DNALLM-Suite supports a wide range of DNA large language models including:
 
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
@@ -83,7 +83,7 @@ uv pip install -e '.[all]'
 python -c "import dnallm; print('DNALLM installed successfully!')"
 ```
 
-For NPU support such as Huawei Ascend, see [installation](getting_started/installation.md#scenario-3-using-huawei-ascend-npu-for-training-and-inference) section.
+For NPU support such as Huawei Ascend, see [installation](getting_started/installation.md#scenario-5-using-huawei-ascend-npu-for-training-and-inference) section.
 
 
 2. **Basic Model Loading and Inference**
@@ -151,7 +151,7 @@ trainer.train()
 from dnallm.mcp import DNALLMMCPServer
 
 # Initialize MCP server
-server = DNALLMMCPServer("config/mcp_server_config.yaml")
+server = DNALLMMCPServer("dnallm/mcp/configs/mcp_server_config.yaml")
 await server.initialize()
 
 # Start server with SSE transport for real-time streaming
@@ -219,7 +219,7 @@ DNALLM-Suite supports the following task types:
 - **MULTICLASS**: Multi-class classification task that specifies which class the input belongs to (more than two)
 - **MULTILABEL**: Multi-label classification task with multiple binary labels per sample
 - **REGRESSION**: Regression task which returns a continuous score
-- **NER**: Token classification task which is usually for Named Entity Recognition
+- **TOKEN**: Token classification task which is usually for Named Entity Recognition
 
 ## 🏗️ Project Structure
 

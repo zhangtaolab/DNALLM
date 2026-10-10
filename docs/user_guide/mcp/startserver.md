@@ -6,7 +6,7 @@ This guide covers how to start the DNALLM MCP (Model Context Protocol) server, i
 
 Before starting the MCP server, ensure you have:
 
-- Python 3.8+ installed
+- Python 3.11+ installed
 - DNALLM package installed
 - Sufficient system resources (RAM, disk space)
 - Network access for model downloading (if using remote models)
@@ -93,9 +93,6 @@ sse:
   max_connections: 100
   connection_timeout: 300
   enable_compression: true
-  mount_path: "/mcp"
-  cors_origins: ["*"]
-  enable_heartbeat: true
 
 # Logging configuration
 logging:
@@ -105,6 +102,8 @@ logging:
   max_size: "10MB"
   backup_count: 5
 ```
+
+> Note: the shipped `dnallm/mcp/configs/mcp_server_config.yaml` also lists `mount_path`, `cors_origins`, and `enable_heartbeat` under `sse` — these keys are currently no-ops (not defined in `SSEConfig` and not consumed by the server), so they are omitted here.
 
 ### 2. Individual Model Configuration
 
@@ -268,7 +267,9 @@ dnallm-mcp-server [OPTIONS]
 
 Options:
   --config, -c PATH          Path to MCP server configuration file
-  --host TEXT                Host to bind the server to (default: 127.0.0.1)
+  --host TEXT                Host to bind HTTP/SSE transports to (when omitted:
+                             transport-specific YAML > server YAML > 127.0.0.1;
+                             pass --host 0.0.0.0 to bind all interfaces)
   --port INTEGER             Port to bind the server to (default: 8000)
   --transport [stdio|sse|streamable-http]  Transport protocol (default: stdio)
   --log-level [DEBUG|INFO|WARNING|ERROR|CRITICAL]  Logging level (default: INFO)
@@ -284,10 +285,10 @@ Options:
 # For SSE/HTTP transports
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}'
 
 # For STDIO transport
-echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}' | dnallm-mcp-server
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}' | dnallm-mcp-server
 ```
 
 ### 2. List Available Models
@@ -295,7 +296,7 @@ echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "he
 ```bash
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_loaded_models", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_list_loaded_models", "arguments": {}}}'
 ```
 
 ### 3. Test DNA Prediction
@@ -303,7 +304,7 @@ curl http://localhost:8000/mcp/messages/?session_id=test \
 ```bash
 curl http://localhost:8000/mcp/messages/?session_id=test \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
 ```
 
 ## Python Client Example

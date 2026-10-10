@@ -4,7 +4,7 @@ marimo: example/marimo/inference/inference_demo.py
 
 # Model inference
 
-This interactive demo shows how to run inference with pre-trained DNA language models using Marimo.
+This interactive demo shows how to run inference with pre-trained DNA large language models using Marimo.
 
 ## Full Demo
 

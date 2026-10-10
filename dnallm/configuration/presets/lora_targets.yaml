@@ -1,0 +1,533 @@
+# Per-family PEFT target-module presets (PEFT-02, REV-05).
+#
+# Resolution: when the lora:/ia3: config section carries target_modules=null,
+# DNATrainer matches the live model against this table (name markers against
+# the model's config._name_or_path first, then config.model_type), injects the
+# preset lists, and logs "[Info] ... preset '<family>' selected ...". A model
+# that matches no row raises a ValueError telling the user to set
+# target_modules explicitly — never a silent fallback to guessed defaults.
+#
+# Field semantics per family row:
+#   match_names          lowercase substrings matched against the load path /
+#                        repo id (longest marker wins across families)
+#   model_types          config.model_type values resolved to this row when no
+#                        name marker matches (first PRETRAIN_MODEL_MAPS family
+#                        of a shared model_type wins; shared rows carry
+#                        identical module lists by construction)
+#   lora_target_modules  LoRA targets (peft suffix matching)
+#   ia3_target_modules   IA3 targets (attention key/value + FFN projections)
+#   feedforward_modules  the FFN subset of ia3_target_modules (peft rescales
+#                        these on the output side; MUST be a subset)
+#   lora_r               recommended LoRA rank
+#   ia3_ratio_band       [lo, hi] trainable-parameter fraction expected after
+#   lora_ratio_band      get_peft_model, computed from requires_grad tensors;
+#                        the D-04 guard raises when outside the band
+#
+# Derivation provenance (D-01: module names taken from real model code, not
+# guessed; each row cites its source):
+#   [cached-remote]  read from the modeling/config code shipped in the local
+#                    HF/ModelScope snapshot cache this release was derived on
+#   [config-fetch]   model_type/architectures read from the hub config.json
+#                    (dev-time fetch, 2026-10-09)
+#   [arch-canonical] canonical module names of the verified architecture
+#                    class; run with finetune.peft_dry_run=true to confirm
+#                    against the live backbone before training
+#
+# Ratio-band anchors measured empirically on the cached acceptance models
+# (peft 0.21.1, task_type=SEQ_CLS, requires_grad tensor counts):
+#   plant-dnabert-BPE (BERT, 768d/12L, 92.2M total):
+#     IA3 [key, value, intermediate.dense]                29,186  -> 3.17e-4
+#     LoRA r=8 [query, value]                            296,450  -> 3.22e-3
+#   plant-dnamamba-BPE-open_chromatin (Mamba, 768d/24L, 96.7M total):
+#     IA3 [in_proj, out_proj, x_proj, dt_proj]            133,251  -> 1.38e-3
+#     LoRA r=8 [in_proj, x_proj, dt_proj]               1,353,987  -> 1.40e-2
+#     (out_proj excluded from LoRA: peft rejects it on model_type=mamba)
+#
+# IA3 sizing rule (peft/tuners/ia3/layer.py update_layer): feedforward
+# modules contribute in_features, attention modules out_features.
+
+families:
+  Plant DNABERT:
+    match_names: [plant-dnabert]
+    model_types: [bert]
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      cached-remote: BertForMaskedLM transformers-native module names;
+      band anchored on the measured plant-dnabert-BPE counts above.
+
+  Plant DNAGemma:
+    match_names: [plant-dnagemma]
+    model_types: [gemma]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=gemma (GemmaForCausalLM); gemma attention/MLP
+      projections per the transformers gemma module layout.
+
+  Plant DNAGPT:
+    match_names: [plant-dnagpt]
+    model_types: [gpt2]
+    lora_target_modules: [c_attn]
+    ia3_target_modules: [c_attn, c_fc, c_proj]
+    feedforward_modules: [c_fc, c_proj]
+    lora_r: 8
+    ia3_ratio_band: [1.5e-4, 5.0e-3]
+    lora_ratio_band: [3.0e-4, 3.0e-2]
+    derivation: >-
+      cached-remote: model_type=gpt2 (GPT2LMHeadModel); fused qkv Conv1D c_attn
+      plus MLP c_fc/c_proj per the transformers gpt2 layout.
+
+  Plant DNAMamba:
+    match_names: [plant-dnamamba, trnadetector]
+    model_types: [mamba, mamba2]
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 1.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      cached-remote: modeling_mamba.py in the plant-dnamamba-BPE-open_chromatin
+      snapshot defines in_proj/x_proj/dt_proj/out_proj Linears (SSM-PEFT
+      literature targets, confirmed against the real code); out_proj excluded
+      from LoRA because peft rejects it on model_type=mamba (verified live);
+      bands anchored on the measured plant-dnamamba counts above.
+
+  Plant NT:
+    match_names: [plant-nucleotide-transformer]
+    model_types: [esm]
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      cached-remote: modeling_esm.py query/key/value Linears and
+      EsmIntermediate/EsmOutput dense projections (NT-v2-50m snapshot).
+
+  Plant DNAModernBert:
+    match_names: [plant-dnamodernbert]
+    model_types: [modernbert]
+    lora_target_modules: [Wqkv]
+    ia3_target_modules: [Wqkv, W_in, W_gate]
+    feedforward_modules: [W_in, W_gate]
+    lora_r: 8
+    ia3_ratio_band: [2.0e-4, 5.0e-3]
+    lora_ratio_band: [3.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=modernbert (ModernBertForMaskedLM); fused
+      attention Wqkv/Wo and gated MLP W_in/W_gate/W_out per the transformers
+      modernbert layout.
+
+  AgroNT:
+    match_names: [agro-nucleotide-transformer]
+    model_types: [esm]
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      arch-canonical: EsmForMaskedLM layout (same as Nucleotide Transformer);
+      1b-scale models land at the low end of the bands.
+
+  Nucleotide Transformer:
+    match_names: [nucleotide-transformer]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      cached-remote: modeling_esm.py module names (NT-v2-50m snapshot); the
+      esm model_type fallback is owned by Plant NT / AgroNT rows with
+      identical module lists.
+
+  Caduceus-Ph:
+    match_names: [caduceus-ph]
+    model_types: [caduceus]
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      arch-canonical (BiMamba): Caduceus mixers wrap bidirectional Mamba
+      blocks (verified on the cached PlantCAD2 modeling code, which builds on
+      BiMambaWrapper/RCPSMambaBlock); out_proj excluded from LoRA for the same
+      mamba-block reason peft enforces on model_type=mamba.
+
+  Caduceus-PS:
+    match_names: [caduceus-ps]
+    model_types: []
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      arch-canonical (BiMamba): same RC-equivariant Mamba mixer layout as
+      Caduceus-Ph; the caduceus model_type fallback is owned by Caduceus-Ph.
+
+  PlantCaduceus:
+    match_names: [plantcaduceus_l]
+    model_types: []
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      arch-canonical (BiMamba): same kuleshov-group Caduceus mixer layout.
+
+  PlantCAD2:
+    match_names: [plantcad2]
+    model_types: []
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      cached-remote: PlantCAD2-Small-l24-d0768 snapshot modeling_caduceus.py
+      (BiMambaWrapper / CaduceusMixerModel) and modeling_rcps.py
+      (RCPSMambaBlock) — Mamba-block projections, not BERT attention.
+
+  DNABERT:
+    match_names: [dna_bert]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert (BertForMaskedLM); transformers BERT
+      module layout. The bert model_type fallback is owned by Plant DNABERT
+      with identical module lists.
+
+  DNABERT-2:
+    match_names: [dnabert-2]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: no model_type; auto_map bert_layers.BertModel — BERT-style
+      module names per the DNABERT-2 remote code lineage.
+
+  DNABERT-S:
+    match_names: [dnabert-s]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert (BertModel); transformers BERT module
+      layout.
+
+  EVO-1:
+    match_names: [evo-1]
+    model_types: [stripedhyena]
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj, projections]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 2.0e-2]
+    lora_ratio_band: [2.0e-4, 1.0e-1]
+    derivation: >-
+      cached-remote: togethercomputer/evo-1-131k-base snapshot — model.py:284
+      attention fused-qkv nn.Linear named "projections"; hyena/mamba mixing
+      blocks follow the stripedhyena package layout (in_proj/out_proj/x_proj/
+      dt_proj). Loaded via dnallm's evo special handler; run peft_dry_run to
+      confirm against the evo-package model.
+
+  EVO-2:
+    match_names: [evo2, evo_2]
+    model_types: []
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 2.0e-2]
+    lora_ratio_band: [2.0e-4, 1.0e-1]
+    derivation: >-
+      arch-canonical (stripedhyena 2.0): the stripy package's mixing and
+      attention blocks use mamba-style in_proj/out_proj/x_proj/dt_proj
+      projections; loaded via dnallm's evo2 special handler from
+      dnallm/configuration/evo/*.yml. Run peft_dry_run before training.
+
+  GENA-LM:
+    match_names: [gena-lm-bert]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert (BertForPretraining); transformers BERT
+      module layout.
+
+  GENA-LM-BigBird:
+    match_names: [gena-lm-bigbird, bigbird]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert with BigBirdForPreTraining architecture;
+      BigBird attention/FFN keep BERT-style query/key/value/intermediate.dense
+      module names.
+
+  GENERator:
+    match_names: [generator-]
+    model_types: [llama]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=llama (GENERatorForCausalLM); llama attention/
+      MLP projection names. The llama model_type fallback is shared with
+      OmniNA (identical module lists).
+
+  GenomeOcean:
+    match_names: [genomeocean]
+    model_types: [mistral]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=mistral (MistralForCausalLM); mistral
+      attention/MLP projection names.
+
+  GPN:
+    match_names: [gpn-]
+    model_types: [ConvNet]
+    lora_target_modules: [cls.decoder.0, cls.decoder.3]
+    ia3_target_modules: [cls.decoder.0, cls.decoder.3]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [1.0e-5, 1.0e-2]
+    lora_ratio_band: [1.0e-5, 1.0e-2]
+    derivation: >-
+      arch-canonical (gpn package src/gpn/ss/model.py, fetched from GitHub):
+      the ConvNet backbone is Conv1d-only (nn.Sequential of _ConvLayer, no
+      nn.Linear) — peft IA3/LoRA target Linear modules only, so the preset
+      targets the MLM head decoder Linears (cls.decoder.0 / cls.decoder.3).
+      Full fine-tuning is the recommended baseline for this family; run
+      peft_dry_run to confirm head wiring.
+
+  GROVER:
+    match_names: [grover]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert (BertForMaskedLM); transformers BERT
+      module layout.
+
+  HyenaDNA:
+    match_names: [hyenadna]
+    model_types: [hyenadna]
+    lora_target_modules: [in_proj, out_proj]
+    ia3_target_modules: [in_proj, out_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 2.0e-2]
+    lora_ratio_band: [2.0e-4, 1.0e-1]
+    derivation: >-
+      config-fetch: model_type=hyenadna (HyenaDNAForCausalLM, LongSafari -hf
+      ports); hyena mixer in_proj/out_proj projections per the hyenadna
+      remote layout. Wide bands — run peft_dry_run.
+
+  Jamba-DNA:
+    match_names: [jamba-dna]
+    model_types: [jamba]
+    lora_target_modules: [q_proj, v_proj, in_proj]
+    ia3_target_modules: [k_proj, v_proj, in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 2.0e-2]
+    lora_ratio_band: [2.0e-4, 1.0e-1]
+    derivation: >-
+      config-fetch: model_type=jamba (JambaForCausalLM); hybrid
+      attention+Mamba+MoE blocks — attention q/k/v projections plus mamba
+      block projections. Wide bands — run peft_dry_run.
+
+  JanusDNA:
+    match_names: [janusdna]
+    model_types: []
+    lora_target_modules: [q_proj, v_proj, in_proj]
+    ia3_target_modules: [k_proj, v_proj, in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 2.0e-2]
+    lora_ratio_band: [2.0e-4, 1.0e-1]
+    derivation: >-
+      arch-canonical (hybrid Mamba+attention, Qihao-Duan/JanusDNA remote
+      code): mamba-style block projections plus attention q/k/v. Wide bands —
+      run peft_dry_run.
+
+  LucaOne:
+    match_names: [lucaone]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      arch-canonical (lucagplm package gated attention): BERT-style
+      query/key/value and FFN dense projections. Wide bands — run
+      peft_dry_run.
+
+  megaDNA:
+    match_names: [megadna]
+    model_types: []
+    lora_target_modules: [c_attn]
+    ia3_target_modules: [c_attn, c_fc, c_proj]
+    feedforward_modules: [c_fc, c_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      arch-canonical (GPT-style): megaDNA loads a pickled GPT-like decoder
+      (dnallm special handler); c_attn/c_fc/c_proj are the GPT-2-style fused
+      attention and MLP projections. Run peft_dry_run to confirm.
+
+  Mistral-DNA:
+    match_names: [mistral-dna]
+    model_types: [mixtral]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 3.0e-3]
+    lora_ratio_band: [2.0e-4, 2.0e-2]
+    derivation: >-
+      config-fetch: model_type=mixtral (MixtralForCausalLM); attention-only
+      targets — the MoE expert w1/w2/w3 Linears are deliberately excluded
+      (per-expert vectors multiply module count; add them explicitly if
+      wanted).
+
+  ModernBert-DNA:
+    match_names: [modernbert-dna]
+    model_types: []
+    lora_target_modules: [Wqkv]
+    ia3_target_modules: [Wqkv, W_in, W_gate]
+    feedforward_modules: [W_in, W_gate]
+    lora_r: 8
+    ia3_ratio_band: [2.0e-4, 5.0e-3]
+    lora_ratio_band: [3.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=modernbert (ModernBertForMaskedLM); fused
+      attention Wqkv and gated MLP W_in/W_gate/W_out. The modernbert
+      model_type fallback is owned by Plant DNAModernBert (identical lists).
+
+  MutBERT:
+    match_names: [mutbert]
+    model_types: []
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=bert (RoPEBert remote lineage keeps BERT-style
+      attention/FFN module names).
+
+  OmniNA:
+    match_names: [omnina]
+    model_types: []
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=llama (LlamaForCausalLM); llama projection
+      names.
+
+  Omni-DNA:
+    match_names: [omni-dna]
+    model_types: [olmo-gfm]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=olmo-gfm (OLMoModelForCausalLM remote); OLMo
+      keeps llama-style q/k/v and gate/up/down projections. Run peft_dry_run
+      to confirm the -gfm remote layout.
+
+  plant-genomic-jamba:
+    match_names: [plant-genomic-jamba, genomic-jamba]
+    model_types: []
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      arch-canonical (StripedMambaForMaskedLM remote, suzuki-2001/
+      genomic-jamba): striped-Mamba mixing blocks with mamba-style
+      projections. Run peft_dry_run to confirm.
+
+  ProkBERT:
+    match_names: [prokbert]
+    model_types: [prokbert]
+    lora_target_modules: [query, value]
+    ia3_target_modules: [key, value, intermediate.dense]
+    feedforward_modules: [intermediate.dense]
+    lora_r: 8
+    ia3_ratio_band: [1.0e-4, 5.0e-3]
+    lora_ratio_band: [5.0e-4, 3.0e-2]
+    derivation: >-
+      config-fetch: model_type=prokbert (ProkBertForMaskedLM remote,
+      MegatronBERT lineage); Megatron-BERT keeps BERT-style attention/FFN
+      module names.

@@ -23,9 +23,9 @@ Model Context Protocol (MCP) is an open standard promoted by Anthropic, specific
 
 ## Why Does DNALLM Integrate MCP?
 
-### 1. Solving DNA Language Model Integration Challenges
+### 1. Solving DNA Large Language Model Integration Challenges
 
-Traditional DNA language models typically exist as standalone scripts or Jupyter Notebooks, lacking standardized service interfaces:
+Traditional DNA large language models typically exist as standalone scripts or Jupyter Notebooks, lacking standardized service interfaces:
 
 - **Integration Difficulties**: Hard to integrate with other tools and systems
 - **Inconsistent Interfaces**: Each model has its own calling method
@@ -140,33 +140,39 @@ MCP enables AI assistants to:
 ### Core Components
 
 1. **MCP Server**: Server implementation based on FastMCP framework
-2. **Model Manager**: Manages loading and calling of multiple DNA language models
+2. **Model Manager**: Manages loading and calling of multiple DNA large language models
 3. **Config Manager**: Handles server and model configuration
 4. **Transport Layer**: Supports multiple transport protocols (STDIO, SSE, HTTP)
 
 ### Available Tools
 
 **Basic Prediction Tools**:
-- `dna_sequence_predict`: Single sequence prediction
-- `dna_batch_predict`: Batch sequence prediction
-- `dna_multi_model_predict`: Multi-model prediction
+- `_dna_sequence_predict`: Single sequence prediction (requires `model_name`)
+- `_dna_batch_predict`: Batch sequence prediction
+- `_dna_multi_model_predict`: Multi-model prediction
 
 **Streaming Prediction Tools**:
-- `dna_stream_predict`: Single sequence streaming prediction
-- `dna_stream_batch_predict`: Batch streaming prediction
-- `dna_stream_multi_model_predict`: Multi-model streaming prediction
+- `_dna_stream_predict`: Single sequence streaming prediction
+- `_dna_stream_batch_predict`: Batch streaming prediction
+- `_dna_stream_multi_model_predict`: Multi-model streaming prediction
 
 **Model Management Tools**:
-- `list_loaded_models`: List loaded models
-- `get_model_info`: Get detailed model information
-- `health_check`: Server health check
+- `_list_loaded_models`: List loaded models
+- `_get_model_info`: Get detailed model information
+- `_list_models_by_task_type`: List available models filtered by task type
+- `_get_all_available_models`: List models enabled in the server configuration
+- `_health_check`: Server health check
+
+**Analysis Tools**:
+- `_dna_mutagenesis`: In silico mutagenesis analysis
+- `_dna_interpret`: Model interpretation via attribution methods
 
 ### Client Access Points
 
 The DNALLM MCP Server provides different access points depending on the transport protocol:
 
 #### Default Configuration
-- **Host**: `0.0.0.0` (listens on all interfaces)
+- **Host**: `127.0.0.1` (CLI `--host` > transport-specific YAML > server YAML > `127.0.0.1`; pass `--host 0.0.0.0` to bind all interfaces)
 - **Port**: `8000`
 - **Base URL**: `http://localhost:8000`
 
@@ -186,8 +192,6 @@ The DNALLM MCP Server provides different access points depending on the transpor
 - **Main Endpoint**: `http://localhost:8000/mcp`
 - **Available Endpoints**:
   - `http://localhost:8000/mcp` - Main MCP protocol endpoint
-  - `http://localhost:8000/mcp/tools` - Tool listing endpoint
-  - `http://localhost:8000/mcp/messages` - MCP message handling endpoint
 - **Usage**: REST API integrations and HTTP-based clients
 
 ## Use Cases
@@ -220,8 +224,8 @@ const response = await fetch('/mcp/messages/', {
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      name: "dna_sequence_predict",
-      arguments: { sequence: "ATCGATCGATCG" }
+      name: "_dna_sequence_predict",
+      arguments: { sequence: "ATCGATCGATCG", model_name: "promoter_model" }
     }
   })
 });
@@ -230,14 +234,14 @@ const response = await fetch('/mcp/messages/', {
 #### Using Streamable HTTP Transport
 ```javascript
 // Direct HTTP API calls
-const response = await fetch('http://localhost:8000/mcp/messages', {
+const response = await fetch('http://localhost:8000/mcp', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      name: "dna_sequence_predict",
+      name: "_dna_sequence_predict",
       arguments: {
         sequence: "ATCGATCGATCG",
         model_name: "promoter_model"
@@ -260,7 +264,7 @@ async def predict_dna_sequence(sequence):
     async with ClientSession("http://localhost:8000/sse") as session:
         await session.initialize()
         result = await session.call_tool(
-            "dna_sequence_predict",
+            "_dna_sequence_predict",
             {"sequence": sequence, "model_name": "promoter_model"},
         )
         return result

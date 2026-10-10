@@ -26,16 +26,15 @@ Create a configuration file that specifies the generation parameters.
 ```yaml
 # task configuration
 task:
-  task_type: "sequence_generation"
+  task_type: "generation"
 
 # inference configuration
 inference:
-  per_device_eval_batch_size: 1
+  batch_size: 1
   output_dir: "./outputs_generation"
-  generation_max_length: 400
-  temperature: 1.0
-  top_k: 50
 ```
+
+Generation parameters are not config fields: the number of tokens to generate (`n_tokens`), `temperature`, and `top_k` are arguments to `DNAInference.generate()` and are set directly in the script below.
 
 ### Python Script
 
@@ -65,7 +64,7 @@ inference_engine = DNAInference(model=model, tokenizer=tokenizer, config=configs
 # A special token like "@" can be used to start generation from scratch.
 prompts = ["@", "ATG"]
 print(f"Generating sequences from prompts: {prompts}")
-generated_output = inference_engine.generate(prompts)
+generated_output = inference_engine.generate(prompts, n_tokens=400, temperature=1.0, top_k=50)
 
 print("\n--- Generated Sequences ---")
 for seq in generated_output:
@@ -94,7 +93,7 @@ The script will produce two sets of outputs:
 
 ## 4. Tuning Strategies
 
--   **`generation_max_length`**: Controls the length of the generated sequences. Adjust this based on your application's needs.
+-   **`n_tokens`**: Controls the length of the generated sequences (an argument to `DNAInference.generate()`, default 400). Adjust this based on your application's needs.
 -   **`temperature`**: This parameter controls the randomness of the generation. A higher temperature (e.g., 1.0) produces more diverse and creative outputs, while a lower temperature (e.g., 0.7) makes the output more deterministic and focused.
 -   **`top_k`**: This parameter limits the sampling pool to the `k` most likely next tokens. It can prevent the model from picking highly improbable tokens, leading to more coherent sequences.
 -   **Prompt Engineering**: The starting prompt can significantly influence the generated sequence. Experiment with different prompts, including biologically meaningful ones, to guide the generation process.
@@ -102,6 +101,6 @@ The script will produce two sets of outputs:
 ## 5. Troubleshooting
 
 -   **Dependency Issues**: Generative models like Evo and Mamba may have specific dependencies (e.g., `flash-attn`, `causal-conv1d`). Ensure you have installed all required packages for the chosen model. The installation process may involve compilation, which can take time.
--   **`CUDA out of memory`**: Sequence generation can be memory-intensive, especially with long sequences. If you encounter this error, try reducing `per_device_eval_batch_size` or `generation_max_length`.
+-   **`CUDA out of memory`**: Sequence generation can be memory-intensive, especially with long sequences. If you encounter this error, try reducing the `batch_size` setting in the `inference` config section or the `n_tokens` argument to `generate()`.
 -   **Low-Quality Generations**: If the generated sequences are repetitive or nonsensical, try adjusting the `temperature` and `top_k` parameters. A very high temperature can lead to randomness, while a very low temperature can cause repetition.
 -   **Slow Inference**: Generation is an auto-regressive process and can be slow. For large-scale generation, ensure you are using a GPU. The model's size and the sequence length will be the primary factors affecting speed.

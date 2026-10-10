@@ -1,6 +1,6 @@
 # Tokenization in Genomics
 
-Before a DNA language model can process a sequence, the raw string of nucleotides (`"GATTACA..."`) must be converted into a series of numerical inputs. This process is called **tokenization**. A tokenizer breaks down the sequence into smaller units called **tokens** and then maps each token to a unique integer ID.
+Before a DNA large language model can process a sequence, the raw string of nucleotides (`"GATTACA..."`) must be converted into a series of numerical inputs. This process is called **tokenization**. A tokenizer breaks down the sequence into smaller units called **tokens** and then maps each token to a unique integer ID.
 
 ## 1. What is a Tokenizer?
 
@@ -45,7 +45,7 @@ DNALLM supports models that use various tokenization strategies. Here are the mo
     - **Manages Vocabulary Size**: Balances sequence length and vocabulary size effectively.
 - **Cons**:
     - **Less Interpretable**: The learned tokens may not always correspond to known biological motifs.
-- **DNALLM Models**: Many modern models, including `Plant DNAGPT`, `Plant DNABERT-BPE`, and `Nucleotide Transformer`, use BPE.
+- **DNALLM Models**: Many modern models, including `Plant DNAGPT`, `Plant DNABERT-BPE`, and `Plant NT`, use BPE. (The InstaDeep `Nucleotide Transformer` instead uses a fixed 6-mer vocabulary — see k-mer tokenization above.)
 
 ## 3. Why Tokenization Matters
 

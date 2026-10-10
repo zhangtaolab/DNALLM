@@ -1,8 +1,9 @@
-"""Tests for DNA Language Model Evaluation Metrics Module.
+"""Tests for DNA Large Language Model Evaluation Metrics Module.
 
-This module tests the comprehensive evaluation metrics for DNA language models
-across various task types including classification, regression, and token
-classification.
+This module tests the comprehensive evaluation metrics for DNA large language
+models across various task types including classification, regression, and
+token classification, plus the registry emission contract (METR-01): every
+compute path emits canonical metric-registry names only.
 """
 
 import numpy as np
@@ -10,6 +11,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from scipy.special import softmax
 
+import dnallm.tasks.metrics as metrics_module
 from dnallm.tasks.metrics import (
     calculate_metric_with_sklearn,
     classification_metrics,
@@ -19,7 +21,9 @@ from dnallm.tasks.metrics import (
     token_classification_metrics,
     preprocess_logits_for_metrics,
     compute_metrics,
+    metrics_for_dnabert2,
 )
+from dnallm.tasks.metric_registry import METRIC_REGISTRY, registered_names
 from dnallm.configuration.configs import TaskConfig
 
 
@@ -33,8 +37,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0, 1])
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert "f1" in metrics
@@ -54,8 +57,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0])
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -69,8 +71,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, 0, 1, 0])  # Flattened labels for 3D logits
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -81,8 +82,7 @@ class TestCalculateMetricWithSklearn:
         labels = np.array([1, -100, 1])  # -100 is padding
         eval_pred = (logits, labels)
 
-        with patch("builtins.print"):  # Mock print to avoid output
-            metrics = calculate_metric_with_sklearn(eval_pred)
+        metrics = calculate_metric_with_sklearn(eval_pred)
 
         assert "accuracy" in metrics
         assert isinstance(metrics["accuracy"], (int, float))
@@ -293,9 +293,36 @@ class TestMultiClassificationMetrics:
 
     def test_multi_classification_metrics_with_plot(self):
         """Test multi-class classification metrics with plotting data."""
-        # Skip this test as multi-class plotting with AUROC is complex
-        # and requires proper multi-class AUROC implementation
-        pytest.skip("Multi-class plotting with AUROC requires complex implementation")
+        label_list = ["label1", "label2", "label3"]
+        compute_func = multi_classification_metrics(label_list, plot=True)
+
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])  # every class present
+
+        metrics = compute_func((logits, labels))
+
+        assert "curve" in metrics
+        assert set(metrics["curve"]) == {"fpr", "tpr", "precision", "recall"}
+
+    def test_multi_classification_metrics_missing_class_raises(self):
+        """A batch lacking a class must fail honestly, not return nan metrics."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.8, 0.1, 0.1]])
+        labels = np.array([0, 1, 0])  # class 2 absent
+
+        with pytest.raises(ValueError, match=r"missing class id\(s\)"):
+            compute_func((logits, labels))
+
+    def test_multi_classification_metrics_unexpected_class_id_raises(self):
+        """An out-of-range label id must be named in the error, not masked as missing."""
+        compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+
+        logits = np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.05, 0.1, 0.85]])
+        labels = np.array([0, 1, 5])  # id 5 is outside the 3-class label list
+
+        with pytest.raises(ValueError, match=r"unexpected id\(s\) \[5\]"):
+            compute_func((logits, labels))
 
 
 class TestMultiLabelsMetrics:
@@ -746,9 +773,9 @@ class TestMetricsIntegration:
         ("binary", 2, ["negative", "positive"]),
         (
             "multiclass",
-            2,
-            ["A", "B"],
-        ),  # Fix: Use 2 classes to avoid AUROC issues
+            3,
+            ["A", "B", "C"],
+        ),  # 3 classes: sklearn's macro-ovr path needs >2 unique target values
         ("multilabel", 2, ["label1", "label2"]),
         ("regression", 1, None),
         ("token", 3, ["O", "B-GENE", "I-GENE"]),
@@ -756,10 +783,6 @@ class TestMetricsIntegration:
 )
 def test_compute_metrics_task_types(task_type, num_labels, label_names):
     """Test compute_metrics with different task types."""
-    # Skip multiclass test due to AUROC implementation issues
-    if task_type == "multiclass":
-        pytest.skip("Multiclass AUROC implementation has issues")
-
     task_config = TaskConfig(task_type=task_type, num_labels=num_labels, label_names=label_names)
 
     compute_func = compute_metrics(task_config)
@@ -780,12 +803,10 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         ])
         labels = np.array([[0, 1], [1, 2]])
     elif task_type == "multiclass":
-        # Fix: Use binary classification for multiclass to
-        # avoid AUROC issues
-        # The actual multiclass implementation has AUROC issues,
-        # so we test with binary
-        logits = np.array([[0.1, 0.9], [0.8, 0.2]])
-        labels = np.array([1, 0])
+        # 3 classes, 3 samples: every class id must appear in labels
+        # (macro-ovr AUROC requires all classes present in the batch)
+        logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+        labels = np.array([1, 0, 2])
     else:
         logits = np.array([[0.1, 0.9], [0.8, 0.2]])
         labels = np.array([1, 0])
@@ -828,3 +849,360 @@ def test_compute_metrics_task_types(task_type, num_labels, label_names):
         # All metrics functions should return a dictionary
         assert isinstance(metrics, dict)
         assert len(metrics) > 0
+
+
+class TestRegressionEdgeBranches:
+    """Edge branches of regression_metrics left open after FIX-01."""
+
+    def test_macro_correlations_skip_constant_target_columns(self):
+        """Constant target columns are skipped in the pearson/spearman macros.
+
+        Column 1 of the labels is constant (std 0), so both macro aggregators
+        must compute over column 0 only — hand-computed expectations:
+        pearson from np.corrcoef, spearman ranks give exactly -0.5.
+        """
+        compute_metrics_fn = regression_metrics()
+        labels = np.array([[1.0, 5.0], [2.0, 5.0], [3.0, 5.0]])
+        logits = np.array([[2.0, 0.4], [3.5, 0.6], [1.0, 0.8]])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        expected_pearson = float(np.corrcoef(labels[:, 0], logits[:, 0])[0, 1])
+        assert metrics["pearsonr"] == pytest.approx(expected_pearson)
+        assert metrics["spearmanr"] == pytest.approx(-0.5)  # ranks 1,2,3 vs 2,3,1
+
+    def test_single_output_plot_accepts_tensor_logits(self):
+        """The plot branch handles torch tensors via their .numpy() bridge."""
+        import torch
+
+        compute_metrics_fn = regression_metrics(plot=True)
+        logits = torch.tensor([[1.5], [2.3]])
+        labels = np.array([1.4, 2.1])
+
+        metrics = compute_metrics_fn((logits, labels))
+
+        assert metrics["mse"] == pytest.approx(((1.5 - 1.4) ** 2 + (2.3 - 2.1) ** 2) / 2)
+        assert metrics["mae"] == pytest.approx((0.1 + 0.2) / 2)
+        assert np.allclose(metrics["scatter"]["predicted"], [1.5, 2.3])
+        assert np.allclose(metrics["scatter"]["experiment"], [1.4, 2.1])
+
+
+class TestMetricsForDnabert2Arms:
+    """The real metrics_for_dnabert2 task arms (network-free via patched evaluate)."""
+
+    def test_regression_arm_returns_r2_dict_and_spearmanr(self):
+        """task='regression' computes r2 as the whole metric dict plus spearmanr."""
+
+        def fake_load(path, *args, **kwargs):
+            metric = Mock()
+            if "r_squared" in path:
+                metric.compute.return_value = {"r2": 0.8}
+            elif "spearmanr" in path:
+                metric.compute.return_value = {"spearmanr": 0.9}
+            return metric
+
+        with patch("evaluate.load", side_effect=fake_load):
+            compute_fn, preprocess = metrics_for_dnabert2("regression")
+            result = compute_fn((np.array([[1.5], [2.3]]), np.array([1.4, 2.1])))
+
+        assert result == {"r2": {"r2": 0.8}, "spearmanr": 0.9}
+        assert preprocess is preprocess_logits_for_metrics
+
+    def test_classification_arm_uses_torch_argmax_predictions(self):
+        """task='classification' combines sklearn metrics on argmax predictions."""
+        clf_metrics = Mock()
+        clf_metrics.compute.return_value = {
+            "accuracy": 1.0,
+            "f1": 1.0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "matthews_correlation": 1.0,
+        }
+        with (
+            patch("evaluate.load", return_value=Mock()),
+            patch("evaluate.combine", return_value=clf_metrics),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("classification")
+            logits = (np.array([[0.9, 0.1], [0.2, 0.8], [0.7, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == clf_metrics.compute.return_value
+        call_kwargs = clf_metrics.compute.call_args.kwargs
+        assert call_kwargs["predictions"].tolist() == [0, 1, 0]
+        assert np.array_equal(call_kwargs["references"], labels)
+
+    def test_generic_arm_merges_micro_metrics_and_both_auroc_modes(self):
+        """Any other task label takes the micro-precision/recall/f1 + ovr/ovo AUROC path."""
+        precision = Mock()
+        precision.compute.return_value = {"precision": 0.7}
+        recall = Mock()
+        recall.compute.return_value = {"recall": 0.6}
+        f1 = Mock()
+        f1.compute.return_value = {"f1": 0.65}
+        mcc = Mock()
+        mcc.compute.return_value = {"matthews_correlation": 0.5}
+        roc = Mock()
+        roc.compute.side_effect = lambda **kwargs: {
+            "roc_auc": 0.7 if kwargs["multi_class"] == "ovr" else 0.8
+        }
+
+        def fake_load(path, *args, **kwargs):
+            by_name = {
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "matthews_correlation": mcc,
+                "roc_auc": roc,
+            }
+            return next((m for n, m in by_name.items() if n in path), Mock())
+
+        with (
+            patch("evaluate.load", side_effect=fake_load),
+            patch("evaluate.combine", return_value=Mock()),
+        ):
+            compute_fn, _ = metrics_for_dnabert2("multiclass")
+            logits = (np.array([[2.0, 0.1], [0.2, 3.0], [1.5, 0.3]]),)
+            labels = np.array([0, 1, 0])
+            result = compute_fn((logits, labels))
+
+        assert result == {
+            "precision": 0.7,
+            "recall": 0.6,
+            "f1": 0.65,
+            "matthews_correlation": 0.5,
+            "AUROC_ovr": 0.7,
+            "AUROC_ovo": 0.8,
+        }
+        # pred_list comes from argmax(softmax(logits)) == argmax(logits).
+        assert precision.compute.call_args.kwargs["predictions"] == [0, 1, 0]
+        assert precision.compute.call_args.kwargs["average"] == "micro"
+        assert mcc.compute.call_args.kwargs["predictions"] == [0, 1, 0]
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Registry emission contract (METR-01): every compute path in
+# dnallm/tasks/metrics.py emits exclusively canonical registry names —
+# never an alias, never an unregistered spelling.
+# ──────────────────────────────────────────────────────────────────────
+
+
+def _emission_binary():
+    compute_func = classification_metrics()
+    logits = np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]])
+    labels = np.array([1, 0, 1])
+    return compute_func((logits, labels))
+
+
+def _emission_binary_plot():
+    compute_func = classification_metrics(plot=True)
+    logits = np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]])
+    labels = np.array([1, 0, 1])
+    return compute_func((logits, labels))
+
+
+def _emission_multiclass():
+    compute_func = multi_classification_metrics(["label1", "label2", "label3"])
+    logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+    labels = np.array([1, 0, 2])  # every class id present
+    return compute_func((logits, labels))
+
+
+def _emission_multiclass_plot():
+    compute_func = multi_classification_metrics(["label1", "label2", "label3"], plot=True)
+    logits = np.array([[0.1, 0.7, 0.2], [0.8, 0.1, 0.1], [0.2, 0.3, 0.5]])
+    labels = np.array([1, 0, 2])
+    return compute_func((logits, labels))
+
+
+def _emission_multilabel():
+    compute_func = multi_labels_metrics(["label1", "label2", "label3"])
+    logits = np.array([[0.1, 0.8, 0.3], [0.9, 0.2, 0.7], [0.4, 0.5, 0.6]])
+    labels = np.array([[0, 1, 0], [1, 0, 1], [0, 0, 1]])
+    return compute_func((logits, labels))
+
+
+def _emission_regression_single_output():
+    compute_func = regression_metrics()
+    logits = np.array([[1.5], [2.3], [0.8]])
+    labels = np.array([1.4, 2.1, 0.9])
+    return compute_func((logits, labels))
+
+
+def _emission_regression_single_output_plot():
+    compute_func = regression_metrics(plot=True)
+    logits = np.array([[1.5], [2.3], [0.8]])
+    labels = np.array([1.4, 2.1, 0.9])
+    return compute_func((logits, labels))
+
+
+def _emission_regression_multi_output():
+    compute_func = regression_metrics()
+    logits = np.array([[1.5, 2.1], [2.3, 1.8], [0.8, 1.2]])
+    labels = np.array([[1.4, 2.0], [2.1, 1.9], [0.9, 1.1]])
+    return compute_func((logits, labels))
+
+
+def _emission_token():
+    compute_func = token_classification_metrics(["O", "B-GENE", "I-GENE"])
+    logits = np.array([
+        [
+            [0.8, 0.1, 0.1],
+            [0.1, 0.8, 0.1],
+            [0.1, 0.1, 0.8],
+            [0.8, 0.1, 0.1],
+        ],
+        [
+            [0.1, 0.8, 0.1],
+            [0.1, 0.1, 0.8],
+            [0.1, 0.1, 0.8],
+            [0.8, 0.1, 0.1],
+        ],
+    ])
+    labels = np.array([[0, 1, 2, -100], [1, 2, 2, -100]])  # -100 padding
+
+    with patch("evaluate.load") as mock_load:
+        mock_seqeval = Mock()
+        mock_seqeval.compute.return_value = {
+            "overall_accuracy": 0.8,
+            "overall_precision": 0.75,
+            "overall_recall": 0.7,
+            "overall_f1": 0.72,
+        }
+        mock_load.return_value = mock_seqeval
+        return compute_func((logits, labels))
+
+
+def _emission_calculate_metric_with_sklearn():
+    logits = np.array([[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]])
+    labels = np.array([1, 0, 1])
+
+    return calculate_metric_with_sklearn((logits, labels))
+
+
+def _emission_dnabert2_regression():
+    def fake_load(path, *args, **kwargs):
+        metric = Mock()
+        if "r_squared" in path:
+            metric.compute.return_value = {"r2": 0.8}
+        elif "spearmanr" in path:
+            metric.compute.return_value = {"spearmanr": 0.9}
+        return metric
+
+    with patch("evaluate.load", side_effect=fake_load):
+        compute_fn, _ = metrics_for_dnabert2("regression")
+        return compute_fn((np.array([[1.5], [2.3]]), np.array([1.4, 2.1])))
+
+
+def _emission_dnabert2_classification():
+    clf_metrics = Mock()
+    clf_metrics.compute.return_value = {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matthews_correlation": 1.0,
+    }
+    with (
+        patch("evaluate.load", return_value=Mock()),
+        patch("evaluate.combine", return_value=clf_metrics),
+    ):
+        compute_fn, _ = metrics_for_dnabert2("classification")
+        logits = (np.array([[0.9, 0.1], [0.2, 0.8], [0.7, 0.3]]),)
+        labels = np.array([0, 1, 0])
+        return compute_fn((logits, labels))
+
+
+def _emission_dnabert2_generic():
+    precision = Mock()
+    precision.compute.return_value = {"precision": 0.7}
+    recall = Mock()
+    recall.compute.return_value = {"recall": 0.6}
+    f1 = Mock()
+    f1.compute.return_value = {"f1": 0.65}
+    mcc = Mock()
+    mcc.compute.return_value = {"matthews_correlation": 0.5}
+    roc = Mock()
+    roc.compute.side_effect = lambda **kwargs: {
+        "roc_auc": 0.7 if kwargs["multi_class"] == "ovr" else 0.8
+    }
+
+    def fake_load(path, *args, **kwargs):
+        by_name = {
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "matthews_correlation": mcc,
+            "roc_auc": roc,
+        }
+        return next((m for n, m in by_name.items() if n in path), Mock())
+
+    with (
+        patch("evaluate.load", side_effect=fake_load),
+        patch("evaluate.combine", return_value=Mock()),
+    ):
+        compute_fn, _ = metrics_for_dnabert2("multiclass")
+        logits = (np.array([[2.0, 0.1], [0.2, 3.0], [1.5, 0.3]]),)
+        labels = np.array([0, 1, 0])
+        return compute_fn((logits, labels))
+
+
+EMISSION_CASES = [
+    _emission_binary,
+    _emission_binary_plot,
+    _emission_multiclass,
+    _emission_multiclass_plot,
+    _emission_multilabel,
+    _emission_regression_single_output,
+    _emission_regression_single_output_plot,
+    _emission_regression_multi_output,
+    _emission_token,
+    _emission_calculate_metric_with_sklearn,
+    _emission_dnabert2_regression,
+    _emission_dnabert2_classification,
+    _emission_dnabert2_generic,
+]
+EMISSION_CASE_IDS = [case.__name__.replace("_emission_", "") for case in EMISSION_CASES]
+
+_PAYLOAD_WHITELIST = {"curve", "scatter"}
+
+_ALL_REGISTRY_ALIASES = frozenset(
+    alias for _, aliases in METRIC_REGISTRY.values() for alias in aliases
+)
+
+
+class TestRegistryEmissionContract:
+    """Every metrics compute path emits canonical registry names only."""
+
+    @pytest.mark.parametrize("case", EMISSION_CASES, ids=EMISSION_CASE_IDS)
+    def test_emitted_keys_are_canonical_registry_names(self, case):
+        """(a) Every emitted key is a registered canonical name or payload key."""
+        metrics = case()
+        allowed = set(registered_names()) | _PAYLOAD_WHITELIST
+        assert set(metrics) <= allowed
+
+    @pytest.mark.parametrize("case", EMISSION_CASES, ids=EMISSION_CASE_IDS)
+    def test_no_alias_is_ever_emitted(self, case):
+        """(b) No emitted key is a registry alias (one-directional contract)."""
+        metrics = case()
+        assert not set(metrics) & _ALL_REGISTRY_ALIASES
+
+    def test_emission_gate_fires_on_unregistered_key(self, monkeypatch):
+        """(c) Negative probe: a bogus key injected at the real call site raises.
+
+        The injector wraps the module-level ``validate_emission`` reference
+        used by ``_emit`` — if the emission wiring were removed, no exception
+        would fire and this test would fail.
+        """
+        real_validate = metrics_module.validate_emission
+
+        def injecting_validate(keys):
+            return real_validate([*keys, "bogus_metric"])
+
+        monkeypatch.setattr(metrics_module, "validate_emission", injecting_validate)
+        compute_func = classification_metrics()
+        logits = np.array([[0.1, 0.9], [0.8, 0.2]])
+        labels = np.array([1, 0])
+
+        with pytest.raises(ValueError, match="bogus_metric"):
+            compute_func((logits, labels))

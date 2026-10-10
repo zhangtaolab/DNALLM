@@ -149,9 +149,9 @@ def get_positional_embed(seq_len, feature_size, device, use_tf_gamma, dtype=torc
     for fn in feature_functions:
         embeddings.append(fn(distances, num_basis_per_class, seq_len, dtype=dtype))
 
-    concatenated = torch.cat(embeddings, dim=-1)  # type: ignore
+    concatenated = torch.cat(embeddings, dim=-1)
     concatenated = torch.cat((concatenated, torch.sign(distances)[..., None] * embeddings), dim=-1)  # type: ignore
-    return concatenated.to(dtype)  # type: ignore
+    return concatenated.to(dtype)
 
 
 def relative_shift(x):

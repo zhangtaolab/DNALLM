@@ -5,6 +5,116 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking**: the `requires-python` floor is raised from `>=3.10` to `>=3.11` (Python 3.10 reaches end-of-life 2026-10-31). Users on Python 3.10 should stay on 1.2.1.
+
+## [1.2.1] - 2026-10-10
+
+### Overview
+
+This release carries the numpy `>=2.0.0` support floor and the `pyarrow` cap removal (numpy 1.x retired 2026-10-10; the CI matrix now runs numpy 2.2.0 only). The product version now follows milestone-aligned 1.2.x numbering — the jump from 0.8.0 is deliberate versioning alignment, not 400 minor versions of code.
+
+### Changed
+
+- **Breaking**: numpy support floor raised from `>=1.26.0` to `>=2.0.0` (numpy 1.x retired 2026-10-10; the CI matrix now runs numpy 2.2.0 only) and the `pyarrow>=15,<26` cap removed — its documented retirement condition (the numpy 1.26.4 CI matrix leg) is met. Environments on numpy 1.x must stay on the 0.8.x series.
+
+## [0.8.0] - 2026-10-10
+
+### Overview
+
+Paper revision suite release: the eleven reviewer-requested capabilities (REV-01..REV-11) land on the hardened 0.7.x base — evaluation-semantics leak guard, shared metric registry, IA³ + per-model PEFT presets, from-scratch baselines, frozen-embedding probing, zero-shot VEP from VCF, multi-seed sweeps, FIMO-convention motif scanning, and three new MCP analysis tools with the `--host/--port` precedence fix. Milestone v1.2: 11/11 requirements, 3/3 phases verified (2 owner-accepted overrides: VEP magnitude at small scale, HBG1/BCL11A golden-fixture deferral tracked in issue #44), 0 audit blockers; fast lane 2404 passed / 0 failed, coverage 96.72% against the unchanged `fail_under=90` gate, full CI matrix green.
+
+### Added
+
+- Metric registry contract at `dnallm.tasks.metric_registry`: a single {canonical: (fn, aliases)} registry with resolve()/canonical_name(); `dnallm.tasks.metrics` now emits exclusively canonical registry names, historical aliases (eval_auroc, eval_spearman_r, ...) are recognized but never emitted (REV-02, R1-2d) ([58bbf41](https://github.com/zhangtaolab/DNALLM/commit/58bbf41e59b9a48834f4e6c28f760f277d53b3ae))
+- Multi-seed sweep protocol at `dnallm.finetune.sweep`: `run_seeds` drives one fully-seeded run per seed under the `{out_root}/{model}/{task}/seed_{s}/` protocol with same-split seed semantics (the split is fixed once by the caller; the sweep seed threads init/shuffle only), and the pure `aggregate_seeds` reports mean/sd with an n-guarded ci95 — Student-t for 3-9 seeds, null below 3, seeded percentile bootstrap from 10 seeds — written per metric into a `statistics.json` block (REV-09, R1-2a) ([3a719a7](https://github.com/zhangtaolab/DNALLM/commit/3a719a79493c5c8831231b5ecd98bea51991246f))
+- Frozen-embedding probing at `dnallm.inference.probing`: `extract_embeddings` reads any hidden-state layer (default last) with mean/cls pooling over the frozen model's `output_hidden_states` path and caches float32 npz entries under `output_dir/probe_cache/` keyed by (model, dataset, layer, pooling) with sanitized-hash filenames and atomic writes; `fit_probe(kind="logistic"|"mlp")` uses fixed module-constant hyperparameters (no YAML surface) with a train-split-only StandardScaler, and emits registry-canonical AUROC/AUPRC/accuracy on the documented F4 output row {model, dataset, layer, pooling, kind, metrics, n_train, n_test, cache_hit} (REV-07, R2-2) ([2b6f55e](https://github.com/zhangtaolab/DNALLM/commit/2b6f55e565f3bc64d5060351d8ffa95e20c517fb))
+- From-scratch baseline loading at `dnallm.models.model`: `load_model_and_tokenizer(..., random_init=True)` builds genuinely randomly initialized models via `AutoConfig.from_pretrained` + `Auto*.from_config` (only config.json and tokenizer files are fetched — the weight-download path is never invoked), with CPU-canonical `random_init_seed` reproducibility, a loud "randomly initialized" banner plus a per-tensor sha256 parameter-hash table logged at INFO as the no-pretrained-weights proof, and the `RANDOM_INIT_SUPPORTED_FAMILIES` special-family allowlist raising a matchable `ValueError` off-list (REV-06, R2-5) ([295a970](https://github.com/zhangtaolab/DNALLM/commit/295a970ac26f8b7bb68af9094afa11dafdbd7a76))
+- Zero-shot variant effect prediction from VCF at `dnallm.inference.vep` + `dnallm.cli.vep`: `evaluate_vcf` parses ClinVar-style VCFs through scikit-allel (the milestone's only sanctioned dependency addition) with deliberately sized `alt_number>=4`, D-17 convention filtering (SNV-only CLNVC, P/LP-vs-B/LB CLNSIG whitelist, >=1 review-star floor; exclusions counted per bucket, never mixed into the skip channel), always-uppercased reference windows, and registry AUROC/AUPRC over the deleteriousness score -delta; `score_variant` scores single variants under either paradigm (CLM delta-log-likelihood, MLM log-odds) with the paradigm-architecture mismatch guard raising before scoring; the `dnallm-vep` CLI mirrors the mutagenesis precedent; the README protocol section declares the formulas, the same-slot rule, and the convention block; two-tier ClinVar tests ship a committed synthetic fixture (fast lane, network-free) plus the 1k-sample x 5-model slow acceptance with typed `clinvar-unavailable:` network skips (REV-08, R2-3/R1-3e-1) ([25862b4](https://github.com/zhangtaolab/DNALLM/commit/25862b4eac3bf2e23211c3502db49a48476ee0df))
+- IA³ adapter support symmetric to LoRA: `finetune.use_ia3=true` drives a real `DNATrainer` branch injecting IA³ vectors via `peft.get_peft_model` (the Phase-10 interim warn is demolished), `Ia3Config` reaches peft-0.21.1 field parity (exclude_modules, fan_in_fan_out, task_type), the incompatible combinations are rejected early with matchable dnallm errors (`use_ia3` x `use_qlora` at Pydantic time, LoRA x IA³ at trainer init), and the shared adapter reload path (`DNAInference(lora_adapter=...)` -> `PeftModel.from_pretrained`) is adapter-kind-agnostic; slow-lane acceptance covers one transformer + one Mamba fine-tune and an IA³-specific save/reload roundtrip asserting output identity (REV-04, R2-2) ([d4e9b68](https://github.com/zhangtaolab/DNALLM/commit/d4e9b6847d65ea589cdacb3ecf824ab652b7f1a5))
+- Per-family PEFT target-module presets at `dnallm/configuration/presets/lora_targets.yaml` covering every `PRETRAIN_MODEL_MAPS` family: `target_modules=null` auto-selects via the packaged table (longest name-marker match, then `config.model_type`) with a log line naming the preset, an unknown backbone fails loud telling the user to set `target_modules` explicitly, `finetune.peft_dry_run=true` validates the final target list against the live model's module names and exits before training (zero matches raises), and a post-attach trainable-ratio guard computed from requires_grad tensors enforces each preset's measured band — the mamba silent-skip trap is closed by three independent countermeasures; `out_proj` is excluded from Mamba LoRA rows because peft rejects it on model_type=mamba (REV-05, R2-2) ([d4e9b68](https://github.com/zhangtaolab/DNALLM/commit/d4e9b6847d65ea589cdacb3ecf824ab652b7f1a5))
+- MCP analysis tools at `dnallm/mcp/server.py`: `ism_scan` (bounded in silico mutagenesis mirroring the dna_mutagenesis surface, tool-boundary caps of 2000 bases/100 positions with error dicts stating them), `hotspots` (windows computed from model x coordinates via vep._load_reference + Mutagenesis ISM + find_hotspots over a per-call fasta_path — never a precomputed-window file), and `zero_shot_score` (dual-mode D-04: inline {chrom,pos,ref,alt} variants materialized to a fixed-sanitized-name temp VCF under tempfile — no path ever derived from record fields, security-tested — or a server-side size-capped .vcf/.vcf.gz, both modes routing through the one `vep.evaluate_vcf` kernel so skip_counts/skipped/skip_fraction/convention surface verbatim; inline rows carry pass-through CLNSIG=not_analyzed sentinels so the kernel's D-17 gates admit label-less variants with metrics None by construction; clnsig_filter parameter maps to ClinVarFilter for non-ClinVar VCF opt-out); all three registered through `_with_timeout_wrapper`, errors as dicts never raises across the protocol boundary, torch work off the event loop under the ModelManager flight lock with a proven event-loop-liveness test; same change fixes the v1.1-audit deferred `--host/--port` silently-overridden-by-YAML bug on BOTH sse and streamable-http (sentinel resolution in one place: CLI-explicit > transport-specific YAML > server YAML > documented default, previously the server block unconditionally overrode the flags and the streamable-http block then always overrode those), unifying the documented default to 127.0.0.1:8000 (the argparse default was 0.0.0.0 — pass `--host 0.0.0.0` explicitly to bind all interfaces), with the two precedence-codifying tests flipped and the CLI/yaml/default matrix proven on both transports (REV-11, MCPE-01) ([0a4c7f5](https://github.com/zhangtaolab/DNALLM/commit/0a4c7f5b4005d853339c48c9dbf32143b2e080b8))
+- FIMO-convention motif scanning at `dnallm.interpret.motifs`: strict parse-or-reject MEME/CIS-BP PWM parsing (CIS-BP is local-table input — it has no REST API), exact-DP p-value calibration transcribed from MEME 4.8.1 (PSSM_RANGE=100 integer scaling, 0.1 x background pseudocount, zero-order GC-matched background counted from the target windows — JASPAR's embedded uniform background line parsed-and-ignored), both-strand scanning via reverse complement with palindromic hits reported on both strands and never deduplicated, p<1e-4 threshold plus BH q<0.05 over the FULL window x motif test set through one `scipy.stats.false_discovery_control` call, E = p x tested positions; the stdlib JASPAR REST client on the canonical jaspar.elixir.no host (parameterized base URL with https-only validation and redirects disabled, retry-with-backoff house pattern, size-capped reads, `MA####.#` id validation before URL construction, release-pinned CORE searches) with live tests behind typed `jaspar-unreachable:` skips; the HBG1/BCL11A golden-test harness ships synthetic-verified with a pending-input manifest (paper Fig 4a coordinates, motif ID, JASPAR release) — the drop-in is fixture-files-only once owner input lands (REV-10, R1-3d) ([bd165d8](https://github.com/zhangtaolab/DNALLM/commit/bd165d8a2cdd48ab5c4c5add6505803688c22486))
+
+### Changed
+
+- Evaluation semantics: the trainer no longer silently evaluates on the test split when no dev split exists; evaluation is disabled with a loud warning unless `finetune.allow_test_as_eval: true` is set, and the new `DNATrainer.evaluate(split=...)` evaluates any split through the predict path writing a result JSON (REV-01, R1-2c) ([dae194a](https://github.com/zhangtaolab/DNALLM/commit/dae194ae112701c8d51a5a5e1a0c1f9c9ecf9791))
+- Docs: terminology unified to "DNA large language models" across the documentation, README, and API docstrings; `validate_sequences` now documents the cross-model `valid_chars` comparability hazard and logs a dropped-row count; new LoRA/QLoRA/IA³ usage chapter (REV-03, Ed-2/Ed-6/R1-3c) ([36d0c74](https://github.com/zhangtaolab/DNALLM/commit/36d0c747ee136a7ff3871630974804964e86ce62))
+
+## [0.7.1] - 2026-10-08
+
+### Overview
+
+Patch release recording the stabilization that landed on `dev` immediately after 0.7.0 — CI first-exposure fixes, a verifier-driven docs accuracy repair, and a tooling refresh. No API changes.
+
+### Fixed
+
+- Windows installs failing on `pybigwig` — `pygenometracks` gated behind a non-Windows platform marker in the notebook extra
+- transformers >= 5.19 device-type query crashing the import chain on CUDA-built torch without a visible GPU — compat shim answering both observed signatures (torch >= 2.6 `RuntimeError` and torch <= 2.5 `AttributeError`)
+- OS-native test assertions replacing Unix-only fd//proc assumptions
+- CI ruff-format gate tripping on over-long fenced Python blocks in 3 docs pages — reformatted
+- docs: 49-page verifier-driven accuracy repair retiring the stale `VERIFICATION_REPORT` snapshot
+
+### Changed
+
+- ruff dev dependency 0.16.9 → 0.16.10 (dependabot)
+
+## [0.7.0] - 2026-10-07
+
+### Overview
+
+Example execution release: every artifact under `example/` now executes for real on the nightly GPU runner — 21 notebooks, 3 marimo apps, the helper script, every YAML config through real `load_config()` — with every surfaced error fixed by a same-change regression test. The PlantHelixSeek showcase notebooks reproduce frozen truth-agreement metrics over committed Arabidopsis loci, and the execution-test layer is formally nightly-gated. Milestone v1.1: 32/32 requirements, 5/5 phases verified, 0 audit blockers.
+
+### Added
+
+- Tests: private nbclient execution harness (tmp-sandbox cwd isolation, kernel-kill proof, partial-failure artifacts) executing the entire example tree — final census 196 passed / 1 benign skip / 0 failed on the nightly GPU runner
+- CI: example-nightly job — staged-serial execution, hard census collection gate (197/206 pinned), >=35GiB hygiene floors between stages, `if: always()` artifact uploads, measured runtime budgets
+- CI: `models.lock` grown to 24 revision-pinned rows with a fast-leg consistency guard proven by drift injection; `giants` marker deselects evo-class notebooks from the scheduled census
+- Models: `PlantHelixSeek-CRE`/`-Anno` registry entries (frozen label order, generic route); `dnallm.utils.genomic_coords` coordinate/chrom-name normalization helpers (6 functions, 100% statement coverage)
+- Data: committed <=200kb Arabidopsis showcase loci with truth slices, negative controls, and a frozen selection contract (floors + tolerance bands parsed by the tests at startup)
+- Docs: executed showcase notebooks written back byte-identically into the docs mirror; coverage-expectation page documenting that example execution runs in kernel subprocesses and does not move the coverage gate
+
+### Fixed
+
+- `DNATokenizer` unknown-character crash in the megaDNA handler (library fix, RED-proven regression test)
+- numpy 2.x `np.fromstring` binary-mode regression via a probe-gated shim (`dnallm.utils.transformers_compat`)
+- transformers >= 5.19 device-type query crashing the import chain on CUDA-built torch without a visible GPU — both observed signatures (torch >= 2.6 `RuntimeError`, torch <= 2.5 missing `torch.accelerator` `AttributeError`) answered honestly via compat shim
+- Windows installs failing on `pybigwig` (no Windows wheel): `pygenometracks` gated behind a non-Windows platform marker in the notebook extra
+- Both v1 false-green CI gates closed together with the docs-mirror drift they hid; docs-validation now a required check on dev and main
+- MCP server: single-flight concurrent-inference deadlock (fork-unsafe filelock) and the `dna_interpret` mamba-model crash (captum backward SIGKILLs the server)
+
+## [0.6.0] - 2026-10-01
+
+### Overview
+
+Quality-engineering release: the pytest suite was audited end to end, test gaps closed, and line coverage driven from 45.92% to 96.30% behind a CI-enforced >90% hard gate. Every test result and coverage number from this repo is now trustworthy and cannot silently regress.
+
+### Added
+
+- CI: `fail_under = 90` coverage hard gate enforced through the pytest exit code — red-proven end-to-end via a synthetic-drop probe PR (all tests green, only the floor red)
+- CI: two-job gated coverage pipeline — `coverage-gate` fast PR leg (push/PR) + `coverage-nightly` slow full-suite census on a self-hosted GPU runner with `models.lock`-keyed HF model cache; required-check branch protection on `dev` and `main`
+- CI: `test-mamba` job moved to the self-hosted GPU runner on nightly cadence (schedule/workflow-dispatch only) with a 180-minute timeout backstop — it now actually executes instead of no-op skipping on GPU-less hosted runners
+- CI: windows-latest fast-test leg (py3.12)
+- Tests: ~1,000 new behavior-verifying tests (suite grew 464 → 1,657), coverage 45.92% → 96.30% on the agreed denominator (vendored code excluded)
+- Tests: typed network skips with an expected-skip allowlist (`tests/expected_skips.yaml`) and a fail-closed skip audit (`scripts/audit_skips.py`) wired into 4 CI jobs — an unexpected skip fails the run instead of passing silently
+
+### Fixed
+
+- Test harness: removed the root `conftest.py` exit-code mask that made every failing run exit 0 — cleanup now propagates status via `pytest_sessionfinish`, with a permanent CI canary proving failing runs fail the job
+- Test harness: removed `tests/pytest.ini` so both test roots (`tests/` and `dnallm/mcp/tests/`) are collected under the single `pyproject.toml` pytest config
+- `compute_metrics` multiclass AUROC crash on absent-class batches — presence guard plus `labels=expected_classes` anchoring
+- CrossDNA handler result was overwritten in the `load_model_and_tokenizer` dispatch chain — guarded first-resolved-wins chain with a sentinel regression test
+- Five latent crashes in `inference/plot.py` / `inference/benchmark.py` (multilabel curve scalars, dict annotations, entropy shape, pydantic `Benchmark` init, `StratifiedKFold` labels)
+- MCP server `_format_multi_model_results` misclassified every successful dict prediction as a failure
+- PDF-generating tests now write artifacts under `tmp_path` (working tree stays clean); fixed `.gitignore` pdf-path typo
+
+### Known Issues
+
+Latent bugs discovered by the audit, pinned by tests, deferred to the next cycle: `raw_reverse_complement` is a no-op (`datahandling/data.py:983`); `cosine_similarity` loss raises TypeError (`models/model.py:264`); generate-from-DataLoader returns an empty list (`inference/inference.py:1643`); mutagenesis `max` strategy raises AttributeError (`inference/mutagenesis.py:429`).
+
 ## [0.5.2] - 2026-05-15
 
 ### Fixed

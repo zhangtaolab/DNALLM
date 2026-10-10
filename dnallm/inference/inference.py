@@ -1,4 +1,4 @@
-"""DNA Language Model Inference Module.
+"""DNA Large Language Model Inference Module.
 
 This module implements core model inference functionality, including:
 
@@ -36,6 +36,7 @@ Example:
 import os
 import warnings
 import json
+from collections.abc import Mapping
 from typing import Any
 from pathlib import Path
 from tqdm import tqdm
@@ -55,12 +56,51 @@ logger = get_logger("dnallm.inference.inference")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+# Mirrors the file types DNADataset._load_single_data dispatches on
+# (dnallm/datahandling/data.py) minus "dict" (a literal-dict input, not a
+# file extension). Must stay in sync with that dispatch.
+_DATA_FILE_EXTENSIONS: frozenset[str] = frozenset({
+    "csv",
+    "tsv",
+    "json",
+    "parquet",
+    "arrow",
+    "pkl",
+    "pickle",
+    "fa",
+    "fna",
+    "fas",
+    "fasta",
+    "txt",
+})
+
+
+def _is_path_like_string(value: str) -> bool:
+    """Check whether a string looks like a file path rather than a sequence.
+
+    A value is path-like when it contains a path separator (``/`` or ``\\``)
+    or carries a known data-file extension. Separator presence is a sufficient
+    signal because the IUPAC nucleic alphabet (ACGTURYSWKMBDHVN plus the gap
+    ``-``) contains neither character.
+
+    Args:
+        value: Candidate string to classify.
+
+    Returns:
+        True if the string should be treated as a file path, False if it
+        should be treated as a sequence.
+    """
+    if "/" in value or "\\" in value:
+        return True
+    suffix = os.path.splitext(value)[1]
+    return suffix.lstrip(".").lower() in _DATA_FILE_EXTENSIONS
+
 
 class DNAInference:
     """DNA sequence inference engine using fine-tuned models.
 
     This class provides comprehensive functionality for performing inference
-    using DNA language models. It handles model loading, inference, result
+    using DNA large language models. It handles model loading, inference, result
     processing, and various output formats including hidden states and
     attention weights for model interpretability.
 
@@ -79,7 +119,7 @@ class DNAInference:
         self,
         model: Any,
         tokenizer: Any,
-        config: dict,
+        config: Mapping[str, Any],
         lora_adapter: str | None = None,
         **kwargs,
     ) -> None:
@@ -118,7 +158,7 @@ class DNAInference:
             try:
                 lora_adapter_path, _ = _get_model_path_and_imports(lora_adapter, source)
             except Exception as e:
-                raise ValueError(f"Failed to load LoRA adapter from {lora_adapter}: {e}") from e
+                raise ValueError(f"Failed to load PEFT adapter from {lora_adapter}: {e}") from e
 
             if model is not None:
                 self.accepted_args = self._get_accepted_forward_args(model)
@@ -127,7 +167,7 @@ class DNAInference:
 
             model = peft_forward_compatiable(model)
             self.model = PeftModel.from_pretrained(model, lora_adapter_path)
-            logger.info(f"Loaded LoRA adapter from {lora_adapter}")
+            logger.info(f"Loaded PEFT adapter from {lora_adapter}")
         else:
             self.model = model
             if model is not None:
@@ -430,14 +470,21 @@ class DNAInference:
                 - DataLoader: DataLoader object for batch processing
 
         Raises:
-            ValueError: If input is neither a file path nor a list of sequences
+            ValueError: If input is neither a file path nor a list of
+                sequences, or if a path-shaped string (separator present or
+                known data-file extension) does not exist as a file
         """
         # Initialize dataset to None to avoid unbound variable issues
         dataset = None
 
         if isinstance(seq_or_path, str):
-            suffix = seq_or_path.split(".")[-1]
-            if suffix and os.path.isfile(seq_or_path):
+            if _is_path_like_string(seq_or_path):
+                if not os.path.isfile(seq_or_path):
+                    raise ValueError(
+                        f"Input {seq_or_path!r} looks like a file path but no such "
+                        "file exists. Please provide an existing file path or a "
+                        "list of sequences."
+                    )
                 sequences = []
                 dataset = DNADataset.load_local_data(
                     seq_or_path,
@@ -597,7 +644,7 @@ class DNAInference:
             if task_type == "regression":
                 scores = {label_names[0]: prob}
             elif task_type == "token":
-                scores = [max(x) for x in prob]  # type: ignore
+                scores = [max(x) for x in prob]
             else:
                 scores = {label_names[j]: p for j, p in enumerate(prob)}
             formatted_predictions[i] = {
@@ -1041,7 +1088,7 @@ class DNAInference:
         if do_pred and len(all_logits) > 0:
             predictions = self.logits_to_preds(all_logits)  # type: ignore
             if return_dict:
-                predictions = self.format_output(predictions)  # type: ignore
+                predictions = self.format_output(predictions)
 
         return all_logits, predictions, embeddings  # type: ignore
 
@@ -1356,7 +1403,7 @@ class DNAInference:
             logger.warning("No attention weights available to plot.")
             return None
 
-    def plot_hidden_states(  # type: ignore
+    def plot_hidden_states(
         self,
         reducer: str = "t-SNE",
         reduced: bool = False,
@@ -1671,7 +1718,7 @@ class DNAInference:
                 })
             return formatted_outputs  # type: ignore
         elif "evo1" in str(self.model).lower():
-            from evo import generate
+            from evo import generate  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             model = self.model.model
             tokenizer = self.tokenizer
@@ -1723,7 +1770,7 @@ class DNAInference:
             # Tokenize prompt sequences
             for seq in prompt_seqs:
                 inputs = self.tokenizer(seq, return_tensors="pt").to(self.device)
-                output = self.model.generate(  # type: ignore
+                output = self.model.generate(
                     **inputs,
                     max_new_tokens=n_tokens,
                     temperature=temperature,
@@ -1788,7 +1835,7 @@ class DNAInference:
             outputs = [{"Input": score_seqs[i], "Score": s} for i, s in enumerate(outputs)]
             return outputs  # type: ignore
         elif "evo1" in model_name:
-            from evo import score_sequences
+            from evo import score_sequences  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             model = self.model.model
             tokenizer = self.tokenizer
@@ -2043,7 +2090,7 @@ class DNAInference:
                     if layer not in layers:
                         layers.append(layer)
             # Get embeddings
-            all_embeddings = [[] for _ in layers]  # type: ignore
+            all_embeddings = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
                     torch
@@ -2071,7 +2118,7 @@ class DNAInference:
         elif is_special == "MEGADNA":
             model = self.model
             tokenizer = self.tokenizer
-            all_embeddings = [None] * 3  # type: ignore
+            all_embeddings = [None] * 3
             out_embeddings = []
             for sequence in tqdm(sequences):
                 input_ids = tokenizer(sequence, return_tensors="pt").to(self.device)["input_ids"]

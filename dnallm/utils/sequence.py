@@ -8,7 +8,7 @@ This module provides functions for:
 - Validating DNA sequences
 - Randomly generating DNA sequences with constraints
 
-All functions are designed for use in DNA language modeling and
+All functions are designed for use in DNA large language modeling and
 bioinformatics pipelines.
 """
 

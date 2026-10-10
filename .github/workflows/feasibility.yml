@@ -1,0 +1,109 @@
+name: feasibility
+
+# GB10 runner confirmation for the Phase 5 feasibility spike (FEAS-01, D-04).
+#
+# Dispatch-ONLY by design: this job runs repo code on the self-hosted
+# `[self-hosted, dnallm-nightly]` GPU box, so it must never trigger on
+# push/pull_request/schedule — PR-authored code (including forks) never
+# executes on that runner. The owner triggers it manually with
+# `gh workflow run feasibility.yml --ref dev` after pushing the workflow
+# commit (the milestone is manual-push-only), then downloads the artifacts
+# to fill the Runner confirmation column of
+# .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-FEASIBILITY.md.
+on: workflow_dispatch
+
+# Least privilege, matching the ci.yml convention: this workflow executes
+# repo code on the self-hosted GPU box, so its jobs must never inherit
+# read/write repo-default token scopes.
+permissions:
+  contents: read
+
+jobs:
+  feas-spike:
+    # Same self-hosted posture as test-mamba (ci.yml): the nightly GPU box.
+    # The event gate below is the security boundary — workflow_dispatch is
+    # reachable only by users with write access to the repo.
+    runs-on: [self-hosted, dnallm-nightly]
+    if: github.event_name == 'workflow_dispatch'
+    # evo-1's cold download alone is ~30GB plus model loads and the marimo
+    # flavors; 240min bounds a worst-case run without monopolizing the box
+    # that also serves coverage-nightly.
+    timeout-minutes: 240
+    steps:
+      - name: Check for GPU
+        id: gpu-check
+        # Evidence-only deliverable: a silent skip would green the job with
+        # zero evidence produced (WR-05). On GPU absence, write a gpu_absent
+        # marker into the artifact path and FAIL — the upload step below still
+        # runs (if: always()) so the marker reaches the owner.
+        run: |
+          if command -v nvidia-smi &> /dev/null && nvidia-smi > /dev/null 2>&1; then
+            echo "has_gpu=true" >> $GITHUB_OUTPUT
+            echo "GPU detected, will run the feasibility spike"
+          else
+            echo "has_gpu=false" >> $GITHUB_OUTPUT
+            mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
+            echo "gpu_absent=$(date -u +%FT%TZ) nvidia-smi unavailable" \
+              > .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log
+            echo "No GPU detected — failing: this job's deliverable is evidence"
+            exit 1
+          fi
+
+      - name: Checkout code
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Create virtual environment and install dependencies
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[base] resolves green on this exact box (coverage-nightly precedent);
+        # the spike-only packages stay OUT of this ephemeral job venv — their
+        # absence is part of the evidence.
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Record runner identity
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        run: |
+          nvidia-smi --query-gpu=name,compute_cap,driver_version --format=csv,noheader
+
+      - name: Run the committed spike runner (D-06 fallback variants)
+        if: steps.gpu-check.outputs.has_gpu == 'true'
+        # Single fallback pass per the plan: --fallback runs each family's
+        # D-06 fallback variant (evo-1-8k-base / evo2 noFA-noFP8 config /
+        # pinned megaDNA clone), NOT the notebook variant — notebook-variant
+        # verdicts come from the committed local evidence (spike-logs/).
+        # On this venv the
+        # evo/evo2 families fail fast at their handler ImportErrors (the
+        # spike-only packages are intentionally absent from this venv), megadna
+        # clones the pinned repo (the fallback itself) and downloads its 582MB
+        # checkpoint, but the unpickle still FAILS: the clone provides the
+        # megaDNA package, not the MEGABYTE_pytorch pip package its model file
+        # imports. pybigwig fails its import, and marimo executes for real on
+        # the warm ModelScope cache — every failure text is matrix evidence,
+        # and the runner exits 0 whenever each family EMITTED its evidence
+        # block (the matrix, not this exit code, is the verdict carrier). A
+        # red step therefore means an infrastructure crash with missing
+        # evidence (import error, OOM kill, disk full) — no `|| true` mask;
+        # the upload below still runs via its if: always().
+        run: |
+          source .venv/bin/activate
+          set -o pipefail
+          mkdir -p .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs
+          python scripts/feasibility/spike_families.py --family all --fallback 2>&1 | tee .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/spike_runner_all.log
+
+      - name: Upload spike logs and matrix
+        # Unconditional: the artifacts ARE the deliverable, especially on
+        # failure — a red run with artifacts beats a green run without them.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feas-spike-logs
+          path: |
+            .planning/phases/05-execution-harness-honest-gates-runner-feasibility/spike-logs/*.log
+            .planning/phases/05-execution-harness-honest-gates-runner-feasibility/05-FEASIBILITY.md
+          if-no-files-found: warn

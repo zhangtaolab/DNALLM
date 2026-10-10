@@ -5,7 +5,7 @@ sync_check: true
 
 # Multi-Label Classification Fine-Tuning
 
-This tutorial demonstrates how to fine-tune a DNA language model for multi-label classification, where each sequence can have multiple labels simultaneously.
+This tutorial demonstrates how to fine-tune a DNA large language model for multi-label classification, where each sequence can have multiple labels simultaneously.
 
 ## Full Notebook
 
@@ -13,10 +13,10 @@ This tutorial demonstrates how to fine-tune a DNA language model for multi-label
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

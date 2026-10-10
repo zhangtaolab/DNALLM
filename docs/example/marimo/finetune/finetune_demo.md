@@ -4,7 +4,7 @@ marimo: example/marimo/finetune/finetune_demo.py
 
 # Finetune a DNA model with a custom dataset
 
-This interactive demo shows how to fine-tune a DNA language model with a custom dataset using Marimo.
+This interactive demo shows how to fine-tune a DNA large language model with a custom dataset using Marimo.
 
 ## Full Demo
 
@@ -12,7 +12,7 @@ This interactive demo shows how to fine-tune a DNA language model with a custom 
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
 uv pip install -e '.[base,cuda124]'
@@ -26,7 +26,7 @@ uv run --no-sync marimo run example/marimo/finetune/finetune_demo.py
 
 ## Overview
 
-This Marimo app provides an interactive interface for fine-tuning DNA language models. You can:
+This Marimo app provides an interactive interface for fine-tuning DNA large language models. You can:
 
 - Load and edit training configurations from a YAML file
 - Select model, dataset, and task type interactively

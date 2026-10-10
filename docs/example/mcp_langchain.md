@@ -20,7 +20,7 @@ Install dependencies and start Ollama with the Qwen3 model:
 uv pip install -U langchain langchain-mcp-adapters langchain-ollama
 
 # Start Ollama and pull the model
-ollama pull qwen3.6:latest
+ollama pull qwen3.5:4b
 ```
 
 ## Start DNALLM MCP Server
@@ -73,8 +73,8 @@ tools = await client.get_tools()
 
 # Create agent with Ollama LLM
 agent = create_agent(
-    "ollama:qwen3.6:latest",
-    tools
+    "ollama:qwen3.5:4b",  # Local LLM model via Ollama
+    tools                   # MCP tools from DNALLM server
 )
 ```
 

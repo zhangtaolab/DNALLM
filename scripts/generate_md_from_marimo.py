@@ -84,9 +84,9 @@ def generate_md(marimo_path: Path, marimo_rel: str) -> str:
 
     # Build description based on demo type
     descriptions = {
-        "finetune": "This interactive demo shows how to fine-tune a DNA language model with a custom dataset using Marimo.",
-        "inference": "This interactive demo shows how to run inference with pre-trained DNA language models using Marimo.",
-        "benchmark": "This interactive demo shows how to benchmark multiple DNA language models using Marimo.",
+        "finetune": "This interactive demo shows how to fine-tune a DNA large language model with a custom dataset using Marimo.",
+        "inference": "This interactive demo shows how to run inference with pre-trained DNA large language models using Marimo.",
+        "benchmark": "This interactive demo shows how to benchmark multiple DNA large language models using Marimo.",
     }
     desc_key = next((k for k in descriptions if k in marimo_path.stem.lower()), None)
     description = descriptions.get(

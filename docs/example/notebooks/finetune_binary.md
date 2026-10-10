@@ -5,7 +5,7 @@ sync_check: true
 
 # Binary Classification Fine-Tuning
 
-This tutorial demonstrates how to fine-tune a DNA language model for binary classification, using promoter prediction as an example.
+This tutorial demonstrates how to fine-tune a DNA large language model for binary classification, using promoter prediction as an example.
 
 ## Full Notebook
 
@@ -13,10 +13,10 @@ This tutorial demonstrates how to fine-tune a DNA language model for binary clas
 
 ## Prerequisites
 
-Install DNALLM with the fine-tuning extras:
+Install DNALLM with the base extras:
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

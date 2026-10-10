@@ -4,7 +4,7 @@ marimo: example/marimo/benchmark/benchmark_demo.py
 
 # Benchmark of multiple DNA models
 
-This interactive demo shows how to benchmark multiple DNA language models using Marimo.
+This interactive demo shows how to benchmark multiple DNA large language models using Marimo.
 
 ## Full Demo
 
@@ -26,7 +26,7 @@ uv run --no-sync marimo run example/marimo/benchmark/benchmark_demo.py
 
 ## Overview
 
-This Marimo app provides an interactive interface for benchmarking multiple DNA language models on the same dataset. You can:
+This Marimo app provides an interactive interface for benchmarking multiple DNA large language models on the same dataset. You can:
 
 - Select 2–12 models to compare
 - Configure dataset and evaluation parameters

@@ -31,7 +31,7 @@ task:
 
 # inference configuration
 inference:
-  per_device_eval_batch_size: 64
+  batch_size: 64
   output_dir: "./outputs"
 ```
 
@@ -136,4 +136,4 @@ findMotifs.pl important_regions.fasta fasta homer_out/ -fasta-bg background_sequ
     -   The extracted "important regions" may be too long, too short, or too noisy. Try adjusting the threshold for significance.
     -   The background set of sequences used for statistical comparison might be inappropriate. Ensure your background set has a similar nucleotide composition.
     -   The motif may not be well-represented by a simple position weight matrix (PWM), or it might be a structural motif not easily found by these tools.
--   **`CUDA out of memory`**: The prediction step can be memory-intensive. Reduce the `per_device_eval_batch_size` in your configuration file.
+-   **`CUDA out of memory`**: The prediction step can be memory-intensive. Reduce the `inference.batch_size` value in your configuration file (or pass a smaller `batch_size` argument to `mutate_sequence`).

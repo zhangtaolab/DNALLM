@@ -1,3 +1,4 @@
+<!-- generated-by: gsd-doc-writer -->
 # Configuration Guide
 
 This guide provides detailed information about all configuration options available for DNALLM benchmarking, including examples and best practices.
@@ -6,32 +7,41 @@ This guide provides detailed information about all configuration options availab
 
 DNALLM benchmarking configuration is defined in YAML format and supports:
 - **Model Configuration**: Multiple models from different sources
-- **Dataset Configuration**: Various data formats and preprocessing options
-- **Evaluation Settings**: Metrics, batch sizes, and hardware options
-- **Output Options**: Report formats and visualization settings
+- **Dataset Configuration**: Multiple datasets with tokenization and splitting options
+- **Evaluation Settings**: Batch sizes, device selection, and precision options
+- **Output Options**: Report location, format, and saved artifacts
 
 ## Configuration Structure
 
 ### Basic Configuration Schema
 
+The benchmark configuration file has six top-level sections, validated by the `BenchmarkConfig` Pydantic model (`dnallm/configuration/configs.py`):
+
 ```yaml
+# Benchmark metadata (required)
 benchmark:
-  # Basic information
   name: "string"
   description: "string"
 
-  # Model definitions
-  models: []
+# Model definitions (required)
+models: []
 
-  # Dataset definitions
-  datasets: []
+# Dataset definitions (required)
+datasets: []
 
-  # Evaluation settings
-  evaluation: {}
+# Evaluation settings (optional)
+evaluation: {}
 
-  # Output configuration
-  output: {}
+# Metric selection (optional)
+metrics: []
+
+# Output configuration (required)
+output: {}
 ```
+
+**Required sections**: `benchmark`, `models`, `datasets`, and `output`. Omitting any of them raises a Pydantic validation error. The `evaluation` and `metrics` sections are optional and fall back to defaults.
+
+**Unknown keys are silently ignored.** Each section is validated by a Pydantic model with default `extra="ignore"` behavior — any key that is not a documented field below is dropped without warning. Always check this reference when a setting seems to have no effect.
 
 ## Model Configuration
 
@@ -42,31 +52,24 @@ models:
   - name: "Plant DNABERT"
     path: "zhangtaolab/plant-dnabert-BPE"
     source: "huggingface"
-    task_type: "classification"
 ```
 
-### Advanced Model Configuration
+### Model Configuration Reference
 
-```yaml
-models:
-  - name: "Plant DNABERT"
-    path: "zhangtaolab/plant-dnabert-BPE"
-    source: "huggingface"
-    task_type: "classification"
-    revision: "main"  # Git branch/tag
-    trust_remote_code: true
-    torch_dtype: "float16"  # or "float32", "bfloat16"
-    device_map: "auto"
-    load_in_8bit: false
-    load_in_4bit: false
+All fields of `ModelConfig`:
 
-  - name: "Custom Model"
-    path: "/path/to/local/model"
-    source: "local"
-    task_type: "generation"
-    model_class: "CustomModelClass"
-    tokenizer_class: "CustomTokenizerClass"
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | `str` | **required** | A unique name for the model in the benchmark |
+| `path` | `str` | **required** | Local path or Hugging Face / ModelScope model identifier |
+| `lora_adapter_path` | `str \| None` | `None` | Optional path to a trained LoRA adapter for inference |
+| `source` | `str \| None` | `"huggingface"` | Where to load the model from: `huggingface`, `modelscope`, or `local` |
+| `task_type` | `str \| None` | `"classification"` | Free-form string; **not read by the benchmark engine** — the task type is taken from each dataset's `task` field |
+| `revision` | `str \| None` | `"main"` | Git branch or tag |
+| `trust_remote_code` | `bool` | `True` | Allow models with remote code |
+| `torch_dtype` | `str \| None` | `"float32"` | Model weight dtype, e.g. `"float32"`, `"float16"`, `"bfloat16"` |
+
+The benchmark engine itself consumes only `name`, `path`, and `source` when loading models; the remaining fields are validated but do not currently alter benchmark runs.
 
 ### Model Source Types
 
@@ -76,16 +79,6 @@ models:
 | `modelscope` | ModelScope repository | `"zhangtaolab/plant-dnabert-BPE"` |
 | `local` | Local file system | `"/path/to/model"` |
 
-### Task Types
-
-| Task Type | Description | Use Case |
-|-----------|-------------|----------|
-| `classification` | Binary/multi-class classification | Promoter prediction, motif detection |
-| `generation` | Sequence generation | DNA synthesis, sequence design |
-| `masked` | Masked language modeling | Sequence completion, mutation analysis |
-| `embedding` | Feature extraction | Sequence representation, similarity |
-| `regression` | Continuous value prediction | Expression level, binding affinity |
-
 ## Dataset Configuration
 
 ### Basic Dataset Definition
@@ -94,122 +87,80 @@ models:
 datasets:
   - name: "promoter_data"
     path: "path/to/promoter_data.csv"
-    task: "binary_classification"
+    task: "binary"
     text_column: "sequence"
     label_column: "label"
 ```
 
-### Advanced Dataset Configuration
+### Dataset Configuration Reference
 
-```yaml
-datasets:
-  - name: "promoter_data"
-    path: "path/to/promoter_data.csv"
-    task: "binary_classification"
-    text_column: "sequence"
-    label_column: "label"
+All fields of `DatasetConfig`:
 
-    # Preprocessing options
-    max_length: 512
-    truncation: true
-    padding: "max_length"
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | `str` | **required** | A unique name for the dataset |
+| `path` | `str` | **required** | Path to the dataset file; resolved relative to the config file when not absolute |
+| `task` | `str` | **required** | Task type used for model loading and metric computation (see [Task Types](#task-types)) |
+| `format` | `str \| None` | `"csv"` | Dataset file format |
+| `text_column` | `str` | `"sequence"` | Column holding the DNA sequence |
+| `label_column` | `str \| None` | `"label"` | Column holding the label |
+| `max_length` | `int` | `512` | Maximum token length |
+| `truncation` | `bool` | `True` | Truncate sequences longer than `max_length` |
+| `padding` | `str` | `"max_length"` | Padding strategy |
+| `test_size` | `float \| None` | `0.2` | Fraction of the data reserved for testing |
+| `val_size` | `float \| None` | `0.1` | Fraction of the data reserved for validation |
+| `random_state` | `int \| None` | `42` | Random seed for splitting |
+| `threshold` | `float \| None` | `0.5` | Decision threshold for binary/multilabel prediction |
+| `num_labels` | `int \| None` | `2` | Number of label classes |
+| `label_names` | `list[str] \| None` | `None` | Names of the labels |
 
-    # Data splitting
-    test_size: 0.2
-    val_size: 0.1
-    random_state: 42
+The dataset's `task`, `num_labels`, `label_names`, and `threshold` are applied to the task configuration used for both model loading and metric computation.
 
-    # Data filtering
-    min_length: 100
-    max_length: 1000
-    valid_chars: "ACGT"
+### Task Types
 
-    # Data augmentation
-    augment: true
-    reverse_complement_ratio: 0.5
-    random_mutation_ratio: 0.1
+The dataset `task` field must match the task types accepted by `TaskConfig` (`dnallm/configuration/configs.py`):
 
-    # Custom preprocessing
-    preprocessors:
-      - "remove_n_bases"
-      - "normalize_case"
-      - "add_padding"
-```
+| Task Type | Description | Use Case |
+|-----------|-------------|----------|
+| `binary` (alias `binary_classification`) | Binary classification | Promoter prediction, motif detection |
+| `multiclass` (alias `multi_class_classification`) | Multi-class classification | Variant effect classes, gene family assignment |
+| `multilabel` (alias `multi_label_classification`) | Multi-label classification | Simultaneous annotation of several properties |
+| `regression` | Continuous value prediction | Expression level, binding affinity |
+| `token` (alias `token_classification`) | Token-level classification | Splice site, functional element annotation |
+| `mask` | Masked language modeling | Pretraining-style evaluation |
+| `embedding` | Feature extraction | Sequence representation, similarity |
+| `generation` | Sequence generation | DNA synthesis, sequence design |
+
+Aliases are normalized to the short form at config-load time. Note that metric computation (`compute_metrics`) supports `binary`, `multiclass`, `multilabel`, `regression`, and `token`; other task types raise an unsupported-task error during evaluation.
 
 ### Dataset Formats
 
-#### CSV/TSV Format
+The `format` field selects how the dataset file is interpreted. Column names are configured with `text_column` / `label_column` regardless of format:
+
 ```yaml
+# CSV
 datasets:
   - name: "csv_dataset"
     path: "data.csv"
     format: "csv"
-    separator: ","  # or "\t" for TSV
-    encoding: "utf-8"
     text_column: "sequence"
     label_column: "label"
-    additional_columns: ["metadata", "source"]
-```
 
-#### JSON Format
-```yaml
+# JSON
 datasets:
   - name: "json_dataset"
     path: "data.json"
     format: "json"
-    text_key: "sequence"
-    label_key: "label"
-    nested_path: "data.items"  # For nested JSON structures
-```
+    text_column: "sequence"
+    label_column: "label"
 
-#### FASTA Format
-```yaml
+# FASTA
 datasets:
   - name: "fasta_dataset"
     path: "sequences.fasta"
     format: "fasta"
-    label_parser: "header"  # Extract label from header
-    header_format: "sequence_id|label:value"  # Custom header format
-```
-
-#### Arrow/Parquet Format
-```yaml
-datasets:
-  - name: "arrow_dataset"
-    path: "data.arrow"
-    format: "arrow"
     text_column: "sequence"
     label_column: "label"
-```
-
-### Data Preprocessing Options
-
-```yaml
-datasets:
-  - name: "processed_data"
-    path: "raw_data.csv"
-
-    # Sequence processing
-    preprocessing:
-      remove_n_bases: true
-      normalize_case: true
-      add_padding: true
-      padding_size: 512
-
-    # Quality filtering
-    filtering:
-      min_length: 200
-      max_length: 1000
-      min_gc_content: 0.2
-      max_gc_content: 0.8
-      valid_chars: "ACGT"
-
-    # Data augmentation
-    augmentation:
-      reverse_complement: true
-      random_mutations: true
-      mutation_rate: 0.01
-      synthetic_samples: 1000
 ```
 
 ## Evaluation Configuration
@@ -220,46 +171,29 @@ datasets:
 evaluation:
   batch_size: 32
   max_length: 512
-  device: "cuda"
+  device: "auto"
   num_workers: 4
 ```
 
-### Advanced Evaluation Options
+### Evaluation Configuration Reference
 
-```yaml
-evaluation:
-  # Batch processing
-  batch_size: 32
-  gradient_accumulation_steps: 1
+All fields of `EvaluationConfig`:
 
-  # Sequence processing
-  max_length: 512
-  truncation: true
-  padding: "max_length"
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `batch_size` | `int` | `32` | Batch size for inference |
+| `max_length` | `int` | `512` | Maximum sequence length |
+| `device` | `str` | `"auto"` | Device selection, e.g. `auto`, `cpu`, `cuda`, `cuda:0`, `mps` |
+| `num_workers` | `int` | `4` | Number of data loader workers |
+| `use_fp16` | `bool` | `False` | Use float16 precision |
+| `use_bf16` | `bool` | `False` | Use bfloat16 precision |
+| `mixed_precision` | `bool` | `True` | Mixed precision flag |
+| `pin_memory` | `bool` | `True` | Pin memory in data loaders |
+| `memory_efficient_attention` | `bool` | `False` | Prefer memory-efficient attention kernels |
+| `seed` | `int` | `42` | Random seed |
+| `deterministic` | `bool` | `True` | Deterministic execution flag |
 
-  # Hardware settings
-  device: "cuda"  # or "cpu", "auto"
-  num_workers: 4
-  pin_memory: true
-
-  # Performance optimization
-  use_fp16: true
-  use_bf16: false
-  mixed_precision: true
-
-  # Memory management
-  max_memory: "16GB"
-  memory_efficient_attention: true
-
-  # Reproducibility
-  seed: 42
-  deterministic: true
-
-  # Evaluation strategy
-  eval_strategy: "steps"  # or "epoch"
-  eval_steps: 100
-  eval_accumulation_steps: 1
-```
+The benchmark engine applies the subset of these fields declared on `InferenceConfig` (`batch_size`, `max_length`, `device`, `num_workers`, `use_fp16`, `use_bf16`); the output directory is taken from `output.path`. The remaining fields are validated configuration options.
 
 ### Device Configuration
 
@@ -268,87 +202,53 @@ evaluation:
   # Single GPU
   device: "cuda:0"
 
-  # Multiple GPUs
+  # Any available GPU
   device: "cuda"
-  parallel_strategy: "data_parallel"
 
   # CPU only
   device: "cpu"
-  num_threads: 8
 
   # Auto device selection
   device: "auto"
-  device_map: "auto"
-
-  # Mixed precision
-  use_fp16: true
-  use_bf16: false
-  mixed_precision: true
 ```
 
 ## Metrics Configuration
 
-### Basic Metrics
+### Available Metrics
+
+`metrics` is a plain list of metric-name strings. The names are the keys emitted by the metrics functions in `dnallm/tasks/metrics.py`, which depend on the dataset task type:
+
+| Task Type | Metric Keys |
+|-----------|-------------|
+| `binary` | `accuracy`, `precision`, `recall`, `f1`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
+| `multiclass` | `accuracy`, `precision`, `recall`, `f1`, `precision_micro`, `recall_micro`, `precision_weighted`, `recall_weighted`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
+| `multilabel` | Per-label and macro-averaged metrics, including `AUROC`, `AUPRC`, `TPR` |
+| `regression` | `mse`, `mae`, `r2`, `pearsonr`, `spearmanr` |
+| `token` | Sequence-level `accuracy`, `precision`, `recall`, `f1` |
 
 ```yaml
 metrics:
   - "accuracy"
-  - "f1_score"
+  - "f1"
   - "precision"
   - "recall"
-  - "roc_auc"
+  - "AUROC"
   - "mse"
   - "mae"
 ```
 
-### Advanced Metrics
+Use the special entry `"all"` to keep every computed metric:
 
 ```yaml
 metrics:
-  # Classification metrics
-  - "accuracy"
-  - "f1_score"
-  - "precision"
-  - "recall"
-  - "roc_auc"
-  - "pr_auc"
-  - "matthews_correlation"
-
-  # Regression metrics
-  - "mse"
-  - "mae"
-  - "rmse"
-  - "r2_score"
-  - "pearson_correlation"
-  - "spearman_correlation"
-
-  # Custom metrics
-  - name: "gc_content_accuracy"
-    class: "GCContentMetric"
-    parameters:
-      threshold: 0.1
-
-  - name: "conservation_score"
-    class: "ConservationMetric"
-    parameters:
-      window_size: 10
-      similarity_threshold: 0.8
+  - "all"
 ```
 
-### Custom Metric Configuration
+### Metric Selection Rules
 
-```yaml
-metrics:
-  - name: "custom_dna_metric"
-    class: "CustomDNAMetric"
-    parameters:
-      gc_weight: 0.3
-      conservation_weight: 0.4
-      motif_weight: 0.3
-      threshold: 0.5
-    file_path: "path/to/custom_metric.py"
-    class_name: "CustomDNAMetric"
-```
+- `metrics` must be a list of strings (`list[str]`) or omitted entirely (`None`, meaning no metric selection). Dict entries — e.g. custom metric definitions with `name`/`class`/`parameters` keys — fail validation.
+- Requested names are matched against the computed result keys shown above; keys that are not computed for the dataset's task type are simply absent from the output.
+- When `metrics` is `None` or empty, no per-metric selection is applied.
 
 ## Output Configuration
 
@@ -362,163 +262,22 @@ output:
   generate_plots: true
 ```
 
-### Advanced Output Options
+### Output Configuration Reference
 
-```yaml
-output:
-  # Output formats
-  formats: ["html", "csv", "json", "pdf"]
+All fields of `OutputConfig`:
 
-  # File paths
-  path: "benchmark_results"
-  predictions_file: "predictions.csv"
-  metrics_file: "metrics.json"
-  plots_dir: "plots"
-
-  # Content options
-  save_predictions: true
-  save_embeddings: false
-  save_attention_maps: false
-  save_token_probabilities: false
-
-  # Visualization
-  generate_plots: true
-  plot_types: ["bar", "line", "heatmap", "scatter"]
-  plot_style: "seaborn"
-  plot_colors: ["#1f77b4", "#ff7f0e", "#2ca02c"]
-
-  # Report customization
-  report_title: "DNA Model Benchmark Report"
-  report_description: "Comprehensive comparison of DNA language models"
-  include_summary: true
-  include_details: true
-  include_recommendations: true
-
-  # Export options
-  export_predictions: true
-  export_metrics: true
-  export_config: true
-  export_logs: true
-```
-
-### Report Customization
-
-```yaml
-output:
-  report:
-    title: "DNA Model Benchmark Report"
-    subtitle: "Performance Comparison on Promoter Prediction"
-    author: "Your Name"
-    date: "auto"
-
-    # Sections to include
-    sections:
-      - "executive_summary"
-      - "model_overview"
-      - "dataset_description"
-      - "results_summary"
-      - "detailed_results"
-      - "performance_analysis"
-      - "recommendations"
-      - "appendix"
-
-    # Custom styling
-    styling:
-      theme: "modern"
-      color_scheme: "blue"
-      font_family: "Arial"
-      font_size: 12
-
-    # Interactive elements
-    interactive:
-      enable_zoom: true
-      enable_hover: true
-      enable_selection: true
-```
-
-## Advanced Configuration
-
-### Cross-Validation Settings
-
-```yaml
-advanced:
-  cross_validation:
-    enabled: true
-    method: "k_fold"  # or "stratified_k_fold", "time_series_split"
-    n_splits: 5
-    shuffle: true
-    random_state: 42
-
-    # Stratified options
-    stratification:
-      enabled: true
-      column: "label"
-      bins: 10
-
-    # Time series options
-    time_series:
-      column: "date"
-      test_size: 0.2
-      gap: 0
-```
-
-### Performance Profiling
-
-```yaml
-advanced:
-  performance_profiling:
-    enabled: true
-
-    # Memory profiling
-    memory:
-      track_gpu: true
-      track_cpu: true
-      track_peak: true
-      profile_allocations: true
-
-    # Time profiling
-    timing:
-      track_inference: true
-      track_preprocessing: true
-      track_postprocessing: true
-      warmup_runs: 10
-
-    # Resource monitoring
-    resources:
-      track_cpu_usage: true
-      track_gpu_usage: true
-      track_io: true
-      sampling_interval: 0.1
-```
-
-### Custom Evaluation Pipeline
-
-```yaml
-advanced:
-  custom_pipeline:
-    enabled: true
-    pipeline_file: "path/to/custom_pipeline.py"
-
-    # Pipeline steps
-    steps:
-      - name: "data_preprocessing"
-        function: "custom_preprocess"
-        parameters:
-          normalize: true
-          augment: false
-
-      - name: "model_evaluation"
-        function: "custom_evaluate"
-        parameters:
-          metric: "custom_metric"
-          threshold: 0.5
-
-      - name: "result_aggregation"
-        function: "custom_aggregate"
-        parameters:
-          method: "weighted_average"
-          weights: [0.4, 0.3, 0.3]
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `path` | `str` | `"benchmark_results"` | Output directory for results, predictions, and plots |
+| `format` | `str` | `"html"` | File format used when saving generated plots (e.g. `"pdf"`, `"html"`) |
+| `save_predictions` | `bool` | `True` | Save model predictions |
+| `save_embeddings` | `bool` | `False` | Save sequence embeddings |
+| `save_attention_maps` | `bool` | `False` | Save attention maps |
+| `generate_plots` | `bool` | `True` | Generate result plots |
+| `report_title` | `str` | `"DNA Model Benchmark Report"` | Title shown in the report |
+| `include_summary` | `bool` | `True` | Include a summary section in the report |
+| `include_details` | `bool` | `True` | Include a details section in the report |
+| `include_recommendations` | `bool` | `True` | Include a recommendations section in the report |
 
 ## Configuration Examples
 
@@ -527,76 +286,52 @@ advanced:
 ```yaml
 benchmark:
   name: "Promoter Prediction Benchmark"
-  description: "Comparing DNA language models on promoter prediction tasks"
+  description: "Comparing DNA large language models on promoter prediction tasks"
 
-  models:
-    - name: "Plant DNABERT"
-      path: "zhangtaolab/plant-dnabert-BPE"
-      source: "huggingface"
-      task_type: "classification"
+models:
+  - name: "Plant DNABERT"
+    path: "zhangtaolab/plant-dnabert-BPE-promoter"
+    source: "modelscope"
 
-    - name: "Plant DNAGPT"
-      path: "zhangtaolab/plant-dnagpt-BPE"
-      source: "huggingface"
-      task_type: "generation"
+  - name: "Plant DNAGPT"
+    path: "zhangtaolab/plant-dnagpt-BPE-promoter"
+    source: "modelscope"
 
-    - name: "Nucleotide Transformer"
-      path: "InstaDeepAI/nucleotide-transformer-500m-human-ref"
-      source: "huggingface"
-      task_type: "classification"
+  - name: "Nucleotide Transformer"
+    path: "zhangtaolab/nucleotide-transformer-v2-100m-promoter"
+    source: "modelscope"
 
-  datasets:
-    - name: "promoter_strength"
-      path: "data/promoter_strength.csv"
-      task: "binary_classification"
-      text_column: "sequence"
-      label_column: "label"
-      max_length: 512
-      test_size: 0.2
-      val_size: 0.1
-
-    - name: "open_chromatin"
-      path: "data/open_chromatin.csv"
-      task: "binary_classification"
-      text_column: "sequence"
-      label_column: "label"
-      max_length: 512
-
-  metrics:
-    - "accuracy"
-    - "f1_score"
-    - "precision"
-    - "recall"
-    - "roc_auc"
-    - name: "gc_content_accuracy"
-      class: "GCContentMetric"
-
-  evaluation:
-    batch_size: 32
+datasets:
+  - name: "promoter_strength"
+    path: "data/promoter_strength.csv"
+    task: "binary"
+    text_column: "sequence"
+    label_column: "label"
     max_length: 512
-    device: "cuda"
-    num_workers: 4
-    use_fp16: true
-    seed: 42
+    test_size: 0.2
+    val_size: 0.1
 
-  output:
-    format: "html"
-    path: "promoter_benchmark_results"
-    save_predictions: true
-    generate_plots: true
-    report_title: "Promoter Prediction Model Comparison"
+metrics:
+  - "accuracy"
+  - "f1"
+  - "precision"
+  - "recall"
+  - "AUROC"
 
-  advanced:
-    cross_validation:
-      enabled: true
-      method: "stratified_k_fold"
-      n_splits: 5
+evaluation:
+  batch_size: 32
+  max_length: 512
+  device: "auto"
+  num_workers: 4
+  use_fp16: true
+  seed: 42
 
-    performance_profiling:
-      enabled: true
-      memory:
-        track_gpu: true
-        track_peak: true
+output:
+  format: "pdf"
+  path: "promoter_benchmark_results"
+  save_predictions: true
+  generate_plots: true
+  report_title: "Promoter Prediction Model Comparison"
 ```
 
 ### Minimal Example
@@ -605,30 +340,29 @@ benchmark:
 benchmark:
   name: "Quick Model Test"
 
-  models:
-    - name: "Test Model"
-      path: "zhangtaolab/plant-dnabert-BPE"
-      source: "huggingface"
-      task_type: "classification"
+models:
+  - name: "Test Model"
+    path: "zhangtaolab/plant-dnabert-BPE"
+    source: "huggingface"
 
-  datasets:
-    - name: "test_data"
-      path: "test.csv"
-      task: "binary_classification"
-      text_column: "sequence"
-      label_column: "label"
+datasets:
+  - name: "test_data"
+    path: "test.csv"
+    task: "binary"
+    text_column: "sequence"
+    label_column: "label"
 
-  metrics:
-    - "accuracy"
-    - "f1_score"
+metrics:
+  - "accuracy"
+  - "f1"
 
-  evaluation:
-    batch_size: 16
-    device: "cuda"
+evaluation:
+  batch_size: 16
+  device: "cuda"
 
-  output:
-    format: "csv"
-    path: "quick_test_results"
+output:
+  format: "pdf"
+  path: "quick_test_results"
 ```
 
 ## Configuration Validation
@@ -648,15 +382,12 @@ except Exception as e:
     print(f"Configuration error: {e}")
 ```
 
-### Common Validation Errors
+### Validation Behavior
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `Model not found` | Invalid model path | Check model exists on specified source |
-| `Invalid task type` | Unsupported task | Use supported task types |
-| `Missing required field` | Incomplete configuration | Add missing required fields |
-| `Invalid metric name` | Unknown metric | Use supported metric names |
-| `Path not found` | Invalid file path | Check file exists and is accessible |
+- **Missing required fields** raise a Pydantic `ValidationError` naming the field and its parent model. Required fields: `benchmark.name`, `models` (each with `name` and `path`), `datasets` (each with `name`, `path`, and `task`), and `output`.
+- **Wrong types** (e.g. `metrics` containing dicts instead of strings) raise a `ValidationError` at load time.
+- **Invalid dataset `task` values** fail the `TaskConfig` pattern check at load time.
+- **Unknown keys are silently ignored** — they are not errors, so typos in field names can go unnoticed. Double-check field names against the reference tables above.
 
 ## Best Practices
 
@@ -689,16 +420,6 @@ evaluation:
   batch_size: 64
   device: "cuda"
   use_fp16: true
-```
-
-### 3. **Version Control**
-```yaml
-# Include version information
-benchmark:
-  version: "1.0.0"
-  config_version: "2024.1"
-  created_by: "Your Name"
-  created_date: "2024-01-15"
 ```
 
 ## Next Steps

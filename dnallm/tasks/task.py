@@ -1,7 +1,7 @@
-"""DNA Language Model Fine-tuning Task Definition Module.
+"""DNA Large Language Model Fine-tuning Task Definition Module.
 
 This module defines various task types and related components supported
-by DNA language models during fine-tuning, including:
+by DNA large language models during fine-tuning, including:
 
 1. TaskType: Task type enumeration
    - Binary classification (BINARY): e.g., promoter prediction,

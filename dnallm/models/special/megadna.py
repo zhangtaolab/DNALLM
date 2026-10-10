@@ -13,6 +13,33 @@ megadna_models = [
     "megaDNA_phage_ecoli_finetuned",
 ]
 
+# Checkpoint file each family member loads from its downloaded snapshot
+# (WR-02): verified against the live repo listings -- lingxusb/megaDNA_updated
+# ships only megaDNA_phage_145M.pt, lingxusb/megaDNA_variants ships
+# megaDNA_phage_78M.pt + megaDNA_phage_277M.pt, and
+# lingxusb/megaDNA_finetuned ships megaDNA_phage_ecoli_finetuned.pt. The bare
+# "megaDNA_variants" repo name keeps the historical 78M default; the explicit
+# phage members select their own-named checkpoint.
+_MEGADNA_CHECKPOINTS: dict[str, str] = {
+    "megaDNA_updated": "megaDNA_phage_145M.pt",
+    "megaDNA_variants": "megaDNA_phage_78M.pt",
+    "megaDNA_finetuned": "megaDNA_phage_ecoli_finetuned.pt",
+    "megaDNA_phage_145M": "megaDNA_phage_145M.pt",
+    "megaDNA_phage_78M": "megaDNA_phage_78M.pt",
+    "megaDNA_phage_277M": "megaDNA_phage_277M.pt",
+    "megaDNA_phage_ecoli_finetuned": "megaDNA_phage_ecoli_finetuned.pt",
+}
+
+# WR-05: the checkpoint restore below can fully unpickle (the
+# weights_only=False fallback), so the hub fetch is pinned to the
+# models.lock provenance commit for the one repo the lock records
+# (lingxusb/megaDNA_updated@ed298be...). The variants/finetuned repos have
+# no lock rows yet and stay unpinned -- residual risk recorded in the
+# phase 08 REVIEW-FIX report.
+_MEGADNA_REVISIONS: dict[str, str] = {
+    "megaDNA_updated": "ed298be539e1667b52a1181a6472528a34dd2ef9",
+}
+
 
 def _handle_megadna_models(
     model_name: str,
@@ -22,14 +49,16 @@ def _handle_megadna_models(
 ) -> tuple | None:
     """Handle special case for megaDNA models."""
 
-    if extra:
-        megadna_models.append(extra)
+    # WR-03: never mutate the module-level list -- a caller passing extra
+    # must not grow it across calls (family name matching is process-global,
+    # so an appended extra would permanently alter matching).
+    models = megadna_models + ([extra] if extra else [])
 
-    for m in megadna_models:
+    for m in models:
         if m in model_name:
-            from transformers import PretrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]
+            from transformers import PreTrainedConfig, PreTrainedTokenizer  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
-            class MegaDNAConfig(PretrainedConfig):
+            class MegaDNAConfig(PreTrainedConfig):
                 model_type = "megadna"
 
                 def __init__(self, **kwargs):
@@ -47,6 +76,15 @@ def _handle_megadna_models(
                     "vocab_file": "vocab.txt"
                 }
                 DEFAULT_TOKENS = ("**", "#")
+                # Characters outside the six-token vocabulary (IUPAC
+                # ambiguity codes, soft-masked lowercase) encode to id 1,
+                # the upstream encode_sequence rule (megaDNA mutagenesis
+                # notebook).  The checkpoint vocabulary is exactly six
+                # tokens wide, so an unknown id cannot be introduced;
+                # mapping unknowns to None (the unk_token_id default with
+                # unk_token=None) crashed tensor creation inside
+                # transformers before the model ever ran (08-04).
+                UNKNOWN_TOKEN_ID = 1
 
                 def __init__(
                     self,
@@ -80,7 +118,7 @@ def _handle_megadna_models(
                     return list(text)
 
                 def _convert_token_to_id(self, token: str) -> int:
-                    return self.token_to_id.get(token, self.unk_token_id)
+                    return self.token_to_id.get(token, self.UNKNOWN_TOKEN_ID)
 
                 def _convert_id_to_token(self, index: int):
                     return self.id_to_token.get(index, self.unk_token)
@@ -107,17 +145,26 @@ def _handle_megadna_models(
             try:
                 from ..model import _get_model_path_and_imports
 
-                downloaded_model_path, _ = _get_model_path_and_imports(model_name, source)
-                if m in "megaDNA_updated":
-                    full_model_name = "megaDNA_phage_145M.pt"
-                elif m in "megaDNA_variants":
-                    full_model_name = "megaDNA_phage_78M.pt"
-                elif m in "megaDNA_finetuned":
-                    full_model_name = "megaDNA_phage_ecoli_finetuned.pt"
-                else:
-                    full_model_name = "megaDNA_phage_145M.pt"
+                downloaded_model_path, _ = _get_model_path_and_imports(
+                    model_name, source, revision=_MEGADNA_REVISIONS.get(m)
+                )
+                # WR-02: the old chain tested `m in "megaDNA_updated"` (the
+                # member as a substring of a literal), so every explicit phage
+                # member fell through to the 145M default; select per member.
+                full_model_name = _MEGADNA_CHECKPOINTS.get(m, "megaDNA_phage_145M.pt")
                 downloaded_model_path = os.path.join(downloaded_model_path, full_model_name)
-                megadna_model = torch.load(downloaded_model_path, weights_only=False)
+                # WR-05: try the safe loader first. The upstream megaDNA
+                # distribution ships FULL PICKLED MODEL OBJECTS, not state
+                # dicts, so weights_only=True legitimately fails on them; the
+                # fallback is the documented trust decision: the fetch is
+                # revision-pinned (see _MEGADNA_REVISIONS) for the
+                # lock-recorded repo, which is the code-level trust base for
+                # this unpickling. A future checkpoint re-uploaded as a plain
+                # state dict takes the safe branch with no code change.
+                try:
+                    megadna_model = torch.load(downloaded_model_path, weights_only=True)
+                except Exception:
+                    megadna_model = torch.load(downloaded_model_path, weights_only=False)
                 megadna_tokenizer = DNATokenizer()
                 if head_config is not None:
                     from ..model import DNALLMforSequenceClassification

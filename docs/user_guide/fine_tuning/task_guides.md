@@ -1,6 +1,6 @@
 # Task-Specific Fine-tuning Guides
 
-This guide provides detailed instructions for fine-tuning DNA language models on different types of tasks. Each task type has specific requirements, configurations, and best practices.
+This guide provides detailed instructions for fine-tuning DNA large language models on different types of tasks. Each task type has specific requirements, configurations, and best practices.
 
 ## Overview
 
@@ -77,22 +77,24 @@ dataset = DNADataset.load_local_data(
 # Split data
 dataset.split_data(test_size=0.2, val_size=0.1)
 
-# Initialize trainer
+# Initialize trainer (pass the whole DNADataset; the trainer picks the
+# train/val splits from its internal DatasetDict)
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 # Train
 trainer.train()
 
-# Evaluate
-test_results = trainer.evaluate(dataset.test_data)
-print(f"Test F1: {test_results['eval_f1']:.4f}")
-print(f"Test Accuracy: {test_results['eval_accuracy']:.4f}")
+# Evaluate on the evaluation (val) split
+eval_results = trainer.evaluate()
+print(f"Eval F1: {eval_results['eval_f1']:.4f}")
+print(f"Eval Accuracy: {eval_results['eval_accuracy']:.4f}")
+
+# Generate predictions on the test split
+test_results = trainer.infer()
 ```
 
 ### Best Practices
@@ -157,18 +159,17 @@ dataset = DNADataset.load_local_data(
 # Train and evaluate
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
 
-# Multi-class evaluation
-test_results = trainer.evaluate(dataset.test_data)
-print(f"Test Accuracy: {test_results['eval_accuracy']:.4f}")
-print(f"Test Macro F1: {test_results['eval_f1_macro']:.4f}")
+# Multi-class evaluation (macro F1 is reported under the "f1" key)
+eval_results = trainer.evaluate()
+print(f"Eval Accuracy: {eval_results['eval_accuracy']:.4f}")
+print(f"Eval Macro F1: {eval_results['eval_f1']:.4f}")
+print(f"Eval Weighted F1: {eval_results['eval_f1_weighted']:.4f}")
 ```
 
 ### Best Practices
@@ -228,24 +229,22 @@ dataset = DNADataset.load_local_data(
     label_col="label",
     tokenizer=tokenizer,
     max_length=512,
-    label_separator=",",  # Specify label separator
+    multi_label_sep=",",  # Specify label separator
 )
 
 # Train
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
 
-# Multi-label evaluation
-test_results = trainer.evaluate(dataset.test_data)
-print(f"Test Micro F1: {test_results['eval_f1_micro']:.4f}")
-print(f"Test Macro F1: {test_results['eval_f1_macro']:.4f}")
+# Multi-label evaluation (macro F1 is reported under the "f1" key)
+eval_results = trainer.evaluate()
+print(f"Eval Micro F1: {eval_results['eval_f1_micro']:.4f}")
+print(f"Eval Macro F1: {eval_results['eval_f1']:.4f}")
 ```
 
 ### Best Practices
@@ -275,7 +274,7 @@ finetune:
   learning_rate: 1e-4  # Higher learning rate for regression
   num_train_epochs: 10
   per_device_train_batch_size: 16
-  metric_for_best_model: "eval_rmse"
+  metric_for_best_model: "eval_mse"
 ```
 
 ### Data Format
@@ -309,19 +308,17 @@ dataset = DNADataset.load_local_data(
 # Train
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
 
 # Regression evaluation
-test_results = trainer.evaluate(dataset.test_data)
-print(f"Test RMSE: {test_results['eval_rmse']:.4f}")
-print(f"Test MAE: {test_results['eval_mae']:.4f}")
-print(f"Test R²: {test_results['eval_r2']:.4f}")
+eval_results = trainer.evaluate()
+print(f"Eval MSE: {eval_results['eval_mse']:.4f}")
+print(f"Eval MAE: {eval_results['eval_mae']:.4f}")
+print(f"Eval R²: {eval_results['eval_r2']:.4f}")
 ```
 
 ### Best Practices
@@ -351,8 +348,6 @@ finetune:
   num_train_epochs: 15
   per_device_train_batch_size: 8  # Smaller batch size
   metric_for_best_model: "eval_loss"
-  generation_max_length: 512
-  generation_num_beams: 4
 ```
 
 ### Data Format
@@ -386,10 +381,8 @@ dataset = DNADataset.load_local_data(
 # Train
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
@@ -424,13 +417,13 @@ for seq in test_sequences:
 task:
   task_type: "mask"
   # No num_labels, label_names, or threshold needed
+  mlm_probability: 0.15  # Probability of masking tokens
 
 finetune:
   learning_rate: 3e-5
   num_train_epochs: 8
   per_device_train_batch_size: 16
   metric_for_best_model: "eval_loss"
-  mlm_probability: 0.15  # Probability of masking tokens
 ```
 
 ### Data Format
@@ -464,10 +457,8 @@ dataset = DNADataset.load_local_data(
 # Train
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
@@ -538,16 +529,14 @@ dataset = DNADataset.load_local_data(
     label_col="labels",
     tokenizer=tokenizer,
     max_length=512,
-    label_separator=" ",  # Space-separated labels
+    multi_label_sep=" ",  # Space-separated labels
 )
 
 # Train
 trainer = DNATrainer(
     model=model,
-    tokenizer=tokenizer,
-    train_dataset=dataset.train_data,
-    eval_dataset=dataset.val_data,
     config=config,
+    datasets=dataset,
 )
 
 trainer.train()
@@ -574,24 +563,11 @@ print(f"Labels: {labels}")
 ### Classification Tasks
 
 ```python
-# Apply reverse complement augmentation
-augmented_data = []
-for item in dataset.train_data:
-    # Original sequence
-    augmented_data.append(item)
+# Apply reverse complement augmentation (doubles the dataset size, in place)
+dataset.augment_reverse_complement()
 
-    # Reverse complement
-    rc_sequence = reverse_complement(item["sequence"])
-    augmented_data.append({"sequence": rc_sequence, "label": item["label"]})
-
-# Apply random mutations
-for item in dataset.train_data:
-    if random.random() < 0.1:  # 10% mutation rate
-        mutated_sequence = apply_random_mutations(item["sequence"])
-        augmented_data.append({
-            "sequence": mutated_sequence,
-            "label": item["label"],
-        })
+# Work with the augmented training split
+train_split = dataset.dataset["train"]
 ```
 
 ### Generation Tasks
@@ -599,7 +575,7 @@ for item in dataset.train_data:
 ```python
 # Apply sequence truncation for generation
 augmented_data = []
-for item in dataset.train_data:
+for item in dataset.dataset["train"]:
     # Full sequence
     augmented_data.append(item)
 
@@ -618,8 +594,8 @@ for item in dataset.train_data:
 # Binary classification
 from sklearn.metrics import classification_report, roc_auc_score
 
-predictions = trainer.infer(dataset.test_data)
-y_true = [item["label"] for item in dataset.test_data]
+predictions = trainer.infer()  # Runs on the test split automatically
+y_true = [item["label"] for item in dataset.dataset["test"]]
 y_pred = predictions.predictions.argmax(-1)
 
 print(classification_report(y_true, y_pred))
@@ -633,7 +609,7 @@ print(f"ROC AUC: {roc_auc_score(y_true, y_pred):.4f}")
 from nltk.translate.bleu_score import sentence_bleu
 
 generated_sequences = []
-for item in dataset.test_data:
+for item in dataset.dataset["test"]:
     inputs = tokenizer(item["sequence"], return_tensors="pt")
     outputs = model.generate(inputs["input_ids"], max_length=512)
     generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -641,7 +617,7 @@ for item in dataset.test_data:
 
 # Calculate BLEU score
 bleu_scores = []
-for pred, ref in zip(generated_sequences, [str(item["label"]) for item in dataset.test_data]):
+for pred, ref in zip(generated_sequences, [str(item["label"]) for item in dataset.dataset["test"]]):
     score = sentence_bleu([ref.split()], pred.split())
     bleu_scores.append(score)
 

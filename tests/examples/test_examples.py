@@ -89,7 +89,10 @@ NOTEBOOK_FILES = _get_notebook_files()
 # Documented optional dependencies that are not installable on all
 # platforms (e.g. pybedtools requires bedtools/pysam and has no Windows
 # wheels). Missing ones are skipped instead of failing the import check.
-OPTIONAL_IMPORT_MODULES = ("pybedtools",)
+# The evo stack (flash_attn/stripedhyena/evo2) is FEASIBILITY-locked to the
+# isolated dnallm-evo throwaway venv (08-06): the project venv never installs
+# it by design, so the evo notebook's literal imports are optional here.
+OPTIONAL_IMPORT_MODULES = ("pybedtools", "flash_attn", "stripedhyena", "evo2")
 YAML_FILES = _get_yaml_files()
 CSV_FILES = _get_csv_files()
 EXCEL_FILES = _get_excel_files()
@@ -266,7 +269,18 @@ class TestNotebookExamples:
                 ):
                     skipped_optional.append(f"{stmt}: {e}")
                 else:
-                    failed.append(f"{stmt}: {e}")
+                    # Traceable root cause: exec() swallows the inner import
+                    # chain, so surface the module the failure was raised FROM.
+                    origin = getattr(e, "__traceback__", None)
+                    origin_frame = ""
+                    tb = origin
+                    while tb is not None and tb.tb_next is not None:
+                        tb = tb.tb_next
+                    if tb is not None:
+                        origin_frame = (
+                            f" [raised in {tb.tb_frame.f_code.co_filename}:{tb.tb_lineno}]"
+                        )
+                    failed.append(f"{stmt}: {e}{origin_frame}")
 
         if failed:
             pytest.fail(f"Failed imports in {nb_file.name}: {', '.join(failed[:3])}")

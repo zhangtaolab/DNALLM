@@ -1,10 +1,10 @@
 # Inference Concepts
 
-Inference is the process of using a trained DNA language model to generate predictions, analyze sequences, or perform downstream tasks on new DNA data. This document covers the fundamental concepts and methods involved in inference with DNA language models.
+Inference is the process of using a trained DNA large language model to generate predictions, analyze sequences, or perform downstream tasks on new DNA data. This document covers the fundamental concepts and methods involved in inference with DNA large language models.
 
 ## What is Inference?
 
-Inference refers to the process of applying a trained model to new, unseen data to make predictions or generate outputs. In the context of DNA language models, inference involves:
+Inference refers to the process of applying a trained model to new, unseen data to make predictions or generate outputs. In the context of DNA large language models, inference involves:
 
 - **Sequence Analysis**: Analyzing DNA sequences to understand their properties
 - **Prediction Generation**: Generating predictions about sequence characteristics

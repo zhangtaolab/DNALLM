@@ -13,6 +13,31 @@ updates:
       # Revisit as a planned upgrade, not an automated PR.
       - dependency-name: "mcp"
         update-types: ["version-update:semver-major"]
+      # mamba native kernels are exact-pinned (mamba-ssm==2.3.2.post1,
+      # causal-conv1d==1.7.0): each version must be compiled against the local
+      # CUDA toolchain (scripts/install_mamba.sh). Bumping without a matching
+      # wheel/build is a dependency problem, not an unwillingness to update.
+      - dependency-name: "mamba-ssm"
+      - dependency-name: "causal-conv1d"
+      # transformers: kept open (<6 in pyproject) on purpose. KNOWN RISK,
+      # recorded here so it is visible at the update point: ModelScope mamba
+      # remote code (modeling_mamba.py) imports MambaCache, which the 5.x line
+      # no longer exports as of 5.17 — mamba-family model loading breaks on
+      # upgrades until upstream remote code adapts (see .planning/WINDOWS.md).
+      # A transformers bump must re-verify the mamba load path before merge.
+      # datasets is pinned <=3.2.0 in pyproject (tokenization pipeline API);
+      # the pin itself is the constraint Dependabot already respects.
+      # torch: the ceiling (<2.12, mirrored across every cuda/rocm/mamba
+      # extra) is an ABI claim, not a version preference. The exact-pinned
+      # native kernel stack (mamba-ssm 2.3.2.post1, causal-conv1d 1.7.0,
+      # evo-venv flash-attn 2.8.3.post1) compiles against the installed
+      # torch; widening the ceiling re-resolves torch on any reinstall and
+      # breaks those kernels plus the ~50-min sm_120 flash-attn wheel build
+      # (PR #42's fast-leg green never exercised the dispatch-only legs that
+      # carry them). Bump torch only as a coordinated kernel-rebuild +
+      # nightly-validation cycle.
+      - dependency-name: "torch"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: "development"

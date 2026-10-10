@@ -1,6 +1,6 @@
 # Data Preparation for DNALLM
 
-The quality and structure of your training data are critical for the success of your DNA language model. This guide covers the types of data you can use, where to find it, and how to organize it for use with DNALLM.
+The quality and structure of your training data are critical for the success of your DNA large language model. This guide covers the types of data you can use, where to find it, and how to organize it for use with DNALLM.
 
 ## 1. Types of Training Data
 
@@ -9,7 +9,7 @@ DNALLM can be trained on a wide variety of genomic data, depending on your task.
 -   **Raw DNA Sequences (FASTA)**: This is the most common data type, used for pre-training and many fine-tuning tasks. It consists of long strings of nucleotides (A, C, G, T, N).
     -   **Example**: Whole genomes, chromosomes, genes, or promoter regions.
 
--   **Genomic Regions with Labels (BED/CSV/JSON)**: For classification tasks, you need sequences associated with specific labels.
+-   **Genomic Regions with Labels (CSV/JSON)**: For classification tasks, you need sequences associated with specific labels. BED files are not read directly — convert the regions to sequences first (e.g. with `bedtools getfasta`) and save them as CSV/FASTA.
     -   **Example**: A list of promoter sequences labeled as 'active' or 'inactive'.
     -   **Example**: A set of enhancer regions labeled by their target tissue.
 
@@ -51,21 +51,21 @@ You can use the UCSC Table Browser to get a list of human promoter regions.
 For use with DNALLM's fine-tuning scripts, it's best to organize your data into a simple, clean format. A CSV or JSONL file is often the most convenient.
 
 **For Classification:**
-A CSV file with `sequence` and `label` columns is standard.
+A CSV file with `sequence` and `labels` columns is standard (`labels` is the default label column in `DNADataset.load_local_data`; a different column name can be remapped with the `label_col` argument).
 
 ```csv
-sequence,label
+sequence,labels
 "GATTACAGATTACA...",0
 "CGCGCGCGCGCGCG...",1
 "AAATTTCCGGGAAA...",0
 ```
 
 **For Pre-training:**
-A text file where each line is a complete DNA sequence.
+A text file where each line contains two whitespace-separated fields: the DNA sequence and its label. One bare sequence per line does **not** work — the TXT loader drops lines with fewer than two fields, so a one-sequence-per-line corpus loads as an empty dataset. For unlabeled sequence corpora, use FASTA (the `>` header supplies the label); a `.txt` file whose first line is a header containing both `sequence` and `labels` is parsed as a CSV-style table instead.
 
 ```text
-GATTACAGATTACAGATTACAGATTACAGATTACAGATTACA...
-CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCG...
+GATTACAGATTACAGATTACAGATTACAGATTACAGATTACA... 0
+CGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCGCG... 1
 ```
 
 See the Format Conversion guide for more details on how to structure your files.

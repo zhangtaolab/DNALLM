@@ -1,6 +1,6 @@
 # GPU Performance Optimization
 
-Training and running large DNA language models can be computationally intensive. Optimizing GPU usage is key to achieving faster results and handling larger models. This guide covers several techniques to boost GPU performance within the DNALLM framework.
+Training and running DNA large language models can be computationally intensive. Optimizing GPU usage is key to achieving faster results and handling larger models. This guide covers several techniques to boost GPU performance within the DNALLM framework.
 
 ## 1. Mixed-Precision Training (FP16/BF16)
 
@@ -27,11 +27,9 @@ finetune:
   # bf16: true
 ```
 
-**CLI Argument:**
+**Run training with your config:**
 ```bash
-dnallm finetune --fp16 ...
-# Or
-dnallm finetune --bf16 ...
+dnallm train -c config.yaml
 ```
 
 ## 2. Multi-GPU Training (DDP)
@@ -51,7 +49,7 @@ To enable multi-GPU training, simply run your training command using `torchrun`.
 **CLI Command:**
 ```bash
 # Assuming you have 4 GPUs available
-torchrun --nproc_per_node=4 -m dnallm.cli.finetune --config_file /path/to/your/config.yaml
+torchrun --nproc_per_node=4 -m dnallm.cli.train --config /path/to/your/config.yaml
 ```
 
 `torchrun` will handle the setup, and the `Trainer` will automatically detect the distributed environment. No changes to your configuration file are needed.
@@ -68,7 +66,7 @@ The self-attention mechanism in Transformers has a quadratic memory and time com
 
 Flash Attention re-orders the computation to reduce the number of memory read/write operations to HBM (High Bandwidth Memory).
 
-Many modern models in the DNALLM ecosystem, such as `HyenaDNA`, `Evo`, and recent `Llama` variants, can use Flash Attention. You can enable it by installing the required package and setting the `attn_implementation` flag.
+Many modern models in the DNALLM ecosystem, such as `Evo` and recent `Llama` variants, can use Flash Attention.
 
 1.  **Install Flash Attention:**
     ```bash
@@ -76,10 +74,5 @@ Many modern models in the DNALLM ecosystem, such as `HyenaDNA`, `Evo`, and recen
     ```
     *Note: `flash-attn` has specific CUDA and GPU architecture requirements. Please check its official repository.*
 
-2.  **Enable in Configuration:**
-    ```yaml
-    model_args:
-      attn_implementation: "flash_attention_2"
-    ```
-
-The `Trainer` will automatically use this implementation if the model architecture supports it.
+2.  **How DNALLM selects the attention implementation:**
+    There is no `attn_implementation` option in DNALLM configuration files. The generic model loader pins `attn_implementation: "eager"` (`dnallm/models/model.py`), and Flash Attention is wired automatically for Evo models only: the Evo loader probes the GPU with `is_flash_attention_capable()` and selects the matching architecture config (`dnallm/models/special/evo.py`). No user configuration is involved.

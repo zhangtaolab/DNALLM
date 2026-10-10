@@ -34,7 +34,7 @@ logger = get_logger("dnallm.cli.inference")
     help="Output file path",
 )
 def main(config, model, input, output):
-    """Run inference with a trained DNA language model."""
+    """Run inference with a trained DNA large language model."""
     from ..inference import DNAInference
     from ..configuration import load_config
 

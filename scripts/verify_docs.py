@@ -25,7 +25,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from io import StringIO
 from pathlib import Path
 from typing import Any
@@ -1242,7 +1242,7 @@ class DocVerifier:
         lines = [
             "# DNALLM Documentation Verification Report",
             "",
-            f"**Generated:** {datetime.now(timezone.utc).isoformat()}Z",
+            f"**Generated:** {datetime.now(UTC).isoformat()}Z",
             f"**Total code blocks:** {total}",
             f"**Files scanned:** {len(self.discover_markdown_files())} Markdown + {len(self.discover_notebooks())} notebooks",
             "",
@@ -1300,7 +1300,7 @@ class DocVerifier:
         timeout_count = sum(1 for r in self.block_results if r.status == "TIMEOUT")
 
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "summary": {
                 "total_blocks": total,
                 "pass": pass_count,

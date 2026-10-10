@@ -20,22 +20,19 @@ Optimizing performance is key to working efficiently with large DNA models. This
 -   **How to use it**: Launch your training script with `torchrun`.
     ```bash
     # Example for a machine with 4 GPUs
-    torchrun --nproc_per_node=4 -m dnallm.cli.finetune --config_file your_config.yaml
+    torchrun --nproc_per_node=4 -m dnallm.cli.train --config your_config.yaml
     ```
 
 ### Enable Flash Attention
 -   **What it is**: A highly optimized implementation of the attention mechanism.
 -   **Why it helps**: It's faster and more memory-efficient than the standard attention, especially for longer sequences.
--   **How to use it**: Install `flash-attn` and enable it in your model configuration.
-    ```bash
-    pip install flash-attn
-    ```
-    ```yaml
-    # In your config.yaml
-    model_args:
-      attn_implementation: "flash_attention_2"
-    ```
-    *Note: This is only supported by certain model architectures like LLaMA and Evo.*
+-   **How to use it**: There is no config switch for this. `model_args` is not a recognized
+    config section, and generic model loads always use eager attention (`attn_implementation: "eager"`
+    is hard-coded in `dnallm/models/model.py`). Flash attention is enabled automatically only on the
+    native Evo path: when the `flash_attn` package is installed and supported, the Evo loader selects
+    an architecture config with flash attention turned on (`dnallm/models/special/evo.py`); otherwise
+    it falls back to the `-noFA` variant. Installing `flash-attn` does not change the attention
+    implementation for any other model family.
 
 ## 2. Reducing Memory Usage (VRAM)
 

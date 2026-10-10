@@ -32,7 +32,7 @@ jupyter lab example/notebooks/
 
 ### Fine-Tuning Notebooks
 
-Learn how to fine-tune DNA language models for specific tasks.
+Learn how to fine-tune DNA large language models for specific tasks.
 
 - **Binary Classification** - Train a binary classifier for promoter prediction
 - **Multi-Label Classification** - Predict multiple labels per sequence
@@ -62,6 +62,14 @@ Analyze model behavior and predictions.
 - **In Silico Mutagenesis** - Saturation mutation analysis
 - **Model Interpretation** - Attention and embedding analysis
 - **Embedding & Attention** - Feature visualization
+
+### Showcase
+
+End-to-end Arabidopsis showcase notebooks: results are computed on illustrative loci over committed data slices, not genome-wide accuracy claims.
+
+- **PlantHelixSeek CRE Scan** - Cis-regulatory element sliding-window scan, predictions scored against PlantDHS truth on an illustrative locus
+- **PlantHelixSeek Gene Annotation** - Gene-structure annotation with BILOU decode compared against TAIR10 truth
+- **PlantHelixSeek Combined View** - Zoomed display combining both modalities and their truths on one aligned genomic axis
 
 ### Benchmarking
 

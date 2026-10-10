@@ -1,6 +1,6 @@
 # Model Guides
 
-This page provides access to comprehensive guides for different DNA language model architectures and their usage with DNALLM.
+This page provides access to comprehensive guides for different DNA large language model architectures and their usage with DNALLM.
 
 ## Model Architecture Guides
 
@@ -52,10 +52,14 @@ This page provides access to comprehensive guides for different DNA language mod
 
 ### Basic Model Loading
 ```python
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
-# Load a DNA-specific model
-model, tokenizer = load_model_and_tokenizer("zhangtaolab/plant-dnabert-BPE", source="huggingface")
+# Load a DNA-specific model (Plant DNABERT is pre-trained with MLM)
+task_config = TaskConfig(task_type="mask")
+model, tokenizer = load_model_and_tokenizer(
+    "zhangtaolab/plant-dnabert-BPE", task_config, source="huggingface"
+)
 ```
 
 ### Model Selection Tips

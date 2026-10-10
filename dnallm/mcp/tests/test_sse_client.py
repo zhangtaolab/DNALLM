@@ -13,6 +13,8 @@ try:
 except ImportError as e:
     pytest.skip(f"MCP client modules not available: {e}", allow_module_level=True)
 
+from dnallm.mcp.tests._network_skip import skip_if_unreachable
+
 
 class TestSSEClient:
     """Test SSE client connection and functionality."""
@@ -62,8 +64,8 @@ class TestSSEClient:
             import traceback
 
             traceback.print_exc()
-            # Skip test if server is not running
-            pytest.skip(f"SSE connection failed: {e}")
+            # Skip only when no server is reachable; any other failure re-raises.
+            skip_if_unreachable(e, "SSE connection test")
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -82,7 +84,7 @@ class TestSSEClient:
                     print(f"Health check result: {health}")
 
         except Exception as e:
-            pytest.skip(f"Health check test failed: {e}")
+            skip_if_unreachable(e, "SSE health check tool test")
 
     @pytest.mark.asyncio
     @pytest.mark.slow
@@ -107,7 +109,7 @@ class TestSSEClient:
                     print(f"DNA prediction result: {result}")
 
         except Exception as e:
-            pytest.skip(f"DNA prediction test failed: {e}")
+            skip_if_unreachable(e, "SSE DNA prediction tool test")
 
 
 if __name__ == "__main__":

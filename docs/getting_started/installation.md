@@ -1,10 +1,10 @@
 # Installation
 
-DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. This guide will help you install DNALLM and its dependencies.
+DNALLM is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. This guide will help you install DNALLM and its dependencies.
 
 ## Prerequisites
 
-- Python 3.10 or higher (Python 3.13 recommended)
+- Python 3.11 or higher (Python 3.13 recommended)
 - Git
 - CUDA-compatible GPU (optional, for GPU acceleration)
 - **Environment Manager**: Choose one of the following:
@@ -197,33 +197,33 @@ DNALLM provides multiple dependency groups for different use cases:
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
+| **all** | Install all optional dependencies | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
 | **base** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
-| **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, flake8, pre-commit, mypy, pandas-stubs) |
+| **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit, mypy, pandas-stubs) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
 | **notebook** | Jupyter and Marimo support | Jupyter Lab, Marimo |
 | **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |
 | **ui** | Gradio web interface | Gradio |
-| **mcp** | MCP server support | Included in core dependencies (no extra install needed) |
+| **mcp** | MCP server + LLM agent examples | `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, `pydantic-ai` (server core `mcp`/`starlette`/`uvicorn`/`websockets` is already in the core dependencies) |
 
-> **Note:** `mcp` is an empty extra because MCP dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`) are already part of the core dependencies. You can still use `.[mcp]` for clarity but it won't install additional packages.
+> **Note:** The MCP server itself runs entirely on core dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`), so server-only deployments need no extra install (see Scenario 8). The `mcp` extra adds the LLM-agent client libraries used by the bundled agent examples: `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, and `pydantic-ai`.
 
-### Hardware-Specific Groups (Mutually Exclusive)
+### Hardware-Specific Groups
 
-> **Warning:** These groups are mutually exclusive. You MUST choose exactly one. Combining multiple hardware groups will cause conflicts.
+> **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `rocm` and `mamba` declare no conflicts: `mamba` is designed to be combined with a CUDA group (e.g., `.[cuda124,mamba]`, see Scenario 6), while `rocm` still cannot share an environment with another hardware group because only one torch build can be installed.
 
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|
-| **cpu** | 2.4.0-2.7 | CPU only | Development without GPU |
-| **cuda121** | 2.2.0-2.7 | NVIDIA (older) | Volta/Turing/Ampere early |
-| **cuda124** | 2.4.0-2.7 | NVIDIA (recommended) | Most modern GPUs |
-| **cuda126** | 2.6.0-2.7 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
-| **cuda128** | 2.6.0-2.7 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
+| **cpu** | 2.4.0-2.12 | CPU only | Development without GPU |
+| **cuda121** | 2.2.0-2.12 | NVIDIA (older) | Volta/Turing/Ampere early |
+| **cuda124** | 2.4.0-2.12 | NVIDIA (recommended) | Most modern GPUs |
+| **cuda126** | 2.6.0-2.12 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
+| **cuda128** | 2.6.0-2.12 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
 | **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) | Newest driver / RTX 50-series, Windows with driver >= 580 |
-| **rocm** | 2.5.0-2.7 | AMD GPUs | AMD GPU users |
-| **mamba** | 2.6.0-2.7 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
+| **rocm** | 2.5.0-2.12 | AMD GPUs | AMD GPU users |
+| **mamba** | 2.6.0-2.12 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
 
-> **Note:** Hardware groups are NOT included in `all` because they conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
+> **Note:** Hardware groups are NOT included in `all` because the `cpu`/`cuda*` groups conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
 
 ## Installation Scenarios
 
@@ -404,7 +404,7 @@ uv pip install -e '.[base]'
 uv pip install -e '.[cuda124,mamba]' --no-cache-dir --no-build-isolation
 
 # Verify installation
-python -c "from mambapy import Mamba; print('Mamba installed successfully!')"
+python -c "from mambapy.mamba import Mamba; print('Mamba installed successfully!')"
 ```
 
 ### Scenario 7: Complete Development Environment
@@ -480,7 +480,7 @@ if torch.cuda.is_available():
 # Verify Mamba (if installed)
 python -c "
 try:
-    from mambapy import Mamba
+    from mambapy.mamba import Mamba
     print('Mamba: Available')
 except ImportError:
     print('Mamba: Not installed')
@@ -676,10 +676,7 @@ uv pip install ai2-olmo
 ```
 
 #### Enformer
-Project address: https://github.com/lucidrains/enformer-pytorch
-```bash
-uv pip install enformer-pytorch
-```
+No additional installation required — DNALLM ships a self-contained Enformer implementation (`dnallm/models/special/enformer_model/`) that uses only core dependencies (`torch`, `numpy`, `einops`, `transformers`).
 
 #### Borzoi
 Project address: https://github.com/johahi/borzoi-pytorch
@@ -714,5 +711,5 @@ Check if installation was successful:
 python -c "import dnallm; print('DNALLM installed successfully!')"
 
 # Run comprehensive tests
-sh tests/test_all.sh
+pytest
 ```

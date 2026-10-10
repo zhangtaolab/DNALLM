@@ -1,3 +1,4 @@
+<!-- generated-by: gsd-doc-writer -->
 # Configuration Guide
 
 This guide provides detailed information about all configuration options available for DNALLM fine-tuning, including examples and best practices.
@@ -139,7 +140,6 @@ finetune:
   learning_rate: 2e-5
   lr_scheduler_type: "linear"  # linear, cosine, cosine_with_restarts, polynomial
   warmup_ratio: 0.1
-  warmup_steps: 0  # Alternative to warmup_ratio
 
   # Optimizer settings
   weight_decay: 0.01
@@ -184,7 +184,6 @@ finetune:
 finetune:
   lr_scheduler_type: "polynomial"
   warmup_ratio: 0.1
-  power: 1.0  # Polynomial power
   # Learning rate decreases polynomially
 ```
 
@@ -195,12 +194,10 @@ finetune:
   # Logging
   logging_strategy: "steps"  # steps, epoch, no
   logging_steps: 100
-  logging_first_step: true
 
   # Evaluation
   eval_strategy: "steps"  # steps, epoch, no
   eval_steps: 100
-  eval_delay: 0
 
   # Saving
   save_strategy: "steps"  # steps, epoch, no
@@ -223,7 +220,10 @@ finetune:
   resume_from_checkpoint: null  # Path to resume from
 
   # Early stopping
-  early_stopping_threshold: 0.001
+  callbacks:
+    early_stopping:
+      patience: 5
+      threshold: 0.001
 ```
 
 ## Advanced Training Options
@@ -235,14 +235,6 @@ finetune:
   # Mixed precision options
   fp16: false
   bf16: false
-
-  # FP16 specific settings
-  fp16_full_eval: false
-  fp16_eval: false
-
-  # BF16 specific settings
-  bf16_full_eval: false
-  bf16_eval: false
 ```
 
 ### Memory Optimization
@@ -250,13 +242,7 @@ finetune:
 ```yaml
 finetune:
   # Memory optimization
-  dataloader_pin_memory: true
-  dataloader_num_workers: 4
-
-  # Gradient checkpointing
-
-  # Memory efficient attention
-  memory_efficient_attention: false
+  gradient_checkpointing: true
 ```
 
 ### Reproducibility
@@ -265,7 +251,6 @@ finetune:
 finetune:
   # Reproducibility
   seed: 42
-  deterministic: true
 ```
 
 ## Complete Configuration Examples
@@ -310,7 +295,6 @@ finetune:
 
   # Reproducibility
   seed: 42
-  deterministic: true
 
   # Reporting
   report_to: "tensorboard"
@@ -355,7 +339,6 @@ finetune:
 
   # Reproducibility
   seed: 42
-  deterministic: true
 ```
 
 ### Generation Task Example
@@ -390,17 +373,11 @@ finetune:
   load_best_model_at_end: true
   metric_for_best_model: "eval_loss"
 
-  # Generation settings
-  generation_max_length: 512
-  generation_num_beams: 4
-  generation_early_stopping: true
-
   # Mixed precision
   bf16: true
 
   # Reproducibility
   seed: 42
-  deterministic: true
 ```
 
 ### Regression Task Example
@@ -434,14 +411,13 @@ finetune:
 
   # Model selection
   load_best_model_at_end: true
-  metric_for_best_model: "eval_rmse"
+  metric_for_best_model: "eval_mse"
 
   # Mixed precision
   fp16: true
 
   # Reproducibility
   seed: 42
-  deterministic: true
 ```
 
 ## Environment-Specific Configurations
@@ -459,7 +435,6 @@ finetune:
 
   # Quick testing
   max_steps: 100
-  eval_delay: 0
 ```
 
 ### Production Configuration
@@ -487,14 +462,9 @@ finetune:
   # Memory optimization
   per_device_train_batch_size: 8
   gradient_accumulation_steps: 4
-  memory_efficient_attention: true
 
   # Mixed precision
   bf16: true
-
-  # Data loading
-  dataloader_num_workers: 2
-  dataloader_pin_memory: false
 ```
 
 ## Best Practices

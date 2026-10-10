@@ -1,0 +1,28 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v1.2 — Paper Revision Suite Support",
+  "phases": [
+    {
+      "number": "10",
+      "name": "Evaluation Contract Layer & Shared Scaffolding",
+      "status": "complete"
+    },
+    {
+      "number": "11",
+      "name": "PEFT Adaptation, Baselines & New Evaluation Capabilities",
+      "status": "complete"
+    },
+    {
+      "number": "12",
+      "name": "Motif Matching, MCP Tools & Milestone Closeout",
+      "status": "complete"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
+  },
+  "updated_at": "2026-10-10T10:24:19.703Z"
+}

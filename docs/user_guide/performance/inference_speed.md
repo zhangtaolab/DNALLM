@@ -1,6 +1,6 @@
 # Inference Speed Optimization
 
-Fast inference is critical for deploying DNA language models in real-world applications, from large-scale genomic screening to interactive analysis. This guide covers key techniques to accelerate model inference.
+Fast inference is critical for deploying DNA large language models in real-world applications, from large-scale genomic screening to interactive analysis. This guide covers key techniques to accelerate model inference.
 
 ## 1. Use Half-Precision (FP16/BF16)
 

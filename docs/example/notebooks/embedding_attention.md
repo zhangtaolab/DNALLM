@@ -14,7 +14,7 @@ This tutorial visualizes model internals: attention maps across heads and layers
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 uv pip install seaborn umap-learn scikit-learn logomaker
 ```
 

@@ -10,7 +10,7 @@ The DNALLM MCP server provides DNA sequence analysis capabilities through the Mo
 
 ### Basic Prediction Tools
 
-#### `dna_sequence_predict`
+#### `_dna_sequence_predict`
 Predict a single DNA sequence using a specific model.
 
 **Parameters:**
@@ -36,7 +36,7 @@ Predict a single DNA sequence using a specific model.
 }
 ```
 
-#### `dna_batch_predict`
+#### `_dna_batch_predict`
 Predict multiple DNA sequences using a single model.
 
 **Parameters:**
@@ -71,7 +71,7 @@ Predict multiple DNA sequences using a single model.
 }
 ```
 
-#### `dna_multi_model_predict`
+#### `_dna_multi_model_predict`
 Predict a single sequence using multiple models for comparison.
 
 **Parameters:**
@@ -79,34 +79,25 @@ Predict a single sequence using multiple models for comparison.
 - `model_names` (array, optional): List of model names to use (uses all loaded models if not specified)
 
 **Returns:**
-- Multi-model prediction results with consensus analysis
+- Multi-model prediction results with per-model predictions (response keys: `content`, `model_count`, `sequence`; no consensus is computed)
 
 **Example:**
 ```json
 {
   "sequence": "ATCGATCGATCG",
-  "model_names": ["promoter_model", "conservation_model"],
-  "results": {
-    "promoter_model": {
-      "prediction": "Core promoter",
-      "confidence": 0.85
-    },
-    "conservation_model": {
-      "prediction": "Conserved",
-      "confidence": 0.92
+  "model_count": 2,
+  "content": [
+    {
+      "type": "text",
+      "text": "{'promoter_model': {'prediction': 'Core promoter', 'confidence': 0.85}, 'conservation_model': {'prediction': 'Conserved', 'confidence': 0.92}}"
     }
-  },
-  "consensus": {
-    "promoter_consensus": "Core promoter",
-    "conservation_consensus": "Conserved",
-    "overall_confidence": 0.88
-  }
+  ]
 }
 ```
 
 ### Streaming Tools (Real-time Progress)
 
-#### `dna_stream_predict`
+#### `_dna_stream_predict`
 Stream single sequence prediction with real-time progress updates.
 
 **Parameters:**
@@ -123,7 +114,7 @@ Stream single sequence prediction with real-time progress updates.
 - 75%: Processing prediction results
 - 100%: Prediction completed
 
-#### `dna_stream_batch_predict`
+#### `_dna_stream_batch_predict`
 Stream batch prediction with progress updates.
 
 **Parameters:**
@@ -134,7 +125,7 @@ Stream batch prediction with progress updates.
 **Returns:**
 - Streaming batch prediction results with per-sequence progress
 
-#### `dna_stream_multi_model_predict`
+#### `_dna_stream_multi_model_predict`
 Stream multi-model prediction with progress updates.
 
 **Parameters:**
@@ -147,7 +138,7 @@ Stream multi-model prediction with progress updates.
 
 ### Model Management Tools
 
-#### `list_loaded_models`
+#### `_list_loaded_models`
 List all currently loaded models with their information.
 
 **Parameters:** None
@@ -158,24 +149,22 @@ List all currently loaded models with their information.
 **Example:**
 ```json
 {
-  "loaded_models": [
-    {
+  "loaded_count": 1,
+  "models": {
+    "promoter_model": {
       "name": "promoter_model",
-      "display_name": "Plant DNABERT BPE promoter",
       "task_type": "binary",
       "num_labels": 2,
       "architecture": "DNABERT",
       "tokenizer": "BPE",
-      "performance": {
-        "accuracy": 0.85,
-        "f1_score": 0.82
-      }
+      "status": "loaded",
+      "loaded": true
     }
-  ]
+  }
 }
 ```
 
-#### `get_model_info`
+#### `_get_model_info`
 Get detailed information about a specific model.
 
 **Parameters:**
@@ -184,24 +173,24 @@ Get detailed information about a specific model.
 **Returns:**
 - Detailed model information including configuration and performance metrics
 
-#### `list_models_by_task_type`
+#### `_list_models_by_task_type`
 List models filtered by task type.
 
 **Parameters:**
-- `task_type` (string): Task type to filter by ("binary", "multiclass", "regression", "token")
+- `task_type` (string): Task type to filter by ("binary", "multiclass", "multilabel", "regression", "token", "mask", "generation", "classification")
 
 **Returns:**
 - List of models matching the specified task type
 
-#### `get_all_available_models`
+#### `_get_all_available_models`
 Get information about all available models (not just loaded ones).
 
 **Parameters:** None
 
 **Returns:**
-- Complete list of available models from model_info.yaml
+- Information about all models enabled in the server's `mcp_server_config.yaml` (not just loaded ones), returned as `content`, `total_models`, `models`
 
-#### `health_check`
+#### `_health_check`
 Perform health check on the MCP server.
 
 **Parameters:** None
@@ -220,6 +209,34 @@ client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000
 result = client.dna_sequence_predict("ATCGATCG", "dnabert-2")
 print(result)
 ```
+
+### Mutation and Interpretation Tools
+
+#### `_dna_mutagenesis`
+Perform in silico mutagenesis on DNA sequences — evaluates the impact of sequence mutations (single/multi-base substitution, deletion, insertion, or exhaustive combinations) on model predictions.
+
+**Parameters:**
+- `model_name` (string): Name of the model to use for prediction
+- `sequence` (string, optional): Single DNA sequence to mutate
+- `sequences` (array, optional): List of DNA sequences to mutate (either `sequence` or `sequences` must be provided)
+- `mutation_type` (string, optional): One of "single_base_substitution", "multi_base_substitution", "deletion", "insertion", "combo" (default: "single_base_substitution")
+- `positions` (array): 0-based positions to mutate (required, non-empty)
+
+**Returns:**
+- Mutagenesis results containing `original_prediction`, `mutated_prediction`, `delta`, `affected_positions`, `mutation_type`, `model_name` (or `error`/`isError` on failure)
+
+#### `_dna_interpret`
+Interpret model predictions using attribution methods — computes attribution scores for each token in a DNA sequence using Captum methods.
+
+**Parameters:**
+- `sequence` (string): DNA sequence to interpret (A, C, G, T, N only, case-insensitive)
+- `model_name` (string): Name of the model to use
+- `method` (string, optional): One of "lig", "deeplift", "occlusion", "feature_ablation", "layer_conductance", "gradient_shap", "noise_tunnel", "integrated_gradients" (default: "lig")
+- `target_class` (integer, optional): Target class index for attribution; auto-selects the class with maximum probability if not specified
+- `max_length` (integer, optional): Maximum token length for the tokenizer
+
+**Returns:**
+- Interpretation results containing `attributions`, `tokens`, `method`, `target_class`, `model_name`, `sequence` (or `error`/`isError` on failure)
 
 ### Python with Pydantic AI
 <!-- skip-verify: requires async event loop and running server -->
@@ -245,12 +262,12 @@ agent = Agent(
 
 When analyzing a DNA sequence, you should:
 1. First call _list_loaded_models to see what models are available
-2. Then call dna_multi_model_predict with the DNA sequence and appropriate model names
+2. Then call _dna_multi_model_predict with the DNA sequence and appropriate model names
 3. Interpret and explain the results in a comprehensive way
 
 Available tools should include:
 - _list_loaded_models: Lists available DNA analysis models
-- dna_multi_model_predict: Predicts DNA sequence properties using multiple models
+- _dna_multi_model_predict: Predicts DNA sequence properties using multiple models
 
 Always use the tools to provide accurate analysis.""",
 )
@@ -289,19 +306,19 @@ async def main():
             await session.initialize()
 
             # List available models
-            models = await session.call_tool("list_loaded_models", {})
+            models = await session.call_tool("_list_loaded_models", {})
             print(f"Available models: {models}")
 
             # Predict DNA sequence
             result = await session.call_tool(
-                "dna_sequence_predict",
+                "_dna_sequence_predict",
                 {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"},
             )
             print(f"Prediction result: {result}")
 
             # Multi-model prediction
             multi_result = await session.call_tool(
-                "dna_multi_model_predict",
+                "_dna_multi_model_predict",
                 {
                     "sequence": "ATCGATCGATCG",
                     "model_names": ["promoter_model", "conservation_model"],
@@ -326,12 +343,12 @@ async def main():
     # Connect to SSE server
     async with sse_client("http://localhost:8000/sse") as (read, write):
         # List available models
-        models = await read.call_tool("list_loaded_models", {})
+        models = await read.call_tool("_list_loaded_models", {})
         print(f"Available models: {models}")
 
         # Test streaming prediction
         result = await read.call_tool(
-            "dna_stream_predict",
+            "_dna_stream_predict",
             {
                 "sequence": "ATCGATCGATCG",
                 "model_name": "promoter_model",
@@ -380,11 +397,11 @@ async function callTool(toolName, arguments) {
 }
 
 // Example usage
-callTool("list_loaded_models", {})
+callTool("_list_loaded_models", {})
     .then(result => console.log("Models:", result))
     .catch(error => console.error("Error:", error));
 
-callTool("dna_sequence_predict", {
+callTool("_dna_sequence_predict", {
     sequence: "ATCGATCGATCG",
     model_name: "promoter_model"
 })
@@ -398,28 +415,28 @@ callTool("dna_sequence_predict", {
 ```bash
 curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "health_check", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}'
 ```
 
 #### List Models
 ```bash
 curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "list_loaded_models", "arguments": {}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_list_loaded_models", "arguments": {}}}'
 ```
 
 #### Single Sequence Prediction
 ```bash
 curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_sequence_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_name": "promoter_model"}}}'
 ```
 
 #### Batch Prediction
 ```bash
 curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "dna_batch_predict", "arguments": {"sequences": ["ATCGATCG", "GCTAGCTA"], "model_name": "promoter_model"}}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_batch_predict", "arguments": {"sequences": ["ATCGATCG", "GCTAGCTA"], "model_name": "promoter_model"}}}'
 ```
 
 #### Multi-Model Prediction
@@ -427,18 +444,18 @@ curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
 async def basic_dna_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
         # 1. Check available models
-        models = await read.call_tool("list_loaded_models", {})
+        models = await read.call_tool("_list_loaded_models", {})
         print(f"Available models: {models}")
 
         # 2. Single model prediction
         result = await read.call_tool(
-            "dna_sequence_predict",
+            "_dna_sequence_predict",
             {"sequence": sequence, "model_name": "promoter_model"},
         )
         print(f"Promoter prediction: {result}")
 
         # 3. Multi-model analysis
-        multi_result = await read.call_tool("dna_multi_model_predict", {"sequence": sequence})
+        multi_result = await read.call_tool("_dna_multi_model_predict", {"sequence": sequence})
         print(f"Multi-model analysis: {multi_result}")
 
         return multi_result
@@ -458,7 +475,7 @@ async def batch_dna_analysis(sequences):
 
             # Use streaming for progress updates
             result = await read.call_tool(
-                "dna_stream_batch_predict",
+                "_dna_stream_batch_predict",
                 {
                     "sequences": batch,
                     "model_name": "promoter_model",
@@ -477,7 +494,7 @@ async def real_time_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
         # Use streaming prediction for real-time updates
         result = await read.call_tool(
-            "dna_stream_predict",
+            "_dna_stream_predict",
             {
                 "sequence": sequence,
                 "model_name": "promoter_model",
@@ -497,25 +514,22 @@ async def real_time_analysis(sequence):
 ```python
 async def model_comparison(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
-        # Get all available models
-        models = await read.call_tool("list_loaded_models", {})
-        model_names = [model["name"] for model in models["loaded_models"]]
+        # Get all loaded models
+        models = await read.call_tool("_list_loaded_models", {})
+        model_names = list(models["models"].keys())
 
         # Compare all models
         comparison = await read.call_tool(
-            "dna_multi_model_predict",
+            "_dna_multi_model_predict",
             {"sequence": sequence, "model_names": model_names},
         )
 
-        # Analyze consensus
+        # Analyze per-model results
         results = comparison.get("results", {})
-        consensus = comparison.get("consensus", {})
 
         print(f"Model comparison for sequence: {sequence}")
         for model_name, result in results.items():
             print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
-
-        print(f"Consensus: {consensus}")
 
         return comparison
 ```
@@ -533,14 +547,14 @@ async def model_comparison(sequence):
 
 ```json
 {
-  "error": "Invalid DNA sequence: contains invalid characters",
+  "error": "Sequence contains invalid characters. Only A, C, G, T, N (case-insensitive) are allowed.",
   "isError": true
 }
 ```
 
 ```json
 {
-  "error": "Model not found: unknown_model",
+  "error": "Model unknown_model not found",
   "isError": true
 }
 ```
@@ -552,7 +566,7 @@ async def safe_prediction(sequence, model_name):
     try:
         async with sse_client("http://localhost:8000/sse") as (read, write):
             result = await read.call_tool(
-                "dna_sequence_predict",
+                "_dna_sequence_predict",
                 {"sequence": sequence, "model_name": model_name},
             )
 
@@ -570,7 +584,7 @@ async def safe_prediction(sequence, model_name):
 ## Performance Tips
 
 ### 1. Batch Processing
-- Use `dna_batch_predict` for multiple sequences
+- Use `_dna_batch_predict` for multiple sequences
 - Process sequences in batches of 10-50 for optimal performance
 - Use streaming for progress updates on large batches
 

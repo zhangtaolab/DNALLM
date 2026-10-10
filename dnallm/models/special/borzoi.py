@@ -33,8 +33,8 @@ def _handle_borzoi_models(
         if m not in model_name:
             continue
         try:
-            from borzoi_pytorch import Borzoi
-            from borzoi_pytorch.config_borzoi import BorzoiConfig
+            from borzoi_pytorch import Borzoi  # ty: ignore[unresolved-import]  # optional dep, guarded
+            from borzoi_pytorch.config_borzoi import BorzoiConfig  # ty: ignore[unresolved-import]  # optional dep, guarded
             from ..tokenizer import DNAOneHotTokenizer
             from ..model import _get_model_path_and_imports
 

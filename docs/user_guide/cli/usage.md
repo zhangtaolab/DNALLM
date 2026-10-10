@@ -54,10 +54,10 @@ python run_cli.py model-config-generator --output config.yaml
 python cli/cli.py --help
 
 # Training
-python cli/train.py config.yaml model_path data_path
+python cli/train.py --config config.yaml
 
 # Inference
-python cli/inference.py config.yaml model_path
+python cli/inference.py --config config.yaml
 
 # Configuration generator
 python cli/model_config_generator.py --output config.yaml
@@ -70,10 +70,10 @@ python cli/model_config_generator.py --output config.yaml
 python -m dnallm.cli.cli --help
 
 # Package training
-python -m dnallm.cli.train config.yaml model_path data_path
+python -m dnallm.cli.train --config config.yaml
 
 # Package inference
-python -m dnallm.cli.inference config.yaml model_path
+python -m dnallm.cli.inference --config config.yaml
 
 # Package configuration generator
 python -m dnallm.cli.model_config_generator --output config.yaml
@@ -83,7 +83,7 @@ python -m dnallm.cli.model_config_generator --output config.yaml
 
 ### `dnallm-train`
 
-Train a DNA language model with specified configuration.
+Train a DNA large language model with specified configuration.
 
 **Options:**
 - `--config, -c`: Path to training configuration file
@@ -102,7 +102,7 @@ dnallm-train --model zhangtaolab/plant-dnagpt-BPE --data ./data --output ./outpu
 
 ### `dnallm-inference`
 
-Run inference with a trained DNA language model.
+Run inference with a trained DNA large language model.
 
 **Options:**
 - `--config, -c`: Path to inference configuration file
@@ -126,7 +126,7 @@ Generate configuration files for DNALLM tasks.
 **Options:**
 - `--output, -o`: Output file path for configuration
 - `--preview`: Preview configuration without saving
-- `--template`: Template type (training, inference, benchmark)
+- `--non-interactive, -n`: Use non-interactive mode with defaults
 
 **Examples:**
 ```bash
@@ -143,8 +143,8 @@ Start MCP (Model Context Protocol) server.
 
 **Options:**
 - `--config, -c`: Path to configuration file
-- `--port, -p`: Server port (default: 8000)
-- `--host, -h`: Server host (default: localhost)
+- `--port`: Server port (default: 8000)
+- `--host`: Server host (default: `127.0.0.1`; pass `--host 0.0.0.0` to bind all interfaces)
 
 **Examples:**
 ```bash
@@ -171,10 +171,10 @@ Run in-silico mutagenesis analysis on DNA sequences.
 **Examples:**
 ```bash
 # Single sequence analysis
-dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCGATCG
+dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCGATCG
 
 # Batch analysis from file
-dnallm-mutagenesis --model zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
+dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
 ```
 
 ## Configuration Examples
@@ -226,7 +226,7 @@ data:
 ```yaml
 benchmark:
   name: "DNA Model Benchmark"
-  description: "Comparing DNA language models on various tasks"
+  description: "Comparing DNA large language models on various tasks"
 
 models:
   - name: "Model 1"
@@ -244,10 +244,15 @@ datasets:
     format: "csv"
     task: "binary_classification"
 
+metrics: ["accuracy", "precision", "recall", "f1", "mcc"]
+
 evaluation:
-  metrics: ["accuracy", "precision", "recall", "f1", "mcc"]
+  batch_size: 32
+  device: "auto"
+
+output:
+  path: "./benchmark_results"
   save_predictions: true
-  output_dir: "./benchmark_results"
 ```
 
 ## Project Structure
@@ -278,7 +283,7 @@ DNALLM/
 1. **Development Environment**: Ensure you're running commands from the project root directory
 2. **Dependencies**: Make sure all dependencies are properly installed
 3. **Path Configuration**: Use absolute paths or paths relative to the project root
-4. **Python Version**: Requires Python 3.10 or higher
+4. **Python Version**: Requires Python 3.11 or higher
 
 ## Troubleshooting
 

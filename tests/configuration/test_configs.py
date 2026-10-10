@@ -7,23 +7,30 @@ error handling, and edge cases.
 
 import os
 import tempfile
+import typing
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 import yaml
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from dnallm.configuration.configs import (
     BenchmarkConfig,
     BenchmarkInfoConfig,
     DatasetConfig,
+    EarlyStoppingConfig,
     EvaluationConfig,
+    HeadConfig,
+    Ia3Config,
     InferenceConfig,
+    LoraConfig,
     ModelConfig,
     OutputConfig,
+    SweepConfig,
     TaskConfig,
     TrainingConfig,
+    VepConfig,
     HyperparameterSearchConfig,
     SearchSpaceDistribution,
     load_config,
@@ -911,6 +918,401 @@ class TestHyperparameterSearchConfig:
         )
         assert config.hyperparameter_search.n_trials == 3
         assert config.hyperparameter_search.search_space["learning_rate"].type == "float"
+
+
+class TestTaskConfigAliasNormalization:
+    """model_post_init alias branches for verbose task_type spellings."""
+
+    def test_binary_classification_alias_applies_binary_defaults(self):
+        """'binary_classification' normalizes to the binary defaults."""
+        config = TaskConfig(task_type="binary_classification")
+        assert config.label_names == ["negative", "positive"]
+        assert config.num_labels == 2
+
+    def test_multi_class_classification_alias_generates_class_names(self):
+        """'multi_class_classification' normalizes to multiclass name generation."""
+        config = TaskConfig(task_type="multi_class_classification", num_labels=3)
+        assert config.label_names == ["class_0", "class_1", "class_2"]
+
+    def test_multi_label_classification_alias_generates_label_names(self):
+        """'multi_label_classification' normalizes to multilabel name generation."""
+        config = TaskConfig(task_type="multi_label_classification", num_labels=2)
+        assert config.label_names == ["label_0", "label_1"]
+
+    def test_multilabel_num_labels_below_two_rejected(self):
+        """Multilabel classification requires at least two labels."""
+        with pytest.raises(ValidationError, match="at least 2 for multilabel"):
+            TaskConfig(task_type="multilabel", num_labels=1)
+
+    def test_token_classification_alias_constructs_without_defaults(self):
+        """'token_classification' normalizes to token, which sets no defaults."""
+        config = TaskConfig(task_type="token_classification")
+        assert config.task_type == "token_classification"  # stored verbatim
+        assert config.label_names is None
+        assert config.num_labels == 2  # untouched by the post-init chain
+
+
+class TestEarlyStoppingValidation:
+    """EarlyStoppingConfig field validators."""
+
+    def test_negative_threshold_rejected(self):
+        """A negative improvement threshold is rejected."""
+        with pytest.raises(ValidationError, match="threshold must be non-negative"):
+            EarlyStoppingConfig(threshold=-0.1)
+
+
+class TestSearchSpaceDistributionEdges:
+    """SearchSpaceDistribution validator branches not covered elsewhere."""
+
+    def test_int_step_on_float_distribution_rejected(self):
+        """step is only valid for int distributions (an int step on floats fails)."""
+        with pytest.raises(ValidationError, match="'step' is only valid for int"):
+            SearchSpaceDistribution(low=0.1, high=1.0, step=2)
+
+    def test_log_requires_positive_low(self):
+        """log=True with a non-positive low is rejected."""
+        with pytest.raises(ValidationError, match="low must be positive when log=True"):
+            SearchSpaceDistribution(low=0, high=1, log=True)
+
+
+class TestTrainingConfigReportToEdges:
+    """TrainingConfig report_to validator combinations."""
+
+    def test_all_cannot_be_combined_with_other_trackers(self):
+        """'all' mixed with a concrete tracker is rejected."""
+        with pytest.raises(ValidationError, match="'all' cannot be combined"):
+            TrainingConfig(report_to=["all", "wandb"])
+
+
+class TestTrainingConfigScaffoldFields:
+    """EVAL-01/PEFT scaffold fields on TrainingConfig (Phase 10 one-pass)."""
+
+    def test_allow_test_as_eval_defaults_false(self):
+        """The test-as-eval opt-in is off by default (leak guard)."""
+        config = TrainingConfig()
+        assert config.allow_test_as_eval is False
+
+    def test_use_ia3_defaults_false(self):
+        """use_ia3 lands with a False default."""
+        config = TrainingConfig()
+        assert config.use_ia3 is False
+
+    def test_use_ia3_with_use_qlora_rejected_naming_both_fields(self):
+        """use_ia3 x use_qlora is rejected at Pydantic time with a message
+        naming both config fields (PEFT-01; peft only raises at merge time)."""
+        with pytest.raises(ValidationError, match="use_ia3"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+        with pytest.raises(ValidationError, match="use_qlora"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_with_use_qlora_rejection_names_the_cause(self):
+        """The rejection message states the 4-bit merge limitation (matchable)."""
+        with pytest.raises(ValidationError, match="4-bit"):
+            TrainingConfig(use_ia3=True, use_qlora=True)
+
+    def test_use_ia3_and_use_qlora_alone_still_construct(self):
+        """Each flag on its own is a valid configuration."""
+        assert TrainingConfig(use_ia3=True).use_ia3 is True
+        assert TrainingConfig(use_qlora=True).use_qlora is True
+
+    def test_peft_dry_run_defaults_false(self):
+        """peft_dry_run defaults to False (training runs normally)."""
+        config = TrainingConfig()
+        assert config.peft_dry_run is False
+
+    def test_peft_dry_run_settable_from_plain_kwargs(self):
+        """The field is constructible from kwargs as YAML section data would be."""
+        config = TrainingConfig(peft_dry_run=True)
+        assert config.peft_dry_run is True
+
+    def test_allow_test_as_eval_settable_from_plain_kwargs(self):
+        """The field is constructible from kwargs as YAML section data would be."""
+        config = TrainingConfig(allow_test_as_eval=True)
+        assert config.allow_test_as_eval is True
+
+
+class TestIa3Config:
+    """Ia3Config stub section: field-complete, peft-IA3Config-mirrored."""
+
+    def test_ia3_config_defaults(self):
+        """Default instantiation yields the peft-compatible field set."""
+        config = Ia3Config()
+
+        assert config.target_modules is None
+        assert config.exclude_modules is None
+        assert config.feedforward_modules is None
+        assert config.fan_in_fan_out is False
+        assert config.init_ia3_weights is True
+        assert config.modules_to_save is None
+        assert config.task_type == "SEQ_CLS"
+
+    def test_ia3_config_custom_values(self):
+        """All six fields accept explicit values."""
+        config = Ia3Config(
+            target_modules=["query", "key"],
+            exclude_modules=["classifier"],
+            feedforward_modules=["key"],
+            fan_in_fan_out=True,
+            init_ia3_weights=False,
+            modules_to_save=["classifier"],
+        )
+
+        assert config.target_modules == ["query", "key"]
+        assert config.exclude_modules == ["classifier"]
+        assert config.feedforward_modules == ["key"]
+        assert config.fan_in_fan_out is True
+        assert config.init_ia3_weights is False
+        assert config.modules_to_save == ["classifier"]
+
+    def test_ia3_config_dump_fields_match_peft_surface(self):
+        """Every dnallm Ia3Config field name is accepted by peft's IA3Config
+        (full pass-through; nothing is dropped by the trainer's filter)."""
+        from dnallm.finetune.trainer import PEFT_IA3_FIELD_NAMES
+
+        assert set(Ia3Config().model_dump()) <= PEFT_IA3_FIELD_NAMES
+
+
+class TestVepConfig:
+    """VepConfig stub section for the zero-shot VEP module."""
+
+    def test_vep_config_defaults(self):
+        """Default instantiation yields mlm / 200bp window / no output dir."""
+        config = VepConfig()
+
+        assert config.paradigm == "mlm"
+        assert config.context_window == 200
+        assert config.output_dir is None
+
+    def test_vep_config_custom_values(self):
+        """Explicit clm paradigm and window are accepted."""
+        config = VepConfig(paradigm="clm", context_window=1000, output_dir="/tmp/vep")
+
+        assert config.paradigm == "clm"
+        assert config.context_window == 1000
+        assert config.output_dir == "/tmp/vep"
+
+    def test_vep_config_invalid_paradigm_rejected(self):
+        """A non-(clm|mlm) paradigm is rejected at validation time."""
+        with pytest.raises(ValidationError):
+            VepConfig(paradigm="bogus")
+
+    def test_vep_config_nonpositive_window_rejected(self):
+        """context_window is ge=1: zero is rejected."""
+        with pytest.raises(ValidationError):
+            VepConfig(context_window=0)
+
+
+class TestHeadConfigFields:
+    """HeadConfig field hygiene (regressions found by the IA³ acceptance)."""
+
+    def test_head_config_dict_is_json_serializable(self):
+        """head_config.__dict__ feeds model configs that transformers
+        serializes to JSON at train begin — a FieldInfo default there crashes
+        training (fixed: custom_head was a tuple-wrapped Field)."""
+        import json
+
+        head = HeadConfig(head="mlp")
+        json.dumps(head.__dict__)
+        assert head.__dict__["custom_head"] is None
+
+    def test_head_config_num_classes_field(self):
+        """The classification wrapper reads head_config["num_classes"] when the
+        head's logits width disagrees with the checkpoint's num_labels."""
+        assert HeadConfig().num_classes == 2
+        assert HeadConfig(head="mlp", num_classes=3).num_classes == 3
+
+
+class TestSweepConfig:
+    """SweepConfig stub section for the multi-seed sweep protocol."""
+
+    def test_sweep_config_defaults(self):
+        """Defaults: 3 seeds, 2000 bootstrap resamples, t-interval small-n policy."""
+        config = SweepConfig()
+
+        assert config.seeds == [42, 43, 44]
+        assert config.out_root is None
+        assert config.n_bootstrap == 2000
+        assert config.bootstrap_seed == 42
+        assert config.small_n_ci == "t-interval"
+
+    def test_sweep_config_custom_values(self):
+        """Explicit seeds and CI policy are accepted."""
+        config = SweepConfig(
+            seeds=[7, 8],
+            out_root="/tmp/sweep",
+            n_bootstrap=500,
+            bootstrap_seed=1,
+            small_n_ci="omit",
+        )
+
+        assert config.seeds == [7, 8]
+        assert config.out_root == "/tmp/sweep"
+        assert config.n_bootstrap == 500
+        assert config.bootstrap_seed == 1
+        assert config.small_n_ci == "omit"
+
+    def test_sweep_config_empty_seeds_rejected(self):
+        """min_length=1: an empty seed list is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(seeds=[])
+
+    def test_sweep_config_invalid_small_n_ci_rejected(self):
+        """A non-(t-interval|omit) CI policy is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(small_n_ci="bogus")
+
+    def test_sweep_config_nonpositive_bootstrap_rejected(self):
+        """n_bootstrap is ge=1: zero is rejected."""
+        with pytest.raises(ValidationError):
+            SweepConfig(n_bootstrap=0)
+
+
+class TestStubSectionLoadConfig:
+    """load_config registration for the ia3/vep/sweep stub sections."""
+
+    def _write_yaml(self, tmp_path, body):
+        """Write a config YAML body to tmp_path and return its path."""
+        cfg_path = tmp_path / "stub_config.yaml"
+        cfg_path.write_text(body, encoding="utf-8")
+        return str(cfg_path)
+
+    def test_stub_sections_roundtrip_from_yaml(self, tmp_path):
+        """A YAML carrying ia3/vep/sweep produces the three typed sections."""
+        config_path = self._write_yaml(
+            tmp_path,
+            "ia3:\n"
+            "  target_modules: [query, key]\n"
+            "  feedforward_modules: [key]\n"
+            "vep:\n"
+            "  paradigm: clm\n"
+            "  context_window: 512\n"
+            "sweep:\n"
+            "  seeds: [1, 2, 3, 4, 5]\n"
+            "  n_bootstrap: 1000\n"
+            "  small_n_ci: omit\n",
+        )
+
+        configs = load_config(config_path)
+
+        assert isinstance(configs["ia3"], Ia3Config)
+        assert configs["ia3"].target_modules == ["query", "key"]
+        assert isinstance(configs["vep"], VepConfig)
+        assert configs["vep"].paradigm == "clm"
+        assert configs["vep"].context_window == 512
+        assert isinstance(configs["sweep"], SweepConfig)
+        assert configs["sweep"].seeds == [1, 2, 3, 4, 5]
+        assert configs["sweep"].small_n_ci == "omit"
+
+    def test_yaml_without_stubs_omits_keys(self, tmp_path):
+        """A YAML without the sections leaves the keys absent (total=False)."""
+        config_path = self._write_yaml(
+            tmp_path, "task:\n  task_type: binary\nmodel:\n  name: dummy\n"
+        )
+
+        configs = load_config(config_path)
+
+        for absent in ("ia3", "vep", "sweep"):
+            assert absent not in configs
+
+
+class TestLoadConfigTypedDict:
+    """Pin the per-key DNALLMConfig TypedDict return contract of load_config()."""
+
+    FULL_CONFIG_YAML = """\
+task:
+  task_type: binary
+  num_labels: 2
+inference:
+  batch_size: 8
+model:
+  name: dummy-model
+  source: huggingface
+finetune:
+  num_train_epochs: 1
+lora:
+  r: 8
+"""
+
+    def test_return_annotation_is_dnallmconfig_typed_dict(self):
+        """get_type_hints(load_config)['return'] is the per-key DNALLMConfig TypedDict."""
+        from dnallm.configuration.configs import DNALLMConfig
+
+        return_hint = typing.get_type_hints(load_config)["return"]
+        assert return_hint is DNALLMConfig
+
+        annotations = dict(return_hint.__annotations__)
+        assert annotations["task"] is TaskConfig
+        assert annotations["inference"] is InferenceConfig
+        assert annotations["finetune"] is TrainingConfig
+        assert annotations["lora"] is LoraConfig
+        assert annotations["ia3"] is Ia3Config
+        assert annotations["vep"] is VepConfig
+        assert annotations["sweep"] is SweepConfig
+        assert annotations["benchmark"] is BenchmarkConfig
+        # model stays a plain dict (spelling-tolerant: any dict[...] annotation form)
+        assert typing.get_origin(annotations["model"]) is dict
+
+    def test_typed_dict_is_total_false(self):
+        """DNALLMConfig is total=False: every key optional, none required."""
+        from dnallm.configuration.configs import DNALLMConfig
+
+        assert DNALLMConfig.__required_keys__ == frozenset()
+        assert DNALLMConfig.__optional_keys__ == frozenset({
+            "task",
+            "inference",
+            "model",
+            "finetune",
+            "lora",
+            "ia3",
+            "vep",
+            "sweep",
+            "benchmark",
+        })
+
+    def test_loaded_fixture_yields_per_key_instances(self, tmp_path):
+        """A full fixture YAML loads to per-key config classes; model stays a dict."""
+        cfg_path = tmp_path / "full_config.yaml"
+        cfg_path.write_text(self.FULL_CONFIG_YAML, encoding="utf-8")
+
+        configs = load_config(str(cfg_path))
+
+        assert isinstance(configs["task"], TaskConfig)
+        assert isinstance(configs["inference"], InferenceConfig)
+        assert isinstance(configs["finetune"], TrainingConfig)
+        assert isinstance(configs["lora"], LoraConfig)
+        assert isinstance(configs["model"], dict)
+        assert not isinstance(configs["model"], BaseModel)
+        assert "benchmark" not in configs
+
+    def test_benchmark_fixture_yields_benchmark_config(self):
+        """The example benchmark YAML produces a BenchmarkConfig under 'benchmark'."""
+        benchmark_yaml = (
+            Path(__file__).parent.parent.parent
+            / "example"
+            / "notebooks"
+            / "benchmark"
+            / "benchmark_config.yaml"
+        )
+
+        configs = load_config(str(benchmark_yaml))
+
+        assert isinstance(configs["benchmark"], BenchmarkConfig)
+
+    def test_minimal_task_model_yaml_loads(self, tmp_path):
+        """total=False semantics: a YAML with only task+model loads without KeyError."""
+        cfg_path = tmp_path / "minimal_config.yaml"
+        cfg_path.write_text(
+            "task:\n  task_type: binary\nmodel:\n  name: dummy-model\n",
+            encoding="utf-8",
+        )
+
+        configs = load_config(str(cfg_path))
+
+        assert isinstance(configs["task"], TaskConfig)
+        assert isinstance(configs["model"], dict)
+        for absent_key in ("inference", "finetune", "lora", "ia3", "vep", "sweep", "benchmark"):
+            assert absent_key not in configs
 
 
 if __name__ == "__main__":

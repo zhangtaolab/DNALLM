@@ -20,7 +20,7 @@ def _handle_lucaone_models(
     for m in lucaone_models:
         if m in model_name:
             try:
-                from lucagplm import (
+                from lucagplm import (  # ty: ignore[unresolved-import]  # optional dep, guarded
                     LucaGPLMModel,
                     LucaGPLMTokenizer,
                     LucaGPLMConfig,

@@ -1,6 +1,6 @@
-"""DNA Language Model Visualization and Plotting Module.
+"""DNA Large Language Model Visualization and Plotting Module.
 
-This module provides comprehensive plotting capabilities for DNA language model
+This module provides comprehensive plotting capabilities for DNA large language model
 results,
 including metrics visualization, attention maps, embeddings, and
     mutation effects analysis.
@@ -45,8 +45,10 @@ def _prepare_classification_data(
                 if metric == "curve":
                     for label in metric_data:
                         _process_curve_data(metric_data[label], curves_data, label)
-                        curves_data["AUROC"][label] = metric_data[label]["AUROC"]
-                        curves_data["AUPRC"][label] = metric_data[label]["AUPRC"]
+                        if "AUROC" in metric_data[label]:
+                            curves_data["AUROC"][label] = metric_data[label]["AUROC"]
+                        if "AUPRC" in metric_data[label]:
+                            curves_data["AUPRC"][label] = metric_data[label]["AUPRC"]
                 else:
                     _add_bar_metric(bars_data, metric, metric_data)
         else:
@@ -94,6 +96,10 @@ def _prepare_regression_data(metrics: dict[str, dict]) -> tuple[dict, dict]:
 def _process_curve_data(metric_data: dict, curves_data: dict, model: str) -> None:
     """Process curve data for ROC and PR curves."""
     for score, values in metric_data.items():
+        # Scalar summary scores (e.g. AUROC/AUPRC) are consumed separately;
+        # only per-point arrays belong on the curves.
+        if not hasattr(values, "__iter__") or isinstance(values, (str, bytes)):
+            continue
         if score.endswith("pr"):
             if score == "fpr":
                 curves_data["ROC"]["models"].extend([model] * len(values))
@@ -125,12 +131,12 @@ def _prepare_annotations(data: list | dict) -> dict:
     if isinstance(data, list):
         label_names = set(data)
         # label_dict = {name: i for i, name in enumerate(label_names)}
-        annotations = {"model": {name: set() for name in label_names}}  # type: ignore
+        annotations = {"model": {name: set() for name in label_names}}
         for i, name in enumerate(data):
             annotations["model"][name].add(i)
         return annotations
     elif isinstance(data, dict):
-        models = data.keys()
+        models = list(data.keys())
         label_names = set(data[models[0]])  # type: ignore[index]
         annotations = {model: {name: set() for name in label_names} for model in models}
         for model in models:
@@ -169,7 +175,7 @@ def prepare_data(metrics: dict[str, dict], task_type: str = "binary") -> tuple[d
             ValueError: If task type is not supported for plotting
     """
     if task_type in ["binary", "multiclass", "multilabel", "token"]:
-        return _prepare_classification_data(metrics)
+        return _prepare_classification_data(metrics, task_type=task_type)
     elif task_type == "regression":
         return _prepare_regression_data(metrics)
     else:
@@ -229,7 +235,7 @@ def plot_bars(
         if metric in ["mae", "mse"]:
             domain_use = [0, dbar[metric].max() * 1.1]
         else:
-            domain_use = domain  # type: ignore
+            domain_use = domain
 
         # Create bar chart with optimized encoding
         if height is None:
@@ -1005,15 +1011,15 @@ def plot_token_scatter(
         if len(extra_data[0]) == 4:
             color_map = {item[0]: item[3] for item in extra_data}  # type: ignore[unreachable]
         else:
-            color_map: dict[str, str] = {}  # type: ignore
+            color_map: dict[str, str] = {}
         for i, item in enumerate(extra_data):
             region_type, start, end = item[:3]
             extra_data[i] = (region_type, start - start_pos, end - start_pos)
         extra_df = pd.DataFrame(extra_data, columns=["Type", "Start", "End"])
         # assign colors if provided
-        if color_map:  # type: ignore
-            domain = list(color_map.keys())  # type: ignore
-            range_colors = [color_map[k] for k in domain]  # type: ignore
+        if color_map:
+            domain = list(color_map.keys())
+            range_colors = [color_map[k] for k in domain]
         else:
             # assign default colors based on region type
             # Use Set3 color palette (12 colors)
@@ -1193,7 +1199,7 @@ def plot_annotations(
             "#f781bf",
             "#999999",
         ]
-        color_map: dict[str, str] = {}  # type: ignore
+        color_map: dict[str, str] = {}
         for i, t in enumerate(type_list):
             if custom_colors and t in custom_colors:
                 color_map[t] = custom_colors[t]
@@ -1306,7 +1312,10 @@ def plot_attention_map(
         from scipy.stats import entropy
 
         ent = entropy(attn_head + 1e-12, base=2, axis=-1, keepdims=True)
-        attn_head = 1 - (ent / np.log2(attn_head.shape[-1] + 1e-12))
+        # Row entropy weight broadcast against the (L, L) heatmap so the
+        # output keeps its shape (the previous 1 - ent / log2(L) collapsed
+        # to (L, 1) and crashed the DataFrame assembly).
+        attn_head = attn_head * (1 - (ent / np.log2(attn_head.shape[-1] + 1e-12)))
     else:
         pass  # No normalization
 
@@ -1506,7 +1515,7 @@ def _get_dimensionality_reducer(
         if isinstance(quality, dict):
             base.update(quality)
         else:
-            base.update(presets[quality])  # type: ignore
+            base.update(presets[quality])
         return base
 
     # -----------------------
@@ -1535,7 +1544,7 @@ def _get_dimensionality_reducer(
             return UMAP(**params)
 
         elif reducer == "pacmap":
-            from pacmap import PaCMAP
+            from pacmap import PaCMAP  # ty: ignore[unresolved-import]  # optional dep, guarded
 
             params = pacmap_params()
             params.update(kwargs)
@@ -1927,7 +1936,7 @@ def _build_mutation_datasets(
 
         # Update bar chart data
         dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
-        dbar["score"].append(maxscore)  # type: ignore
+        dbar["score"].append(maxscore)
         dbar["base"].append(maxabs_index)
 
         # Process indel mutations

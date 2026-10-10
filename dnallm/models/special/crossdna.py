@@ -167,7 +167,7 @@ def _build_crossdna_sequence_classification_class(
             classifier_dropout = getattr(config, "classifier_dropout", None)
             if classifier_dropout is None:
                 classifier_dropout = getattr(config, "dropout", 0.1)
-            classifier_dropout = float(classifier_dropout)  # type: ignore
+            classifier_dropout = float(classifier_dropout)
             if not 0.0 <= classifier_dropout <= 1.0:
                 raise ValueError(f"classifier_dropout must be in [0, 1], got {classifier_dropout}")
 
@@ -503,8 +503,11 @@ def _handle_crossdna_models(
     auto_tokenizer = modules["AutoTokenizer"]
 
     if custom_tokenizer is None:
-        tokenizer = auto_tokenizer.from_pretrained(
+        from ..tokenizer import load_tokenizer_with_fallback
+
+        tokenizer = load_tokenizer_with_fallback(
             checkpoint_dir,
+            auto_tokenizer_cls=auto_tokenizer,
             trust_remote_code=True,
         )
     else:

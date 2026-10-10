@@ -16,35 +16,33 @@ This architecture makes HyenaDNA exceptionally well-suited for tasks involving v
 
 ## 2. Environment and Installation
 
-HyenaDNA models require specific dependencies that are not part of the standard DNALLM installation.
+HyenaDNA models load through the standard DNALLM installation; no additional dependencies are required.
 
 ### Installation
 
-You need to install `causal-conv1d` and other related packages.
-
 ```bash
-# Install DNALLM
 pip install dnallm
-
-# Install HyenaDNA dependencies
-pip install causal-conv1d>=1.1.0
 ```
 
 ## 3. Model Loading and Configuration
 
-You can load a HyenaDNA model using the custom `HyenaDNAForCausalLM` class or through the DNALLM utility functions.
+HyenaDNA models are registered in the DNALLM model registry (`dnallm/models/modeling_auto.py`) and load through the generic `AutoModelForCausalLM` route in `load_model_and_tokenizer`.
 
 ### Loading a Model
 
 Here’s how to load a HyenaDNA model for a causal language modeling task.
 ```python
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # Use a specific HyenaDNA model
 model_name = "LongSafari/hyenadna-small-32k-seqlen-hf"
 
-# Load model and tokenizer
-model, tokenizer = load_model_and_tokenizer(model_name_or_path=model_name)
+# HyenaDNA is pre-trained as a causal (autoregressive) language model
+task_config = TaskConfig(task_type="generation")
+
+# Load model and tokenizer (source="huggingface" resolves the bare repo id)
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 
 print("Model:", type(model))
 print("Tokenizer:", type(tokenizer))
@@ -55,11 +53,13 @@ print("Tokenizer:", type(tokenizer))
 Let's use a HyenaDNA model to get embeddings for a DNA sequence.
 ```python
 import torch
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the pre-trained model and tokenizer
 model_name = "LongSafari/hyenadna-tiny-1k-seqlen-hf"
-model, tokenizer = load_model_and_tokenizer(model_name)
+task_config = TaskConfig(task_type="generation")
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 model.eval()
 
 # 2. Prepare and tokenize the DNA sequence

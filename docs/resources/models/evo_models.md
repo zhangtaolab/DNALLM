@@ -72,7 +72,7 @@ configs = load_config("path/to/your/evo_config.yaml")
 # DNALLM will automatically detect it's an EVO model.
 # Note: The model ID might be a mirror like 'lgq12697/evo2_1b_base'
 model, tokenizer = load_model_and_tokenizer(
-    "arcinstitute/evo-2-1b-8k",  # Official ID
+    "arcinstitute/evo2_1b_base",  # Official ID (repo id; evo2-1b-8k is the architecture config name)
     task_config=configs["task"],
     source="huggingface",
 )

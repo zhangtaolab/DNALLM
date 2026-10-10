@@ -136,11 +136,14 @@ dataset = DNADataset.load_local_data(
 )
 
 # Validate data quality
-dataset.validate_sequences(min_length=50, max_length=1000, valid_chars=["A", "T", "G", "C"])
+dataset.validate_sequences(minl=50, maxl=1000, valid_chars="ACGT")
 
 # Check label distribution
-print(f"Positive samples: {dataset.label_counts.get(1, 0)}")
-print(f"Negative samples: {dataset.label_counts.get(0, 0)}")
+from collections import Counter
+
+label_counts = Counter(dataset.dataset["labels"])
+print(f"Positive samples: {label_counts.get(1, 0)}")
+print(f"Negative samples: {label_counts.get(0, 0)}")
 
 # Data augmentation (add reverse complement sequences)
 dataset.augment_reverse_complement()
@@ -224,7 +227,7 @@ model, tokenizer = load_model_and_tokenizer(
 
 # 3. Load and process dataset
 datasets = DNADataset.from_modelscope(
-    data_name="zhangtaolab/plant-multi-species-core-promoters",
+    dataset_name="zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -249,16 +252,12 @@ print(f"Training complete! Final metrics: {metrics}")
 ### 2.5 Model Validation
 
 ```python
-import json
-
-# Evaluate on test set
-test_metrics = trainer.evaluate(test_dataset=sampled_datasets.test)
+# Evaluate on the "test" split
+test_metrics = trainer.evaluate(split="test")
 print(f"Test set metrics: {test_metrics}")
 
-# Save evaluation report
-trainer.save_evaluation_report(test_metrics, save_path="./evaluation_report.json")
-with open("./evaluation_report.json", "w") as f:
-    json.dump(test_metrics, f, indent=4)
+# evaluate(split=...) automatically writes the metrics report to
+# {finetune.output_dir}/eval_test_result.json
 ```
 
 ### 2.6 Complete Training Script
@@ -302,7 +301,7 @@ def main():
 
     # Load data
     datasets = DNADataset.from_modelscope(
-        data_name=args.data,
+        dataset_name=args.data,
         seq_col="sequence",
         label_col="label",
         tokenizer=tokenizer,
@@ -320,8 +319,9 @@ def main():
     trainer = DNATrainer(config=configs, model=model, datasets=datasets)
     metrics = trainer.train()
 
-    # Save model
-    trainer.save_model("./models/final_model")
+    # Save an additional copy of the model via the underlying HF Trainer
+    # (train() already saved model + tokenizer to finetune.output_dir)
+    trainer.trainer.save_model("./models/final_model")
     print(f"✅ Model saved to ./models/final_model")
 
 
@@ -484,7 +484,6 @@ dataset = DNADataset.load_local_data(
     label_col="tags",
     tokenizer=tokenizer,
     max_length=128,
-    task_type="token",  # Specify as token classification task
 )
 
 # Encode
@@ -561,7 +560,7 @@ model, tokenizer = load_model_and_tokenizer(
 
 # Load dataset
 datasets = DNADataset.from_modelscope(
-    data_name="zhangtaolab/plant-multi-species-core-promoters",
+    dataset_name="zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
     tokenizer=tokenizer,
@@ -583,10 +582,13 @@ trainer = DNATrainer(
 # Train
 metrics = trainer.train()
 print(f"LoRA training complete!")
-print(f"Trainable parameters ratio: {trainer.get_trainable_parameters_ratio():.2%}")
 
-# Save LoRA adapter
-trainer.save_lora_adapter("./models/lora_adapter")
+# The trainable-parameter ratio was printed when DNATrainer was created with
+# use_lora=True; print it again from the underlying PEFT model:
+trainer.model.print_trainable_parameters()
+
+# Save LoRA adapter (the PEFT model saves only the adapter weights)
+trainer.model.save_pretrained("./models/lora_adapter")
 ```
 
 ### 5.4 Loading LoRA Model for Inference
@@ -664,9 +666,10 @@ result = inference_engine.infer(sequence)
 print(f"Inference result: {result}")
 
 # Get probabilities
-print(f"Negative class probability: {result['probabilities'][0]:.4f}")
-print(f"Positive class probability: {result['probabilities'][1]:.4f}")
-print(f"Predicted label: {result['predicted_label']}")
+# infer() returns {index: {"sequence": str, "label": str, "scores": {class_name: probability}}}
+first = result[0]
+print(f"Class probabilities: {first['scores']}")
+print(f"Predicted label: {first['label']}")
 ```
 
 ### 6.3 Batch Inference
@@ -680,7 +683,7 @@ test_data = pd.read_csv("./data/test.csv")
 sequences = test_data["sequence"].tolist()
 
 # Batch inference
-results = inference_engine.batch_infer(sequences, show_progress=True)
+results = inference_engine.infer(sequences=sequences)
 
 # Save results
 results_df = pd.DataFrame(results)
@@ -713,9 +716,9 @@ predictions = mutagenesis.evaluate(strategy="mean")
 # Visualization
 plot = mutagenesis.plot(predictions, save_path="./results/mutation_effects.pdf")
 
-# Get important positions
-important_positions = mutagenesis.get_important_positions(top_k=10)
-print(f"Top 10 most important positions: {important_positions}")
+# Find hotspot regions (windows with the strongest mutation effects)
+hotspots = mutagenesis.find_hotspots(predictions, strategy="mean", percentile_threshold=90)
+print(f"Important regions (start, end): {hotspots}")
 ```
 
 ### 6.5 Model Interpretability
@@ -729,18 +732,15 @@ configs = load_config("./configs/inference_config.yaml")
 model, tokenizer = load_model_and_tokenizer("./models/final_model", task_config=configs["task"])
 
 # Initialize interpreter
-interpreter = DNAInterpreter(config=configs, model=model, tokenizer=tokenizer)
+interpreter = DNAInterpret(config=configs, model=model, tokenizer=tokenizer)
 
-# Get attention weights
 sequence = "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC"
-attention_weights = interpreter.get_attention(sequence)
 
-# Get embedding vectors
-embeddings = interpreter.get_embedding(sequence)
+# Compute token-level attribution scores (LayerIntegratedGradients)
+tokens, attribution_scores = interpreter.interpret(sequence, method="lig", target=1)
 
-# Generate comprehensive report
-report = interpreter.generate_report(sequence)
-print(report)
+# Plot the attributions stored by the last interpret() call
+interpreter.plot_attributions(plot_type="token")
 ```
 
 ---
@@ -793,7 +793,7 @@ multi_model:
   comprehensive_analysis:
     name: "comprehensive_analysis"
     description: "Comprehensive sequence analysis"
-    models: ["promoter_model"]
+    models: ["promoter_model", "ner_model"]
     enabled: true
 
 # SSE configuration
@@ -1053,43 +1053,47 @@ finetune:
 ```python
 from dnallm.datahandling import DNADataset
 
-# Reverse complement augmentation
+# Reverse complement augmentation (doubles the dataset)
 dataset.augment_reverse_complement()
 
-# Random mutation
-dataset.augment_random_mutation(rate=0.01)
+# Concatenate each sequence with its reverse complement
+dataset.concat_reverse_complement(reverse=True, complement=True, sep="")
 
-# K-mer augmentation
-dataset.augment_kmer(k=3)
+# Reverse complement a random fraction of sequences in place
+dataset.raw_reverse_complement(ratio=0.5, seed=42)
 ```
 
 ### 8.4 Distributed Training
 
-```python
-from dnallm.finetune import DNATrainer
-from accelerate import Accelerator
+DNATrainer wraps the Hugging Face Trainer, which uses Accelerate internally — there is no `accelerator` constructor argument. Keep your `DNATrainer(config=..., model=..., datasets=...)` code unchanged and control mixed precision and gradient accumulation from the config:
 
-# Initialize accelerator
-accelerator = Accelerator(mixed_precision="fp16", gradient_accumulation_steps=4)
+```yaml
+finetune:
+  fp16: true
+  gradient_accumulation_steps: 4
+```
 
-# Prepare data and model
-model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
+For multi-GPU (DDP), launch the training script with `torchrun`:
 
-# Train
-trainer = DNATrainer(model=model, config=configs, datasets=datasets, accelerator=accelerator)
+```bash
+torchrun --nproc_per_node=4 train_promoter.py --config ./configs/finetune_config.yaml
 ```
 
 ### 8.5 Model Saving and Loading
 
 ```python
-# Save full model
-trainer.save_model("./models/full_model")
+# train() already saves model + tokenizer to finetune.output_dir.
+# The underlying Hugging Face Trainer can save the model to another directory:
+trainer.trainer.save_model("./models/full_model")
 
-# Save weights only
-trainer.save_pretrained("./models/weights_only")
+# Save the model directly (weights + config)
+model.save_pretrained("./models/weights_only")
 
-# Save as Safetensors format (recommended, faster and safer)
-trainer.save_model("./models/safetensors_model", safe_serialization=True)
+# Safetensors format is controlled by the finetune.save_safetensors config
+# field (default true), not a save_model argument:
+#   finetune:
+#     save_safetensors: true
+trainer.trainer.save_model("./models/safetensors_model")
 
 # Load model
 from dnallm.models import load_model_and_tokenizer
@@ -1148,12 +1152,10 @@ Task type selection:
 
 ### Q4: How to resume training from checkpoint?
 ```python
-trainer = DNATrainer(
-    model=model,
-    config=configs,
-    datasets=datasets,
-    resume_from_checkpoint="./outputs/checkpoint-1000",
-)
+trainer = DNATrainer(config=configs, model=model, datasets=datasets)
+
+# Resume from a checkpoint via the underlying Hugging Face Trainer
+trainer.trainer.train(resume_from_checkpoint="./outputs/checkpoint-1000")
 ```
 
 ### Q5: How to monitor training process?

@@ -25,9 +25,7 @@ First, ensure you have a YAML configuration file (`finetune_config.yaml`) and yo
 task:
   task_type: "binary"
   num_labels: 2
-  label_map:
-    0: "non-promoter"
-    1: "promoter"
+  label_names: ["non-promoter", "promoter"]
 
 # training configuration
 finetune:
@@ -35,11 +33,10 @@ finetune:
   num_train_epochs: 3
   per_device_train_batch_size: 32
   per_device_eval_batch_size: 32
-  warmup_steps: 500
+  warmup_ratio: 0.1
   weight_decay: 0.01
-  logging_dir: "./logs"
   logging_steps: 10
-  evaluation_strategy: "steps"
+  eval_strategy: "steps"
   save_steps: 100
   eval_steps: 100
   load_best_model_at_end: True
@@ -149,7 +146,7 @@ The fine-tuned model and training checkpoints will be saved in the directory spe
 
 To improve model performance, consider the following strategies:
 
--   **Learning Rate**: The default learning rate is `5e-5`. If the model is not converging, you can try adjusting it in the `training` section of the config file (e.g., `learning_rate: 3e-5`). A good starting point for fine-tuning is often between `1e-5` and `5e-5`.
+-   **Learning Rate**: The default learning rate is `5e-5`. If the model is not converging, you can try adjusting it in the `finetune` section of the config file (e.g., `learning_rate: 3e-5`). A good starting point for fine-tuning is often between `1e-5` and `5e-5`.
 -   **Batch Size**: `per_device_train_batch_size` can be increased if you have more GPU memory. Larger batch sizes can lead to more stable training.
 -   **Epochs**: The `num_train_epochs` determines how many times the model sees the entire training dataset. If the model is underfitting, increase the number of epochs. If it is overfitting (validation loss increases), consider reducing it or using early stopping.
 -   **Model Choice**: DNALLM supports various models. A larger or more domain-specific model (e.g., one pre-trained on plant genomes) might yield better results for this task.

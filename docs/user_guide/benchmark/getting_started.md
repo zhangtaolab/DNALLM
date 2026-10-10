@@ -1,11 +1,11 @@
 # Getting Started with Benchmarking
 
-This guide will walk you through the basics of benchmarking DNA language models using DNALLM. You'll learn how to set up your first benchmark, configure models and datasets, and interpret results.
+This guide will walk you through the basics of benchmarking DNA large language models using DNALLM. You'll learn how to set up your first benchmark, configure models and datasets, and interpret results.
 
 ## Overview
 
 Benchmarking in DNALLM allows you to:
-- Compare multiple DNA language models on the same tasks
+- Compare multiple DNA large language models on the same tasks
 - Evaluate performance across different datasets
 - Measure accuracy, speed, and resource usage
 - Generate comprehensive performance reports
@@ -28,7 +28,7 @@ uv pip install dnallm
 
 ```python
 from dnallm import load_config, Benchmark
-from dnallm.inference import load_model_and_tokenizer
+from dnallm import load_model_and_tokenizer
 from dnallm.datahandling import DNADataset
 ```
 
@@ -55,7 +55,7 @@ datasets:
     path: "path/to/your/data.csv"
     text_column: "sequence"
     label_column: "label"
-    task_type: "binary"
+    task: "binary_classification"
     num_labels: 2
     label_names:
     - "negative"
@@ -64,7 +64,7 @@ datasets:
 
 metrics:
   - "accuracy"
-  - "f1_score"
+  - "f1"
   - "precision"
   - "recall"
 
@@ -75,6 +75,10 @@ evaluation:
   max_length: 512
   num_workers: 4
   seed: 42
+
+output:
+  path: "benchmark_results"
+  format: "html"
 ```
 
 ### 3. Run the Benchmark
@@ -110,9 +114,11 @@ dnallm benchmark --config benchmark_config.yaml
 # Generate detailed report
 dnallm benchmark --config config.yaml --output report.html
 
-# Run with custom parameters
-dnallm benchmark --config config.yaml --batch-size 32 --device cuda
+# Run without a config file (--model and --data are then required)
+dnallm benchmark --model zhangtaolab/plant-dnabert-BPE --data sequences.json --output results/
 ```
+
+Run parameters such as batch size and device are not CLI flags — they are configured in the benchmark YAML configuration file.
 
 ## Understanding Results
 
@@ -140,7 +146,6 @@ Here's a complete working example:
 ```python
 import os
 from dnallm import load_config, Benchmark
-from dnallm.datahandling import DNADataset
 
 # 1. Prepare your data
 data_path = "path/to/your/dna_sequences.csv"
@@ -148,41 +153,57 @@ if not os.path.exists(data_path):
     print("Please provide a valid data path")
     exit()
 
-# 2. Load and prepare dataset
-dataset = DNADataset.load_local_data(
-    data_path, seq_col="sequence", label_col="label", max_length=512
-)
+# 2. Write the benchmark configuration
+# All sections (benchmark, models, datasets, metrics, evaluation, output)
+# live at the TOP LEVEL of the YAML file. When load_config sees the
+# "benchmark" key, it parses the whole file into a single BenchmarkConfig
+# object stored under config["benchmark"].
+config_yaml = """\
+benchmark:
+  name: "DNA Model Comparison"
+  description: "Comparing DNA models on promoter prediction"
 
-# 3. Create configuration
-config = {
-    "benchmark": {
-        "name": "DNA Model Comparison",
-        "models": [
-            {
-                "name": "Plant DNABERT",
-                "path": "zhangtaolab/plant-dnabert-BPE",
-                "source": "huggingface",
-                "task_type": "classification",
-            },
-            {
-                "name": "Plant DNAGPT",
-                "path": "zhangtaolab/plant-dnagpt-BPE",
-                "source": "huggingface",
-                "task_type": "generation",
-            },
-        ],
-        "datasets": [dataset],
-        "metrics": ["accuracy", "f1_score", "precision", "recall"],
-        "evaluation": {"batch_size": 16, "max_length": 512, "device": "cuda"},
-        "output": {"format": "pdf", "path": "my_benchmark_results"},
-    }
-}
+models:
+  - name: "Plant DNABERT"
+    path: "zhangtaolab/plant-dnabert-BPE"
+    source: "huggingface"
+  - name: "Plant DNAGPT"
+    path: "zhangtaolab/plant-dnagpt-BPE"
+    source: "huggingface"
 
-# 4. Run benchmark
+datasets:
+  - name: "promoter_data"
+    path: "path/to/your/dna_sequences.csv"
+    text_column: "sequence"
+    label_column: "label"
+    task: "binary_classification"
+    num_labels: 2
+
+metrics:
+  - "accuracy"
+  - "f1"
+  - "precision"
+  - "recall"
+
+evaluation:
+  batch_size: 16
+  max_length: 512
+  device: "cuda"
+
+output:
+  path: "my_benchmark_results"
+  format: "pdf"
+"""
+
+with open("benchmark_config.yaml", "w", encoding="utf-8") as f:
+    f.write(config_yaml)
+
+# 3. Load the configuration and run the benchmark
+config = load_config("benchmark_config.yaml")  # config["benchmark"] is a BenchmarkConfig
 benchmark = Benchmark(config=config)
 results = benchmark.run()
 
-# 5. Generate report
+# 4. Display the results
 print(results)
 
 print("Benchmark completed! Check 'my_benchmark_results' folder for results.")

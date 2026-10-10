@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pydantic_core import ValidationError
 
 from ..config_manager import MCPConfigManager
 
@@ -254,6 +255,211 @@ class TestMCPConfigManager:
         assert manager.server_config is None
         assert len(manager.model_configs) == 0
         assert manager.get_enabled_models() == []
+
+
+class TestMCPConfigManagerBranches:
+    """Cover the config-manager branches not exercised by the happy path."""
+
+    def _minimal_server_config(self, **overrides):
+        """Build a minimal valid server config dict with overrides applied."""
+        config = {
+            "server": {
+                "host": "127.0.0.1",
+                "port": 8123,
+                "workers": 1,
+                "log_level": "INFO",
+                "debug": False,
+            },
+            "mcp": {
+                "name": "Branch Test",
+                "version": "0.1.0",
+                "description": "test",
+            },
+            "models": {
+                "test_model": {
+                    "name": "test_model",
+                    "model_name": "Test Model",
+                    "config_path": "./test_model_config.yaml",
+                    "enabled": True,
+                    "priority": 1,
+                }
+            },
+            "multi_model": {},
+            "sse": {
+                "heartbeat_interval": 30,
+                "max_connections": 100,
+                "connection_timeout": 300,
+                "enable_compression": True,
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "%(asctime)s - %(message)s",
+                "file": "./logs/test.log",
+                "max_size": "10MB",
+                "backup_count": 5,
+            },
+        }
+        config.update(overrides)
+        return config
+
+    def _write_model_config(self, temp_dir):
+        """Write the referenced model config next to the server config."""
+        model_config = {
+            "task": {
+                "task_type": "binary",
+                "num_labels": 2,
+                "label_names": ["a", "b"],
+                "description": "test",
+            },
+            "inference": {
+                "batch_size": 16,
+                "output_dir": str(temp_dir / "out"),
+            },
+            "model": {
+                "name": "test_model",
+                "path": "p",
+                "source": "huggingface",
+                "task_info": {
+                    "architecture": "A",
+                    "tokenizer": "T",
+                    "species": "s",
+                    "task_category": "c",
+                },
+            },
+        }
+        with open(temp_dir / "test_model_config.yaml", "w") as f:
+            yaml.dump(model_config, f)
+
+    def test_invalid_server_config_raises(self, tmp_path):
+        """A malformed server config propagates the validation error."""
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump({"server": "not-a-mapping"}, f)
+
+        with pytest.raises(ValidationError):
+            MCPConfigManager(str(tmp_path))
+
+    def test_load_model_configs_without_server_config(self):
+        """_load_model_configs no-ops (with an error log) when unloaded."""
+        manager = MCPConfigManager("nonexistent_config.yaml")
+        manager._load_model_configs()  # must not raise
+        assert manager.model_configs == {}
+
+    def test_disabled_model_is_skipped(self, tmp_path):
+        """A disabled model entry is not loaded."""
+        config = self._minimal_server_config()
+        config["models"]["test_model"]["enabled"] = False
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(config, f)
+
+        manager = MCPConfigManager(str(tmp_path))
+
+        assert manager.get_enabled_models() == []
+        assert manager.model_configs == {}
+
+    def test_get_model_configs_returns_copy(self, tmp_path):
+        """get_model_configs returns a copy, not the internal dict."""
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(self._minimal_server_config(), f)
+        self._write_model_config(tmp_path)
+        manager = MCPConfigManager(str(tmp_path))
+
+        returned = manager.get_model_configs()
+        assert set(returned) == {"test_model"}
+        returned.clear()
+        assert set(manager.model_configs) == {"test_model"}
+
+    def test_get_model_priority_unknown_defaults_to_one(self, tmp_path):
+        """An unknown model (or no config) yields the default priority 1."""
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(self._minimal_server_config(), f)
+        self._write_model_config(tmp_path)
+        manager = MCPConfigManager(str(tmp_path))
+
+        assert manager.get_model_priority("ghost") == 1
+
+        bare = MCPConfigManager("nonexistent_config.yaml")
+        assert bare.get_model_priority("anything") == 1
+
+    def test_getters_without_config_return_defaults(self):
+        """Every getter has a safe default with no server config loaded."""
+        manager = MCPConfigManager("nonexistent_config.yaml")
+
+        assert manager.get_multi_model_configs() == {}
+        assert manager.get_sse_config() == {}
+        assert manager.get_streamable_http_config() == {}
+        assert manager.get_logging_config() == {}
+        assert manager.get_timeout_config() == {"tool_timeout_seconds": 30}
+        assert manager.validate_model_references() == ["Server configuration not loaded"]
+
+    def test_get_streamable_http_config_defaults_without_block(self, tmp_path):
+        """Without a streamable_http block the server host/port + /mcp apply."""
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(self._minimal_server_config(), f)
+        self._write_model_config(tmp_path)
+        manager = MCPConfigManager(str(tmp_path))
+
+        config = manager.get_streamable_http_config()
+
+        assert config == {"host": "127.0.0.1", "port": 8123, "path": "/mcp"}
+
+    def test_get_streamable_http_config_from_block(self, tmp_path):
+        """A streamable_http block supplies host/port/path directly."""
+        config = self._minimal_server_config()
+        config["streamable_http"] = {"host": "127.0.0.1", "port": 9000, "path": "/custom"}
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(config, f)
+        self._write_model_config(tmp_path)
+        manager = MCPConfigManager(str(tmp_path))
+
+        assert manager.get_streamable_http_config() == {
+            "host": "127.0.0.1",
+            "port": 9000,
+            "path": "/custom",
+        }
+
+    def test_reload_configurations_picks_up_changes(self, tmp_path):
+        """reload_configurations re-reads the files from disk."""
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(self._minimal_server_config(), f)
+        self._write_model_config(tmp_path)
+        manager = MCPConfigManager(str(tmp_path))
+        assert set(manager.model_configs) == {"test_model"}
+
+        # Drop the model from the config file, then reload
+        updated = self._minimal_server_config()
+        updated["models"]["test_model"]["enabled"] = False
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(updated, f)
+        manager.reload_configurations()
+
+        assert manager.model_configs == {}
+        assert manager.get_enabled_models() == []
+
+    def test_validate_model_references_flags_dangling_and_unloaded(self, tmp_path):
+        """Both dangling multi-model refs and unloaded configs are flagged."""
+        config = self._minimal_server_config()
+        # Point the model entry at a config file that does not exist so the
+        # model stays enabled but never loads.
+        config["models"]["test_model"]["config_path"] = "./missing.yaml"
+        with open(tmp_path / "mcp_server_config.yaml", "w") as f:
+            yaml.dump(config, f)
+        manager = MCPConfigManager(str(tmp_path))
+
+        # The parse-time validator forbids dangling refs in the file, so the
+        # runtime guard is exercised by injecting one post-parse.
+        from ..config_validators import MultiModelConfig
+
+        manager.server_config.multi_model["dangling"] = MultiModelConfig(
+            name="dangling",
+            description="references missing models",
+            models=["ghost-a", "ghost-b"],
+            enabled=True,
+        )
+
+        errors = manager.validate_model_references()
+
+        assert any("references non-existent model 'ghost-a'" in e for e in errors)
+        assert any("Model configuration not loaded for 'test_model'" in e for e in errors)
 
 
 if __name__ == "__main__":

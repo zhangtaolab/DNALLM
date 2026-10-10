@@ -6,25 +6,51 @@ on:
       - main
       - master
       - dev
+      # 2026-10-07 lesson: the matrix legs run on push/PR only, so a
+      # long-lived working branch that never opens PRs reaches the merge
+      # to dev with ZERO matrix exposure -- the v1.1 merge surfaced three
+      # first-exposure failure classes in one afternoon. Running the
+      # matrix on phs pushes closes that gap; deploy stays main/master
+      # only and the nightly legs stay dispatch/schedule-gated.
+      # 2026-10-10: same reasoning for the v1.2 revision branch.
+      # 2026-10-10: phs and revision both deleted; entries removed.
   pull_request:
     branches: [ main, master, dev ]
+  workflow_dispatch:
+  schedule:
+    # D-19: BOTH entries below trigger the whole workflow — GitHub offers no
+    # per-cron routing, so each nightly job carries its own cron-string gate
+    # (github.event.schedule == '<cron>') selecting exactly one entry: the
+    # 03:00 UTC entry fires coverage-nightly + test-mamba, the 05:30 UTC
+    # entry fires example-nightly (D-06 stagger, queue-serialized on the
+    # single dnallm-nightly runner). Cron schedules fire only from the
+    # default branch.
+    - cron: "0 3 * * *"
+    - cron: "30 5 * * *"
 
+# Least privilege: every job (including test jobs that run arbitrary test code
+# and third-party actions) defaults to read-only. Only `deploy` overrides this
+# below, because `mkdocs gh-deploy --force` pushes to the gh-pages branch.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   test:
     name: test (py${{ matrix.python-version }}, numpy${{ matrix.numpy-version }})
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11', '3.12', '3.13']
-        numpy-version: ['1.26.4', '2.2.0']
+        numpy-version: ['2.2.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/share/dotnet
@@ -60,11 +86,7 @@ jobs:
       - name: Install specific numpy version
         run: |
           source .venv/bin/activate
-          if [ "${{ matrix.numpy-version }}" = "1.26.4" ]; then
-            uv pip install "numpy==${{ matrix.numpy-version }}" "scipy>=1.15.2"
-          elif [ "${{ matrix.numpy-version }}" = "2.2.0" ]; then
-            uv pip install "numpy==${{ matrix.numpy-version }}"
-          fi
+          uv pip install "numpy==${{ matrix.numpy-version }}"
           
 
       - name: Run linting and code quality checks with Ruff
@@ -78,21 +100,118 @@ jobs:
       - name: Run fast tests
         run: |
           source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --cov=dnallm --cov-report=xml --cov-report=term-missing --tb=short
+          pytest -m "not slow" --cov --junitxml=pytest-junit.xml
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
+      - name: Skip audit (unexpected skips fail the job)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
+
+      - name: Exit-code canary (a failing test must fail the job)
+        run: |
+          source .venv/bin/activate
+          cat > tests/test_ci_exitcode_canary.py <<'CANARY'
+          def test_ci_exitcode_canary():
+              assert False, "intentional canary failure"
+          CANARY
+          if pytest tests/test_ci_exitcode_canary.py -q -p no:cacheprovider > canary.log 2>&1; then
+            echo "CANARY FAILED: pytest exited 0 despite a failing test (exit-code mask regression)"
+            cat canary.log
+            rm tests/test_ci_exitcode_canary.py
+            exit 1
+          else
+            echo "Canary OK: pytest exited non-zero as expected"
+            cat canary.log | tail -5
+            rm tests/test_ci_exitcode_canary.py
+          fi
 
       - name: Run type checking
         run: |
           source .venv/bin/activate
           mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
           
+  test-windows:
+    # Windows platform leg: the hosted matrix is linux-only today, yet the
+    # package claims "Operating System :: OS Independent" and the primary dev
+    # machine is Windows 11. Fast CPU leg only — the compiled mamba kernels
+    # (.[mamba]) stay on the linux dnallm-nightly box.
+    name: test-windows (py3.12)
+    runs-on: windows-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      # root conftest prints emoji; non-UTF8 pipes on Windows would crash
+      PYTHONUTF8: "1"
+    steps:
+      - name: Disable git autocrlf (keep LF endings for ruff format)
+        run: git config --global core.autocrlf false
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: python -m pip install uv
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Run linting and code quality checks with Ruff
+        run: |
+          source .venv/Scripts/activate
+          # Check formatting
+          ruff format --check .
+          # Check linting
+          ruff check . --statistics
+
+      - name: Run fast tests
+        run: |
+          source .venv/Scripts/activate
+          pytest -m "not slow" --cov --junitxml=pytest-junit.xml
+
+      - name: Skip audit (unexpected skips fail the job)
+        run: |
+          source .venv/Scripts/activate
+          python scripts/audit_skips.py pytest-junit.xml tests/expected_skips.yaml
+
+      - name: Exit-code canary (a failing test must fail the job)
+        run: |
+          source .venv/Scripts/activate
+          cat > tests/test_ci_exitcode_canary.py <<'CANARY'
+          def test_ci_exitcode_canary():
+              assert False, "intentional canary failure"
+          CANARY
+          if pytest tests/test_ci_exitcode_canary.py -q -p no:cacheprovider > canary.log 2>&1; then
+            echo "CANARY FAILED: pytest exited 0 despite a failing test (exit-code mask regression)"
+            cat canary.log
+            rm tests/test_ci_exitcode_canary.py
+            exit 1
+          else
+            echo "Canary OK: pytest exited non-zero as expected"
+            cat canary.log | tail -5
+            rm tests/test_ci_exitcode_canary.py
+          fi
+
+      - name: Run type checking
+        run: |
+          source .venv/Scripts/activate
+          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
+
   test-cuda:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11']
@@ -102,6 +221,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
         run: |
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /usr/share/dotnet
@@ -150,7 +272,27 @@ jobs:
           pytest tests/ -v -m "not slow" --tb=short
           
   test-mamba:
-    runs-on: ubuntu-latest
+    # Self-hosted GPU box on nightly cadence per GATE-02 (amended): the .[mamba]
+    # install compiles mamba-ssm/causal_conv1d CUDA kernels from source, which
+    # belongs to the nightly leg — push/PR stays the fast hosted leg.
+    # schedule/dispatch-only preserves the coverage-nightly posture that PR code
+    # (including forks) never executes on this runner. The gpu-check step below
+    # stays as a fail-safe no-op if the box ever loses its GPU.
+    runs-on: [self-hosted, dnallm-nightly]
+    # D-19: cron-string gate — both workflow schedule entries trigger this
+    # job's evaluation, so the gate selects exactly the 03:00 UTC entry
+    # (the 05:30 entry belongs to example-nightly). The dispatch disjunct
+    # stays; push/PR must never reach the self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
+    # The recurring per-run CUDA kernel source build is the long pole
+    # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
+    # the mamba-ssm/causal_conv1d compile repeats every run, not just the
+    # first). 180min covers a worst-case GB10 build plus the .[base]
+    # install plus the `not slow` census with headroom. Self-hosted jobs have
+    # no platform time cap, so this backstop is the only protection against a
+    # hung build monopolizing the single runner that also serves
+    # coverage-nightly.
+    timeout-minutes: 180
     strategy:
       matrix:
         python-version: ['3.11']
@@ -181,31 +323,790 @@ jobs:
 
       - name: Create virtual environment and install mamba dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
+        # .[base] plus the fla extra, not .[test,dev]: the not-slow census
+        # imports mcp-extra deps (langchain / langchain_mcp_adapters /
+        # pydantic-ai / nest-asyncio in the mcp_example notebooks, and the
+        # exceptiongroup backport at tests/mcp/test_client_sdk.py, pulled in
+        # via pydantic-ai -> pydantic-ai-slim[mcp] -> fastmcp-slim[client]).
+        # fla rides along (WR-01) so the not-slow chunk_kda import guard
+        # actually exercises the import here instead of skipping typed; per
+        # pyproject.toml:157 the bare fla spec rides the already-installed
+        # torch/triton (no backend extras). Same extras set coverage-nightly
+        # installs; it proves they resolve green on this exact box.
         run: |
           uv venv
-          uv pip install -e ".[test,dev]"
+          # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
+          # 37184990854): see the example-nightly stage-0 comment — sysconfig
+          # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
+          # at the runner's real toolcache lib.
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
+          uv pip install -e ".[base,fla]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
+      # No continue-on-error here: a failing mamba test must fail the job.
+      # Hung runs are bounded by the per-test --timeout=300 from pytest addopts
+      # and the 180-min job timeout; the artifact step below still fires via
+      # steps.mamba-tests.outcome == 'failure'.
       - name: Run mamba-specific tests
+        id: mamba-tests
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        continue-on-error: true
         run: |
           source .venv/bin/activate
-          pytest tests/ -v -m "not slow" --tb=short
+          set -o pipefail
+          pytest tests/ -v -m "not slow" --tb=short 2>&1 | tee pytest.log
 
       - name: Upload mamba test logs on failure
-        if: steps.gpu-check.outputs.has_gpu == 'true' && failure()
+        if: always() && steps.mamba-tests.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: mamba-test-logs-${{ matrix.python-version }}
           path: |
             pytest.log
             /tmp/mamba-build.log
-          
-  deploy:
-    needs: [test, test-cuda, test-mamba]
+
+  coverage-gate:
+    name: coverage-gate (py3.12, fast leg)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    timeout-minutes: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          uv pip install -e ".[base]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      - name: Run gated fast census (not slow)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -m "not slow" -ra --durations=0 --junitxml=pytest-junit-gate.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (gated junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
+
+      - name: "Run type checking (ty, advisory — D-08)"
+        # D-08: ty runs as an advisory standalone step (seconds-scale, same
+        # layer as the ruff statistics step) until the E-family triage quick
+        # task reaches zero diagnostics; failures here never red the gate
+        # prematurely. Exact-pinned invocation (never floating) — no
+        # pyproject dependency added.
+        # D-09: the ty hard flip and the mypy retirement land together in
+        # ONE later atomic change — this phase touches nothing mypy (the
+        # existing advisory mypy steps, pre-commit, check_code.py, and
+        # [tool.mypy] stay untouched).
+        # D-10: static checks never enter pytest (lint lane, not behavior).
+        run: |
+          source .venv/bin/activate
+          uvx ty@0.0.84 check dnallm/ || true
+
+  coverage-nightly:
+    name: coverage-nightly (py3.12, full suite incl. slow)
+    # Self-hosted GPU box (aarch64, warm HF/ModelScope caches in $HOME):
+    # schedule/dispatch events only — fork PRs can never land here; all PR jobs
+    # stay on hosted runners. Hosted runners cap at 360min (run 36747594207 was
+    # killed at exactly 6h00m33s), which a CPU census cannot fit (13x GPU->CPU).
+    runs-on: [self-hosted, dnallm-nightly]
+    # D-19: cron-string gate — selects exactly the 03:00 UTC schedule
+    # entry (the 05:30 entry belongs to example-nightly) while keeping the
+    # dispatch disjunct; push/PR must never reach the self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *')
+    # D-12 MEASURED rewrite (runs 37345067326 / 37377004230 / 37432001711;
+    # wall minutes from run logs, never proportional estimates): the full
+    # census measured 1:27:14 in 37345067326 (1928P/4F/15S — the 4 failures
+    # were the bedtools gap fixed at decd2cc plus the then-fenced
+    # test_plot_for_regression; those tests then failed fast), 1:40:35 in
+    # the re-dispatch 37377004230 (1933P/1F/15S — the bedtools trio now
+    # EXECUTES green), and GREEN in the final run 37432001711: **1938
+    # passed / 15 skipped / 0 failed in 1:42:18 at 96.42% coverage** (job
+    # 1:51:06; install ~4 min + bedtools-from-cache ~20s) — far inside the
+    # kill.
+    # Relationship (D-12, unchanged): per-test @pytest.mark.timeout marks are
+    # the PRIMARY hang protection — a hung test dies at its own mark with
+    # junit and the skip audit still produced; the job kill is only the
+    # backstop. Recomputed paper ceilings from the current marks (fresh
+    # full-tree collection, marks above the 300s global default):
+    # ~3920 min over ALL marks — dominated by tests/examples execution
+    # marks (13x7200s class + 8 gated 3600/7200s + 3x7200s marimo +
+    # 4x3600s script + showcase 2400+5400+2400s) that typed-skip at gate
+    # time in this job's .[base,fla] venv (no megaDNA/mamba/giants prereqs
+    # — example-nightly's lane); the bind-here set (real-model 5x1800s +
+    # remote-code 1800s + PlantHelixSeek smokes 2x1800s + trainer
+    # 2x7200s+3x3600s+7200s fn + inference 3600s + model 2x900s + mcp
+    # 3600s) sums to ~640 min. DECISION (with the measurement in hand,
+    # D-12 / research OQ3): KEEP 900 as a deliberate, documented override
+    # sitting below both paper sums — the sums assume every marked test
+    # hangs to its ceiling simultaneously, which the per-test marks
+    # themselves preclude (each hung test fails at its own mark, junit and
+    # audit still run), and the measured green-path total is ~88 min;
+    # raising the kill buys no protection the marks do not already provide.
+    timeout-minutes: 900
+    continue-on-error: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        # Hosted-runner optimization (removes Android/.NET images); pointless on
+        # the self-hosted box and requires sudo the runner user lacks.
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/.ghcup
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
+      # restore that stood here is removed — cold pulls are proven (65-min
+      # all-cold stage 1 vs the 2700-min budget; the lock-only cache was
+      # 15.2GiB, over the 10GB Actions quota, and never successfully saved).
+      # The box's local $HOME hub caches remain the warm path (owner rule:
+      # never cleaned).
+
+      - name: Create virtual environment and install dependencies
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
+          # 37184990854): see the example-nightly stage-0 comment — sysconfig
+          # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
+          # at the runner's real toolcache lib.
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
+          # fla included (WR-01): this is the only leg running the full suite
+          # with the two slow PlantHelixSeek checkpoint smokes — without fla
+          # those loads exercise the remote code's silent non-KDA fallback.
+          uv pip install -e ".[base,fla]"
+
+      - name: Install specific numpy version
+        run: |
+          source .venv/bin/activate
+          uv pip install "numpy==2.2.0"
+
+      - name: Cache bedtools rootless prefix
+        uses: actions/cache@v4
+        with:
+          path: .bedtools-env
+          key: bedtools-bioconda-${{ runner.os }}-${{ runner.arch }}
+
+      - name: "Bedtools rootless install/fallback (D-10, A10)"
+        # D-18 discovery (run 37345067326, 2026-10-05): this job's full-tree
+        # census executes the NER data_generation notebook, the CRE showcase
+        # bands test, and the script lane — all of which need the bedtools
+        # BINARY, and 3 of its 4 failures traced to exactly this gap (the
+        # 08-09 example-nightly failure class, live again on this leg).
+        # Same rootless posture as the example-nightly step (08-09 commit
+        # ea1bfd6): micromamba/bioconda into a job-local prefix (cached
+        # across runs, shared key) when the box does not already ship the
+        # binary — never apt, never sudo.
+        run: |
+          if command -v bedtools; then
+            echo "bedtools already on PATH: $(command -v bedtools)"
+            exit 0
+          fi
+          if [ -x .bedtools-env/bin/bedtools ]; then
+            echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+            echo "bedtools restored from cached prefix: $(.bedtools-env/bin/bedtools --version)"
+            exit 0
+          fi
+          echo "bedtools absent — rootless micromamba/bioconda install (no sudo)"
+          curl -Ls "https://micro.mamba.pm/api/micromamba/linux-$(uname -m)/latest" \
+            | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -p "$GITHUB_WORKSPACE/.bedtools-env" \
+            -c conda-forge -c bioconda bedtools
+          echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+          export PATH="$GITHUB_WORKSPACE/.bedtools-env/bin:$PATH"
+          command -v bedtools && bedtools --version \
+            || { echo "bedtools still missing after rootless fallback"; exit 1; }
+
+      # NOTE: 27 tests carry the slow mark; 21 execute here. The 6 MCP
+      # live-server probes (dnallm/mcp/tests/test_sse_client.py,
+      # test_streamable_http_client.py) target localhost:8000 and no CI job
+      # starts a server there, so they skip deterministically as typed
+      # "network-unavailable:" skips (allowlisted in tests/expected_skips.yaml).
+      # Those probes are local-only.
+      - name: Run gated full census (slow included)
+        run: |
+          source .venv/bin/activate
+          .venv/bin/python -m pytest -ra --durations=0 --junitxml=pytest-junit-nightly.xml --cov -p no:cacheprovider -p no:progress
+
+      - name: Skip audit (nightly junit)
+        run: |
+          source .venv/bin/activate
+          python scripts/audit_skips.py pytest-junit-nightly.xml tests/expected_skips.yaml
+
+  example-nightly:
+    name: example-nightly (py3.12, example execution census)
+    # D-05 (owner-rated costly to reverse): the example-execution nightly
+    # runs in its OWN job, pre-authorized by CI-06 once the example census
+    # outgrew the coverage-nightly budget — nightly time budgets and the
+    # stage-ordering conventions below must be re-planned together to ever
+    # merge it back into coverage-nightly.
+    # D-06: scheduled 05:30 UTC — 2.5h after coverage-nightly's 03:00 UTC
+    # start, queue-serialized on the single dnallm-nightly runner so GPU
+    # and disk bandwidth are never contended.
+    runs-on: [self-hosted, dnallm-nightly]
+    # D-19: cron-string gate — selects exactly the 05:30 UTC schedule
+    # entry (the D-06 stagger, 2.5h after the 03:00 coverage run) while
+    # keeping the dispatch disjunct; push/PR must never reach the
+    # self-hosted box.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '30 5 * * *')
+    # D-07 staged-serial ordering contract (VRAM/port coexistence, MCP-02):
+    #   stage 0    install + shared caches + runner-inventory probes
+    #              (D-04: evo provisioning deleted; D-11: no model cache)
+    #   stage 0.5  census collection assertion — hard gate (D-03): the
+    #              collect-only triple for the exact stage-1 selector set
+    #              is pinned; any census drift fails the job before stage 1
+    #   stage 1    torch-heavy example execution FIRST (ACTIVE notebooks +
+    #              showcase + marimo + script lane + YAML leg; the two
+    #              mcp_example ids are deselected — they belong to stage 2 —
+    #              and the giants-marked evo execution test is deselected
+    #              per D-01 owner policy; dispatch/manual lane runs it with
+    #              -m giants)
+    #   stage 1.5  hygiene step (D-13, hard gate): kernel pkill + >=35Gi
+    #              free -g available-memory floor + before/after value
+    #              logging (nvidia-smi stays telemetry-only — GB10 reports
+    #              no memory through it)
+    #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
+    #              streamable-http probes, sse restart, 3 sse probes)
+    #   stage 2.5  hygiene step (D-13, hard gate) before the ollama batch:
+    #              same kernel pkill + memory floor + value logging
+    #   stage 3    ollama batch LAST (wired in 08-09: fresh streamable-http
+    #              server + the two mcp_example ids; D-13 probe in-gate)
+    #   stage 4    junit skip audit + artifact upload + fail-soft summary
+    # Stages run serially inside one job by design; a server-binding stage
+    # may never start while the previous stage still holds GPU memory or
+    # kernel processes.
+    # Sum-of-ceilings backstop (same discipline as coverage-nightly): the
+    # per-test pytest-timeout marks across tests/examples are the PRIMARY
+    # hang protection — a hung test dies at its own mark with junit and the
+    # skip audit still produced — and this job-level kill is the backstop
+    # above every measured total. Self-hosted jobs have no platform time
+    # cap, so this backstop is the only whole-job bound.
+    # D-12 MEASURED actuals (wall minutes from run logs — never
+    # proportional estimates; run 37345067326 = first live exercise at the
+    # 09-04 Task-1 wiring, run 37377004230 = the green-gate run at the
+    # fixed wiring incl. the SSE-probe repair 5dfadda; authoritative
+    # record: .planning/phases/09-ci-wiring-census-verification/
+    # 09-CENSUS-ROLLUP.md):
+    #   stage 0 venv+extras+bedtools+inventory  ~1 min (warm uv; bedtools
+    #     from cached prefix ~15s)
+    #   stage 0 mamba kernel wheelhouse         23-24 min on the first two
+    #     09-04 runs (cache store at its 10GB threshold throttled saves);
+    #     the FINAL run's cache HIT (build step 1s) — the wheels finally
+    #     amortized, so steady state skips the source build
+    #   stage 0.5 census assertion              4s (collect 1.28s)
+    #   stage 1 examples+YAML                   1:57-2:00 every run (192P/1S/9
+    #     deselected; D-05 epochs-cut measured: gated
+    #     finetune_custom_head 566s vs the ~31min 3-epoch dev-box figure)
+    #   stage 1.5/2.5 hygiene floors            5-6s each (~115Gi avail)
+    #   stage 2 streamable + sse probes         ~40s each post-fix (the
+    #     17:58 sse figure in run 37345067326 was the pre-fix always-fail
+    #     probe, never server cost)
+    #   stage 3 mcp pair                        qwen3.8-era: 2P in 442-449s
+    #     with a >30-min latency tail that red run 37406829738 at the old
+    #     1800s cell line (owner decision B -> 3600s cell + 7200s outer);
+    #     after the qwen3.5:4b swap (owner 2026-10-06 15:27 CST): 2P in
+    #     87s (final run 37432001711) — D-06 num_ctx cut stays DEFERRED
+    #     (the 4.2B brain still defaults to a 262144 ctx); revisit with
+    #     these numbers
+    #   stage 4 audits+upload+summary           seconds
+    #   TOTAL measured pipeline                 2:43 incl. wheelhouse build
+    #     (37377004230) / 2:09:55 with the cache hit (37432001711, the
+    #     green-gate run of record: complete ledger zero, census
+    #     192P/1S/1:56:53, pair 2P in 87s); a ~33-min trailing runner-side
+    #     log upload extended one run's job record — the stages are the
+    #     budget
+    #   The 2700-min kill sits far above the measured pipeline; the
+    #   per-test marks remain the primary protection.
+    # D-08 fail-soft: every stage-1+ invocation records its exit code to
+    # stage-results.txt and its step exits 0 so later stages still run; the
+    # stage-4 summary exits non-zero when ANY recorded outcome failed. NO
+    # step in this job carries continue-on-error — a forever-green job is
+    # prohibited, and an infra failure in stage 0 still fails the job
+    # directly (nothing downstream can run without a venv).
+    timeout-minutes: 2700
+    env:
+      # Network reality on the dnallm-nightly box (08-08 lora repair
+      # finding): huggingface.co is unreachable while hf-mirror.com — the
+      # endpoint dnallm's own use_mirror toggle installs — serves the same
+      # artifacts. Pinned job-wide so cold hub fetches (D-11: no cache
+      # layer, cold pulls by design) cannot dead-wait on the unreachable
+      # origin.
+      HF_ENDPOINT: https://hf-mirror.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Cache uv dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      # D-11 (owner decision 2026-10-05): the models.lock-keyed hub cache
+      # restore that stood here is removed — cold pulls are proven (65-min
+      # all-cold stage 1 vs the 2700-min budget; the lock-only cache was
+      # 15.2GiB, over the 10GB Actions quota, and never successfully saved).
+      # The box's local $HOME hub caches remain the warm path (owner rule:
+      # never cleaned).
+
+      - name: "Stage 0: create venv and install full extras (D-10)"
+        env:
+          UV_HTTP_TIMEOUT: 300
+          UV_CONCURRENT_DOWNLOADS: 4
+        run: |
+          uv venv
+          # pyBigWig (pulled by pygenometracks in the notebook extra since
+          # 261004-dyw) builds from sdist on aarch64 — no arm64 wheels —
+          # and its extension links -lpython against the LIBDIR the
+          # python-versions build baked into sysconfig
+          # (/opt/hostedtoolcache/...), which does not exist on this
+          # self-hosted box (run 37184990854: ld "cannot find
+          # -lpython3.12"). The runner's real toolcache ships
+          # libpythonX.Y.so — point the linker at sys.prefix/lib (rootless,
+          # version-agnostic; proven green on this box).
+          export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
+          # D-10 full extras: base (dev/test/notebook/mcp transitive),
+          # fla (PlantHelixSeek KDA kernels), dev (pyfastx/pybedtools for
+          # the script lane), mcp (server stack for stage 2). System
+          # binaries such as bedtools are handled by the rootless
+          # install/fallback step below (08-09, D-10's job-step clause).
+          uv pip install -e ".[base,fla,dev,mcp]"
+          : > stage-results.txt
+
+      - name: Cache bedtools rootless prefix
+        uses: actions/cache@v4
+        with:
+          path: .bedtools-env
+          key: bedtools-bioconda-${{ runner.os }}-${{ runner.arch }}
+
+      - name: "Stage 0: bedtools rootless install/fallback (D-10, A10)"
+        # Rootless posture (research Pitfall 5): the runner user has no
+        # sudo, so bedtools comes from micromamba/bioconda into a job-local
+        # prefix (cached across runs) when the box does not already ship
+        # the binary. The prefix goes onto PATH via GITHUB_PATH so the
+        # script lane's pybedtools finds it — never apt, never sudo.
+        run: |
+          if command -v bedtools; then
+            echo "bedtools already on PATH: $(command -v bedtools)"
+            exit 0
+          fi
+          if [ -x .bedtools-env/bin/bedtools ]; then
+            echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+            echo "bedtools restored from cached prefix: $(.bedtools-env/bin/bedtools --version)"
+            exit 0
+          fi
+          echo "bedtools absent — rootless micromamba/bioconda install (no sudo)"
+          curl -Ls "https://micro.mamba.pm/api/micromamba/linux-$(uname -m)/latest" \
+            | tar -xj -C "$RUNNER_TEMP" bin/micromamba
+          "$RUNNER_TEMP/bin/micromamba" create -y -p "$GITHUB_WORKSPACE/.bedtools-env" \
+            -c conda-forge -c bioconda bedtools
+          echo "$GITHUB_WORKSPACE/.bedtools-env/bin" >> "$GITHUB_PATH"
+          export PATH="$GITHUB_WORKSPACE/.bedtools-env/bin:$PATH"
+          command -v bedtools && bedtools --version \
+            || { echo "bedtools still missing after rootless fallback"; exit 1; }
+
+      # D-04: the evo isolated-venv provisioning step that stood here is
+      # deleted with the evo/giants census exit (full note beside the
+      # wheelhouse deletions below).
+
+      - name: "Stage 0: capture wheel-cache key versions"
+        id: wheelkeys
+        run: |
+          {
+            echo "torch=$(.venv/bin/python -c 'import torch; print(torch.__version__)')"
+          } >> "$GITHUB_OUTPUT"
+
+      # D-04 (owner directive 2026-10-05): evo/giants exited the pytest
+      # census by owner policy (D-01 marker + stage-1 deselect). The evo
+      # isolated-venv and flash-attention wheelhouse steps that stood here
+      # are deleted — the flash-attention build-isolation failure of run
+      # 37278002681 dissolves with this deletion. The dispatch/manual lane
+      # and the local giants model tier remain (never cleaned, owner rule).
+
+      - name: Cache mamba kernel wheelhouse (project venv)
+        uses: actions/cache@v4
+        with:
+          path: wheelhouse-mamba
+          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.torch }}
+
+      - name: "Stage 0: build/install mamba kernels (cached wheelhouse, project venv)"
+        # Cached-wheelhouse variant of the test-mamba install flags
+        # (--no-build-isolation source compile): the lora pair's _gate_mamba
+        # probes mamba_ssm in the RUNNING interpreter, so the kernels land
+        # in the project venv (08-08 dev-box precedent). Versions mirror
+        # the pyproject mamba extra pins.
+        run: |
+          if ! ls wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl >/dev/null 2>&1; then
+            mkdir -p wheelhouse-mamba
+            uv pip install --python .venv/bin/python pip
+            .venv/bin/python -m pip wheel "causal_conv1d==1.7.0" "mamba-ssm==2.3.2.post1" \
+              --no-build-isolation --no-cache-dir -w wheelhouse-mamba
+          fi
+          uv pip install wheelhouse-mamba/causal_conv1d-*.whl wheelhouse-mamba/mamba_ssm-*.whl
+
+      - name: "Stage 0: megaDNA pinned clone + isolated venv + project-venv siblings"
+        # FEASIBILITY-locked pins (research): finetune_generation's
+        # dnallm-megadna kernel probes .scratch/megadna-venvs/megadna for
+        # megaDNA + MEGABYTE_pytorch==0.2.1 (megadna_prerequisites_installed);
+        # the two read-only siblings probe the PROJECT venv (_gate_megadna),
+        # so the pinned pair installs into both (08-05 reversible sibling
+        # install). Clone is checked out at exactly cb2f5ab4 — never
+        # floating. Mirrors ensure_megadna_kernel's own recipe.
+        run: |
+          MGD_PY=.scratch/megadna-venvs/megadna/bin/python
+          mkdir -p .scratch/megadna-venvs
+          uv venv .scratch/megadna-venvs/megadna --python .venv/bin/python
+          uv pip install --python "$MGD_PY" -e ".[cuda130]" ipykernel pyfastx
+          if [ ! -d .scratch/megadna-venvs/megadna-clone-src ]; then
+            git clone https://github.com/lingxusb/megaDNA.git .scratch/megadna-venvs/megadna-clone-src
+          fi
+          git -C .scratch/megadna-venvs/megadna-clone-src checkout cb2f5ab4cc88dc0effe05c5f23358862c837014a
+          uv pip install --python "$MGD_PY" "MEGABYTE_pytorch==0.2.1" .scratch/megadna-venvs/megadna-clone-src
+          uv pip install "MEGABYTE_pytorch==0.2.1" .scratch/megadna-venvs/megadna-clone-src
+          "$MGD_PY" -c "import megaDNA, MEGABYTE_pytorch; print('megadna gate probe: GREEN')"
+
+      # D-04: the giant-model prefetch step that stood here is deleted with
+      # the evo exit (D-01) — the local giants model tier stays for the
+      # dispatch/manual lane (never cleaned, owner rule).
+
+      - name: "Stage 0: runner inventory probe (A1/A10/A11)"
+        # T-08-03: echoes only command locations, disk totals, GPU totals,
+        # and HTTP status codes — never env dumps or credentials.
+        run: |
+          echo "--- disk (home) ---"
+          df -h ~ || true
+          echo "--- gpu ---"
+          nvidia-smi --query-gpu=name,memory.total --format=csv || echo "nvidia-smi MISSING"
+          echo "--- hf-mirror reachability ---"
+          curl -sS -m 5 -o /dev/null -w "hf-mirror.com HTTP %{http_code}\n" https://hf-mirror.com || echo "hf-mirror.com UNREACHABLE (exit $?)"
+
+      - name: "Stage 0.5: census collection assertion (D-03) — hard gate, census integrity"
+        # The pinned triple below is the deliberate bump-point: census-growth
+        # PRs update it on purpose (that is the guard working, not friction);
+        # the authoritative record lives in the 09 census rollup. Uses the
+        # EXACT stage-1 selector flags — a selector set that omits the giants
+        # filter would guard nothing. Any drift (collection breakage, marker
+        # typo, accidental over-marking) turns this step red and fails the job
+        # directly (stage-0-area contract: honest failure, no fail-soft).
+        run: |
+          .venv/bin/python -m pytest tests/examples --collect-only -q \
+            -m "not giants" -k "not mcp_example" 2>/dev/null | tee census-collect.txt | tail -1
+          MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
+          echo "census collection measured: ${MEASURED}"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *208/217 tests collected \(9 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 208/217 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
+            cat census-collect.txt
+            exit 1
+          fi
+
+      - name: "Stage 1: torch-heavy example execution (ACTIVE + showcase + marimo + script + YAML leg)"
+        # D-08 fail-soft: each invocation records its exit code and the
+        # step exits 0 so stages 1.5-4 still run; the stage-4 summary
+        # carries the non-zero verdict when anything failed.
+        # D-14: pipefail + tee per invocation — the rc capture still
+        # records pytest's exit code (pipefail, test-mamba precedent)
+        # while the full text lands in the stage*.log files that the
+        # always-upload carries.
+        run: |
+          set +e
+          set -o pipefail
+          .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml \
+            -k "not mcp_example" -m "not giants" 2>&1 | tee stage1-examples.log
+          rc=$?
+          echo "stage1-examples=$rc" >> stage-results.txt
+          .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q \
+            --junitxml=pytest-junit-yaml-stage1.xml 2>&1 | tee stage1-yaml.log
+          rc=$?
+          echo "stage1-yaml=$rc" >> stage-results.txt
+          exit 0
+
+      - name: "Stage 1.5: hygiene — kernel cleanup + memory floor assertion (D-13)"
+        # Named hygiene step between fail-soft stages, itself a HARD gate
+        # (D-07 ordering + D-13 observability): stray ipykernel children
+        # are killed, memory settles, and the free -g available column
+        # (the GB10-operative metric — nvidia-smi reports no memory on
+        # this box and stays telemetry-only) must clear the >=35Gi floor
+        # before any server-binding stage; a failed floor means the box
+        # cannot safely continue (08-08/08-09 discipline). LC_ALL=C pins
+        # the free parse: free localizes its row label under a non-C
+        # locale and /^Mem:/ would then match nothing (a floor that
+        # measures nothing — the Pitfall-1 failure mode).
+        run: |
+          echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
+          pkill -f ipykernel_launcher || true
+          sleep 5
+          AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          # Fail CLOSED on an unparseable value: [ "" -lt 35 ] returns exit
+          # 2, which the if below treats as false — the floor would pass
+          # while having measured nothing (the Pitfall-1 failure mode this
+          # gate exists to prevent).
+          if [ -z "${AVAIL_GI}" ]; then
+            echo "FAIL: could not parse the free -g available column (floor unchecked — refusing to continue)"
+            exit 1
+          fi
+          echo "after:  ${AVAIL_GI}Gi available"
+          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
+          if [ "${AVAIL_GI}" -lt 35 ]; then
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before a server-binding stage — 08-08/08-09 discipline)"
+            exit 1
+          fi
+
+      # ── Stage 2: MCP live-server probes on :8000 ──────────────────────
+      # D-07 contract (module comments in tests/examples/
+      # test_notebook_execution.py): start the dnallm MCP server on :8000
+      # (yaml host/port — the CLI --host/--port flags are dead), run the 6
+      # live-server probes. The two transports need their own server
+      # instance (one :8000 server at a time — 08-08 finding): 3
+      # streamable-http probes, restart in sse, 3 sse probes, stop.
+      # Readiness window: the server eagerly loads its 3 configured models
+      # at startup (minutes from a warm cache), so the poll allows ~15 min.
+      - name: "Stage 2: MCP live-server probes — streamable-http (D-07)"
+        run: |
+          set +e
+          set -o pipefail
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport streamable-http > mcp-server-streamable.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
+            sleep 10
+          done
+          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
+            .venv/bin/python -m pytest dnallm/mcp/tests/test_streamable_http_client.py -q \
+              --junitxml=pytest-junit-mcp-stage2-streamable.xml 2>&1 | tee stage2-streamable.log
+            echo "stage2-mcp-probes-streamable=$?" >> stage-results.txt
+          else
+            echo "MCP server (streamable-http) never became ready — see mcp-server-streamable.log"
+            echo "stage2-mcp-probes-streamable=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          exit 0
+
+      - name: "Stage 2: MCP live-server probes — sse (server restarted, one transport at a time)"
+        # SSE readiness must be asserted on the RECEIVED HTTP STATUS, never
+        # on curl's exit code: an SSE endpoint answers 200 +
+        # text/event-stream and then holds the body open forever, so a
+        # `curl -m 2 ... && break` success probe always dies at the 2s cap
+        # (exit 28) even against a healthy server — the first live exercise
+        # of this stage (run 37345067326) polled a fully-up, serving server
+        # for 17 minutes and recorded the stage failed on probe shape alone
+        # (mcp-server-sse.log: startup complete 04:52:17, graceful kill
+        # 05:09:46, zero server errors). %{http_code} still prints when -m
+        # cuts the body mid-stream and prints 000 only when nothing
+        # answered, so a received "200" is the honest readiness signal.
+        run: |
+          set +e
+          set -o pipefail
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport sse > mcp-server-sse.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            CODE=$(curl -s -o /dev/null -m 2 -w "%{http_code}" http://localhost:8000/sse)
+            [ "$CODE" = "200" ] && break
+            sleep 10
+          done
+          CODE=$(curl -s -o /dev/null -m 2 -w "%{http_code}" http://localhost:8000/sse)
+          if [ "$CODE" = "200" ]; then
+            .venv/bin/python -m pytest dnallm/mcp/tests/test_sse_client.py -q \
+              --junitxml=pytest-junit-mcp-stage2-sse.xml 2>&1 | tee stage2-sse.log
+            echo "stage2-mcp-probes-sse=$?" >> stage-results.txt
+          else
+            echo "MCP server (sse) never became ready — see mcp-server-sse.log"
+            echo "stage2-mcp-probes-sse=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          exit 0
+
+      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-ollama)"
+        # Same named hygiene step (D-13) before the ollama batch: stray
+        # ipykernel children die, memory settles before qwen3.5:4b's ~3.3GB
+        # weights come under load in stage 3, and the free -g available
+        # floor is a HARD gate — nvidia-smi stays telemetry-only (GB10
+        # reports no memory through it).
+        run: |
+          echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
+          pkill -f ipykernel_launcher || true
+          sleep 5
+          AVAIL_GI=$(LC_ALL=C free -g | awk '/^Mem:/{print $7}')
+          # Fail CLOSED on an unparseable value: [ "" -lt 35 ] returns exit
+          # 2, which the if below treats as false — the floor would pass
+          # while having measured nothing (the Pitfall-1 failure mode this
+          # gate exists to prevent).
+          if [ -z "${AVAIL_GI}" ]; then
+            echo "FAIL: could not parse the free -g available column (floor unchecked — refusing to continue)"
+            exit 1
+          fi
+          echo "after:  ${AVAIL_GI}Gi available"
+          nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
+          if [ "${AVAIL_GI}" -lt 35 ]; then
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the ollama batch — 08-08/08-09 discipline)"
+            exit 1
+          fi
+
+      # ── Stage 3: ollama batch ──────────────────────────────────────────
+      # D-07 ordering: ollama runs last so its daemon never coexists with
+      # the stage-1 GPU load. The D-13 readiness probe (~60s retry window
+      # over 127.0.0.1:11434/api/tags) lives INSIDE the gate
+      # (_gate_ollama_stack) — ollama itself is the owner-enabled systemd
+      # unit (scripts/runner/README.md); when it is down the pair degrades
+      # honestly to network-unavailable typed skips carrying both probe
+      # results. The MCP server must be UP here too (the notebooks' gate
+      # probes :8000/mcp), so stage 3 starts a fresh streamable-http
+      # instance — the D-07 architecture keeps exactly one :8000 server at
+      # a time and stops it after the pair.
+      - name: "Stage 3: mcp pair (ollama + MCP server up, D-13 probe in the tests)"
+        run: |
+          set +e
+          set -o pipefail
+          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
+            --transport streamable-http > mcp-server-stage3.log 2>&1 &
+          SERVER_PID=$!
+          for i in $(seq 1 90); do
+            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
+            sleep 10
+          done
+          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
+            .venv/bin/python -m pytest tests/examples/test_notebook_execution.py -k "mcp_example" -q -rs \
+              --junitxml=pytest-junit-mcp-stage3.xml 2>&1 | tee stage3-mcp-pair.log
+            echo "stage3-mcp-pair=$?" >> stage-results.txt
+          else
+            echo "MCP server (stage 3) never became ready — see mcp-server-stage3.log"
+            echo "stage3-mcp-pair=1" >> stage-results.txt
+          fi
+          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
+          pkill -f ipykernel_launcher || true
+          exit 0
+
+      - name: "Stage 4: junit skip audits (fail-soft)"
+        if: always()
+        run: |
+          set +e
+          for junit in pytest-junit-example-stage1.xml pytest-junit-yaml-stage1.xml \
+            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml \
+            pytest-junit-mcp-stage3.xml; do
+            if [ -f "$junit" ]; then
+              .venv/bin/python scripts/audit_skips.py "$junit" tests/expected_skips.yaml
+              echo "stage4-audit-$junit=$?" >> stage-results.txt
+            else
+              # D-08: the ledger line must end in the bare non-zero code so the
+              # summary's end-anchored grep ('=[1-9][0-9]*$') can see it; the
+              # human-readable reason goes to stdout only.
+              echo "stage4-audit-$junit=1 (junit missing: pytest never wrote it)"
+              echo "stage4-audit-$junit=1" >> stage-results.txt
+            fi
+          done
+          exit 0
+
+      - name: "Stage 4: upload complete failure scene (D-14)"
+        # if:always() is load-bearing: the complete failure scene (every
+        # junit, every per-stage tee'd log, the D-03 census capture, the
+        # stage-results ledger, and the MCP server logs) uploads on green
+        # and red alike — a red run must never lose its own evidence.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: example-nightly-junit
+          path: |
+            pytest-junit-*.xml
+            mcp-server-*.log
+            stage-results.txt
+            stage*.log
+            census-collect.txt
+
+      - name: "Stage 4: fail-soft summary (D-08)"
+        if: always()
+        run: |
+          echo "--- example-nightly stage results ---"
+          if [ ! -f stage-results.txt ]; then
+            echo "stage-results.txt missing: stage 0 failed before any stage recorded an outcome"
+            exit 1
+          fi
+          cat stage-results.txt
+          if grep -qE '=[1-9][0-9]*$' stage-results.txt; then
+            echo "FAIL: at least one stage item exited non-zero (D-08: this job may never be forever-green)"
+            exit 1
+          fi
+          echo "OK: every recorded stage item exited 0"
+
+  deploy:
+    # test-mamba removed from needs: it is event-gated to schedule/dispatch, so
+    # on every push it is skipped — GitHub skips dependents of skipped needs,
+    # which would silently stop gh-pages deploys on push to main/master.
+    needs: [test, test-cuda]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -221,7 +1122,7 @@ jobs:
           python-version: 3.11
           
       - name: Cache mkdocs dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key: mkdocs-material-${{ github.run_number }}
           path: .cache

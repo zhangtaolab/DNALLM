@@ -1,4 +1,4 @@
-"""Loss functions for DNA language model training.
+"""Loss functions for DNA large language model training.
 
 This module provides specialized loss functions for sequence
 classification and regression tasks.

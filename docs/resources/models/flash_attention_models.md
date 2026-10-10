@@ -25,7 +25,7 @@ Flash Attention is not a model architecture itself, but an implementation that c
 - **Mamba-based models**: While primarily SSMs, some hybrid variants can use it.
 - **Standard Transformers (BERT, GPT, etc.)**: Most modern Transformer models loaded through Hugging Face's `transformers` library can automatically use Flash Attention if it's installed and the model is configured to use `attn_implementation="flash_attention_2"`.
 
-DNALLM automatically attempts to use the most efficient attention mechanism available. If you have Flash Attention installed, it will be prioritized for compatible models.
+DNALLM's generic model loading deliberately pins `attn_implementation="eager"` for maximum compatibility (`dnallm/models/model.py`), and inference keeps forcing eager, so standard Transformers models are never automatically switched to `flash_attention_2`. The exception is the EVO loaders: `_handle_evo1_models` and `_handle_evo2_models` in `dnallm/models/special/evo.py` call `is_flash_attention_capable()` and pick the matching architecture configuration when Flash Attention is available.
 
 ## 3. Installation
 

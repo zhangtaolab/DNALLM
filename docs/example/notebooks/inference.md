@@ -5,7 +5,7 @@ sync_check: true
 
 # Basic Inference
 
-This tutorial demonstrates how to run inference with a pre-trained DNA language model for sequence classification tasks.
+This tutorial demonstrates how to run inference with a pre-trained DNA large language model for sequence classification tasks.
 
 ## Full Notebook
 
@@ -14,7 +14,7 @@ This tutorial demonstrates how to run inference with a pre-trained DNA language 
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

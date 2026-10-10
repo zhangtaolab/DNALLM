@@ -14,7 +14,7 @@ This tutorial explains how to prepare input data for inference tasks with DNALLM
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Supported Input Formats

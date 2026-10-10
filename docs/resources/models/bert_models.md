@@ -35,13 +35,15 @@ You can load a DNA-specific BERT model using the `AutoModel` classes from `trans
 
 Here’s how to load a DNABERT model for a sequence classification task.
 ```python
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # Use a specific DNABERT model
 model_name = "zhihan1996/DNABERT-2-117M"
 
-# Load model and tokenizer for a classification task
-model, tokenizer = load_model_and_tokenizer(model_name_or_path=model_name)
+# Configure a binary classification task and load model + tokenizer
+task_config = TaskConfig(task_type="binary", num_labels=2)
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 
 print("Model:", type(model))
 print("Tokenizer:", type(tokenizer))
@@ -52,11 +54,13 @@ print("Tokenizer:", type(tokenizer))
 Let's use the loaded DNABERT-2 to get embeddings for a DNA sequence.
 ```python
 import torch
+from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
-# 1. Load the pre-trained model and tokenizer
+# 1. Load the pre-trained model and tokenizer (the embedding task loads the bare backbone)
 model_name = "zhihan1996/DNABERT-2-117M"
-model, tokenizer = load_model_and_tokenizer(model_name_or_path=model_name)
+task_config = TaskConfig(task_type="embedding")
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 model.eval()
 
 # 2. Prepare and tokenize the DNA sequence

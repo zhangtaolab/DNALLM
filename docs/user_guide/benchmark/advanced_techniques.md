@@ -47,7 +47,7 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
                     model_info["model"],
                     model_info["tokenizer"],
                     val_data,
-                    metrics=["accuracy", "f1_score", "precision", "recall"],
+                    metrics_list=["accuracy", "f1", "precision", "recall"],
                 )
 
                 fold_scores.append(fold_result)
@@ -56,8 +56,8 @@ def run_cross_validation_benchmark(models, datasets, k_folds=5):
             cv_results[model_name][dataset_name] = {
                 "mean_accuracy": np.mean([s["accuracy"] for s in fold_scores]),
                 "std_accuracy": np.mean([s["accuracy"] for s in fold_scores]),
-                "mean_f1": np.mean([s["f1_score"] for s in fold_scores]),
-                "std_f1": np.std([s["f1_score"] for s in fold_scores]),
+                "mean_f1": np.mean([s["f1"] for s in fold_scores]),
+                "std_f1": np.std([s["f1"] for s in fold_scores]),
                 "fold_results": fold_scores,
             }
 
@@ -105,121 +105,38 @@ def run_stratified_cv_benchmark(models, datasets, k_folds=5):
 
 ## Custom Evaluation Metrics
 
-DNALLM allows you to implement custom evaluation metrics for specific use cases.
+DNALLM does not currently support plugging user-defined metric classes into a benchmark — there is no `CustomMetric` API. The `metrics` option (`metrics:` in the benchmark YAML config, or the `metrics=` argument of the `Benchmark` constructor) is a `list[str]` of metric **names** that selects from the built-in, task-specific metric set implemented in `dnallm/tasks/metrics.py`. Which metric names are available depends on the task type configured for the dataset:
 
-### Basic Custom Metric
+| Task type | Built-in metrics |
+|-----------|------------------|
+| `binary` | `accuracy`, `precision`, `recall`, `f1`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
+| `multiclass` | `accuracy`, `precision`, `recall`, `f1`, `mcc` (macro-averaged) |
+| `multilabel` | per-label and overall `accuracy`, `precision`, `recall`, `f1`, `mcc` |
+| `regression` | MSE, MAE, R2, Pearson/Spearman correlation |
+| `token` | sequence-level `accuracy`, `precision`, `recall`, `f1` |
+
+### Selecting metrics in a code-based benchmark
+
+When constructing `Benchmark` directly (without a YAML config), models are passed as a list of dictionaries with `name`, `path`, and `source` keys — not as pre-loaded model objects — and metrics as a plain list of metric-name strings:
+
 ```python
-from dnallm.tasks.metrics import CustomMetric
-import numpy as np
+from dnallm import Benchmark
 
-
-class GCContentMetric(CustomMetric):
-    """Custom metric to evaluate GC content prediction accuracy."""
-
-    def __init__(self):
-        super().__init__()
-        self.name = "gc_content_accuracy"
-
-    def compute(self, predictions, targets, sequences=None):
-        """Compute GC content prediction accuracy."""
-        if sequences is None:
-            return {"gc_content_accuracy": 0.0}
-
-        gc_accuracy = []
-        for pred, target, seq in zip(predictions, targets, sequences):
-            # Calculate predicted GC content
-            pred_gc = self._calculate_gc_content(seq, pred)
-            # Calculate actual GC content
-            actual_gc = self._calculate_gc_content(seq, target)
-
-            # Compute accuracy
-            accuracy = 1.0 - abs(pred_gc - actual_gc) / max(actual_gc, 0.01)
-            gc_accuracy.append(max(0.0, accuracy))
-
-        return {"gc_content_accuracy": np.mean(gc_accuracy)}
-
-    def _calculate_gc_content(self, sequence, mask):
-        """Calculate GC content based on sequence and mask."""
-        gc_count = 0
-        total_count = 0
-
-        for i, char in enumerate(sequence):
-            if mask[i] == 1:  # If position is masked
-                if char in ["G", "C"]:
-                    gc_count += 1
-                total_count += 1
-
-        return gc_count / max(total_count, 1)
-
-
-# Usage in benchmark
 benchmark = Benchmark(
-    models=loaded_models,
-    datasets=datasets,
-    metrics=["accuracy", "f1_score", GCContentMetric()],
+    models=[
+        {
+            "name": "Plant DNABERT BPE promoter",
+            "path": "zhangtaolab/plant-dnabert-BPE-promoter",
+            "source": "huggingface",
+        },
+    ],
+    datasets={"promoter": {"task_type": "binary", "num_labels": 2}},
+    metrics=["accuracy", "f1", "mcc", "AUROC"],
     batch_size=32,
 )
 ```
 
-### Advanced Custom Metric with Multiple Outputs
-
-```python
-class ComprehensiveDNAMetric(CustomMetric):
-    """Comprehensive DNA sequence evaluation metric."""
-
-    def __init__(self):
-        super().__init__()
-        self.name = "comprehensive_dna_score"
-
-    def compute(self, predictions, targets, sequences=None, **kwargs):
-        """Compute comprehensive DNA evaluation score."""
-        results = {}
-
-        # Base accuracy
-        results["base_accuracy"] = self._compute_accuracy(predictions, targets)
-
-        # Sequence-specific metrics
-        if sequences is not None:
-            results["gc_content_score"] = self._compute_gc_content_score(
-                predictions, targets, sequences
-            )
-            results["conservation_score"] = self._compute_conservation_score(
-                predictions, targets, sequences
-            )
-            results["motif_score"] = self._compute_motif_score(predictions, targets, sequences)
-
-        # Overall score (weighted average)
-        weights = [0.4, 0.2, 0.2, 0.2]  # Adjust weights as needed
-        scores = [
-            results["base_accuracy"],
-            results["gc_content_score"],
-            results["conservation_score"],
-            results["motif_score"],
-        ]
-
-        results["overall_score"] = np.average(scores, weights=weights)
-
-        return results
-
-    def _compute_accuracy(self, predictions, targets):
-        """Compute basic accuracy."""
-        return np.mean(np.array(predictions) == np.array(targets))
-
-    def _compute_gc_content_score(self, predictions, targets, sequences):
-        """Compute GC content prediction score."""
-        # Implementation details...
-        return 0.85
-
-    def _compute_conservation_score(self, predictions, targets, sequences):
-        """Compute conservation prediction score."""
-        # Implementation details...
-        return 0.78
-
-    def _compute_motif_score(self, predictions, targets, sequences):
-        """Compute motif prediction score."""
-        # Implementation details...
-        return 0.92
-```
+If the built-in set does not cover a metric you need, compute it from the raw outputs yourself: run the benchmark or `evaluate_single_model(...)` to collect predictions/logits and labels, then apply your own metric function outside of DNALLM. To contribute a new built-in metric for everyone, extend the task-specific metric functions in `dnallm/tasks/metrics.py` (see [CONTRIBUTING.md](../../../CONTRIBUTING.md)).
 
 ## Performance Profiling
 
@@ -258,7 +175,7 @@ def profile_model_performance(model, tokenizer, dataset, num_samples=100):
     predictions = []
     batch_times = []
 
-    for i, batch in enumerate(profile_data.get_dataloader(batch_size=1)):
+    for i, batch in enumerate(profile_data.iter_batches(batch_size=1)):
         batch_start = time.time()
 
         with torch.no_grad():
@@ -336,7 +253,7 @@ def detailed_memory_profile(model, dataset, batch_size=32):
 
     with memory_profiler():
         # Load data
-        dataloader = dataset.get_dataloader(batch_size=batch_size)
+        dataloader = dataset.iter_batches(batch_size=batch_size)
 
         # Run inference
         for batch in dataloader:
@@ -365,7 +282,7 @@ def benchmark_with_mixed_precision(model, tokenizer, dataset):
     start_time = time.time()
     predictions = []
 
-    for batch in dataset.get_dataloader(batch_size=32):
+    for batch in dataset.iter_batches(batch_size=32):
         with autocast():
             outputs = model(batch["input_ids"].to(model.device))
             predictions.append(outputs.logits.argmax(-1).cpu())
@@ -376,7 +293,7 @@ def benchmark_with_mixed_precision(model, tokenizer, dataset):
     start_time = time.time()
     predictions_fp32 = []
 
-    for batch in dataset.get_dataloader(batch_size=32):
+    for batch in dataset.iter_batches(batch_size=32):
         outputs = model(batch["input_ids"].to(model.device))
         predictions_fp32.append(outputs.logits.argmax(-1).cpu())
 
@@ -409,7 +326,7 @@ def find_optimal_batch_size(model, dataset, max_batch_size=128):
             memory_before = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
 
             # Run inference
-            dataloader = dataset.get_dataloader(batch_size=batch_size)
+            dataloader = dataset.iter_batches(batch_size=batch_size)
             for batch in dataloader:
                 with torch.no_grad():
                     outputs = model(batch["input_ids"].to(model.device))
@@ -461,7 +378,7 @@ def run_multi_dataset_benchmark(models, datasets, metrics):
                 model_info["model"],
                 model_info["tokenizer"],
                 dataset,
-                metrics=metrics,
+                metrics_list=metrics,
             )
 
             all_results[model_name]["dataset_results"][dataset_name] = dataset_result
@@ -514,7 +431,7 @@ def run_time_series_benchmark(model, dataset, time_column, interval_days=30):
 
         # Evaluate performance
         result = benchmark.evaluate_single_model(
-            model, tokenizer, test_data, metrics=["accuracy", "f1_score"]
+            model, tokenizer, test_data, metrics_list=["accuracy", "f1"]
         )
 
         temporal_results.append({

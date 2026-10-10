@@ -4,10 +4,8 @@ This module provides global pytest fixtures and cleanup utilities to ensure
 proper resource cleanup and prevent hanging processes.
 """
 
-import atexit
 import gc
 import multiprocessing
-import os
 import time
 
 import pytest
@@ -22,41 +20,16 @@ def pytest_configure(config):
 def pytest_sessionstart(session):
     """Called after the Session object has been created."""
     print("🚀 Starting pytest session with enhanced cleanup...")
-
-    # Register cleanup function to run on exit
-    atexit.register(force_cleanup_and_exit)
+    # No interpreter exit-handler registration here: cleanup runs in
+    # pytest_sessionfinish, which receives and preserves the real exit status.
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Called after whole test run finished, right before returning
-    the exit status.
-    """
-    # 不在这里强制退出, 让pytest正常显示结果
-    pass
-
-
-def force_cleanup_and_exit():
-    """Force cleanup of all resources and exit."""
-    try:
-        print("🧹 Force cleaning up resources...")
-
-        # 1. Clean up multiprocessing processes
-        cleanup_multiprocessing()
-
-        # 2. Clean up PyTorch/CUDA resources
-        cleanup_pytorch_resources()
-
-        # 3. Force garbage collection
-        gc.collect()
-
-        # 4. Force exit
-        print("🚪 Forcing exit...")
-        os._exit(0)
-
-    except Exception as e:
-        print(f"Warning: Error during cleanup: {e}")
-        # Force exit even if cleanup fails
-        os._exit(0)
+    """Whole-run cleanup; `exitstatus` propagates untouched because the exit is never forced."""
+    cleanup_multiprocessing()
+    cleanup_pytorch_resources()
+    gc.collect()
+    # Never force the process exit here: returning propagates `exitstatus` unchanged.
 
 
 def cleanup_multiprocessing():
@@ -107,13 +80,13 @@ def cleanup_pytorch_resources():
 @pytest.fixture(scope="session", autouse=True)
 def global_cleanup():
     """Global cleanup fixture that runs after all tests."""
-    # 不在这里强制退出, 让pytest正常显示结果
-    # 清理工作由atexit注册的函数处理
+    # No forced exit here — pytest must display results normally
+    # Cleanup is handled by pytest_sessionfinish
     return
 
 
 def pytest_unconfigure(config):
     """Called before test process is exited."""
-    # 不在这里强制退出, 让pytest正常显示结果
-    # 清理工作由atexit注册的函数处理
+    # No forced exit here — pytest must display results normally
+    # Cleanup is handled by pytest_sessionfinish
     pass

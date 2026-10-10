@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PretrainedConfig, BatchEncoding  # type: ignore[attr-defined]
+from transformers import PreTrainedConfig, BatchEncoding  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
@@ -23,6 +23,33 @@ evo_models = {
     "evo-1-8k-crispr": "evo-1-8k-base",
     "evo-1-8k-transposon": "evo-1-8k-base",
 }
+
+# CI-05 giants tier (Pitfall 4): dnallm's own load path performs a full-repo
+# snapshot_download, which would re-expand a warm giants dir with the
+# 16.81GB pytorch_model.pt alongside the 12.913GB safetensors weights. The
+# evo-1 family therefore restricts its hub fetch to the safetensors weights
+# plus configs/tokenizer files; evo2 keeps its unfiltered fetch (2.7GB, fits
+# the quota cache).
+# CR-01 (08): "*.py" is REQUIRED here. The evo-1 repos' config.json
+# auto_map uses the cross-repo "--" convention
+# (togethercomputer/evo-1-131k-base--configuration_hyena.StripedHyenaConfig),
+# so load_checkpoint's AutoConfig.from_pretrained(repo_id,
+# trust_remote_code=True) resolves the code through the hub cache -- under
+# HF_HUB_OFFLINE=1 those module files must already be on disk or the load
+# fails deterministically with LocalEntryNotFoundError. "*.py" covers the
+# family members that ship code in their own repo (evo-1-131k-base); the
+# 8k/crispr/transposon variants redirect to the evo-1-131k-base sibling
+# repo, whose *.py must be prefetched into the giants hub cache alongside
+# the weights tier. The 16.81GB pytorch_model.pt stays excluded by
+# omission: no "*.pt" or "pytorch_model" pattern appears below, so the
+# Pitfall-4 skip intent is unchanged.
+_EVO1_SAFETENSORS_ONLY_PATTERNS: list[str] = [
+    "*.safetensors",
+    "*.json",
+    "*.txt",
+    "*.py",
+    "README.md",
+]
 
 
 class EvoTokenizerWrapper:
@@ -188,8 +215,8 @@ def _handle_evo2_models(
     for m in evo2_models:
         if m in model_name.lower():
             try:
-                from evo2 import Evo2  # pyright: ignore[reportMissingImports]
-                from vortex.model.tokenizer import CharLevelTokenizer
+                from evo2 import Evo2  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from vortex.model.tokenizer import CharLevelTokenizer  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 # Overwrite Evo2 to avoid init errors
                 class CustomEvo2(Evo2):
@@ -206,7 +233,7 @@ def _handle_evo2_models(
                     "https://github.com/ArcInstitute/evo2"
                 ) from e
 
-            class Evo2Config(PretrainedConfig):
+            class Evo2Config(PreTrainedConfig):
                 model_type = "evo2"
 
                 def __init__(self, **kwargs):
@@ -215,7 +242,15 @@ def _handle_evo2_models(
                     for key, value in kwargs.items():
                         setattr(self, key, value)
 
-            model_path = glob(model_name + "/*.pt")[0] if os.path.isdir(model_name) else model_name
+            if os.path.isdir(model_name):
+                # IN-01: a .pt-less local dir used to die with a bare
+                # IndexError from the glob; raise a matchable ValueError.
+                pt_files = glob(model_name + "/*.pt")
+                if not pt_files:
+                    raise ValueError(f"No .pt checkpoint found in {model_name}")
+                model_path = pt_files[0]
+            else:
+                model_path = model_name
             # Check the dependencies and find the correct config file
             is_fp8 = is_fp8_capable()
             has_flash_attention = is_flash_attention_capable()
@@ -295,10 +330,10 @@ def _handle_evo1_models(
         if m in model_name.lower():
             try:
                 import yaml
-                from evo import Evo  # pyright: ignore[reportMissingImports]
-                from stripedhyena.utils import dotdict
-                from stripedhyena.model import StripedHyena
-                from stripedhyena.tokenizer import CharLevelTokenizer
+                from evo import Evo  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.utils import dotdict  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.model import StripedHyena  # ty: ignore[unresolved-import]  # optional dep, guarded
+                from stripedhyena.tokenizer import CharLevelTokenizer  # ty: ignore[unresolved-import]  # optional dep, guarded
 
                 # Overwrite Evo2 to avoid init errors
                 class CustomEvo1(Evo):
@@ -331,7 +366,9 @@ def _handle_evo1_models(
                         state_dict = model.backbone.state_dict()
                         del model
                         del model_config
-                        global_config = dotdict(yaml.safe_load(open(config_path)))  # type: ignore
+                        # IN-02: context manager so the config handle closes.
+                        with open(config_path) as f:  # type: ignore
+                            global_config = dotdict(yaml.safe_load(f))
                         model = StripedHyena(global_config)
                         model.load_state_dict(state_dict, strict=True)
                         model.to_bfloat16_except_poles_residues()
@@ -345,7 +382,7 @@ def _handle_evo1_models(
                     "https://github.com/evo-design/evo"
                 ) from e
 
-            class EvoConfig(PretrainedConfig):
+            class EvoConfig(PreTrainedConfig):
                 model_type = "evo"
 
                 def __init__(self, **kwargs):
@@ -368,8 +405,17 @@ def _handle_evo1_models(
             from ..model import _get_model_path_and_imports
 
             evo_model = CustomEvo1()
-            revision = "1.1_fix" if "." in model_name and source == "huggingface" else "main"
-            _, modules = _get_model_path_and_imports(model_name, source, revision=revision)
+            # IN-03: normalize case like the rest of the handler family, so
+            # source="HuggingFace" still resolves the 1.1_fix revision.
+            revision = (
+                "1.1_fix" if "." in model_name and source.lower() == "huggingface" else "main"
+            )
+            _, modules = _get_model_path_and_imports(
+                model_name,
+                source,
+                revision=revision,
+                allow_patterns=_EVO1_SAFETENSORS_ONLY_PATTERNS,
+            )
             evo_model.model = evo_model.load_checkpoint(
                 model_name=model_name,
                 revision=revision,

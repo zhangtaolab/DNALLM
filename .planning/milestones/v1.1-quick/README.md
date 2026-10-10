@@ -1,0 +1,17 @@
+# Archived Quick Tasks
+
+- [261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1](261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1/261002-inq-raise-python-floor-to-3-12-drop-3-10-3-1-SUMMARY.md)
+- [261002-se3-fix-transformers-5-x-remote-code-compat-](261002-se3-fix-transformers-5-x-remote-code-compat-/261002-se3-SUMMARY.md)
+- [261002-sl7-run-and-fix-the-5-non-gated-census-faili](261002-sl7-run-and-fix-the-5-non-gated-census-faili/261002-sl7-SUMMARY.md)
+- [261003-0p0-batch-typing-special-configure-ty-baseli](261003-0p0-batch-typing-special-configure-ty-baseli/261003-0p0-SUMMARY.md)
+- [261003-csd-execute-the-two-owner-deferred-mcp-clien](261003-csd-execute-the-two-owner-deferred-mcp-clien/261003-csd-SUMMARY.md)
+- [261003-fla-fla-dependency](261003-fla-fla-dependency/SUMMARY.md)
+- [261003-hhj-fix-cr-01-mcp-single-flight-inference-as](261003-hhj-fix-cr-01-mcp-single-flight-inference-as/261003-hhj-SUMMARY.md)
+- [261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca](261003-ij4-fix-wr-01-dna-interpret-runs-blocking-ca/261003-ij4-SUMMARY.md)
+- [261003-jpr-fix-in-01-the-three-new-patch-installers](261003-jpr-fix-in-01-the-three-new-patch-installers/261003-jpr-SUMMARY.md)
+- [261003-r73-close-phase-06-review-warnings-wr-01-02-](261003-r73-close-phase-06-review-warnings-wr-01-02-/261003-r73-SUMMARY.md)
+- [261003-ryz-close-phase-06-review-info-findings-in-0](261003-ryz-close-phase-06-review-info-findings-in-0/SUMMARY.md)
+- [261004-dyw-planthelixseek-showcase-notebook-vega-ve](261004-dyw-planthelixseek-showcase-notebook-vega-ve/261004-dyw-SUMMARY.md)
+- [261006-cum-fix-pre-existing-test-plot-for-regressio](261006-cum-fix-pre-existing-test-plot-for-regressio/261006-cum-SUMMARY.md)
+- [261006-lhm-direct-edit-mcp-example-notebooks-commit](261006-lhm-direct-edit-mcp-example-notebooks-commit/261006-lhm-SUMMARY.md)
+- [261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m](261006-uq7-apply-dependabot-ruff-bump-on-phs-with-m/261006-uq7-SUMMARY.md)

@@ -1,18 +1,19 @@
 """DNA Model loading and management utilities.
 
 This module provides functions for downloading, loading, and
-    managing DNA language models
+    managing DNA large language models
 from various sources including Hugging Face Hub, ModelScope, and local storage.
 """
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
+import hashlib
 import os
 import time
 from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -57,7 +58,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
     def __init__(self, config, custom_model=None):
         super().__init__(config)
-        from transformers import AutoModel  # type: ignore[attr-defined]
+        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
@@ -69,7 +70,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 base_model=custom_model,
             )
         elif "lucaone" in self.config.head_config.get("head", "").lower():
-            from lucagplm import LucaGPLMModel
+            from lucagplm import LucaGPLMModel  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
 
             self.backbone = LucaGPLMModel(config)
             transformer_output_dim = self.config.hidden_size
@@ -111,7 +112,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel  # type: ignore[attr-defined]
+        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -144,6 +145,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             classifier = BasicLSTMHead
         elif self.config.head_config.get("head", "").lower().endswith("unet"):
             classifier = BasicUNet1DHead
+        else:
+            raise ValueError(
+                f"Unknown head type {self.config.head_config.get('head')!r}: "
+                "expected a name ending in mlp/cnn/lstm/unet or a custom_head class."
+            )
         return classifier
 
     def _determine_pooling_strategy(self):
@@ -319,6 +325,7 @@ def download_model(
     downloader: Any,
     revision: str | None = None,
     max_try: int = 10,
+    allow_patterns: list[str] | None = None,
 ) -> str:
     """Download a model with retry mechanism for network issues.
 
@@ -329,6 +336,11 @@ def download_model(
         model_name: Name of the model to download
         downloader: Download function to use (e.g., snapshot_download)
         max_try: Maximum number of download attempts, default 10
+        allow_patterns: Optional glob patterns restricting which snapshot
+            files are fetched (e.g. ``["*.safetensors", "*.json"]``). When
+            ``None`` (the default) the downloader is called exactly as
+            before -- no ``allow_patterns`` key is forwarded, so every
+            existing caller behaves byte-identically.
 
     Returns:
         Path where the model files are stored
@@ -345,7 +357,15 @@ def download_model(
             break
         cnt += 1
         try:
-            status = downloader(model_name, revision=revision)
+            # Conditional forwarding, rebuilt per attempt: the downloader
+            # kwarg exists ONLY when the caller explicitly passed a pattern
+            # set (CI-05 -- no family may silently inherit another's
+            # patterns), and a no-revision retry must observe the reset
+            # revision below, not the value bound at loop entry.
+            download_kwargs: dict[str, Any] = {"revision": revision}
+            if allow_patterns is not None:
+                download_kwargs["allow_patterns"] = allow_patterns
+            status = downloader(model_name, **download_kwargs)
             if status != "incomplete":
                 logger.info(f"Model files are stored in {status}")
                 break
@@ -392,7 +412,10 @@ def _setup_huggingface_mirror(use_mirror: bool) -> None:
 
 
 def _get_model_path_and_imports(
-    model_name: str, source: str, revision: str | None = None
+    model_name: str,
+    source: str,
+    revision: str | None = None,
+    allow_patterns: list[str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Get model path and import the required libraries based on source.
 
@@ -404,6 +427,11 @@ def _get_model_path_and_imports(
                 'modelscope')
         revision: Specific model revision (branch, tag, commit),
                   default None
+        allow_patterns: Optional glob patterns restricting which snapshot
+            files the hub download fetches. When ``None`` (the default) the
+            downloader is called exactly as before; only callers that
+            explicitly pass a pattern set (the evo-1 giants family) get a
+            restricted snapshot.
 
     Returns:
         Tuple of (model_path, imported_modules_dict)
@@ -413,6 +441,13 @@ def _get_model_path_and_imports(
     """
     source_lower = source.lower()
 
+    # Conditional forwarding, mirroring download_model: the kwarg reaches the
+    # downloader ONLY when the caller explicitly passed a pattern set, so the
+    # call signature stays byte-identical for every existing caller.
+    hub_kwargs: dict[str, Any] = {"revision": revision}
+    if allow_patterns is not None:
+        hub_kwargs["allow_patterns"] = allow_patterns
+
     if source_lower == "local":
         if not os.path.exists(model_name):
             raise ValueError(f"Model {model_name} not found locally.")
@@ -421,14 +456,14 @@ def _get_model_path_and_imports(
     elif source_lower == "huggingface":
         from huggingface_hub import snapshot_download as hf_snapshot_download
 
-        model_path = download_model(model_name, downloader=hf_snapshot_download, revision=revision)
+        model_path = download_model(model_name, downloader=hf_snapshot_download, **hub_kwargs)
 
     elif source_lower == "modelscope":
         from modelscope.hub.snapshot_download import (
             snapshot_download as ms_snapshot_download,
         )
 
-        model_path = download_model(model_name, downloader=ms_snapshot_download, revision=revision)
+        model_path = download_model(model_name, downloader=ms_snapshot_download, **hub_kwargs)
 
         # Import ModelScope modules
         try:
@@ -465,13 +500,13 @@ def _get_model_path_and_imports(
     # Import transformers modules for local and huggingface sources
     try:
         from transformers import (  # type: ignore[attr-defined]
-            AutoConfig,
-            AutoModel,
-            AutoModelForMaskedLM,
-            AutoModelForCausalLM,
-            AutoModelForSequenceClassification,
-            AutoModelForTokenClassification,
-            AutoTokenizer,
+            AutoConfig,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModel,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoTokenizer,  # ty: ignore[unresolved-import]  # lazy export, resolves live
         )
     except ImportError as e:
         raise ImportError(
@@ -542,21 +577,13 @@ def _load_model_by_task_type(
 
     # Common tokenizer loading
     if custom_tokenizer is None:
-        try:
-            if task_type == "token":
-                tokenizer = auto_tokenizer.from_pretrained(
-                    model_name, trust_remote_code=True, add_prefix_space=True
-                )
-            else:
-                tokenizer = auto_tokenizer.from_pretrained(model_name, trust_remote_code=True)
-        except Exception:
-            logger.warning(
-                "Failed to load tokenizer from pretrained model. "
-                "Falling back to custom DNAOneHotTokenizer."
-            )
-            from .tokenizer import DNAOneHotTokenizer
+        from .tokenizer import load_tokenizer_with_fallback
 
-            tokenizer = DNAOneHotTokenizer()
+        tokenizer = load_tokenizer_with_fallback(
+            model_name,
+            auto_tokenizer_cls=auto_tokenizer,
+            add_prefix_space=(task_type == "token"),
+        )
     else:
         tokenizer = custom_tokenizer()
 
@@ -724,6 +751,346 @@ def _safe_num_labels(num_labels: int | None, task_type: str) -> int:
     return safe_num_labels
 
 
+# ───────────────────────── random-init (BASE-01) ─────────────────────────
+# From-scratch baseline loading: load_model_and_tokenizer(..., random_init=True)
+# builds a genuinely randomly initialized model through AutoConfig.from_pretrained
+# + Auto*.from_config and proves it via logged per-tensor hashes.
+
+RANDOM_INIT_SUPPORTED_FAMILIES: frozenset[str] = frozenset({"mamba"})
+"""Special model families sanctioned for ``random_init=True`` (D-07).
+
+The allowlist gates the special ``_handle_*`` families only: a model whose
+name marks it as one of the special families (evo2, gpn, enformer, ...) is
+rejected with a ``ValueError`` unless its family appears here, because the
+special handlers construct models through bespoke paths with no
+``from_config`` equivalent. Generic ``Auto*``-loadable models (including
+BERT-style and remote-code Mamba checkpoints) are always allowed and need
+no entry. ``"mamba"`` is the proven trust_remote_code ``from_config``
+member (D-06/A6): Plant DNAMamba models load through the generic
+``AutoModelForCausalLM`` path, so the entry documents the sanctioned
+remote-code architecture rather than unlocking a special handler.
+"""
+
+RANDOM_INIT_DEFAULT_SEED = 42
+"""CPU-canonical default seed for from-scratch initialization.
+
+Applied via ``torch.manual_seed`` immediately before ``from_config``
+construction; two loads with the same seed produce identical hash tables.
+"""
+
+# Name markers mirroring the special handlers' own family detection,
+# matched case-insensitively as substrings of the model name. Intentionally
+# a superset of the handlers' (partly case-sensitive) matching: a false
+# "special" verdict only produces a clear error, never wrong weights.
+_SPECIAL_FAMILY_MARKERS: dict[str, tuple[str, ...]] = {
+    "evo2": ("evo2",),
+    "evo1": ("evo-1", "evo1"),
+    "gpn": ("gpn",),
+    "megadna": ("megadna",),
+    "omnidna": ("omni-dna",),
+    "enformer": ("enformer",),
+    "space": ("space",),
+    "borzoi": ("borzoi",),
+    "crossdna": ("crossdna",),
+    "dnabert2": ("dnabert-2", "dnabert-s"),
+}
+
+# Which Auto* class the pretrained task-type loader selects per task type;
+# the random path selects the same class. Task types absent from the mapping
+# (embedding and unknown) fall back to the plain AutoModel backbone.
+_TASK_AUTO_CLASS_KEYS: dict[str, str] = {
+    "mask": "AutoModelForMaskedLM",
+    "generation": "AutoModelForCausalLM",
+    "binary": "AutoModelForSequenceClassification",
+    "multiclass": "AutoModelForSequenceClassification",
+    "multilabel": "AutoModelForSequenceClassification",
+    "regression": "AutoModelForSequenceClassification",
+    "token": "AutoModelForTokenClassification",
+}
+
+
+def _detect_special_family(model_name: str) -> str | None:
+    """Return the special-handler family that would claim ``model_name``.
+
+    Mirrors the name matching the ``_handle_*`` chain itself uses (see
+    ``_SPECIAL_FAMILY_MARKERS``); ``None`` means the model loads through
+    the generic task-type path.
+
+    Args:
+        model_name: Model name or path
+
+    Returns:
+        Family key (e.g. ``"evo2"``) or ``None`` for generic models.
+    """
+    lowered = model_name.lower()
+    for family, markers in _SPECIAL_FAMILY_MARKERS.items():
+        if any(marker in lowered for marker in markers):
+            return family
+    return None
+
+
+def _gate_random_init(
+    model_name: str,
+    quantization_config: dict | None,
+    head_config: Any,
+) -> None:
+    """Reject incoherent random_init loads before any handler runs (D-06/D-07).
+
+    Args:
+        model_name: Model name or path
+        quantization_config: The caller's quantization config, if any
+        head_config: The task config's head config, if any
+
+    Raises:
+        ValueError: If the model belongs to a special family outside
+            RANDOM_INIT_SUPPORTED_FAMILIES, or if random_init is combined
+            with quantization_config or a custom head_config (combinations
+            with no from_config equivalent).
+    """
+    family = _detect_special_family(model_name)
+    if family is not None and family not in RANDOM_INIT_SUPPORTED_FAMILIES:
+        raise ValueError(
+            f"random_init=True is not supported for special model family "
+            f"'{family}' (model '{model_name}'): from-scratch initialization "
+            f"is only implemented for generic Auto* models and the families "
+            f"listed in RANDOM_INIT_SUPPORTED_FAMILIES="
+            f"{sorted(RANDOM_INIT_SUPPORTED_FAMILIES)}."
+        )
+    if quantization_config is not None:
+        raise ValueError(
+            "random_init=True cannot be combined with quantization_config: "
+            "from-scratch initialization builds fresh unquantized weights, "
+            "so there is no checkpoint to quantize."
+        )
+    if head_config is not None:
+        raise ValueError(
+            "random_init=True is not supported with a custom head_config: "
+            "the from-scratch path builds plain Auto* task models. Load "
+            "without random_init to use DNALLMforSequenceClassification heads."
+        )
+
+
+def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
+    """Import the Auto* class bundle for ``source`` without downloading.
+
+    Mirrors the import half of ``_get_model_path_and_imports`` (same class
+    set: transformers for local/huggingface, modelscope for modelscope)
+    while skipping the snapshot download entirely. The random_init path
+    only ever fetches config.json + tokenizer files via ``from_pretrained``
+    on these classes, never weight files.
+
+    Args:
+        source: Source to import classes for ('local', 'huggingface',
+            'modelscope')
+
+    Returns:
+        Dictionary of Auto* classes, same keys as
+        ``_get_model_path_and_imports`` returns.
+
+    Raises:
+        ValueError: If the source is unsupported.
+        ImportError: If the required hub library is not installed.
+    """
+    if source.lower() == "modelscope":
+        try:
+            from modelscope import (  # ty: ignore[unresolved-import]  # optional at runtime, guarded
+                AutoConfig,
+                AutoModel,
+                AutoModelForMaskedLM,
+                AutoModelForCausalLM,
+                AutoModelForSequenceClassification,
+                AutoModelForTokenClassification,
+                AutoTokenizer,
+            )
+        except ImportError as e:
+            raise ImportError(
+                "ModelScope is required but not available. "
+                "Please install it with 'pip install modelscope'."
+            ) from e
+    elif source.lower() in ("local", "huggingface"):
+        try:
+            from transformers import (  # type: ignore[attr-defined]
+                AutoConfig,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoModel,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoTokenizer,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            )
+        except ImportError as e:
+            raise ImportError(
+                "Transformers is required but not available. "
+                "Please install it with 'pip install transformers'."
+            ) from e
+    else:
+        raise ValueError(f"Unsupported source: {source}")
+
+    return {
+        "AutoConfig": AutoConfig,
+        "AutoModel": AutoModel,
+        "AutoModelForMaskedLM": AutoModelForMaskedLM,
+        "AutoModelForCausalLM": AutoModelForCausalLM,
+        "AutoModelForSequenceClassification": AutoModelForSequenceClassification,
+        "AutoModelForTokenClassification": AutoModelForTokenClassification,
+        "AutoTokenizer": AutoTokenizer,
+    }
+
+
+def _tensor_digest(tensor: torch.Tensor) -> str:
+    """Short sha256 hex over the raw bytes of ``tensor`` (BASE-01 proof).
+
+    The digest is computed over ``detach().cpu().contiguous()`` bytes so it
+    is independent of device and autograd state; bfloat16 tensors are
+    upcast to float32 first (numpy has no bf16 dtype), which preserves
+    byte-level equality comparisons between identical tensors.
+
+    Args:
+        tensor: Parameter or buffer tensor to fingerprint.
+
+    Returns:
+        First 10 hex characters of the sha256 digest.
+    """
+    t = tensor.detach().cpu().contiguous()
+    if t.dtype == torch.bfloat16:
+        t = t.to(torch.float32)
+    return hashlib.sha256(t.numpy().tobytes()).hexdigest()[:10]
+
+
+def _log_random_init_fingerprint(
+    model: Any,
+    model_name: str,
+    auto_class_name: str,
+    seed: int,
+) -> dict[str, str]:
+    """Log the from-scratch banner and per-tensor hash table (D-05).
+
+    One loud INFO banner line followed by one INFO line per parameter
+    tensor (tied aliases included via ``remove_duplicate=False``, so
+    shared storage is visible as identical hashes — expected, not a
+    failure) plus one line per buffer that does not shadow a parameter.
+    Non-float buffers are deterministic constants and may match a
+    pretrained load; that is documented expected behavior.
+
+    Args:
+        model: The freshly constructed random-init model (still on CPU).
+        model_name: Model name or path, for the banner.
+        auto_class_name: Logical Auto* class name used via from_config.
+        seed: The seed that drove the initialization.
+
+    Returns:
+        Mapping of tensor name -> 10-hex digest (parameters first, then
+        non-parameter buffers), for hash-table comparisons in tests.
+    """
+    logger.info(
+        f"[random-init] Model '{model_name}' randomly initialized from scratch "
+        f"via {auto_class_name}.from_config (seed={seed}); no pretrained "
+        f"weights were fetched. Per-tensor hashes below are sha256[:10] "
+        f"over raw tensor bytes."
+    )
+    digests: dict[str, str] = {}
+    for name, param in model.named_parameters(remove_duplicate=False):
+        digests[name] = _tensor_digest(param)
+        logger.info(
+            f"[random-init] param {name} sha={digests[name]} "
+            f"shape={tuple(param.shape)} dtype={param.dtype}"
+        )
+    for name, buf in model.named_buffers():
+        if name in digests:
+            continue
+        digests[name] = _tensor_digest(buf)
+        logger.info(
+            f"[random-init] buffer {name} sha={digests[name]} "
+            f"shape={tuple(buf.shape)} dtype={buf.dtype}"
+        )
+    return digests
+
+
+def _load_random_init_model(
+    model_name: str,
+    task_type: str,
+    safe_num_labels: int,
+    id2label: dict[int, str],
+    label2id: dict[str, int],
+    source: str,
+    revision: str | None,
+    seed: int,
+    custom_tokenizer: Any = None,
+) -> tuple[Any, Any]:
+    """Build a genuinely from-scratch model via ``Auto*.from_config`` (BASE-01).
+
+    Only ``config.json`` (and tokenizer files) are ever fetched: the
+    weight-download seam ``_get_model_path_and_imports`` is never invoked
+    on this path, so a random-init baseline is provably free of pretrained
+    weights (the config.json fetch through AutoConfig.from_pretrained is
+    explicitly allowed — it carries no weight values).
+
+    Args:
+        model_name: Model name or local path (config source)
+        task_type: Task type driving the Auto* class selection
+        safe_num_labels: Sanitized label count for classification heads
+        id2label: ID to label mapping
+        label2id: Label to ID mapping
+        source: Source to resolve the config/tokenizer from ('local',
+            'huggingface', 'modelscope')
+        revision: Specific model revision, default None
+        seed: CPU-canonical torch seed applied BEFORE construction
+        custom_tokenizer: Optional tokenizer factory; None loads the
+            model's own tokenizer files
+
+    Returns:
+        Tuple of (model, tokenizer) with the model still on CPU (device
+        placement happens in the caller, after hashing).
+    """
+    modules = _get_auto_modules_for_source(source)
+
+    # config.json-only fetch: AutoConfig.from_pretrained downloads the model
+    # config (plus remote-code *.py files when trust_remote_code resolves
+    # them), never weight files.
+    config_kwargs: dict[str, Any] = {"trust_remote_code": True}
+    if revision is not None:
+        config_kwargs["revision"] = revision
+    config = modules["AutoConfig"].from_pretrained(model_name, **config_kwargs)
+
+    # Head shaping via config attributes, not ctor kwargs (transformers
+    # from_config convention) — the same fields the pretrained path passes
+    # to from_pretrained for classification task types.
+    if task_type in ("binary", "multiclass", "multilabel", "regression", "token"):
+        config.num_labels = safe_num_labels
+        config.id2label = id2label
+        config.label2id = label2id
+        config.problem_type = {
+            "multilabel": "multi_label_classification",
+            "regression": "regression",
+        }.get(task_type, "single_label_classification")
+
+    # CPU-canonical seeding BEFORE construction: the model is built on CPU,
+    # so the CPU RNG stream fully determines the sampled weights.
+    torch.manual_seed(seed)
+
+    auto_class_key = _TASK_AUTO_CLASS_KEYS.get(task_type, "AutoModel")
+    auto_class = modules[auto_class_key]
+    # from_config only — never from_pretrained on this branch.
+    model = auto_class.from_config(config, trust_remote_code=True)
+
+    # Tokenizer loads exactly as on the pretrained path (config/vocab files
+    # only). The fingerprint table is logged while the model is still on
+    # CPU, before any device move.
+    if custom_tokenizer is None:
+        from .tokenizer import load_tokenizer_with_fallback
+
+        tokenizer = load_tokenizer_with_fallback(
+            model_name,
+            auto_tokenizer_cls=modules["AutoTokenizer"],
+            add_prefix_space=(task_type == "token"),
+        )
+    else:
+        tokenizer = custom_tokenizer()
+
+    _log_random_init_fingerprint(model, model_name, auto_class_key, seed)
+    return model, tokenizer
+
+
 def load_model_and_tokenizer(
     model_name: str,
     task_config: TaskConfig,
@@ -732,6 +1099,8 @@ def load_model_and_tokenizer(
     revision: str | None = None,
     custom_tokenizer: Any = None,
     quantization_config: dict | None = None,
+    random_init: bool = False,
+    random_init_seed: int = RANDOM_INIT_DEFAULT_SEED,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Load model and tokenizer from either HuggingFace or ModelScope.
 
@@ -753,12 +1122,26 @@ def load_model_and_tokenizer(
                     use_mirror: Whether to use HuggingFace mirror (
                 hf-mirror.com),
                 default False
+            random_init: Build the model from scratch with randomly
+                initialized weights (``AutoConfig.from_pretrained`` +
+                ``Auto*.from_config``) instead of loading a pretrained
+                checkpoint. Only ``config.json`` and tokenizer files are
+                fetched — the weight-download path is never invoked. A loud
+                "randomly initialized" banner and a per-tensor parameter
+                hash table are logged as proof (BASE-01).
+            random_init_seed: Seed applied via ``torch.manual_seed``
+                immediately before from-scratch construction
+                (default RANDOM_INIT_DEFAULT_SEED = 42); identical seeds
+                reproduce identical per-tensor hash tables.
 
         Returns:
             Tuple containing (model, tokenizer)
 
         Raises:
-            ValueError: If model is not found locally or loading fails
+            ValueError: If model is not found locally or loading fails;
+                if ``random_init=True`` is requested for a special model
+                family outside RANDOM_INIT_SUPPORTED_FAMILIES, or combined
+                with ``quantization_config`` or a custom ``head_config``
     """
     # Setup HuggingFace mirror if needed
     _setup_huggingface_mirror(use_mirror)
@@ -776,6 +1159,12 @@ def load_model_and_tokenizer(
         head_config = None
     num_labels = task_config.num_labels
     safe_num_labels = _safe_num_labels(num_labels, task_type)
+
+    # From-scratch gate (BASE-01, D-06/D-07): reject unsupported special
+    # families BEFORE any handler claims the load, plus incoherent
+    # combinations that have no from_config equivalent.
+    if random_init:
+        _gate_random_init(model_name, quantization_config, head_config)
 
     # Handle special case for EVO2 models
     evo2_result = _handle_evo2_models(model_name, source, head_config)  # type: ignore
@@ -838,6 +1227,40 @@ def load_model_and_tokenizer(
 
     # TODO: Add more special cases if needed
 
+    if random_init:
+        # From-scratch path (BASE-01): never touches the weight-download
+        # seam below — config.json + tokenizer files only. The gate above
+        # already proved no off-list special family would claim this load,
+        # so the special handlers above returned None for it.
+        id2label, label2id = _create_label_mappings(task_config)
+        try:
+            model, tokenizer = _load_random_init_model(
+                model_name,
+                task_type,
+                safe_num_labels,
+                id2label,
+                label2id,
+                source,
+                revision,
+                random_init_seed,
+                custom_tokenizer,
+            )
+            # Tokenizer post-processing parity with the pretrained chain
+            # (the chain's must-not-return-early contract applies here too).
+            if "mutbert" in model_name.lower():
+                tokenizer = _handle_mutbert_tokenizer(tokenizer)
+            if "basenji2" in model_name.lower():
+                tokenizer = _handle_basenji2_tokenizer(tokenizer)
+        except Exception as e:
+            raise ValueError(f"Failed to load model: {e}") from e
+        model._model_path = model_name
+        model.source = source
+        _configure_model_padding(model, tokenizer)
+        # The model was constructed (and hashed) on CPU; move to the target
+        # device only now (tied-weight/meta-device safety).
+        model = model.to(_get_device())
+        return model, tokenizer
+
     # Get model path and import required modules
     downloaded_model_path, modules = _get_model_path_and_imports(
         model_name, source, revision=revision
@@ -861,6 +1284,15 @@ def load_model_and_tokenizer(
             custom_tokenizer,
             bnb_config,
         ]
+        # Guarded dispatch chain (first resolved stage wins): crossdna ->
+        # dnabert2 -> generic task-type loader. Each stage runs only when the
+        # previous stage left model or tokenizer None, and stages MERGE per
+        # half: a stage's None half never overwrites an earlier stage's
+        # resolved half, so a handler's partial result is never discarded by
+        # a later stage. The chain must NOT return early here: the tokenizer
+        # post-processing and attribute/device placement below must still
+        # run for a resolved handler result.
+        model, tokenizer = None, None
         if "crossdna" in downloaded_model_path.lower():
             model, tokenizer = _handle_crossdna_models(
                 task_type,
@@ -873,9 +1305,14 @@ def load_model_and_tokenizer(
                 custom_tokenizer,
                 bnb_config,
             )
-        model, tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
         if model is None or tokenizer is None:
-            model, tokenizer = _load_model_by_task_type(*load_args)
+            stage_model, stage_tokenizer = _handle_dnabert2_models(downloaded_model_path, load_args)
+            model = stage_model if stage_model is not None else model
+            tokenizer = stage_tokenizer if stage_tokenizer is not None else tokenizer
+        if model is None or tokenizer is None:
+            stage_model, stage_tokenizer = _load_model_by_task_type(*load_args)
+            model = stage_model if stage_model is not None else model
+            tokenizer = stage_tokenizer if stage_tokenizer is not None else tokenizer
         # Process model with custom tokenizer if needed
         if "mutbert" in downloaded_model_path.lower():
             tokenizer = _handle_mutbert_tokenizer(tokenizer)
@@ -932,21 +1369,17 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     device = module.weight.device
                     in_features = weight_shape[1]
                     out_features = weight_shape[0]
-                    # Try to use bnb.nn.Linear4bit with proper compute_dtype if available
-                    try:
-                        import bitsandbytes as bnb
-
-                        compute_dtype = getattr(module, "compute_dtype", torch.float16)
-                        replacement = bnb.nn.Linear4bit(
-                            in_features,
-                            out_features,
-                            compute_dtype=compute_dtype,
-                        ).to(device)
-                    except Exception:
-                        # Fallback to standard nn.Linear in float16
-                        replacement = nn.Linear(in_features, out_features, dtype=torch.float16).to(  # type: ignore[assignment]
-                            device
-                        )
+                    # Replace with a standard nn.Linear in the compute dtype.
+                    # These layers are newly initialized heads (pooler, classifier)
+                    # that PEFT may mark trainable via modules_to_save — they must
+                    # stay in floating point, a fresh Linear4bit would quantize its
+                    # weight to uint8 on device and break requires_grad.
+                    compute_dtype = getattr(module, "compute_dtype", torch.float16)
+                    replacement = nn.Linear(
+                        in_features,
+                        out_features,
+                        dtype=compute_dtype,  # type: ignore[assignment]
+                    ).to(device)
                     # Copy existing weight data if available
                     with torch.no_grad():
                         if hasattr(module, "weight") and module.weight is not None:

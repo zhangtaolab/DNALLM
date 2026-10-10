@@ -41,7 +41,8 @@ pbar, pline = benchmark.plot(results, save_path="plot.pdf")
 
 ### Example 2: Model Comparison without config
 ```python
-from dnallm.datahandling import DNADataset, Benchmark
+from dnallm import Benchmark
+from dnallm.datahandling import DNADataset
 
 # Define research models
 research_models = [
@@ -81,7 +82,7 @@ datasets = {
 benchmark = Benchmark(
     models=research_models,
     datasets=datasets,
-    metrics=["accuracy", "f1_score", "precision", "recall", "roc_auc"],
+    metrics=["accuracy", "f1", "precision", "recall", "AUROC"],
     batch_size=32,
     device="cuda",
 )

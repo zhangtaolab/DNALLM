@@ -5,7 +5,7 @@ sync_check: true
 
 # Model Benchmarking
 
-This tutorial demonstrates how to benchmark multiple DNA language models on the same dataset, comparing their performance across standard metrics and generating publication-ready visualizations.
+This tutorial demonstrates how to benchmark multiple DNA large language models on the same dataset, comparing their performance across standard metrics and generating publication-ready visualizations.
 
 ## Full Notebook
 
@@ -14,7 +14,7 @@ This tutorial demonstrates how to benchmark multiple DNA language models on the 
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,inference,benchmark,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

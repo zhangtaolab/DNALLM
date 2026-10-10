@@ -21,7 +21,7 @@ The type of visualization available depends on the task you are performing. DNAL
 
 - **Model Interpretability (from `DNAInference`)**:
     - **Heatmaps**: For visualizing attention weights between tokens (`plot_attentions`).
-    - **Scatter Plots**: For visualizing high-dimensional embeddings in 2D using dimensionality reduction (`plot_embeddings`).
+    - **Scatter Plots**: For visualizing high-dimensional embeddings in 2D using dimensionality reduction (`plot_hidden_states`).
 
 - **Mutation Analysis (from `Mutagenesis`)**:
     - **Combined Plots**: A set of vertically concatenated plots including a substitution heatmap, a max-effect bar chart, and a gain/loss line plot (`plot_muts`).
@@ -146,11 +146,11 @@ Let's customize the output of our benchmark plot. We want larger, separate plots
 
 pbar_dict, pline_dict = benchmark.plot(
     results,
-    width=400,
-    height=150,
     separate=True,  # Return separate plots
     show_score=True,
 )
+# Note: `benchmark.plot()` does not accept `width`/`height`; those parameters
+# belong to the module-level functions in `dnallm.inference.plot` (e.g., `plot_bars`).
 
 # Now you can save each plot individually
 for metric, chart in pbar_dict.items():
@@ -166,7 +166,7 @@ for curve_type, chart in pline_dict.items():
 - **Solution**: Ensure you are in a Jupyter Notebook or JupyterLab environment. The Altair library requires a rich frontend to render charts. If you are in a different environment, you must use the `save_path` argument to save the plot to a file.
 
 ### Problem: `ImportError: ... not installed` (e.g., `umap`, `sklearn`).
-- **Solution**: Some plotting features have optional dependencies. `plot_embeddings` requires `scikit-learn` for PCA/t-SNE and `umap-learn` for UMAP. Install the required package:
+- **Solution**: Some plotting features have optional dependencies. `plot_hidden_states` requires `scikit-learn` for PCA/t-SNE and `umap-learn` for UMAP. Install the required package:
   ```bash
   pip install scikit-learn umap-learn
   ```

@@ -1,4 +1,4 @@
-"""DNA Language Model Benchmarking Module.
+"""DNA Large Language Model Benchmarking Module.
 
 This module provides comprehensive benchmarking capabilities for DNA language
 models,
@@ -9,7 +9,8 @@ including performance evaluation, metrics calculation, and
 import os
 import numpy as np
 from pathlib import Path
-from typing import Any
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
 
 import torch
 from torch.utils.data import DataLoader, Subset
@@ -24,11 +25,14 @@ from ..configuration.configs import (
 from .inference import DNAInference, save_metrics
 from .plot import prepare_data, plot_bars, plot_curve, plot_scatter
 
+if TYPE_CHECKING:  # altair is only needed for the plot() return annotation
+    import altair as alt
+
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 class Benchmark:
-    """Class for benchmarking DNA Language Models.
+    """Class for benchmarking DNA Large Language Models.
 
     This class provides methods to evaluate the performance of different DNA
         language
@@ -45,7 +49,7 @@ class Benchmark:
 
     def __init__(
         self,
-        config: dict | None = None,
+        config: Mapping[str, Any] | None = None,
         models: list[dict] | None = None,
         datasets: dict[str, Any] | None = None,
         metrics: list[str] | None = None,
@@ -77,12 +81,14 @@ class Benchmark:
                 np.concatenate([MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
             ),
         }
-        self.datasets: list[str] = []
+        self.datasets: list[Any] = []
         # Store pre-loaded datasets for config-less execution
         self.datasets_dict = datasets or {}
 
         if config is not None:
-            self.config = config
+            # Private writable copy: default sections (inference/task) are
+            # backfilled below without mutating the caller's mapping.
+            self.config = dict(config)
             if "benchmark" in config:
                 self.prepared = self.__load_from_config()
             else:
@@ -91,8 +97,13 @@ class Benchmark:
             # Code-based initialization (No YAML config)
             self.config = {}
             self.config["inference"] = InferenceConfig()
+            # Only copy fields InferenceConfig actually declares; the raw
+            # setattr loop below crashed on EvaluationConfig-only fields
+            # (e.g. mixed_precision) under pydantic v2 field validation.
+            inference_fields = set(InferenceConfig.model_fields.keys())
             for k, v in dict(EvaluationConfig()).items():
-                setattr(self.config["inference"], k, v)
+                if k in inference_fields:
+                    setattr(self.config["inference"], k, v)
             self.config["inference"].batch_size = batch_size
             self.config["inference"].device = (
                 device if device else "cuda" if torch.cuda.is_available() else "cpu"
@@ -216,6 +227,42 @@ class Benchmark:
         self.datasets.append(ds.dataset)
         return ds
 
+    def _extract_labels(self, di: int, dataset_name: str) -> list:
+        """Extract the label list for one loaded benchmark dataset.
+
+        Honors the dataset's configured label_column when the loaded dataset
+        still carries that column (the load path usually renames it to
+        'labels'), falls back to the conventional 'labels' column produced by
+        DNADataset.load_local_data's normalization, and raises a descriptive
+        error when neither exists — before any model loads.
+
+        Args:
+            di: Index of the dataset in self.datasets and, when prepared,
+                in self.prepared['dataset']
+            dataset_name: Display name of the dataset, used in the error message
+
+        Returns:
+            The label list read from the resolved column
+
+        Raises:
+            ValueError: If neither the configured label column nor the
+                'labels' fallback exists in the dataset
+        """
+        dataset: Any = self.datasets[di]
+        column_names = dataset.column_names
+        configured = None
+        if self.prepared and di < len(self.prepared["dataset"]):
+            configured = self.prepared["dataset"][di].label_column
+        if configured is not None and configured in column_names:
+            return dataset[configured]
+        if "labels" in column_names:
+            return dataset["labels"]
+        raise ValueError(
+            f"Dataset '{dataset_name}' has no label column: configured "
+            f"label_column={configured!r}, fallback 'labels' not found; "
+            f"available columns: {column_names}."
+        )
+
     def available_models(self, show_all: bool = True) -> dict[str, Any]:
         """List all available models.
 
@@ -288,7 +335,7 @@ class Benchmark:
             all_results[dname] = {}
             selected_results[dname] = {}
             metrics_save[dname] = {}
-            labels = self.datasets[di]["labels"]  # type: ignore[index]
+            labels = self._extract_labels(di, dname)
             task_config = task_configs[di] if di < len(task_configs) else task_configs[0]
             for mi, model_name in enumerate(model_names):  # type: ignore
                 print("Model name:", model_name)
@@ -345,7 +392,7 @@ class Benchmark:
                 # Perform the prediction
                 logits, _, _ = inference_engine.batch_infer(dataloader, do_pred=False)
                 if len(labels) == len(logits):
-                    metrics = inference_engine.calculate_metrics(logits, labels, plot=True)  # type: ignore
+                    metrics = inference_engine.calculate_metrics(logits, labels, plot=True)
                     all_results[dname][model_name] = metrics
                     # keep selected metrics
                     if selected_metrics:
@@ -432,7 +479,7 @@ class Benchmark:
         elif isinstance(val_data, Subset) and hasattr(val_data.dataset, "labels"):
             labels = [val_data.dataset.labels[i] for i in val_data.indices]
         else:
-            labels = [item.get("labels", item.get("label")) for item in dataset]  # type: ignore
+            labels = [item.get("labels", item.get("label")) for item in dataset]
 
         if len(labels) == len(logits):
             calculated_metrics = inference_engine.calculate_metrics(logits, labels, plot=False)
@@ -457,7 +504,11 @@ class Benchmark:
         """
         from sklearn.model_selection import KFold, StratifiedKFold
 
-        if stratified:
+        if k_folds <= 1:
+            # Single fold over everything; sklearn KFold rejects n_splits < 2,
+            # so no splitter is constructed on this path.
+            kfold = None
+        elif stratified:
             kfold = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
         else:
             kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
@@ -487,9 +538,31 @@ class Benchmark:
                 indices = list(range(len(dataset)))
 
                 if k_folds > 1:
-                    kfold_split = kfold.split(indices)
+                    if stratified:
+                        # StratifiedKFold.split requires the class labels;
+                        # without them it raised TypeError on every call.
+                        inner = getattr(dataset, "dataset", dataset)
+                        y = (
+                            inner["labels"]
+                            if hasattr(inner, "column_names") and "labels" in inner.column_names
+                            else None
+                        )
+                        if y is not None:
+                            kfold_split = kfold.split(indices, y)
+                        else:
+                            # No labels column: stratification is impossible.
+                            # Degrade to a plain KFold split instead of raising
+                            # inside StratifiedKFold.split — StratifiedKFold
+                            # requires the labels argument positionally.
+                            plain_kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+                            kfold_split = plain_kfold.split(indices)
+                    else:
+                        kfold_split = kfold.split(indices)
                 else:
-                    kfold_split = [(indices, indices)]
+                    # Single fold over every row; wrap in numpy arrays so the
+                    # shared .tolist() below works on this branch too.
+                    idx_array = np.asarray(indices)
+                    kfold_split = [(idx_array, idx_array)]
                 for fold, (_, val_idx) in enumerate(kfold_split):
                     print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 
@@ -530,7 +603,7 @@ class Benchmark:
         save_path: str | None = None,
         separate: bool = False,
         dataset: int | str = 0,
-    ) -> None:
+    ) -> "tuple[alt.Chart | dict[str, alt.Chart], alt.Chart | dict[str, alt.Chart]]":
         """Plot the benchmark results.
 
         This method generates various types of plots based on the task type:
@@ -593,7 +666,7 @@ class Benchmark:
                     save_path=line_chart,
                     separate=separate,
                 )
-            return pbar, pline  # type: ignore
+            return pbar, pline
         elif task_type == "regression":
             # Prepare data for plotting
             bars_data, scatter_data = prepare_data(metrics, task_type=task_type)
@@ -622,4 +695,4 @@ class Benchmark:
                 save_path=scatter_plot,
                 separate=separate,
             )
-            return pbar, pdot  # type: ignore
+            return pbar, pdot

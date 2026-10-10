@@ -1,6 +1,6 @@
 from typing import Any
 import torch.nn as nn
-from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]
+from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
 
 def _handle_mutbert_tokenizer(tokenizer: Any) -> Any:

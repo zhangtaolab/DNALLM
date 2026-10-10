@@ -4,11 +4,11 @@
   <img src="docs/pic/DNALLM_logo.svg" alt="DNALLM Logo" width="200" height="200">
 </div>
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/dnallm.svg)](https://badge.fury.io/py/dnallm)
 
-DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
+DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning and inference with DNA Large Language Models. It provides a unified interface for working with various DNA sequence models, supporting tasks ranging from basic sequence classification to advanced in-silico mutagenesis analysis. With built-in Model Context Protocol (MCP) support, DNALLM-Suite enables seamless communication with traditional large language models, allowing for enhanced integration and interoperability in AI-powered DNA analysis workflows.
 
 ## 📦 Quick Installation
 
@@ -20,23 +20,36 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 150+ pre-trained DNA language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
-- **🧪 Comprehensive Testing**: 200+ test cases covering all major functionality
+- **🧪 Comprehensive Testing**: 1,900+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
-DNALLM-Suite supports a wide range of DNA language models including:
+DNALLM-Suite supports a wide range of DNA large language models including:
+
+**From-scratch baselines:** any generically-loadable supported model can also be
+loaded with genuinely random weights via `load_model_and_tokenizer(...,
+random_init=True)`. The model config and tokenizer files are fetched as usual,
+but no pretrained weights are ever downloaded — weights are sampled through
+`AutoConfig.from_pretrained` + `Auto*.from_config` with CPU-canonical seeding
+(`random_init_seed`, default 42), so identical seeds reproduce identical models.
+A loud "randomly initialized" banner plus a per-tensor parameter-hash table are
+logged at INFO level as proof that no pretrained weights leaked into the
+baseline. Special model families without a from-scratch path raise a
+`ValueError`; the special-family allowlist is `RANDOM_INIT_SUPPORTED_FAMILIES`
+(currently the Mamba trust-remote-code architecture, which loads generically —
+all other generic `Auto*` families are always allowed).
 
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
-- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek， CrossDNA
+- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, CrossDNA
 
 ### Causal Language Models (CLM)
 - **EVO Series**: EVO-1, EVO-2
@@ -162,13 +175,13 @@ uv pip install -e '.[all,cuda128]'
 uv pip install -e '.[all,cuda130]'
 ```
 
-> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) are mutually exclusive. You must choose exactly one. Do NOT combine multiple CUDA versions.
+> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver; `rocm` cannot share an environment with another hardware group (only one torch build installs), while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` |
+| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
 | `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |
@@ -176,25 +189,26 @@ uv pip install -e '.[all,cuda130]'
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP server | (included in core) |
+| `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
 
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
-| `cpu` | 2.4.0-2.7 | No GPU |
-| `cuda121` | 2.2.0-2.7 | Older NVIDIA GPUs |
-| `cuda124` | 2.4.0-2.7 | Most modern GPUs (recommended) |
-| `cuda126` | 2.6.0-2.7 | Ada/Hopper with Flash Attention |
-| `cuda128` | 2.6.0-2.7 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.12 | CUDA 13.0, Windows & Linux (driver >= 580) |
-| `rocm` | 2.5.0-2.7 | AMD GPUs |
-| `mamba` | 2.6.0-2.7 | Native Mamba architecture (requires CUDA) |
+| `cpu` | 2.4.0-2.11 | No GPU |
+| `cuda121` | 2.2.0-2.11 | Older NVIDIA GPUs |
+| `cuda124` | 2.4.0-2.11 | Most modern GPUs (recommended) |
+| `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
+| `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
+| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) |
+| `rocm` | 2.5.0-2.11 | AMD GPUs |
+| `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
 
 ```bash
 # Examples:
 uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
 uv pip install -e '.[base,mamba]'     # Dev tools + native Mamba
-uv pip install -e '.[test,cpu]'       # Testing only, no GPU
+uv pip install -e '.[test,cpu]'       # Testing only, no GPU (add ,mcp for the MCP example tests)
 ```
 
 ### Native Mamba Support
@@ -227,6 +241,18 @@ Please ensure your machine can connect to GitHub, otherwise Mamba dependencies m
 
 Note that Plant DNAMamba, Caduceus, PlantCaduceus, PlantCAD2, Jamba-DNA, JanusDNA models are all based on Mamba architecture. Therefore, the training and inference of these models can be accelerated by installing the native mamba support.
 
+### Flash-Linear-Attention (KDA) Kernels for PlantHelixSeek
+
+PlantHelixSeek-CRE and PlantHelixSeek-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) for their HelixSeekDelta (KDA) layers. Install the `fla` extra (already included in `all`):
+
+```bash
+uv pip install -e '.[fla]'
+```
+
+> **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
+
+Two install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; and keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions.
+
 ### Install Dependencies for Special Models
 
 Several models require extra dependencies to train or inference.
@@ -237,6 +263,7 @@ These models are listed below:
 | -------- | ---------- | ------ | ------------ |
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
+| PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
 | GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
@@ -284,6 +311,8 @@ predictions = mutagenesis.evaluate(strategy="mean")
 # Visualize results
 plot = mutagenesis.plot(predictions, save_path="mutation_effects.pdf")
 ```
+
+### 3. Model Fine-tuning
 ```python
 from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
@@ -342,6 +371,9 @@ server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 - **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
 - **Model Management**: Dynamic model loading and switching
 - **Batch Processing**: Efficient handling of multiple sequences
+- **Health Monitoring**: Built-in server diagnostics and status checks
+
+#### MCP Client SDK
 ```python
 from dnallm.mcp.client import DNALLMMCPClient
 
@@ -356,18 +388,21 @@ result = client.health_check()
 # Legacy SSE transport (deprecated in MCP spec 2025-11-25, still supported)
 # client = DNALLMMCPClient(transport="sse", url="http://localhost:8000/sse")
 ```
-- **Comprehensive Tools**: 10+ MCP tools for DNA sequence analysis
-- **Model Management**: Dynamic model loading and switching
-- **Batch Processing**: Efficient handling of multiple sequences
-- **Health Monitoring**: Built-in server diagnostics and status checks
 
 #### Available MCP Tools
-- `dna_sequence_predict` - Single sequence prediction
-- `dna_batch_predict` - Batch sequence processing
-- `dna_multi_model_predict` - Multi-model comparison
-- `dna_stream_predict` - Real-time streaming prediction
-- `list_loaded_models` - Model management
-- `health_check` - Server monitoring
+- `_dna_sequence_predict` - Single sequence prediction
+- `_dna_batch_predict` - Batch sequence processing
+- `_dna_multi_model_predict` - Multi-model comparison
+- `_dna_stream_predict` - Real-time streaming prediction
+- `_dna_stream_batch_predict` - Streaming batch prediction
+- `_dna_stream_multi_model_predict` - Streaming multi-model comparison
+- `_dna_mutagenesis` - In-silico mutagenesis analysis
+- `_dna_interpret` - Model interpretation (feature attribution)
+- `_list_loaded_models` - List currently loaded models
+- `_get_model_info` - Query a loaded model's details
+- `_list_models_by_task_type` - List models by task type
+- `_get_all_available_models` - List all models in the registry
+- `_health_check` - Server monitoring
 
 ## 📚 Examples and Tutorials
 
@@ -420,6 +455,8 @@ uv run --no-sync jupyter lab
 # - example/notebooks/interpretation/ - Model interpretation
 # - example/notebooks/data_prepare/ - Data preparation examples
 # - example/notebooks/benchmark/ - Model evaluation and benchmarking
+# - example/notebooks/plant_helixseek_cre/ - PlantHelixSeek-CRE showcase notebook
+# - example/notebooks/plant_helixseek_anno/ - PlantHelixSeek-Anno showcase notebook
 ```
 
 ## 🏗️ Project Structure
@@ -470,6 +507,9 @@ dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
 # Model configuration generator
 dnallm-model-config-generator
 
+# In-silico mutagenesis
+dnallm-mutagenesis --model-name <model-name> --sequence ATCGATCG
+
 # MCP server
 dnallm-mcp-server --config path/to/config.yaml
 ```
@@ -487,13 +527,43 @@ DNALLM-Suite supports the following task types:
 - **REGRESSION**: Regression task which returns a continuous score
 - **NER**: Token classification task which is usually for Named Entity Recognition
 
-## 🧪 Testing
+## 🧬 Zero-Shot Variant Effect Prediction (VEP)
 
-DNALLM-Suite includes a comprehensive test suite with 200+ test cases:
+DNALLM scores variants zero-shot from a VCF (`dnallm-vep` CLI, `dnallm.inference.vep`) under an explicit protocol:
+
+**Scoring formulas** (declared here and verbatim in the module docstrings):
+
+- **Masked-LM (log-odds)**: `delta = log P(alt_token | masked context) − log P(ref_token | masked context)` at the single alignment slot.
+- **Causal-LM (delta-log-likelihood)**: `delta = log P(alt_window) − log P(ref_window)` over the context window with the allele substituted at the variant position.
+
+Deltas are alt-minus-ref, so deleterious variants carry negative deltas; AUROC/AUPRC are computed over the deleteriousness score `−delta` (higher = more pathogenic — the evo2-clinvar/GPN field convention), placing discriminating models above the random floor.
+
+**Same-slot evaluability rule**: a variant is scoreable only when the tokenized reference and alternate sequences have equal length and differ at exactly ONE token slot. Variants failing the same-slot rule are reported as structured skips with machine-readable reasons (`length-changing allele`, `multi-slot token difference`, `no change`) — skip-as-data with per-reason counts and a skip fraction reported as a finding, never a silent drop, and never mixed into the label/paradigm error channels. Scoring windows are uppercased (soft-masked reference input must not silently tokenize to `<unk>`) and clipped symmetrically around the variant; ref and alt always share one identical window.
+
+**Paradigm↔architecture guard**: requesting `--paradigm clm` on a bidirectional model, or `--paradigm mlm` with a tokenizer that has no mask token, raises a `ValueError` — a misconfiguration must not masquerade as a near-random result.
+
+**ClinVar convention** (reported alongside every result — never a bare AUROC): SNVs only (`CLNVC=single_nucleotide_variant`), labels Pathogenic/Likely_pathogenic (1) vs Benign/Likely_benign (0) with VUS, conflicting, and novel CLNSIG strings excluded rather than guessed, and a ≥1 review-star floor (`CLNREVSTAT`).
 
 ```bash
+dnallm-vep --model-name <model-name> --vcf variants.vcf --reference genome.fa --paradigm mlm -o result.json
+```
+
+Within-convention comparables from the literature (compare only within paradigm and within convention, never as bare thresholds): Nucleotide Transformer 2.5B MLM ClinVar AUROC ≈ 0.80; Evo2-40B CLM ≈ 0.98; BPE embedding-distance baselines ≈ 0.54–0.60.
+
+## 🧪 Testing
+
+DNALLM-Suite includes a comprehensive test suite with 1,900+ test cases:
+
+```bash
+# Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
+# imports needed by the MCP example tests)
+uv pip install -e '.[test,dev,mcp]'
+
 # Run all tests
 uv run pytest
+
+# Run the fast lane only (as CI does on every push/PR)
+uv run pytest -m "not slow"
 
 # Run specific test categories
 uv run pytest tests/inference/ -v
@@ -503,6 +573,8 @@ uv run pytest tests/tasks/ -v
 # Run with coverage
 uv run pytest --cov=dnallm --cov-report=html
 ```
+
+CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 

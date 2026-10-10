@@ -18,7 +18,7 @@ This tutorial demonstrates how to use Pydantic AI with Ollama models and the DNA
 uv pip install pydantic-ai nest-asyncio
 
 # Start Ollama and pull the model
-ollama pull qwen3.6:latest
+ollama pull qwen3.5:4b
 ```
 
 Start the DNALLM MCP server in a separate terminal:
@@ -42,7 +42,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.ollama import OllamaProvider
 
 ollama_model = OpenAIChatModel(
-    model_name='qwen3.6:latest',
+    model_name='qwen3.5:4b',
     provider=OllamaProvider(base_url='http://localhost:11434/v1'),
 )
 ```
@@ -50,9 +50,9 @@ ollama_model = OpenAIChatModel(
 ## Connect MCP Server
 
 ```python
-from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.mcp import FastMCPClient, MCPToolset
 
-server = MCPServerStreamableHTTP('http://localhost:8000/mcp')
+server = MCPToolset(FastMCPClient('http://localhost:8000/mcp'))
 ```
 
 ## Create Agent
@@ -88,8 +88,7 @@ Always use the tools to provide accurate analysis. Based on the returned results
 async def analyze_dna_sequence():
     async with agent_ollama:  # This ensures proper MCP server connection
         result = await agent_ollama.run(
-            'What is the function of following DNA sequence? Please analyze it thoroughly using all available models: AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGA
-GGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA'
+            'What is the function of following DNA sequence? Please analyze it thoroughly using all available models: AGAAAAAACATGACAAGAAATCGATAATAATACAAAAGCTATGATGGTGTGCAATGTCCGTGTGCATGCGTGCACGCATTGCAACCGGCCCAAATCAAGGCCCATCGATCAGTGAATACTCATGGGCCGGCGGCCCACCACCGCTTCATCTCCTCCTCCGACGACGGGAGCACCCCCGCCGCATCGCCACCGACGAGGAGGAGGCCATTGCCGGCGGCGCCCCCGGTGAGCCGCTGCACCACGTCCCTGA'
         )
         return result
 
@@ -105,7 +104,7 @@ time.sleep(3)
 print("=== DNA Sequence Analysis Result ===")
 print(result.output)
 print("\n=== Usage Statistics ===")
-print(result.usage())
+print(result.usage)
 ```
 
 ## List Available Models

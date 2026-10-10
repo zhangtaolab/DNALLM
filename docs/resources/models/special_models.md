@@ -9,7 +9,7 @@ DNALLM supports several specialized models that have unique architectures or req
 - [Guide to Mamba and State-Space Models (SSMs)](./mamba_models.md)
 - [Guide to EVO Models (EVO-1 & EVO-2)](./evo_models.md)
 
-## 1. GPN (Genome-wide Pathogen-derived Network)
+## 1. GPN (Genomic Pre-trained Network)
 
 > [!NOTE]
 > **Dependency**: `gpn`
@@ -137,7 +137,7 @@ uv pip install .
 ## 5. Enformer and Borzoi
 
 > [!NOTE]
-> **Dependencies**: `enformer-pytorch`, `borzoi-pytorch`
+> **Dependency**: `borzoi-pytorch` (Borzoi only; Enformer loads through the vendored port under `dnallm/models/special/enformer_model/` and needs no extra package)
 
 ### Introduction
 **Enformer** and **Borzoi** are popular models for predicting gene expression from DNA sequences. DNALLM supports PyTorch implementations of these models.
@@ -146,7 +146,7 @@ uv pip install .
 
 ```bash
 # Activate your virtual environment
-uv pip install enformer-pytorch borzoi-pytorch
+uv pip install borzoi-pytorch
 ```
 
 ## 6. Other Models with Special Dependencies
@@ -167,7 +167,7 @@ For clarity, here is a summary of other model types covered in separate guides t
 > [!NOTE]
 > **Dependency**: `evo-model`
 
-- **Models**: `arcinstitute/evo-1-131k-base` and its variants.
+- **Models**: `togethercomputer/evo-1-131k-base` and its variants.
 - **Details**: EVO-1 is a long-context model based on the StripedHyena architecture.
 - **Guide**: See the **Guide to EVO Models** for installation and usage.
 
@@ -176,6 +176,6 @@ For clarity, here is a summary of other model types covered in separate guides t
 > [!NOTE]
 > **Dependencies**: `transformer-engine`, `evo2`, `flash-attn` (optional)
 
-- **Models**: `arcinstitute/evo-2-1b-8k` and other EVO-2 variants.
+- **Models**: `arcinstitute/evo2_1b_base` and other EVO-2 variants (`evo2-1b-8k` is the architecture config filename, not a loadable model id).
 - **Details**: EVO-2 is a state-of-the-art, ultra-long-context model requiring Python >= 3.11 and several specialized packages.
 - **Guide**: See the **Guide to EVO Models** for detailed installation steps.

@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]
+from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
@@ -661,7 +661,7 @@ class DNADataset:
         all_masks = [1] * len(all_ids) + [0] * pad_len
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
-        if isinstance(example_tokens, str):  # type: ignore
+        if isinstance(example_tokens, str):
             example_tokens = list(example_tokens)  # type: ignore[unreachable]
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
@@ -839,6 +839,23 @@ class DNADataset:
         """
         self.dataset.shuffle(seed=seed)
 
+    @staticmethod
+    def _row_count(dataset: Any) -> int:
+        """Return the total number of rows across all splits of a dataset.
+
+        ``len()`` on a ``DatasetDict`` returns the number of splits, not rows,
+        so dropped-row counting must sum the splits explicitly.
+
+        Args:
+            dataset: A ``Dataset`` or ``DatasetDict`` instance
+
+        Returns:
+            Total number of rows across all splits
+        """
+        if isinstance(dataset, DatasetDict):
+            return sum(len(split) for split in dataset.values())
+        return len(dataset)
+
     def validate_sequences(
         self,
         minl: int = 20,
@@ -849,15 +866,48 @@ class DNADataset:
         """Filter the dataset to keep sequences containing valid DNA bases or
         allowed length.
 
+        Sequences failing any criterion are dropped WHOLE via
+        ``check_sequence`` -- there is no per-character masking or partial
+        retention, so a single out-of-charset character discards the entire
+        row.
+
+        Warning:
+            Cross-model comparability hazard: strict-charset models (13
+            registry families, e.g. those requiring ``"ACGTacgt"``) reject any
+            sequence containing characters outside their charset, so each
+            model silently evaluates a DIFFERENT subset of the same dataset.
+            Cross-model comparisons are only valid over rows that pass a
+            common ``valid_chars`` subset; unified-subset prefiltering is a
+            pipeline-side concern (dnallmmark), not a dnallm API.
+
+        Charset membership is case-sensitive literal matching:
+        ``check_sequence`` compares ``set(seq.upper()) - set(valid_chars)``,
+        so every character of the uppercased sequence must appear literally
+        in ``valid_chars`` (e.g. ``"ACGTacgt"`` admits lowercase input, while
+        a lowercase-only ``valid_chars`` never matches an uppercased
+        character).
+
+        When rows are dropped, a single ``[Warning]`` line is printed
+        reporting the dropped count, the before-count, and the applied
+        filters; when zero rows are dropped nothing is logged.
+
         Args:
             minl: Minimum length of the sequences
             maxl: Maximum length of the sequences
             gc: GC content range between 0 and 1
             valid_chars: Allowed characters in the sequences
         """
+        before = self._row_count(self.dataset)
         self.dataset = self.dataset.filter(
             lambda example: check_sequence(example["sequence"], minl, maxl, gc, valid_chars)
         )
+        n_dropped = before - self._row_count(self.dataset)
+        if n_dropped > 0:
+            print(
+                f"[Warning] validate_sequences dropped {n_dropped} of {before} rows "
+                f"(valid_chars={valid_chars!r}, minl={minl}, maxl={maxl}); "
+                "cross-model comparisons require a common valid_chars subset."
+            )
 
     def random_generate(
         self,

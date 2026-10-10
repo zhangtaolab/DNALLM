@@ -6,6 +6,14 @@ This module contains utility functions and classes for the DNALLM project.
 
 from . import cuda_compat as _cuda_compat
 from . import transformers_compat as _transformers_compat
+from .genomic_coords import (
+    fetch_sequence,
+    gff1_to_half_open,
+    half_open_to_gff1,
+    normalize_chrom,
+    parse_gff_attributes,
+    slice_gff_rows,
+)
 from .sequence import (
     calc_gc_content,
     reverse_complement,
@@ -35,7 +43,10 @@ __all__ = [
     "_transformers_compat",
     "calc_gc_content",
     "check_sequence",
+    "fetch_sequence",
     "get_logger",
+    "gff1_to_half_open",
+    "half_open_to_gff1",
     "is_flash_attention_capable",
     "is_fp8_capable",
     "log_debug",
@@ -46,10 +57,13 @@ __all__ = [
     "log_progress",
     "log_success",
     "log_warning",
+    "normalize_chrom",
+    "parse_gff_attributes",
     "plot_loss_curve",
     "plot_lr_schedule",
     "random_generate_sequences",
     "reverse_complement",
     "seq2kmer",
     "setup_logging",
+    "slice_gff_rows",
 ]

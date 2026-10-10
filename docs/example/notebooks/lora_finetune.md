@@ -14,7 +14,7 @@ This tutorial demonstrates parameter-efficient fine-tuning using LoRA (Low-Rank 
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,finetune,cuda124]'
+uv pip install -e '.[base,cuda124]'
 ```
 
 ## Load Configuration

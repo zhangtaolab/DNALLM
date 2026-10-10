@@ -13,6 +13,8 @@ from ..config_validators import (
     InferenceModelConfig,
     ModelInfoConfig,
     ModelConfig,
+    ModelEntryConfig,
+    MCPServerConfig,
     validate_mcp_server_config,
     validate_inference_model_config,
 )
@@ -163,6 +165,139 @@ class TestInferenceModelConfig:
         assert config.task.task_type == "binary"
         assert config.inference.batch_size == 16
         assert config.model.name == "test_model"
+
+
+class TestValidatorEdgeBranches:
+    """Cover the validator rejection/acceptance pairs not yet exercised."""
+
+    def test_use_fp16_falls_back_when_precision_invalid(self):
+        """With precision failed, the fp16 before-validator keeps the input."""
+        with pytest.raises(ValidationError):
+            InferenceConfig(
+                batch_size=16,
+                device="auto",
+                precision="quantum",  # invalid: precision validation fails first
+                use_fp16=True,
+                output_dir="validator-output-dir",
+            )
+
+    def test_use_bf16_falls_back_when_precision_invalid(self):
+        """With precision failed, the bf16 before-validator keeps the input."""
+        with pytest.raises(ValidationError):
+            InferenceConfig(
+                batch_size=16,
+                device="auto",
+                precision="quantum",
+                use_bf16=True,
+                output_dir="validator-output-dir",
+            )
+
+    def test_precision_drives_fp16_flag(self):
+        """A valid precision auto-sets the matching half-precision flag."""
+        config = InferenceConfig(
+            batch_size=16,
+            device="auto",
+            precision="float16",
+            use_fp16=False,
+            output_dir="validator-output-dir",
+        )
+        assert config.use_fp16 is True
+
+    def test_num_labels_must_match_label_names(self):
+        """InferenceModelConfig rejects a num_labels/label_names mismatch."""
+        task = TaskConfig(
+            task_type="binary",
+            num_labels=3,
+            label_names=["a", "b"],
+            description="mismatched",
+        )
+        inference = InferenceConfig(batch_size=16, device="auto", output_dir="validator-output-dir")
+        model = ModelConfig(
+            name="m",
+            path="p",
+            source="huggingface",
+            task_info=ModelInfoConfig(
+                architecture="A", tokenizer="T", species="s", task_category="c"
+            ),
+        )
+
+        with pytest.raises(ValidationError, match="num_labels must match"):
+            InferenceModelConfig(task=task, inference=inference, model=model)
+
+    def test_whitespace_config_path_rejected(self):
+        """A whitespace-only config_path is rejected as empty."""
+        with pytest.raises(ValidationError, match="cannot be empty"):
+            ModelEntryConfig(
+                name="m",
+                model_name="M",
+                config_path="   ",
+            )
+
+    @staticmethod
+    def _server_config_dict():
+        """Minimal valid MCPServerConfig payload."""
+        return {
+            "server": {
+                "host": "127.0.0.1",
+                "port": 8123,
+                "workers": 1,
+                "log_level": "INFO",
+                "debug": False,
+            },
+            "mcp": {"name": "n", "version": "0.1.0", "description": "d"},
+            "models": {
+                "m1": {
+                    "name": "duplicate-name",
+                    "model_name": "M1",
+                    "config_path": "./a.yaml",
+                    "enabled": True,
+                    "priority": 1,
+                }
+            },
+            "multi_model": {},
+            "sse": {
+                "heartbeat_interval": 30,
+                "max_connections": 100,
+                "connection_timeout": 300,
+                "enable_compression": True,
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "f",
+                "file": "./logs/x.log",
+                "max_size": "10MB",
+                "backup_count": 5,
+            },
+        }
+
+    def test_duplicate_model_names_rejected(self):
+        """Two entries sharing one name are rejected."""
+        config = self._server_config_dict()
+        config["models"]["m2"] = {
+            "name": "duplicate-name",
+            "model_name": "M2",
+            "config_path": "./b.yaml",
+            "enabled": True,
+            "priority": 2,
+        }
+
+        with pytest.raises(ValidationError, match="must be unique"):
+            MCPServerConfig(**config)
+
+    def test_multi_model_dangling_reference_rejected(self):
+        """A multi-model group naming an undefined model is rejected."""
+        config = self._server_config_dict()
+        config["multi_model"] = {
+            "group": {
+                "name": "group",
+                "description": "references m-ghost",
+                "models": ["m1", "m-ghost"],
+                "enabled": True,
+            }
+        }
+
+        with pytest.raises(ValidationError, match="referenced in multi-model"):
+            MCPServerConfig(**config)
 
 
 class TestConfigFileValidation:

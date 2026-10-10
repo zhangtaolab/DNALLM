@@ -49,22 +49,20 @@ class WeightedCrossEntropyLoss(nn.Module):
 
 # Usage in trainer
 class CustomTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Calculate class weights
-        labels = [item["label"] for item in self.train_dataset]
-        class_counts = torch.bincount(torch.tensor(labels))
-        class_weights = 1.0 / class_counts
-        class_weights = class_weights / class_weights.sum()
-
-        # Set custom loss
-        self.criterion = WeightedCrossEntropyLoss(class_weights=class_weights)
-
     def compute_loss(self, model, inputs, return_outputs=False):
         outputs = model(**inputs)
         logits = outputs.logits
         labels = inputs["labels"]
+
+        # Lazily build the weighted loss on the first call: customize_trainer
+        # swaps the class of the already-built Trainer without re-running
+        # __init__, so perform any setup here instead of in __init__.
+        if not hasattr(self, "criterion"):
+            train_labels = [item["label"] for item in self.train_dataset]
+            class_counts = torch.bincount(torch.tensor(train_labels))
+            class_weights = 1.0 / class_counts
+            class_weights = class_weights / class_weights.sum()
+            self.criterion = WeightedCrossEntropyLoss(class_weights=class_weights)
 
         loss = self.criterion(logits, labels)
 
@@ -73,9 +71,10 @@ class CustomTrainer(Trainer):
         return loss
 
 
-# Initialize the trainer
+# Initialize the trainer, then swap in the custom Trainer subclass
 trainer = DNATrainer(model=model, config=configs, datasets=sampled_datasets)
-trainer.trainer = CustomTrainer
+trainer.customize_trainer(CustomTrainer)
+metrics = trainer.train()
 ```
 
 #### Focal Loss for Hard Examples
@@ -102,9 +101,23 @@ class FocalLoss(nn.Module):
             return focal_loss
 
 
-# Usage
-trainer = DNATrainer(model=model, tokenizer=tokenizer, datasets=dataset, config=config)
-trainer.trainer.criterion = FocalLoss(alpha=1, gamma=2)
+# Usage — DNATrainer has no "criterion" hook. Focal loss is selected through
+# the task head config, which the classification head reads when computing
+# the loss; the built-in dnallm.models.losses.FocalLoss (alpha=0.25,
+# gamma=2.0 by default) is used automatically. Set it before loading the
+# model:
+#
+# task:
+#   head_config:
+#     loss_function: focal
+#
+# Other supported names: mse, crossentropy, bce, bcewithlogits, poisson,
+# cosine_similarity. A custom nn.Module loss (like the FocalLoss class
+# defined above) can be assigned directly on the loaded model instead:
+# model.config.head_config["loss_function"] = FocalLoss(alpha=1, gamma=2)
+
+trainer = DNATrainer(model=model, config=config, datasets=datasets)
+metrics = trainer.train()
 ```
 
 ### Custom Training Loops
@@ -363,10 +376,11 @@ class DynamicBatchSampler:
             yield batch
 
 
-# Usage
-sampler = DynamicBatchSampler(dataset.train_data, max_tokens_per_batch=4096)
+# Usage — DNADataset wraps the underlying Hugging Face dataset in .dataset;
+# access splits with dataset.dataset["train"] (also "test" / "val")
+sampler = DynamicBatchSampler(dataset.dataset["train"], max_tokens_per_batch=4096)
 dataloader = torch.utils.data.DataLoader(
-    dataset.train_data, batch_sampler=sampler, collate_fn=custom_collate_fn
+    dataset.dataset["train"], batch_sampler=sampler, collate_fn=custom_collate_fn
 )
 ```
 
@@ -516,6 +530,8 @@ logger.log_model_info(model)
 ```
 
 ## Hyperparameter Optimization
+
+Before writing a manual search loop, note that `DNATrainer` has a built-in Optuna-backed search: configure the `hyperparameter_search` section of the training config (`search_space`, `n_trials`, `direction`, `study_name`, `metric`) and call `trainer.search()`.
 
 ### Grid Search
 

@@ -6,14 +6,23 @@ This directory contains the comprehensive test suite for the DNALLM project, org
 
 ```
 tests/
-├── pytest.ini              # Project-level pytest configuration
-├── README.md               # This file - overall test documentation
-├── inference/              # Inference module tests
-│   ├── test_plot.py        # Plot functionality tests
-│   ├── pdf/                # PDF output directory
-│   └── README.md           # Inference-specific documentation
-├── utils/                   # Utility module tests
-│   └── test_sequence.py    # Sequence utility tests
+├── TESTING.md              # This file - overall test documentation
+├── conftest.py             # Shared fixtures for the whole suite
+├── expected_skips.yaml     # Skip allowlist audited by scripts/audit_skips.py in CI
+├── test_config_mapping_contracts.py, test_extras_guard.py,
+│   test_models_lock_contracts.py, test_runner_infra_contracts.py   # root contract tests
+├── benchmark/              # Benchmark module tests
+├── cli/                    # CLI tests (test_cli.py)
+├── configuration/          # Config loading + YAML round-trip tests
+├── datahandling/           # DNADataset tests
+├── examples/               # Example/notebook/script execution census (example-nightly lane)
+├── finetune/               # Trainer tests (incl. test_trainer_real_model.py)
+├── inference/              # Inference tests (test_plot.py, test_interpret.py, ...)
+├── mcp/                    # MCP unit tests (client, server, model manager)
+├── models/                 # Model loading/registry tests
+├── scripts/                # Tests for CI scripts (audit_skips, check_docs_sync)
+├── tasks/                  # Metrics and task tests
+├── utils/                  # Utility tests (test_sequence.py, compat shims, ...)
 └── test_data/              # Test data files
     ├── binary_classification/
     ├── embedding/
@@ -23,6 +32,10 @@ tests/
     ├── regression/
     └── token_classification/
 ```
+
+The layout mirrors the `dnallm/` package. `testpaths` collects a second root,
+`dnallm/mcp/tests/` (the packaged MCP suite, including the live-server probes);
+runtime output directories such as `tests/logs/` are gitignored.
 
 ## 🚀 Running Tests
 
@@ -62,19 +75,19 @@ pytest
 ### Selective Testing
 
 ```bash
-# Run tests by marker
-pytest -m inference -v        # Only inference tests
-pytest -m utils -v            # Only utility tests
-pytest -m pdf -v              # Only PDF generation tests
-pytest -m performance -v      # Only performance tests
+# Run tests by marker — only slow, pdf, data, and giants are applied to
+# tests today; the other registered markers select nothing yet
+pytest -m pdf -v              # Only PDF generation tests (tests/inference/test_plot.py)
+pytest -m data -v             # Only data-handling tests
+pytest -m giants -v           # Giant-model (evo-class) execution tests
 
 # Run specific test files
 pytest tests/inference/test_plot.py
 pytest tests/utils/test_sequence.py
 
-# Run specific test classes
+# Run specific test classes (test_sequence.py uses module-level functions)
 pytest tests/inference/test_plot.py::TestPlotBars
-pytest tests/utils/test_sequence.py::TestSequenceUtils
+pytest tests/utils/test_sequence.py::test_reverse_complement
 
 # Run specific test methods
 pytest tests/inference/test_plot.py::TestPDFOutputQuality::test_demo_pdf_generation
@@ -82,38 +95,32 @@ pytest tests/inference/test_plot.py::TestPDFOutputQuality::test_demo_pdf_generat
 
 ## 🔧 Configuration
 
-### Pytest Configuration (`pytest.ini`)
+### Pytest Configuration (`pyproject.toml`)
 
-The project uses a centralized pytest configuration that applies to all test modules:
+Pytest configuration is defined in `[tool.pytest.ini_options]` in the project-root
+`pyproject.toml`. There is intentionally **no** `pytest.ini` (and no `tox.ini`,
+`setup.cfg`, or `.coveragerc`) anywhere in the tree: pytest gives a config file found
+at a test root precedence over `pyproject.toml`, so a stray `tests/pytest.ini` would
+silently hijack the suite's settings.
 
-```ini
-[tool:pytest]
-# Test discovery and execution settings
-testpaths = . inference utils test_data
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
+Never (re)create `tests/pytest.ini` — edit `pyproject.toml` instead. The authoritative
+settings defined there include:
 
-# Output and reporting
-addopts = -v --tb=short --disable-warnings --strict-markers
+- `testpaths = ["tests", "dnallm/mcp/tests"]` — the two collected test roots
+- `python_files = "test_*.py"`, `python_classes = "Test*"`, `python_functions = "test_*"`
+- `addopts = -v --tb=short --strict-markers --strict-config --asyncio-mode=auto --timeout=300`
+- `markers` — `slow`, `pdf`, `performance`, `integration`, `unit`, `inference`, `utils`,
+  `data`, `legacy`, `giants`
+- `minversion = "8.4"`
 
-# Markers for different test types
-markers =
-    slow: marks tests as slow
-    pdf: marks tests that generate PDF files
-    performance: marks performance-related tests
-    integration: marks integration tests
-    unit: marks unit tests
-    inference: marks inference-related tests
-    utils: marks utility function tests
-    data: marks data handling tests
-```
+Coverage is configured in the same file, under `[tool.coverage.run]` and
+`[tool.coverage.report]`.
 
 ### Key Benefits
 
-- **Unified Configuration**: Single configuration file for all tests
-- **Consistent Behavior**: Same settings across all test modules
-- **Easy Maintenance**: Centralized configuration management
+- **Single Source of Truth**: `pyproject.toml` is the only pytest configuration file
+- **Consistent Behavior**: Same settings across all test modules, local runs, and CI
+- **No Config Hijacking**: No per-directory config file can shadow the project settings
 - **CI/CD Friendly**: Consistent testing behavior in automated environments
 
 ## 🏷️ Test Markers
@@ -128,6 +135,14 @@ Use markers to organize and selectively run tests:
 - **`@pytest.mark.inference`**: Tests specific to inference functionality
 - **`@pytest.mark.utils`**: Tests for utility functions
 - **`@pytest.mark.data`**: Tests for data handling functionality
+- **`@pytest.mark.giants`**: Giant-model (evo-class) execution tests excluded from the
+  example-nightly census by owner policy (D-01, 2026-10-05) — a marker deselection, not a
+  typed skip (the runner environment is available). The dispatch/manual lane runs them
+  explicitly with `pytest -m giants`; example-nightly deselects with `-m "not giants"`
+
+Of the registered markers, only `slow`, `pdf`, `data`, and `giants` are currently
+applied to tests; the rest are registered so `--strict-markers` accepts them, but
+they select nothing yet.
 
 ### Using Markers
 
@@ -135,14 +150,14 @@ Use markers to organize and selectively run tests:
 # Run only fast tests
 pytest -m "not slow"
 
-# Run only unit tests
-pytest -m unit
+# Run only PDF-marked tests
+pytest -m pdf
 
-# Run inference tests but exclude slow ones
-pytest -m "inference and not slow"
+# Run data-marked tests but exclude slow ones
+pytest -m "data and not slow"
 
 # Run multiple marker combinations
-pytest -m "pdf or performance"
+pytest -m "pdf or data"
 ```
 
 ## 📊 Test Coverage
@@ -153,7 +168,7 @@ pytest -m "pdf or performance"
 # Generate HTML coverage report
 pytest --cov=dnallm --cov-report=html
 
-# Generate XML coverage report for CI
+# Generate a local XML coverage report (CI uploads none — see above)
 pytest --cov=dnallm --cov-report=xml
 
 # Show coverage in terminal
@@ -162,32 +177,45 @@ pytest --cov=dnallm --cov-report=term-missing
 
 ### Coverage Targets
 
-- **Overall Coverage**: Aim for >80% code coverage
-- **Critical Modules**: >90% for core functionality
-- **New Features**: >95% for newly added code
+- **Enforced Floor**: `fail_under = 90` in `pyproject.toml [tool.coverage.report]` — a
+  ratchet floor, not a goal: any `--cov` invocation (local or CI) whose total drops below
+  90 fails the run
+- **Suite Reality**: the in-process suite landed at 96.30% when the floor was set, and the
+  full nightly census has since measured 96.42% — hold new work at or above the current
+  total
+- **Scoped Runs**: the floor applies regardless of how many tests ran — drop `--cov` or
+  pass `--no-cov` when running a subset of the suite
 
 ## 🔄 Continuous Integration
 
 ### CI/CD Integration
 
-The test suite is designed for automated testing:
+The gated CI invocation (the `coverage-gate` job in `.github/workflows/ci.yml`): the
+`fail_under = 90` floor rides the pytest exit code, and the junit is audited for
+unexpected skips:
 
 ```yaml
-# Example GitHub Actions workflow
-- name: Run Tests
+# Actual invocation from .github/workflows/ci.yml (coverage-gate job)
+- name: Run gated fast census (not slow)
   run: |
-    pip install pytest pytest-cov
-    pytest --cov=dnallm --cov-report=xml --junitxml=test-results.xml
+    source .venv/bin/activate
+    .venv/bin/python -m pytest -m "not slow" -ra --durations=0 \
+      --junitxml=pytest-junit-gate.xml --cov -p no:cacheprovider -p no:progress
 
-- name: Upload Coverage
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./coverage.xml
+- name: Skip audit (gated junit)
+  run: |
+    source .venv/bin/activate
+    python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 ```
+
+There is no codecov upload and no XML coverage report in CI — coverage totals are
+reported in the terminal only (see `.github/workflows/README.md` and
+`docs/user_guide/continuous_integration.md` for the full CI story).
 
 ### Test Artifacts
 
-- **Coverage Reports**: XML and HTML formats
+- **Coverage Reports**: HTML locally (`--cov-report=html`); CI reports totals in the
+  terminal only — no XML coverage report is produced
 - **Test Results**: JUnit XML format
 - **PDF Outputs**: Generated charts and visualizations
 - **Performance Metrics**: Timing and memory usage data
@@ -206,7 +234,9 @@ The test suite is designed for automated testing:
 
 2. **Missing Dependencies**
    ```bash
-   pip install pytest pytest-cov pytest-xdist
+   # addopts needs pytest-asyncio and pytest-timeout too — install the
+   # test extra instead of individual packages
+   pip install -e ".[test]"
    ```
 
 3. **Configuration Issues**

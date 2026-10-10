@@ -8,7 +8,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_space import SpaceConfig
 
-from transformers import PreTrainedModel  # type: ignore[attr-defined]
+from transformers import PreTrainedModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from .modules import (
@@ -34,7 +34,7 @@ TARGET_LENGTH = 896
 
 # main class
 class Space(PreTrainedModel):
-    config_class = SpaceConfig  # type: ignore
+    config_class = SpaceConfig
     base_model_prefix = "space"
 
     @staticmethod
@@ -137,7 +137,7 @@ class Space(PreTrainedModel):
         x = self.stem(x)
         x = self.conv_tower(x)
         x = rearrange(x, "b d n -> b n d")
-        x = checkpoint_sequential(self.transformer, len(self.transformer), x)  # type: ignore
+        x = checkpoint_sequential(self.transformer, len(self.transformer), x)
         x = self.crop_final(x)
         x = self.final_pointwise(x)
         return x
@@ -357,7 +357,7 @@ class TrainingSpace(PreTrainedModel):
 
 
 class SpaceForSequenceClassification(PreTrainedModel):
-    config_class = SpaceConfig  # type: ignore
+    config_class = SpaceConfig
     base_model_prefix = "space"
 
     def __init__(self, config, **kwargs):

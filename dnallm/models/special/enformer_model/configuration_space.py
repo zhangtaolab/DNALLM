@@ -1,7 +1,7 @@
-from transformers import PretrainedConfig  # type: ignore[attr-defined]
+from transformers import PreTrainedConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
 
-class SpaceConfig(PretrainedConfig):
+class SpaceConfig(PreTrainedConfig):
     model_type = "enformer"
 
     def __init__(
