@@ -509,7 +509,7 @@ def benchmark_yaml_factory(tmp_path, benchmark_csv):
     """Return a factory writing parameterizable benchmark YAML configs."""
     from dnallm.configuration.configs import load_config
 
-    def _make(metrics=("accuracy", "f1"), with_datasets=True):
+    def _make(metrics=("accuracy", "f1"), with_datasets=True, label_column="labels"):
         config = {
             "task": {
                 "task_type": "binary",
@@ -532,7 +532,7 @@ def benchmark_yaml_factory(tmp_path, benchmark_csv):
                     "path": benchmark_csv,
                     "task": "binary",
                     "text_column": "sequence",
-                    "label_column": "labels",
+                    "label_column": label_column,
                     "num_labels": 2,
                     "threshold": 0.5,
                 }
@@ -719,6 +719,133 @@ class TestRunBranches:
             results = benchmark.run()
 
         assert results["ds1"]["m1"] == {"accuracy": 0.5}
+
+
+class TestRunLabelColumnResolution:
+    """run() label-column resolution: configured column, 'labels' fallback.
+
+    Regression coverage for WINDOWS id 14: run() must read labels through a
+    per-dataset resolution (configured label_column -> 'labels' fallback ->
+    descriptive ValueError) instead of hardcoding the 'labels' subscript.
+    """
+
+    @staticmethod
+    def _recording_metrics(recorded: dict):
+        """Build a calculate_metrics side effect that records its labels arg."""
+
+        def _record(logits, labels, plot=True):
+            recorded["labels"] = list(labels)
+            return {"accuracy": 0.9}
+
+        return _record
+
+    def test_run_reads_configured_label_column(self, benchmark_yaml_factory):
+        """Labels come from the configured label_column when it exists (WINDOWS id 14)."""
+        config = benchmark_yaml_factory(metrics=("accuracy",), label_column="label")
+        benchmark = Benchmark(config)
+        # Planning-time fact 1: the load path normalizes a *present* configured
+        # label column to 'labels', so the loaded shape is already normalized.
+        assert benchmark.datasets[0].column_names == ["sequence", "labels"]
+        # The un-normalized production shape run() must also honor: a dataset
+        # that still carries its configured label column under its own name.
+        benchmark.datasets[0] = Dataset.from_dict({
+            "sequence": ["ATCG", "GGCC", "TTTT", "ACGT"],
+            "label": [0, 1, 0, 1],
+        })
+        recorded: dict = {}
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference, "calculate_metrics", side_effect=self._recording_metrics(recorded)
+            ),
+        ):
+            results = benchmark.run()
+
+        assert results["ds1"]["m1"]["accuracy"] == 0.9
+        assert recorded["labels"] == [0, 1, 0, 1]
+
+    def test_run_falls_back_to_labels_when_configured_column_absent(self, benchmark_yaml_factory):
+        """Configured column absent but 'labels' present keeps run() working."""
+        config = benchmark_yaml_factory(metrics=("accuracy",), label_column="label")
+        benchmark = Benchmark(config)
+        # No replacement: the real loader already produced the 'labels' shape
+        # (the loader-normalized production shape).
+        recorded: dict = {}
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference, "calculate_metrics", side_effect=self._recording_metrics(recorded)
+            ),
+        ):
+            results = benchmark.run()
+
+        assert results["ds1"]["m1"]["accuracy"] == 0.9
+        assert recorded["labels"] == [0, 1, 0, 1]
+
+    def test_run_default_labels_path_still_works(self, tmp_path, benchmark_csv):
+        """Config-less get_dataset defaults ('labels') keep run() working unchanged."""
+        from dnallm.configuration.configs import load_config
+
+        cfg_path = tmp_path / "plain.yaml"
+        cfg_path.write_text(
+            yaml.safe_dump({
+                "task": {
+                    "task_type": "binary",
+                    "num_labels": 2,
+                    "label_names": ["negative", "positive"],
+                    "threshold": 0.5,
+                },
+                "inference": {"batch_size": 2, "device": "cpu", "max_length": 32, "num_workers": 0},
+            })
+        )
+        benchmark = Benchmark(load_config(cfg_path))
+        assert benchmark.prepared is None
+
+        # Default seq_col/label_col arguments ('sequence'/'labels').
+        benchmark.get_dataset(benchmark_csv)
+        recorded: dict = {}
+
+        with (
+            patch(
+                "dnallm.inference.benchmark.load_model_and_tokenizer",
+                return_value=(ConstantOutputFake(), SimpleDNATokenizer()),
+            ),
+            patch.object(DNAInference, "batch_infer", return_value=(torch.randn(4, 2), None, None)),
+            patch.object(
+                DNAInference, "calculate_metrics", side_effect=self._recording_metrics(recorded)
+            ),
+        ):
+            results = benchmark.run(model_names=["/models/m1"], source="local", save_scores=False)
+
+        assert results["custom"]["m1"]["accuracy"] == 0.9
+        assert recorded["labels"] == [0, 1, 0, 1]
+
+    def test_run_without_label_column_raises_value_error(self, benchmark_yaml_factory):
+        """A dataset with no resolvable label column fails descriptively (WINDOWS id 14).
+
+        No model-loader patch on purpose: the error must fire before any model
+        loads (the ledger's headline symptom).
+        """
+        config = benchmark_yaml_factory(metrics=("accuracy",), label_column="label")
+        benchmark = Benchmark(config)
+        # The census shape: a 'sequence'-only dataset.
+        benchmark.datasets[0] = Dataset.from_dict({
+            "sequence": ["ATCG", "GGCC", "TTTT", "ACGT"],
+        })
+
+        with pytest.raises(ValueError, match=r"has no label column") as excinfo:
+            benchmark.run()
+        assert "ds1" in str(excinfo.value)
 
 
 class TestEvaluateSingleModel:
