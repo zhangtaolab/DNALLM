@@ -1,0 +1,39 @@
+================================================================================
+spike: numpy interval-jaccard parity vs bedtools (quick-261010-wx2)
+================================================================================
+python 3.13.15 | numpy 2.5.3 | seed 20261010 | cases 3000 | jaccard tolerance 1e-09
+bedtools binary: /home/linuxbrew/.linuxbrew/bin/bedtools (source: PATH)
+bedtools version: bedtools v2.31.1
+--- frozen pair ---
+pred: rows=51 chroms=1 [Chr1=51] chrom-grouped=True start-sorted-within-chrom=True (example/notebooks/plant_helixseek_shared/.scratch/pred.bed)
+truth: rows=94 chroms=1 [Chr1=94] chrom-grouped=True start-sorted-within-chrom=True (example/notebooks/plant_helixseek_shared/.scratch/truth.bed)
+metric          numpy                 bedtools(live)        recorded-ref          note
+intersection    15872                 15872                 15872                 
+union           48878                 48878                 48878                 
+jaccard         0.32472687098490116   0.324727              0.324727              bedtools prints 6 dp
+n_intersections 45                    51                    51                    informational, never gated
+gate intersection-exact-vs-live: PASS (delta 0)
+gate union-exact-vs-live: PASS (delta 0)
+gate jaccard-delta<= 1e-09 vs live-full-precision: PASS (achieved delta 0.0 vs live full 0.32472687098490116)
+informational delta vs 6-dp anchor 0.324727: 1.2901509882645712e-07 (bedtools print rounding)
+frozen gates: PASS
+--- handcrafted edge cases ---
+case 1 empty-side-A: mode=raw inter 0/0 union 1500/1500 jaccard 0.0/0.0 PASS
+case 2 identical-sets: mode=raw inter 450/450 union 450/450 jaccard 1.0/1.0 PASS
+case 3 strict-containment-A-in-B: mode=raw inter 700/700 union 1900/1900 jaccard 0.3684210526315789/0.3684210526315789 PASS
+case 4 bookended-adjacent-touching: mode=raw inter 0/0 union 200/200 jaccard 0.0/0.0 PASS
+case 5 fully-disjoint: mode=raw inter 0/0 union 200/200 jaccard 0.0/0.0 PASS
+case 6 same-coords-different-chrom-names: mode=raw inter 0/0 union 200/200 jaccard 0.0/0.0 PASS
+case 7 duplicates-and-staggered-overlaps: mode=raw inter 200/200 union 300/300 jaccard 0.6666666666666666/0.6666666666666666 PASS
+case 8 shuffled-row-order: mode=sorted-after-raw-error inter 220/220 union 900/900 jaccard 0.24444444444444444/0.24444444444444444 PASS
+--- randomized property cases ---
+seed 20261010 | cases 3000 | pattern cycle mixed/dense/containment/adjacency/disjoint/duplicates | shuffled every 4th case | per-side rows <= 30
+randomized: compared 3000 | pass 3000 | mismatch 0
+max |delta jaccard| vs live full precision: 0.0
+max |delta jaccard| vs bedtools 6-dp print (informational): 5.22047572615314e-07
+max |delta intersection|: 0 bases | max |delta union|: 0 bases
+shuffled cases: 750 | raw probed 1 | raw rejected 1 | raw differed 0 | pre-sorted by policy 749
+sort handling: bedtools jaccard rejected non-lexicographically-sorted input (observed: Error: Sorted input specified, but the file <tmpdir>/hand8_a.bed has the following out of order record); after the first rejection the oracle ran on pre-sorted copies for shuffled comparisons; the numpy side always sorts internally
+mismatches: none
+RUNTIME: 5.1s
+VERDICT: PARITY

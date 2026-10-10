@@ -42,6 +42,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -451,6 +452,665 @@ def frozen_pair_report(bedtools_bin: str) -> bool:
     return ok
 
 
+# --- property harness (task 2) ---------------------------------------------
+WINDOW = 8000
+CHROM_POOL = ("Chr1", "Chr2", "Chr3", "Chr4", "chr1", "1", "scaffoldA")
+PATTERNS = ("mixed", "dense", "containment", "adjacency", "disjoint", "duplicates")
+FAILURES_DIR = TASK_DIR / "failures"
+FAILURES_DISPLAY = os.path.relpath(TASK_DIR, REPO_ROOT).replace(os.sep, "/") + "/failures"
+
+
+def _first_line(text: str | None) -> str:
+    """
+    Extract the first non-empty line of subprocess stderr.
+
+    Args:
+        text: captured stderr (may be None or empty).
+
+    Returns:
+        str: the first non-empty line, stripped; a placeholder when absent.
+    """
+    if not text:
+        return "<no stderr>"
+    for line in text.splitlines():
+        if line.strip():
+            return line.strip()
+    return "<empty stderr>"
+
+
+def _scrub(text: str, tmp_root: Path) -> str:
+    """
+    Replace the ephemeral temp-directory prefix in captured oracle text.
+
+    Args:
+        text: subprocess output that may embed temp file paths.
+        tmp_root: the TemporaryDirectory root to redact.
+
+    Returns:
+        str: text with every occurrence of the temp root replaced by
+        "<tmpdir>", keeping report lines byte-stable across re-runs.
+    """
+    return text.replace(str(tmp_root), "<tmpdir>")
+
+
+def write_case_bed(path: str | Path, intervals: list[tuple[str, int, int]]) -> None:
+    """
+    Serialize one case side to a 3-column BED file.
+
+    Args:
+        path: destination file. Generated cases live inside a
+            TemporaryDirectory, so they never land in the repo tree and
+            their paths never enter report lines.
+        intervals: (chromosome, start, end) rows in the exact write order.
+    """
+    lines = [f"{chrom}\t{start}\t{end}\n" for chrom, start, end in intervals]
+    Path(path).write_text("".join(lines), encoding="utf-8")
+
+
+def write_sorted_bed(path: str | Path, intervals: list[tuple[str, int, int]]) -> None:
+    """
+    Serialize a case side in canonical bedtools-acceptable order.
+
+    Args:
+        path: destination file.
+        intervals: (chromosome, start, end) rows in any order.
+
+    Orders by chromosome (lexicographic), then start, then end — the sort
+    bedtools demands of its inputs.
+    """
+    ordered = sorted(intervals, key=lambda row: (row[0], row[1], row[2]))
+    write_case_bed(path, ordered)
+
+
+def _case_gates(
+    np_stats: dict[str, int | float], bt_stats: dict[str, int | float]
+) -> tuple[bool, int, int, float, float]:
+    """
+    Evaluate the LOCKED per-case gates: exact integer equality on
+    intersection and union, and jaccard within JACCARD_TOL of the live
+    full-precision value. Never loosened — a failure is recorded evidence.
+
+    Args:
+        np_stats: statistics from jaccard_np.
+        bt_stats: statistics from run_bedtools.
+
+    Returns:
+        tuple[bool, int, int, float, float]: overall pass, |delta
+        intersection|, |delta union|, |delta jaccard| vs live full
+        precision, |delta jaccard| vs bedtools' 6-dp print.
+    """
+    d_int = abs(int(np_stats["intersection"]) - int(bt_stats["intersection"]))
+    d_uni = abs(int(np_stats["union"]) - int(bt_stats["union"]))
+    d_jac = abs(float(np_stats["jaccard"]) - float(bt_stats["jaccard_full"]))
+    d_print = abs(float(np_stats["jaccard"]) - float(bt_stats["jaccard"]))
+    ok = d_int == 0 and d_uni == 0 and d_jac <= JACCARD_TOL
+    return ok, d_int, d_uni, d_jac, d_print
+
+
+def compare_case(  # noqa: PLR0912, PLR0913, PLR0915 — one explicit oracle protocol
+    label: str,
+    a_rows: list[tuple[str, int, int]],
+    b_rows: list[tuple[str, int, int]],
+    bedtools_bin: str,
+    tmp_root: Path,
+    failures_root: Path,
+    state: dict[str, object],
+    *,
+    shuffled: bool,
+    drop_if_rejected: bool = False,
+    seed: int | None = None,
+    pattern: str | None = None,
+) -> dict[str, object]:
+    """
+    Compare numpy vs live bedtools jaccard on one written case pair.
+
+    Oracle sort-handling protocol: the numpy side reads the files exactly as
+    written (it always sorts internally). bedtools is probed on the raw
+    files first; when it rejects unsorted input or reports values that
+    disagree with numpy, it is re-invoked on sorted copies, the behavior is
+    recorded in `state`, and later shuffled comparisons use pre-sorted
+    input directly.
+
+    Args:
+        label: stable case identifier (temp filenames, failure dir name).
+        a_rows: side A rows in write order.
+        b_rows: side B rows in write order.
+        bedtools_bin: resolved bedtools executable.
+        tmp_root: the case's TemporaryDirectory root.
+        failures_root: reproduction-artifact directory for mismatches.
+        state: mutable harness bookkeeping (sort-policy flags, counters).
+        shuffled: whether the written rows deliberately violate sortedness.
+        drop_if_rejected: drop the case from gating when bedtools rejects
+            the input (observed behavior recorded instead).
+        seed: seed of the generating rng (for mismatch records).
+        pattern: generating pattern name (for mismatch records).
+
+    Returns:
+        dict[str, object]: outcome ("pass" | "mismatch" | "dropped"), the
+        oracle mode used, both statistic dicts, gate deltas and, on
+        mismatch, the reproduction path and context.
+    """
+    a_raw = tmp_root / f"{label}_a.bed"
+    b_raw = tmp_root / f"{label}_b.bed"
+    write_case_bed(a_raw, a_rows)
+    write_case_bed(b_raw, b_rows)
+    np_stats = jaccard_np(a_raw, b_raw)
+    sorted_copies: list[tuple[Path, str]] = []
+
+    def sorted_oracle() -> dict[str, int | float]:
+        a_or = tmp_root / f"{label}_a.sorted.bed"
+        b_or = tmp_root / f"{label}_b.sorted.bed"
+        write_sorted_bed(a_or, a_rows)
+        write_sorted_bed(b_or, b_rows)
+        sorted_copies.extend([(a_or, "a.sorted.bed"), (b_or, "b.sorted.bed")])
+        return run_bedtools(a_or, b_or, bedtools_bin)
+
+    mode = "raw"
+    if shuffled and state["presort_policy"]:
+        bt_stats = sorted_oracle()
+        mode = "presorted(policy)"
+    else:
+        if shuffled:
+            state["raw_probed"] = int(state["raw_probed"]) + 1
+        try:
+            bt_stats = run_bedtools(a_raw, b_raw, bedtools_bin)
+        except subprocess.CalledProcessError as exc:
+            note = _scrub(_first_line(exc.stderr), tmp_root)
+            if drop_if_rejected:
+                state["dropped_note"] = note
+                return {
+                    "outcome": "dropped",
+                    "mode": "oracle-rejected",
+                    "np": np_stats,
+                    "bt": None,
+                }
+            state["presort_policy"] = True
+            if shuffled:
+                state["raw_errored"] = int(state["raw_errored"]) + 1
+                if state["rejection_note"] is None:
+                    state["rejection_note"] = note
+                mode = "sorted-after-raw-error"
+            else:
+                state["nonshuffled_rejections"] = int(state["nonshuffled_rejections"]) + 1
+                mode = "sorted-after-unexpected-rejection"
+            bt_stats = sorted_oracle()
+        else:
+            ok_raw, _, _, _, _ = _case_gates(np_stats, bt_stats)
+            if not ok_raw and shuffled:
+                bt_sorted = sorted_oracle()
+                ok_sorted, _, _, _, _ = _case_gates(np_stats, bt_sorted)
+                state["presort_policy"] = True
+                if ok_sorted:
+                    state["raw_differed"] = int(state["raw_differed"]) + 1
+                    mode = "sorted-after-raw-difference"
+                else:
+                    mode = "sorted(raw-also-mismatched)"
+                bt_stats = bt_sorted
+    ok, d_int, d_uni, d_jac, d_print = _case_gates(np_stats, bt_stats)
+    if ok:
+        return {
+            "outcome": "pass",
+            "mode": mode,
+            "np": np_stats,
+            "bt": bt_stats,
+            "deltas": (d_int, d_uni, d_jac, d_print),
+        }
+    repro_dir = failures_root / f"case_{label}"
+    repro_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(a_raw, repro_dir / "a.bed")
+    shutil.copy2(b_raw, repro_dir / "b.bed")
+    for src, name in sorted_copies:
+        shutil.copy2(src, repro_dir / name)
+    return {
+        "outcome": "mismatch",
+        "mode": mode,
+        "np": np_stats,
+        "bt": bt_stats,
+        "deltas": (d_int, d_uni, d_jac, d_print),
+        "repro": f"{FAILURES_DISPLAY}/case_{label}",
+        "context": {
+            "seed": seed,
+            "pattern": pattern,
+            "shuffled": shuffled,
+            "n_a": len(a_rows),
+            "n_b": len(b_rows),
+        },
+    }
+
+
+def handcrafted_cases() -> list[dict[str, object]]:
+    """
+    Build the eight deterministic handcrafted edge cases.
+
+    Covers: (1) one side an empty file; (2) identical interval sets
+    (jaccard 1.0); (3) strict containment of A within B; (4) bookended
+    intervals touching at one boundary (half-open: zero intersection,
+    coalesced union); (5) fully disjoint sides; (6) identical coordinates
+    under different chromosome names (must not intersect — exact string
+    key); (7) duplicate and staggered-overlap rows within one side (merge
+    semantics); (8) deliberately shuffled row order.
+
+    Returns:
+        list[dict[str, object]]: one dict per case with name, a, b,
+        shuffled and drop_if_rejected keys.
+    """
+    identical = [("Chr1", 100, 250), ("Chr1", 400, 600), ("Chr2", 50, 150)]
+    return [
+        {
+            "name": "empty-side-A",
+            "a": [],
+            "b": [("Chr1", 1000, 2000), ("Chr1", 3000, 3500)],
+            "shuffled": False,
+            "drop_if_rejected": True,
+        },
+        {
+            "name": "identical-sets",
+            "a": list(identical),
+            "b": list(identical),
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "strict-containment-A-in-B",
+            "a": [("Chr1", 200, 800), ("Chr1", 2100, 2200)],
+            "b": [("Chr1", 100, 1000), ("Chr1", 2000, 3000)],
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "bookended-adjacent-touching",
+            "a": [("Chr1", 0, 100)],
+            "b": [("Chr1", 100, 200)],
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "fully-disjoint",
+            "a": [("Chr1", 0, 100)],
+            "b": [("Chr1", 500, 600)],
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "same-coords-different-chrom-names",
+            "a": [("Chr1", 100, 200)],
+            "b": [("chr1", 100, 200)],
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "duplicates-and-staggered-overlaps",
+            "a": [("Chr1", 100, 300), ("Chr1", 100, 300), ("Chr1", 200, 400), ("Chr1", 205, 210)],
+            "b": [("Chr1", 150, 350)],
+            "shuffled": False,
+            "drop_if_rejected": False,
+        },
+        {
+            "name": "shuffled-row-order",
+            "a": [("Chr1", 500, 700), ("Chr1", 100, 300), ("Chr2", 50, 120), ("Chr1", 650, 900)],
+            "b": [("Chr2", 100, 150), ("Chr1", 200, 600)],
+            "shuffled": True,
+            "drop_if_rejected": False,
+        },
+    ]
+
+
+def _draw_intervals(
+    rng: np.random.Generator,
+    count: int,
+    lo: int,
+    hi: int,
+    min_len: int,
+    max_len: int,
+) -> list[tuple[int, int]]:
+    """
+    Draw `count` random intervals inside a bounded window.
+
+    Args:
+        rng: seeded generator (deterministic draw order).
+        count: number of intervals (0 draws nothing).
+        lo: inclusive lower bound for starts.
+        hi: upper bound for interval ends.
+        min_len: minimum interval length.
+        max_len: maximum interval length; callers keep max_len well below
+            hi - lo so the start range never empties.
+
+    Returns:
+        list[tuple[int, int]]: (start, end) intervals, unsorted.
+    """
+    out: list[tuple[int, int]] = []
+    for _ in range(count):
+        length = int(rng.integers(min_len, max_len + 1))
+        start = int(rng.integers(0, hi - lo - length))
+        out.append((lo + start, lo + start + length))
+    return out
+
+
+def _gen_mixed(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """Plain independent draws on both sides (may leave a side empty)."""
+    a = _draw_intervals(rng, int(rng.integers(0, cap)), 0, WINDOW, 20, 1200)
+    b = _draw_intervals(rng, int(rng.integers(0, cap)), 0, WINDOW, 20, 1200)
+    return a, b
+
+
+def _gen_dense(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """Long intervals in a shared window: dense within- and cross-side overlap."""
+    a = _draw_intervals(rng, int(rng.integers(1, cap + 1)), 0, WINDOW, 60, 900)
+    b = _draw_intervals(rng, int(rng.integers(1, cap + 1)), 0, WINDOW, 60, 900)
+    return a, b
+
+
+def _gen_containment(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """Strictly nested A intervals inside non-overlapping long B intervals."""
+    n_b = int(rng.integers(2, max(3, cap + 1)))
+    b: list[tuple[int, int]] = []
+    pos = 0
+    for _ in range(n_b):
+        gap = int(rng.integers(10, 80))
+        length = int(rng.integers(200, 500))
+        b.append((pos + gap, pos + gap + length))
+        pos += gap + length
+    picks = rng.choice(len(b), size=int(rng.integers(1, len(b) + 1)), replace=False)
+    a: list[tuple[int, int]] = []
+    for idx in picks:
+        start, end = b[int(idx)]
+        pad_left = int(rng.integers(0, 40))
+        pad_right = int(rng.integers(0, 40))
+        if pad_left == 0 and pad_right == 0:
+            pad_right = 1  # keep containment strict on at least one boundary
+        a.append((start + pad_left, end - pad_right))
+    return a, b
+
+
+def _gen_adjacency(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """Tiled segments cycled A A B: sides touch at boundaries and A keeps bookended pairs."""
+    n_cuts = int(rng.integers(3, 11))
+    cuts = sorted({int(x) for x in rng.integers(1, WINDOW, size=n_cuts)})
+    bounds = [0, *cuts, WINDOW]
+    a: list[tuple[int, int]] = []
+    b: list[tuple[int, int]] = []
+    for j in range(len(bounds) - 1):
+        if rng.random() < 0.15:
+            continue  # segment owned by neither side (a gap)
+        segment = (bounds[j], bounds[j + 1])
+        (a if j % 3 != 2 else b).append(segment)
+    return a, b
+
+
+def _gen_disjoint(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """A confined below the split point, B above it: zero cross-side intersection."""
+    mid = int(rng.integers(WINDOW // 4, 3 * WINDOW // 4))
+    a = _draw_intervals(rng, int(rng.integers(1, cap + 1)), 0, mid, 30, 300)
+    b = _draw_intervals(rng, int(rng.integers(1, cap + 1)), mid, WINDOW, 30, 300)
+    return a, b
+
+
+def _gen_duplicates(rng: np.random.Generator, cap: int) -> tuple[list, list]:
+    """Side A carries exact duplicate rows and staggered self-overlaps."""
+    base = _draw_intervals(rng, int(rng.integers(2, max(3, cap + 1))), 0, WINDOW, 80, 500)
+    a: list[tuple[int, int]] = list(base)
+    for start, end in base:
+        roll = rng.random()
+        if roll < 0.35:
+            a.append((start, end))  # exact duplicate row
+        elif roll < 0.70:
+            shift = int(rng.integers(1, 16))
+            if rng.random() < 0.5 and start > 0:
+                shift = -min(shift, start)  # keep the staggered start >= 0
+            a.append((start + shift, end + shift))  # staggered overlap
+    b = _draw_intervals(rng, int(rng.integers(1, cap + 1)), 0, WINDOW, 80, 500)
+    return a, b
+
+
+_GENERATORS = {
+    "mixed": _gen_mixed,
+    "dense": _gen_dense,
+    "containment": _gen_containment,
+    "adjacency": _gen_adjacency,
+    "disjoint": _gen_disjoint,
+    "duplicates": _gen_duplicates,
+}
+
+
+def gen_random_case(
+    rng: np.random.Generator, index: int
+) -> tuple[list[tuple[str, int, int]], list[tuple[str, int, int]], str, bool]:
+    """
+    Generate one seeded randomized case.
+
+    Chromosomes come from a fixed pool mixing naming styles (Chr1..Chr4,
+    chr1, 1, scaffoldA) to prove grouping is by exact string key; the
+    pattern cycles deterministically; a fixed quarter of cases (index % 4
+    == 3) is emitted in shuffled non-coordinate order while the rest are
+    written canonically sorted. Side totals are capped at 30 rows by
+    deterministic truncation and both sides are never simultaneously
+    empty (the empty side lives in handcrafted case 1).
+
+    Args:
+        rng: the corpus-wide seeded generator.
+        index: 0-based case index driving pattern and shuffle selection.
+
+    Returns:
+        tuple: (a_rows, b_rows, pattern, shuffled).
+    """
+    pattern = PATTERNS[index % len(PATTERNS)]
+    n_chroms = int(rng.integers(1, 5))
+    picked = rng.choice(len(CHROM_POOL), size=n_chroms, replace=False)
+    chroms = [CHROM_POOL[int(i)] for i in picked]
+    cap = max(2, 30 // n_chroms)
+    generator = _GENERATORS[pattern]
+    a_rows: list[tuple[str, int, int]] = []
+    b_rows: list[tuple[str, int, int]] = []
+    for chrom in chroms:
+        side_a, side_b = generator(rng, cap)
+        a_rows.extend((chrom, start, end) for start, end in side_a)
+        b_rows.extend((chrom, start, end) for start, end in side_b)
+    if not a_rows and not b_rows:
+        b_rows.append((chroms[0], 0, 10))
+    a_rows = a_rows[:30]
+    b_rows = b_rows[:30]
+    shuffled = index % 4 == 3
+    if shuffled:
+        order_a = rng.permutation(len(a_rows))
+        order_b = rng.permutation(len(b_rows))
+        a_rows = [a_rows[int(i)] for i in order_a]
+        b_rows = [b_rows[int(i)] for i in order_b]
+    else:
+        a_rows = sorted(a_rows, key=lambda row: (row[0], row[1], row[2]))
+        b_rows = sorted(b_rows, key=lambda row: (row[0], row[1], row[2]))
+    return a_rows, b_rows, pattern, shuffled
+
+
+def run_corpus(bedtools_bin: str, cases: int, seed: int) -> dict[str, object]:
+    """
+    Run the handcrafted edge cases and the seeded randomized corpus.
+
+    Args:
+        bedtools_bin: resolved bedtools executable.
+        cases: number of randomized cases.
+        seed: corpus seed (np.random.default_rng).
+
+    Returns:
+        dict[str, object]: comparison counts, mismatch records, maxima and
+        the sort-handling state, all consumed by the report and verdict.
+    """
+    failures_root = FAILURES_DIR
+    # Artifacts must reflect THIS run exactly, so any previous run's
+    # failures directory is removed first.
+    shutil.rmtree(failures_root, ignore_errors=True)
+    state: dict[str, object] = {
+        "presort_policy": False,
+        "raw_probed": 0,
+        "raw_errored": 0,
+        "raw_differed": 0,
+        "nonshuffled_rejections": 0,
+        "rejection_note": None,
+        "dropped_note": None,
+    }
+    records: list[dict[str, object]] = []
+    maxima = {"jac": 0.0, "jac_print": 0.0, "inter": 0, "union": 0}
+
+    def account(result: dict[str, object]) -> None:
+        if result["outcome"] != "pass":
+            return
+        d_int, d_uni, d_jac, d_print = result["deltas"]  # type: ignore[misc]
+        maxima["jac"] = max(maxima["jac"], d_jac)  # type: ignore[typeddict-item]
+        maxima["jac_print"] = max(maxima["jac_print"], d_print)  # type: ignore[typeddict-item]
+        maxima["inter"] = max(maxima["inter"], d_int)  # type: ignore[typeddict-item]
+        maxima["union"] = max(maxima["union"], d_uni)  # type: ignore[typeddict-item]
+
+    print("--- handcrafted edge cases ---")
+    hand_compared = 0
+    hand_pass = 0
+    hand_dropped = 0
+    for number, case in enumerate(handcrafted_cases(), start=1):
+        label = f"hand{number}"
+        with tempfile.TemporaryDirectory() as tmp:
+            result = compare_case(
+                label,
+                case["a"],  # type: ignore[arg-type]
+                case["b"],  # type: ignore[arg-type]
+                bedtools_bin,
+                Path(tmp),
+                failures_root,
+                state,
+                shuffled=case["shuffled"],  # type: ignore[arg-type]
+                drop_if_rejected=case["drop_if_rejected"],  # type: ignore[arg-type]
+                seed=seed,
+                pattern="handcrafted",
+            )
+        account(result)
+        if result["outcome"] == "dropped":
+            hand_dropped += 1
+            np_stats = result["np"]  # type: ignore[index]
+            print(
+                f"case {number} {case['name']}: DROPPED from gating — bedtools rejected "
+                f"the input (observed: {state['dropped_note']}); numpy side reports "
+                f"inter {np_stats['intersection']} union {np_stats['union']} "
+                f"jaccard {np_stats['jaccard']!r}"
+            )
+            continue
+        hand_compared += 1
+        ok = result["outcome"] == "pass"
+        if ok:
+            hand_pass += 1
+        else:
+            records.append(
+                {
+                    "kind": "handcrafted",
+                    "label": label,
+                    "name": case["name"],
+                    **{key: result[key] for key in ("mode", "deltas", "repro", "context")},
+                }
+            )
+        np_stats = result["np"]  # type: ignore[index]
+        bt_stats = result["bt"]  # type: ignore[index]
+        suffix = "PASS" if ok else f"MISMATCH reproduction {result['repro']}"
+        print(
+            f"case {number} {case['name']}: mode={result['mode']} inter "
+            f"{np_stats['intersection']}/{bt_stats['intersection']} union "
+            f"{np_stats['union']}/{bt_stats['union']} jaccard "
+            f"{np_stats['jaccard']!r}/{bt_stats['jaccard_full']!r} {suffix}"
+        )
+
+    print("--- randomized property cases ---")
+    print(
+        f"seed {seed} | cases {cases} | pattern cycle {'/'.join(PATTERNS)} | "
+        "shuffled every 4th case | per-side rows <= 30"
+    )
+    rng = np.random.default_rng(seed)
+    rand_pass = 0
+    for index in range(cases):
+        a_rows, b_rows, pattern, shuffled = gen_random_case(rng, index)
+        with tempfile.TemporaryDirectory() as tmp:
+            result = compare_case(
+                str(index),
+                a_rows,
+                b_rows,
+                bedtools_bin,
+                Path(tmp),
+                failures_root,
+                state,
+                shuffled=shuffled,
+                seed=seed,
+                pattern=pattern,
+            )
+        account(result)
+        if result["outcome"] == "pass":
+            rand_pass += 1
+        else:
+            records.append({"kind": "randomized", **result})
+    mismatches = cases - rand_pass
+    print(f"randomized: compared {cases} | pass {rand_pass} | mismatch {mismatches}")
+    print(f"max |delta jaccard| vs live full precision: {maxima['jac']!r}")
+    print(
+        f"max |delta jaccard| vs bedtools 6-dp print (informational): "
+        f"{maxima['jac_print']!r}"
+    )
+    print(
+        f"max |delta intersection|: {maxima['inter']} bases | "
+        f"max |delta union|: {maxima['union']} bases"
+    )
+    shuffled_total = sum(1 for i in range(cases) if i % 4 == 3)
+    print(
+        f"shuffled cases: {shuffled_total} | raw probed {state['raw_probed']} | "
+        f"raw rejected {state['raw_errored']} | raw differed {state['raw_differed']} | "
+        f"pre-sorted by policy {shuffled_total - int(state['raw_probed'])}"
+    )
+    if state["rejection_note"] is not None:
+        print(
+            "sort handling: bedtools jaccard rejected non-lexicographically-sorted "
+            f"input (observed: {state['rejection_note']}); after the first rejection "
+            "the oracle ran on pre-sorted copies for shuffled comparisons; the numpy "
+            "side always sorts internally"
+        )
+    elif int(state["raw_differed"]) > 0:
+        print(
+            "sort handling: bedtools accepted raw shuffled input but reported values "
+            "differing from the sorted oracle; sorted copies used thereafter; the "
+            "numpy side always sorts internally"
+        )
+    else:
+        print(
+            "sort handling: bedtools accepted every probed raw file; the numpy side "
+            "always sorts internally"
+        )
+    if int(state["nonshuffled_rejections"]) > 0:
+        print(
+            f"ANOMALY: bedtools rejected {state['nonshuffled_rejections']} "
+            "canonically-sorted (non-shuffled) inputs; sorted copies were used"
+        )
+    print(f"mismatches: {'none' if not records else len(records)}")
+    for record in records:
+        if record["kind"] == "randomized":
+            context = record["context"]  # type: ignore[index]
+            deltas = record["deltas"]  # type: ignore[index]
+            print(
+                f"  mismatch case {record['label']}: seed {context['seed']} pattern "
+                f"{context['pattern']} shuffled {context['shuffled']} "
+                f"|A| {context['n_a']} |B| {context['n_b']} d_int {deltas[0]} "
+                f"d_union {deltas[1]} d_jaccard {deltas[2]!r} reproduction "
+                f"{record['repro']}"
+            )
+        else:
+            deltas = record["deltas"]  # type: ignore[index]
+            print(
+                f"  mismatch {record['name']}: d_int {deltas[0]} d_union {deltas[1]} "
+                f"d_jaccard {deltas[2]!r} reproduction {record['repro']}"
+            )
+    return {
+        "handcrafted_compared": hand_compared,
+        "handcrafted_pass": hand_pass,
+        "handcrafted_dropped": hand_dropped,
+        "randomized_compared": cases,
+        "randomized_pass": rand_pass,
+        "mismatch_count": len(records),
+        "records": records,
+        "maxima": maxima,
+        "state": state,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the CLI parser (argparse, not click: the artifact runs outside the package)."""
     parser = argparse.ArgumentParser(
@@ -511,15 +1171,33 @@ def main(argv: list[str] | None = None) -> int:
     print(f"bedtools binary: {bedtools_bin} (source: {source})")
     print(f"bedtools version: {version}")
     frozen_ok = frozen_pair_report(bedtools_bin)
+    corpus_ok = True
+    corpus: dict[str, object] | None = None
     if args.frozen_only:
         print("randomized harness: skipped (--frozen-only)")
     else:
-        # The seeded randomized + handcrafted harness arrives with task 2.
-        print("randomized harness: pending (arrives with task 2)")
+        corpus = run_corpus(bedtools_bin, args.cases, args.seed)
+        corpus_ok = (
+            corpus["mismatch_count"] == 0
+            and corpus["handcrafted_pass"] == corpus["handcrafted_compared"]
+        )
     elapsed = time.perf_counter() - started
     print(f"RUNTIME: {elapsed:.1f}s")
-    parity = frozen_ok
-    print(f"VERDICT: {'PARITY' if parity else 'NO-PARITY'}")
+    parity = frozen_ok and corpus_ok
+    if parity:
+        print("VERDICT: PARITY")
+    else:
+        print("VERDICT: NO-PARITY")
+        print(f"  reason: frozen gates {'PASS' if frozen_ok else 'FAIL'}")
+        if corpus is not None:
+            print(
+                f"  reason: handcrafted {corpus['handcrafted_pass']}/"
+                f"{corpus['handcrafted_compared']} pass "
+                f"({corpus['handcrafted_dropped']} dropped); randomized "
+                f"{corpus['randomized_pass']}/{corpus['randomized_compared']} pass; "
+                f"{corpus['mismatch_count']} mismatch(es) — see the reproduction "
+                "lines above"
+            )
     return 0 if parity else 1
 
 
