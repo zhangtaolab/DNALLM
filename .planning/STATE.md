@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.2
 status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T12:12:25.983Z"
+last_updated: "2026-10-10T12:21:19.979Z"
 last_activity: 2026-10-10
 last_activity_desc: Milestone v1.2 completed and archived
-state_head: 834f9e2a0fdcfd527f9a34558e84eab3737e1474
+state_head: 526d539b5168eee9484ff317c33c033c21dfe7a8
 progress:
   total_phases: 3
   completed_phases: 3
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 Phase: Milestone v1.2 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-10 - Completed quick task 261010-rpa: retire numpy 1.x support (floor >=2.0.0, pyarrow cap removed, CI matrix numpy 2.2.0 only)
+Last activity: 2026-10-10 - Completed quick task 261010-s3k: bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ None — milestone freshly planned.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261010-rpa | Retire numpy 1.x support: floor >=2.0.0, drop pyarrow cap, CI matrix numpy 2.2.0 only | 2026-10-10 | 834f9e2 | [261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py](./quick/261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py/) |
+| 261010-s3k | Bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering; absorbs numpy>=2.0.0 breaking floor) | 2026-10-10 | 526d539 | [261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig](./quick/261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig/) |
 
 ## Deferred Items
 
