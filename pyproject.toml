@@ -140,12 +140,14 @@ mcp = [
     # dnallm-mcp-langchain kernelspec venv isolation.
     "langchain-ollama>=1.1.0",
     "nest-asyncio>=1.5.9",
-    # 2026-10-10: cap at the 1.x series. The newly released 2.x line
-    # (under the previous <3 bound) breaks the pydantic_ai notebook import
-    # on fresh CI resolves (opentelemetry._events missing from the resolved
-    # instrumentation set). 1.107.7 is the exact series the dev matrix was
-    # green on 2026-10-08; migrating to 2.x is a deliberate later change.
-    "pydantic-ai>=1.3.6,<2",
+    # 2026-10-10: floor at the 1.107 series. Under the previous <3 (then
+    # >=1.3.6,<2) bounds, uv silently backtracked fresh CI resolves to
+    # pydantic-ai 1.22.0, whose messages.py hard-imports opentelemetry._events
+    # (absent from the resolved otel set) and broke the pydantic_ai notebook
+    # import. 1.107.x is the dev-green series; if a transitive constraint
+    # rejects it, resolution now fails LOUDLY naming the capper instead of
+    # landing on the broken 1.22.
+    "pydantic-ai>=1.107.0,<2",
 ]
 base = [
     "dnallm[dev,test,notebook,mcp]",
