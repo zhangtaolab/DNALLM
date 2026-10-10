@@ -81,7 +81,7 @@ class Benchmark:
                 np.concatenate([MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
             ),
         }
-        self.datasets: list[str] = []
+        self.datasets: list[Any] = []
         # Store pre-loaded datasets for config-less execution
         self.datasets_dict = datasets or {}
 
@@ -227,6 +227,42 @@ class Benchmark:
         self.datasets.append(ds.dataset)
         return ds
 
+    def _extract_labels(self, di: int, dataset_name: str) -> list:
+        """Extract the label list for one loaded benchmark dataset.
+
+        Honors the dataset's configured label_column when the loaded dataset
+        still carries that column (the load path usually renames it to
+        'labels'), falls back to the conventional 'labels' column produced by
+        DNADataset.load_local_data's normalization, and raises a descriptive
+        error when neither exists — before any model loads.
+
+        Args:
+            di: Index of the dataset in self.datasets and, when prepared,
+                in self.prepared['dataset']
+            dataset_name: Display name of the dataset, used in the error message
+
+        Returns:
+            The label list read from the resolved column
+
+        Raises:
+            ValueError: If neither the configured label column nor the
+                'labels' fallback exists in the dataset
+        """
+        dataset: Any = self.datasets[di]
+        column_names = dataset.column_names
+        configured = None
+        if self.prepared and di < len(self.prepared["dataset"]):
+            configured = self.prepared["dataset"][di].label_column
+        if configured is not None and configured in column_names:
+            return dataset[configured]
+        if "labels" in column_names:
+            return dataset["labels"]
+        raise ValueError(
+            f"Dataset '{dataset_name}' has no label column: configured "
+            f"label_column={configured!r}, fallback 'labels' not found; "
+            f"available columns: {column_names}."
+        )
+
     def available_models(self, show_all: bool = True) -> dict[str, Any]:
         """List all available models.
 
@@ -299,7 +335,7 @@ class Benchmark:
             all_results[dname] = {}
             selected_results[dname] = {}
             metrics_save[dname] = {}
-            labels = self.datasets[di]["labels"]  # type: ignore[index]
+            labels = self._extract_labels(di, dname)
             task_config = task_configs[di] if di < len(task_configs) else task_configs[0]
             for mi, model_name in enumerate(model_names):  # type: ignore
                 print("Model name:", model_name)

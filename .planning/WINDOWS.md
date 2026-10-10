@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 8
+open_count: 7
 waived_count: 3
-fixed_count: 10
+fixed_count: 11
 total_count: 21
-last_updated: 2026-10-10T14:14:31.103Z
+last_updated: 2026-10-10T14:39:32.164Z
 ---
 
 # Broken Windows Ledger
@@ -28,7 +28,7 @@ last_updated: 2026-10-10T14:14:31.103Z
 | 11 | 05 | deviation | example/notebooks/benchmark/benchmark.ipynb |  | Census FAIL row (05-04, D-07 ladder terminal): third registry model zhangtaolab/nucleotide-transformer-v2-100m-promoter not loadable on transformers 5.17 - remote code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention); native-ESM route refuted (FFN shape mismatch); owner disposition pending per D-09 | open |  | 2026-10-02T05:12:38.864Z |  |
 | 12 | 05 | stub | tests/examples/test_script_execution.py |  | environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending | open |  | 2026-10-02T05:48:40.008Z |  |
 | 13 | 05 | unrun-verify | example/mcp_example |  | Census deferred-owner rows (05-06, D-08/T-05-16): both ollama mcp client notebooks never executed - ollama probe GREEN (qwen3.8:latest) but dnallm MCP server endpoint down and uv pip install cells must never touch the project venv; needs the Phase-8 ollama/VRAM coexistence plan (owner decision); durable gated tests skip network-unavailable with live probe evidence and fail loudly if both endpoints come up | open |  | 2026-10-02T08:34:21.484Z |  |
-| 14 | 05 | deviation | dnallm/inference/benchmark.py | 296 | Census FAIL finding (05-06): Benchmark.run hardcodes self.datasets[di]['labels'] while example benchmark_config.yaml declares label_column 'label' - KeyError before any model loads; blocks the benchmark notebook (and its NT third-model disposition) until repaired; Phase 8 repair queue | open |  | 2026-10-02T08:34:21.569Z |  |
+| 14 | 05 | deviation | dnallm/inference/benchmark.py | 296 | Census FAIL finding (05-06): Benchmark.run hardcodes self.datasets[di]['labels'] while example benchmark_config.yaml declares label_column 'label' - KeyError before any model loads; blocks the benchmark notebook (and its NT third-model disposition) until repaired; Phase 8 repair queue | fixed | run() label resolution honors configured label_column with 'labels' fallback and descriptive ValueError; red-first regression tests in TestRunLabelColumnResolution; note: census's ['sequence']-only shape stemmed from generate_dataset's silent path-to-sequence fallback, a separate latent bug deliberately left out of scope | 2026-10-02T08:34:21.569Z | 2026-10-10T14:39:32.164Z |
 | 15 | 05 | skipped-test | tests/examples/test_notebook_execution.py |  | 05-06 gated typed skips (sanctioned, self-healing): optional-dep probe-then-execute for evo/megaDNA prerequisites, finetune_custom_head megaDNA demo cell and PlantCAD lora pair (mamba_ssm); environment-unavailable script-lane skip (05-05 pattern) unchanged; all matched by audit_skips against registered prefixes | open |  | 2026-10-02T08:34:21.655Z |  |
 | 16 | 09 | unmet-truth | tests/benchmark/test_benchmark.py |  | Pre-existing fast-lane failure (found by 09-02 verify, reproduced at plan-start 3557e0b): TestBenchmark::test_plot_for_regression pandas TypeError float() argument ... not dict via _astype_nansafe in the plot path; not caused by any Phase 09 change (09-02 delta +8P/+0F/+0S); likely quick-task 13/14 Mapping fallout; logged in 09 deferred-items.md | fixed |  | 2026-10-05T15:45:36.353Z | 2026-10-06T01:31:42.584Z |
 | 17 | quick-261007-vxx | unmet-truth | docs/user_guide/fine_tuning/getting_started.md |  | Push of ruff-format fix commit 97a7c30 to origin/dev blocked by GitHub receive-side Internal Server Error (4 attempts, Request IDs 8832:3513C8/C942:3774A8/B48E:2E4A69/991C:246D9C, 2026-10-07 15:07-15:12Z); local ruff format --check green at dev 97a7c30; re-run 'git push origin dev' when GitHub receive recovers to unblock ci.yml format gates + PR #40 | fixed | GitHub receive recovered; orchestrator re-push at 2026-10-07T15:17:44Z landed cfc8346..97a7c30 on origin/dev; CI + Docs Validation re-triggered | 2026-10-07T15:20:00.000Z | 2026-10-07T15:18:00.000Z |
@@ -215,10 +215,10 @@ last_updated: 2026-10-10T14:14:31.103Z
     "file": "dnallm/inference/benchmark.py",
     "line": 296,
     "description": "Census FAIL finding (05-06): Benchmark.run hardcodes self.datasets[di]['labels'] while example benchmark_config.yaml declares label_column 'label' - KeyError before any model loads; blocks the benchmark notebook (and its NT third-model disposition) until repaired; Phase 8 repair queue",
-    "status": "open",
-    "reason": "",
+    "status": "fixed",
+    "reason": "run() label resolution honors configured label_column with 'labels' fallback and descriptive ValueError; red-first regression tests in TestRunLabelColumnResolution; note: census's ['sequence']-only shape stemmed from generate_dataset's silent path-to-sequence fallback, a separate latent bug deliberately left out of scope",
     "recorded_at": "2026-10-02T08:34:21.569Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-10T14:39:32.164Z",
     "milestone": "v1.1"
   },
   {
