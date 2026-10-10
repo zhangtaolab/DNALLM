@@ -1,32 +1,35 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-09T09:36:00.000Z",
+  "timestamp": "2026-10-10T12:37:28.363Z",
   "phase": null,
-  "phase_name": null,
-  "phase_dir": null,
+  "phase_name": "post-milestone quick tasks (v1.2 archived; no active phase)",
+  "phase_dir": ".planning",
   "plan": null,
   "task": null,
-  "total_tasks": null,
-  "status": "completed",
-  "workflow_in_progress": null,
+  "total_tasks": 0,
+  "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "v1.2 kickoff Steps 1-7 (context, goals, version, PROJECT.md, STATE.md, archive+commit)", "status": "done", "commit": "46366e1"},
-    {"id": 2, "name": "Step 8 research decision: owner chose Research first; 4 researchers + synthesizer run", "status": "done", "commit": "5149518"},
-    {"id": 3, "name": "Step 9 REQUIREMENTS.md (11 REQ-IDs, 10 categories, 1:1 with REV-01..11)", "status": "done", "commit": "663dbcd"},
-    {"id": 4, "name": "Step 10 roadmap approved (3 phases 10-12; single-tree parallel constraint in invariants)", "status": "done", "commit": "b2eb1a8"},
-    {"id": 5, "name": "Step 10.5 pending-todo scan: none pending", "status": "done"},
-    {"id": 6, "name": "Step 11 done; pushed origin/revision", "status": "done"}
+    {"id": 1, "name": "revision -> dev merge #1 (PR #45, squash)", "status": "done", "commit": "92a8106"},
+    {"id": 2, "name": "numpy 1.x retirement deep evaluation (8/8 resolution proofs + runtime smoke)", "status": "done", "commit": null},
+    {"id": 3, "name": "quick 261010-rpa: retire numpy 1.x (floor >=2.0.0, drop pyarrow cap, CI matrix 6->3 legs)", "status": "done", "commit": "834f9e2"},
+    {"id": 4, "name": "quick 261010-s3k: bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering)", "status": "done", "commit": "526d539"},
+    {"id": 5, "name": "revision -> dev merge #2 (conflicts resolved to revision side, tree verified byte-identical to 10a47b4)", "status": "done", "commit": "05b788e"}
   ],
-  "remaining_tasks": [],
+  "remaining_tasks": [
+    {"id": 6, "name": "verify dev merge CI runs 38052483090 (CI) + 38052483063 (Docs Validation) completed success", "status": "in_progress", "progress": "both in_progress at pause; expected green (tree == CI-verified 10a47b4 content)"},
+    {"id": 7, "name": "requires-python floor >=3.11 decision (3.10 EOL 2026-10-31) - deliberately NOT bundled with numpy retirement", "status": "not_started"}
+  ],
   "blockers": [],
   "async_jobs": [],
-  "human_actions_pending": [],
-  "decisions": [
-    {"decision": "Research-first chosen at Step 8 (overriding Skip recommendation); research landed as 4 lanes + SUMMARY.md", "rationale": "Owner selection", "phase": "v1.2-kickoff"},
-    {"decision": "Wave parallelism = concurrent background executor agents in the single working tree; NO per-agent git worktrees, NO GSD workstreams for v1.2", "rationale": "File-disjoint waves make worktrees pure cost (merge/env/atomic-commit breakage); v1.1 Phase 8 precedent", "phase": "v1.2-kickoff"}
+  "human_actions_pending": [
+    {"action": "REV-10/11 golden-test inputs (Fig 4a coordinates, BCL11A motif ID, JASPAR release, tolerance)", "context": "pre-existing, tracked in issue #44; not new this session", "blocking": false}
   ],
-  "uncommitted_files": [".planning/graphs/", ".planning/tmp/"],
-  "uncommitted_files_note": "Untracked runtime artifacts, not GSD planning output; leave as-is",
-  "next_action": "Milestone v1.2 initialized. Next: /gsd-discuss-phase 10 or /gsd-plan-phase 10 (REV-08 lane in Phase 11 wants --research-phase)",
-  "context_notes": "Kickoff completed 2026-10-09. Research at .planning/research/{STACK,FEATURES,ARCHITECTURE,PITFALLS,SUMMARY}.md; intake at 261009-paper-revision-suite-plan.md. gsd-tools invocation: node $HOME/.claude/gsd-core/bin/gsd-tools.cjs <verb>."
+  "decisions": [
+    {"decision": "Retire numpy 1.x support; floor numpy>=2.0.0; remove pyarrow<26 cap", "rationale": "deep evaluation: zero packages pin numpy<2 among 42 audited; 8/8 uv resolution proofs across py3.10-3.13 incl. CI-pinned numpy==2.2.0 and 426-package extras union; pyarrow 26 + numpy 2.2 runtime smoke passed; py3.13 had no numpy 1.26.4 wheels at all (source-built unsupported combo)", "phase": null},
+    {"decision": "Package version 0.8.0 -> 1.2.1, switching to milestone-aligned 1.2.x numbering", "rationale": "owner instruction; the jump absorbs the numpy>=2.0.0 breaking floor; CHANGELOG [Unreleased] folded into [1.2.1] - 2026-10-10 with alignment note", "phase": null},
+    {"decision": "Future revision->dev PRs use 'Create a merge commit', never squash", "rationale": "PR #45 squash severed ancestry; merge-base fell back to old dev lineage causing phantom conflicts on the second merge despite superset content", "phase": null}
+  ],
+  "uncommitted_files": ["?? .planning/graphs/", "?? .planning/tmp/"],
+  "next_action": "Verify dev merge CI: gh run list --branch dev --limit 2 — runs 38052483090 (CI) and 38052483063 (Docs Validation) must both be completed success. If green, everything from this session is closed; nothing else is in flight.",
+  "context_notes": "Session was post-milestone ops: merge verification, numpy retirement, version bump, second merge. Local dev == origin/dev == 05b788e (merge commit whose tree is byte-identical to revision tip 10a47b4). Local revision == origin/revision == 10a47b4. Working tree clean except two never-staged untracked runtime dirs (.planning/graphs/, .planning/tmp/). The dev CI monitor was session-bound and dies with this session — re-check runs manually or re-arm on resume."
 }
