@@ -2,8 +2,8 @@
 
 Parameter-efficient fine-tuning (PEFT) adapts a DNA large language model by
 training a small number of added parameters while freezing the pretrained
-backbone. DNALLM supports LoRA and QLoRA today; IA³ adapters arrive with the
-next release. This chapter shows how to configure and launch each method.
+backbone. DNALLM supports LoRA, QLoRA, and IA³. This chapter shows how to
+configure and launch each method.
 
 ## Why PEFT?
 
@@ -171,17 +171,134 @@ With `finetune.use_qlora: true`, the trainer additionally calls
 `prepare_model_for_kbit_training()` on the 4-bit model and enables gradient
 checkpointing for memory efficiency.
 
-## IA³ (coming in the next release)
+## IA³
 
 IA³ (Infused Adapter by Inhibiting and Amplifying Inner Activations) rescales
 inner activations with learned vectors — even fewer trainable parameters than
-LoRA.
+LoRA. It is supported symmetric to LoRA: transformer and Mamba backbones both
+work, the target-module presets are shared, and IA³ adapters use the same
+save/reload path as LoRA adapters.
 
-The configuration surface is already in place: `finetune.use_ia3` exists in
-`TrainingConfig` (default `false`), and an `ia3` YAML section (target modules,
-feedforward modules, initialization) is recognized by `load_config()`. The
-trainer branch that wires IA³ training lands with the next release's
-parameter-efficient fine-tuning work, including per-model default target
-modules — until then, setting `use_ia3: true` does not yet switch the trainer
-to IA³. This section will be completed with working examples when the trainer
-branch ships.
+### 1. Enable IA³ in the `finetune` section
+
+```yaml
+# ia3_finetune_config.yaml
+task:
+  task_type: "binary"
+  num_labels: 2
+  label_names: ["negative", "positive"]
+
+finetune:
+  output_dir: "./outputs_ia3"
+  num_train_epochs: 3
+  per_device_train_batch_size: 8
+  learning_rate: 2e-4
+  use_ia3: true         # switch the trainer to IA³ (alternative to use_lora)
+
+ia3:
+  target_modules: null    # null -> auto-select from the packaged preset table
+  feedforward_modules: null  # the FFN subset; preset fills it when null
+  exclude_modules: null   # module names to exclude from IA³ adaptation
+  fan_in_fan_out: false   # set true if targets store (fan_out, fan_in) weights
+  init_ia3_weights: true  # vectors start at 1.0 (identity rescaling)
+  modules_to_save: null   # extra modules trained and saved (e.g. the head)
+  task_type: "SEQ_CLS"    # keeps the sequence-classification head trainable
+```
+
+The `ia3` fields map 1:1 to the `Ia3Config` model, which mirrors peft's
+`IA3Config` field set (peft 0.21.1 parity). When `target_modules` is `null`,
+the trainer auto-selects targets from the same packaged per-family preset
+table LoRA uses and logs the selection, for example:
+
+```text
+[Info] IA³ preset 'Plant DNABERT' selected (matched by name marker 'plant-dnabert'): target_modules=['key', 'value', 'intermediate.dense']
+```
+
+A backbone that matches no preset row fails loud with a `ValueError` telling
+you to set `target_modules` explicitly. Set `finetune.peft_dry_run: true` to
+validate the resolved target list against the live model's module names and
+exit before training.
+
+### 2. Train with `finetune.use_ia3: true`
+
+Do not pass `use_lora=True` here — IA³ is enabled through the `finetune`
+section alone:
+
+```python
+from dnallm import (
+    DNADataset,
+    DNATrainer,
+    load_config,
+    load_model_and_tokenizer,
+)
+
+config = load_config("ia3_finetune_config.yaml")
+
+model, tokenizer = load_model_and_tokenizer(
+    "zhangtaolab/plant-dnabert-BPE",
+    task_config=config["task"],
+    source="huggingface",
+)
+
+datasets = DNADataset.load_local_data(
+    "data/train.csv",
+    seq_col="sequence",
+    label_col="label",
+    max_length=512,
+)
+datasets.split_data(test_size=0.2, val_size=0.1)
+datasets.encode_sequences(tokenizer=tokenizer)
+
+trainer = DNATrainer(
+    model=model,
+    config=config,
+    datasets=datasets,
+)
+metrics = trainer.train()
+```
+
+The trainer injects IA³ vectors via `peft.get_peft_model` and prints the count
+of trainable parameters, exactly like the LoRA branch.
+
+### Incompatible combinations are rejected early
+
+Two combinations never start a training run; both raise matchable errors:
+
+- `finetune.use_ia3: true` together with `finetune.use_qlora: true` is
+  rejected at config-load time (`load_config()` raises during Pydantic
+  validation): IA³ vectors cannot be merged on 4-bit quantized models.
+- `use_lora=True` (the `DNATrainer` constructor flag) together with
+  `finetune.use_ia3: true` is rejected at trainer init: LoRA and IA³ are
+  alternative adapter methods.
+
+### Save and reload the adapter
+
+The adapter weights travel with the model when saved; PEFT wraps the backbone,
+so `trainer.model.save_pretrained(...)` — and `trainer.train()`, which saves
+into `finetune.output_dir` — writes the small IA³ adapter checkpoint (the
+learned rescaling vectors) rather than a full model copy.
+
+Reloading goes through the same adapter-kind-agnostic path as LoRA: pass the
+adapter directory (or hub repo id) as `lora_adapter` to `DNAInference`, which
+attaches it with `PeftModel.from_pretrained` regardless of adapter kind. The
+config needs `task` and `inference` sections (any `inference_config.yaml`
+provides them):
+
+```python
+from dnallm import DNAInference, load_config, load_model_and_tokenizer
+
+config = load_config("inference_config.yaml")
+
+model, tokenizer = load_model_and_tokenizer(
+    "zhangtaolab/plant-dnabert-BPE",
+    task_config=config["task"],
+    source="huggingface",
+)
+
+engine = DNAInference(
+    model=model,
+    tokenizer=tokenizer,
+    config=config,
+    lora_adapter="./outputs_ia3",  # IA³ and LoRA adapters reload alike
+)
+```
