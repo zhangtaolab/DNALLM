@@ -1,0 +1,21 @@
+MEME version 4
+
+ALPHABET= ACGT
+
+strands: + -
+
+Background letter frequencies
+A 0.25 C 0.25 G 0.25 T 0.25
+
+MOTIF MA2324.1 BCL11A
+
+letter-probability matrix: alength= 4 w= 7 nsites= 6265 E= 0
+  0.054749  0.801915  0.094334  0.049002
+  0.063042  0.593081  0.287754  0.056123
+  0.042622  0.257705  0.639832  0.059841
+  0.037548  0.298799  0.603259  0.060394
+  0.039151  0.316067  0.583697  0.061085
+  0.038925  0.410779  0.486724  0.063572
+  0.049486  0.558124  0.334204  0.058186
+
+URL https://jaspar.elixir.no/matrix/MA2324.1
