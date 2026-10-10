@@ -19,8 +19,8 @@
   flip `pending: false` in `manifest.yaml`, run
   `uv run --no-sync pytest tests/interpret -q -k golden`. Zero code changes;
   no milestone reopen.
-- **Tracking:** GitHub issue "Golden fixture: HBG1/BCL11A Fig 4a owner inputs
-  (MOTIF-01 deferred activation)" filed 2026-10-10 against `revision`.
+- **Tracking:** GitHub issue #44 "Golden fixture: HBG1/BCL11A Fig 4a owner
+  inputs (MOTIF-01 deferred activation)" (2026-10-10, against `revision`).
 
 ## [Out-of-scope discovery — 12-03 Task 1] mkdocs --strict fails on 15 pre-existing warnings
 
