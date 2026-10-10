@@ -42,11 +42,11 @@ Requirements for milestone v1.2 "Paper Revision Suite Support". Each maps to roa
 
 ### Motif Matching (MOTIF)
 
-- [ ] **MOTIF-01** (REV-10): `dnallm/interpret/motifs.py` — hotspot windows ↔ JASPAR/CIS-BP PWM similarity scan following FIMO conventions (GC-matched background, both strands, log-odds threshold p<1e-4, BH FDR via `scipy.stats.false_discovery_control`), emitting a motif-ID/coordinates/E-value table; a stdlib JASPAR REST client with the base URL parameterized (canonical host migrated to jaspar.elixir.no; prefer `format=meme`); acceptance: the HBG1/BCL11A motif hit coordinates match the paper's Fig 4a annotation; p-value calibration method documented honestly (empirical-null vs exact-DP choice recorded)
+- [x] **MOTIF-01** (REV-10): `dnallm/interpret/motifs.py` — hotspot windows ↔ JASPAR/CIS-BP PWM similarity scan following FIMO conventions (GC-matched background, both strands, log-odds threshold p<1e-4, BH FDR via `scipy.stats.false_discovery_control`), emitting a motif-ID/coordinates/E-value table; a stdlib JASPAR REST client with the base URL parameterized (canonical host migrated to jaspar.elixir.no; prefer `format=meme`); acceptance: the HBG1/BCL11A motif hit coordinates match the paper's Fig 4a annotation; p-value calibration method documented honestly (empirical-null vs exact-DP choice recorded)
 
 ### MCP Expansion (MCPE)
 
-- [ ] **MCPE-01** (REV-11): The MCP server gains `ism_scan`, `hotspots`, `zero_shot_score` tools wrapping existing classes (existing `_with_timeout_wrapper` + error-dict-not-raise conventions; `zero_shot_score` wraps the VEP-01 module); handshake regression tests: server up → client calls all 3 tools → JSON assertions; the known `--host/--port` silently-overridden-by-yaml bug (v1.1 audit W-item) is fixed on BOTH sse and streamable-http paths with CLI-precedence tests
+- [x] **MCPE-01** (REV-11): The MCP server gains `ism_scan`, `hotspots`, `zero_shot_score` tools wrapping existing classes (existing `_with_timeout_wrapper` + error-dict-not-raise conventions; `zero_shot_score` wraps the VEP-01 module); handshake regression tests: server up → client calls all 3 tools → JSON assertions; the known `--host/--port` silently-overridden-by-yaml bug (v1.1 audit W-item) is fixed on BOTH sse and streamable-http paths with CLI-precedence tests
 
 ## Future Requirements
 
@@ -86,8 +86,8 @@ Filled at roadmap creation (2026-10-09). Phase mapping follows the research-reco
 | PROB-01 | Phase 11 | Complete |
 | VEP-01 | Phase 11 | Complete |
 | SEED-01 | Phase 11 | Complete |
-| MOTIF-01 | Phase 12 | Pending |
-| MCPE-01 | Phase 12 | Pending |
+| MOTIF-01 | Phase 12 | Complete |
+| MCPE-01 | Phase 12 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 11 total

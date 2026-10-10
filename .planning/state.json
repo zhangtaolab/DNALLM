@@ -16,13 +16,13 @@
     {
       "number": "12",
       "name": "Motif Matching, MCP Tools & Milestone Closeout",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step (plan phase 12)",
-    "reason": "Phase 12 of 3 — needs a plan"
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-10T07:09:04.586Z"
+  "updated_at": "2026-10-10T09:51:24.257Z"
 }

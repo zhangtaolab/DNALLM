@@ -45,7 +45,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 - [x] **Phase 10: Evaluation Contract Layer & Shared Scaffolding** - Test-as-eval leak guard, shared metric registry, revision docs, and the one-pass scaffolding (incl. the REV-08 core head start) that keeps the parallel waves collision-free (completed 2026-10-09)
 - [x] **Phase 11: PEFT Adaptation, Baselines & New Evaluation Capabilities** - IA³ + per-model PEFT presets, random-init baselines, frozen probing, zero-shot VEP completion, and multi-seed sweeps as five file-disjoint agents (completed 2026-10-09)
-- [ ] **Phase 12: Motif Matching, MCP Tools & Milestone Closeout** - JASPAR/CIS-BP PWM scanning, three new MCP tools with the host/port CLI fix, the IA³ docs chapter, and milestone-wide green closeout
+- [x] **Phase 12: Motif Matching, MCP Tools & Milestone Closeout** - JASPAR/CIS-BP PWM scanning, three new MCP tools with the host/port CLI fix, the IA³ docs chapter, and milestone-wide green closeout (completed 2026-10-10)
 
 ## Phase Details
 
@@ -128,7 +128,7 @@ Phases execute in numeric order: 10 → 11 → 12
 |-------|-----------|----------------|--------|-----------|
 | 10. Evaluation Contract Layer & Shared Scaffolding | v1.2 | 4/4 | Complete    | 2026-10-09 |
 | 11. PEFT Adaptation, Baselines & New Evaluation Capabilities | v1.2 | 5/5 | Complete    | 2026-10-09 |
-| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 3/3 | In planning | - |
+| 12. Motif Matching, MCP Tools & Milestone Closeout | v1.2 | 3/3 | Complete    | 2026-10-10 |
 
 ---
 
