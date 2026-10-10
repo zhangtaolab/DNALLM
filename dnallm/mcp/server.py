@@ -45,6 +45,8 @@ import asyncio
 import functools
 import json
 import re
+import shutil
+import tempfile
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -64,7 +66,13 @@ from .config_manager import MCPConfigManager
 from .model_manager import ModelManager
 from ..inference.mutagenesis import Mutagenesis
 from ..inference.interpret import DNAInterpret
-from ..inference.vep import _load_reference, _resolve_chromosome
+from ..inference.vep import (
+    ClinVarFilter,
+    VepResult,
+    _load_reference,
+    _resolve_chromosome,
+    evaluate_vcf,
+)
 
 #: Documented fallback bind address when neither the CLI nor any YAML block
 #: supplies one. Unified in Phase 12 (REV-11): the argparse default used to
@@ -92,6 +100,45 @@ HOTSPOT_MAX_REGION_LENGTH = 2000
 #: FASTA suffix allowlist for the per-call ``fasta_path`` parameter
 #: (T-12-04/T-12-08: client-named files are operator-trust-boundary reads).
 FASTA_SUFFIXES = (".fasta", ".fa", ".fa.gz", ".fna")
+
+#: VCF suffix allowlist for the per-call ``vcf_path`` parameter (T-12-04).
+VCF_SUFFIXES = (".vcf", ".vcf.gz")
+
+#: Maximum inline variants accepted by ``zero_shot_score`` per call (T-12-06).
+ZERO_SHOT_MAX_VARIANTS = 500
+
+#: Maximum accepted server-side VCF size in bytes (T-12-04: size-capped
+#: read of untrusted client-named files).
+ZERO_SHOT_MAX_VCF_BYTES = 64 * 1024 * 1024
+
+#: Maximum per-side context window for ``zero_shot_score`` (bounds the
+#: per-variant window strings the kernel builds).
+ZERO_SHOT_MAX_CONTEXT_WINDOW = 10_000
+
+#: Fixed sanitized basename for the materialized inline-variants temp VCF.
+#: NEVER derived from VCF/variant record fields (T-12-05: no record-derived
+#: string may appear in any path); a fixed name keeps record content out of
+#: the filesystem entirely.
+INLINE_VCF_BASENAME = "inline_variants.vcf"
+
+#: Pass-through CLNSIG marker written into the inline temp VCF. The kernel's
+#: convention gates require a CLNSIG/CLNREVSTAT/CLNVC triple; inline
+#: variants carry no ClinVar annotation by construction, so they are marked
+#: with these clearly-non-ClinVar sentinels and admitted under
+#: ``_INLINE_SENTINEL_FILTER`` below. The convention block in the response
+#: reports exactly what was applied (labels "['not_analyzed']=1 vs []=0"),
+#: and metrics stay None by construction (single label class).
+_INLINE_SENTINEL_CLNSIG = "not_analyzed"
+
+#: Sentinel CLNVC marker matching ``_INLINE_SENTINEL_FILTER.variant_type``.
+_INLINE_SENTINEL_CLNVC = "inline_variant"
+
+#: Sentinel INFO string for every inline temp-VCF row. ``criteria_provided``
+#: satisfies the kernel's hardcoded >=1-star floor token check; the injected
+#: value is visible verbatim in the response's ``convention.clnrevstat_counts``.
+_INLINE_SENTINEL_INFO = (
+    f"CLNSIG={_INLINE_SENTINEL_CLNSIG};CLNREVSTAT=criteria_provided;CLNVC={_INLINE_SENTINEL_CLNVC}"
+)
 
 
 class DNALLMMCPServer:
@@ -321,6 +368,7 @@ class DNALLMMCPServer:
         # Register Phase 12 analysis tools (wrapped with timeout, D-06)
         self.app.tool()(self._with_timeout_wrapper(self._ism_scan, "ism_scan"))
         self.app.tool()(self._with_timeout_wrapper(self._hotspots, "hotspots"))
+        self.app.tool()(self._with_timeout_wrapper(self._zero_shot_score, "zero_shot_score"))
 
         logger.info("Registered MCP tools successfully")
 
@@ -2132,6 +2180,371 @@ class DNALLMMCPServer:
                 ],
                 "isError": True,
             }
+
+    @staticmethod
+    def _build_clnsig_filter(
+        clnsig_filter: dict[str, Any] | None,
+    ) -> tuple[ClinVarFilter | None, str | None]:
+        """Validate and build the kernel convention filter.
+
+        Args:
+            clnsig_filter: Caller-supplied override mapping to
+                ``vep.ClinVarFilter`` fields, or ``None`` for the D-17
+                defaults.
+
+        Returns:
+            Tuple of (filter-or-None, error-text). Exactly one element is
+            None; the error text is for the tool's matchable error dict.
+        """
+        if clnsig_filter is None:
+            return None, None
+        allowed_keys = {"variant_type", "positive_labels", "negative_labels", "star_floor"}
+        if not isinstance(clnsig_filter, dict) or not set(clnsig_filter) <= allowed_keys:
+            return None, (
+                f"clnsig_filter must be an object with a subset of keys {sorted(allowed_keys)}"
+            )
+        for list_field in ("positive_labels", "negative_labels"):
+            value = clnsig_filter.get(list_field)
+            if value is not None and (
+                not isinstance(value, list) or not all(isinstance(v, str) for v in value)
+            ):
+                return None, f"clnsig_filter.{list_field} must be a list of strings"
+        variant_type = clnsig_filter.get("variant_type")
+        if variant_type is not None and not isinstance(variant_type, str):
+            return None, "clnsig_filter.variant_type must be a string"
+        star_floor = clnsig_filter.get("star_floor")
+        if star_floor is not None and (
+            not isinstance(star_floor, int) or isinstance(star_floor, bool) or star_floor < 0
+        ):
+            return None, "clnsig_filter.star_floor must be an integer >= 0"
+        base = ClinVarFilter()
+        built = ClinVarFilter(
+            variant_type=clnsig_filter.get("variant_type", base.variant_type),
+            positive_labels=frozenset(clnsig_filter.get("positive_labels", base.positive_labels)),
+            negative_labels=frozenset(clnsig_filter.get("negative_labels", base.negative_labels)),
+            star_floor=clnsig_filter.get("star_floor", base.star_floor),
+        )
+        return built, None
+
+    def _write_inline_vcf(self, variants: list[dict[str, Any]]) -> Path:
+        """Materialize inline variants to a temp VCF (fixed sanitized name).
+
+        Both input modes of ``zero_shot_score`` route through the same
+        ``vep.evaluate_vcf`` kernel (D-04), so inline variants are written
+        to a server-side temp VCF first. The file lives under a
+        ``tempfile.mkdtemp`` directory and carries the FIXED basename
+        ``INLINE_VCF_BASENAME`` — no path segment is ever derived from
+        record fields (T-12-05). Rows carry the pass-through CLNSIG/CLNVC/
+        CLNREVSTAT sentinels documented on ``_INLINE_SENTINEL_CLNSIG``.
+
+        Args:
+            variants: Pre-validated inline variant dicts ({chrom, pos, ref,
+                alt}; pos is the 1-based VCF coordinate).
+
+        Returns:
+            Path to the written temp VCF (caller owns cleanup of the
+            containing directory).
+        """
+        temp_dir = tempfile.mkdtemp(prefix="dnallm_zero_shot_")
+        vcf_path = Path(temp_dir) / INLINE_VCF_BASENAME
+        lines = [
+            "##fileformat=VCFv4.2",
+            (
+                "##INFO=<ID=CLNSIG,Number=.,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            (
+                "##INFO=<ID=CLNREVSTAT,Number=.,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            (
+                "##INFO=<ID=CLNVC,Number=1,Type=String,"
+                'Description="pass-through marker for inline variants">'
+            ),
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO",
+        ]
+        for variant in variants:
+            lines.append(
+                f"{variant['chrom']}\t{variant['pos']}\t.\t"
+                f"{variant['ref'].upper()}\t{variant['alt'].upper()}\t.\t.\t"
+                f"{_INLINE_SENTINEL_INFO}"
+            )
+        vcf_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return vcf_path
+
+    async def _zero_shot_score(
+        self,
+        model_name: str,
+        fasta_path: str,
+        variants: list[dict[str, Any]] | None = None,
+        vcf_path: str | None = None,
+        paradigm: str = "mlm",
+        context_window: int = 200,
+        clnsig_filter: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Score zero-shot variant effects (dual-mode, D-04).
+
+        Accepts EITHER an inline ``variants`` list of {chrom, pos, ref, alt}
+        objects (pos is the 1-based VCF coordinate; materialized to a
+        server-side temp VCF with a fixed sanitized name) OR a server-side
+        ``vcf_path`` (.vcf/.vcf.gz, size-capped). Both modes route through
+        the SAME ``dnallm.inference.vep.evaluate_vcf`` kernel, so skip
+        accounting (skip_counts, skipped, skip_fraction) and the convention
+        block are identical and surfaced verbatim in the response.
+
+        Inline variants carry no ClinVar annotation, so they are admitted
+        under a pass-through convention (labels "not_analyzed"=1, metrics
+        None by construction — see the convention block in the response).
+        Pass ``clnsig_filter`` (fields: variant_type, positive_labels,
+        negative_labels, star_floor — mapping to ``vep.ClinVarFilter``) to
+        override the D-17 defaults, e.g. for non-ClinVar ``vcf_path`` input.
+
+        Variant count is capped at 500 per call; sequences are capped at
+        2000 bases for the ISM tools. ``fasta_path``/``vcf_path`` are
+        operator-trust-boundary server-side file reads, never uploads.
+
+        Args:
+            model_name (str): Name of the loaded model to score with.
+            fasta_path (str): Server-side reference FASTA path
+                (.fasta/.fa/.fa.gz/.fna) for window building.
+            variants (list[dict[str, Any]] | None): Inline variants, each
+                {"chrom": str, "pos": int (1-based), "ref": ACGT str, "alt":
+                ACGT str}. Mutually exclusive with vcf_path.
+            vcf_path (str | None): Server-side ClinVar-style VCF path.
+                Mutually exclusive with variants.
+            paradigm (str): "mlm" (log-odds, default) or "clm"
+                (delta-log-likelihood).
+            context_window (int): Reference bases kept on each side of a
+                variant. Defaults to 200.
+            clnsig_filter (dict[str, Any] | None): Optional ClinVar
+                convention override (see above); ``None`` keeps the D-17
+                defaults for vcf_path mode and the pass-through convention
+                for inline mode.
+
+        Returns:
+            dict[str, Any]: Zero-shot scoring results in MCP format:
+                - On success: Contains 'content', 'records' (per-variant
+                  scores/skips), 'skip_counts', 'evaluated', 'skipped',
+                  'skip_fraction', 'metrics', 'convention' (all verbatim
+                  from the kernel's VepResult), 'input_mode', 'paradigm',
+                  'model_name'
+                - On error: Contains 'error', 'isError' fields
+        """
+        temp_vcf_dir: str | None = None
+        try:
+            if not model_name:
+                return {"error": "model_name is required", "isError": True}
+
+            if variants is not None and vcf_path is not None:
+                return {
+                    "error": "Provide either variants or vcf_path, not both",
+                    "isError": True,
+                }
+            if variants is None and vcf_path is None:
+                return {
+                    "error": (
+                        "Provide either variants (inline list of "
+                        "{chrom, pos, ref, alt}) or vcf_path (server-side VCF)"
+                    ),
+                    "isError": True,
+                }
+            inline_mode = variants is not None
+
+            if paradigm not in ("mlm", "clm"):
+                return {
+                    "error": f"Invalid paradigm: {paradigm}. Must be 'mlm' or 'clm'",
+                    "isError": True,
+                }
+            if (
+                not isinstance(context_window, int)
+                or isinstance(context_window, bool)
+                or not 1 <= context_window <= ZERO_SHOT_MAX_CONTEXT_WINDOW
+            ):
+                return {
+                    "error": (
+                        f"context_window must be an integer in [1, {ZERO_SHOT_MAX_CONTEXT_WINDOW}]"
+                    ),
+                    "isError": True,
+                }
+
+            if not isinstance(fasta_path, str) or not fasta_path:
+                return {
+                    "error": "fasta_path is required (server-side reference FASTA)",
+                    "isError": True,
+                }
+            if not fasta_path.endswith(FASTA_SUFFIXES):
+                return {
+                    "error": (
+                        f"zero_shot_score: fasta_path must end with one of "
+                        f"{FASTA_SUFFIXES} (got '{fasta_path}')"
+                    ),
+                    "isError": True,
+                }
+            if not Path(fasta_path).is_file():
+                return {
+                    "error": f"zero_shot_score: reference FASTA not found at '{fasta_path}'.",
+                    "isError": True,
+                }
+
+            kernel_filter, filter_error = self._build_clnsig_filter(clnsig_filter)
+            if filter_error is not None:
+                return {"error": filter_error, "isError": True}
+            if inline_mode and kernel_filter is None:
+                kernel_filter = ClinVarFilter(
+                    variant_type=_INLINE_SENTINEL_CLNVC,
+                    positive_labels=frozenset({_INLINE_SENTINEL_CLNSIG}),
+                    negative_labels=frozenset(),
+                    star_floor=1,
+                )
+
+            if inline_mode:
+                if not isinstance(variants, list) or not variants:
+                    return {
+                        "error": (
+                            "variants must be a non-empty list of {chrom, pos, ref, alt} objects"
+                        ),
+                        "isError": True,
+                    }
+                if len(variants) > ZERO_SHOT_MAX_VARIANTS:
+                    return {
+                        "error": (
+                            f"zero_shot_score accepts at most "
+                            f"{ZERO_SHOT_MAX_VARIANTS} variants per call "
+                            f"(got {len(variants)}). Split the batch."
+                        ),
+                        "isError": True,
+                    }
+                allele_pattern = re.compile(r"^[ACGTacgt]+$")
+                for i, variant in enumerate(variants):
+                    if not isinstance(variant, dict):
+                        return {
+                            "error": (
+                                f"variants[{i}] must be an object with chrom/pos/ref/alt fields"
+                            ),
+                            "isError": True,
+                        }
+                    chrom = variant.get("chrom")
+                    pos = variant.get("pos")
+                    ref = variant.get("ref")
+                    alt = variant.get("alt")
+                    if not isinstance(chrom, str) or not chrom:
+                        return {
+                            "error": f"variants[{i}].chrom must be a non-empty string",
+                            "isError": True,
+                        }
+                    if not isinstance(pos, int) or isinstance(pos, bool) or pos < 1:
+                        return {
+                            "error": (
+                                f"variants[{i}].pos must be an integer >= 1 "
+                                f"(1-based VCF coordinate, got {pos!r})"
+                            ),
+                            "isError": True,
+                        }
+                    for field, value in (("ref", ref), ("alt", alt)):
+                        if not isinstance(value, str) or not allele_pattern.match(value):
+                            return {
+                                "error": (
+                                    f"variants[{i}].{field} must be a non-empty "
+                                    f"ACGT string (got {value!r})"
+                                ),
+                                "isError": True,
+                            }
+                temp_vcf = self._write_inline_vcf(variants)
+                temp_vcf_dir = str(temp_vcf.parent)
+                kernel_vcf: str | Path = temp_vcf
+            else:
+                if not isinstance(vcf_path, str) or not vcf_path.endswith(VCF_SUFFIXES):
+                    return {
+                        "error": (
+                            f"zero_shot_score: vcf_path must end with one of "
+                            f"{VCF_SUFFIXES} (got '{vcf_path}')"
+                        ),
+                        "isError": True,
+                    }
+                vcf_file = Path(vcf_path)
+                if not vcf_file.is_file():
+                    return {
+                        "error": f"zero_shot_score: VCF not found at '{vcf_path}'.",
+                        "isError": True,
+                    }
+                if vcf_file.stat().st_size > ZERO_SHOT_MAX_VCF_BYTES:
+                    return {
+                        "error": (
+                            f"zero_shot_score: VCF exceeds the "
+                            f"{ZERO_SHOT_MAX_VCF_BYTES} byte cap "
+                            f"({vcf_file.stat().st_size} bytes)"
+                        ),
+                        "isError": True,
+                    }
+                kernel_vcf = vcf_path
+
+            guard = self._ism_engine_guard(model_name)
+            if isinstance(guard, dict):
+                return guard
+            model, tokenizer, _config = guard
+
+            def _run_zero_shot() -> VepResult:
+                # Scoring is torch work: same off-loop, single-flight
+                # contract as the ISM tools (fork-unsafe window under the
+                # ModelManager flight lock, acquired inside the closure).
+                with self.model_manager._infer_thread_lock:
+                    return evaluate_vcf(
+                        model,
+                        tokenizer,
+                        kernel_vcf,
+                        fasta_path,
+                        paradigm=paradigm,
+                        context_window=context_window,
+                        clnsig_filter=kernel_filter,
+                        alt_number=4,
+                    )
+
+            loop = asyncio.get_running_loop()
+            try:
+                vep_result = await loop.run_in_executor(None, _run_zero_shot)
+            except ValueError as e:
+                # Matchable kernel failures (unreadable VCF, missing
+                # chromosome, assembly mismatch, paradigm guard).
+                return {"error": f"zero_shot_score: {e}", "isError": True}
+
+            payload = vep_result.to_dict()
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Zero-shot scoring complete: "
+                            f"{vep_result.evaluated} variants scored, "
+                            f"{vep_result.skipped} skipped using "
+                            f"model {model_name}"
+                        ),
+                    }
+                ],
+                "records": payload["records"],
+                "skip_counts": payload["skip_counts"],
+                "evaluated": payload["evaluated"],
+                "skipped": payload["skipped"],
+                "skip_fraction": payload["skip_fraction"],
+                "metrics": payload["metrics"],
+                "convention": payload["convention"],
+                "input_mode": "inline_variants" if inline_mode else "vcf_path",
+                "paradigm": paradigm,
+                "model_name": model_name,
+            }
+        except Exception as e:
+            logger.error(f"Error in zero_shot_score: {e}", exc_info=True)
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Zero-shot scoring failed. See server logs for details.",
+                    }
+                ],
+                "isError": True,
+            }
+        finally:
+            if temp_vcf_dir is not None:
+                shutil.rmtree(temp_vcf_dir, ignore_errors=True)
 
     def _create_server_lifespan(self):
         """Create lifespan context manager for server graceful

@@ -22,11 +22,14 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
+from dnallm.inference.vep import VepResult, VepVariantRecord
 from dnallm.mcp.server import (
     DNALLMMCPServer,
     HOTSPOT_MAX_REGION_LENGTH,
     ISM_MAX_POSITIONS,
     ISM_MAX_SEQUENCE_LENGTH,
+    ZERO_SHOT_MAX_VCF_BYTES,
+    ZERO_SHOT_MAX_VARIANTS,
 )
 
 
@@ -490,3 +493,432 @@ class TestEventLoopLiveness:
 
         assert not result.get("isError")
         assert result["model_name"] == "test-model"
+
+
+class TestZeroShotScoreContracts:
+    """Per-tool JSON contracts for _zero_shot_score (dual-mode, D-04)."""
+
+    @pytest.fixture
+    def reference_fasta(self, tmp_path) -> Path:
+        """A real single-chromosome FASTA for the per-call fasta_path."""
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1 test reference\n" + "ACGT" * 16 + "\n")
+        return fasta
+
+    @staticmethod
+    def _vep_result(**overrides) -> VepResult:
+        """A realistic VepResult whose skip/convention blocks are distinctive."""
+        defaults: dict = {
+            "records": [
+                VepVariantRecord(
+                    chrom="chr1",
+                    pos=10,
+                    ref="A",
+                    alt="G",
+                    label=1,
+                    delta=-0.25,
+                    skip_reason=None,
+                ),
+                VepVariantRecord(
+                    chrom="chr1",
+                    pos=62,
+                    ref="T",
+                    alt="A",
+                    label=1,
+                    delta=None,
+                    skip_reason="no change",  # window-edge skip-as-data
+                ),
+            ],
+            "skip_counts": {
+                "length-changing allele": 0,
+                "multi-slot token difference": 0,
+                "no change": 1,
+            },
+            "evaluated": 1,
+            "skipped": 1,
+            "skip_fraction": 0.5,
+            "metrics": None,
+            "convention": {
+                "cohort": "pass-through",
+                "exclusion_counts": {
+                    "non_snv_clnvc": 0,
+                    "unlabeled_clnsig": 0,
+                    "below_star_floor": 0,
+                },
+                "clnrevstat_counts": {"criteria_provided": 2},
+            },
+        }
+        defaults.update(overrides)
+        return VepResult(**defaults)
+
+    async def test_zero_shot_inline_happy_path_routes_through_kernel(
+        self, v12_server, reference_fasta
+    ):
+        """Inline variants materialize to a fixed-name temp VCF and the
+        VepResult blocks surface verbatim (D-04 locked specificity)."""
+        result_obj = self._vep_result()
+        with patch("dnallm.mcp.server.evaluate_vcf", return_value=result_obj) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[
+                    {"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"},
+                    {"chrom": "chr1", "pos": 62, "ref": "T", "alt": "A"},
+                ],
+                paradigm="clm",
+                context_window=50,
+            )
+
+        assert not result.get("isError")
+        assert result["input_mode"] == "inline_variants"
+        assert result["paradigm"] == "clm"
+        assert result["model_name"] == "test-model"
+        # skip accounting + convention VERBATIM
+        assert result["skip_counts"] == result_obj.skip_counts
+        assert result["skipped"] == 1
+        assert result["skip_fraction"] == 0.5
+        assert result["convention"] == result_obj.convention
+        # per-record scores incl. the window-edge skip-as-data record
+        assert result["records"][0]["delta"] == -0.25
+        assert result["records"][1]["skip_reason"] == "no change"
+
+        kernel_vcf = mock_kernel.call_args.args[2]
+        assert Path(kernel_vcf).name == "inline_variants.vcf"
+        kernel_kwargs = mock_kernel.call_args.kwargs
+        assert kernel_kwargs["paradigm"] == "clm"
+        assert kernel_kwargs["context_window"] == 50
+        assert kernel_kwargs["clnsig_filter"].variant_type == "inline_variant"
+        assert kernel_kwargs["clnsig_filter"].positive_labels == frozenset({"not_analyzed"})
+
+    async def test_zero_shot_inline_temp_vcf_content_contract(self, v12_server, reference_fasta):
+        """The temp VCF rows carry the 1-based pos, uppercase alleles, and
+        the pass-through sentinel INFO (read from inside the kernel call,
+        before the tool's cleanup deletes the file)."""
+        captured: dict = {}
+
+        def _fake_evaluate(model, tokenizer, vcf_path, reference, **kwargs):
+            captured["text"] = Path(vcf_path).read_text(encoding="utf-8")
+            captured["path"] = str(vcf_path)
+            return self._vep_result()
+
+        with patch("dnallm.mcp.server.evaluate_vcf", side_effect=_fake_evaluate):
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "ac", "alt": "GT"}],
+            )
+
+        assert not result.get("isError")
+        text = captured["text"]
+        assert "##fileformat=VCFv4.2" in text
+        assert "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO" in text
+        data_line = next(line for line in text.splitlines() if line.startswith("chr1\t"))
+        fields = data_line.split("\t")
+        assert fields[0] == "chr1"
+        assert fields[1] == "10"  # 1-based VCF coordinate preserved
+        assert fields[3] == "AC"  # alleles uppercased
+        assert fields[4] == "GT"
+        assert "CLNSIG=not_analyzed" in fields[7]
+        assert "CLNVC=inline_variant" in fields[7]
+        # temp dir cleaned up after the call
+        assert not Path(captured["path"]).exists()
+
+    async def test_zero_shot_security_no_record_derived_string_in_any_path(
+        self, v12_server, reference_fasta
+    ):
+        """T-12-05 security invariant: no record-derived string in any path.
+
+        Distinctive chrom/ref/alt values; the kernel capture asserts the
+        fixed sanitized basename, the tool-owned temp dir prefix, and that
+        none of the record values appear anywhere in the path.
+        """
+        captured: dict = {}
+
+        def _fake_evaluate(model, tokenizer, vcf_path, reference, **kwargs):
+            captured["path"] = str(vcf_path)
+            return self._vep_result()
+
+        with patch("dnallm.mcp.server.evaluate_vcf", side_effect=_fake_evaluate):
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[
+                    {
+                        "chrom": "chrZZSECURITYPROBE",
+                        "pos": 10,
+                        "ref": "ACGTTACG",
+                        "alt": "TTTTGGGG",
+                    }
+                ],
+            )
+
+        assert not result.get("isError")
+        path = captured["path"]
+        assert Path(path).name == "inline_variants.vcf"  # fixed sanitized name
+        assert Path(path).parent.name.startswith("dnallm_zero_shot_")
+        for record_string in ("chrZZSECURITYPROBE", "ACGTTACG", "TTTTGGGG"):
+            assert record_string not in path
+
+    async def test_zero_shot_vcf_path_happy_path_uses_d17_default_filter(
+        self, v12_server, reference_fasta, tmp_path
+    ):
+        """vcf_path mode passes clnsig_filter=None (kernel D-17 defaults)."""
+        vcf = tmp_path / "clinvar.vcf"
+        vcf.write_text("##fileformat=VCFv4.2\n#CHROM\tPOS\tID\tREF\tALT\n")
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
+        ) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                vcf_path=str(vcf),
+            )
+
+        assert not result.get("isError")
+        assert result["input_mode"] == "vcf_path"
+        assert mock_kernel.call_args.args[2] == str(vcf)
+        assert mock_kernel.call_args.kwargs["clnsig_filter"] is None
+
+    async def test_zero_shot_explicit_clnsig_filter_override(self, v12_server, reference_fasta):
+        """A caller filter maps to ClinVarFilter fields (non-ClinVar opt-out)."""
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf", return_value=self._vep_result()
+        ) as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                clnsig_filter={
+                    "variant_type": "my_type",
+                    "positive_labels": ["a", "b"],
+                    "negative_labels": ["c"],
+                    "star_floor": 2,
+                },
+            )
+
+        assert not result.get("isError")
+        kernel_filter = mock_kernel.call_args.kwargs["clnsig_filter"]
+        assert kernel_filter.variant_type == "my_type"
+        assert kernel_filter.positive_labels == frozenset({"a", "b"})
+        assert kernel_filter.negative_labels == frozenset({"c"})
+        assert kernel_filter.star_floor == 2
+
+    async def test_zero_shot_both_modes_rejected(self, v12_server, reference_fasta, tmp_path):
+        """Passing both variants and vcf_path is a matchable error."""
+        vcf = tmp_path / "clin.vcf"
+        vcf.write_text("##fileformat=VCFv4.2\n")
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+            vcf_path=str(vcf),
+        )
+
+        assert result["isError"] is True
+        assert "not both" in result["error"]
+
+    async def test_zero_shot_neither_mode_rejected(self, v12_server, reference_fasta):
+        """Passing neither input mode is a matchable error."""
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+        )
+
+        assert result["isError"] is True
+        assert "either variants" in result["error"]
+
+    @pytest.mark.parametrize(
+        ("variant", "field"),
+        [
+            ({"pos": 10, "ref": "A", "alt": "G"}, "chrom"),
+            ({"chrom": "chr1", "pos": 0, "ref": "A", "alt": "G"}, "pos"),
+            ({"chrom": "chr1", "pos": "ten", "ref": "A", "alt": "G"}, "pos"),
+            ({"chrom": "chr1", "pos": 10, "ref": "XYZ", "alt": "G"}, "ref"),
+            ({"chrom": "chr1", "pos": 10, "ref": "A"}, "alt"),
+            ({"chrom": "chr1", "pos": 10, "ref": "A", "alt": ""}, "alt"),
+        ],
+    )
+    async def test_zero_shot_per_field_validation_errors(
+        self, v12_server, reference_fasta, variant, field
+    ):
+        """Each malformed field is named in the error dict."""
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[variant],
+        )
+
+        assert result["isError"] is True
+        assert field in result["error"]
+        assert "variants[0]" in result["error"]
+
+    async def test_zero_shot_variant_cap_stated_in_error(self, v12_server, reference_fasta):
+        """The variant-count cap is enforced before the kernel."""
+        too_many = [
+            {"chrom": "chr1", "pos": i + 1, "ref": "A", "alt": "G"}
+            for i in range(ZERO_SHOT_MAX_VARIANTS + 1)
+        ]
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=too_many,
+            )
+
+        assert result["isError"] is True
+        assert str(ZERO_SHOT_MAX_VARIANTS) in result["error"]
+        mock_kernel.assert_not_called()
+
+    async def test_zero_shot_vcf_suffix_allowlist(self, v12_server, reference_fasta, tmp_path):
+        """A non-VCF suffix is rejected before any file read."""
+        bogus = tmp_path / "variants.txt"
+        bogus.write_text("not a vcf")
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            vcf_path=str(bogus),
+        )
+
+        assert result["isError"] is True
+        assert ".vcf" in result["error"]
+
+    async def test_zero_shot_missing_vcf_named(self, v12_server, reference_fasta, tmp_path):
+        """A missing VCF is a matchable error naming the tool + path."""
+        missing = tmp_path / "ghost.vcf"
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            vcf_path=str(missing),
+        )
+
+        assert result["isError"] is True
+        assert "zero_shot_score" in result["error"]
+        assert str(missing) in result["error"]
+
+    async def test_zero_shot_vcf_size_cap(self, v12_server, reference_fasta, tmp_path):
+        """An over-size VCF is rejected by the byte cap (T-12-04)."""
+        big = tmp_path / "big.vcf"
+        with open(big, "wb") as handle:
+            handle.truncate(ZERO_SHOT_MAX_VCF_BYTES + 1)  # sparse file
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            vcf_path=str(big),
+        )
+
+        assert result["isError"] is True
+        assert "byte cap" in result["error"]
+
+    async def test_zero_shot_fasta_validated(self, v12_server, tmp_path):
+        """fasta_path suffix + existence are enforced, naming the tool."""
+        wrong_suffix = tmp_path / "ref.txt"
+        wrong_suffix.write_text(">chr1\nACGT")
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(wrong_suffix),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+        )
+        assert result["isError"] is True
+        assert ".fasta" in result["error"]
+
+        missing = tmp_path / "nope.fasta"
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(missing),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+        )
+        assert result["isError"] is True
+        assert "not found" in result["error"]
+        assert "zero_shot_score" in result["error"]
+
+    async def test_zero_shot_invalid_paradigm_and_context_window(self, v12_server, reference_fasta):
+        """paradigm and context_window are validated up front."""
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+            paradigm="random",
+        )
+        assert result["isError"] is True
+        assert "paradigm" in result["error"]
+
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+            context_window=0,
+        )
+        assert result["isError"] is True
+        assert "context_window" in result["error"]
+
+    async def test_zero_shot_clnsig_filter_validation(self, v12_server, reference_fasta):
+        """Unknown keys and wrong types are matchable errors."""
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+            clnsig_filter={"unknown_key": 1},
+        )
+        assert result["isError"] is True
+        assert "clnsig_filter" in result["error"]
+
+        result = await v12_server._zero_shot_score(
+            model_name="test-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+            clnsig_filter={"positive_labels": [1, 2]},
+        )
+        assert result["isError"] is True
+        assert "positive_labels" in result["error"]
+
+    async def test_zero_shot_model_errors(self, v12_server, reference_fasta):
+        """Registry and engine gates produce their matchable dicts."""
+        v12_server.model_manager.config_manager.get_model_config.return_value = None
+        result = await v12_server._zero_shot_score(
+            model_name="ghost",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+        )
+        assert "not configured" in result["error"]
+
+        v12_server.model_manager.config_manager.get_model_config.return_value = Mock()
+        v12_server.model_manager.get_inference_engine.return_value = None
+        result = await v12_server._zero_shot_score(
+            model_name="registered-model",
+            fasta_path=str(reference_fasta),
+            variants=[{"chrom": "chr1", "pos": 2, "ref": "C", "alt": "G"}],
+        )
+        assert result == {"error": "Model registered-model not loaded", "isError": True}
+
+    async def test_zero_shot_kernel_value_error_is_matchable(self, v12_server, reference_fasta):
+        """Kernel ValueErrors (assembly mismatch, unreadable VCF) surface
+        their text; nothing raises across the boundary."""
+        with patch(
+            "dnallm.mcp.server.evaluate_vcf",
+            side_effect=ValueError("VCF position 99 on chr1 exceeds the reference length 64"),
+        ):
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert "zero_shot_score" in result["error"]
+        assert "exceeds the reference length" in result["error"]
+
+    async def test_zero_shot_kernel_other_exception_is_generic_dict(
+        self, v12_server, reference_fasta
+    ):
+        """Non-ValueError kernel faults return the generic isError dict."""
+        with patch("dnallm.mcp.server.evaluate_vcf", side_effect=RuntimeError("kernel fault")):
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert result["content"][0]["text"] == (
+            "Zero-shot scoring failed. See server logs for details."
+        )

@@ -58,6 +58,7 @@ EXPECTED_TOOLS = {
     "_dna_interpret",
     "_ism_scan",
     "_hotspots",
+    "_zero_shot_score",
 }
 
 _UNSET = object()
@@ -169,7 +170,7 @@ class TestInMemoryProtocolRoundTrip:
             result = await session.list_tools()
         names = {tool.name for tool in result.tools}
         assert names == EXPECTED_TOOLS
-        assert len(names) == 15
+        assert len(names) == 16
 
     async def test_call_tool_health_check(self, real_server):
         """call_tool executes a registered tool and returns its payload."""
@@ -301,6 +302,85 @@ class TestInMemoryProtocolRoundTrip:
         # uppercased by the vep window convention).
         call = mock_mut.mutate_sequence.call_args
         assert call.args[0] == "ACGT" * 9  # 36 bases from offset 4
+
+    async def test_round_trip_zero_shot_score_both_modes_error_dict(self, real_server, tmp_path):
+        """zero_shot_score: passing both input modes returns the error dict."""
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)
+        async with self._client_session(real_server) as session:
+            result = await session.call_tool(
+                "_zero_shot_score",
+                {
+                    "model_name": "test-model",
+                    "fasta_path": str(fasta),
+                    "variants": [{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                    "vcf_path": str(tmp_path / "clin.vcf"),
+                },
+            )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["isError"] is True
+        assert "not both" in payload["error"]
+
+    async def test_round_trip_zero_shot_score_inline(self, real_server, tmp_path):
+        """zero_shot_score: inline variants route through the vep kernel."""
+        from dnallm.inference.vep import VepResult, VepVariantRecord
+
+        fasta = tmp_path / "ref.fasta"
+        fasta.write_text(">chr1\n" + "ACGT" * 16)
+        vep_result = VepResult(
+            records=[
+                VepVariantRecord(
+                    chrom="chr1",
+                    pos=10,
+                    ref="A",
+                    alt="G",
+                    label=1,
+                    delta=-0.25,
+                    skip_reason=None,
+                )
+            ],
+            skip_counts={
+                "length-changing allele": 0,
+                "multi-slot token difference": 0,
+                "no change": 0,
+            },
+            evaluated=1,
+            skipped=0,
+            skip_fraction=0.0,
+            metrics=None,
+            convention={"cohort": "pass-through"},
+        )
+        with (
+            patch.object(
+                real_server.model_manager,
+                "get_inference_engine",
+                return_value=_mock_ism_engine(),
+            ),
+            patch.object(
+                real_server.model_manager.config_manager,
+                "get_model_config",
+                return_value=Mock(),
+            ),
+            patch("dnallm.mcp.server.evaluate_vcf", return_value=vep_result) as mock_kernel,
+        ):
+            async with self._client_session(real_server) as session:
+                result = await session.call_tool(
+                    "_zero_shot_score",
+                    {
+                        "model_name": "test-model",
+                        "fasta_path": str(fasta),
+                        "variants": [{"chrom": "chr1", "pos": 10, "ref": "A", "alt": "G"}],
+                    },
+                )
+
+        payload = json.loads(result.content[0].text)
+        assert payload["input_mode"] == "inline_variants"
+        assert payload["skip_counts"] == vep_result.skip_counts
+        assert payload["convention"] == {"cohort": "pass-through"}
+        assert payload["records"][0]["delta"] == -0.25
+        kernel_kwargs = mock_kernel.call_args.kwargs
+        assert kernel_kwargs["clnsig_filter"].variant_type == "inline_variant"
 
     async def test_session_delete_issued_on_close(self, real_server):
         """Client exit issues the terminating session DELETE request."""
