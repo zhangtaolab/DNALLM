@@ -131,7 +131,10 @@ INLINE_VCF_BASENAME = "inline_variants.vcf"
 #: pattern-validated alleles, the variant cap, and the inline no-ClinVar
 #: guarantee. The class covers conventional names (chr1, chrX, chrM,
 #: chrUn_GL000220v1, NC_000001.11-style accessions, alt/decoy pipes).
-_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()-]+$")
+#: Anchored with ``\Z`` (not ``$``): ``$`` also matches just before a
+#: trailing newline, which would defeat the whole point of a whitespace-free
+#: check on exactly the row-splitting character.
+_CHROM_PATTERN = re.compile(r"^[A-Za-z0-9_.:<>|()-]+\Z")
 
 #: Pass-through CLNSIG marker written into the inline temp VCF. The kernel's
 #: convention gates require a CLNSIG/CLNREVSTAT/CLNVC triple; inline
@@ -1428,7 +1431,7 @@ class DNALLMMCPServer:
                 sequences = [sequence]
 
             # Validate DNA sequence content
-            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
             for i, seq in enumerate(sequences):
                 if not dna_pattern.match(seq):
                     return {
@@ -1611,7 +1614,7 @@ class DNALLMMCPServer:
         """
         try:
             # Validate DNA sequence content
-            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
             if not dna_pattern.match(sequence):
                 return {
                     "error": (
@@ -1893,7 +1896,7 @@ class DNALLMMCPServer:
                     "isError": True,
                 }
 
-            dna_pattern = re.compile(r"^[ACGTacgtNn]+$")
+            dna_pattern = re.compile(r"^[ACGTacgtNn]+\Z")
             for i, seq in enumerate(sequences):
                 if not dna_pattern.match(seq):
                     return {
@@ -2524,7 +2527,9 @@ class DNALLMMCPServer:
                         ),
                         "isError": True,
                     }
-                allele_pattern = re.compile(r"^[ACGTacgt]+$")
+                # \Z (not $): $ also matches before a trailing newline, which
+                # would split the materialized VCF row on exactly that newline.
+                allele_pattern = re.compile(r"^[ACGTacgt]+\Z")
                 for i, variant in enumerate(variants):
                     if not isinstance(variant, dict):
                         return {

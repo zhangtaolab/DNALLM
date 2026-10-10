@@ -836,6 +836,40 @@ class TestZeroShotScoreContracts:
         assert "whitespace-free" in result["error"]
         mock_kernel.assert_not_called()
 
+    async def test_zero_shot_trailing_newline_chrom_rejected(self, v12_server, reference_fasta):
+        """WR-05: a ``$`` anchor also matches just before a trailing newline,
+        so chrom="chr1\\n" used to pass validation and materialize as TWO VCF
+        data rows (a malformed one-column row plus the server-injected
+        remainder), defeating the one-data-line-per-variant invariant. The
+        ``\\Z`` anchor rejects it before the temp VCF is written."""
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1\n", "pos": 10, "ref": "A", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert "whitespace-free" in result["error"]
+        assert "variants[0].chrom" in result["error"]
+        mock_kernel.assert_not_called()
+
+    async def test_zero_shot_trailing_newline_ref_rejected(self, v12_server, reference_fasta):
+        """WR-05: the same ``$``-anchor idiom accepted ref="A\\n", splitting
+        the materialized VCF row the same way a newline-bearing chrom
+        would; ``\\Z`` rejects it with the allele field named."""
+        with patch("dnallm.mcp.server.evaluate_vcf") as mock_kernel:
+            result = await v12_server._zero_shot_score(
+                model_name="test-model",
+                fasta_path=str(reference_fasta),
+                variants=[{"chrom": "chr1", "pos": 10, "ref": "A\n", "alt": "G"}],
+            )
+
+        assert result["isError"] is True
+        assert "variants[0].ref" in result["error"]
+        assert "ACGT" in result["error"]
+        mock_kernel.assert_not_called()
+
     async def test_zero_shot_vcf_path_happy_path_uses_d17_default_filter(
         self, v12_server, reference_fasta, tmp_path
     ):
