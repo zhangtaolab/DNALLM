@@ -121,7 +121,13 @@ class TestMain:
         server.shutdown.assert_awaited_once()  # finally-block cleanup
 
     def test_defaults_are_forwarded(self, tmp_path):
-        """Without flags, the stdio defaults reach start_server."""
+        """Without flags, the None sentinels reach start_server (REV-11).
+
+        The argparse defaults are ``None`` (Phase 12 CLI-precedence fix), so
+        start_server resolves host/port from the YAML config itself — an
+        argparse-side ``0.0.0.0``/``8000`` default would masquerade as an
+        explicit CLI value and silently beat the config.
+        """
         config = tmp_path / "config.yaml"
         config.write_text("dummy: true")
         server = self._mock_server()
@@ -136,8 +142,8 @@ class TestMain:
             main()
 
         server.start_server.assert_called_once_with(
-            host="0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
-            port=8000,
+            host=None,
+            port=None,
             transport="stdio",
         )
 

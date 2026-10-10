@@ -277,11 +277,14 @@ class TestStreamableHTTPConstruction:
     """Test _start_http_server assembly with patched uvicorn."""
 
     def test_config_fields_assembled_from_streamable_http_block(self, real_server, tmp_path):
-        """The streamable_http block overrides host/port and sets the path.
+        """An explicit CLI port beats the streamable_http block (REV-11 flip).
 
-        server.port (8123) matches the port start_server passes, so the
-        streamable_http port (8124) must win; the app passed to uvicorn
-        comes from the streamable-http app factory.
+        start_server is called with an explicit port 8123 while the YAML
+        carries server.port=8123 and streamable_http.port=8124 — under the
+        Phase-12 CLI-precedence fix the explicit 8123 must win (this test
+        codified the OPPOSITE, YAML-beats-CLI behavior before the fix). The
+        app passed to uvicorn still comes from the streamable-http app
+        factory.
         """
         del tmp_path  # fixture-managed by real_server; kept for signature clarity
         sentinel_app = Mock()
@@ -297,7 +300,7 @@ class TestStreamableHTTPConstruction:
         kwargs = mock_config_cls.call_args.kwargs
         assert kwargs["app"] is sentinel_app
         assert kwargs["host"] == "127.0.0.1"
-        assert kwargs["port"] == 8124
+        assert kwargs["port"] == 8123  # explicit CLI beats YAML streamable_http 8124
         assert kwargs["access_log"] is False
         assert kwargs["loop"] == "asyncio"
         assert kwargs["timeout_keep_alive"] == 5
@@ -337,11 +340,13 @@ class TestStreamableHTTPConstruction:
 class TestSSEConstruction:
     """Test _start_sse_server assembly (construction-only; see module docstring)."""
 
-    def _run_sse_start(self, server):
+    def _run_sse_start(self, server, host=None, port=None):
         """Start SSE via start_server dispatch with patched uvicorn.
 
         Driving through ``start_server(transport="sse")`` exercises the
-        dispatch line, not just the private starter.
+        dispatch line, not just the private starter. ``host``/``port``
+        default to the None sentinels so the config-resolution chain runs
+        (pass explicit values to exercise CLI precedence).
         """
         sentinel_sse_app = Mock()
         mock_app = MagicMock()
@@ -351,7 +356,7 @@ class TestSSEConstruction:
             patch("uvicorn.Config") as mock_config_cls,
             patch("uvicorn.Server") as mock_server_cls,
         ):
-            server.start_server(host="127.0.0.1", port=8123, transport="sse")
+            server.start_server(host=host, port=port, transport="sse")
         kwargs = mock_config_cls.call_args.kwargs
         return kwargs, kwargs["app"].routes, mock_server_cls, sentinel_sse_app
 
@@ -398,6 +403,108 @@ class TestSSEConstruction:
         with patch.object(real_server, "app", None):
             with pytest.raises(RuntimeError, match="FastMCP app not initialized"):
                 real_server._start_sse_server("127.0.0.1", 8000)
+
+
+class TestHostPortPrecedence:
+    """CLI-explicit > transport YAML > server YAML > documented default.
+
+    Phase 12 REV-11 regression matrix: the same resolution chain is proven
+    on BOTH HTTP transports via the patched-uvicorn construction pattern
+    (research Pitfall 2 — the old bug lived in two places with different
+    shapes and a one-sided fix desynced the transports).
+    """
+
+    # -- streamable-http transport ----------------------------------------
+
+    def test_http_explicit_cli_beats_all_yaml(self, real_server):
+        """Explicit CLI host/port win over both YAML blocks (http path)."""
+        mock_app = MagicMock()
+        with (
+            patch.object(real_server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            real_server.start_server(host="10.9.8.7", port=9999, transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "10.9.8.7"
+        assert kwargs["port"] == 9999
+
+    def test_http_yaml_only_uses_streamable_http_block(self, real_server):
+        """No CLI flags: the streamable_http block supplies host/port."""
+        mock_app = MagicMock()
+        with (
+            patch.object(real_server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            real_server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"  # streamable_http.host
+        assert kwargs["port"] == 8124  # streamable_http.port beats server.port 8123
+
+    def test_http_yaml_only_without_block_uses_server_block(self, tmp_path):
+        """No CLI flags and no streamable_http block: server block wins."""
+        config_path = _write_server_config(tmp_path, streamable_http=None)
+        with patch("dnallm.mcp.model_manager.load_model_and_tokenizer") as mock_load:
+            mock_load.return_value = (Mock(), Mock())
+            server = DNALLMMCPServer(str(config_path))
+            server._initialized = True  # construction only
+        with (
+            patch.object(server, "app", MagicMock()),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8123
+
+    def test_http_no_config_uses_documented_default(self, real_server):
+        """No CLI flags and no server config at all: 127.0.0.1:8000."""
+        with patch.object(real_server.config_manager, "get_server_config", return_value=None):
+            mock_app = MagicMock()
+            with (
+                patch.object(real_server, "app", mock_app),
+                patch("uvicorn.Config") as mock_config_cls,
+                patch("uvicorn.Server"),
+            ):
+                real_server.start_server(transport="streamable-http")
+        kwargs = mock_config_cls.call_args.kwargs
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8000
+
+    # -- sse transport ------------------------------------------------------
+
+    def test_sse_explicit_cli_beats_server_yaml(self, real_server):
+        """Explicit CLI host/port win over the server YAML block (sse path)."""
+        kwargs = self._run_sse(real_server, host="10.9.8.7", port=9999)
+        assert kwargs["host"] == "10.9.8.7"
+        assert kwargs["port"] == 9999
+
+    def test_sse_yaml_only_uses_server_block(self, real_server):
+        """No CLI flags: the server YAML block supplies host/port."""
+        kwargs = self._run_sse(real_server)
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8123
+
+    def test_sse_no_config_uses_documented_default(self, real_server):
+        """No CLI flags and no server config at all: 127.0.0.1:8000."""
+        with patch.object(real_server.config_manager, "get_server_config", return_value=None):
+            kwargs = self._run_sse(real_server)
+        assert kwargs["host"] == "127.0.0.1"
+        assert kwargs["port"] == 8000
+
+    @staticmethod
+    def _run_sse(server, host=None, port=None):
+        """Run the SSE starter through dispatch and return uvicorn kwargs."""
+        mock_app = MagicMock()
+        with (
+            patch.object(server, "app", mock_app),
+            patch("uvicorn.Config") as mock_config_cls,
+            patch("uvicorn.Server"),
+        ):
+            server.start_server(host=host, port=port, transport="sse")
+        return mock_config_cls.call_args.kwargs
 
 
 class TestStdioConstruction:

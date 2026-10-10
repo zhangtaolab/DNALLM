@@ -65,6 +65,16 @@ from .model_manager import ModelManager
 from ..inference.mutagenesis import Mutagenesis
 from ..inference.interpret import DNAInterpret
 
+#: Documented fallback bind address when neither the CLI nor any YAML block
+#: supplies one. Unified in Phase 12 (REV-11): the argparse default used to
+#: be ``0.0.0.0`` while ``start_server`` documented ``127.0.0.1`` — one
+#: loopback-safe default now applies everywhere; pass ``--host 0.0.0.0`` to
+#: bind all interfaces explicitly.
+DEFAULT_BIND_HOST = "127.0.0.1"
+
+#: Documented fallback bind port (see ``DEFAULT_BIND_HOST``).
+DEFAULT_BIND_PORT = 8000
+
 
 class DNALLMMCPServer:
     """DNALLM MCP Server implementation using FastMCP framework with SSE
@@ -1673,10 +1683,57 @@ class DNALLMMCPServer:
 
         return lifespan
 
+    def _resolve_bind_address(
+        self, host: str | None, port: int | None, transport: str
+    ) -> tuple[str, int]:
+        """Resolve the bind address once for both HTTP transports.
+
+        Precedence (Phase 12 REV-11 CLI-precedence fix, per field):
+
+        1. an explicitly-passed CLI value (never ``None`` here),
+        2. the transport-specific YAML block (``streamable_http`` on the
+           streamable-http transport only),
+        3. the ``server`` YAML block,
+        4. the documented default ``DEFAULT_BIND_HOST``/``DEFAULT_BIND_PORT``.
+
+        Args:
+            host: Explicit host from the caller (``None`` = not given).
+            port: Explicit port from the caller (``None`` = not given).
+            transport: One of "stdio", "sse", "streamable-http".
+
+        Returns:
+            Tuple of the final (host, port) both starters receive.
+        """
+        server_config = self.config_manager.get_server_config()
+        streamable_http_config = (
+            server_config.streamable_http
+            if server_config and hasattr(server_config, "streamable_http")
+            else None
+        )
+        # The transport-specific block refines only CONFIG-sourced values: a
+        # CLI-explicit value was never None and skips it entirely.
+        transport_block = streamable_http_config if transport == "streamable-http" else None
+
+        if host is None:
+            if transport_block is not None and transport_block.host is not None:
+                host = transport_block.host
+            elif server_config:
+                host = server_config.server.host
+        if host is None:
+            host = DEFAULT_BIND_HOST
+        if port is None:
+            if transport_block is not None and transport_block.port is not None:
+                port = transport_block.port
+            elif server_config:
+                port = server_config.server.port
+        if port is None:
+            port = DEFAULT_BIND_PORT
+        return host, port
+
     def start_server(
         self,
-        host: str = "127.0.0.1",
-        port: int = 8000,
+        host: str | None = None,
+        port: int | None = None,
         transport: str = "stdio",
     ) -> None:
         """Start the MCP server with the specified transport protocol.
@@ -1698,10 +1755,18 @@ class DNALLMMCPServer:
         headers manually.
 
         Args:
-            host (str, optional): Host address to bind the server to.
-                Defaults to "127.0.0.1". Use "0.0.0.0" for all interfaces.
-            port (int, optional): Port number to bind the server to.
-                Defaults to 8000. Only used for HTTP-based transports.
+            host (str | None, optional): Host address to bind the server to.
+                When ``None`` (the default), the value is resolved per the
+                documented chain: transport-specific YAML (``streamable_http``
+                on the streamable-http transport) > ``server`` YAML >
+                ``DEFAULT_BIND_HOST`` ("127.0.0.1"). An explicitly-passed
+                value always takes precedence over every YAML block
+                (Phase 12 REV-11 fix — previously YAML silently overrode
+                the CLI flags). Use "0.0.0.0" to bind all interfaces.
+            port (int | None, optional): Port number to bind the server to.
+                Resolved with the same precedence chain when ``None``,
+                falling back to ``DEFAULT_BIND_PORT`` (8000). Only used for
+                HTTP-based transports.
             transport (str, optional): Transport protocol to use.
                 Choices: "stdio", "streamable-http", "sse".
                 Defaults to "stdio".
@@ -1740,11 +1805,12 @@ class DNALLMMCPServer:
         if not self._initialized:
             raise RuntimeError("Server not initialized. Call initialize() first.")
 
-        # Override host/port from configuration if available
-        server_config = self.config_manager.get_server_config()
-        if server_config:
-            host = server_config.server.host
-            port = server_config.server.port
+        # Resolve the bind address ONCE (Phase 12 REV-11): CLI-explicit
+        # values win over YAML on both HTTP transports; both starters below
+        # receive the final values. The old unconditional YAML override here
+        # silently discarded the CLI flags, and the streamable-http starter
+        # then always overrode them again with the streamable_http block.
+        host, port = self._resolve_bind_address(host, port, transport)
 
         logger.info(f"Starting DNALLM MCP Server on {host}:{port} with {transport} transport")
 
@@ -1840,7 +1906,10 @@ class DNALLMMCPServer:
 
         logger.info("Using Streamable HTTP transport")
 
-        # Read streamable_http config if available
+        # Read streamable_http config if available. Host/port resolution is
+        # NOT done here anymore (Phase 12 REV-11): start_server resolves the
+        # bind address once with CLI precedence and passes final values in;
+        # this block now contributes only the endpoint path.
         server_config = self.config_manager.get_server_config()
         streamable_http_config = (
             server_config.streamable_http
@@ -1848,16 +1917,7 @@ class DNALLMMCPServer:
             else None
         )
 
-        # Use streamable_http host/port only if server config doesn't specify
-        # them (to avoid overriding CLI args which are passed as parameters)
-        if streamable_http_config:
-            if server_config and server_config.server.host == host:
-                host = streamable_http_config.host
-            if server_config and server_config.server.port == port:
-                port = streamable_http_config.port
-            http_path = streamable_http_config.path
-        else:
-            http_path = "/mcp"
+        http_path = streamable_http_config.path if streamable_http_config else "/mcp"
 
         # Get the Streamable HTTP app from FastMCP
         if self.app is None:
@@ -1940,8 +2000,11 @@ def main():
 
     Command Line Arguments:
         --config: Path to server configuration file
-        --host: Host address to bind to (default: 0.0.0.0)
-        --port: Port number to bind to (default: 8000)
+        --host: Host to bind HTTP/SSE transports to; when omitted the value
+            resolves from the YAML config (streamable_http block on that
+            transport, else the server block), falling back to 127.0.0.1
+        --port: Port to bind HTTP/SSE transports to; same resolution chain
+            as --host, falling back to 8000
         --transport: Protocol (stdio/sse/streamable-http, default: stdio)
         --log-level: Logging verbosity (DEBUG/INFO/WARNING/ERROR/CRITICAL)
         --version: Display version information
@@ -1996,15 +2059,25 @@ Examples:
     parser.add_argument(
         "--host",
         type=str,
-        default="0.0.0.0",  # ruff: ignore[hardcoded-bind-all-interfaces]
-        help="Host to bind the server to (default: %(default)s)",
+        default=None,
+        help=(
+            "Host to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 127.0.0.1. An explicit flag always wins over "
+            "the YAML config."
+        ),
     )
 
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind the server to (default: %(default)s)",
+        default=None,
+        help=(
+            "Port to bind HTTP/SSE transports to. Resolution order when "
+            "omitted: transport-specific YAML (streamable_http block) > "
+            "server YAML > 8000. An explicit flag always wins over the "
+            "YAML config."
+        ),
     )
 
     parser.add_argument(
@@ -2040,8 +2113,12 @@ Examples:
     try:
         logger.info("Starting DNALLM MCP Server...")
         logger.info(f"Configuration: {config_path}")
-        logger.info(f"Host: {args.host}")
-        logger.info(f"Port: {args.port}")
+        logger.info(
+            f"Host: {args.host if args.host is not None else '(from config, default 127.0.0.1)'}"
+        )
+        logger.info(
+            f"Port: {args.port if args.port is not None else '(from config, default 8000)'}"
+        )
         logger.info(f"Transport: {args.transport}")
         logger.info(f"Log Level: {args.log_level}")
         logger.info("-" * 50)
@@ -2057,7 +2134,7 @@ Examples:
         logger.info("-" * 50)
 
         # Start server - let uvicorn handle signals for HTTP/SSE transports
-        logger.info(f"Starting server on {args.host}:{args.port} with {args.transport} transport")
+        logger.info(f"Starting server with {args.transport} transport")
         logger.info("Press Ctrl+C to stop the server")
 
         # Start server (uvicorn will handle signals properly)
