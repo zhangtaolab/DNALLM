@@ -214,6 +214,39 @@ task:
         assert isinstance(dataloader, torch.utils.data.DataLoader)
         assert len(dataset) == 4
 
+    def test_generate_dataset_missing_path_raises(self):
+        """Test that a path-shaped string missing on disk raises ValueError."""
+        missing_paths = [
+            "missing_data.csv",  # bare filename with a known data extension
+            "data/missing_seqs.fa",  # relative path with a separator
+            os.path.join(tempfile.gettempdir(), "vo6_no_such", "x.tsv"),  # absolute
+        ]
+        for missing in missing_paths:
+            with self.subTest(missing=missing):
+                with pytest.raises(
+                    ValueError, match=r"looks like a file path but no such file exists"
+                ) as excinfo:
+                    self.predictor.generate_dataset(
+                        missing,
+                        batch_size=2,
+                        do_encode=False,  # Skip encoding to avoid tokenizer issues
+                    )
+                # The error must name the offending input
+                assert missing in str(excinfo.value)
+
+    def test_generate_dataset_single_sequence_string(self):
+        """Test dataset generation from a single bare sequence string."""
+        dataset, dataloader = self.predictor.generate_dataset(
+            "ATGGCCTA",
+            batch_size=2,
+            do_encode=False,  # Skip encoding to avoid tokenizer issues
+        )
+
+        assert isinstance(dataset, DNADataset)
+        assert isinstance(dataloader, torch.utils.data.DataLoader)
+        assert len(dataset) == 1
+        assert dataset.dataset["sequence"] == ["ATGGCCTA"]
+
     def test_logits_to_preds_binary(self):
         """Test logits to predictions conversion for binary classification."""
         logits = torch.tensor([[1.0, 2.0], [0.5, 1.5], [2.0, 1.0]])
