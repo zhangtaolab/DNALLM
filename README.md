@@ -574,7 +574,7 @@ uv run pytest tests/tasks/ -v
 uv run pytest --cov=dnallm --cov-report=html
 ```
 
-CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 1.26.4/2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
+CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 

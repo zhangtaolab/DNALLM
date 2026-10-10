@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking**: numpy support floor raised from `>=1.26.0` to `>=2.0.0` (numpy 1.x retired 2026-10-10; the CI matrix now runs numpy 2.2.0 only) and the `pyarrow>=15,<26` cap removed — its documented retirement condition (the numpy 1.26.4 CI matrix leg) is met. Environments on numpy 1.x must stay on the 0.8.x series.
+
 ## [0.8.0] - 2026-10-10
 
 ### Overview

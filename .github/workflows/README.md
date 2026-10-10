@@ -26,7 +26,7 @@ The workflows are triggered on:
 
 **Matrix Strategy**:
 - Python versions: 3.11, 3.12, 3.13
-- NumPy versions: 1.26.4, 2.2.0
+- NumPy versions: 2.2.0
 - Operating system: Ubuntu Latest
 
 **Steps**:
