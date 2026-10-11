@@ -26,6 +26,9 @@ allowed:
   # The 6 slow-marked MCP live-server probes (dnallm/mcp/tests/), rewritten
   # by FIX-03 to the typed helper skip_if_unreachable. Never collected on
   # the CI fast leg; serves local/full runs and the Phase-4 slow leg.
+  # Since 2026-10-11 (Phase 13, D-04) the example-nightly stage-1 main
+  # batch also exercises this entry: the mcp_example gated pair skips
+  # through it once no stage brings the stack up for it.
   - prefix: "network-unavailable:"
     category: network
 
