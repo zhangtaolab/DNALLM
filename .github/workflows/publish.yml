@@ -36,7 +36,7 @@ jobs:
         UV_HTTP_TIMEOUT: 120
         UV_CONCURRENT_DOWNLOADS: 1
       run: |
-        uv pip install --system -e '.[dev]'
+        uv pip install --system -e '.[base]'
         uv pip install --system build twine
     
     - name: Run tests
