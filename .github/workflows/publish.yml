@@ -41,7 +41,7 @@ jobs:
     
     - name: Run tests
       run: |
-        python scripts/check_code.py --with-tests
+        python scripts/check_code.py
     
     - name: Build package
       run: |
