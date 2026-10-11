@@ -55,6 +55,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - Commits carry no Co-Authored-By trailers (repo convention)
 - Research flags: Phase 11 REV-08 lane needs `--research-phase` (tokenizer alignment semantics, ClinVar filtering); Phase 12 REV-10 calibration choice needs a plan-time spike
 - v1.3 scope exclusion (owner, 2026-10-11): ollama MCP client notebooks (WINDOWS #13 — both never-executed ollama mcp_example notebooks, blocked on the ollama/VRAM coexistence plan) stay OUT of v1.3; the window remains open in the ledger and moves to a later milestone
+- v1.3 scope directive (owner, 2026-10-11): ALL ollama-related pytest surface is removed or marked skip — tests touching ollma across tests/examples/test_notebook_execution.py (33 refs), tests/test_runner_infra_contracts.py (15), tests/test_extras_guard.py (5), tests/examples/_execution.py (5), tests/test_models_lock_contracts.py (1), plus the two example/mcp_example ollama notebooks; per-item remove-vs-skip choice lands at planning time; extends the #13 exclusion to the entire ollama surface
 
 ### Pending Todos
 
