@@ -3,7 +3,7 @@ gsd_state_version: "1.0"
 milestone: v1.2
 status: Awaiting next milestone
 stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-10T16:33:58.361Z"
+last_updated: "2026-10-11T06:31:11.000Z"
 last_activity: 2026-10-10
 last_activity_desc: Milestone v1.2 completed and archived
 state_head: 9ddc35dde7477ffa5a43683b1e4437551a408eb2
@@ -54,6 +54,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - Zero new dependencies beyond scikit-allel (owner-approved 2026-10-09 for VEP-01 VCF reading, supersedes the stdlib-reader research decision: Windows cp310–313 wheels exist and numpy 1.26.4/2.2.0 both verified empirically before approval; only new required transitive dep is dask[array]; lands in Phase 11 agent B5); no new `dnallm/__init__.py` re-exports (facade byte-stable); per-module ≥96% coverage standard verified at phase verification; every new module coverage-gated via mocked fast-lane tests; new skips typed and allowlisted same-change
 - Commits carry no Co-Authored-By trailers (repo convention)
 - Research flags: Phase 11 REV-08 lane needs `--research-phase` (tokenizer alignment semantics, ClinVar filtering); Phase 12 REV-10 calibration choice needs a plan-time spike
+- v1.3 scope exclusion (owner, 2026-10-11): ollama MCP client notebooks (WINDOWS #13 — both never-executed ollama mcp_example notebooks, blocked on the ollama/VRAM coexistence plan) stay OUT of v1.3; the window remains open in the ledger and moves to a later milestone
 
 ### Pending Todos
 
@@ -102,9 +103,9 @@ Items acknowledged and deferred at milestone close, most recent first (full ledg
 
 ## Session Continuity
 
-Last session: 2026-10-10T15:18:28Z
-Stopped at: Quick task 261010-w6a complete — Windows repr assertion fix pushed (3b99359); orchestrator watching CI test-windows job
-Resume file: None
+Last session: 2026-10-11T06:31Z (resumed from HANDOFF.json)
+Stopped at: v1.3 scoping underway — owner excluded WINDOWS #13 (ollama MCP notebooks) from v1.3 scope; kickoff via /gsd-new-milestone next
+Resume file: None (HANDOFF.json consumed at resumption; its owner-side items folded into Operator Next Steps)
 
 ## Deferred Verification
 
@@ -114,4 +115,7 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start the next milestone with /gsd-new-milestone (candidate pool: open windows MINUS #13 + 5 post-close deferred rows + MOTIF-01 issue #44)
+- Close PR #47 (pydantic-ai<3) and #48 (ipython<10) with the provided guard-rationale commands — owner-side, execution unconfirmed (extras guard rejections are correct; the caps are load-bearing)
+- Local main fast-forward (cosmetic; merges #50-#53 happened on GitHub)
+- Optional: record the Trusted Publishing (OIDC) migration deferred row — discussed twice, never written; or let the publish-smoke deferred item subsume it
