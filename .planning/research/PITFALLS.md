@@ -1,427 +1,420 @@
 # Pitfalls Research
 
-**Domain:** Adding paper-revision-driven ML-evaluation capabilities (REV-01…REV-11) to DNALLM — an existing DNA-LM toolkit wrapping HF Trainer/peft/transformers 4.49–5.x, with a 96.42%-coverage CI hard gate, executed by 4–5 parallel implementation agents.
-**Researched:** 2026-10-09
-**Confidence:** HIGH for repo-grounded facts (verified against source at branch `revision`); MEDIUM for library-behavior claims across version spans (verified against installed peft 0.21.2 / transformers 5.19.0 source plus cross-checked web sources); each pitfall notes its grounding.
+**Domain:** Adding platform-split genomic evaluators, packaging re-scopes, publish smokes, ollama-surface removals, and docs-accuracy sweeps to DNALLM — a mature, heavily-gated Python package (frozen truth chains, census-hard-gated nightly lane, byte-identical docs mirrors, >90% coverage hard gate, typed-skip allowlist discipline, shared self-hosted GPU runner).
+**Researched:** 2026-10-11
+**Confidence:** HIGH for repo-grounded facts (verified against source at branch `v1.3`); MEDIUM for external-tool behavior (pip/twine/uv/PyPI/triton-windows — cross-checked web sources, official docs where reachable); each pitfall notes its grounding.
 
-**Grounding:** `dnallm/finetune/trainer.py:234-241,298-303,489-518`, `dnallm/inference/inference.py:80-158,1746`, `dnallm/inference/mutagenesis.py:257-347`, `dnallm/models/model.py:753-915,1007-1026`, `dnallm/tasks/metrics.py:113-219`, `dnallm/datahandling/data.py:842-860`, `dnallm/utils/sequence.py:89-124`, `dnallm/mcp/server.py:263-354,1743-1857`, `dnallm/mcp/model_manager.py:99-121`, `dnallm/configuration/configs.py:263-337`, `pyproject.toml` (coverage omit / ruff / mypy excludes), `tests/expected_skips.yaml`, `.planning/research/261009-paper-revision-suite-plan.md`.
+**Grounding:** `pyproject.toml` (extras incl. self-referential `base`/`all`, uv sources/conflicts with commented rocm block, coverage `fail_under=90`, pytest `--strict-markers`, markers list), `.github/workflows/publish.yml` (whole file), `.github/workflows/ci.yml:130-210,440-600,845-935` (test-windows leg, coverage-nightly, example-nightly stage 0.5 census pin + stage 3), `scripts/audit_skips.py`, `scripts/check_docs_sync.py`, `tests/expected_skips.yaml`, `tests/test_extras_guard.py`, `tests/test_runner_infra_contracts.py` (ollama refs), `tests/examples/test_notebook_execution.py` (ollama/gate refs), `tests/examples/test_plant_helixseek_showcase.py:515-560` (bedtools fail-loud + `pytest.mark.slow`), `.planning/WINDOWS.md` (#11, #12, #13, #18, #19, #20), `.planning/STATE.md` (deferred rows 2026-10-11: extras hygiene, publish rust, mypy drift, OIDC, GPU matrix), spike summaries `261010-wx2` / `261011-0a3` (parity pins).
 
-**Phase labels** follow the intake's structure: **Phase A** (contract layer, P0: REV-01/02/03), **Phase B waves B1–B4** (adaptation + evaluation, P1: REV-04…09), **Phase C** (narrative, P2: REV-10/11). Wave assignments below are recommendations to the roadmap author.
+**Phase labels:** roadmap not yet built; phase numbering continues from 13. Labels below are topic-keyed — **Phase O** (ollama surface removal), **Phase W** (Windows platform parity), **Phase G** (GAP-1 transformers 5.x shim), **Phase P** (packaging & install honesty), **Phase S** (publish smoke + OIDC + mypy cap), **Phase D** (docs accuracy sweep). Ordering recommendation in the Pitfall-to-Phase Mapping.
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1 (REV-01): The eval-semantics guard is bypassed by its own neighbors — early stopping force-enables `load_best_model_at_end`, and a YAML `load_best_model_at_end: True` crashes or re-leaks after the guard disables eval
+### Pitfall 1 (W): The Windows numpy path silently becomes the Linux path too — breaking the bedtools-computed frozen truth chain the split was designed to protect
 
 **What goes wrong:**
-The leak mechanism is confirmed at `trainer.py:234-241`: with no dev/val split, `test` silently becomes `eval_dataset` (`eval_strategy` stays `"steps"`), so per-interval evaluation, `metric_for_best_model` selection, and `load_best_model_at_end` all operate on the test set. The naive fix — "when no dev, set `eval_strategy='no'` and `eval_dataset=None`" — collides with three transformers 5.x behaviors verified in the installed source:
-
-1. `Trainer` raises `ValueError: "You have set args.eval_strategy to {strategy} but you didn't pass an eval_dataset…"` if strategy is active with no dataset — the original crash the silent test-promotion was avoiding.
-2. `trainer.py:298-303` (early stopping) **actively re-enables** `load_best_model_at_end=True` when the user did not set it. After the guard nulls eval, this path resurrects best-checkpoint selection with no eval set, producing either a transformers error or, worse, evaluation on some fallback.
-3. Benchmark YAMLs (the very configs under revision) ship `load_best_model_at_end: True` + per-task `metric_for_best_model`. Transformers 5.19 silently defaults `metric_for_best_model="loss"` when `load_best=True` and the metric is `None` (verified in `TrainingArguments.__post_init__`) — silent defaults stacking on silent defaults.
+The owner directive is explicit (WINDOWS #19): Linux/macOS KEEP bedtools/pybedtools — "the frozen truth chain stays bedtools-computed, no re-freeze." The failure mode is dispatch leakage: the platform branch added to `generate_bpe_dataset.py` and `data_generation_and_inference.ipynb` (cell 2/cell 8, one shared code path) accidentally executes the numpy evaluator on Linux — via an inverted `sys.platform` check, a fallback "try pybedtools, except use numpy" that swallows a real pybedtools/bedtools breakage, or a test lane that exercises only the numpy path repo-wide. The committed jaccard=0.3247 / exon_f1=0.7522 values are then re-derived by a different engine, and either (a) they drift out of band (loud, nightly red) or (b) they hold (silent — the "no re-freeze" invariant is violated with no alarm). Worse: the Linux re-execution of the edited notebook can shift values for non-algorithmic reasons — dtype changes (int32 vs int64 accumulators), pre-sorting that plain `-loj` never did (spike 0a3 pin 3: plain `-loj` accepts unsorted input; sorting changes nothing semantically but any *filtering* or *dedup* bolted on "while we're in here" does), or a DataFrame reconstruction that reorders rows before the BILOU decode.
 
 **Why it happens:**
-The leak is the emergent composition of three individually-reasonable code paths (split detection, early-stopping convenience, YAML passthrough). A guard written only against `trainer.py:234-241` misses the other two.
+The two paths live in the same cells/script; the natural test refactor ("just always test the numpy path — it's parity-proven!") removes the only execution evidence that Linux still runs bedtools. Parity spikes make the numpy path *feel* safe enough to let leak.
 
 **How to avoid:**
-- Guard must set BOTH `eval_strategy="no"` AND `eval_dataset=None` atomically, and when the guard fires with user-set `load_best_model_at_end=True` or early-stopping enabled, raise a descriptive `ValueError` (matchable message, e.g. `"test split cannot serve as eval set; provide a dev split or pass allow_test_as_eval=True"`) — do not silently downgrade two independent user settings.
-- `allow_test_as_eval=True` override must emit a WARN (repo uses `print("[Warning] ...")` in trainer.py today; new code should use `get_logger`).
-- New `evaluate(split="test"|"dev"|...)` must route test through `trainer.predict` (the proven-correct `infer()` path at `trainer.py:502-518`), never `trainer.evaluate`.
-- Tests (acceptance-grade): 3 split combos (dev+test / test-only / train-only) × default vs explicit override. Assert: (a) test-only + default → `training_args.eval_strategy == "no"` and `load_best_model_at_end` untouched-or-False; (b) test-only + early stopping → the descriptive `pytest.raises(ValueError, match=...)` (this is the neighbor-path test most likely to be forgotten); (c) override path logs the warning and evaluates on test.
+- Dispatch must be fail-loud, not try/except: `if sys.platform == "win32": numpy_path() else: pybedtools_path()` with no except-fallback. A missing bedtools on Linux must keep hitting the existing fail-loud gate (`test_plant_helixseek_showcase.py:523` asserts `shutil.which("bedtools")`), never fall through to numpy.
+- Add a same-change structure test asserting the dispatch direction: on non-Windows, the example code's pybedtools import/call is reachable and the numpy branch is not (and vice versa) — static asserts on cell/script source, precedent: the genome-wide denylist structure test (Phase 7) and the qwen-swap contract tests that assert notebook *source* content.
+- The Linux nightly lane must re-execute the edited notebook/script and hold the parsed `selection.md` bands (existing D-05/D-06 machinery) — the re-execution after the edit IS the proof the Linux chain survived the surgery.
+- Keep `.scratch/select_loci.py` and `selection.md:35` (historical methodology prose) untouched — the change-surface inventory in WINDOWS #19 already scopes them out.
 
 **Warning signs:**
-- Review: any diff touching `trainer.py` split logic that changes `eval_key` handling without touching the early-stopping block at 298-303.
-- Tests: a green suite where the early-stopping + test-only case is absent; `load_best_model_at_end=True` in a test fixture YAML combined with no dev split.
-- CI: fast leg passing while benchmark-side F1 (test-predict) and suite-side semantics disagree in a follow-up manual check.
+- A diff where the pybedtools branch lost lines (not just gained a sibling); any `except ImportError` around the platform dispatch.
+- Nightly example census green but the committed notebook outputs show a regenerated jaccard/exon_f1 from a numpy-formatted print (different formatting = different engine).
+- `git diff` touching `example/notebooks/plant_helixseek_shared/.scratch/{pred,truth}.bed` — the frozen BEDs are read-only, never written or moved (wx2 `requires` block).
 
-**Phase to address:** Phase A (REV-01 plan). The neighbor-path tests must be in the same change as the guard (owner rule: lib changes ship with same-change pytest coverage).
+**Phase to address:** Phase W — the dispatch structure test and the Linux re-execution must land in the same change as the platform split, not a follow-up.
 
 ---
 
-### Pitfall 2 (REV-02): The metric registry is placed inside `dnallm/tasks/metrics/` — a directory excluded from coverage, ruff, AND mypy — so the new contract layer ships unmeasured and unlinted, while alias handling re-creates the drift it was built to prevent
+### Pitfall 2 (W): Spike-to-port semantic drift — the production evaluator drops one of the oracle-pinned contracts the PARITY verdict was conditioned on
 
 **What goes wrong:**
-The intake specifies `dnallm/tasks/metrics/registry.py`. Verified in `pyproject.toml`: `*/dnallm/tasks/metrics/*` is in the coverage omit list (line 542), the ruff exclude (line 304), and the mypy exclude (line 405). The new registry — the single source of truth the whole re-run depends on — would be invisible to all three gates. Separately, the historical drift failure mode ("key-name drift → exporter reads empty string → hand-patched JSON → broken provenance", which produced reviewer finding R1-2d) recurs if aliases are treated as symmetric: `resolve("eval_auroc")` must resolve, but nothing must ever EMIT a historical alias — otherwise a new producer silently resurrects the old spelling and the companion repo pins the wrong key again.
+Both spikes are "task artifacts — never library code" (their own frontmatter). The v1.3 port re-implements their algorithms in `dnallm/` (precedent: `dnallm/utils/genomic_coords.py`), and the re-implementation "cleans up" away a load-bearing detail. The pins that must survive verbatim into the port:
+1. **Null-B fill (loj):** a no-hit A row against the 6-column NER annotation B carries `.` `-1` `-1` `.` `-1` `.` — the B-column-5 `-1` is what makes the consumer's `name == "-1"` intergenic branch fire (0a3 Pin 1). A port that guesses all-`.` still labels intergenic — via the accidental `zero_map` fallback — so the exon_f1 band can hold while the semantics are wrong. The null vector is content/shape-dependent at other column counts (count-5 score slot is `-1` iff int-parseable; ≥7 always `.`).
+2. **Emission order (loj):** plain `-loj` emits in A-file order with per-A B hits in B-file order, accepting unsorted A and B (0a3 Pin 2/3). The consumer's ascending traversal works because `tokens_bed` is *near-sorted in practice*, not because anything sorts. A port that sorts "for safety" changes row order downstream; a port that assumes hits arrive coordinate-sorted breaks when B's file order differs from start order.
+3. **Join, not merge (loj):** one output line per A×B overlap pair; duplicates multiply per copy (0a3 multiplicity pin). The consumer's `token_seen[gene]` dedup absorbs A-side duplication — the port must keep emitting duplicates, never dedup early.
+4. **Merge semantics (jaccard):** coalesce while `next start <= current end` — overlaps AND bookended adjacency (wx2). Chromosomes group by exact string key (`Chr1` ≠ `chr1`).
+5. **n_intersections is NOT portable:** bedtools counts raw A rows (51) while the numpy analogue counts merged-A intervals (45) on the frozen pair (wx2 port note 2). Any production contract must either port raw-row semantics or exclude the field — gating on it would false-fail.
 
 **Why it happens:**
-The vendored boundary was drawn at the directory level with globs, and the natural-looking home for a "metrics registry" is the metrics directory. Alias semantics look like a bidirectional map but the contract is directional (recognize historical, emit canonical only).
+The pins live in spike SUMMARY prose in `.planning/quick/`, which the porting agent may never re-read; each detail looks like an implementation choice, not a parity precondition. The null-fill bug is *invisible in the metric* (exon_f1 unchanged) — precisely the class of drift the frozen chain cannot catch.
 
 **How to avoid:**
-- Place the registry OUTSIDE the vendored glob: `dnallm/tasks/registry.py` (or keep the intake path but change the omit/exclude globs to enumerate vendored subdirs — more brittle; prefer relocation). Then verify with a same-change test that `coverage report --include=**/registry.py` shows a measured row.
-- Design as one-directional: `resolve(name)` recognizes aliases; the emitted dict from `compute_metrics` paths only ever contains canonical keys. Add a test that iterates every registered metric fn and asserts no historical alias (`eval_auroc`, `eval_spearman_r`) appears in any emitted key set.
-- Contract test enumerating the full key set used by the 47 benchmark tasks (intake acceptance), plus known-alias resolution tests with exact strings: `pytest` asserts `resolve("eval_AUROC") == "AUROC"` and `resolve("eval_auroc") == "AUROC"` (recognition) — anchoring the CURRENT pipeline spellings (`AUROC`, `AUPRC`, `spearmanr`, `pearsonr`, verified at `metrics.py:134-135,181-219`) as canonical.
-- Cross-repo: dnallmmark must pin a dnallm version/commit (its import must not float against dnallm HEAD — open question #3 in the intake). The dnallm-side test asserts the registry's public surface (`resolve`, key set) so a dnallm change that breaks it fails HERE before dnallmmark CI notices.
+- Port the spike corpora, not just the algorithm: re-run the seeded randomized property cases (seeds 20261010 / 20261011) plus the handcrafted edge cases as pytest unit tests against the production evaluator, with the oracle expectations *baked as literals* where bedtools is unavailable (Windows) and against a live bedtools where available (Linux nightly, via the existing rootless micromamba cache). The spikes already proved determinism (byte-identical re-runs).
+- One explicit regression test per pin: null-vector exact-string assertion at the 6-column shape (and the count-5 content dependence), order-preservation on shuffled A/B, duplicate-multiplication arithmetic, bookended-adjacency merge, `Chr1`≠`chr1` no-join.
+- Assert-or-port `_null_b_fields` whole: the port must reject (loud `ValueError`) any annotation B that is not 6-column, rather than silently switching null encoding.
+- Port the loud parse guard philosophy (`parse_bed3`'s file+line `ValueError`) — the `genomic_coords.py` silent-empty guard precedent.
 
 **Warning signs:**
-- CI: `coverage.json` / `coverage report` shows no row for `registry.py` (it was omitted) — that silence is the alarm. A quick check: `coverage report | grep registry` empty after merge.
-- Review: any `emit`/`as_dict` API on the registry that returns aliases; any `dnallmmark` PR importing dnallm without a version pin.
-- Tests: alias-in-emission test failing; contract key-set test failing when someone adds a metric with a new spelling.
+- Production evaluator code with `sorted(` near the loj path; a `set()` or dict-dedup between join and emission; `'.'` in every null slot of a B6 row; `n_intersections` appearing in any gated assertion.
+- Unit tests that only cover the frozen pair (one case) and none of the 8/11 handcrafted edge shapes.
 
-**Phase to address:** Phase A (REV-02 plan). Must land before any dnallmmark F3 exporter work — the dependency chain in the intake makes this the gate-opener for the whole re-run.
+**Phase to address:** Phase W — pins and corpora tests ship same-change with the evaluator (owner rule: lib changes carry same-change pytest coverage; per-module ≥96% standard).
 
 ---
 
-### Pitfall 3 (REV-04): IA³ is combined with the existing QLoRA 4-bit path and the shared adapter save/load path — peft raises (or worse, merges fail) because IA³ × 4-bit is not fully supported, and a known peft bug corrupts saved `adapter_config.json`
+### Pitfall 3 (S): The publish smoke actually publishes — `workflow_dispatch` on `publish.yml` today runs the real `twine upload`
 
 **What goes wrong:**
-Three verified failure surfaces:
-1. **IA³ × 4-bit:** older peft raises `NotImplementedError("4-bit quantization is not supported for IA3 yet…")` at injection; peft 0.21.2 (installed, source-verified) allows injection but raises `ValueError("Cannot merge ia3 layers when the model is loaded in 4-bit mode")` (and the 8-bit variant). The existing trainer path (`use_qlora` → `prepare_model_for_kbit_training` at `trainer.py:159-163` → `get_peft_model`) makes `use_ia3 + use_qlora` a one-flag-away combination. Behavior differs across the `peft>=0.14` floor the package declares — CI green on peft 0.21 says nothing about peft 0.14–0.16.
-2. **Save/reload roundtrip:** peft's target-module list minimization corrupted IA³ configs (issue #2429, fixed by PR #2432) — saved `adapter_config.json` gets simplified `target_modules` but full-path `feedforward_modules`, failing on reload. The intake's acceptance ("adapter save/reload roundtrip consistent") hits exactly this class if the roundtrip test only checks LoRA.
-3. **Shared adapter path:** `inference.py:111-130` loads adapters via `PeftModel.from_pretrained(...)` with no adapter-type awareness. An IA³ adapter flows through the same path — fine for forward passes, but anything downstream that calls `merge_and_unload()` (or a user notebook) breaks on quantized models. Also `feedforward_modules` must be a subset of `target_modules` and the subset CHECK IS SKIPPED when either is a regex string — regex-based presets silently skip validation.
+Verified in `.github/workflows/publish.yml`: the workflow triggers on BOTH `release: [published]` AND `workflow_dispatch`, and the `Publish to PyPI` step (`twine upload dist/*` with `PYPI_API_TOKEN`) has **no event guard**. The naive "add a weekly workflow_dispatch dry-run" is a real publish of the current version: PyPI filenames are immutable (re-upload → 400 "File already exists"), so a smoke that uploads either consumes the version number permanently or fails confusingly on the duplicate. Two aggravating details in the current file:
+- The `Verify installation` step runs `pip install dnallm` — from PyPI, unpinned, NOT from `dist/`. On any run that didn't (or failed to) publish, this verifies the OLD release: a false-green that would make a smoke look meaningful while proving nothing about the built artifact.
+- The smoke's job is to catch exactly the rust classes that already happened (STATE 2026-10-11: uv implicit-system-env removal, `check_code.py --with-tests` flag removal — two consecutive v1.2.1 release failures). A smoke that skips the install-from-dist step catches neither.
 
 **Why it happens:**
-IA³ is being added to a codebase whose PEFT scaffolding (kbit prep, adapter save at `trainer.py:401-419`, adapter load at `inference.py:111-130`) was built and battle-tested for LoRA/QLoRA only. "Align with the LoRA branch" (the intake instruction) copies assumptions that do not hold for IA³.
+`workflow_dispatch` looks like a "safe manual trigger"; people forget the release trigger shares the same job steps. Twine has no true `--dry-run` upload mode, so "dry-run" must be constructed by gating steps, and each gate is a place to be wrong. `--skip-existing` is a trap door: it substring-matches generic 400s and can mask genuine failures (invalid metadata, quota) — twine 6.2.0 removed it for non-PyPI targets for exactly this reason.
 
 **How to avoid:**
-- Reject the incompatible combination at config-validation time, not at peft's mercy: Pydantic `model_validator` on `TrainingConfig` raising `ValueError("use_ia3 cannot be combined with use_qlora (4-bit); IA³ does not support 4-bit quantized training")`. Test with `pytest.raises(ValidationError, match="use_ia3")`. This converts a peft-version-dependent runtime error into a stable, matchable, version-independent one (repo error-handling convention).
-- Same-change roundtrip test for IA³ specifically: save adapter → reload via `DNAInference(lora_adapter=...)` → assert outputs identical (tolerance-based) to the pre-save model on a fixed input. Cover one transformer AND one Mamba model (intake acceptance).
-- If presets use regex `target_modules`, add an explicit preset self-test that the regex actually matches ≥1 module per family (see Pitfall 4) because peft's subset validation no-op's on regex.
-- Pin minimum peft version only if a specific behavior is required; otherwise feature-detect. Do NOT pin a single peft minor in tests (same constraint as transformers).
+- Gate every mutating step: `if: github.event_name == 'release'` on the upload step (or split into `publish.yml` (release-only) + `publish-smoke.yml` (schedule/workflow_dispatch, never uploads)). A separate workflow is easier to prove safe by inspection.
+- Smoke body (never-publish, catches the real rust classes): `uv build` → `twine check --strict dist/*` → create fresh venv → `uv pip install --find-links dist dnallm` (or `pip install dist/*.whl`) → `python -c "import dnallm"` + `dnallm --help`-class CLI probe → optionally `uv publish --dry-run` (validates against PyPI's `/validate` endpoint without uploading contents). Fix or delete the current `pip install dnallm` verify step — it must install the built wheel.
+- Never use `--skip-existing` to make smoke re-runs idempotent; a re-run failing on "file exists" is the correct loud signal.
+- If the smoke also covers the OIDC migration: `uv publish --dry-run` exercises credential/audience paths but the trusted-publishing handshake is only fully proven by a real publish — plan the migration so the next real release is explicitly observed (see Pitfall 10).
 
 **Warning signs:**
-- Tests: `use_ia3 + use_qlora` test absent; IA³ roundtrip test absent (only LoRA roundtrip).
-- CI: nightly real-model leg failing with `Cannot merge ia3 layers` or `NotImplementedError` from peft internals — an unmatchable foreign error means the guard was missing.
-- Review: any `merge_and_unload` call in new MCP/inference code paths that can receive a quantized model.
+- Any step in a dispatch-reachable workflow containing `twine upload`, `uv publish` (without `--dry-run`), or `--skip-existing`.
+- A smoke whose verify step installs from the index rather than `dist/`.
+- Smoke logs showing an upload HTTP request at all.
 
-**Phase to address:** Phase B wave B1 (REV-04 + REV-05 together — they share `configs.py`/`trainer.py`/presets; see Pitfall 8).
+**Phase to address:** Phase S, and it is the FIRST change of that phase — the guard precedes any scheduled trigger existing (a cron on an unguarded workflow is a time bomb).
 
 ---
 
-### Pitfall 4 (REV-05): Wrong PEFT `target_modules` do not fail — peft SILENTLY SKIPS non-existent modules on Mamba/hybrid backbones, so "IA³/LoRA fine-tuned" results are a frozen model with near-zero trainable parameters
+### Pitfall 4 (P): The `base` extras rename breaks downstream users silently and the in-repo install surface non-atomically
 
 **What goes wrong:**
-Verified peft behavior (source + troubleshooting docs): on hybrid architectures (Mamba, Jamba-like, and DNALLM's registry spans BERT/GPT/Mamba/Gemma/Llama/hybrid), `target_modules` entries that match nothing are silently skipped; only the match-NOHING-at-all case warns (`RuntimeWarning` from `tuners_utils`) or raises depending on version. A preset listing `query,key` against a Mamba backbone (whose projections are `in_proj`/`out_proj`) yields a model where the adapter attached to few or no layers. Training runs, loss decreases slightly (from the head/bias drift), results get exported, and the paper's IA³ baseline is garbage — discovered only when a reviewer asks why IA³ ≈ frozen. `trainer.py:168` already prints trainable parameters (`print_trainable_parameters`), but nobody asserts on it.
+Two halves:
+1. **Downstream (verified external behavior):** when an extra no longer exists, `pip install dnallm[base]` prints `WARNING: dnallm does not provide the extra 'base'` and **exits 0 with the extra's dependencies silently uninstalled** (pip ≥23.3, confirmed through pip 25.3; PEP 685 normalization applies). Every existing user of the kitchen-sink `base` extra gets a quiet, broken environment on the next install — no error to report, nothing to search for. uv behaves equivalently for unknown extras.
+2. **In-repo lockstep:** `base` is referenced by the self-referential `all` extra (`dnallm[base,...]`), four CI install sites (`ci.yml:84,169,410`, `publish.yml:39`), `feasibility.yml:67`, README (2 commented mentions), and ~10 docs pages (`installation.md` alone has 8+ `.[base]` occurrences including the extras table at line 201 and the `--resolution=lowest` lane at 591). If `base` is re-scoped to be *minimal* (matching its name) rather than renamed, every CI leg installing `.[base]` for testing silently loses the transitive closure (dev/test/notebook/mcp) — the legs go red across the board, or worse, run with less and pass for the wrong reason.
 
 **Why it happens:**
-Module names differ per architecture family and the intake correctly demands presets "derived from real model configs, not guessed" — but the failure mode is silent, so a wrong preset survives every run that lacks an assertion. The `warning sign` culture (assert on counts) is not yet wired into PEFT setup.
+Extras renames look like metadata-only edits; pip's warn-and-continue makes the downstream half invisible to the maintainer's own testing (the maintainer installs from source with the new names). The self-referential aliasing (`all` → `base` → `dev,test,notebook,mcp`) means one rename has a two-level blast radius.
 
 **How to avoid:**
-- Generate presets from real `config.json` module names (intake requirement) and add a **dry-run contract test per architecture family**: instantiate (or introspect via `AutoConfig` + module-name listing without full weight load where possible) each family representative and assert every preset `target_modules` entry matches ≥1 module, and that the matched-module count equals the expected per-family count. Families without a representative in the fast leg get a `slow`-marked variant on the nightly GPU runner (models.lock row for any newly downloaded model — repo precedent).
-- Runtime guard in the trainer: after `get_peft_model`, parse `print_trainable_parameters` output (or compute trainable/total ratio) and `raise ValueError` when trainable count is 0 or the ratio is implausibly below the family preset's expected ratio band. Message like `"IA3/LoRA attached to 0 modules; target_modules preset {name} does not match this backbone"`.
-- Preset-file schema test (`configs/presets/lora_targets.yaml`): every family row has `target_modules` (non-empty list or validated regex) + recommended `r`; unknown family keys rejected — prevents hand-edit drift, mirroring the models.lock consistency-guard pattern (CI-08 precedent).
+- Decide rename-vs-rename+alias: keep a deprecated `base` alias extra that still resolves (e.g. `base = ["dnallm[<new-name>]"]`) for at least one version cycle, with a README/docs migration note — the only way `pip install dnallm[base]` keeps working for existing users. If the owner chooses a hard break, the version must be a minor bump with the change flagged at the top of the changelog.
+- Same-change sweep, mechanical: `grep -rn "\[base\]" README.md docs/ .github/ scripts/` must return zero stale hits (or only the sanctioned alias definition); update `all`'s member list; add an `EXPECTED_*_MEMBERS` bracket test mirroring `tests/test_extras_guard.py` for the renamed extra so a future edit can't silently drop members.
+- Update all four CI install sites + publish.yml + feasibility.yml in the same commit as the pyproject edit — CI red on a missing extra is actually the *loud* failure; the danger is legs that still resolve but under-install.
+- Ordering: this must land BEFORE the docs accuracy sweep (Pitfall 9) and ideally in the same phase as the cuda130-default/GPU-matrix docs decisions, so docs are written once against the final extras state.
 
 **Warning signs:**
-- Tests/CI: trainable-parameter assertion absent from the IA³/LoRA smoke tests; nightly log line `trainable params: 0` — grep-able, so make the assertion automatic rather than eyeball.
-- Review: presets YAML whose module names were typed by hand without a provenance comment citing the source `config.json`/model.
-- Science: IA³ results suspiciously identical to frozen-model probing results (REV-07 cross-check).
+- A pyproject diff renaming an extra with no docs/CI diff in the same commit.
+- CI logs containing `does not provide the extra` (pip) or uv's equivalent warning — treat any occurrence as a broken leg even when green.
+- `pip install dnallm[base]` in a fresh venv resolving to fewer packages than before (diff the pip freeze).
 
-**Phase to address:** Phase B wave B1 (REV-05, same wave as REV-04; the trainer-side trainable-count guard belongs to whichever plan lands second in the wave, or a shared acceptance).
+**Phase to address:** Phase P, first plan of the phase; alias decision is an owner call at planning time (like the triton #18 decision).
 
 ---
 
-### Pitfall 5 (REV-06): `random_init=True` accidentally loads pretrained weights — via `from_pretrained` side effects, tied weights, or safetensors cache — and the parameter-hash "proof" is device-dependent so the test lies
+### Pitfall 5 (O): Ollama-surface removal deletes tests that guard NON-ollama contracts
 
 **What goes wrong:**
-Four verified sub-traps:
-1. **The load path is `from_pretrained`-shaped.** The generic loader (`model.py:878-915`) selects Auto* classes and calls `from_pretrained`. The natural implementation — call `from_pretrained` then re-`init` weights — still downloads/mmap's pretrained weights and risks stale-tensor leftovers (buffers, non-reinitialized norms). Transformers explicitly documents meta-device + `from_pretrained` as an anti-pattern raising `RuntimeError`; `from_config` is the canonical random-init path. But `from_config` changes the call signature per task-type Auto* class, and the special-family handlers (evo, megadna, enformer — dispatched at `model.py:806-863`) each construct models their own way; random-init semantics are undefined for several of them.
-2. **Tied weights / meta tensors:** memory-efficient init in transformers 5.x can leave tied weights (e.g., `lm_head.weight` tied to embeddings) on the meta device → `"Cannot copy out of meta tensor; no data!"` on `.to(device)` (transformers #41038/#30703; partial fix in #43523). Also transformers 5.x `post_init()` tied-weight registration breaks some `trust_remote_code=True` models — and DNALLM loads several remote-code families (DNABERT-2, GPN, …). Verify tying with `data_ptr()` equality after init.
-3. **Hash proof is device/RNG-dependent:** CUDA init (philox) and CPU init produce different tensors for the same seed. A hash-inequality test written on CPU passes; the same test on the nightly GPU runner compares different RNG streams and can spuriously pass/fail. Worse: a *weak* hash test (random-init hash ≠ pretrained hash) passes even if only 90% of tensors were re-initialized — one leftover pretrained block still yields a different hash.
-4. **Tokenizer must load normally:** reusing the full load path and skipping weights accidentally skips tokenizer load too (the special handlers return `(model, tokenizer)` tuples).
+The directive says "~59 refs across 5 test files + 2 notebooks; remove-vs-skip per item." The refs are not equivalent. Verified by reading the files:
+- `tests/test_extras_guard.py` (5 refs): these are the **extras-bracket guards** — `langchain-ollama>=1.1.0` declared in the `mcp` extra (REPAIR-04), the five pre-existing mcp members, the `ipython<9` kernel-plot pin, AND `TestNotebookKernelPlotCompat` (the installed IPython/matplotlib pair that kills `plt.subplots` in every notebook kernel). Removing these as "ollama-related" deletes the guard against the exact matplotlib/IPython regression that broke the example lane once already, and un-guards the pydantic-ai cap rationale (PRs #47/#48 pending on exactly these guards).
+- `tests/test_runner_infra_contracts.py` (15 refs): pins the in-repo `scripts/runner/ollama.service` systemd unit's Environment lines (D-06/D-12), the README re-apply op, and **docs-mirror content contracts** (`"ollama:qwen3.5:4b"` must appear in the langchain notebook AND its `docs/example` mirror .md). These guard the runner box and mirror honesty, not ollama execution.
+- `tests/test_models_lock_contracts.py` (1 ref): a docstring mention ("ollama models only") inside a models.lock contract test — zero ollama behavior.
+- `tests/examples/test_notebook_execution.py` (33 refs): a mix of true ollama-execution surface (`_gate_ollama_stack`, stage-3 batch inventory) and the shared gating machinery (`_probe_http_with_retry` semantics tests) that also serves MCP-server probing.
 
 **Why it happens:**
-`from_pretrained` is wired into 12 special handlers and the guarded dispatch chain; threading a `random_init` flag through without leaking weight loads requires touching each family's semantics. The hash-proof acceptance criterion invites a naive implementation.
+Grep-by-keyword classification. "5 files contain ollama" reads like "5 files are ollama tests." The kernel-plot compat test shares a file with an ollama-named declaration; the runner contracts share the noun.
 
 **How to avoid:**
-- Implement per-path: generic path → `Auto*Class.from_config(config)` (no `from_pretrained` call at all — this also proves no weight download: assert no new files in the HF cache in a test, or assert `_get_model_path_and_imports`/download was never invoked by patching); special families → explicit allowlist of families supporting random_init, `ValueError("random_init is not supported for {family}")` otherwise (matchable message, documented in README). Do NOT attempt to retrofit all 12 handlers.
-- Seed before init (`torch.manual_seed` fixed), initialize on CPU, then `.to(device)` — deterministic hash within a device class; document that hashes are CPU-canonical.
-- Proof test design (all same-change): (a) per-tensor comparison, not one global hash — assert EVERY parameter tensor's bytes differ between random-init and pretrained for ≥2 architectures (or assert count of differing tensors == total tensors, allowing documented exceptions like int buffers); (b) same-seed reproducibility: two random-init loads with the same seed → identical per-tensor hashes; (c) tokenizer equality: `random_init=True` tokenizer identical to normal-load tokenizer (vocab/hash); (d) no-download assertion via patched downloader.
-- Regression test for the meta/tied-weight class: load a tied-weights generation-family model with random_init on CPU and call `.to("cpu")`→`.to("cuda")` on the nightly leg; `data_ptr()` tie assertion where applicable.
+- Classify per-assertion, not per-file, at planning time (the directive already says "per item" — hold to it): (a) tests that EXECUTE ollama or gate on the ollama endpoint → remove or skip per owner; (b) tests that mention ollama while guarding extras/mirrors/runner-infra/kernel-plot → KEEP, possibly with renamed fixtures; (c) the two notebooks → if removed, the docs-mirror and mkdocs-nav consequences (Pitfall 7) ride along; if kept-unexecuted, say so in prose (honesty convention).
+- After the sweep, `grep -rn ollama tests/` should return exactly the sanctioned residue list, recorded in the phase plan — a second grep gate so later phases can't accidentally re-widen.
+- If `langchain-ollama` leaves the `mcp` extra when the notebooks' status changes, update `EXPECTED_MCP_MEMBERS` same-change — the bracket test will fail loudly otherwise (that is it working).
 
 **Warning signs:**
-- Tests: a single global-hash inequality test (weak proof); any random-init test that runs the download path (network in fast leg — the typed-skip audit would also flag network skips if used to dodge this).
-- CI: `"Cannot copy out of meta tensor"` traceback on nightly; `HF` cache growing during random-init tests.
-- Science: from-scratch learning curves that converge suspiciously like pretrained ones (reviewer-facing evidence the intake explicitly wants the hash for).
+- A removal diff touching `TestNotebookKernelPlotCompat`, `EXPECTED_MCP_MEMBERS`, or the systemd Environment-line pins.
+- Coverage or CI green with the ipython<9 pin no longer asserted anywhere.
+- The remove-vs-skip ledger in the plan listing file names without assertion names.
 
-**Phase to address:** Phase B wave B2 (REV-06, `model.py` cluster — no other B-wave plan owns `model.py`, keeping this wave conflict-free).
+**Phase to address:** Phase O, at plan time (the classification IS the plan); execution is then mechanical.
 
 ---
 
-### Pitfall 6 (REV-08): Variant↔token slot misalignment makes Δlog-likelihood incomparable — the exact challenge the reviewer raised — and it fails silently with plausible-looking AUROCs
+### Pitfall 6 (O/W): Census-triple and skip-allowlist collisions — the nightly hard gates trip on count drift the change never anticipated
 
 **What goes wrong:**
-Verified field consensus: a single SNV under BPE or k-mer tokenization changes the tokenization of the whole downstream sequence (DART-Eval arXiv:2412.05430 restricts likelihood eval to fixed-encoding models for this reason; Mut-BPE gives the canonical example: ref `['ATCA','ATGGC','AATT']` vs alt `['ATCA','TAGCA','TT']` — different tokens, different COUNT, no positional correspondence). dnallm's existing kernels inherit the trap: `clm_evaluate` (`mutagenesis.py:312-347`) computes whole-sequence logp; scoring ref vs alt sequences tokenized independently mixes tokenization-shift noise with the variant effect. With non-overlapping 6-mers (NT-style) a substitution shifts every k-mer downstream by the same phase — ref/alt tokens never occupy the same slot. Additional traps stacked on top:
-- **Paradigm mismatch:** applying CLM Δlogp scoring to bidirectional MLM models (or pseudo-PLL `mlm_evaluate` masking one token at a time to a causal model) yields numbers with no valid interpretation. One ClinVar evaluation of masked-LM allele probabilities found near-random AUROC (0.345–0.536) — near-random results are an EXPECTED outcome of protocol mismatch, not proof of a code bug, which makes the trap hard to detect from results alone.
-- **VCF coordinates:** 0- vs 1-based, `chr` prefixes, GRCh37/38 mismatch, indel left-alignment, REF allele not matching the reference genome. A ±1 offset corrupts the alignment for every variant. dnallm already has `dnallm.utils.genomic_coords` (v1.1) to reuse.
-- **ClinVar ascertainment bias:** labels enriched for pathogenic-observed variants; AUROC "consistent with literature magnitudes" (the intake acceptance) must use the same filtering conventions as the reference literature or magnitudes are incomparable.
+Three pinned gates interact with any test-set change:
+1. **D-03 census triple** (example-nightly stage 0.5, ci.yml ~line 853): hard-asserts `208/217 tests collected (9 deselected)` with the exact stage-1 selector flags. REMOVING tests (ollama) or the mcp_example pair changes collected/deselected counts → nightly goes red at stage 0.5 before anything runs. SKIP-marking does NOT change collection counts — a skip still collects.
+2. **`expected_skips.yaml` + audit_skips in 4 CI jobs:** every NEW skip message must match an allowlist entry or the job fails. Skip-marking the ollama surface with a fresh reason string ("removed-surface:" etc.) without a same-change allowlist entry → all four legs red. Conversely, removals orphan allowlist entries (harmless to the gate, but review debt — clean them same-change per the file's own "reviewable suppression record" charter).
+3. **Stage-3 OLLAMA BATCH orphan:** example-nightly stage 3 re-runs "just the two gated mcp tests" when ollama is up. If those tests are REMOVED but the stage remains, pytest selects nothing → exit code 5 (no tests collected) → recorded as a failure in the stage-4 summary → nightly red even though nothing is wrong. The stage must be deleted/rewritten in the same change as the removal.
+
+Platform-split adds a fourth: new platform-keyed skips fire on the **test-windows** junit (which also runs audit_skips, ci.yml line 187) with messages that may differ from Linux (precedent: `fd accounting needs /proc` entry exists precisely for the Windows leg).
 
 **Why it happens:**
-The pieces exist (`scoring()` at `inference.py:1746`, `mlm_evaluate`/`clm_evaluate`), so assembling a VEP scorer looks like glue work. The alignment requirement — ref and alt tokenizations must be IDENTICAL except at the variant slot (Mut-BPE's split-token approach: prefix/variant-base/suffix) — is invisible in any single test that only checks "it returns scores".
+The gates are deliberately pin-happy (the bump-point comments say so); every count change is intentional friction. A planner thinking "this is just a test removal" misses that three separate pinned integers move.
 
 **How to avoid:**
-- Make `align_variant(seq, pos, ref, alt, tokenizer)` a pure, heavily-tested function: hand-computed unit tests per tokenizer class — character/3-mer/6-mer (fixed-stride: alignment holds iff pos maps to a token boundary or the substitution stays within one token — assert both cases), BPE (assert the split-token scheme yields ref/alt token lists of equal length differing in exactly one index, else return an explicit `Skip(reason)` record). Assert: aligned(ref) vs aligned(alt) differ in EXACTLY one slot — this assertion IS the R1-3e① response.
-- Explicit skip accounting: `evaluate_vcf` returns scored variants + per-reason skip counts (`slot_mismatch`, `paradigm_unsupported`, `coordinate_invalid`); AUROC computed on the scored subset with the skip denominators reported. Test with a synthetic VCF where each skip reason fires a known number of times.
-- Paradigm guard: `score_variant(paradigm=...)` raises `ValueError` (matchable: `"paradigm='clm' requires a causal model"`) when the loaded model is bidirectional — introspection via model config `is_decoder`/architectures, consistent with the repo's reflection-based capability detection (`_get_accepted_forward_args` precedent).
-- VCF validation: assert REF matches the provided reference sequence at pos before scoring; reject mixed coordinate conventions with a per-record error, not silent best-guess parsing. Unit tests with 0-/1-based and `chr`-prefix fixtures.
-- Both-strand option documented (established practice: average forward/revcomp LLRs) — and the reverse-complement helper at `utils/sequence.py` has a lowercase-`n` mapping quirk worth a fixture test if N-containing windows occur.
-- Goldens: small frozen VEP fixture (e.g., 20 variants, 2 tokenizer classes) with pinned scores per release — catches silent scoring-kernel drift.
+- Any Phase O / Phase W plan lists an explicit "pinned-gate re-pin" task: new census triple measured from a real collection run (exact selector flags), `expected_skips.yaml` delta, and ci.yml stage-3 disposition — each in the same commit as the test change.
+- Prefer the typed-skip-prefix convention for anything kept; reuse existing prefixes (`environment-unavailable:`, `network-unavailable:`) where truthful rather than inventing near-duplicates.
+- For the Windows numpy path: new markers (if used to select the numpy-path execution lane) must be registered in `pyproject.toml [tool.pytest.ini_options] markers` — `--strict-markers` fails collection otherwise, which itself would trip the census gate confusingly.
 
 **Warning signs:**
-- Tests: alignment function tested only via "returns something"; no test where a variant is REJECTED for slot mismatch; no skip-count assertions.
-- Review: any ref/alt scored through independent `tokenizer(seq)` calls — that one line is the reviewer's challenge incarnate.
-- Science: AUROC ≈ 0.5 on a known-good dataset (GPN/DNABERT-2 reference magnitudes) — treat as protocol bug first, data second.
+- Nightly failing at stage 0.5 with "census collection mismatch" after a test-count change (this is the guard working — re-pin deliberately, never widen the grep).
+- `UNEXPECTED SKIPS` in any audit_skips job output.
+- pytest exit 5 in any nightly stage log.
 
-**Phase to address:** Phase B wave B3 (REV-08, new `inference/vep.py`). Depends on REV-02 registry (metrics output) from Phase A. Highest research-flag weight of the milestone — the roadmap should mark this phase for deeper plan-time research if tokenizer-class coverage grows.
+**Phase to address:** Phases O and W — each phase's verification includes a dispatched (or owner-watched) nightly run before close, given the nightly lane is the only place these gates fire.
 
 ---
 
-### Pitfall 7 (REV-09): The seed illusion (seed does not control dataloader/ augment/ dataset sampling), invalid statistics on n=3 seeds, and directory-protocol drift against the companion repo
+### Pitfall 7 (O/D): Notebook removal collides with the byte-identical mirror gate and mkdocs nav
 
 **What goes wrong:**
-Three layers:
-1. **Seed scope:** `TrainingConfig.seed` (configs.py:291) feeds HF `TrainingArguments.seed` → `set_seed` covers python/numpy/torch main-process RNG — but not necessarily `DNADataset` operations performed BEFORE the trainer runs (`train_test_split(seed=...)` at data.py:823 takes a caller-supplied seed; stratified `sampling` has its own seed; reverse-complement augmentation randomness), nor bitwise GPU determinism (cuDNN autotune/atomics; `use_deterministic_algorithms` off by default). Two runs with the same sweep seed can differ in metric 4th decimal — and two runs with different seeds can accidentally share the same data split, shrinking the effective variance the sweep claims to measure (or the opposite: split changes with seed when it shouldn't, conflating split variance with init variance — pick one semantics and document it).
-2. **Aggregation on n=3:** `ci95_bootstrap` on 3 values is statistically vacuous (bootstrap resamples from 3 numbers yield 10 distinct multisets); a normal-approximation CI at n=3 understates uncertainty. The intake itself specifies `mean/sd/ci95_bootstrap` — encode guards rather than shipping it verbatim.
-3. **Protocol drift:** `{model}/{task}/seed_{s}/` must match dnallmmark F2 byte-for-byte or the companion's aggregation reads fail — the same cross-repo drift class as the metric-key history (REV-02), but for paths and JSON schema.
+If the two `example/mcp_example/*.ipynb` notebooks are REMOVED (rather than kept-unexecuted): `check_docs_sync.py` requires the mirror copies under `docs/example/mcp_example/` to be removed too — an `.ipynb` exists on BOTH sides, so leaving the mirror copy produces `ONLY in docs/example/` (the `.md` wrapper exemption covers only docs-side `.md` files). But the `.md` wrappers (docs-only by design) then reference notebooks that no longer exist, and `mkdocs.yml` nav entries pointing at removed/emptied pages break `mkdocs build --strict` (which already carries 15 pre-existing warnings — new broken-link warnings there are easy to misattribute to the pre-existing pile). The nightly docs-validation and mirror checks then fail on a change that was conceptually "just delete two notebooks."
 
 **Why it happens:**
-"Set a seed" feels sufficient; every individual piece claims seeding support. The composite (dataset ops + trainer + augment + probe) has no single owner of randomness.
+The mirror is enforced byte-identical in both directions, but the docs AROUND the mirror (wrappers, nav, showcase pages) are a separate consistency surface with no automated cross-check to notebook existence.
 
 **How to avoid:**
-- `run_seeds(fn, seeds, out_root)` must thread ONE seed into every stochastic stage and document the semantics: recommended default = same data split across seeds (split seed derived from dataset, not the sweep seed) so seed-to-seed variance measures init/shuffle only. Assert in a same-change test: two `run_seeds` invocations with identical seed → identical metrics on a CPU tiny model (deterministic there); different seeds → different metrics.
-- `aggregate_seeds`: pure function, unit tests with constructed known arrays (intake acceptance); n-guard: `ci95` uses t-distribution (or reports `n<10, ci95 omitted`) — encode as `ValueError` or explicit None + documented field, with a test asserting bootstrap CI is refused/flagged at n=3.
-- Directory/JSON protocol: write a schema contract test (structure + required `statistics` block) and share the exact spec with dnallmmark F2 via the same mechanism as REV-02 (dnallm is the source of truth; companion pins a version).
-- Do NOT claim bitwise reproducibility on GPU — document CPU-deterministic only.
+- If removal: same-change — delete both sides' `.ipynb`, decide wrapper disposition (delete wrappers + nav entries together; a wrapper without its notebook is dead prose), run `mkdocs build --strict` locally and account for the delta vs the 15 known warnings.
+- If keep-unexecuted (recommended: consistent with the owner's "window stays open in the ledger" stance on #13): the notebooks stay, their execution tests skip/remove, and a short prose note in the wrapper states they are not executed by CI (the project's honesty convention — same class as the IA³ forward-pointer handled in v1.2).
+- Any Phase D sweep touching example notebooks at all (even a markdown-cell typo) must regenerate the mirror same-change via `scripts/generate_md_from_notebook.py` / `generate_md_from_marimo.py` — the byte-identical gate (`cmpfiles(..., shallow=False)`) reads bytes; "looks the same" is not a defense.
 
 **Warning signs:**
-- Tests: no same-seed-identity test; aggregation tests only on n≥10 arrays.
-- CI/review: sweep output JSON missing the `statistics` block; seed directories named `seed_1` vs `s1` in different runs; a companion-repo PR hardcoding paths instead of importing the protocol.
-- Science: identical metrics across "different" seeds (seed not actually threaded) — a canary assert (different seeds → not-all-identical) catches this cheaply.
+- `SYNC ERRORS:` from check_docs_sync in docs-validation.
+- mkdocs --strict warning count > 15 after a notebook/docs edit.
+- A diff editing `example/**` with no corresponding `docs/example/**` diff (and vice versa).
 
-**Phase to address:** Phase B wave B4 (REV-09, new `finetune/sweep.py`). If it needs `TrainingConfig`/`Ia3Config` schema additions, take them from the Phase A config-stub pass (see Pitfall 8) rather than editing `configs.py` concurrently with B1.
+**Phase to address:** Phase O (removal decision) and every phase touching example/ — the mirror-regen rule is a standing verification step for W and D too.
 
 ---
 
-### Pitfall 8 (Milestone-level): 4–5 parallel implementation agents collide on the same files — `configs.py`, `trainer.py`, `dnallm/__init__.py`, `expected_skips.yaml`, `pyproject.toml` — and on test collection
+### Pitfall 8 (W): The Windows leg goes skip-green instead of becoming the numpy-path executor — and the coverage gate quietly reprices platform-split code
 
 **What goes wrong:**
-Concrete collision matrix verified against the intake's file plan:
-- `dnallm/configuration/configs.py`: REV-04 (`Ia3Config`, `use_ia3`), REV-05 (preset reference), REV-08 (VEP config), REV-09 (sweep/seed) — four plans editing one 700+-line Pydantic module in parallel waves.
-- `dnallm/finetune/trainer.py`: REV-01 (Phase A) and REV-04 (B1) both edit init/setup paths; if wave boundaries blur, both land in one agent's branch.
-- `dnallm/__init__.py`: five new modules (`registry`, `probing`, `vep`, `sweep`, `motifs`) each need an import + `__all__` line — N agents appending to the same lines = guaranteed textual conflicts, and mid-wave a partially-re-exported package breaks `from dnallm import ...` for everyone (the facade is the documented API surface).
-- `tests/expected_skips.yaml`: any agent adding a typed skip (network-unavailable for a new real-model test) without same-change allowlisting fails `scripts/audit_skips.py` for ALL legs (4 CI jobs) — a shared gate failing for a private reason.
-- Test collection: repo collects TWO roots (`tests/` + `dnallm/mcp/tests/`) with no `__init__.py`; two agents creating same-basename test files in different dirs (e.g., `tests/mcp/test_server_tools.py` vs an existing/parallel `dnallm/mcp/tests/test_server_tools.py`) trigger pytest "import file mismatch" collection errors that look mysterious.
-- `pyproject.toml`: any coverage-omit or marker edit by one agent rebase-breaks another's.
+Two entangled failure modes:
+1. **The dishonesty class the project explicitly rejects** (v1 Phase-5 decision: "an ever-green skip is the same dishonesty class as the false-green CI gates"): the easy way to make test-windows pass the bedtools-gated tests is `skipif(sys.platform == "win32")` on the EXISTING tests — Windows then never executes the numpy evaluator, and "Windows platform parity" ships as a skip. The owner directive is the opposite: test-windows becomes the numpy-path EXECUTOR.
+2. **Coverage-gate math:** the numpy evaluators will live under `dnallm/` (in the coverage denominator on EVERY leg; the example code that calls them is NOT in the denominator). test-windows runs `pytest -m "not slow" --cov` (ci.yml line 182) — bare `--cov` activates `fail_under=90` there too. If the evaluator's unit tests are written skipif-guarded or only meaningful on Windows, the Linux coverage legs (fast gate + nightly census) lose their only coverage of the new modules → the 90 floor can breach (the floor is 90; the suite sits at 96.72 — headroom is real but not infinite for two new modules).
 
 **Why it happens:**
-The compression decision (owner, 2026-10-09: ~1–1.5 days via 4–5 parallel agents) optimizes calendar time; every shared file is a serialization point the wave design must respect or the merge phase eats the saved time.
+Un-slowing the showcase/NER execution tests for Windows floods the hosted leg with heavy notebook execution (models, HF downloads, the 60-minute timeout, cold pulls — the owner already dropped models-cache as quota-hostile), so the tempting shortcut is skips on one side and execution on neither.
 
 **How to avoid:**
-- **Phase A pre-creates all shared-file scaffolding in ONE plan:** every new Pydantic config class (Ia3Config, VepConfig, SweepConfig) as accepted stubs, `__init__.py` re-exports for all five modules, any `pyproject.toml` changes, and (optionally) empty module files with docstrings. Phase B agents then FILL modules without touching shared files. This is the single highest-leverage structural decision for the milestone.
-- **Wave file-ownership map as a roadmap artifact:** B1 owns `configs.py`+`trainer.py` (REV-04+05 together — intake dependency chain agrees); B2 owns `model.py` (REV-06); B3 owns new `inference/vep.py`+`probing.py` (REV-07+08 — different agents, zero shared files, but both consume the registry read-only); B4 owns `finetune/sweep.py` (REV-09); C owns `mcp/server.py`+`interpret/motifs.py` (REV-10/11). Each phase plan's UAT should include "no edits outside owned files" as a review check.
-- **Skip allowlist discipline:** any new typed skip must be added to `expected_skips.yaml` in the SAME change (existing audit gate enforces this — make it a checklist line in every plan template so agents don't rediscover it in CI).
-- **Unique test basenames:** convention `test_<module>.py` where module names are unique (they are, mirroring the package) — call it out so nobody creates helper-named twins across the two collected roots.
+- Two-layer test design, both layers platform-neutral where possible: (a) **unit layer** — evaluator correctness tests on synthetic BEDs (spike corpora, baked oracle literals) run on ALL legs including Linux: this is what keeps coverage and parity proven everywhere; (b) **execution layer** — the notebook/script execution tests get platform-AWARE dispatch (Linux: bedtools/pybedtools path on the nightly box; Windows: numpy path), selected by the existing gates (`_gate_script_pybedtools`, `_gate_pybedtools`, the `which('bedtools')` assert → numpy-path pass) rather than by a blanket marker flip. The three gate sites are inventoried in WINDOWS #19: `test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`.
+- Scope what test-windows actually executes: the parity-relevant execution subset, not the whole slow lane; a hosted-leg time budget must be measured in the first Windows-path PR (precedent: D-12 measured budgets citing run ids).
+- Keep the Windows numpy-path execution failure LOUD: if the numpy path is what Windows runs, a missing-model/env failure on Windows must surface as the typed skip classes already exist (probe-then-execute), never as a silent pass.
 
 **Warning signs:**
-- Process: merge conflicts on `configs.py`/`__init__.py` in more than one wave-PR; a wave PR whose diff touches files outside its ownership map.
-- CI: `audit_skips.py` exit 1 with an unexpected skip message from another agent's feature; pytest collection errors mentioning "import file mismatch".
-- Review: `__all__` ordering churn or duplicated import lines.
+- `skipif(sys.platform == "win32")` on any bedtools/pybedtools-gated test that has no Windows-executing sibling.
+- test-windows junit where the numpy evaluator never appears in any stack trace.
+- Linux coverage report showing the new evaluator modules below the per-module ≥96% standard.
 
-**Phase to address:** Phase A (scaffolding pass) + roadmap-level wave design (the phase planner, not individual plans, owns the file-ownership map).
-
----
-
-## Moderate Pitfalls
-
-### Pitfall 9 (REV-03): Comparability warnings treated as "just docs" while the validity trap ships — and the docs-mirror gate bites
-
-**What goes wrong:**
-Verified: `validate_sequences` (data.py:842-860, via `check_sequence` sequence.py:89-124) drops WHOLE sequences containing any char outside `valid_chars`; 13 models reject N (`"ACGTacgt"` strict charset), so each model silently evaluates a different subset of the same dataset — cross-model tables compare different data. The D3 ruling makes the suite side docs-only, which is right, but two follow-on traps: (a) the warning exists only in a docstring nobody reads while the benchmark JSONs show per-model row-count differences nobody notices; (b) REV-03 edits docs → `scripts/check_docs_sync.py` byte-identical mirror enforcement applies; a hastily edited `docs/` page without the mirror resync fails CI (v1.1 precedent).
-
-**Prevention:** docstring + API-docs warning in the same change; add a one-line runtime affordance — log the dropped-row count when `validate_sequences` filters (a log line, not a new API, respecting the D3 ruling). Docs changes go through the established mirror-resync flow. Warning sign: benchmark JSON row counts differing across models for the same dataset (reviewer-visible); docs-validation CI red.
-
-**Phase to address:** Phase A (REV-03).
+**Phase to address:** Phase W — test architecture is decided at plan time, before the first evaluator commit.
 
 ---
 
-### Pitfall 10 (REV-07): Probe leakage, embedding-cache staleness, and pooling-choice sensitivity silently flip probing conclusions
+### Pitfall 9 (D/P): The docs accuracy sweep lands before the packaging decisions and is stale on arrival
 
 **What goes wrong:**
-(a) `fit_probe` with "dev early stopping" (intake) leaks if the dev split used for probe early-stopping is the same rows later used to report probe metrics — or worse, if embeddings are extracted from a dataset that was itself filtered per-model (REV-03 interaction). (b) The npz embedding cache keyed only by model+dataset goes stale when pooling/layer parameters change — a second run "hits cache" with the WRONG embeddings (the intake acceptance "cache second-run hit" invites a key that omits the pooling/layer dims). (c) Pooling choice (mean vs last vs CLS) changes probing conclusions; if the default differs from what the finetuning comparison (F4 lane) assumes, probe-vs-finetune tables compare different representations.
+The sweep reviews `docs/` + `example/` per-file for accuracy vs code. If it runs BEFORE the extras rename, cuda130-default change, cuda121 retirement, GPU-matrix documentation, or the Windows platform-split example edits, every reviewed page is invalidated by the very next phase — the milestone ends with a "docs accuracy review" whose pages describe a package that no longer exists. The specific high-churn surfaces: `installation.md` (extras table line 201, `.[base]` ×8, `.[cuda121]` line 517, `.[base,cuda124]` line 442), `example/notebooks/overview.md` (3 mentions of `.[base,notebook,cuda124]` as the DEFAULT install — owner directive 2026-10-11 already retargets this to cuda130), README install block, and every page whose snippets embed example code (checked by `check_docs_code.py` / `validate_docs_snippets.py`).
 
-**Prevention:** probe split discipline enforced in code (fit on train, early-stop on dev, report on test — assert disjoint row counts in tests); cache key = hash(model_id, dataset_fingerprint, layer, pooling) with a unit test that changing pooling MISSES the cache; pooling recorded in every output row and pinned in the F4 export schema. Warning signs: probe metrics ≥ fine-tuned metrics (leakage smell); cache-hit test passing while a pooling-change test is absent; output tables missing the pooling column.
+**Why it happens:**
+Docs feel like a safe parallel workstream, so they get scheduled first or in parallel. But this sweep's deliverable is *accuracy*, which is a function of the final code state — it is the one phase with a hard ordering dependency on nearly every other phase.
 
-**Phase to address:** Phase B wave B3 (REV-07, `inference/probing.py`).
+**How to avoid:**
+- Order: O/G → W/P → S → D, with Phase D last as the honesty backstop absorbing all downstream doc consequences (the GPU support matrix row in STATE has the full pre-verified boundary table ready to paste: Pascal cpu-only, Turing = cuda121–128 ceiling, Ampere+ = cuda130 default, 50xx cuda128+; verify-against-local-torch evidence 2026-10-11).
+- The sweep must be uv-vs-pip lane-split (STATE extras-hygiene item d): plain `pip install dnallm[cuda130]` silently ignores the uv-only `[tool.uv.sources]` index pin leaving users on default torch — every install command in docs needs its lane labeled, and the pip lane needs the explicit `--index-url https://download.pytorch.org/whl/cu130` guidance or an honest "uv-only convenience" note.
+- Same-pass fix discipline (owner directive): findings are fixed in the same sweep, not parked — but fixes to MIRRORED content must follow Pitfall 7's regen rule, and fixes to notebook code cells require re-execution evidence (nightly) before the committed outputs change.
+
+**Warning signs:**
+- A roadmap where Phase D precedes P or W.
+- Docs review notes that say "accurate as of commit X" where X precedes the pyproject rename commit.
+- `grep -rn "cuda121\|\[base\]" docs/` returning hits after both packaging phases merged.
+
+**Phase to address:** Phase D ordering decision — roadmap-creation time, before any phase executes.
 
 ---
 
-### Pitfall 11 (REV-10): PWM matching with uniform background, raw log-odds thresholds across motifs, per-sequence FDR, and untested strand conventions
+### Pitfall 10 (S): The OIDC Trusted Publishing migration fails on claim-matching details a dry-run cannot prove — and the old token's removal races the new chain's first use
 
 **What goes wrong:**
-Verified FIMO/JASPAR conventions that naive implementations violate: (a) uniform 0.25 background inflates hits on GC-rich DNA — background must be zero-order Markov matched to target GC (`fasta-get-markov` practice); (b) log-odds thresholds are NOT comparable across motifs (different score ranges) — p-values via the exact null distribution (dynamic programming) are the cross-motif-comparable currency, BH q-values for FDR over the FULL window×motif test set (millions of tests — per-sequence correction is wrong); (c) strand: default practice scans both strands (`--norc` opts out); an implementation that scans only the given strand halves sensitivity, and a revcomp-convention mixup (motif given on its stated strand) double-counts or misses; (d) pseudocount convention (0.1 scaled by background) affects short-matrix stability.
+Verified external behavior (MEDIUM confidence, cross-checked): PyPI matches the OIDC token against the registered publisher on **owner + repository + workflow FILENAME (not the workflow's `name:`) + environment name**, exactly. The failure modes that recur in the wild: `environment:` on the job missing or differing from the PyPI-side registration (`invalid-publisher` / `invalid-pending-publisher`); a workflow rename (e.g. splitting `publish.yml` into `publish.yml` + `publish-smoke.yml` per Pitfall 3) that makes the SMOKE workflow an unregistered publisher while the release workflow stays registered — or vice versa; `permissions: id-token: write` missing at the job/workflow level; forks receiving `id-token: write` but failing at upload (expected; PR-authored code must never reach publishing anyway — matches the repo's self-hosted policy stance); reusable workflows NOT supported as publisher (warehouse#11096) — relevant if the smoke is factored into a reusable workflow to share steps with the release job, which is precisely the refactor a tidy implementer would do. Tooling: plain `twine upload` does NOT perform the OIDC exchange itself — the migration means either `pypa/gh-action-pypi-publish` (which exchanges the token then uploads via twine internally) or `uv publish --trusted-publishing` (the repo already uses uv everywhere else; `--check-url` gives the skip-existing-equivalent semantics safely). Finally: deleting `PYPI_API_TOKEN` before the first successful OIDC publish leaves the chain unable to fall back; keeping it forever defeats the migration's purpose.
 
-**Prevention:** implement the FIMO defaults as documented constants with provenance comments; unit tests: a synthetic GC-skewed sequence where uniform-vs-matched background changes the hit set (assert the difference is flagged/logged); strand test with a palindromic and a non-palindromic motif; golden test = the HBG1/BCL11A case matching paper Fig 4a coordinates (the intake acceptance — freeze it as a regression fixture).
+**Why it happens:**
+Every requirement is invisible until the first real release; a dry-run (`uv publish --dry-run`) validates metadata and the `/validate` endpoint but does not complete a trusted-publishing mint-and-upload, so the migration can be "done" and still fail only when a release is cut. The STATE row already flags the decision as riding the publish-smoke phase — the pitfall is treating the smoke as sufficient proof.
 
-**Warning signs:** motif hit counts scaling linearly with window count without FDR control; identical hits on + and − strands for non-palindromic motifs (revcomp bug); HBG1 golden test absent.
+**How to avoid:**
+- Register the publisher with the FINAL workflow filename(s) after the Pitfall-3 split, with a named GitHub `environment:` (e.g. `pypi`) used identically on both sides; add `permissions: id-token: write` (and `contents: read`) to the publishing job only, never workflow-wide.
+- Migrate to `uv publish --trusted-publishing always` (explicit; `automatic` can silently fall back to token auth if the secret still exists — a false sense of migration) or the SHA-pinned `pypa/gh-action-pypi-publish`.
+- Keep the token through the first observed real release, then delete the secret and re-run the smoke to prove it no longer depends on it. Record the observed release run id in the phase verification (the project's evidence convention).
+- Do not factor the publish steps into a reusable workflow (unsupported as publisher).
 
-**Phase to address:** Phase C (REV-10, `interpret/motifs.py`).
+**Warning signs:**
+- `invalid-publisher` / `invalid-pending-publisher` in a publish attempt (claim mismatch — check environment + filename first).
+- A migrated workflow still carrying `TWINE_PASSWORD`/`PYPI_API_TOKEN` refs after the first successful OIDC release.
+- Smoke green while no real release has yet exercised the mint.
+
+**Phase to address:** Phase S, sequenced after the Pitfall-3 workflow split; closure criterion includes one observed real release.
 
 ---
 
-### Pitfall 12 (REV-11): New MCP tools skip the timeout wrapper, make blocking sync calls inside the asyncio server, or raise across the protocol boundary — and the `--host/--port` fix breaks the streamable-http case
+### Pitfall 11 (W/G): GAP-1 un-skips surface before the environment truly supports them — and the compat shim's blast radius crosses all 35 model families
 
 **What goes wrong:**
-Verified server conventions that new tools must inherit, each with a concrete bypass route: (a) `_with_timeout_wrapper` (server.py:295-354) wraps every non-streaming tool via `asyncio.wait_for` and returns an error DICT — a new tool registered bare (`self.app.tool()(self._ism_scan)`) gets no timeout and no structured error; the registration block at 263-292 is the pattern to extend, and its "streaming tools handle timeout internally" comment means long-running ISM scans (>6000 forward passes for 2kb) should probably be streaming/chunk-based like the existing stream tools rather than wait_for'd; (b) ISM/mutagenesis/VEP scoring are heavy SYNCHRONOUS torch calls — calling them directly in an async tool body stalls the event loop so even `health_check` stops responding; the established bridge is `loop.run_in_executor` with the lock held INSIDE the executor closure (model_manager.py:99-121, whose comments document the orphaned-24.5GB-server lesson); (c) the protocol boundary rule is error-dicts-not-raises — a `raise` inside a tool surfaces as an MCP protocol error and breaks the client contract tests; (d) the known `--host/--port` bug: config silently overrides CLI args (server.py:1743-1747), but the streamable-http path has DIFFERENT conditional precedence (1854-1857) — a naive "CLI wins" fix applied to one path desyncs the other. Also: `zero_shot_score` inherits REV-08 skip semantics — skip counts must appear in the tool result payload so agents can interpret partial scoring.
+WINDOWS #11/#12 are both the same class: the NT promoter checkpoint's remote code needs removed transformers-4.x `PretrainedConfig` defaults (`is_decoder`/`add_cross_attention`) under 5.x. The v1.3 disposition is "compat-shim vs removal at planning time." Two ways it goes wrong:
+1. **Shim blast radius:** the natural home (`dnallm/utils/transformers_compat.py`, already spanning 4.49–5.x) patches config defaults GLOBALLY — every model family loads through the patched path, so a too-broad patch (re-adding defaults unconditionally, mutating `PretrainedConfig.__init__` for all models) can change behavior for models that never needed it. The shim must also fire BEFORE the remote module instantiates its config (import-order sensitivity), and remote-code execution is `trust_remote_code` territory — keep the shim declarative and version-keyed, and prove no-diff on a non-NT family.
+2. **Premature un-skip:** #12's typed skip is self-healing by design (fires only while the env can't). If the shim works locally but the checkpoint still fails on CI (HF endpoint/mirror variance, runner cache state), un-skipping turns the leg red — and if someone then "fixes" the redness by loosening the probe, the probe-then-execute discipline (live evidence carried in skip messages, both directions proven — a Key Decision) erodes. Closure of #15 riding along has the same shape: those optional-dep gates prove *environment* availability, not code correctness.
 
-**Prevention:** handshake regression tests per new tool (server up → client calls tool → JSON assertions — the v1.1 live-server-probe precedent, both transports); an event-loop liveness test (concurrent `health_check` during a long tool call must succeed within a bound — catches blocking-in-async without reading the diff); a registration-coverage structure test asserting every tool in a known list is timeout-wrapped; host/port precedence tests for BOTH transports (`stdio` unaffected, `sse` and `streamable-http` asserting CLI > config > default).
+**Why it happens:**
+A local green is a powerful but partial proof; the gap between "loads on the dev box" and "loads in every CI lane" is exactly the network/cache variance the typed-skip system was built to absorb.
 
-**Warning signs:** review diff adding `self.app.tool()(self._x)` without the wrapper; tests calling tool functions directly instead of through a live/fixture server; timeout errors mentioning tools that were supposed to be streaming.
+**How to avoid:**
+- Decide shim-vs-removal in the plan with a blast-radius estimate: shim = version-keyed, minimal-attribute, guarded (matchable loud error if the remote code's expectations drift again), plus a regression test pinning a non-NT family's config behavior unchanged; removal = benchmark notebook loses its third model — an honest surface narrowing that must be documented, not slipped in.
+- Un-skip only with the skip's own probe proven green in the target lane; keep the probe machinery intact so a future regression re-skips loudly rather than failing opaquely.
+- If #15 closes on shim success, close it with per-item probe evidence (the ledger entry lists the specific gates: evo/megaDNA optional-dep, megaDNA demo cell, PlantCAD lora pair) — not a blanket un-skip.
 
-**Phase to address:** Phase C (REV-11).
+**Warning signs:**
+- A compat shim without a version guard or without a non-target-family regression test.
+- Un-skipped tests whose probe helpers were deleted in the same diff.
+- Benchmark docs still listing three models after a removal disposition.
+
+**Phase to address:** Phase G (decision at plan time); interacts with Phase W — the Windows NER execution path needs the NT BPE checkpoint loadable, so G precedes or rides the front of W.
 
 ---
 
-### Pitfall 13 (Milestone-level): The 90% hard gate will NOT catch under-tested new modules — the real bar is the 96%+ working standard plus the owner's same-change rule
+### Pitfall 12 (P/S): cuda121 retirement and the rocm pin leave stale references in CI, uv config, and docs — and the triton-windows declaration imports a community fork into the published surface
 
 **What goes wrong:**
-Arithmetic: the denominator is ~7.4k stmts at 96.42%; a 400-line `vep.py` merged with zero tests drops coverage to ~94.9% — still comfortably above `fail_under=90`, so CI stays green while the milestone silently gives back a point and a half of the v1 hardening. The gate is a floor, not the standard. (Also: a module accidentally placed under an omit glob — Pitfall 2 — doesn't even appear in the arithmetic.)
+Three packaging half-changes:
+1. **cuda121 retirement:** `pyproject.toml` keeps a `cuda121` extra, a `torch-cuda121` uv index, sources entries, and conflicts pairs; `ci.yml`'s `test-cuda` matrix still lists `'12.1'` (line 218 area); `docs/getting_started/installation.md:517` shows `.[cuda121]` as the chooser example. Retiring the extra without all three (extra+index+sources+conflicts, matrix leg, docs) leaves a CI leg installing a dead extra (pip warn-and-continue per Pitfall 4 — silent under-install on a GPU lane) and docs pointing users at a retired lane.
+2. **rocm restore-or-remove:** the `[tool.uv.sources]`/conflicts rocm block is commented out, so `.[rocm]` installs default-index torch — README's ROCm claim is inert TODAY. Restoring means uncommenting an index pinned to `rocm6.2` — stale against the torch 2.11/<2.12 the package now rides (torch-ROCm wheel lanes move per release; a stale index either resolves old torch or fails loudly). Removing means the README claim and docs must stop promising ROCm (a docs-honesty item, not just pyproject hygiene).
+3. **triton-windows (#18, MEDIUM confidence external):** the fork has moved under the `triton-lang` org with multi-vendor contributors and reproducible+attested builds since 3.7.1.post27, but remains a community package separate from upstream, version-coupled to torch (3.6↔2.10, 3.8↔2.14/2.15) with DLL/vcredist failure modes on user machines. Declaring it behind a Windows marker in the `fla` extra makes every Windows fla user ride community release cadence and the torch-pairing being right; NOT declaring it keeps the current manual-step documentation (the local remedy: triton-windows==3.7.1.post27) — the honest middle is documenting the exact version pairing and keeping `test_chunk_kda_importable_when_fla_installed`'s skip behavior truthful on Windows.
 
-**Prevention:** every plan's UAT includes per-module coverage (`pytest --cov=dnallm.inference.vep ...` scoped run — the repo already documents `--no-cov` for scoped runs, so the inverse pattern is established) plus the owner rule (memory: any dnallm/ change ships with pytest coverage in the same change). The verifier for each phase should reproduce the module-level number, not just the global gate.
+**Why it happens:**
+Each is "just pyproject hygiene" — but every extra is a public API (Pitfall 4), every uv index a resolution path, and every README claim a contract.
 
-**Warning signs:** nightly coverage number trending down across waves; a merged module with no matching `tests/<pkg>/test_<module>.py`.
+**How to avoid:**
+- Treat extras changes as atomic units: extra + uv index + sources + conflicts + CI matrix + docs + README in one change, verified by a fresh-venv resolve per affected extra (the `--resolution=lowest` lane in installation.md:591 is the existing precedent for resolve-verification).
+- For rocm: verify the restored index actually carries torch matching the `<2.12` cap before committing; if not, the honest move is removal + docs, not a stale restore.
+- For triton-windows: default to documentation-of-manual-step (current state, already proven on RTX 5080) unless the owner accepts the third-party dependency; if declared, pin `<` the next major and add a bracket guard so dependabot-style bumps can't silently decouple it from torch.
 
-**Phase to address:** All Phase B/C plans (checklist item per plan); enforced at phase verification.
+**Warning signs:**
+- `grep -n "cuda121\|rocm" pyproject.toml .github/workflows/ci.yml README.md docs/ -r` returning inconsistent subsets after any packaging PR.
+- A GPU CI leg green in less time than usual (under-installed via a warn-and-continue extra).
+- README promising an install path that resolves a different torch than documented.
 
----
-
-### Pitfall 14 (Milestone-level): Tests accidentally pin peft/transformers behaviors that differ across the supported version span (transformers 4.49–5.x, peft ≥0.14)
-
-**What goes wrong:**
-Every new PEFT/model path inherits the version-span constraint ("tests must not pin to a single transformers minor" — pyproject/CI matrix). Concrete verified examples in scope: peft's IA³×4-bit behavior differs by version (older: `NotImplementedError` at injection; 0.21.2: injection OK, merge raises); peft's no-match target-module handling shifted between warn-and-continue and raise; transformers 5.x changed `warmup_ratio` handling (already patched at trainer.py:203-205, 243-254 — proof the class of problem is real here) and tied-weight `post_init` semantics. A test asserting a foreign library's exact exception type/message passes on the dev env (transformers 5.19) and fails the matrix leg or a future bump.
-
-**Prevention:** assert on DNALLM's OWN error surface (`pytest.raises(ValueError, match="<our message>")` from our config-validation guards — Pitfall 3's strategy) rather than peft/transformers internals; feature-detect library capabilities instead of version-gating; where a matrix-leg difference is unavoidable, prefer parametrized expectations over `xfail`-spray. Warning sign: any new test importing a private peft/transformers symbol or matching a foreign exception string.
-
-**Phase to address:** B1/B2 plans primarily (PEFT and model-loading clusters); review checklist for all.
-
----
-
-### Pitfall 15 (Milestone-level): Nightly-leg realities — new real-model tests need models.lock rows, `slow` marking, and budget/census awareness
-
-**What goes wrong:**
-REV-04/05/06/08 acceptances require real models (IA³×Mamba, VEP ×5 models, two-architecture random-init). Dropped into the fast PR leg they pull network downloads into every PR run (and typed network skips into the allowlist); dropped into nightly without `models.lock` rows they break the consistency guard (CI-08 precedent: drift-injection-proven); added in bulk they blow the measured D-12 budgets and the staged-serial D-07 VRAM discipline (≥35Gi floor). Separately, the D-03 example-lane census triple (208/217 hard-asserted) is only disturbed if REV work adds `example/` artifacts — if any REV adds an example notebook or YAML, the triple needs a deliberate same-change re-pin (2026-10-07 precedent).
-
-**Prevention:** every real-model test is `slow`-marked from birth; every newly-referenced model id gets a `models.lock` row (sha-pinned, prefix↔source aligned) in the same change; nightly budget deltas estimated before the wave merges; example/ additions explicitly re-pin D-03. Warning signs: fast leg runtime creeping up; `audit_skips.py` failures on new network skips; nightly OOM at the VRAM floor.
-
-**Phase to address:** B1–B4 and C plans (checklist per plan); CI-facing items at phase verification.
+**Phase to address:** Phase P (all three), with the triton-windows decision recorded owner-side at plan time like the other owner calls.
 
 ---
 
 ## Technical Debt Patterns
 
-| Shortcut | Immediate Benefit | Long-Term Cost | When Acceptable |
+| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Emitting metric aliases "temporarily" for backward compat | Old consumers keep working | Re-creates the R1-2d drift chain the registry exists to kill | Never — recognition only (Pitfall 2) |
-| Guessing PEFT target_modules from family name conventions | Presets table done in an hour | Silently frozen models invalidating the IA³ baseline (Pitfall 4) | Never — derive from real configs |
-| Global single-hash proof for random_init | One quick test | Weak proof; leftover pretrained tensors undetected (Pitfall 5) | Never as sole proof; per-tensor comparison required |
-| Scoring ref/alt via independent tokenization | Reuses `clm_evaluate` unchanged | Tokenization noise mixed into variant effects; reviewer challenge unanswered (Pitfall 6) | Never for VEP; fine for whole-sequence scoring unrelated to variants |
-| Registering new MCP tools without the timeout wrapper | Tool works in happy path | Event-loop stalls, protocol errors, unbounded runs (Pitfall 12) | Only for streaming tools that own their chunk timers |
-| Skipping `expected_skips.yaml` update "until CI tells me" | Faster local loop | 4 CI legs red for everyone; audit gate failure (Pitfall 8) | Never |
-| Bootstrap CI on n=3 seeds | Matches intake spec verbatim | Statistically vacuous precision in the paper (Pitfall 7) | Only with explicit n-guard + t-interval fallback |
+| `skipif(win32)` on bedtools-gated tests instead of a real Windows numpy-path lane | test-windows green fast | "Parity" ships unexecuted on Windows — the exact ever-green-skip dishonesty class the project bans | Never for the parity claim itself; acceptable only for genuinely Linux-only tools (fd accounting precedent) |
+| Re-running spike scripts as the production evaluator (import from `.planning/quick/`) | Zero porting work | Planning artifacts become runtime dependencies; pins untested against library context | Never — port + unit-test (Pitfall 2) |
+| Leaving `PYPI_API_TOKEN` after OIDC migration | Fallback safety | `--trusted-publishing automatic` silently uses it; migration is theater | Only until first observed real release, then delete (Pitfall 10) |
+| Keeping a deprecated `base` alias extra forever | No downstream break | Misleading name persists (the original complaint) | One version cycle, with migration note |
+| Orphaned `expected_skips.yaml` entries after removals | Zero gate friction | The allowlist drifts from reality, eroding its value as a reviewable record | One phase — clean same-change when the sweep lands |
+| `|| true` on mypy in CI legs (current state) | No gate on a known-noisy check | Version drift accumulates invisibly (136 errors already seen on fresh runners) | Until the cap lands in Phase S; not after |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| HF `Trainer` (transformers 5.19) | Active `eval_strategy` with `eval_dataset=None` "should just skip" | Trainer raises `ValueError` — guard must set both atomically; `metric_for_best_model` silently defaults to `"loss"` when `load_best=True` (verified) |
-| `Trainer.evaluate` vs `predict` | Using `evaluate(split="test")` via `trainer.evaluate` | Route test through `trainer.predict` (`infer()` path, trainer.py:502) — `evaluate` evaluates the configured eval set only |
-| peft `get_peft_model` | Assuming wrong `target_modules` raises | Silent skip on Mamba/hybrid; assert trainable-param count after attach (Pitfall 4) |
-| peft `prepare_model_for_kbit_training` | Calling after `get_peft_model` or skipping for IA³ | Call between `from_pretrained` and `get_peft_model` (trainer.py:159-167 order is correct); IA³+4bit rejected at OUR config layer (Pitfall 3) |
-| peft adapter save/reload | Roundtrip tested only for LoRA | IA³ roundtrip has a distinct corruption class (#2429/#2432); test per adapter type |
-| transformers random init | `from_pretrained` then re-init | `from_config`; never `from_pretrained` under meta context (raises anti-pattern RuntimeError); check `data_ptr()` ties; expect `trust_remote_code` tied-weight quirks on 5.x |
-| HF `datasets` splits | Assuming `train_test_split` is deterministic | Default-seeded only when seed passed — sweep must thread it explicitly (Pitfall 7) |
-| FastMCP/asyncio | Blocking torch calls in tool body | `run_in_executor` bridge with lock inside the closure (model_manager.py:99-121 pattern) |
-| JASPAR/FIMO ecosystem | Hand-rolled threshold logic | Follow FIMO defaults (p<1e-4, BH q-values, zero-order GC background, both strands); JASPAR PFMs are already MEME-format |
-| dnallmmark (companion repo) | Importing dnallm at HEAD | Pin a dnallm version/commit; registry + sweep protocol are dnallm-owned contracts |
+| PyPI upload | Smoke/dispatch run reaching `twine upload`; trusting `--skip-existing` | Event-gate upload steps; build + `twine check --strict` + install-from-dist; filenames are immutable (Pitfall 3) |
+| PyPI Trusted Publishing | Registering with workflow `name:` instead of filename; no `environment:`; reusable workflow; plain twine expected to do OIDC | Match owner/repo/filename/environment exactly; `uv publish --trusted-publishing always` or gh-action; prove on first real release (Pitfall 10) |
+| pip extras | Assuming a bad extra errors | It warns and exits 0 — grep CI logs for `does not provide the extra` as a health check (Pitfall 4) |
+| uv indexes | Documenting `pip install dnallm[cuda130]` as equivalent | `[tool.uv.sources]` is uv-only; pip lane needs explicit `--index-url` or honest labeling (Pitfall 9) |
+| bedtools oracle | Re-freezing truth against a different bedtools version than v2.31.1 | The spikes' oracle is PATH-resolved v2.31.1; Linux keeps that binary (rootless micromamba cache keyed on it) — `--bedtools`-style override + version echo in any re-verification |
+| GitHub self-hosted runner | Letting PR-authored CI reach the nightly box during new Windows-lane work | Keep push/PR guards off self-hosted labels; new legs hosted-only until proven (existing GATE-02 policy) |
+| HF endpoints | Un-skipping model-download tests assuming reachability | Keep probe-then-execute with live evidence in messages (existing D-08 contract) |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| `mlm_evaluate`-style per-token masking in VEP | O(L) forward passes per variant; 1k variants × 2kb × 5 models never finishes nightly | Batch variants; restrict masking to the variant slot (alignment already constrains it); mark large runs `slow`/nightly | ~100 variants on CPU-only CI; ~10k variants on GPU nightly |
-| MCP `ism_scan` under `asyncio.wait_for` | Timeout error dicts for legitimately long scans; users retry-loop | Chunk-based streaming tool (existing stream-tool pattern owns its timer) or documented sub-scan limits in the error dict's `suggestion` | Sequences >~500bp at default `_tool_timeout_seconds` |
-| `prepare_model_for_kbit_training` + gradient checkpointing combos in IA³ tests | Nightly VRAM floor (≥35Gi, D-07) breached | Keep tiny models for logic tests; real-model legs staggered per staged-serial D-07 | Parallel wave merges landing multiple heavy test classes same night |
-| Embedding cache without fingerprint key | Silent stale-cache reuse producing wrong probe numbers (Pitfall 10) | Hash(model, dataset, layer, pooling) key | Any run after changing pooling defaults |
-| PWM scan over millions of windows in pure Python | Multi-hour scans; nightly budget overrun | Vectorized log-odds via numpy sliding windows (altair-adjacent stack already numpy-heavy); FDR on the full set at once | Genomic-scale windows (>10^6) |
+| Un-slowing the showcase/NER execution tests for the Windows numpy lane | test-windows (60-min timeout) blows budget on hosted runners; fast PR legs everywhere slow down | Platform-aware dispatch on the execution layer only; scoped parity subset; measured budget in the first PR (D-12 precedent) | First push after the marker flip |
+| Cold model pulls on windows-latest | Multi-minute HF downloads per run, no cache quota | Scope the Windows execution subset to small checkpoints; accept and budget, or pin a targeted cache | Immediately, every run |
+| example-nightly schedule collisions on the shared GB10 box | OOM/VRAM exhaustion; memory floor trips | Keep the staged-serial D-07 layout; any new Windows-only work stays OFF the nightly box | When a new stage is inserted without the ≥35Gi floor assert between server-binding stages |
+| Property-corpus tests at spike scale in the fast lane | 3,000 subprocess oracle invocations (5s on Linux with bedtools; minutes without) | Bake oracle literals for the Windows/no-bedtools legs; run the live-oracle variant only where bedtools exists (nightly) | First Windows run of the corpus test |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Trusting downloaded VCF/PWM files (ClinVar snapshots, JASPAR downloads) | Malicious or corrupted scientific data crashing parsers; path traversal in record IDs used as filenames | Parse with strict validators; never use VCF record fields to construct filesystem paths; treat downloaded files as untrusted input (isolate + validate, per environment policy) |
-| Network model downloads inside tool/MCP paths triggered by agent input | Uncontrolled egress + cache flooding from arbitrary model names in `zero_shot_score` args | Restrict to models in the server config registry (existing ModelManager pattern); validate against the configured model list before any download |
-| `trust_remote_code=True` families exercised by new random_init paths | Arbitrary code execution surface from third-party model repos (pre-existing, but REV-06 widens the set of invocation paths) | random_init allowlist limited to vetted families; document that unlisted families raise `ValueError` |
+| workflow-wide `permissions: id-token: write` (instead of job-scoped) during OIDC migration | Every job in the workflow can mint PyPI tokens | Job-level permissions on the publish job only; `contents: read` elsewhere |
+| Keeping `PYPI_API_TOKEN` in secrets post-migration "just in case" | Long-lived credential outlives its purpose; automatic trusted-publishing silently prefers it | Delete after first observed OIDC release; re-run smoke to prove independence (Pitfall 10) |
+| Declaring triton-windows (community fork) without version ceiling | Supply-chain + silent torch decoupling for every Windows fla user | Prefer documented manual step; if declared: pin, bracket-guard, attested-builds series only (≥3.7.1.post27) |
+| GAP-1 shim broadening remote-code config defaults globally | Behavior change across 35 model families; unpredictable interaction with future remote code | Version-keyed minimal shim + non-target-family regression test (Pitfall 11) |
+| `continue-on-error` anywhere in the publish chain | Releases "succeed" unpublished (documented real-world TP failure mode) | Hard-fail every publish step; the smoke exists precisely to make failures loud |
 
-## UX Pitfalls (API/docs surface for paper-revision users)
+## UX Pitfalls (installer/docs UX — this milestone's user-facing surface)
 
 | Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| `random_init=True` on an unsupported family failing deep inside a handler | Opaque foreign traceback; user thinks their model is broken | Family allowlist + `ValueError("random_init is not supported for {family}; supported: …")` at the load boundary |
-| VEP skip reasons hidden in logs | Users report AUROC on an unknown subset and compare to literature | Skip counts + reasons in the returned table AND a summary line; docstring protocol statement (intake requirement) |
-| Sweep seed semantics undocumented | Users conflate split variance with init variance when comparing runs | One documented rule (recommended: split fixed across seeds) in `run_seeds` docstring + README protocol section |
-| New config flags (`use_ia3`, `allow_test_as_eval`) with silent defaults | Users unknowingly reproduce the exact leak the paper revision fixes | WARN on every override path; Pydantic field descriptions state the danger (configs.py `Field(description=...)` convention) |
+|---------|-------------|------------------|
+| Extras rename without an alias or migration note | `pip install dnallm[base]` quietly installs a fraction of the intended environment | Deprecated alias extra for a cycle + changelog/docs migration note (Pitfall 4) |
+| GPU support matrix implying Pascal/Turing work on cuda130 | Users burn hours on `sm_75`/`sm_61` missing-kernel errors | Paste the pre-verified boundary table verbatim (Pascal cpu-only; Turing ceiling cu128; Ampere+ cu130; 50xx cu128+) with the minimum-GPU-line stated |
+| Install docs silent on uv-vs-pip lane difference | pip users get default torch and blame the package | Lane-split every install command; explicit `--index-url` for pip (Pitfall 9) |
+| Removed ollama notebooks leaving dead wrappers/nav | Docs readers hit broken pages | Wrapper + nav disposition decided with the removal (Pitfall 7) |
+| Windows numpy-path failure modes phrased as internal errors | Windows users can't self-diagnose missing prerequisites | Loud, named-cause errors (the D-08 convention) in the platform dispatch |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **REV-01 guard:** early-stopping neighbor path (test-only split + early stopping) has an assertion — often missing while the headline guard test exists
-- [ ] **REV-02 registry:** `coverage report` actually shows a measured row for the registry file (not omitted); alias-emission test exists
-- [ ] **REV-04 IA³:** trainable-parameter count asserted > 0 AND within family band; IA³ (not just LoRA) save/reload roundtrip; `use_ia3+use_qlora` rejected at config time
-- [ ] **REV-05 presets:** every family row dry-run-validated against real module names; provenance (source config.json) recorded per row
-- [ ] **REV-06 random_init:** per-tensor hash comparison (not one global hash); same-seed reproducibility; tokenizer-loads-normally assertion; no-download proof
-- [ ] **REV-07 probing:** cache-key includes pooling+layer; probe fit/early-stop/report splits asserted disjoint
-- [ ] **REV-08 VEP:** at least one test where a variant is explicitly SKIPPED for slot mismatch; skip counts asserted; paradigm guard raises on mismatched model class; VCF coordinate fixtures (0-/1-based, chr-prefix)
-- [ ] **REV-09 sweep:** same-seed-identity test (CPU); aggregation n-guard; output JSON schema contract test shared with F2
-- [ ] **REV-10 motifs:** GC-matched-vs-uniform background difference demonstrated; HBG1/BCL11A golden coordinates match Fig 4a
-- [ ] **REV-11 MCP:** every new tool timeout-wrapped (structure test); event-loop liveness under load; host/port precedence tested on BOTH sse and streamable-http
-- [ ] **Every wave:** new skips allowlisted same-change; new models.lock rows; new modules have same-change tests at the 96% working standard
+- [ ] **Windows parity:** numpy evaluator has NO unit test on Linux asserting the oracle pins (null-fill, order, multiplicity) — parity is only "proven" by the spike prose, not the suite.
+- [ ] **Windows parity:** Linux still executes bedtools after the split — verify a structure test asserts dispatch direction AND the nightly re-executed the edited notebook (Pitfall 1).
+- [ ] **Windows parity:** frozen-value comparisons use the pinned tolerance, not `==` (trailing deltas: numpy full-precision 0.32472687098490116 vs the 6-dp anchor 0.324727, delta ~1.3e-7); `selection.md` bands themselves untouched.
+- [ ] **Ollama removal:** `test_extras_guard.py` / `test_runner_infra_contracts.py` non-ollama contracts survive — grep for `EXPECTED_MCP_MEMBERS`, the systemd Environment pins, `TestNotebookKernelPlotCompat` after the sweep.
+- [ ] **Ollama removal:** census triple re-pinned with the exact stage-1 selector flags; `expected_skips.yaml` delta present; ci.yml stage 3 dispositioned.
+- [ ] **Packaging:** `grep -rn "\[base\]"` across README/docs/workflows/scripts returns only sanctioned occurrences; `all` extra updated; a fresh-venv `pip install dnallm[<new-extra>]` resolve-verified.
+- [ ] **Packaging:** cuda121 gone from extra+index+sources+conflicts+matrix+docs consistently; rocm either verified-restored or honestly removed.
+- [ ] **Publish smoke:** no dispatch-reachable step can upload; the verify step installs from `dist/`, not the index; smoke catches the two historical rust classes (uv system-env, check_code.py flags) by construction.
+- [ ] **OIDC:** first real release observed and recorded; token secret deleted; smoke re-run green post-deletion.
+- [ ] **Docs sweep:** runs LAST; every example/ edit carries its regenerated mirror; mkdocs --strict delta accounted vs the 15 known warnings; install commands lane-labeled.
+- [ ] **GAP-1:** non-NT-family regression test present if shimmed; un-skipped tests retain their probe machinery.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Test-as-eval shipped in a re-run (REV-01 missed) | HIGH (re-run compute + reviewer trust) | Re-run affected tasks via F1 predict path; add guard + neighbor tests; disclose in response letter |
-| Registry drift recurrence (REV-02) | MEDIUM | Exporter maps through `resolve()`; regenerate JSONs; alias table grows one row with provenance comment |
-| IA³ baseline invalid (frozen model, REV-04/05) | HIGH (paper table) | Detect via trainable-param logs; re-run IA³ lane with corrected presets; presets provenance audit |
-| random_init loaded pretrained partially (REV-06) | MEDIUM | Per-tensor diff pinpoints leftover tensors; fix init path; re-run learning curves; hash log updated |
-| VEP misalignment discovered post-hoc (REV-08) | HIGH | Skip-recounted re-score; if tokenizers fundamentally unsuited (BPE families), report as model-class limitation with skip stats — the alignment evidence itself is the response |
-| Sweep statistics invalid (REV-09) | LOW | `aggregate_seeds` is pure — recompute from raw seed JSONs; only paper numbers regenerate |
-| Merge-conflict sprawl across waves (milestone) | MEDIUM | Rebase onto the Phase A scaffold; file-ownership map arbitrates; worst case serialize the offending wave |
-| Coverage slide below working standard (milestone) | LOW | Backfill tests per module (no code changes needed — v1 precedent: wave-based test authoring) |
+| Dispatch leakage — Linux truth re-derived by numpy, values drifted out of band | MEDIUM | Revert dispatch to fail-loud; re-execute nightly; re-verify bands from committed outputs; add the missing structure test |
+| Dispatch leakage — values held silently (invariant violated, no alarm) | HIGH (trust repair) | Re-freeze decision back to owner: prove bedtools path re-executed, re-pin committed outputs, add the dispatch-direction test that was missing |
+| Smoke published a real version | HIGH (irreversible artifact) | Version is consumed permanently; yank from PyPI if wrong, cut a patch release, then install the event guards that should have existed |
+| Extras rename broke downstream | MEDIUM | Ship a compat alias extra in a patch release; changelog migration note; no way to reach already-broken envs except docs |
+| Ollama sweep deleted non-ollama guards | LOW | Restore from git history (tests are self-contained); the census/gates surface the loss within one nightly cycle |
+| Census gate red after count change | LOW | Measure the new triple with exact selector flags, re-pin deliberately (the designed bump-point — never widen the grep) |
+| OIDC first-release failure (claim mismatch) | LOW | Fix environment/filename registration; release re-runs; token still present as fallback if not yet deleted |
+| GAP-1 shim regressed another family | MEDIUM | Narrow the shim's version/attribute guard; restore pinned behavior via the regression test; fallback disposition = removal + docs |
 
 ## Pitfall-to-Phase Mapping
 
-| Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| P1 REV-01 eval-semantics + neighbors | Phase A (REV-01) | 3-combo × override tests incl. early-stopping neighbor; `pytest.raises(match=...)` |
-| P2 REV-02 registry placement/aliases | Phase A (REV-02) | Coverage row visible; key-set contract test; alias-emission test; dnallmmark pinned import |
-| P9 REV-03 comparability docs | Phase A (REV-03) | Docstring/API docs warning present; docs-mirror sync green; filter-count log line |
-| P8 parallel-agent conflicts | Phase A scaffold + roadmap wave design | File-ownership map in roadmap; no out-of-ownership diffs; audit_skips green all legs |
-| P3 REV-04 IA³×kbit + roundtrip | Phase B wave B1 | Config-time rejection test; IA³ roundtrip; transformer+Mamba coverage |
-| P4 REV-05 silent target-module skip | Phase B wave B1 | Per-family dry-run contract tests; trainable-count runtime guard; preset schema test |
-| P5 REV-06 random_init proofs | Phase B wave B2 | Per-tensor hash tests; same-seed repro; no-download; family allowlist `ValueError` |
-| P6 REV-08 VEP token alignment | Phase B wave B3 | Slot-differ-in-exactly-one assertion; skip-reason fixtures; paradigm guard; VCF fixtures; goldens |
-| P10 REV-07 probe leakage/cache | Phase B wave B3 | Disjoint-split asserts; cache-key miss test; pooling pinned in export schema |
-| P7 REV-09 seed illusion/stats | Phase B wave B4 | Same-seed identity (CPU); aggregation n-guard; schema contract shared with F2 |
-| P13 coverage standard | All B/C plans (per-plan UAT) | Per-module coverage reproduced at verification, not just global gate |
-| P14 version-span assumptions | B1/B2 primarily (review checklist all) | No foreign-exception matches in tests; feature-detection over version pins |
-| P15 nightly/models.lock/skip discipline | All B/C plans | `slow` marking from birth; lock rows same-change; budgets estimated; D-03 re-pin if example/ touched |
-| P11 REV-10 PWM conventions | Phase C (REV-10) | Background/strand/FDR unit tests; HBG1 golden vs Fig 4a |
-| P12 REV-11 MCP conventions | Phase C (REV-11) | Handshake tests both transports; liveness test; wrapper structure test; host/port precedence both transports |
+Suggested ordering (phases numbered from 13 by the roadmap author):
+
+| Phase (topic) | Order | Pitfalls Prevented | Verification That Prevention Worked |
+|---------------|-------|--------------------|-------------------------------------|
+| Phase O — ollama surface removal | 1st | 5, 6, 7 | Per-assertion remove-vs-skip ledger; post-sweep `grep ollama tests/` = sanctioned residue; census triple re-pinned; nightly dispatched green; non-ollama guards still present |
+| Phase G — GAP-1 disposition | 2nd (may fold into W's front) | 11 | Shim blast-radius test or documented removal; probes intact on any un-skipped test |
+| Phase W — Windows platform parity | 3rd | 1, 2, 6, 8 (+ tolerance pins) | Spike-corpus unit tests green on Linux AND Windows; dispatch structure test; nightly Linux re-execution in band; test-windows executes the numpy path (evidence in junit); coverage ≥96% per-module on the new evaluators |
+| Phase P — packaging & install honesty | 4th | 4, 9 (precondition), 12 | Fresh-venv resolves per changed extra; zero stale `.[base]`/cuda121 refs; GPU matrix page matches the pre-verified boundary table; extras bracket tests added |
+| Phase S — publish smoke + OIDC + mypy cap | 5th (smoke guard can land earlier if split out) | 3, 10 | Smoke run green without any upload HTTP traffic; first real release observed via OIDC; token deleted; mypy cap matches CI-validated version |
+| Phase D — docs accuracy sweep | LAST | 7, 9 (+ absorbs all downstream doc drift) | Per-file review record; mirrors byte-identical after every fix; mkdocs --strict delta accounted; install commands lane-labeled; cuda130 default consistent repo-wide |
+
+**Ordering rationale:** O first because it *shrinks* the surface every later phase touches (one census re-pin, one allowlist delta, instead of repeated collisions). G before W because the Windows NER execution path needs the NT checkpoint loadable. P before D because docs must describe the final extras state. S is position-flexible except that its first act (the upload guard) should precede any scheduled trigger existing. W is the long pole and benefits from the reduced surface.
+
+**Research flags for phases (for the roadmap author):**
+- Phase W: needs plan-time spikes/decisions — test-windows execution subset scope + time budget; tolerance-pin values (full-precision vs 6-dp anchor); marker registration for any new selector.
+- Phase S: needs plan-time verification of current uv publish `--dry-run` behavior in the repo's uv version, and the owner decision on subsuming OIDC.
+- Phase P: owner decisions at plan time — base rename target + alias-or-break; rocm restore-or-remove; triton-windows declare-or-document.
 
 ## Sources
 
-- Repo source (HIGH confidence, read directly): `dnallm/finetune/trainer.py`, `dnallm/inference/inference.py`, `dnallm/inference/mutagenesis.py`, `dnallm/models/model.py`, `dnallm/tasks/metrics.py`, `dnallm/datahandling/data.py`, `dnallm/utils/sequence.py`, `dnallm/mcp/server.py`, `dnallm/mcp/model_manager.py`, `dnallm/configuration/configs.py`, `pyproject.toml`, `tests/expected_skips.yaml`
-- Installed-library source (HIGH for installed versions): peft 0.21.2 `tuners/ia3/model.py` (4/8-bit merge ValueError, feedforward checks), transformers 5.19.0 `TrainingArguments.__post_init__` + `trainer.py` (eval_dataset/load_best validation, silent `metric_for_best_model="loss"` default)
-- [peft PR #2432 — IA³ target-module minimization bug fix](https://github.com/huggingface/peft/pull/2432) (MEDIUM)
-- [peft IA³ model source v0.17.0](https://github.com/huggingface/peft/blob/v0.17.0/src/peft/tuners/ia3/model.py) — merge limitations (MEDIUM)
-- [peft tuners_utils — no-match warning behavior](https://github.com/huggingface/peft/blob/v0.19.0/src/peft/tuners/tuners_utils.py) and [DeepWiki peft troubleshooting — Mamba/hybrid silent skip](https://deepwiki.com/huggingface/peft/6.6-troubleshooting) (MEDIUM)
-- [DART-Eval, arXiv:2412.05430 — BPE breaks variant likelihood comparability](https://arxiv.org/html/2412.05430) (MEDIUM)
-- [Mut-BPE, bioRxiv 2025.12.01.691503 — split-token alignment scheme](https://www.biorxiv.org/cgi/reprint/2025.12.01.691503v1) (MEDIUM)
-- [GPN-MSA, Benegas et al. — LLR scoring convention](https://www.zoology.ubc.ca/~otto/veg/Readings/Benegas2025.pdf) (MEDIUM)
-- [transformers meta-device anti-pattern error](https://errors.standardbeagle.com/huggingface/transformers/you-are-using-from-pretrained-with-a-meta-device/) and [transformers PR #43523 — tie weights on meta init](https://semanticdiff.com/gh/huggingface/transformers/commit/00f886a9f435fa552bd2ab93f75c10685d1a9e67) (MEDIUM)
-- [transformers PR #33913 — tied-weight load breakage](https://github.com/huggingface/transformers/pull/33913), [issai/Qolda tied-weights discussion](https://huggingface.co/issai/Qolda/discussions/1) (MEDIUM)
-- [FIMO — MEME Suite documentation](https://meme-suite.org/meme/doc/fimo.html) — thresholds, background, q-values, strands (MEDIUM)
-- [prepare_model_for_kbit_training usage](https://theneuralbase.com/lora-qlora/learn/beginner/trainable-parameter-count-check/) (LOW-MEDIUM, corroborating only)
-- Project memory & planning artifacts: `.planning/PROJECT.md`, `.planning/research/261009-paper-revision-suite-plan.md`, owner rules (same-change pytest coverage; no routine cache cleanup), v1/v1.1 milestone precedents (typed skips, models.lock guard, D-03 census triple, D-07/D-12 nightly budgets)
+- Repository (HIGH confidence, primary): `pyproject.toml`; `.github/workflows/publish.yml`; `.github/workflows/ci.yml` (test-windows leg, census stage 0.5, stage 3, bedtools provisioning); `scripts/audit_skips.py`; `scripts/check_docs_sync.py`; `tests/expected_skips.yaml`; `tests/test_extras_guard.py`; `tests/test_runner_infra_contracts.py`; `tests/examples/test_plant_helixseek_showcase.py`; `.planning/WINDOWS.md` (#11/#12/#13/#18/#19/#20 with owner directives and the 2026-10-10/11 change-surface inventory); `.planning/STATE.md` deferred rows 2026-10-11; spike summaries `261010-wx2` / `261011-0a3` (pins, portability notes, determinism evidence).
+- PyPI Trusted Publishing troubleshooting + internals (official docs; MEDIUM): https://docs.pypi.org/trusted-publishers/troubleshooting/ — claim matching, rate limits, rename breakage, reusable-workflow limitation (warehouse#11096).
+- Trusted Publishing adoption/pitfalls guides (MEDIUM, cross-checked): https://safeguard.sh/resources/blog/pypi-trusted-publishing-adoption-guide and .../pypi-trusted-publishing-common-pitfalls — environment mismatch, continue-on-error masking, fork behavior.
+- `uv publish --dry-run` (MEDIUM): https://github.com/astral-sh/uv/pull/15638 and https://github.com/astral-sh/uv/pull/21439 — `/validate` endpoint behavior, metadata/attestation preparation.
+- pip nonexistent-extra behavior (MEDIUM, multi-source): https://github.com/peteromallet/desloppify/issues/149 (pip 25.3 warn + exit 0), https://github.com/pypa/pip/issues/12376, https://stackoverflow.com/questions/78082481/ (PEP 685 normalization, pip ≥23.3).
+- PyPI filename immutability + `--skip-existing` fragility (MEDIUM): https://twine.readthedocs.io/en/latest/_modules/twine/commands/upload.html (400+"already exist" substring logic), https://discuss.python.org/t/announcement-twine-6-2-0/103548/1 (removed for non-PyPI targets), https://github.com/pypa/twine/issues/1265, https://github.com/sonatype/nexus-public/issues/696, https://github.com/anthropics/claude-agent-sdk-python/commit/117cffacae4a1a06f911b3b2d695e33e57c86ec3 (partial-upload/quota masking example).
+- triton-windows status (MEDIUM): https://github.com/pytorch/pytorch/issues/178368 (fork → triton-lang org, separate-package stance), https://github.com/triton-lang/triton-windows/releases (version cadence, attested builds), compatibility table and vcredist caveats via project README/discussions.
+- LOW confidence, deliberately not relied upon: any default-branch workflow-file requirement for Trusted Publishing (underdocumented — flagged as unverified in the digest; the migration plan should not depend on it).
 
 ---
-*Pitfalls research for: DNALLM v1.2 Paper Revision Suite Support (REV-01…REV-11 additions to an existing DNA-LM toolkit)*
-*Researched: 2026-10-09*
+*Pitfalls research for: DNALLM v1.3 — Platform Reach & Packaging Honesty*
+*Researched: 2026-10-11*
