@@ -1,41 +1,38 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-11T05:10:52.529Z",
+  "timestamp": "2026-10-11T06:22:05.990Z",
   "phase": null,
-  "phase_name": "between milestones (v1.2 shipped+archived 2026-10-10; v1.3 not started)",
+  "phase_name": "between milestones (v1.2 shipped+archived 2026-10-10; v1.3 not started; scoping inputs now complete)",
   "phase_dir": null,
   "plan": null,
   "task": null,
   "total_tasks": 0,
   "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "backlog review — #21 (IA3 docs pointer) verified fixed; deferred inventory routed to v1.3 pool", "status": "done", "commit": "5fab67b"},
-    {"id": 2, "name": "quick uz0 — WINDOWS #14 Benchmark.run label-column fix (+4 tests, red-first)", "status": "done", "commit": "4db85d0"},
-    {"id": 3, "name": "quick vo6 — generate_dataset path-shaped-string ValueError guard (+3 tests)", "status": "done", "commit": "67953b6"},
-    {"id": 4, "name": "quick w6a — Windows CI repr assertion platform-independent (+backslash literal)", "status": "done", "commit": "3b99359"},
-    {"id": 5, "name": "quick wx2 — jaccard parity spike vs bedtools v2.31.1: VERDICT PARITY (3000/3000 + frozen pair integer-exact)", "status": "done", "commit": "454623e"},
-    {"id": 6, "name": "quick 0a3 — loj-intersect parity spike vs bedtools v2.31.1: VERDICT PARITY (2000/2000 dual-gate, null-fill/order/multiplicity pins)", "status": "done", "commit": "9ddc35d"},
-    {"id": 7, "name": "#19 shaped into implementation-ready v1.3 work package (pyranges1 rejected; platform-split; NER directive; change-surface inventory)", "status": "done", "commit": "e95c184"},
-    {"id": 8, "name": "release v1.2.1 — tag + release + 4 publish-workflow fixes (PRs #50/#51/#52/#53) + PYPI_API_TOKEN secret; dnallm==1.2.1 published (run 38112794446)", "status": "done", "commit": "f7a7fcb"}
+    {"id": 1, "name": "backlog review + quick tasks uz0/vo6/w6a/wx2/0a3 + #19 work package + v1.2.1 PyPI release", "status": "done", "commit": "f7a7fcb"},
+    {"id": 2, "name": "v1.3 candidate pool compiled: 7 open windows + post-close deferred items inventoried for the owner", "status": "done", "commit": null},
+    {"id": 3, "name": "owner decisions recorded: cuda130 go-forward default; systematic docs+example per-file review; no GTX 1080 support (follow upstream envelope); extras hygiene package (base misnomer, inert rocm pin, cuda121 retirement, uv/pip install lanes)", "status": "done", "commit": "de44d57"},
+    {"id": 4, "name": "GPU support matrix verified end-to-end: cu130 arch list sm_80+ no PTX (local torch 2.11.0); cu128 retains sm_75 (pytorch#172352); 20xx→cu128 max, 30/40xx all extras, 50xx cu128+, Pascal cpu-only — matrix ready-to-paste in STATE.md deferred row", "status": "done", "commit": "0542a6b"}
   ],
   "remaining_tasks": [
-    {"id": 9, "name": "v1.3 kickoff via /gsd-new-milestone (candidate pool: 7 open windows + STATE deferred items)", "status": "not_started"},
-    {"id": 10, "name": "PR #47 (pydantic-ai<3 bump) and #48 (ipython<10 bump) closure — owner commands provided, execution unconfirmed", "status": "not_started"}
+    {"id": 5, "name": "v1.3 kickoff via /gsd-new-milestone — scoping inputs complete (7 open windows, #19 implementation-ready; 5 post-close deferred rows incl. verified CUDA matrix)", "status": "not_started"},
+    {"id": 6, "name": "PR #47/#48 closure (owner commands provided, execution unconfirmed)", "status": "not_started"},
+    {"id": 7, "name": "optional: record Trusted Publishing (OIDC) migration deferred row — discussed but not yet written", "status": "not_started"}
   ],
   "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "close PR #47 and #48 with the provided guard-rationale comments (gh pr close commands were permission-blocked for the agent; supplied to owner verbatim)", "context": "both dependabot bumps are correctly rejected by the extras guard tests; pydantic-ai <2 cap is load-bearing (opentelemetry._events issue under investigation), ipython <9 pin is the 08-02 REPAIR-01 fix", "blocking": false},
-    {"action": "local main fast-forward (cosmetic; merges happened on GitHub)", "context": "local main is behind origin/main by the #50-#53 merge chain", "blocking": false}
+    {"action": "close PR #47 (pydantic-ai<3) and #48 (ipython<10) with the provided guard-rationale commands", "context": "both correctly rejected by extras guard tests; caps are load-bearing", "blocking": false},
+    {"action": "local main fast-forward (cosmetic)", "context": "merges #50-#53 happened on GitHub", "blocking": false}
   ],
   "decisions": [
-    {"decision": "#19 platform-split: Linux/macOS keep bedtools/pybedtools (frozen truth chain untouched, no re-freeze); Windows gets a parity-verified numpy evaluator", "rationale": "bedtools has no Windows build; pyranges1 rejected (ruranges has no win_amd64 wheels, requires-python>=3.12, zero gain for CRE jaccard); both enabling parity spikes returned PARITY", "phase": null},
-    {"decision": "NER example code itself gains runtime platform detection (Linux pybedtools / Windows numpy path)", "rationale": "owner directive 2026-10-10; downstream frozen Anno metric exon_f1=0.7522 must hold on both paths; loj replacement needs its own parity (delivered by quick 0a3)", "phase": null},
-    {"decision": "dev->main merges use merge commits, never squash", "rationale": "squash breaks revision->dev ancestry causing phantom conflicts on every later merge (recorded lesson)", "phase": null},
-    {"decision": "publish re-runs dispatch on the tag ref after moving the tag to the merged main HEAD", "rationale": "keeps tag = release = built artifact byte-identical; tag-ref dispatch uses the fixed workflow file at the tag", "phase": null},
-    {"decision": "release notes describe features only — no reviewer/REV framing", "rationale": "owner directive 2026-10-10", "phase": null}
+    {"decision": "cuda130 is the go-forward default install recommendation; support matrix: 20xx→cuda121-128, 30xx/40xx→all extras, 50xx→cuda128+, 10xx Pascal cpu-only (no 1080 support — inherited upstream reality, documented not fought)", "rationale": "owner directives 2026-10-11; all boundaries verified (local cu130 arch list + pytorch#172352)", "phase": null},
+    {"decision": "v1.3 includes a systematic per-file docs/+example/ accuracy review (distinct from automated sync gates)", "rationale": "owner directive 2026-10-11", "phase": null},
+    {"decision": "extras hygiene in v1.3: rename/re-scope misleading 'base', restore-or-remove inert rocm uv pin, retire cuda121, split install docs into uv/pip lanes", "rationale": "base misnomer cost the publish chain its 4th failure; rocm extra is inert; pip silently ignores uv-only index pins", "phase": null},
+    {"decision": "#19 platform-split (Linux keeps bedtools, Windows numpy evaluator) with both parity proofs delivered", "rationale": "spikes wx2 + 0a3 VERDICT PARITY; pyranges1 rejected (no win wheels)", "phase": null},
+    {"decision": "dev->main merge commits only; publish re-dispatch on tag ref after tag moves to merged main", "rationale": "ancestry lesson; tag=release=artifact identity", "phase": null}
   ],
   "uncommitted_files": [],
-  "next_action": "Start v1.3: /clear then /gsd-new-milestone (scoping inputs: 7 open windows led by implementation-ready #19, plus the 5 post-close STATE deferred items)",
-  "context_notes": "Post-close hardening session (2026-10-10 22:07 -> 2026-10-11 13:10): five quick tasks + full v1.2.1 release chain. The publish saga (6 attempts) is fully resolved — root causes and fixes are in PRs #50-#53 bodies and the deferred-items ledger. Both parity spikes' harness scripts are re-runnable evidence: .planning/quick/261010-wx2-*/spike_jaccard_parity.py and .planning/quick/261011-0a3-*/spike_loj_parity.py (seeds 20261010/20261011)."
+  "next_action": "Start v1.3: /clear then /gsd-new-milestone. The scoping conversation is effectively pre-done: candidate pool = 7 open windows (#19 first, evidence in .planning/quick/261010-wx2-* and 261011-0a3-*) + 5 STATE.md post-close deferred rows (cuda130 default + verified GPU matrix, docs+example review, extras hygiene, mypy cap, publish smoke) + carried v1.2 items (MOTIF-01 issue #44 awaiting owner Fig 4a inputs).",
+  "context_notes": "Second pause of the day; the first (13:10, cb41ba4) captured the release. This one captures the v1.3 scoping-prep burst (13:12-13:27): CUDA ecosystem verification, owner decisions on cuda130/1080/docs-review, extras hygiene findings. Everything recorded in STATE.md deferred rows with commit references; nothing lives only in conversation. Trusted Publishing migration was discussed twice but never written to the ledger — flag to the owner or record at v1.3 scoping."
 }
