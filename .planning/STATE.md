@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.2
-status: Awaiting next milestone
-stopped_at: Phase 12 complete — all phases complete
-last_updated: "2026-10-11T06:31:11.000Z"
-last_activity: 2026-10-10
-last_activity_desc: Milestone v1.2 completed and archived
-state_head: 9ddc35dde7477ffa5a43683b1e4437551a408eb2
+milestone: v1.3
+milestone_name: Platform Reach & Packaging Honesty
+status: planning
+last_updated: "2026-10-11T07:04:35.405Z"
+last_activity: 2026-10-11
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
-milestone_name: Paper Revision Suite Support
-current_phase: 12
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-10)
 
 ## Current Position
 
-Phase: Milestone v1.2 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-11 - Completed quick task 261011-0a3: numpy loj-intersect parity spike vs bedtools v2.31.1 — VERDICT PARITY (2000/2000 + 11/11, canonical + sequence gates); both #19 platform-split foundations (jaccard + loj) evidence-backed, v1.3 ready to implement
+Status: Defining requirements
+Last activity: 2026-10-11 — Milestone v1.3 started
 
 ## Performance Metrics
 

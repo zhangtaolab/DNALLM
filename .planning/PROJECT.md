@@ -8,15 +8,19 @@ DNALLM (`dnallm` v0.8.0) is a Python toolkit for fine-tuning, inference, and ben
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: none active — v1.2 shipped 2026-10-10
+## Current Milestone: v1.3 Platform Reach & Packaging Honesty
 
-**v1.2 delivered (all 11 REQ-IDs, full ledger in `milestones/v1.2-REQUIREMENTS.md` after archival):**
-- Evaluation semantics: no silent test-as-eval (REV-01), metric registry contract (REV-02), docs/terminology/comparability warnings (REV-03)
-- Adaptation & baselines: IA³ adapter (REV-04), per-model PEFT target presets (REV-05), `random_init=True` from-scratch loading (REV-06)
-- New evaluation capabilities: frozen-embedding probing (REV-07), zero-shot VEP module with token-slot alignment rules (REV-08), multi-seed sweep protocol with uncertainty aggregation (REV-09)
-- Interpretation & agent surface: JASPAR/CIS-BP PWM matching (REV-10), MCP tools for ISM/hotspots/zero-shot scoring (REV-11)
+**Goal:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, and a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
 
-**Next milestone goals:** not yet defined — `/gsd-new-milestone` when the paper revision's next needs are known (candidate intake: golden-fixture activation inputs (issue #44), dnallmmark re-run findings, v1.3+ future-requirement ledger in `milestones/v1.2-REQUIREMENTS.md`).
+**Target features:**
+- Windows platform parity — #19 platform-split landing (numpy jaccard + loj-intersect evaluators, runtime platform detection in `generate_bpe_dataset.py` + the NER notebook, platform-aware test gates, test-windows as the numpy-path executor, frozen-value tolerance pins; exon_f1=0.7522 holds in band on both paths) + #18 triton-windows declaration decision
+- Packaging & install honesty — extras hygiene (`base` rename/re-scope, rocm pin restore-or-remove, cuda121 retirement, uv-vs-pip lane docs), cuda130 default recommendation, verified GPU support matrix documentation (Pascal cpu-only, 20xx→cu128, 30/40xx all extras, 50xx cu128+)
+- Publish chain robustness — periodic publish smoke (workflow_dispatch dry-run; may subsume the Trusted Publishing OIDC migration), #20 local-venv `pytest --cov` crash fix, mypy cap for the dev extra
+- Docs accuracy review — systematic per-file review of docs/ + example/ (accuracy vs code, post-numpy2/py311 staleness, install-command correctness) with fixes in the same pass
+- Ollama surface directive — all ollama-related pytest surface removed or marked skip (~59 refs across 5 test files + 2 mcp_example notebooks); remove-vs-skip per item at planning time
+- GAP-1 windows #11/#12 — in scope; compat-shim vs removal approach decided at planning time (closure of #15 rides along if shimming succeeds)
+
+**Key context:** both numpy parity spikes landed VERDICT PARITY (261010-wx2 jaccard, 261011-0a3 loj-intersect) — #19's ships-only-under-parity precondition is met; GPU matrix boundaries pre-verified 2026-10-11; MOTIF-01 (issue #44) stays deferred (fixture-files-only until manuscript values arrive); package at 1.2.1 on the py≥3.11 / numpy≥2.0 floors; phase numbering continues from 13.
 
 ## Current State
 
@@ -53,7 +57,12 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-(Next milestone not yet defined — run `/gsd-new-milestone`; candidate inputs listed under Current Milestone above.)
+- [ ] Windows platform parity — #19 platform-split landing + #18 triton-windows declaration decision (v1.3)
+- [ ] Packaging & install honesty — extras hygiene, cuda130 default recommendation, GPU support matrix docs (v1.3)
+- [ ] Publish chain robustness — publish smoke (+ OIDC migration decision), #20 cov crash fix, mypy cap (v1.3)
+- [ ] Docs accuracy review — per-file docs/ + example/ sweep with same-pass fixes (v1.3)
+- [ ] Ollama pytest surface removed or skip-marked per owner directive 2026-10-11 (v1.3)
+- [ ] GAP-1 windows #11/#12 disposition — approach decided at planning time (v1.3)
 
 ### Validated — v1.2 (Paper Revision Suite Support, shipped 2026-10-10)
 
@@ -212,4 +221,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-10 after v1.2 milestone (paper revision suite shipped 0.8.0: 11/11 REQ-IDs, 2 owner overrides, audit 0 blockers)*
+*Last updated: 2026-10-11 after v1.3 milestone kickoff (Platform Reach & Packaging Honesty — Windows parity, packaging honesty, publish chain, docs accuracy)*
