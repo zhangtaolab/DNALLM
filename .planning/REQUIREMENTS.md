@@ -39,9 +39,9 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 
 ### Ollama Surface (OLLM)
 
-- [ ] **OLLM-01**: All ~59 ollama refs across the 5 inventoried test files (`test_notebook_execution.py`, `test_runner_infra_contracts.py`, `test_extras_guard.py`, `tests/examples/_execution.py`, `test_models_lock_contracts.py`) are dispositioned per-assertion as remove-or-skip with recorded rationale; non-ollama contracts sharing the surface (kernel-plot compat pins, extras brackets, systemd/docs-mirror contracts) preserved
-- [ ] **OLLM-02**: The census triple is re-pinned, `expected_skips.yaml` updated, and ci.yml example-nightly stages reconciled same-change — nightly stays green (no pytest exit 5, no unexpected-skip audit failure)
-- [ ] **OLLM-03**: Post-sweep `grep ollama tests/` residue equals a sanctioned list recorded in the plan; the two mcp_example notebooks remain in-repo per WINDOWS #13
+- [x] **OLLM-01**: All ~59 ollama refs across the 5 inventoried test files (`test_notebook_execution.py`, `test_runner_infra_contracts.py`, `test_extras_guard.py`, `tests/examples/_execution.py`, `test_models_lock_contracts.py`) are dispositioned per-assertion as remove-or-skip with recorded rationale; non-ollama contracts sharing the surface (kernel-plot compat pins, extras brackets, systemd/docs-mirror contracts) preserved
+- [x] **OLLM-02**: The census triple is re-pinned, `expected_skips.yaml` updated, and ci.yml example-nightly stages reconciled same-change — nightly stays green (no pytest exit 5, no unexpected-skip audit failure)
+- [x] **OLLM-03**: Post-sweep `grep ollama tests/` residue equals a sanctioned list recorded in the plan; the two mcp_example notebooks remain in-repo per WINDOWS #13
 
 ### GAP-1 Transformers Compat (GAPC)
 
@@ -108,9 +108,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUBS-03 | Phase 17 | Pending |
 | PUBS-04 | Phase 17 | Pending |
 | PUBS-05 | Phase 17 | Pending |
-| OLLM-01 | Phase 13 | Pending |
-| OLLM-02 | Phase 13 | Pending |
-| OLLM-03 | Phase 13 | Pending |
+| OLLM-01 | Phase 13 | Complete |
+| OLLM-02 | Phase 13 | Complete |
+| OLLM-03 | Phase 13 | Complete |
 | GAPC-01 | Phase 14 | Pending |
 | GAPC-02 | Phase 14 | Pending |
 | DOCR-01 | Phase 19 | Pending |

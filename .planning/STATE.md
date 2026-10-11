@@ -4,17 +4,17 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 13
 current_phase_name: Ollama Surface Disposition
-status: planning
-stopped_at: Phase 13 context gathered
-last_updated: "2026-10-11T08:40:52.398Z"
+status: verifying
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-10-11T09:05:21.278Z"
 last_activity: 2026-10-11
-last_activity_desc: v1.3 roadmap created (7 phases, 13–19; 29/29 requirements mapped)
-state_head: fcd200ea135f11949fa84fa358a680fd091e09f0
+last_activity_desc: Phase 13 execution started
+state_head: 3fcfef74b313438fcd86ccd782818707b2851719
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 1
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** v1.3 roadmap created — Phase 13 (Ollama Surface Disposition) ready to plan
+**Current focus:** Phase 13 — Ollama Surface Disposition
 
 ## Current Position
 
-Phase: 13 (Ollama Surface Disposition) — READY TO EXECUTE
-Plan: — (none planned yet)
-Status: Ready to plan Phase 13
-Last activity: 2026-10-11 — v1.3 roadmap created (7 phases, 13–19; 29/29 requirements mapped)
+Phase: 13 (Ollama Surface Disposition) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-10-11 — Phase 13 execution started
 
 Progress: [░░░░░░░░░░] 0% (0/7 v1.3 phases)
 
@@ -43,6 +43,11 @@ Progress: [░░░░░░░░░░] 0% (0/7 v1.3 phases)
 - Recent trend: Stable
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 13 P01 | 17 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -57,6 +62,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - Linux truth chain stays bedtools-computed (no re-freeze); selection.md is the single truth source parsed on both platforms; tolerance lives in the comparison layer only
 - Research flags for plan time: Phase 16 and Phase 17 warrant `--research-phase` (Phase 16: test-windows subset + time budget, tolerance-pin mechanics, marker registration, exon_f1 band pinning; Phase 17: `uv publish --dry-run` existence conflict vs installed uv 0.12.21, gh-action-pypi-publish input syntax); Phase 18 carries owner calls at discuss/plan time (base rename target + alias-or-break, rocm remove-vs-restore, triton-windows declare-vs-document)
 - Commits carry no Co-Authored-By trailers (repo convention); one census-moving edit per phase (D-03 triple + expected_skips.yaml + ci.yml stages same-change)
+- [Phase 13]: Skip disposition realized by CI shape: example-nightly stage-3 ollama batch deleted so the mcp pair typed-skips via the existing self-healing D-13 gate (network-unavailable: with probe evidence) — zero functional test-file edits (13-01, D-04)
+- [Phase 13]: Census triple re-pinned 208/217 (9 deselected) to 216/217 (1 deselected) with the -k mcp deselect dropped from stages 0.5 and 1 — measured with the exact stage-0.5 flags, grep never widened (13-01)
+- [Phase 13]: expected_skips.yaml touched comment-only: the pre-existing network-unavailable: prefix entry is the sole sanctioned match path for the nightly pair skips (13-01)
 
 ### Pending Todos
 
@@ -96,9 +104,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-11T08:00:08.481Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-ollama-surface-disposition/13-CONTEXT.md
+Last session: 2026-10-11T09:05:21.257Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

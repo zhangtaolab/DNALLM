@@ -79,10 +79,11 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   2. Non-ollama contracts sharing the swept surface — kernel-plot compat pins, extras brackets, systemd/docs-mirror contracts — still exist and pass after the sweep
   3. Post-sweep `grep ollama tests/` residue equals exactly the sanctioned list recorded in the plan; the two mcp_example notebooks remain in-repo per WINDOWS #13 with `langchain-ollama` still declared in the mcp extra
   4. The D-03 census triple is re-pinned, `expected_skips.yaml` updated, and ci.yml example-nightly stages reconciled in the same change — the nightly run stays green (no pytest exit 5, no unexpected-skip audit failure)
-**Plans**: 1 plan
+
+**Plans**: 1/1 plans executed
 
 Plans:
-- [ ] 13-01-PLAN.md — Atomic D-04 disposition: delete nightly stage 3 (gate fires the allowlisted network-unavailable: typed skip), re-pin census triple 208/217→216/217, drop the -k mcp deselect from stages 0.5/1, reconcile stage-4 audit list, comment contracts, allowlist comment, and both READMEs; 59-ref per-assertion ledger + 56-line sanctioned residue recorded in the plan
+- [x] 13-01-PLAN.md — Atomic D-04 disposition: delete nightly stage 3 (gate fires the allowlisted network-unavailable: typed skip), re-pin census triple 208/217→216/217, drop the -k mcp deselect from stages 0.5/1, reconcile stage-4 audit list, comment contracts, allowlist comment, and both READMEs; 59-ref per-assertion ledger + 56-line sanctioned residue recorded in the plan
 
 ### Phase 14: GAP-1 Transformers 5.x Disposition
 
@@ -94,6 +95,7 @@ Plans:
   2. The disposition is executed on that evidence — either the vendored absence-gated rung extension lands and the NT tests un-skip to real execution (closing #11/#12, with #15 closure riding along on per-item probe evidence), or the third benchmark model + BPE pkl leg is removed with the decision documented (closing #11/#12 as removed-by-decision); no owner-pending or silently-broken state remains at phase close
   3. Non-NT model families are provably unaffected — the shim is version-keyed and absence-gated, and the 35-family regression gate stays green
   4. The fast lane is green with the census triple and `expected_skips.yaml` reconciled in the same change as any un-skip or removal
+
 **Plans**: TBD
 
 ### Phase 15: Windows Parity Core — Numpy Interval Evaluators
@@ -105,6 +107,7 @@ Plans:
   1. `dnallm/utils/genomic_intervals.py` delivers `parse_bed`, `jaccard`, `loj_intersect` carrying every oracle-pinned spike contract — the 6-column null-B fill including the `-1` score slot, A-file-order emission accepting unsorted input, join-not-merge multiplicity, bookended-adjacency merge, `n_intersections` excluded — import-pure numpy-only and re-exported on the `dnallm.utils` surface (genomic_coords precedent)
   2. The spike corpora (seeds 261010-wx2 / 261011-0a3) plus handcrafted edge cases (boundary touching, chrom isolation, duplicates, empty B) run as fast, platform-neutral unit tests with baked oracle literals — green on every CI leg including test-windows, with no bedtools binary required anywhere in the unit layer
   3. The module sits provably outside the 7-entry coverage omit list and meets the ≥96% per-module same-change coverage standard (owner rule for library changes)
+
 **Plans**: TBD
 
 ### Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity
@@ -118,6 +121,7 @@ Plans:
   3. test-windows executes the numpy evaluators over committed frozen interval pairs with pinned comparison tolerances (trailing-float deltas); the frozen metrics hold in band on BOTH paths — jaccard=0.324727 and exon_f1=0.7522 with its band/tolerance newly pinned as part of this work — and selection.md stays the single truth source parsed on both paths
   4. A same-change dispatch-direction structure test proves the numpy path cannot silently execute on Linux (fail-loud dispatch, no except-fallback ladder), and the Linux nightly re-execution holds the parsed selection.md bands in the same change
   5. Every example edit lands with its docs mirror byte-identical (`check_docs_sync` green)
+
 **Plans**: TBD
 
 ### Phase 17: Publish Chain Robustness
@@ -131,6 +135,7 @@ Plans:
   3. OIDC Trusted Publishing is live via `pypa/gh-action-pypi-publish@release/v1` — job-level `id-token: write`, publisher registered for the exact owner/repo/workflow-filename/environment, no reusable-workflow factoring — and `PYPI_API_TOKEN` is deleted only after the first observed green OIDC release
   4. WINDOWS #20 is remediated — the local-venv `pytest --cov` dotted-target crash is fixed via a local numpy pin or the documented coverage-CLI workaround (not by a coverage version bump)
   5. mypy is capped in the dev extra (`>=1.15.0,<2.5`) so CI can never resolve an unvalidated stricter version
+
 **Plans**: TBD
 
 ### Phase 18: Packaging & Install Honesty — Atomic Extras Surgery
@@ -144,6 +149,7 @@ Plans:
   3. WINDOWS #18 is decided and executed — triton-windows declared behind a `platform_system == 'Windows'` marker in the `fla` extra (research-recommended `>=3.7.1.post27,<3.8`) or the manual step documented — and the fla KDA smoke is re-verified on Windows under the resolved torch
   4. Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build), the GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only with the minimum-GPU-line stated, 20xx→cu128, 30/40xx all extras, 50xx cu128+), and the cross-installer honesty matrix page (command × installer → what you actually get) is live
   5. Every changed extra resolves clean in a fresh venv, proven by Phase 17's smoke dispatch running against the post-surgery tree
+
 **Plans**: TBD
 
 ### Phase 19: Docs Accuracy Sweep & Milestone Closeout
@@ -156,6 +162,7 @@ Plans:
   2. Install commands across all surfaces are re-verified against the final extras surface — cuda130 is the recommended default everywhere (overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + docs + examples), lane-labeled per the Phase 18 uv/pip split
   3. `mkdocs --strict` builds with zero warnings — the 15 ledgered pre-existing warnings cleared, with the nav/mirror interplay respected
   4. Every example edit in the sweep lands with its docs mirror byte-identical and the automated sync/masking gates green; the milestone closes honest-green (fast lane, coverage gate, full CI matrix)
+
 **Plans**: TBD
 
 ## Progress
@@ -165,7 +172,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 13. Ollama Surface Disposition | 0/TBD | Not started | - |
+| 13. Ollama Surface Disposition | 1/1 | In Progress | - |
 | 14. GAP-1 Transformers 5.x Disposition | 0/TBD | Not started | - |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 0/TBD | Not started | - |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
