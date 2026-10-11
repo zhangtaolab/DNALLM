@@ -617,8 +617,11 @@ jobs:
     #              is pinned; any census drift fails the job before stage 1
     #   stage 1    torch-heavy example execution FIRST (ACTIVE notebooks +
     #              showcase + marimo + script lane + YAML leg; the two
-    #              mcp_example ids are deselected — they belong to stage 2 —
-    #              and the giants-marked evo execution test is deselected
+    #              mcp_example gated ids stay collected in this batch and
+    #              typed-skip via the in-gate D-13 probe when the model
+    #              service and MCP server are down — Phase 13 D-04,
+    #              2026-10-11, self-healing where both are up — and the
+    #              giants-marked evo execution test is deselected
     #              per D-01 owner policy; dispatch/manual lane runs it with
     #              -m giants)
     #   stage 1.5  hygiene step (D-13, hard gate): kernel pkill + >=35Gi
@@ -627,10 +630,9 @@ jobs:
     #              no memory through it)
     #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
     #              streamable-http probes, sse restart, 3 sse probes)
-    #   stage 2.5  hygiene step (D-13, hard gate) before the ollama batch:
-    #              same kernel pkill + memory floor + value logging
-    #   stage 3    ollama batch LAST (wired in 08-09: fresh streamable-http
-    #              server + the two mcp_example ids; D-13 probe in-gate)
+    #   stage 2.5  hygiene step (D-13, hard gate) as end-of-run hygiene
+    #              before the stage-4 audits: same kernel pkill + memory
+    #              floor + value logging
     #   stage 4    junit skip audit + artifact upload + fail-soft summary
     # Stages run serially inside one job by design; a server-binding stage
     # may never start while the previous stage still holds GPU memory or
@@ -654,20 +656,19 @@ jobs:
     #     the FINAL run's cache HIT (build step 1s) — the wheels finally
     #     amortized, so steady state skips the source build
     #   stage 0.5 census assertion              4s (collect 1.28s)
-    #   stage 1 examples+YAML                   1:57-2:00 every run (192P/1S/9
-    #     deselected; D-05 epochs-cut measured: gated
-    #     finetune_custom_head 566s vs the ~31min 3-epoch dev-box figure)
+    #   stage 1 examples+YAML                   1:57-2:00 every run pre-
+    #     Phase-13 (192P/1S/9 deselected); post Phase-13 D-04 (2026-10-11)
+    #     the expected shape is +6 static passes re-admitted and +2 typed
+    #     skips (the D-13 retry window burns ~60s/test under refused-
+    #     connection conditions — measured 117s for the pair locally; do
+    #     NOT shrink the window, it is the D-13 contract distinguishing a
+    #     warming service from an absent one); D-05 epochs-cut measured:
+    #     gated finetune_custom_head 566s vs the ~31min 3-epoch dev-box
+    #     figure)
     #   stage 1.5/2.5 hygiene floors            5-6s each (~115Gi avail)
     #   stage 2 streamable + sse probes         ~40s each post-fix (the
     #     17:58 sse figure in run 37345067326 was the pre-fix always-fail
     #     probe, never server cost)
-    #   stage 3 mcp pair                        qwen3.8-era: 2P in 442-449s
-    #     with a >30-min latency tail that red run 37406829738 at the old
-    #     1800s cell line (owner decision B -> 3600s cell + 7200s outer);
-    #     after the qwen3.5:4b swap (owner 2026-10-06 15:27 CST): 2P in
-    #     87s (final run 37432001711) — D-06 num_ctx cut stays DEFERRED
-    #     (the 4.2B brain still defaults to a 262144 ctx); revisit with
-    #     these numbers
     #   stage 4 audits+upload+summary           seconds
     #   TOTAL measured pipeline                 2:43 incl. wheelhouse build
     #     (37377004230) / 2:09:55 with the cache hit (37432001711, the
@@ -860,11 +861,11 @@ jobs:
         # directly (stage-0-area contract: honest failure, no fail-soft).
         run: |
           .venv/bin/python -m pytest tests/examples --collect-only -q \
-            -m "not giants" -k "not mcp_example" 2>/dev/null | tee census-collect.txt | tail -1
+            -m "not giants" 2>/dev/null | tee census-collect.txt | tail -1
           MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
           echo "census collection measured: ${MEASURED}"
-          if ! tail -1 census-collect.txt | grep -qE '^=* *208/217 tests collected \(9 deselected\) in '; then
-            echo "FAIL: census collection mismatch (D-03) — expected triple: 208/217 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *216/217 tests collected \(1 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 216/217 tests collected (1 deselected); measured line: $(tail -1 census-collect.txt)"
             cat census-collect.txt
             exit 1
           fi
@@ -877,11 +878,18 @@ jobs:
         # records pytest's exit code (pipefail, test-mamba precedent)
         # while the full text lands in the stage*.log files that the
         # always-upload carries.
+        # Phase 13 D-04 (2026-10-11): no deselect — the two mcp_example
+        # gated ids stay collected in this batch; the in-gate D-13 probe
+        # typed-skips them ("network-unavailable:" with live probe
+        # evidence, allowlisted in tests/expected_skips.yaml) when the
+        # model service and MCP server are down, and they execute for
+        # real wherever both are up (self-healing; the stage-3 batch that
+        # once brought the stack up is deleted — marker at its site).
         run: |
           set +e
           set -o pipefail
           .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml \
-            -k "not mcp_example" -m "not giants" 2>&1 | tee stage1-examples.log
+            -m "not giants" 2>&1 | tee stage1-examples.log
           rc=$?
           echo "stage1-examples=$rc" >> stage-results.txt
           .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q \
@@ -987,11 +995,11 @@ jobs:
           kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
           exit 0
 
-      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-ollama)"
-        # Same named hygiene step (D-13) before the ollama batch: stray
-        # ipykernel children die, memory settles before qwen3.5:4b's ~3.3GB
-        # weights come under load in stage 3, and the free -g available
-        # floor is a HARD gate — nvidia-smi stays telemetry-only (GB10
+      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-audit)"
+        # Same named hygiene step (D-13) as end-of-run hygiene before the
+        # stage-4 audits: stray ipykernel children die after the stage-2
+        # server legs, memory settles, and the free -g available floor
+        # is a HARD gate — nvidia-smi stays telemetry-only (GB10
         # reports no memory through it).
         run: |
           echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
@@ -1009,51 +1017,29 @@ jobs:
           echo "after:  ${AVAIL_GI}Gi available"
           nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
           if [ "${AVAIL_GI}" -lt 35 ]; then
-            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the ollama batch — 08-08/08-09 discipline)"
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the stage-4 audits — 08-08/08-09 discipline)"
             exit 1
           fi
 
-      # ── Stage 3: ollama batch ──────────────────────────────────────────
-      # D-07 ordering: ollama runs last so its daemon never coexists with
-      # the stage-1 GPU load. The D-13 readiness probe (~60s retry window
-      # over 127.0.0.1:11434/api/tags) lives INSIDE the gate
-      # (_gate_ollama_stack) — ollama itself is the owner-enabled systemd
-      # unit (scripts/runner/README.md); when it is down the pair degrades
-      # honestly to network-unavailable typed skips carrying both probe
-      # results. The MCP server must be UP here too (the notebooks' gate
-      # probes :8000/mcp), so stage 3 starts a fresh streamable-http
-      # instance — the D-07 architecture keeps exactly one :8000 server at
-      # a time and stops it after the pair.
-      - name: "Stage 3: mcp pair (ollama + MCP server up, D-13 probe in the tests)"
-        run: |
-          set +e
-          set -o pipefail
-          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
-            --transport streamable-http > mcp-server-stage3.log 2>&1 &
-          SERVER_PID=$!
-          for i in $(seq 1 90); do
-            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
-            sleep 10
-          done
-          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
-            .venv/bin/python -m pytest tests/examples/test_notebook_execution.py -k "mcp_example" -q -rs \
-              --junitxml=pytest-junit-mcp-stage3.xml 2>&1 | tee stage3-mcp-pair.log
-            echo "stage3-mcp-pair=$?" >> stage-results.txt
-          else
-            echo "MCP server (stage 3) never became ready — see mcp-server-stage3.log"
-            echo "stage3-mcp-pair=1" >> stage-results.txt
-          fi
-          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
-          pkill -f ipykernel_launcher || true
-          exit 0
+      # ── Stage 3: DELETED ───────────────────────────────────────────────
+      # D-04 (2026-10-11, Phase 13): the stage-3 ollama batch step that
+      # stood here — fresh streamable-http MCP server + the two gated
+      # mcp_example ids re-run with the stack up — is deleted per the
+      # owner's ollama-surface directive. No stage starts the model
+      # service or an MCP server for the pair anymore: they stay
+      # collected in stage 1 and the self-healing D-13 gate typed-skips
+      # them ("network-unavailable:" with live probe evidence) when the
+      # stack is down, executing for real wherever it is up. Restore
+      # path: re-add a stage-3-shaped batch (fresh server + the gated
+      # pair) — the committed scripts/runner/ollama.service unit and the
+      # in-gate probe wiring stay in-repo and pinned green.
 
       - name: "Stage 4: junit skip audits (fail-soft)"
         if: always()
         run: |
           set +e
           for junit in pytest-junit-example-stage1.xml pytest-junit-yaml-stage1.xml \
-            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml \
-            pytest-junit-mcp-stage3.xml; do
+            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml; do
             if [ -f "$junit" ]; then
               .venv/bin/python scripts/audit_skips.py "$junit" tests/expected_skips.yaml
               echo "stage4-audit-$junit=$?" >> stage-results.txt
