@@ -122,8 +122,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Mapped to phases: 29
 - Unmapped: 0 ✓
 
-**Note:** the traceability table above is a pre-seeded proposal derived from the research's phase ordering (O→G→W-core→W-rollout→PUB→PKG→DOCS, phases 13–19 continuing from v1.2's Phase 12); the roadmapper validates or rewrites it during roadmap creation.
+**Note:** the traceability table above was pre-seeded from the research's phase ordering and validated unchanged at roadmap creation (2026-10-11) — 29/29 requirements mapped to Phases 13–19, no orphans, no duplicates. Cross-category mappings are deliberate: PKGH-08 rides Phase 17 (publish-chain mypy failure class), WPAR-07 rides Phase 18 (atomic extras surgery), PKGH-05 rides Phase 19 (docs describe the final extras surface). See ROADMAP.md.
 
 ---
 *Requirements defined: 2026-10-11*
-*Last updated: 2026-10-11 after initial definition (v1.3 kickoff, research be31aad)*
+*Last updated: 2026-10-11 after roadmap creation (traceability validated against ROADMAP.md Phases 13–19)*

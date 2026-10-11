@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 status: planning
-last_updated: "2026-10-11T07:04:35.405Z"
+last_updated: "2026-10-11T07:45:00.000Z"
 last_activity: 2026-10-11
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,23 +17,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-10)
+See: .planning/PROJECT.md (updated 2026-10-11)
 
-**Core value:** Ship the suite-side capabilities the paper revision requires (evaluation-semantics guard, metric registry, IA³/PEFT presets, from-scratch loading, probing, zero-shot VEP, multi-seed sweeps, motif matching, MCP tools) with the test suite, coverage gate, and CI honesty fully green throughout.
-**Current focus:** v1.2 shipped 2026-10-10 — awaiting next milestone (/gsd-new-milestone)
+**Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
+**Current focus:** v1.3 roadmap created — Phase 13 (Ollama Surface Disposition) ready to plan
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-11 — Milestone v1.3 started
+Phase: 13 of 19 (Ollama Surface Disposition — first of 7 v1.3 phases)
+Plan: — (none planned yet)
+Status: Ready to plan Phase 13
+Last activity: 2026-10-11 — v1.3 roadmap created (7 phases, 13–19; 29/29 requirements mapped)
+
+Progress: [░░░░░░░] 0% (0/7 v1.3 phases)
 
 ## Performance Metrics
 
 **Velocity:**
-- v1: 13 plans / 3 days; v1.1: 24 plans / 6 days (373+ commits, shipped 2026-10-07)
-- Recent trend: Stable (last-5 v1 plans 44/27/52/51/39 min; v1.1 dominated by runner cycles)
+- v1: 13 plans / 3 days · v1.1: 24 plans / 6 days · v1.2: 12 plans / 2 days
+- Recent trend: Stable
 
 *Updated after each plan completion*
 
@@ -41,59 +43,47 @@ Last activity: 2026-10-11 — Milestone v1.3 started
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-10-09):
+Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-10-11):
 
-- Roadmap: 3 phases (10–12) matching the owner-fixed wave strategy — Phase 10 contract layer + scaffolding (incl. REV-08 core start), Phase 11 adaptation + evaluation (5 file-disjoint agents), Phase 12 narrative + closeout (3 agents)
-- VEP-01 maps to Phase 11 (completes/verifies there); its core (`align_variant` + scoring kernels) starts in Phase 10's scaffolding pass as the long-pole head start
-- DOCS-01 maps to Phase 10; its IA³-chapter section completes in Phase 12 after PEFT-01
-- Metric registry lives at `dnallm/tasks/metric_registry.py` (sibling of metrics.py) — never inside the vendored `dnallm/tasks/metrics/` coverage/ruff/mypy-excluded glob
-- Zero new dependencies beyond scikit-allel (owner-approved 2026-10-09 for VEP-01 VCF reading, supersedes the stdlib-reader research decision: Windows cp310–313 wheels exist and numpy 1.26.4/2.2.0 both verified empirically before approval; only new required transitive dep is dask[array]; lands in Phase 11 agent B5); no new `dnallm/__init__.py` re-exports (facade byte-stable); per-module ≥96% coverage standard verified at phase verification; every new module coverage-gated via mocked fast-lane tests; new skips typed and allowlisted same-change
-- Commits carry no Co-Authored-By trailers (repo convention)
-- Research flags: Phase 11 REV-08 lane needs `--research-phase` (tokenizer alignment semantics, ClinVar filtering); Phase 12 REV-10 calibration choice needs a plan-time spike
-- v1.3 scope exclusion (owner, 2026-10-11): ollama MCP client notebooks (WINDOWS #13 — both never-executed ollama mcp_example notebooks, blocked on the ollama/VRAM coexistence plan) stay OUT of v1.3; the window remains open in the ledger and moves to a later milestone
-- v1.3 scope directive (owner, 2026-10-11): ALL ollama-related pytest surface is removed or marked skip — tests touching ollma across tests/examples/test_notebook_execution.py (33 refs), tests/test_runner_infra_contracts.py (15), tests/test_extras_guard.py (5), tests/examples/_execution.py (5), tests/test_models_lock_contracts.py (1), plus the two example/mcp_example ollama notebooks; per-item remove-vs-skip choice lands at planning time; extends the #13 exclusion to the entire ollama surface
+- Roadmap: 7 phases (13–19) matching the research-converged ordering — O ollama sweep, G GAP-1, W-core evaluators, W-rollout dispatch/gates, S publish chain, P atomic extras surgery, D docs sweep last. Coarse-granularity compression already applied at the category level (WPAR split 2-not-4; PUBS+PKGH-08; PKGH+WPAR-07; DOCR+PKGH-05) — the five hard ordering constraints (census re-pin once, test_script_execution.py shared-file sequencing, evaluators-before-dispatch, smoke-before-extras, docs-last) fix the count at 7
+- Cross-category mappings: PKGH-08 (mypy cap) → Phase 17 publish chain (the mypy failure class surfaced in publish run 38109158525); WPAR-07 (triton-windows) → Phase 18 atomic extras surgery (Pitfall 12: no half-changed extras surfaces); PKGH-05 (cuda130 default) → Phase 19 docs sweep (owner directive; describes the final extras state)
+- Phase 17's FIRST act is the publish.yml upload guard/split — verified unguarded `workflow_dispatch`→`twine upload` today; it must land before any smoke trigger exists (PyPI filenames are immutable)
+- Phase 13 executes the owner's 2026-10-11 ollama directive (all ollama pytest surface removed or skip-marked, per-assertion remove-vs-skip at planning time); WINDOWS #13 (mcp_example notebook execution) stays excluded — notebooks remain in-repo
+- Linux truth chain stays bedtools-computed (no re-freeze); selection.md is the single truth source parsed on both platforms; tolerance lives in the comparison layer only
+- Research flags for plan time: Phase 16 and Phase 17 warrant `--research-phase` (Phase 16: test-windows subset + time budget, tolerance-pin mechanics, marker registration, exon_f1 band pinning; Phase 17: `uv publish --dry-run` existence conflict vs installed uv 0.12.21, gh-action-pypi-publish input syntax); Phase 18 carries owner calls at discuss/plan time (base rename target + alias-or-break, rocm remove-vs-restore, triton-windows declare-vs-document)
+- Commits carry no Co-Authored-By trailers (repo convention); one census-moving edit per phase (D-03 triple + expected_skips.yaml + ci.yml stages same-change)
 
 ### Pending Todos
 
-Carried open ledger items from the v1.1 handoff (owner-scoped): python floor decision (3.10 EOL 2026-10-31), delete unreferenced doc_mocks.py entries, README:345+server.py:97 `config/` path pattern, quick_start "NER" task-type line, MCP client `_call_tool` naming mismatch. The MCP `--host/--port` flag bug moves from the deferred ledger into active scope (MCPE-01, Phase 12).
+Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside v1.3 requirements): delete unreferenced doc_mocks.py entries; README:345 + server.py:97 `config/` path pattern; quick_start "NER" task-type line; MCP client `_call_tool` naming mismatch.
 
 ### Blockers/Concerns
 
-None — milestone freshly planned.
+None. Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cadence re-evaluated by Phase 13's disposition) live in `milestones/v1.1-MILESTONE-AUDIT.md`.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261010-rpa | Retire numpy 1.x support: floor >=2.0.0, drop pyarrow cap, CI matrix numpy 2.2.0 only | 2026-10-10 | 834f9e2 | [261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py](./quick/261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py/) |
-| 261010-s3k | Bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering; absorbs numpy>=2.0.0 breaking floor) | 2026-10-10 | 526d539 | [261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig](./quick/261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig/) |
-| 261010-sv2 | Raise requires-python floor to >=3.11 (3.10 EOL); ruff py311 + mypy 3.11 sync; dead 3.10 code removed; ci.yml dead branch triggers (phs/revision) cleaned | 2026-10-10 | e3a5e94 | [261010-sv2-raise-requires-python-floor-to-3-11-3-10](./quick/261010-sv2-raise-requires-python-floor-to-3-11-3-10/) |
-| 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError — honor label_column from dataset config instead of hardcoding 'labels' (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0-fix-window-14-benchmark-run-label-column](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
-| 261010-vo6 | Fix latent bug: DNAInference.generate_dataset silently treated non-file path strings as single sequences (path-shaped strings now raise descriptive ValueError; genuine sequences unchanged) | 2026-10-10 | 67953b6 | [261010-vo6-fix-latent-bug-dnainference-generate-dat](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
-| 261010-w6a | Fix Windows-only CI failure in test_generate_dataset_missing_path_raises: repr-based platform-independent message assertion + Windows backslash literal case (test-only; Windows proof = CI test-windows job on pushed run) | 2026-10-10 | 3b99359 | [261010-w6a-fix-windows-only-ci-failure-in-test-gene](./quick/261010-w6a-fix-windows-only-ci-failure-in-test-gene/) |
-| 261010-wx2 | Spike: numpy interval-jaccard parity vs bedtools v2.31.1 — VERDICT PARITY (frozen pair integer-exact 15872/48878, delta 0.0; 8/8 edge + 3000/3000 seeded cases, 0 mismatches); enabling evidence for #19 platform-split | 2026-10-11 | 454623e | [261010-wx2-spike-numpy-interval-jaccard-parity-vs-b](./quick/261010-wx2-spike-numpy-interval-jaccard-parity-vs-b/) |
-| 261011-0a3 | Spike: numpy loj-intersect parity vs bedtools v2.31.1 — VERDICT PARITY (2000/2000 + 11/11, both canonical and sequence gates); NER half of #19 platform-split evidence-backed, null-fill/order/multiplicity pins recorded | 2026-10-11 | 9ddc35d | [261011-0a3-spike-numpy-pandas-loj-intersect-parity-](./quick/261011-0a3-spike-numpy-pandas-loj-intersect-parity-/) |
+| 261010-rpa | Retire numpy 1.x support: floor >=2.0.0, drop pyarrow cap, CI matrix numpy 2.2.0 only | 2026-10-10 | 834f9e2 | [261010-rpa](./quick/261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py/) |
+| 261010-s3k | Bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering) | 2026-10-10 | 526d539 | [261010-s3k](./quick/261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig/) |
+| 261010-sv2 | Raise requires-python floor to >=3.11; ruff/mypy py311 sync; dead 3.10 code removed | 2026-10-10 | e3a5e94 | [261010-sv2](./quick/261010-sv2-raise-requires-python-floor-to-3-11-3-10/) |
+| 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
+| 261010-vo6 | Fix latent bug: DNAInference.generate_dataset path-shaped strings raise ValueError | 2026-10-10 | 67953b6 | [261010-vo6](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
+| 261010-w6a | Fix Windows-only CI failure in test_generate_dataset_missing_path_raises (repr-based assertion) | 2026-10-10 | 3b99359 | [261010-w6a](./quick/261010-w6a-fix-windows-only-ci-failure-in-test-gene/) |
+| 261010-wx2 | Spike: numpy interval-jaccard parity vs bedtools — VERDICT PARITY (enabling evidence for #19) | 2026-10-11 | 454623e | [261010-wx2](./quick/261010-wx2-spike-numpy-interval-jaccard-parity-vs-b/) |
+| 261011-0a3 | Spike: numpy loj-intersect parity vs bedtools — VERDICT PARITY (null-fill/order/multiplicity pins recorded) | 2026-10-11 | 9ddc35d | [261011-0a3](./quick/261011-0a3-spike-numpy-pandas-loj-intersect-parity-/) |
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close, most recent first (full ledgers: `milestones/v1.2-MILESTONE-AUDIT.md`, `milestones/v1.1-MILESTONE-AUDIT.md`):
+Items acknowledged and deferred at milestone close, most recent first. The six 2026-10-11 post-close rows (cuda130 default + GPU matrix, OIDC migration, docs accuracy sweep, extras hygiene, publish smoke, mypy cap, mkdocs strict, #20 cov crash) were promoted into v1.3 active scope as PKGH/PUBS/DOCR/WPAR requirement IDs — see REQUIREMENTS.md.
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| deferred_items | post-close 2026-10-11 (owner decision): example/notebooks/overview.md still recommends `.[base,notebook,cuda124]` as the default install (3 mentions) — UPDATE the default recommendation to cuda130 across docs and examples (owner directive 2026-10-11: cuda130 is the go-forward default); document the GPU support floor: Pascal (GTX 10xx) has NO usable platform extra (torch wheels dropped sm_61 after cu118 — GPU acceleration never existed in dnallm's extras; Pascal users take cpu), Turing (20xx) is the minimum supported GPU line (CUDA 13's floor is exactly sm_75); SAME-PR VERIFICATION PRE-DONE 2026-10-11 (local torch 2.11.0+cu130): arch list = [sm_80, sm_90, sm_100, sm_110, sm_120] — no sm_75 and no PTX fallback, so Turing (20xx) is NOT covered by cu130 (CUDA same-major binary compat lets sm_80 SASS serve sm_86/89, i.e. 30xx/40xx are fine); FINAL FLOOR (all boundaries verified 2026-10-11): cuda130 default = Ampere (30xx) and newer; 20xx Turing served by cuda121–cuda128 (sm_75 IS in cu128 — torch 2.11 dropped only Volta sm_70; source pytorch#172352) but NOT cu130 (local verify: arch list sm_80+, no PTX); 30xx/40xx run every extra (cu130 via sm_80 same-major binary compat); 50xx needs cuda128+; Pascal (10xx) is NOT GPU-supported anywhere in the extras — document explicitly as cpu-only with the minimum-GPU-line stated (owner decision 2026-10-11: no 1080 support, follow upstream envelope); full ready-to-paste support matrix lives in this row; forward note: cu128 wheels deprecated from torch 2.12, so the 20xx ceiling will freeze gradually; optionally add a driver-based chooser line (cuda124–cuda130) for older-driver users; notebook `.[fla]` mentions (3x) are current | acknowledged | 2026-10-11 | — |
-| deferred_items | Trusted Publishing (OIDC) migration for PyPI releases — replace the PYPI_API_TOKEN secret (restored 2026-10-11 from owner .pypirc) with GitHub OIDC trusted publishing; discussed twice (2026-10-10, 2026-10-11) before recording; per owner decision 2026-10-11 the implementation decision lands with the v1.3 publish-smoke phase (may subsume it) | acknowledged | 2026-10-11 | — |
-| deferred_items | post-close 2026-10-11 (owner directive): systematic per-file review of docs/ and example/ — accuracy vs current code, staleness (post-numpy2/py311-floors, post-extras changes), install-command correctness (uv/pip lanes), with fixes landing in the same pass; distinct from the automated docs-validation gates which only check sync/masking, not factual accuracy | acknowledged | 2026-10-11 | — |
-| deferred_items | post-close 2026-10-11: extras hygiene — (a) `base` extra is misleadingly named (sounds minimal, actually dev+test+notebook+mcp kitchen sink; cost the publish chain its 4th failure); rename or re-scope with docs; (b) rocm extra's uv index pin is commented out in [tool.uv.sources]/conflicts — `.[rocm]` installs default-index torch, README's ROCm claim is inert: restore or remove; (c) cuda121 extra is past retirement age (torch>=2.2 floor); (d) install docs should split uv vs pip lanes — plain `pip install 'dnallm[cuda130]'` silently ignores the cu130 index pin (uv-only feature) leaving users on the default torch build; xpu/npu have no extras and rely on manual torch swaps (document or add Intel-index extras) | acknowledged | 2026-10-11 | — |
-| deferred_items | post-close 2026-10-11: publish workflow went stale between releases (two consecutive failures on v1.2.1: uv implicit-system-env removal, check_code.py --with-tests flag removal) — consider a periodic publish smoke (weekly workflow_dispatch dry-run) so the release chain cannot rust silently | acknowledged | 2026-10-11 | — |
-| deferred_items | post-close 2026-10-11: dev extra's unbounded mypy>=1.15 resolves a newer/stricter mypy on fresh CI runners (136 typeddict/import errors in publish run 38109158525 vs local green; informational-only today via check=False) — cap mypy or pin the CI-validated version before the error count grows into a real gate | acknowledged | 2026-10-11 | — |
-| deferred_items | 12/deferred-items: MOTIF-01 golden fixture — HBG1/BCL11A Fig 4a owner inputs (issue #44; activation fixture-files-only) | owner-deferred (option B) | 2026-10-10 | v1.2 |
-| deferred_items | 12/deferred-items: mkdocs --strict 15 pre-existing warnings (marimo mirrors + CONTRIBUTING link; CI gate unaffected) | acknowledged | 2026-10-10 | v1.2 |
-| deferred_items | 12/deferred-items: numpy 2.5.x cannot be instrumented by coverage on py3.13 (matrix pins protect CI; numpy ceiling call when 1.26.4 leg retires) | acknowledged | 2026-10-10 | v1.2 |
-| deferred_items | 10/deferred-items: old-terminology prose hits outside check surface (pyproject description, 3 test docstrings, ui/ default, root cli/ shims + 2 example configs — reshaped table→bullets at close; acknowledged as one block) | acknowledged | 2026-10-10 | v1.2 |
-| deferred_items | 10/deferred-items: pytest-cov dotted-target env crash (torch.overrides double-execution; coverage CLI workaround) | acknowledged | 2026-10-10 | v1.2 |
-| uat_gaps | carried from v1.1 close (1 item) | acknowledged (prior close) | 2026-10-07 | v1.1 |
-| deferred_items | MCP `--host/--port` silently overridden by yaml (server.py) | IN v1.2 SCOPE — MCPE-01, Phase 12 | 2026-10-06 | v1.1 |
-| deferred_items | 09: test_plot_for_regression fast-lane failure | resolved 2026-10-06 (550d311; WINDOWS id 16) | 2026-10-06 | v1.1 |
+| deferred_items | MOTIF-01 golden fixture — HBG1/BCL11A Fig 4a owner inputs (issue #44; activation fixture-files-only) — now FUTR-04 | owner-deferred (option B) | 2026-10-10 | v1.2 |
+| deferred_items | numpy 2.5.x cannot be instrumented by coverage on py3.13 (numpy ceiling call when the 1.26.4 leg retires) | acknowledged | 2026-10-10 | v1.2 |
+| deferred_items | old-terminology prose hits outside check surface (pyproject description, 3 test docstrings, ui/ default, root cli/ shims — example/ configs now fall under DOCR-01) | acknowledged | 2026-10-10 | v1.2 |
+| deferred_items | uat_gaps carried from v1.1 close (1 item) | acknowledged (prior close) | 2026-10-07 | v1.1 |
 | deferred_items | 05: `uv run pytest` resolver failure under uv 0.12.20 (use `--no-sync`) | acknowledged | 2026-10-06 | v1.1 |
 | deferred_items | 03: import-time `logs/dnallm.log` sink recreated under pytest cwd | acknowledged | 2026-10-01 | v1 |
 | deferred_items | 03: test_timeout.py fixed ~60s cost | acknowledged | 2026-10-01 | v1 |
@@ -101,19 +91,11 @@ Items acknowledged and deferred at milestone close, most recent first (full ledg
 
 ## Session Continuity
 
-Last session: 2026-10-11T06:31Z (resumed from HANDOFF.json)
-Stopped at: v1.3 scoping underway — owner excluded WINDOWS #13 (ollama MCP notebooks) from v1.3 scope; kickoff via /gsd-new-milestone next
-Resume file: None (HANDOFF.json consumed at resumption; its owner-side items folded into Operator Next Steps)
-
-## Deferred Verification
-
-| Phase | State | Resume |
-|-------|-------|--------|
-| *(none — v1.1 closed 2026-10-07 with 0 blockers)* | | |
+Last session: 2026-10-11T07:45Z
+Stopped at: v1.3 roadmap created — 7 phases (13–19), 29/29 requirements mapped; awaiting owner approval, then plan Phase 13
+Resume file: None (v1.3 kickoff consumed the prior handoff)
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone (candidate pool: open windows MINUS #13 + 5 post-close deferred rows + MOTIF-01 issue #44)
-- Close PR #47 (pydantic-ai<3) and #48 (ipython<10) with the provided guard-rationale commands — owner-side, execution unconfirmed (extras guard rejections are correct; the caps are load-bearing)
-- Local main fast-forward (cosmetic; merges #50-#53 happened on GitHub)
-- Optional: record the Trusted Publishing (OIDC) migration deferred row — discussed twice, never written; or let the publish-smoke deferred item subsume it
+- After roadmap approval: `/gsd-plan-phase 13` (standard patterns — no research-phase needed)
+- At their turn: `/gsd-plan-phase 16` and `/gsd-plan-phase 17` with `--research-phase`; Phase 18 brings owner decisions (base rename target, rocm, triton-windows) to discuss/plan time
