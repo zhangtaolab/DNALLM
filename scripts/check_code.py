@@ -113,16 +113,24 @@ def check_environment() -> bool:
 
     # Check if virtual environment is activated
     if not os.environ.get("VIRTUAL_ENV"):
-        print_status(
-            "WARNING",
-            "Virtual environment not detected. Please activate it first:",
-        )
-        print("  source .venv/bin/activate  # Linux/macOS")
-        print("  .venv\\Scripts\\activate     # Windows")
-        print()
-        response = input("Continue anyway? (y/N): ").strip().lower()
-        if response not in ["y", "yes"]:
-            return False
+        if os.environ.get("CI"):
+            # CI runners have no interactive stdin; treat the missing venv as
+            # a warning and continue (EOFError on input() would kill the job).
+            print_status(
+                "WARNING",
+                "Virtual environment not detected (CI environment) — continuing",
+            )
+        else:
+            print_status(
+                "WARNING",
+                "Virtual environment not detected. Please activate it first:",
+            )
+            print("  source .venv/bin/activate  # Linux/macOS")
+            print("  .venv\\Scripts\\activate     # Windows")
+            print()
+            response = input("Continue anyway? (y/N): ").strip().lower()
+            if response not in ["y", "yes"]:
+                return False
 
     # Check required tools
     required_tools = ["ruff", "pytest", "mypy"]
