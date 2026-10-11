@@ -79,7 +79,10 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   2. Non-ollama contracts sharing the swept surface — kernel-plot compat pins, extras brackets, systemd/docs-mirror contracts — still exist and pass after the sweep
   3. Post-sweep `grep ollama tests/` residue equals exactly the sanctioned list recorded in the plan; the two mcp_example notebooks remain in-repo per WINDOWS #13 with `langchain-ollama` still declared in the mcp extra
   4. The D-03 census triple is re-pinned, `expected_skips.yaml` updated, and ci.yml example-nightly stages reconciled in the same change — the nightly run stays green (no pytest exit 5, no unexpected-skip audit failure)
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md — Atomic D-04 disposition: delete nightly stage 3 (gate fires the allowlisted network-unavailable: typed skip), re-pin census triple 208/217→216/217, drop the -k mcp deselect from stages 0.5/1, reconcile stage-4 audit list, comment contracts, allowlist comment, and both READMEs; 59-ref per-assertion ledger + 56-line sanctioned residue recorded in the plan
 
 ### Phase 14: GAP-1 Transformers 5.x Disposition
 
