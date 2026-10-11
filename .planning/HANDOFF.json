@@ -1,36 +1,41 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-10T13:16:20.153Z",
+  "timestamp": "2026-10-11T05:10:52.529Z",
   "phase": null,
-  "phase_name": "post-milestone quick tasks (v1.2 archived; no active phase)",
-  "phase_dir": ".planning",
+  "phase_name": "between milestones (v1.2 shipped+archived 2026-10-10; v1.3 not started)",
+  "phase_dir": null,
   "plan": null,
   "task": null,
   "total_tasks": 0,
-  "status": "complete",
+  "status": "paused",
   "completed_tasks": [
-    {"id": 1, "name": "revision -> dev merge #1 (PR #45, squash) + CI verification", "status": "done", "commit": "92a8106"},
-    {"id": 2, "name": "numpy 1.x retirement deep evaluation (8/8 resolution proofs + runtime smoke)", "status": "done", "commit": null},
-    {"id": 3, "name": "quick 261010-rpa: retire numpy 1.x (floor >=2.0.0, drop pyarrow cap, CI matrix 6->3 legs)", "status": "done", "commit": "834f9e2"},
-    {"id": 4, "name": "quick 261010-s3k: bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering)", "status": "done", "commit": "526d539"},
-    {"id": 5, "name": "revision -> dev merge #2 (phantom conflicts resolved to revision side, empty-diff tree proof)", "status": "done", "commit": "05b788e"},
-    {"id": 6, "name": "verify dev merge CI runs", "status": "done", "commit": null},
-    {"id": 7, "name": "quick 261010-sv2: requires-python >=3.11 (ruff py311 + mypy 3.11 sync, 3.10 dead code removed, ci.yml dead triggers phs/revision cleaned)", "status": "done", "commit": "a859a2e"},
-    {"id": 8, "name": "branch retirement: revision deleted local+remote (10a47b4 verified ancestor of dev)", "status": "done", "commit": null}
+    {"id": 1, "name": "backlog review — #21 (IA3 docs pointer) verified fixed; deferred inventory routed to v1.3 pool", "status": "done", "commit": "5fab67b"},
+    {"id": 2, "name": "quick uz0 — WINDOWS #14 Benchmark.run label-column fix (+4 tests, red-first)", "status": "done", "commit": "4db85d0"},
+    {"id": 3, "name": "quick vo6 — generate_dataset path-shaped-string ValueError guard (+3 tests)", "status": "done", "commit": "67953b6"},
+    {"id": 4, "name": "quick w6a — Windows CI repr assertion platform-independent (+backslash literal)", "status": "done", "commit": "3b99359"},
+    {"id": 5, "name": "quick wx2 — jaccard parity spike vs bedtools v2.31.1: VERDICT PARITY (3000/3000 + frozen pair integer-exact)", "status": "done", "commit": "454623e"},
+    {"id": 6, "name": "quick 0a3 — loj-intersect parity spike vs bedtools v2.31.1: VERDICT PARITY (2000/2000 dual-gate, null-fill/order/multiplicity pins)", "status": "done", "commit": "9ddc35d"},
+    {"id": 7, "name": "#19 shaped into implementation-ready v1.3 work package (pyranges1 rejected; platform-split; NER directive; change-surface inventory)", "status": "done", "commit": "e95c184"},
+    {"id": 8, "name": "release v1.2.1 — tag + release + 4 publish-workflow fixes (PRs #50/#51/#52/#53) + PYPI_API_TOKEN secret; dnallm==1.2.1 published (run 38112794446)", "status": "done", "commit": "f7a7fcb"}
   ],
-  "remaining_tasks": [],
+  "remaining_tasks": [
+    {"id": 9, "name": "v1.3 kickoff via /gsd-new-milestone (candidate pool: 7 open windows + STATE deferred items)", "status": "not_started"},
+    {"id": 10, "name": "PR #47 (pydantic-ai<3 bump) and #48 (ipython<10 bump) closure — owner commands provided, execution unconfirmed", "status": "not_started"}
+  ],
   "blockers": [],
   "async_jobs": [],
   "human_actions_pending": [
-    {"action": "REV-10/11 golden-test inputs (Fig 4a coordinates, BCL11A motif ID, JASPAR release, tolerance)", "context": "pre-existing, tracked in issue #44; not part of this session", "blocking": false}
+    {"action": "close PR #47 and #48 with the provided guard-rationale comments (gh pr close commands were permission-blocked for the agent; supplied to owner verbatim)", "context": "both dependabot bumps are correctly rejected by the extras guard tests; pydantic-ai <2 cap is load-bearing (opentelemetry._events issue under investigation), ipython <9 pin is the 08-02 REPAIR-01 fix", "blocking": false},
+    {"action": "local main fast-forward (cosmetic; merges happened on GitHub)", "context": "local main is behind origin/main by the #50-#53 merge chain", "blocking": false}
   ],
   "decisions": [
-    {"decision": "Retire numpy 1.x support; floor numpy>=2.0.0; remove pyarrow<26 cap", "rationale": "evidence-based: zero numpy<2 pins among 42 audited packages; 8/8 uv resolution proofs; pyarrow26+numpy2.2 runtime smoke passed", "phase": null},
-    {"decision": "Package version 0.8.0 -> 1.2.1, milestone-aligned 1.2.x numbering", "rationale": "owner instruction; jump absorbs the numpy breaking floor", "phase": null},
-    {"decision": "requires-python floor >=3.11 (ruff py311, mypy 3.11)", "rationale": "3.10 EOL 2026-10-31; decided 2026-10-10 morning; kept separate from numpy retirement for atomicity", "phase": null},
-    {"decision": "revision branch deleted after v1.2 closeout; post-milestone work lands directly on dev", "rationale": "content fully in dev (true merge 05b788e preserved ancestry); per-milestone working branch no longer needed", "phase": null}
+    {"decision": "#19 platform-split: Linux/macOS keep bedtools/pybedtools (frozen truth chain untouched, no re-freeze); Windows gets a parity-verified numpy evaluator", "rationale": "bedtools has no Windows build; pyranges1 rejected (ruranges has no win_amd64 wheels, requires-python>=3.12, zero gain for CRE jaccard); both enabling parity spikes returned PARITY", "phase": null},
+    {"decision": "NER example code itself gains runtime platform detection (Linux pybedtools / Windows numpy path)", "rationale": "owner directive 2026-10-10; downstream frozen Anno metric exon_f1=0.7522 must hold on both paths; loj replacement needs its own parity (delivered by quick 0a3)", "phase": null},
+    {"decision": "dev->main merges use merge commits, never squash", "rationale": "squash breaks revision->dev ancestry causing phantom conflicts on every later merge (recorded lesson)", "phase": null},
+    {"decision": "publish re-runs dispatch on the tag ref after moving the tag to the merged main HEAD", "rationale": "keeps tag = release = built artifact byte-identical; tag-ref dispatch uses the fixed workflow file at the tag", "phase": null},
+    {"decision": "release notes describe features only — no reviewer/REV framing", "rationale": "owner directive 2026-10-10", "phase": null}
   ],
-  "uncommitted_files": ["?? .planning/graphs/", "?? .planning/tmp/"],
-  "next_action": "Verify the final docs-only CI pair (runs 38054940772 CI + 38054940771 Docs Validation from push 7f872a8) completed success — expected green. Beyond that nothing queued: natural candidates are PyPI publish of 1.2.1, issue #44 golden-test inputs, next milestone planning (/gsd-new-milestone).",
-  "context_notes": "Session complete. dev == origin/dev == 7f872a8; every functional push today (numpy retirement, 1.2.1 bump, merge 05b788e, python floor) verified green across the full matrix; only the final docs-only push's CI pair was in flight at pause. Untracked runtime dirs .planning/graphs/ and .planning/tmp/ are intentionally never staged. .claude/CLAUDE.md is gitignored (.gitignore:116) — its 3.11 sync lives on disk only."
+  "uncommitted_files": [],
+  "next_action": "Start v1.3: /clear then /gsd-new-milestone (scoping inputs: 7 open windows led by implementation-ready #19, plus the 5 post-close STATE deferred items)",
+  "context_notes": "Post-close hardening session (2026-10-10 22:07 -> 2026-10-11 13:10): five quick tasks + full v1.2.1 release chain. The publish saga (6 attempts) is fully resolved — root causes and fixes are in PRs #50-#53 bodies and the deferred-items ledger. Both parity spikes' harness scripts are re-runnable evidence: .planning/quick/261010-wx2-*/spike_jaccard_parity.py and .planning/quick/261011-0a3-*/spike_loj_parity.py (seeds 20261010/20261011)."
 }
