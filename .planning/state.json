@@ -1,28 +1,48 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.2 — Paper Revision Suite Support",
+  "milestone": "v1.3 — Platform Reach & Packaging Honesty",
   "phases": [
     {
-      "number": "10",
-      "name": "Evaluation Contract Layer & Shared Scaffolding",
-      "status": "complete"
+      "number": "13",
+      "name": "Ollama Surface Disposition",
+      "status": "pending"
     },
     {
-      "number": "11",
-      "name": "PEFT Adaptation, Baselines & New Evaluation Capabilities",
-      "status": "complete"
+      "number": "14",
+      "name": "GAP-1 Transformers 5.x Disposition",
+      "status": "pending"
     },
     {
-      "number": "12",
-      "name": "Motif Matching, MCP Tools & Milestone Closeout",
-      "status": "complete"
+      "number": "15",
+      "name": "Windows Parity Core — Numpy Interval Evaluators",
+      "status": "pending"
+    },
+    {
+      "number": "16",
+      "name": "Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity",
+      "status": "pending"
+    },
+    {
+      "number": "17",
+      "name": "Publish Chain Robustness",
+      "status": "pending"
+    },
+    {
+      "number": "18",
+      "name": "Packaging & Install Honesty — Atomic Extras Surgery",
+      "status": "pending"
+    },
+    {
+      "number": "19",
+      "name": "Docs Accuracy Sweep & Milestone Closeout",
+      "status": "pending"
     }
   ],
   "next": {
-    "command": "/gsd:progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step (verify)",
+    "reason": "Phase 13 of 7 · 0% · ready to verify"
   },
-  "updated_at": "2026-10-10T10:24:19.703Z"
+  "updated_at": "2026-10-11T09:05:06.586Z"
 }
