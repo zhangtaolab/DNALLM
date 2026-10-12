@@ -33,6 +33,6 @@
     {"decision": "Red runs from improvised-runner env issues do not count against the UAT checkpoint", "rationale": "Checkpoint verifies phase-13 CI shape behavior, not the ad-hoc verification vehicle; R1 env-leak and R2 cpu-torch failures were infra artifacts", "phase": "13"}
   ],
   "uncommitted_files": [" M .planning/config.json", " M .planning/state.json", "?? .planning/.gsd-allow-shrink", "?? .planning/milestone.lock", "?? .planning/phases/13-ollama-surface-disposition/13-VERIFICATION.md"],
-  "next_action": "Check R5 example-nightly (job 114700709193) status: if green, verify 5 criteria from logs and write 13-UAT.md pass; if killed by power cut, follow memory/phase13-uat-nightly-recovery.md (wipe _work, restart runner, re-dispatch ensuring example leases first)",
+  "next_action": "R5 was cleanly cancelled at 66% (owner chose pause before power cut, 2026-10-12 ~08:37Z). Follow memory/phase13-uat-nightly-recovery.md: wipe _work, restart runner via env -i command, re-dispatch ensuring example leases first",
   "context_notes": "Phase 13 execution fully complete and verified except ONE UAT blocked item: first green example-nightly. Five criteria; R3 proved census/typed-skips/audit, failed only on transient hf-mirror network during 4 model downloads. R5 (started 07:07:24Z) racing the 09:06Z power cut. Owner fully delegated (你来检测 / 不用等我). After green: UAT complete-session -> VERIFICATION flip via uat-passed --uat-only -> transition phase 13 complete -> windows ledger #22 fix."
 }
