@@ -104,9 +104,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-11T09:05:21.257Z
-Stopped at: Completed 13-01-PLAN.md
-Resume file: None
+Last session: 2026-10-12T09:56:00Z
+Stopped at: Session resumed post-power-cut; R6 (38232792147) dispatched, example-nightly re-verification in flight (auto: five-criteria check → 13-UAT.md → phase close)
+Resume file: .planning/phases/13-ollama-surface-disposition/.continue-here.md
 
 ## Operator Next Steps
 

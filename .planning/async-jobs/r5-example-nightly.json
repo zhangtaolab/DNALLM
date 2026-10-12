@@ -5,7 +5,7 @@
   "target_job_id": 114700709193,
   "backend": "github-actions",
   "runner": "self-hosted local GB10 (forrest@edgexpert, runner id 22, ~/github-runners/dnallm-nightly)",
-  "status": "cancelled (terminal, 2026-10-12T08:37Z — owner chose clean pause before power cut; re-dispatch on resume)",
+  "status": "superseded by R6 (run 38232792147, dispatched 2026-10-12T09:52Z post-power-resume; R5 itself cancelled at 66% pre-cut)",
   "submitted_at": "2026-10-12T07:07:24Z",
   "purpose": "Phase 13 UAT blocked-item re-verification: first green example-nightly post-phase-13-changes (dispatch path blessed in 13-UAT.md blocked entry)",
   "expected_artifacts": [
