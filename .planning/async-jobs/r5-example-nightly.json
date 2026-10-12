@@ -1,0 +1,21 @@
+{
+  "job_id": "38215981379",
+  "job_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/38215981379",
+  "target_job": "example-nightly (py3.12, example execution census)",
+  "target_job_id": 114700709193,
+  "backend": "github-actions",
+  "runner": "self-hosted local GB10 (forrest@edgexpert, runner id 22, ~/github-runners/dnallm-nightly)",
+  "status": "running",
+  "submitted_at": "2026-10-12T07:07:24Z",
+  "purpose": "Phase 13 UAT blocked-item re-verification: first green example-nightly post-phase-13-changes (dispatch path blessed in 13-UAT.md blocked entry)",
+  "expected_artifacts": [
+    "job conclusion success",
+    "stage 0.5 census line: '216/217 tests collected (1 deselected)'",
+    "2 typed skips network-unavailable (mcp_example pair) audit-allowed in pytest-junit-example-stage1.xml",
+    "stage-results.txt with zero non-zero lines",
+    "stage-4 junit audits all exit 0"
+  ],
+  "verification_command": "gh run view --job 114700709193 --repo zhangtaolab/DNALLM --json status,conclusion",
+  "resume_command": "gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3",
+  "notes": "Killed by power cut ~2026-10-12T09:06Z if not finished. Prior run R3 (38193577907) proved 3/5 criteria; its only failure was hf-mirror network instability on 4 notebook model downloads. On re-dispatch ensure example-nightly leases before coverage-nightly (cancel+redispatch if coverage leases first)."
+}
