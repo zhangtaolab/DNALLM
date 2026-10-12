@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-12T07:34:40.396Z",
+  "timestamp": "2026-10-12T08:37:30.942Z",
   "phase": "13",
   "phase_name": "ollama-surface-disposition",
   "phase_dir": ".planning/phases/13-ollama-surface-disposition",
@@ -21,7 +21,7 @@
     {"description": "HelixIdentify/.venv polluted by first CI attempt (dnallm extras on py3.13)", "type": "human_action", "workaround": "uv sync in ~/Github/HelixIdentify (owner informed, not yet done)"}
   ],
   "async_jobs": [
-    {"manifest": ".planning/async-jobs/r5-example-nightly.json", "job_id": "38215981379", "backend": "github-actions", "status": "running", "submit_command": "gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3", "submitted_at": "2026-10-12T07:07:24Z", "expected_artifacts": ["green example-nightly job", "census 216/217 (1 deselected)", "2 typed skips network-unallowed audit-allowed", "stage-results.txt zero non-zero"], "verification_command": "gh run view --job 114700709193 --repo zhangtaolab/DNALLM --json status,conclusion", "resume_command": "gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3"}
+    {"manifest": ".planning/async-jobs/r5-example-nightly.json", "job_id": "38215981379", "backend": "github-actions", "status": "cancelled (terminal — re-dispatch on resume)", "submit_command": "gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3", "submitted_at": "2026-10-12T07:07:24Z", "expected_artifacts": ["green example-nightly job", "census 216/217 (1 deselected)", "2 typed skips network-unallowed audit-allowed", "stage-results.txt zero non-zero"], "verification_command": "gh run view --job 114700709193 --repo zhangtaolab/DNALLM --json status,conclusion", "resume_command": "gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3"}
   ],
   "human_actions_pending": [
     {"action": "Reboot machine and reopen session after power returns (claude --continue or /gsd-resume-work)", "context": "Power cut ~09:06Z kills everything; caches and this handoff persist", "blocking": true},
