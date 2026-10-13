@@ -99,7 +99,10 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 - [ ] 14-01-PLAN.md — GAPC-01 evidence on record (recorded promoter load run, BPE-leg probe with task_type token, invert_attention_mask reachability proof, nightly junit forensics, census baseline → 14-EVIDENCE.md sections A-F), then the locked owner disposition checkpoint (blocking-human decision: shim-zero-rung vs removal, D-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 14-02-PLAN.md — Post-decision execution: comment-only GAP-1 prose resolution in the two test files (pruned-AST gate, markers byte-identical, census/matcher stability proofs), local D-06 gates (fast lane + 35-family + skip audit), WINDOWS #11/#12/#15 closure via gsd-tools, GAPC requirements complete, CI coverage-nightly dispatch re-verification on ref v1.3
 
 ### Phase 15: Windows Parity Core — Numpy Interval Evaluators
