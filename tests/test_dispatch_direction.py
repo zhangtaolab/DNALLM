@@ -2,17 +2,27 @@
 
 Phase 16 (16-01) structure + runtime tests for the FIRST dispatch seam --
 the CRE notebook's jaccard agreement cell (plant_helixseek_cre.ipynb cell
-11). The file proves, by execution and by AST inspection:
+11) -- extended by 16-02 with the NER seams (generate_bpe_dataset.py
+import/acquisition + data_generation_and_inference.ipynb cells 0/1/2/8)
+and both NER test gates. The file proves, by execution and by AST
+inspection:
 
 * the seam dispatches on the platform equality predicate with a fail-loud
   direction: a win32 platform runs the numpy evaluator in-process with
   ZERO subprocess invocation (contract A), while a POSIX platform with an
   unusable CLI binary RAISES instead of quietly taking the numpy path
   (contract B -- the WPAR-06 "cannot silently execute on Linux" clause);
+* the NER win32 dispatch reproduces the pinned bedtools loj rows exactly
+  (12-column fields element-wise, null sextet verbatim, A-file order,
+  join multiplicity, pybedtools row types) and equals a LIVE pybedtools
+  loj wherever the truth chain is installed;
 * no exception-based import-fallback ladder wraps the dispatch (an
   ImportError on Linux must fail, never fall back);
-* the showcase gate's PATH probe stays fail-loud on POSIX and is preceded
-  by the platform guard that routes win32 past it (no skip machinery).
+* the duplicated inline NER adapter (script + cell 8) stays textually
+  identical (the AS-1 drift guard);
+* the three gates' probes stay fail-loud on POSIX and are preceded by the
+  platform guard that routes win32 past them (no skip machinery on any
+  Windows route).
 
 Posture (copied from tests/test_genomic_intervals.py): platform-neutral,
 no bedtools binary, no subprocess of our own, no skip machinery and no
@@ -505,3 +515,252 @@ def test_ner_script_posix_seam_import_fails_loud(monkeypatch: pytest.MonkeyPatch
         exec(  # ruff: ignore[exec-builtin]
             compile(seam, "ner-script-seam-posix-contract", "exec"), namespace
         )
+
+
+# ---------------------------------------------------------------------------
+# NER structure contracts (16-02) -- seam shape, notebook cells, both gates
+# ---------------------------------------------------------------------------
+
+NER_NB = (
+    REPO_ROOT
+    / "example"
+    / "notebooks"
+    / "finetune_NER_task"
+    / "data_generation_and_inference.ipynb"
+)
+NER_NB_ID = "notebooks/finetune_NER_task/data_generation_and_inference.ipynb"
+SCRIPT_GATE_TEST = REPO_ROOT / "tests" / "examples" / "test_script_execution.py"
+NOTEBOOK_GATE_TEST = REPO_ROOT / "tests" / "examples" / "test_notebook_execution.py"
+
+
+def _ner_cell(index: int) -> str:
+    """Return one NER notebook code cell's source (kernel-free JSON reader)."""
+    nb = json.loads(NER_NB.read_text(encoding="utf-8"))
+    cell = nb["cells"][index]
+    assert cell["cell_type"] == "code", f"NER cell {index} must stay a code cell"
+    return _cell_text(cell)
+
+
+def _imports_in(stmts: list[ast.stmt]) -> list[tuple[str | None, tuple[str, ...]]]:
+    """Collect (module, names) for every import inside the given statements."""
+    found: list[tuple[str | None, tuple[str, ...]]] = []
+    for stmt in stmts:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.ImportFrom):
+                found.append((node.module or "", tuple(alias.name for alias in node.names)))
+            elif isinstance(node, ast.Import):
+                found.append((None, tuple(alias.name for alias in node.names)))
+    return found
+
+
+def _top_level_win32_if(tree: ast.Module) -> ast.If:
+    """Return the first top-level ``if sys.platform == "win32":`` node."""
+    for node in tree.body:
+        if isinstance(node, ast.If) and _is_win32_platform_test(node.test):
+            return node
+    pytest.fail('no top-level `if sys.platform == "win32":` node in the parsed source')
+
+
+def _normalize_ws(source: str) -> str:
+    """Whitespace-normalize source for the script-vs-cell drift comparison."""
+    return "\n".join(line.strip() for line in source.splitlines())
+
+
+def _function_region(text: str, signature: str) -> list[str]:
+    """Lines of one top-level function, from its def to the next top-level line."""
+    lines = text.splitlines()
+    starts = [i for i, line in enumerate(lines) if line.startswith(signature)]
+    assert len(starts) == 1, f"expected exactly one {signature!r} definition"
+    start = starts[0]
+    end = next(
+        (
+            start + offset
+            for offset in range(1, len(lines) - start)
+            if lines[start + offset] and not lines[start + offset][0].isspace()
+        ),
+        len(lines),
+    )
+    return lines[start:end]
+
+
+def test_ner_script_import_seam_is_the_conditional_pair() -> None:
+    """Script seam: win32 imports the evaluator, POSIX imports BedTool verbatim."""
+    src = NER_SCRIPT.read_text(encoding="utf-8")
+    assert 'sys.platform == "win32"' in src, "script lost the win32 predicate"
+    seam = _top_level_win32_if(ast.parse(src))
+    assert _imports_in(seam.body) == [("dnallm.utils", ("loj_intersect",))], (
+        "win32 branch must import the loj evaluator from the dnallm.utils package surface"
+    )
+    assert _imports_in(seam.orelse) == [("pybedtools", ("BedTool",))], (
+        "POSIX branch must keep the BedTool import verbatim (the bedtools truth chain)"
+    )
+
+
+def test_ner_nb_cell2_import_seam_matches_script_shape() -> None:
+    """Notebook cell 2 carries the same conditional import pair as the script."""
+    cell2 = _ner_cell(2)
+    assert 'sys.platform == "win32"' in cell2, "cell 2 lost the win32 predicate"
+    seam = _top_level_win32_if(ast.parse(cell2))
+    assert _imports_in(seam.body) == [("dnallm.utils", ("loj_intersect",))]
+    assert _imports_in(seam.orelse) == [("pybedtools", ("BedTool",))]
+
+
+def test_ner_seams_have_no_try_wrapped_import_ladder() -> None:
+    """No try-statement encloses an import in the script or cell 2 (WPAR-06).
+
+    The exception-based import-fallback ladder is the prohibited dispatch
+    shape -- it would let the numpy path silently execute on a Linux box
+    whose pybedtools broke. (The script's two pre-existing try blocks wrap
+    FASTA slicing, never imports.)
+    """
+    offenders: list[str] = []
+    for label, source in (
+        ("script", NER_SCRIPT.read_text(encoding="utf-8")),
+        ("cell 2", _ner_cell(2)),
+    ):
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, (ast.Try, ast.TryStar)):
+                for sub in ast.walk(node):
+                    if isinstance(sub, (ast.Import, ast.ImportFrom)):
+                        offenders.append(f"{label}:{sub.lineno}")
+    assert not offenders, (
+        f"try-wrapped import at {offenders} -- the exception-based fallback ladder "
+        "is the WPAR-06 target and must not exist (dispatch on sys.platform instead)"
+    )
+
+
+def test_ner_adapter_textually_identical_script_and_cell8() -> None:
+    """AS-1 drift guard: the duplicated inline adapter must not diverge.
+
+    The adapter + helper are deliberately INLINE in both the script and
+    notebook cell 8 (the locked dnallm.utils surface stays untouched), so
+    this textual-identity assertion is the drift pin between the copies.
+    """
+    script_defs = _script_module_defs(("LojRow", "_loj_rows"))
+    cell8 = _ner_cell(8)
+    cell_defs = {
+        node.name: ast.get_source_segment(cell8, node)
+        for node in ast.parse(cell8).body
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef))
+        and node.name in ("LojRow", "_loj_rows")
+    }
+    assert set(cell_defs) == {"LojRow", "_loj_rows"}, "cell 8 lost the adapter/helper definitions"
+    for name in ("LojRow", "_loj_rows"):
+        assert _normalize_ws(script_defs[name]) == _normalize_ws(cell_defs[name]), (
+            f"{name} drifted between generate_bpe_dataset.py and notebook cell 8 -- "
+            "the two inline copies must stay textually identical (AS-1)"
+        )
+
+
+def test_ner_cell8_acquisition_dispatched_and_null_check_intact() -> None:
+    """Cell 8 acquires through the helper and keeps the null-score check."""
+    cell8 = _ner_cell(8)
+    assert "_loj_rows(tokens_bed, annotation_bed)" in cell8, (
+        "cell 8's acquisition statement is not dispatched through _loj_rows"
+    )
+    assert "BedTool(tokens_bed)" not in cell8, (
+        "cell 8 still acquires through pybedtools directly (seam incomplete)"
+    )
+    script = NER_SCRIPT.read_text(encoding="utf-8")
+    for label, source in (("script", script), ("cell 8", cell8)):
+        assert 'name == "-1"' in source, (
+            f"{label} lost the intergenic null-score check -- fields[10] accessor is "
+            "load-bearing (Pitfall 1)"
+        )
+
+
+def test_ner_install_and_verify_cells_are_posix_guarded() -> None:
+    """Cells 0/1: POSIX install lines verbatim; Windows touches no POSIX tooling.
+
+    T-16-06: the POSIX branch must keep both install lines byte-verbatim
+    and the Windows branch must attempt no pybedtools/bedtools tooling;
+    cell 1's which-magic lives inside the POSIX guard (Pitfall 5).
+    """
+    cell0 = _ner_cell(0)
+    cell1 = _ner_cell(1)
+    guard = 'if sys.platform != "win32":'
+    assert guard in cell0, "cell 0 lost the POSIX guard"
+    assert guard in cell1, "cell 1 lost the POSIX guard (Pitfall 5)"
+    assert "!brew install bedtools" in cell0, "cell 0 lost the brew bedtools install line"
+    assert "!uv pip install pyfastx pybedtools" in cell0, (
+        "cell 0 lost the uv pip line naming both packages verbatim"
+    )
+    windows_branch = cell0.split("else:", 1)[1]
+    assert "!uv pip install pyfastx" in windows_branch, "Windows branch must still install pyfastx"
+    assert "pybedtools" not in windows_branch, (
+        "Windows branch attempts pybedtools tooling (WPAR-03 install clause)"
+    )
+    assert "bedtools" not in windows_branch, (
+        "Windows branch attempts bedtools tooling (WPAR-03 install clause)"
+    )
+    for label, source in (("cell 0", cell0), ("cell 1", cell1)):
+        lines = [line for line in source.splitlines() if line.strip()]
+        guard_index = next((i for i, line in enumerate(lines) if line.strip() == guard), None)
+        magic_index = next(i for i, line in enumerate(lines) if line.strip().startswith("!"))
+        assert guard_index is not None, f"{label}: no POSIX guard line found"
+        assert magic_index > guard_index, (
+            f"{label}: a shell magic sits outside the POSIX guard body"
+        )
+        assert lines[magic_index].startswith("    "), (
+            f"{label}: the magic must be indented INSIDE the guard (Pitfall 5 for cell 1)"
+        )
+    assert "!which intersectBed" in cell1, "cell 1 lost the intersectBed verify magic"
+
+
+# ---------------------------------------------------------------------------
+# NER gate structure assertions (16-02) -- guard precedes probe, no win32 skip
+# ---------------------------------------------------------------------------
+
+
+def test_script_gate_guard_precedes_probe() -> None:
+    """Script gate: win32 guard first statement, probe + typed skip retained."""
+    region = _function_region(
+        SCRIPT_GATE_TEST.read_text(encoding="utf-8"), "def _gate_script_pybedtools"
+    )
+    guard_hits = [
+        i for i, line in enumerate(region) if line.strip() == 'if sys.platform == "win32":'
+    ]
+    probe_hits = [i for i, line in enumerate(region) if 'find_spec("pybedtools")' in line]
+    assert guard_hits, "script gate lost the win32 early-return (WPAR-04)"
+    assert probe_hits, "script gate lost the find_spec probe (POSIX fail-loud)"
+    assert guard_hits[0] < probe_hits[0], "the win32 guard must precede the probe"
+    assert "optional_dep_skip(" in "\n".join(region), "typed skip call not retained"
+
+    # No skip call reachable on the win32 path: between guard and probe
+    # there is only the plain return.
+    between = [line for line in region[guard_hits[0] + 1 : probe_hits[0]] if line.strip()]
+    assert between, "the win32 guard body is empty -- the early return is gone"
+    assert all("return" in line for line in between), (
+        "the win32 guard body must be the plain early return only"
+    )
+    for banned in ("pytest.skip", "optional_dep_skip", "environment_unavailable_skip"):
+        assert banned not in "\n".join(between), (
+            f"skip machinery ({banned}) reachable on the win32 path (WPAR-04 no-ever-green-skip)"
+        )
+
+
+def test_notebook_gate_guard_precedes_probe_and_registration_untouched() -> None:
+    """Notebook gate: win32 guard precedes the probe call; map entry kept."""
+    text = NOTEBOOK_GATE_TEST.read_text(encoding="utf-8")
+    region = _function_region(text, "def _gate_pybedtools")
+    guard_hits = [
+        i for i, line in enumerate(region) if line.strip() == 'if sys.platform == "win32":'
+    ]
+    probe_hits = [i for i, line in enumerate(region) if "_gate_optional_deps(" in line]
+    assert guard_hits, "notebook gate lost the win32 early-return (WPAR-04)"
+    assert probe_hits, "notebook gate lost the optional-deps probe call (POSIX fail-loud)"
+    assert guard_hits[0] < probe_hits[0], "the win32 guard must precede the probe call"
+
+    between = [line for line in region[guard_hits[0] + 1 : probe_hits[0]] if line.strip()]
+    assert between, "the win32 guard body is empty -- the early return is gone"
+    assert all("return" in line for line in between), (
+        "the win32 guard body must be the plain early return only"
+    )
+    for banned in ("pytest.skip", "optional_dep_skip", "environment_unavailable_skip"):
+        assert banned not in "\n".join(between), (
+            f"skip machinery ({banned}) reachable on the win32 path (WPAR-04 no-ever-green-skip)"
+        )
+
+    assert f'"{NER_NB_ID}": _gate_pybedtools' in text, (
+        "the _ACTIVE_NOTEBOOK_GATES registration entry for the NER notebook changed"
+    )

@@ -316,6 +316,9 @@ class TestActiveNotebookGates:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A resolved probe returns silently -- Linux lanes execute for real."""
+        # Pin POSIX: the win32 early-return (16-02) must not shadow the
+        # probe contract this test pins -- it runs on test-windows too.
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             sys.modules[__name__],
             "_probe_module",
@@ -329,6 +332,7 @@ class TestActiveNotebookGates:
         """An absent probe raises the optional-dep typed skip with evidence."""
         from _pytest.outcomes import Skipped
 
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             sys.modules[__name__],
             "_probe_module",
@@ -1397,13 +1401,20 @@ def _gate_mamba(nb_name: str) -> None:
 def _gate_pybedtools(nb_name: str) -> None:
     """Genome-interval prep imports pybedtools (Windows-excluded dev extra).
 
-    The rice data-generation notebook's first import cell pulls
-    ``pybedtools``, a dev-extra dependency deliberately excluded on
-    Windows (pyproject platform marker; bedtools/pysam have no Windows
-    story).  Probe-then-execute (D-05 pattern): present -> the notebook
-    executes for real unchanged (Linux lanes); absent -> the honest
-    optional-dep typed skip carrying the probe evidence.
+    The rice data-generation notebook's import cell pulls ``pybedtools``
+    through its platform-conditional seam, a dev-extra dependency
+    deliberately excluded on Windows (pyproject platform marker;
+    bedtools/pysam have no Windows story).  Probe-then-execute (D-05
+    pattern): present -> the notebook executes for real unchanged (Linux
+    lanes); absent -> the honest optional-dep typed skip carrying the
+    probe evidence.
+
+    Third outcome (16-02, WPAR-04): on win32 the probe never runs -- the
+    notebook executes for real through the numpy loj dispatch at its
+    cells-2/8 acquisition seam.  The Windows route contains no skip call.
     """
+    if sys.platform == "win32":
+        return  # numpy loj dispatch (16-02): Windows executes, probe skipped
     _gate_optional_deps(nb_name, ("pybedtools",))
 
 
