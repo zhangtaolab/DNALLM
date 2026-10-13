@@ -25,15 +25,17 @@ from __future__ import annotations
 
 import ast
 import contextlib
+import importlib.util
 import io
 import json
+import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 from pathlib import Path
 
 import pytest
 
-from dnallm.utils import jaccard
+from dnallm.utils import jaccard, loj_intersect
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CRE_NB = REPO_ROOT / "example" / "notebooks" / "plant_helixseek_cre" / "plant_helixseek_cre.ipynb"
@@ -304,4 +306,202 @@ def test_showcase_gate_guard_precedes_path_probe() -> None:
         assert banned not in gate_text, (
             f"skip machinery ({banned}) inside the showcase gate function -- the "
             "Windows route must proceed into numpy execution, never skip (WPAR-04)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# NER script runtime contracts (16-02) -- generate_bpe_dataset.py seam
+# ---------------------------------------------------------------------------
+
+NER_SCRIPT = REPO_ROOT / "example" / "notebooks" / "finetune_NER_task" / "generate_bpe_dataset.py"
+
+
+def _is_win32_platform_test(test: ast.expr) -> bool:
+    """True for the ``sys.platform == "win32"`` equality predicate node."""
+    if (
+        not isinstance(test, ast.Compare)
+        or len(test.ops) != 1
+        or not isinstance(test.ops[0], ast.Eq)
+    ):
+        return False
+    left, (right,) = test.left, test.comparators
+    platform_attr = (
+        isinstance(left, ast.Attribute)
+        and left.attr == "platform"
+        and isinstance(left.value, ast.Name)
+        and left.value.id == "sys"
+    )
+    return platform_attr and isinstance(right, ast.Constant) and right.value == "win32"
+
+
+def _script_module_defs(names: tuple[str, ...]) -> dict[str, str]:
+    """AST-extract named top-level def/class source from the NER script.
+
+    The script is a linear example (module-level execution), so the runtime
+    contracts exec the extracted segments instead of importing the module
+    (16-02 AS-2: the module-level helper is the extraction target).
+    """
+    src = NER_SCRIPT.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    found = {
+        node.name: ast.get_source_segment(src, node)
+        for node in tree.body
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in names
+    }
+    missing = sorted(set(names) - set(found))
+    assert not missing, (
+        f"generate_bpe_dataset.py must define {sorted(names)} at module level "
+        "above the consumer -- the inline adapter + dispatch helper are the "
+        f"contract-test extraction targets (16-02 AS-1/AS-2); missing: {missing}"
+    )
+    return found
+
+
+def _script_import_seam_segment() -> str:
+    """Return the source segment of the script's platform import seam."""
+    src = NER_SCRIPT.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    for node in tree.body:
+        if isinstance(node, ast.If) and _is_win32_platform_test(node.test):
+            return ast.get_source_segment(src, node) or ""
+    pytest.fail(
+        'generate_bpe_dataset.py has no top-level `if sys.platform == "win32":` '
+        "import seam -- the bare pybedtools import must be the "
+        "platform-conditional pair (WPAR-03, fail-loud per WPAR-06)"
+    )
+
+
+def _exec_win32_loj_rows(bed_a: Path, bed_b: Path, monkeypatch: pytest.MonkeyPatch) -> list[object]:
+    """Run the script's extracted adapter + dispatch helper under win32."""
+    defs = _script_module_defs(("LojRow", "_loj_rows"))
+    monkeypatch.setattr(sys, "platform", "win32")
+    namespace: dict[str, object] = {"sys": sys, "loj_intersect": loj_intersect}
+    exec(  # ruff: ignore[exec-builtin]
+        compile(
+            "\n\n".join(defs[name] for name in ("LojRow", "_loj_rows")),
+            "ner-script-win32-contract",
+            "exec",
+        ),
+        namespace,
+    )
+    return namespace["_loj_rows"](bed_a, bed_b)
+
+
+# A: 5 BED6 token rows across three genes. Rows 2-3 are CONSECUTIVE no-hit
+# rows inside geneA (Pitfall 1's guaranteed-crash class: a re-encoded null
+# score slot KeyErrors the label maps on the second consecutive intergenic
+# token); row 4 is the multi-hit row (two overlapping B rows -> join
+# multiplicity must survive).
+_NER_A_BED = (
+    "Chr1\t100\t200\tATCG\tgeneA\t+\n"
+    "Chr1\t300\t380\tGG\tgeneA\t+\n"
+    "Chr1\t390\t440\tCC\tgeneA\t+\n"
+    "Chr1\t505\t550\tTTTT\tgeneB\t-\n"
+    "Chr1\t900\t950\tAA\tgeneC\t+\n"
+)
+_NER_B_BED = (
+    "Chr1\t150\t260\tgeneX\texon\t+\n"
+    "Chr1\t500\t560\tgeneY\texon\t-\n"
+    "Chr1\t520\t555\tgeneZ\tintron\t+\n"
+)
+
+# bedtools v2.31.1 `intersect -loj` truth over the pair above, measured via
+# pybedtools 0.12.1 on the parity-record box (2026-10-13; same provenance
+# discipline as tests/fixtures/genomic_intervals/PROVENANCE.md). A-file
+# order, one line per A/B hit pair in B-file order, and the count-6 null
+# sextet ('.', '-1', '-1', '.', '-1', '.') VERBATIM on no-hit rows.
+_NER_EXPECTED_FIELDS = [
+    ["Chr1", "100", "200", "ATCG", "geneA", "+", "Chr1", "150", "260", "geneX", "exon", "+"],
+    ["Chr1", "300", "380", "GG", "geneA", "+", ".", "-1", "-1", ".", "-1", "."],
+    ["Chr1", "390", "440", "CC", "geneA", "+", ".", "-1", "-1", ".", "-1", "."],
+    ["Chr1", "505", "550", "TTTT", "geneB", "-", "Chr1", "500", "560", "geneY", "exon", "-"],
+    ["Chr1", "505", "550", "TTTT", "geneB", "-", "Chr1", "520", "555", "geneZ", "intron", "+"],
+    ["Chr1", "900", "950", "AA", "geneC", "+", ".", "-1", "-1", ".", "-1", "."],
+]
+
+
+def test_ner_script_win32_rows_match_frozen_loj_truth(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Win32 dispatch rows reproduce the pinned 12-column loj truth exactly.
+
+    Same length, same order, element-wise equal fields -- including the two
+    consecutive no-hit null sextets and the multi-hit A row emitted twice
+    (the consumer's gene flush and label maps depend on all three).
+    """
+    bed_a = tmp_path / "a.bed"
+    bed_b = tmp_path / "b.bed"
+    bed_a.write_text(_NER_A_BED, encoding="utf-8")
+    bed_b.write_text(_NER_B_BED, encoding="utf-8")
+
+    rows = _exec_win32_loj_rows(bed_a, bed_b, monkeypatch)
+
+    assert [list(row.fields) for row in rows] == _NER_EXPECTED_FIELDS
+    for row in rows:
+        # Type contract (Pitfall 2): start/end are ints, every field a str.
+        assert isinstance(row.start, int)
+        assert isinstance(row.end, int)
+        assert isinstance(row.chrom, str)
+        assert isinstance(row.name, str)
+        assert all(isinstance(column, str) for column in row.fields)
+    # The count-6 null score slot rides VERBATIM (Pitfall 1): the consumer's
+    # intergenic check is `name == "-1"` on fields[10] -- never a re-encoded
+    # "." there.
+    assert rows[1].fields[10] == "-1"
+    assert rows[2].fields[10] == "-1"
+
+
+def test_ner_script_win32_rows_match_live_pybedtools_loj(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Per-row equality against a LIVE pybedtools loj (the Linux truth side).
+
+    Runs only where the full truth chain is installed (pybedtools importable
+    AND the bedtools binary on PATH: the parity-record dev box with the
+    nightly prefix exported, coverage-nightly, example-nightly). Elsewhere
+    the frozen-truth test above carries the identical contract; this is a
+    conditional contract-strengthening, not skip machinery (no pytest.skip,
+    no audit surface -- the file posture stands).
+    """
+    if importlib.util.find_spec("pybedtools") is None or shutil.which("bedtools") is None:
+        return
+
+    import pybedtools
+
+    bed_a = tmp_path / "a.bed"
+    bed_b = tmp_path / "b.bed"
+    bed_a.write_text(_NER_A_BED, encoding="utf-8")
+    bed_b.write_text(_NER_B_BED, encoding="utf-8")
+
+    rows = _exec_win32_loj_rows(bed_a, bed_b, monkeypatch)
+    live = [
+        list(iv.fields) for iv in pybedtools.BedTool(str(bed_a)).intersect(str(bed_b), loj=True)
+    ]
+
+    assert len(rows) == len(live), (
+        f"win32 dispatch returned {len(rows)} rows, live loj returned {len(live)}"
+    )
+    for index, (row, truth) in enumerate(zip(rows, live, strict=True)):
+        assert list(row.fields) == truth, (
+            f"row {index} diverges from live pybedtools loj: {list(row.fields)} != {truth}"
+        )
+
+
+def test_ner_script_posix_seam_import_fails_loud(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A POSIX platform with a broken pybedtools propagates the ImportError.
+
+    The WPAR-06 "cannot silently execute on Linux" clause for the NER seam:
+    with the platform attribute monkeypatched to a POSIX value and the
+    pybedtools entry in sys.modules poisoned (None), exec'ing the seam's
+    conditional import MUST raise. An exception-based fallback to the numpy
+    evaluator would swallow this and corrupt the bedtools truth chain --
+    that ladder shape is the exact prohibition.
+    """
+    seam = _script_import_seam_segment()
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setitem(sys.modules, "pybedtools", None)
+    namespace: dict[str, object] = {"sys": sys}
+    with pytest.raises(ImportError):
+        exec(  # ruff: ignore[exec-builtin]
+            compile(seam, "ner-script-seam-posix-contract", "exec"), namespace
         )
