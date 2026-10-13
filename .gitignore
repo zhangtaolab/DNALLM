@@ -82,12 +82,14 @@ test_demo/
 *.tar.gz
 
 # Committed test fixtures are data BY EXCEPTION: tiny, hand-constructed,
-# network-free regression inputs (Phase-12 HBG1/BCL11A golden stand-in).
+# network-free regression inputs (Phase-12 HBG1/BCL11A golden stand-in;
+# Phase-16 frozen-pair bedtools loj oracle, 16-03).
 !tests/interpret/fixtures/**/*.fasta
 *.pkl
 *.fxi
 *.csv
 *.tsv
+!tests/fixtures/genomic_intervals/*.tsv
 *.token_sizes
 
 # Model weights (should be downloaded, not committed)
