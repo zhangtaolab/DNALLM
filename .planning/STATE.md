@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 15
 current_phase_name: Windows Parity Core — Numpy Interval Evaluators
 status: executing
-stopped_at: Phase 14 complete, ready to plan Phase 15
-last_updated: "2026-10-13T14:25:02.819Z"
+stopped_at: Completed 15-01-PLAN.md (Windows Parity Core)
+last_updated: "2026-10-13T14:54:47.443Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: af7aa52fff740e7b9fe73dbd1c6cae1821d3ea54
+state_head: e07deac29c2f5dc3f534dc83fe7450a8af752f4d
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 29
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: 15 (Windows Parity Core — Numpy Interval Evaluators) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-13 — Phase 14 complete, transitioned to Phase 15
+Phase: 15 (Windows Parity Core — Numpy Interval Evaluators) — PLANS COMPLETE
+Plan: 15-01 complete (1/1) — module + re-export + root-level oracle battery at 100% coverage
+Status: Phase 15 execution complete, ready for verification / Phase 16 planning
+Last activity: 2026-10-13 — 15-01 executed (parse_bed/jaccard/loj_intersect ported, WPAR-01/02 complete)
 
 Progress: [███░░░░░░░] 29% (0/7 v1.3 phases)
 
@@ -50,6 +50,7 @@ Progress: [███░░░░░░░] 29% (0/7 v1.3 phases)
 | Phase 13 P01 | 17 min | 3 tasks | 6 files |
 | Phase 14 P01 | 14 min | 3 tasks | 2 files |
 | Phase 14 P02 | 228 min | 3 tasks | 5 files |
+| Phase 15 P01 | 26 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 13]: expected_skips.yaml touched comment-only: the pre-existing network-unavailable: prefix entry is the sole sanctioned match path for the nightly pair skips (13-01)
 - [Phase 14]: GAPC-01 ladder measured at zero new rungs on the recorded run — promoter + BPE-leg both load and forward green on transformers 5.17 under the existing ladder; invert_attention_mask proven a dead branch via reachability (attribute inventory, not execution trace) (14-01)
 - [Phase 14]: Owner disposition shim-zero-rung taken exactly once on the 14-EVIDENCE.md section F table via the D-04 blocking-human checkpoint — proceed to 14-02; WINDOWS #11/#12/#15 close fixed-with-probe-evidence (D-08) (14-01)
+- [Phase 15]: Spike cores ported verbatim as specification (5008-case bedtools v2.31.1 parity record is the design authority); case-11 plan prose corrected against the oracle — NER driver is all-hits, null vector pinned in case 7 + pin table (15-01)
+- [Phase 15]: Coverage proof at 100% via coverage-CLI form only (WINDOWS #20); module row visible = omit-list proof; baked corpus subset = one full 12-cycle per spike (the complete pattern x shuffle surface); census triple untouched — zero ci.yml/pyproject/expected_skips edits (15-01)
 
 ### Pending Todos
 
@@ -108,8 +111,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T06:12:26.814Z
-Stopped at: Phase 14 complete, ready to plan Phase 15
+Last session: 2026-10-13T14:54:47.405Z
+Stopped at: Completed 15-01-PLAN.md (Windows Parity Core)
 Resume file: None
 
 ## Operator Next Steps

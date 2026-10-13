@@ -9,8 +9,8 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 
 ### Windows Platform Parity (WPAR)
 
-- [ ] **WPAR-01**: Pure-numpy interval module `dnallm/utils/genomic_intervals.py` (`parse_bed`, `jaccard`, `loj_intersect`) carries the oracle-pinned spike contracts (6-column null-B fill incl. the `-1` score slot, A-file-order emission accepting unsorted input, join-not-merge multiplicity, bookended-adjacency merge; `n_intersections` excluded), sits provably outside the coverage omit list, import-pure numpy-only
-- [ ] **WPAR-02**: Spike corpora (261010-wx2 / 261011-0a3 seeds) + handcrafted edge cases run as fast, platform-neutral unit tests with baked oracle literals on every CI leg — no bedtools binary required
+- [x] **WPAR-01**: Pure-numpy interval module `dnallm/utils/genomic_intervals.py` (`parse_bed`, `jaccard`, `loj_intersect`) carries the oracle-pinned spike contracts (6-column null-B fill incl. the `-1` score slot, A-file-order emission accepting unsorted input, join-not-merge multiplicity, bookended-adjacency merge; `n_intersections` excluded), sits provably outside the coverage omit list, import-pure numpy-only
+- [x] **WPAR-02**: Spike corpora (261010-wx2 / 261011-0a3 seeds) + handcrafted edge cases run as fast, platform-neutral unit tests with baked oracle literals on every CI leg — no bedtools binary required
 - [ ] **WPAR-03**: `generate_bpe_dataset.py` and `data_generation_and_inference.ipynb` fork at acquisition only (runtime platform detection): Linux keeps `pybedtools.BedTool.intersect(loj=True)`, Windows dispatches to the numpy equivalent through a uniform row adapter (`.chrom/.start/.end/.name/.fields`) so the consumer stays byte-identical; the notebook install cell skips pybedtools on Windows
 - [ ] **WPAR-04**: The three inventoried test gates (`test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`) become platform-aware — Linux probe-then-execute unchanged, Windows executes the numpy path (fail-loud, no ever-green skip)
 - [ ] **WPAR-05**: test-windows executes the numpy evaluators over committed frozen interval pairs with pinned comparison tolerances (trailing-float deltas); frozen metrics hold in band on BOTH paths — jaccard=0.324727 and exon_f1=0.7522 (its band/tolerance newly pinned as part of this work); selection.md stays the single truth source parsed on both paths
@@ -87,8 +87,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WPAR-01 | Phase 15 | Pending |
-| WPAR-02 | Phase 15 | Pending |
+| WPAR-01 | Phase 15 | Complete |
+| WPAR-02 | Phase 15 | Complete |
 | WPAR-03 | Phase 16 | Pending |
 | WPAR-04 | Phase 16 | Pending |
 | WPAR-05 | Phase 16 | Pending |
