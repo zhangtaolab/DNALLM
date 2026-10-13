@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 16
 current_phase_name: Windows Parity Rollout
 status: executing
-stopped_at: Completed 16-03-PLAN.md
-last_updated: "2026-10-13T17:12:19.861Z"
+stopped_at: Completed 16-02-PLAN.md
+last_updated: "2026-10-13T17:40:30.000Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: bc2326bcfe0daaad404478580fcfb8beaeae7cd4
+state_head: 628926abc436672126f44cf184c7383577813a23
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 43
 ---
 
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 Phase: 16 (Windows Parity Rollout) — READY TO EXECUTE
 Plan: Not started
 Status: Ready to execute
-Last activity: 2026-10-13 — Phase 15 complete, transitioned to Phase 16
+Last activity: 2026-10-13 — Phase 16 executing: 16-01/16-03/16-02 complete, 16-04 remains
 
 Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 
@@ -53,6 +53,7 @@ Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 | Phase 15 P01 | 26 min | 3 tasks | 3 files |
 | Phase 16 P01 | 13 min | 2 tasks | 4 files |
 | Phase 16 P03 | 42 min | 3 tasks | 12 files |
+| Phase 16 P02 | 21 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 16]: [16-03] Frozen-pair regeneration reproduced ALL historical anchors exactly (jaccard 0.32472687098490116, 15872/48878, counts 526/394/346/48/180, exon_f1 692/920) — AS-1 anchor branch active, historical counts pinned as baked literals in the frozen suite
 - [Phase 16]: [16-03] Tight exon_f1 band [0.752173912, 0.752173914] pinned in selection.md; consumed by tests/test_frozen_pairs.py ONLY (nightly keeps the four drift bands + evidence key — Pitfall 6)
 - [Phase 16]: [16-03] Scoped .gitignore exception !tests/fixtures/genomic_intervals/*.tsv (Rule 3 — *.tsv line ignores the loj oracle; committed-fixtures-by-exception pattern)
+- [Phase 16]: [16-02] NER dispatch = dual-truth parity: the always-on frozen 12-column literals (bedtools v2.31.1-measured, pre-verified against live pybedtools) carry the contract on every leg; the live pybedtools loj comparison runs wherever the truth chain is installed (find_spec + shutil.which gate) — no skip machinery, file stays platform-neutral for test-windows
+- [Phase 16]: [16-02] Cell 8's inline adapter composed from the script's ast-extracted segments (identity by construction) and pinned by the whitespace-normalized textual-identity test (AS-1); notebook JSON round-trip needs ensure_ascii=False — the committed file stores raw-UTF-8 outputs, the default rewrote ~800 unrelated lines
+- [Phase 16]: [16-02] Two Rule 3 same-change enablers: _strip_magic_lines substitutes magics with same-indent pass placeholders (guarded magics left bodyless branches after deletion — false syntax errors), and the four gate-contract tests pin sys.platform=linux so the win32 early-return cannot shadow the probe contracts on test-windows
 
 ### Pending Todos
 
@@ -118,8 +122,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T17:12:19.820Z
-Stopped at: Completed 16-03-PLAN.md
+Last session: 2026-10-13T17:40:30.000Z
+Stopped at: Completed 16-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
