@@ -171,3 +171,9 @@ None — no stubs were written. The single deferred item is the pending CI gate,
 
 *Phase: 14-gap-1-transformers-5-x-disposition*
 *Completed: 2026-10-13*
+
+## Self-Check: PASSED
+
+- 14-02-SUMMARY.md exists on disk; all three plan commits (2c73751, c081a52, e1c0510) are ancestors of HEAD, task commits measured 2 via `git rev-list --count 27831a2..c081a52` from the persisted ledger
+- All Task 1/2 verify gates re-confirmed green at commit time (AST-IDENTICAL x2, MARKERS-INTACT, CENSUS-MATCH, MATCHERS-UNCHANGED, FASTLANE-GREEN, BENCHMARK-35, LEDGER-CLOSED, REQS-COMPLETE); Task 3's CI-RECORDED satisfied via section H.4 (CI re-verification + PENDING + smoke id) with CI-NIGHTLY-GREEN honestly pending (WINDOWS #23)
+- Prohibitions verified: transformers_compat.py, expected_skips.yaml, and ci.yml untouched in the plan diff; no WINDOWS row hand-edited (counters by gsd-tools); #15 closed on the per-item classification
