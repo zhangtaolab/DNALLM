@@ -5,11 +5,11 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 16
 current_phase_name: Windows Parity Rollout
 status: executing
-stopped_at: Completed 16-02-PLAN.md
-last_updated: "2026-10-13T17:40:30.000Z"
+stopped_at: "16-04 PENDING: SC4 nightly run 38441258701 dispatched+queued behind foreign CI work — resume per async-jobs/16-04-sc4-nightly.json; complete 16-EVIDENCE.md section A then Task 2 close-out"
+last_updated: "2026-10-13T18:21:54.950Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 628926abc436672126f44cf184c7383577813a23
+state_head: 1cc203b3b8f68ae43a3b277b9d2017679a3c82e7
 progress:
   total_phases: 7
   completed_phases: 3
@@ -90,7 +90,8 @@ Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside v1.
 
 ### Blockers/Concerns
 
-None. Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cadence re-evaluated by Phase 13's disposition) live in `milestones/v1.1-MILESTONE-AUDIT.md`.
+Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cadence re-evaluated by Phase 13's disposition) live in `milestones/v1.1-MILESTONE-AUDIT.md`.
+- 16-04 SC4 evidence pending: nightly run 38441258701 queued behind ~6h foreign CI work (cancel denied by classifier); phase 16 must not close before both nightly jobs conclude success and 16-EVIDENCE.md section A.4 is recorded (WINDOWS unrun-verify armed)
 
 ### Quick Tasks Completed
 
@@ -122,9 +123,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T17:40:30.000Z
-Stopped at: Completed 16-02-PLAN.md
-Resume file: None
+Last session: 2026-10-13T18:21:54.703Z
+Stopped at: 16-04 PENDING: SC4 nightly run 38441258701 dispatched+queued behind foreign CI work — resume per async-jobs/16-04-sc4-nightly.json; complete 16-EVIDENCE.md section A then Task 2 close-out
+Resume file: .planning/async-jobs/16-04-sc4-nightly.json
 
 ## Operator Next Steps
 
