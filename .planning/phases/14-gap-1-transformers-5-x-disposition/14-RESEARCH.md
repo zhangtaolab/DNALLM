@@ -334,19 +334,24 @@ gsd-tools windows fixed 11   # (then 12, 15) — reason carries the probe eviden
 | A2 | CI legs currently resolve a transformers ≥5.19 variant (observed 5.19.0 historically; current resolution not probed this session) | Pitfall 4 | Same as A1 — the device-type rung already covers the one known 5.19 breakage class |
 | A3 | rice.uga.edu stays reachable-or-typed-skipped for cold-cache nightly script-lane runs (existing network-variance absorption; not re-probed) | Environment Availability | None to the disposition — the network-unavailable typed skip is the sanctioned absorption path |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where does the GAPC-01 evidence artifact live?**
+All three closed at phase planning (2026-10-13, plans 14-01/14-02); each question carries its resolution below so research and the committed plans agree.
+
+1. **Where does the GAPC-01 evidence artifact live?** — RESOLVED (recommendation superseded at planning)
    - What we know: the requirement says "on record"; no committed location is mandated.
    - What's unclear: phase-dir verification notes vs a committed doc.
    - Recommendation: record the captured output in the phase dir (verification artifact) and reference it from the `windows fixed` reasons; do NOT add a repo file — the smoke test itself is the durable, re-runnable evidence.
-2. **Does the owner checkpoint still present removal as a live option?**
+   - Resolution: superseded — the evidence lives in the committed phase-dir artifact `14-EVIDENCE.md` (sections A-G built by plan 14-01 Tasks 1-3: recorded load run, BPE-leg probe, reachability proof, nightly junit forensics, census baseline, evidence table, owner decision record; section H appended by plan 14-02), cross-referenced by both plan SUMMARYs and cited at WINDOWS #11/#12/#15 closure. Rationale: D-04 requires the ONE owner confirmation to be taken ON the evidence table, and the `windows fixed` CLI records no reason text — a durable committed record must therefore exist as the decision-gating artifact and the reason-of-record; the smoke test remains the durable, re-runnable evidence of the load itself, and no repo source-tree file (dnallm/, docs/, tests/) is added. The recommendation's "do NOT add a repo file" clause is superseded precisely and only in this sense: the phase-dir evidence file under `.planning/` is committed, and that divergence is now on record here.
+2. **Does the owner checkpoint still present removal as a live option?** — RESOLVED
    - What we know: CONTEXT retains ONE confirmation with the evidence table (shim vs removal).
    - What's unclear: nothing material — the evidence table now shows zero rungs needed and nightly-green functionality on all three surfaces; removal would delete working coverage.
    - Recommendation: present the table with the measured facts; the recommendation column says shim-path/zero-rung.
-3. **Should `_set_gradient_checkpointing` signature drift (flagged in milestone research as a benign-override candidate) be pre-empted?**
+   - Resolution: yes — plan 14-01 Task 3 is a blocking-human decision checkpoint presenting exactly two options (shim-zero-rung, removal) verbatim from D-03/D-04/D-08, with the section F evidence table rendered in the question body; the recorded evidence frames shim-path/zero-rung as the recommendation, but the choice stays the owner's per D-04. Research and plans agree.
+3. **Should `_set_gradient_checkpointing` signature drift (flagged in milestone research as a benign-override candidate) be pre-empted?** — RESOLVED
    - What we know: it did NOT surface in either load run.
    - Recommendation: no — same evidence-sizing rule as `invert_attention_mask`.
+   - Resolution: no — adopted unchanged. The recorded GAPC-01 run (plan 14-01 Task 1) sizes the ladder `new rungs required: 0` with no traceback; D-01 extends rungs only on real tracebacks and D-05 keeps `dnallm/utils/transformers_compat.py` untouched in both plans. Should it ever surface, the D-01 else-branch halts on the captured traceback and re-sizes within the D-02 threshold.
 
 ## Environment Availability
 
