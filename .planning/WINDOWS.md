@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 5
 waived_count: 3
 fixed_count: 16
-total_count: 23
-last_updated: 2026-10-13T13:18:38.402Z
+total_count: 24
+last_updated: 2026-10-13T18:21:31.795Z
 ---
 
 # Broken Windows Ledger
@@ -38,6 +38,7 @@ last_updated: 2026-10-13T13:18:38.402Z
 | 21 | 10 | stub | docs/user_guide/fine_tuning/peft_adapters.md | 163 | IA³ chapter section is an honest forward pointer by plan design (REV-03 split delivery, 10-03 D-08/plan prohibitions): finetune.use_ia3 and the ia3 YAML section exist as config surface, but the trainer branch, per-model target presets, and working examples complete in Phase 11-12 after PEFT-01 — the section names no nonexistent API and must be completed (then marked fixed) when the IA³ trainer branch ships | fixed | Stale-open verified at 2026-10-10 backlog review: IA³ trainer branch + per-family presets shipped in Phase 11 (transformer + Mamba proven, seed-pinned roundtrip) and peft_adapters.md:173+ now carries the full IA³ chapter (YAML example, preset-table selection, save/reload path) — completion condition met | 2026-10-09T11:15:30.000Z | 2026-10-10T14:14:31.103Z |
 | 22 | 13 | unrun-verify | .github/workflows/ci.yml |  | Phase 13 D-04 human-check deferred to the runner: first post-merge example-nightly (05:30 UTC schedule or owner dispatch) must come green — stage-1 pair typed-skips network-unavailable with probe evidence, census 216/217 (1 deselected), 4-member stage-4 audit, zero ledger lines; executor did NOT auto-dispatch (a ci.yml workflow_dispatch would co-enqueue the dispatch-only feas-spike job on the self-hosted box); standing local evidence: pair 2 typed skips + audit exit 0 (117s) and coverage-nightly exercising the same typed skip green | fixed |  | 2026-10-11T09:02:07.882Z | 2026-10-13T00:38:07.097Z |
 | 23 | 14 | unrun-verify | .github/workflows/ci.yml |  | Phase 14 D-06 CI-side re-verification deferred to the runner: re-dispatched run 38354875692 (headSha 2c737516, ref v1.3) coverage-nightly must come green — first run 38337783698 was red ONLY on the documented rice.uga.edu fasta-truncation transient (osA1_r7.asm.fa.gz 22.1MB of ~115MB, fasta Chr1-Chr2 only; models-lane smoke PASSED 3.400s on CI's transformers — drift refuted); phase close blocked until green per plan 14-02 Task 3 PENDING + 14-EVIDENCE.md section H.4 | fixed |  | 2026-10-13T06:09:34.306Z | 2026-10-13T13:18:38.402Z |
+| 24 | 16 | unrun-verify | .planning/phases/16-windows-parity-rollout-dispatch-gates-frozen-value-parity/16-EVIDENCE.md |  | 16-04 SC4 nightly evidence PENDING — dispatched run 38441258701 queued behind foreign CI work; both nightly jobs must conclude success and be recorded in 16-EVIDENCE.md section A before phase close | open |  | 2026-10-13T18:21:31.795Z |  |
 
 ````json
 [
@@ -338,6 +339,19 @@ last_updated: 2026-10-13T13:18:38.402Z
     "reason": "",
     "recorded_at": "2026-10-13T06:09:34.306Z",
     "resolved_at": "2026-10-13T13:18:38.402Z",
+    "milestone": "v1.3"
+  },
+  {
+    "id": 24,
+    "kind": "unrun-verify",
+    "phase": "16",
+    "file": ".planning/phases/16-windows-parity-rollout-dispatch-gates-frozen-value-parity/16-EVIDENCE.md",
+    "line": null,
+    "description": "16-04 SC4 nightly evidence PENDING — dispatched run 38441258701 queued behind foreign CI work; both nightly jobs must conclude success and be recorded in 16-EVIDENCE.md section A before phase close",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-13T18:21:31.795Z",
+    "resolved_at": null,
     "milestone": "v1.3"
   }
 ]
