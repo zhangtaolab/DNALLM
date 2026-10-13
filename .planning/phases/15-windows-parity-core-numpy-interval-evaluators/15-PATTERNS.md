@@ -104,7 +104,7 @@ and alphabetical `"jaccard"`, `"loj_intersect"`, `"parse_bed"` entries in `__all
         ...  # restore sys.modules entry AND the package attribute (single live module)
 ```
 
-**Oracle literals to bake** (from RESEARCH.md Code Examples, verbatim-cited from the spike artifacts): 8 jaccard handcrafted cases (spike_jaccard_parity.py:697-754; report.txt:21-28), 11 loj handcrafted cases (spike_loj_parity.py:899-1033; report.txt:37-47), the null-fill pin table (261011-0a3 report.txt:68-79), frozen-pair aggregates as documented constants only (intersection=15872, union=48878, jaccard=0.32472687098490116 — the 51/94-row corpora are gitignored/unrecoverable; do NOT plan literal row fixtures).
+**Oracle literals to bake** (from RESEARCH.md Code Examples, verbatim-cited from the spike artifacts): 8 jaccard handcrafted cases (spike_jaccard_parity.py:697-754; report.txt:21-28), 11 loj handcrafted cases (spike_loj_parity.py:899-1033; report.txt:37-47), the null-fill pin table (261011-0a3 report.txt:8-17), frozen-pair aggregates as documented constants only (intersection=15872, union=48878, jaccard=0.32472687098490116 — the 51/94-row corpora are gitignored/unrecoverable; do NOT plan literal row fixtures).
 
 **Seeded corpus generators to port:** spike_jaccard_parity.py:875-921 (seed 20261010) and spike_loj_parity.py:1185-1240 (seed 20261011) — PATTERNS 6-cycle, CHROM_POOL, 30-row cap, shuffle-every-4th. Two-layer testing: property invariants over a few hundred regenerated cases + fully baked literals for a small deterministic subset (~12 cases).
 

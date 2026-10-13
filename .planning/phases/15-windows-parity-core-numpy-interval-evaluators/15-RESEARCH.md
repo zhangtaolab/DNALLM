@@ -221,7 +221,7 @@ The strict inequalities encode the half-open overlap (`b.start < a.end AND a.sta
 ### Pattern 4: the oracle-pinned null-B fill table
 
 **What:** the exact literals bedtools prints for a no-hit A row's B side, as a function of B column count (and, only at count 5, score-column int-parseability). This table is EMPIRICALLY pinned against live bedtools v2.31.1 — the official docs do not document the field-level encoding (web search confirmed; see Sources), and the spike's own deviation record shows the guessed map was WRONG at counts 5 and 7.
-**Verbatim pins** [VERIFIED: 261011-0a3 report.txt:68-79]:
+**Verbatim pins** [VERIFIED: 261011-0a3 report.txt:8-17]:
 
 ```text
   B columns 3: literals ['.', '-1', '-1'] numpy-emit PASS
@@ -408,20 +408,25 @@ wx2 seeds 20261010 (3000 cases, BED3); 0a3 seeds 20261011 (2000 cases, 6+6 NER s
 | A3 | Root `tests/conftest.py`'s heavy imports (torch/pandas/yaml) are an acceptable fixed cost for the new test file (as for every existing test) | Common Pitfalls 7 | None material — suite-wide status quo; test still runs "fast" by suite standards |
 | A4 | The `n_intersections`-excluded `jaccard` return shape (dict of intersection/union/jaccard, dropping the spike's informational 4th key) satisfies "n_intersections excluded" | Patterns 2 / Anti-patterns | If the owner intended a different shape (e.g. NamedTuple), it's a same-phase rename of a return type — cheap; flag at plan review if uncertain |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions are dispositioned in 15-01-PLAN (each recommendation adopted):
 
 1. **Frozen-pair unit-layer treatment (owner expectation alignment)**
    - What we know: CONTEXT says oracle literals include "0.324727 frozen pair"; the pair's row corpora are gitignored and absent; aggregates are recorded; regenerating the pair requires running the torch-heavy CRE showcase (not unit-layer); Phase 16's WPAR-05 already owns the frozen-metric in-band gate via selection.md.
    - What's unclear: whether the owner expects a unit test that *computes* jaccard over a frozen 51/94-row pair in Phase 15.
    - Recommendation: treat the frozen pair in Phase 15 as documented oracle constants (the aggregates above) + handcrafted/seeded corpora for computation; defer the real-pair band check to Phase 16/WPAR-05 (it needs the regenerated pair anyway). If the owner wants it here, the pair must first be regenerated outside the unit layer and committed as a fixture — an explicit scope addition.
+   - Disposition: RESOLVED in 15-01-PLAN — recommendation adopted as assumption AS-4 and implemented in Task 3 (FROZEN_PAIR_INTERSECTION/UNION/JACCARD documented constants + the round(..., 6) == 0.324727 anchor test); the real-pair in-band gate stays in Phase 16 / WPAR-05.
 2. **Randomized-corpus depth**
    - What we know: full corpus is 3000+2000 cases with per-case live-oracle comparison — impossible without bedtools; determinism is same-version only (A1).
    - What's unclear: how many cases the owner expects in the unit layer.
    - Recommendation: property invariants over a few hundred regenerated cases + fully baked literals for a small deterministic subset (one per pattern × shuffle state = 12 cases per spike). Fast (<1s), platform-neutral, and regression-meaningful.
+   - Disposition: RESOLVED in 15-01-PLAN — recommendation adopted in Task 3: two-layer corpus (property invariants over >=300 jaccard / >=200 loj regenerated cases + ~12 fully-baked subset literals per spike; the stream-divergence fallback is documented as assumption AS-2).
 3. **`parse_bed` return-type exposure**
    - What we know: 0a3's `BedRow` NamedTuple (chrom/start/end/extra/line_index) is the natural public return; "private helpers stay private" is locked, but the row type is a return type, not a helper.
    - What's unclear: whether `BedRow` should be importable/documented or treated as an implementation detail.
    - Recommendation: keep `BedRow` as a module-level NamedTuple (public-by-visibility, undocumented in `dnallm.utils.__all__` — only the 3 functions are re-exported, matching the locked API surface).
+   - Disposition: RESOLVED in 15-01-PLAN — recommendation adopted in Task 1: BedRow ports as a module-level NamedTuple, public-by-visibility, NOT re-exported; only parse_bed / jaccard / loj_intersect join the dnallm.utils surface (locked API decision).
 
 ## Environment Availability
 
