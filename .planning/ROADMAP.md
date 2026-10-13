@@ -135,9 +135,14 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
 - [ ] 16-01-PLAN.md — Tracer: CRE cell-11 platform dispatch + showcase gate platform-aware + tests/test_dispatch_direction.py born (structure + win32/POSIX-fail-loud runtime contracts) — WPAR-04/06/08
-- [ ] 16-02-PLAN.md — NER rollout: script + notebook cells 0/1/2/8 acquisition-only fork (inline LojRow + _loj_rows), script/notebook gates platform-aware, dispatch-direction suite extended with live pybedtools parity + import fail-loud contracts — WPAR-03/04/06/08
 - [ ] 16-03-PLAN.md — Frozen pairs: same-session regeneration (GPU pred sides + dual bedtools/numpy oracles) committed under tests/fixtures/, selection.md exon_f1 tolerance band row (+ mirror), tests/test_frozen_pairs.py platform-agnostic at tests/ root — WPAR-05/08
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 16-02-PLAN.md — NER rollout: script + notebook cells 0/1/2/8 acquisition-only fork (inline LojRow + _loj_rows), script/notebook gates platform-aware, dispatch-direction suite extended with live pybedtools parity + import fail-loud contracts — WPAR-03/04/06/08
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 16-04-PLAN.md — SC4 evidence: manual nightly workflow_dispatch over the complete phase change + 5/5 SC proof matrix + phase-wide guard sweep (census/skips/deps/mirrors) — WPAR-06/08 close-out
 
 ### Phase 17: Publish Chain Robustness
