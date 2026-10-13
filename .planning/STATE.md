@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 16
 current_phase_name: Windows Parity Rollout
 status: executing
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-10-13T16:26:36.610Z"
+stopped_at: Completed 16-03-PLAN.md
+last_updated: "2026-10-13T17:12:19.861Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 8367bf5cb0831e34d9439f4bef4cf325e5e22d60
+state_head: bc2326bcfe0daaad404478580fcfb8beaeae7cd4
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 43
 ---
 
@@ -52,6 +52,7 @@ Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 | Phase 14 P02 | 228 min | 3 tasks | 5 files |
 | Phase 15 P01 | 26 min | 3 tasks | 3 files |
 | Phase 16 P01 | 13 min | 2 tasks | 4 files |
+| Phase 16 P03 | 42 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 15]: Coverage proof at 100% via coverage-CLI form only (WINDOWS #20); module row visible = omit-list proof; baked corpus subset = one full 12-cycle per spike (the complete pattern x shuffle surface); census triple untouched — zero ci.yml/pyproject/expected_skips edits (15-01)
 - [Phase 16]: [16-01] Platform dispatch pinned as the sys.platform == "win32" equality check at the seam only (CRE cell 11; inverse guard on the showcase gate) — POSIX branch byte-preserved, no try/except-ImportError ladder (WPAR-06 shape, now structure-tested)
 - [Phase 16]: [16-01] Dispatch-direction runtime contracts live at tests/ root in test_dispatch_direction.py (monkeypatched platform + poisoned subprocess.run) — zero census movement, ci.yml triple untouched at 216/217
+- [Phase 16]: [16-03] Frozen-pair regeneration reproduced ALL historical anchors exactly (jaccard 0.32472687098490116, 15872/48878, counts 526/394/346/48/180, exon_f1 692/920) — AS-1 anchor branch active, historical counts pinned as baked literals in the frozen suite
+- [Phase 16]: [16-03] Tight exon_f1 band [0.752173912, 0.752173914] pinned in selection.md; consumed by tests/test_frozen_pairs.py ONLY (nightly keeps the four drift bands + evidence key — Pitfall 6)
+- [Phase 16]: [16-03] Scoped .gitignore exception !tests/fixtures/genomic_intervals/*.tsv (Rule 3 — *.tsv line ignores the loj oracle; committed-fixtures-by-exception pattern)
 
 ### Pending Todos
 
@@ -114,8 +118,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T16:26:36.562Z
-Stopped at: Completed 16-01-PLAN.md
+Last session: 2026-10-13T17:12:19.820Z
+Stopped at: Completed 16-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
