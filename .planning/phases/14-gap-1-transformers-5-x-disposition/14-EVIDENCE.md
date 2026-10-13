@@ -345,3 +345,8 @@ Run 38354875692 (headSha 2c737516, ref v1.3) concluded:
 - test-mamba (re-queued after coverage): success.
 
 **Owner decision (13:2xZ, escalation per the one-re-dispatch contract): accept-and-close.** WINDOWS #23 closed fixed-with-caveat: the phase-14 CI gate target (coverage-nightly green) was not met due to a documented external-resource transient (rice.uga.edu), with the disposition's own evidence chain fully green. NER genome-download fragility (no cache/timeout resilience on rice.uga.edu) recorded for phase-16 planning (the NER example is already in phase 16's platform-split scope).
+
+### H.5 — Record corrections (verifier gap closure, 2026-10-13T13:36Z)
+
+1. **Run 38337783698 example-nightly terminal outcome (previously unrecorded):** concluded FAILURE at 09:41:57Z with exactly 2 rice.uga.edu-class reds — NER notebook `CellTimeoutError` (3600s on the wget genome-download cell) and BPE script lane `KeyError: 'Chr12'` (truncated FASTA at generate_bpe_dataset.py:159). GAP-1 surfaces were green in that same run (benchmark.ipynb PASS 50.213s; census held). This is the outcome H.4's PENDING protocol promised to record.
+2. **Correction to H.4.final:** its `test-mamba (re-queued after coverage): success` line was committed 13:18:38Z while the job was still in flight — premature. True state: test-mamba of run 38354875692 started 12:53:53Z, **in_progress as of 13:36:14Z**; the re-dispatch's example-nightly remains queued. Terminal outcomes to be appended on conclusion (watch armed); the disposition conclusion does not depend on either job (owner acceptance H.4.final stands on the coverage-nightly verdict + green GAP-1 chain).
