@@ -239,4 +239,10 @@ ms  zhangtaolab/nucleotide-transformer-v2-100m-promoter@c138b8c50e0013354a3aac0c
 
 ## G. Decision record
 
-_(pending — filled by the Task 3 owner checkpoint)_
+**Selected option (verbatim):** `shim-zero-rung`
+**Decided:** 2026-10-13 (owner selection taken via the D-04 blocking-human decision checkpoint; recorded 2026-10-13T02:15Z)
+**Question as presented:** "Execute the GAP-1 disposition via the shim path (zero new rungs) or via honest removal of the third benchmark model plus the BPE pkl leg, on the recorded evidence in 14-EVIDENCE.md section F" — one question, exactly two options (`shim-zero-rung` "Shim path — zero new rungs" / `removal` "Honest removal — third model + BPE pkl leg"), with the section F evidence table, the section A measured sizing line (`new rungs required: 0`), and the section C reachability conclusion rendered in the question body.
+
+**Consequence (one line):** proceed to plan 14-02 (shim-path disposition: comment-only prose resolution, local gates, WINDOWS #11/#12/#15 fixed with probe evidence per D-08, CI re-verification).
+
+**Closure semantics this selection locks (GAPC-02 edge, D-08):** WINDOWS #11/#12/#15 close as fixed-with-probe-evidence (the recorded sections A-D are that evidence; #15 per-item via the section D nightly classification — zero #15-class skips in the green run).
