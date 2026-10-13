@@ -303,6 +303,35 @@ Closed via `node ~/.claude/gsd-core/bin/gsd-tools.cjs windows fixed <id>` (one p
 
 Post-closure counters (gsd-tools recomputed, never hand-edited): `fixed_count: 15`, `open_count: 4` (was 12/7). REQUIREMENTS.md: GAPC-01 and GAPC-02 checkboxes `[x]` with traceability rows Complete.
 
-### H.4 CI re-verification (D-06 CI-side half)
+### H.4 CI re-verification (D-06 CI-side half) — first dispatched run: smoke GREEN, one transient-infra red, re-dispatched once
 
-Filled by plan 14-02 Task 3 in its follow-on commit (the only follow-on commit of this plan per the ordering edge): dispatched ci.yml run on the pushed v1.3 ref, coverage-nightly job conclusion, and the nightly junit's row for `test_nt_v2_promoter_loads_and_forwards`.
+**Dispatch:** `gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3` after `git push origin v1.3` (`7f18e6f..2c73751`). Run id **38337783698**, headSha **2c737516fefad071b5c67b67512e349e5be6e9d7** (the pushed atomic commit `2c73751`, verified against the run record), created 2026-10-13T02:37:46Z. Lease order: coverage-nightly leased first (started 02:37:51Z); example-nightly and test-mamba queued behind it on the single dnallm-nightly box; push/PR-gated jobs (test, test-cuda, test-windows, coverage-gate, deploy) skipped as designed.
+
+**Coverage-nightly job conclusion: `failure`** (completed 2026-10-13T06:01:55Z; census step failure → skip-audit step skipped). Triage below proves the red is NOT the GAP-1/transformers surface.
+
+Nightly junit (`pytest-junit-nightly.xml` — the coverage-nightly job uploads no junit artifact, so the file was captured from the runner workspace at 06:01:50Z, before the next serialized job's checkout cleaned it; archived at `/tmp/gapc14-cov-nightly-junit.xml`) — suite header verbatim:
+
+```
+<testsuite name="pytest" errors="0" failures="1" skipped="17" tests="2587" time="11501.548" timestamp="2026-10-13T02:49:59.926476+00:00" hostname="edgexpert-3eee">
+```
+
+**Models-lane smoke row (the Pitfall-4 drift surface) — PASS, no failure child, verbatim:**
+
+```
+<testcase classname="tests.models.test_model_remote_code.TestRemoteCodeCheckpointCompat" name="test_nt_v2_promoter_loads_and_forwards" time="3.400" />
+```
+
+The smoke executed the real load + `(1, 2)`-logits forward on CI's freshly-resolved transformers (the open `>=4.49.0,<6` range — the exact A1/A2 drift surface) and passed for real; the marker branch never fired (no typed skip for the smoke id anywhere in the junit). **The transformers-drift blocking class is refuted.**
+
+**The one failure — BPE script lane, classified transient-infra (rice.uga.edu input truncation), NOT GAP-1:**
+
+`tests.examples.test_script_execution.TestExampleScriptExecution::test_generate_bpe_dataset_produces_artifact` (time `1585.953`) failed at `generate_bpe_dataset.py:159` `chrom_record = genome[chrom]` → `KeyError: 'Chr6 does not exist in fasta file'` — after the GAP-1-surface model load had already succeeded (the script's tokenization stage runs post-load). Forensics on the runner sandbox (`/tmp/pytest-of-forrest/pytest-16/test_generate_bpe_dataset_prod0/finetune_NER_task/`):
+
+- `osa1_r7.asm.fa.gz` = **22,134,784 bytes — truncated at ~19% of the documented ~115MB input**; `zcat | grep '^>'` shows the fasta carries ONLY `>Chr1` and `>Chr2`
+- `osa1_r7.all_models.gff3.gz` = 8,901,387 bytes — complete, and references `Chr6` → the KeyError is the GFF3 walking past the truncated fasta
+- the census input cache (`.scratch/census-out/inputs`) is absent from the runner workspace (each job's checkout cleans it) — **no cache poisoning**; example-nightly downloads fresh
+- mechanism: a truncated 200-response body ends cleanly at EOF (`shutil.copyfileobj` stops without raising), so the download-path network-unavailable typed skip cannot absorb this variant — the documented rice.uga.edu flaky-host class ("flaps for hours at a time... half-up at ~8KB/s", the cache-design comment in `test_script_execution.py`; research A3's host)
+
+**Triage (per plan Task 3 step 5, recorded not improvised):** coverage-nightly failure is BLOCKING → smoke row triaged first: PASS (above). The sole red is the documented transient infra class on the rice input download. Disposition evidence NOT falsified: the BPE checkpoint load succeeded in this run too (the failure is downstream genome-data processing), and the #12 evidence of record (section B probe + section D's run-38308972028 PASS with complete inputs) stands. Handling per the #22 dispatch discipline: **record + re-dispatch once**; the phase does not close before a green coverage-nightly is on record.
+
+**Re-dispatch (the single sanctioned re-dispatch):** run id **38354875692**, same headSha `2c737516fefad071b5c67b67512e349e5be6e9d7`, created 2026-10-13T06:06:18Z, queued behind run 38337783698's remaining jobs (test-mamba in progress, example-nightly queued — their outcomes recorded below when terminal). **PENDING: the re-dispatch's coverage-nightly conclusion — the phase must not close before it reads success.**
