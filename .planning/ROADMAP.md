@@ -58,7 +58,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - Decimal phases (13.1, 13.2): urgent insertions (marked INSERTED)
 
 - [x] **Phase 13: Ollama Surface Disposition** - Per-assertion remove-or-skip over the ~59 ollama pytest refs, with census triple, skip allowlist, and nightly stages reconciled same-change (completed 2026-10-13)
-- [ ] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state
+- [x] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state (completed 2026-10-13)
 - [ ] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg
 - [ ] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test
 - [ ] **Phase 17: Publish Chain Robustness** - Upload guard first, never-uploading smoke on dispatch + cron, OIDC Trusted Publishing migration, WINDOWS #20 fix, mypy cap
@@ -96,7 +96,7 @@ Plans:
   3. Non-NT model families are provably unaffected — the shim is version-keyed and absence-gated, and the 35-family regression gate stays green
   4. The fast lane is green with the census triple and `expected_skips.yaml` reconciled in the same change as any un-skip or removal
 
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -180,7 +180,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
-| 14. GAP-1 Transformers 5.x Disposition | 2/2 | In Progress | - |
+| 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 0/TBD | Not started | - |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |

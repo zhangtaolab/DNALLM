@@ -61,11 +61,11 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 - [ ] Packaging & install honesty — extras hygiene, cuda130 default recommendation, GPU support matrix docs (v1.3)
 - [ ] Publish chain robustness — publish smoke (+ OIDC migration decision), #20 cov crash fix, mypy cap (v1.3)
 - [ ] Docs accuracy review — per-file docs/ + example/ sweep with same-pass fixes (v1.3)
-- [ ] GAP-1 windows #11/#12 disposition — approach decided at planning time (v1.3)
 
 ### Validated — v1.3 partial (shipped 2026-10-13)
 
 - ✓ Ollama pytest surface skip-marked per owner directive — Phase 13 (stage-3 ollama batch deleted; mcp_example pair probe-gated typed-skips; census re-pinned 216/217; first green example-nightly verified 2026-10-13 run 38308972028)
+- ✓ GAP-1 disposition: shim-zero-rung — Phase 14 (NT promoter + BPE leg load real on transformers 5.17 via the 10-02 rung; invert_attention_mask dead-branch; WINDOWS #11/#12/#15/#23 closed; rice.uga.edu external transient owner-accepted)
 
 ### Validated — v1.2 (Paper Revision Suite Support, shipped 2026-10-10)
 
