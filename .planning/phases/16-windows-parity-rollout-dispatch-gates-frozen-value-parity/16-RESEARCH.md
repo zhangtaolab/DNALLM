@@ -493,29 +493,31 @@ Note on placement of those runtime contract tests: `tests/test_dispatch_directio
 | A5 | The tight exon_f1 band is asserted by frozen-pair tests only, not the nightly model re-execution (interpretation of "hold in band on BOTH paths") | Pitfall 6 | If the owner intends a nightly exon_f1 band too, it must be drift-wide (owner call; current Anno cell 27 wording says "evidence only, no band") |
 | A6 | loj frozen pair may be sourced from the same regeneration session (CRE-scale real rows exercising null fills/multiplicity) rather than a full NER run (rice download flakiness) | Frozen Pairs | If the owner requires NER-pipeline-sourced rows, the rice-download step (with typed network-unavailable fallback) joins the fixture task |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **exon_f1 band row label + consumers**
+All five questions are dispositioned at plan time — each item below is tagged with the plan task/assumption that adopted its recommendation. No open question remains for execution.
+
+1. **exon_f1 band row label + consumers** — RESOLVED → 16-03 Task 2 + 16-03 AS-5 (distinct label adopted; Anno cell 27 "evidence only" wording left unchanged)
    - What we know: band table rows are matched by substring/startswith parsers in `_parse_bands` and notebook cells 21/27; an additive row is invisible to existing parsers.
    - What's unclear: the exact row label (must not collide with "Anno gene models with exon-F1 >= 0.8" substring matching — `_row()` uses `label in columns[1]`, so the new label must not be a substring of, nor contain, that label ambiguously), and whether the nightly/Anno cell 27 "evidence only, no band" wording gets updated.
    - Recommendation: label it distinctly (e.g. "Anno pooled exon-F1 (frozen pair)"); leave cell 27 wording alone (still true for the notebook's own live comparison); surface the wording question at plan time.
 
-2. **Frozen-pair test placement + file name**
+2. **Frozen-pair test placement + file name** — RESOLVED → 16-03 Task 3 (one file `tests/test_frozen_pairs.py` at tests/ root, phase-15 posture; parse helper duplicated, not imported)
    - What we know: tests/ root avoids the census pin; tests/examples moves it.
    - What's unclear: owner preference for one file vs per-evaluator files.
    - Recommendation: one file at tests/ root, phase-15 posture (no skips/markers), plus the selection.md band parse helper shared or duplicated from the showcase test.
 
-3. **Adapter location (utils helper vs example-inline)**
+3. **Adapter location (utils helper vs example-inline)** — RESOLVED → 16-02 AS-1 (inline-in-example, duplicated script + cell 8; locked dnallm.utils surface not extended)
    - What we know: ~8 lines, needed in 2 places (script + notebook cell 8); a `dnallm.utils` helper joins a WPAR-01-locked surface (needs new tests + coverage; module currently numpy+stdlib-only — a pure-python adapter keeps that).
    - What's unclear: whether extending the locked public surface in the same milestone is acceptable to the owner.
    - Recommendation: inline-in-example duplicated twice is lowest-risk for the locked surface; a utils helper is cleaner if the owner accepts the surface growth. Plan-time decision (CONTEXT leaves it to discretion).
 
-4. **Whether the dispatch seam is factored as a testable function**
+4. **Whether the dispatch seam is factored as a testable function** — RESOLVED → 16-02 AS-2 (tiny module-level/cell-level `_loj_rows(path_a, path_b)` helper as the contract-test extraction target)
    - What we know: SC2 wants "Windows-branch contract tests exercising the dispatch via monkeypatched platform"; top-level script code is not importable without executing the whole script.
    - What's unclear: how much refactoring of the example script into functions is acceptable (example code style is currently linear).
    - Recommendation: a tiny module-level helper (`_loj_rows(a, b)`) in the script/notebook, or put the dispatch in the adapter location chosen in Q3 so the contract tests have an import target.
 
-5. **Nightly "in the same change" verification for SC4**
+5. **Nightly "in the same change" verification for SC4** — RESOLVED → 16-04 AS-1 + 16-04 Task 1 (manual `workflow_dispatch` of the CI workflow over the phase branch is the primary SC4 evidence; scheduled runs are additional)
    - What we know: both nightlies re-execute the bands with pybedtools+bedtools on Linux; the phase's dispatch edits must keep them green; the runner is this box and can be dispatched manually (`workflow_dispatch` is in both jobs' gates).
    - What's unclear: whether the owner wants a dispatch-triggered nightly verification inside the phase execution or accepts the next scheduled run.
    - Recommendation: plan a manual `workflow_dispatch` of example-nightly (or at least coverage-nightly) as the phase's SC4 evidence step; memory notes carry the recovery manual for this runner.
