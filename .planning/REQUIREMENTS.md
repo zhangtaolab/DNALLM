@@ -45,7 +45,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 
 ### GAP-1 Transformers Compat (GAPC)
 
-- [ ] **GAPC-01**: An empirical load run of the NT promoter checkpoint on transformers 5.17 with the current shim set sizes the remaining rung ladder (live probe: exactly `invert_attention_mask` missing)
+- [x] **GAPC-01**: An empirical load run of the NT promoter checkpoint on transformers 5.17 with the current shim set sizes the remaining rung ladder (live probe: exactly `invert_attention_mask` missing)
 - [ ] **GAPC-02**: Shim-vs-removal is executed on that evidence — vendored absence-gated rung extension if tractable (closes WINDOWS #11/#12/#15); honest removal of the third benchmark model + BPE pkl leg if disproportionate (closes #11/#12 as removed-by-decision)
 
 ### Docs Accuracy Review (DOCR)
@@ -111,7 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OLLM-01 | Phase 13 | Complete |
 | OLLM-02 | Phase 13 | Complete |
 | OLLM-03 | Phase 13 | Complete |
-| GAPC-01 | Phase 14 | Pending |
+| GAPC-01 | Phase 14 | Complete |
 | GAPC-02 | Phase 14 | Pending |
 | DOCR-01 | Phase 19 | Pending |
 | DOCR-02 | Phase 19 | Pending |

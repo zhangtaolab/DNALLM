@@ -96,11 +96,11 @@ Plans:
   3. Non-NT model families are provably unaffected — the shim is version-keyed and absence-gated, and the 35-family regression gate stays green
   4. The fast lane is green with the census triple and `expected_skips.yaml` reconciled in the same change as any un-skip or removal
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 14-01-PLAN.md — GAPC-01 evidence on record (recorded promoter load run, BPE-leg probe with task_type token, invert_attention_mask reachability proof, nightly junit forensics, census baseline → 14-EVIDENCE.md sections A-F), then the locked owner disposition checkpoint (blocking-human decision: shim-zero-rung vs removal, D-04)
+- [x] 14-01-PLAN.md — GAPC-01 evidence on record (recorded promoter load run, BPE-leg probe with task_type token, invert_attention_mask reachability proof, nightly junit forensics, census baseline → 14-EVIDENCE.md sections A-F), then the locked owner disposition checkpoint (blocking-human decision: shim-zero-rung vs removal, D-04)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 14-02-PLAN.md — Post-decision execution: comment-only GAP-1 prose resolution in the two test files (pruned-AST gate, markers byte-identical, census/matcher stability proofs), local D-06 gates (fast lane + 35-family + skip audit), WINDOWS #11/#12/#15 closure via gsd-tools, GAPC requirements complete, CI coverage-nightly dispatch re-verification on ref v1.3
@@ -180,7 +180,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
-| 14. GAP-1 Transformers 5.x Disposition | 0/2 | Not started | - |
+| 14. GAP-1 Transformers 5.x Disposition | 1/2 | In Progress | - |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 0/TBD | Not started | - |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |

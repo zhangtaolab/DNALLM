@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 14
 current_phase_name: GAP-1 Transformers 5.x Disposition
 status: executing
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-10-13T01:57:11.236Z"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-10-13T02:18:48.651Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 6cf2adffd7d7b26413a7538a459555f603f893a6
+state_head: 216fbade609d52d24357c27bd37d3ef071ac9cc2
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 14
 ---
 
@@ -48,6 +48,7 @@ Progress: [█░░░░░░░░░] 14% (0/7 v1.3 phases)
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 13 P01 | 17 min | 3 tasks | 6 files |
+| Phase 14 P01 | 14 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 13]: Skip disposition realized by CI shape: example-nightly stage-3 ollama batch deleted so the mcp pair typed-skips via the existing self-healing D-13 gate (network-unavailable: with probe evidence) — zero functional test-file edits (13-01, D-04)
 - [Phase 13]: Census triple re-pinned 208/217 (9 deselected) to 216/217 (1 deselected) with the -k mcp deselect dropped from stages 0.5 and 1 — measured with the exact stage-0.5 flags, grep never widened (13-01)
 - [Phase 13]: expected_skips.yaml touched comment-only: the pre-existing network-unavailable: prefix entry is the sole sanctioned match path for the nightly pair skips (13-01)
+- [Phase 14]: GAPC-01 ladder measured at zero new rungs on the recorded run — promoter + BPE-leg both load and forward green on transformers 5.17 under the existing ladder; invert_attention_mask proven a dead branch via reachability (attribute inventory, not execution trace) (14-01)
+- [Phase 14]: Owner disposition shim-zero-rung taken exactly once on the 14-EVIDENCE.md section F table via the D-04 blocking-human checkpoint — proceed to 14-02; WINDOWS #11/#12/#15 close fixed-with-probe-evidence (D-08) (14-01)
 
 ### Pending Todos
 
@@ -104,9 +107,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-12T09:56:00Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
-Resume file: .planning/phases/13-ollama-surface-disposition/.continue-here.md
+Last session: 2026-10-13T02:18:48.621Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
