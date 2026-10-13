@@ -205,3 +205,122 @@ def jaccard(path_a: str | Path, path_b: str | Path) -> dict[str, int | float]:
         union += u
     value = intersection / union if union else 0.0
     return {"intersection": intersection, "union": union, "jaccard": value}
+
+
+# Null-B literals bedtools prints for the B side of a no-hit output line,
+# per B column (pinned empirically against live bedtools v2.31.1; the
+# official docs do not document the field-level encoding).
+NULL_CHROM = "."  # B column 1 (chromosome) under a null join
+NULL_START = "-1"  # B column 2 (start) under a null join
+NULL_END = "-1"  # B column 3 (end) under a null join
+NULL_NAME = "."  # B column 4 (BED name slot) under a null join
+NULL_SCORE = "-1"  # B column 5 (BED score slot, numeric) under a null join
+NULL_OTHER = "."  # B column 6+ (strand and beyond) under a null join
+
+
+def _parses_int(value: str) -> bool:
+    """
+    Report whether a BED payload field parses as a base-10 integer.
+
+    Mirrors the int-parseability bedtools applies to the BED "score" column
+    before upcasting a 5-column record to BED6.
+
+    Args:
+        value: the literal field content.
+
+    Returns:
+        bool: True when int(value) would succeed.
+    """
+    try:
+        int(value)
+    except ValueError:
+        return False
+    return True
+
+
+def _null_b_fields(count: int, numeric_score: bool | None = None) -> list[str]:
+    """
+    Build the null B-side field vector for a no-hit A row.
+
+    Follows the oracle-pinned count-dependent encoding: a null BED6 prints
+    (".", -1, -1, ".", "-1", ".") and bedtools emits its first ``count``
+    columns for B counts <= 6. The score slot (B column 5) is
+    content-dependent ONLY at count 5 ("-1" when column 5 parses as int,
+    else "."); at count 6 it is ALWAYS "-1" (verified with numeric and
+    non-numeric content alike) and at count >= 7 ALWAYS "." (likewise) —
+    so the 6-column NER annotation surface is content-independent.
+
+    Args:
+        count: B column count (>= 3; an empty B file means 3).
+        numeric_score: for count 5, whether B's column-5 values parse as
+            int (derived from content by loj_intersect); ignored for
+            every other count.
+
+    Returns:
+        list[str]: the literals bedtools prints for the B side of a no-hit
+        output line.
+    """
+    if count <= 4:
+        return [NULL_CHROM, NULL_START, NULL_END] + [NULL_OTHER] * (count - 3)
+    if count == 5:
+        slot = NULL_SCORE if numeric_score else NULL_OTHER
+        return [NULL_CHROM, NULL_START, NULL_END, NULL_NAME, slot]
+    if count == 6:
+        return [NULL_CHROM, NULL_START, NULL_END, NULL_NAME, NULL_SCORE, NULL_OTHER]
+    # count >= 7: beyond BED6 the score slot reverts to "." as well.
+    return [NULL_CHROM, NULL_START, NULL_END, NULL_NAME] + [NULL_OTHER] * (count - 4)
+
+
+def loj_intersect(path_a: str | Path, path_b: str | Path) -> list[str]:
+    """
+    Compute ``bedtools intersect -a A -b B -loj`` output with pure numpy.
+
+    Every A row survives in A-file order; for each A row, B rows on the
+    exact-same chromosome string with a half-open overlap (b.start < a.end
+    AND a.start < b.end — touching boundaries do NOT overlap) are emitted
+    one output line per pair, in B-file order; duplicates on either side
+    each produce their own lines. This is a JOIN, not a merge: rows are
+    never sorted and never deduplicated in this path. A row with no hit is
+    emitted once with the B side null-filled per _null_b_fields.
+    Per-chromosome candidate search broadcasts int64 arrays (consumer
+    scale is spike-scale, tens of rows per side — correctness and emission
+    order over asymptotics).
+
+    Args:
+        path_a: BED3+ file for side A (the preserved side of the join).
+        path_b: BED3+ file for side B (hits or nulls).
+
+    Returns:
+        list[str]: tab-joined output lines (no trailing newline) — the
+        documented downstream contract: the Phase-16 row adapter splits
+        each line on tab.
+    """
+    a_rows = parse_bed(path_a)
+    b_rows = parse_bed(path_b)
+    b_count = len(b_rows[0].extra) + 3 if b_rows else 3
+    numeric_score = all(_parses_int(row.extra[1]) for row in b_rows) if b_count == 5 else None
+    null_fields = _null_b_fields(b_count, numeric_score)
+    grouped: dict[str, list[BedRow]] = {}
+    for row in b_rows:
+        grouped.setdefault(row.chrom, []).append(row)
+    starts_by_chrom = {
+        chrom: np.array([row.start for row in rows], dtype=np.int64)
+        for chrom, rows in grouped.items()
+    }
+    ends_by_chrom = {
+        chrom: np.array([row.end for row in rows], dtype=np.int64)
+        for chrom, rows in grouped.items()
+    }
+    out: list[str] = []
+    for a in a_rows:
+        prefix = (a.chrom, str(a.start), str(a.end), *a.extra)
+        hits: list[BedRow] = []
+        if a.chrom in grouped:
+            mask = (starts_by_chrom[a.chrom] < a.end) & (ends_by_chrom[a.chrom] > a.start)
+            hits = [grouped[a.chrom][int(i)] for i in np.nonzero(mask)[0]]
+        if hits:
+            for b in hits:
+                out.append("\t".join((*prefix, b.chrom, str(b.start), str(b.end), *b.extra)))
+        else:
+            out.append("\t".join((*prefix, *null_fields)))
+    return out

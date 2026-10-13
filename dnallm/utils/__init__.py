@@ -16,6 +16,7 @@ from .genomic_coords import (
 )
 from .genomic_intervals import (
     jaccard,
+    loj_intersect,
     parse_bed,
 )
 from .sequence import (
@@ -62,6 +63,7 @@ __all__ = [
     "log_progress",
     "log_success",
     "log_warning",
+    "loj_intersect",
     "normalize_chrom",
     "parse_bed",
     "parse_gff_attributes",
