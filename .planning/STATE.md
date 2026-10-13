@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 16
 current_phase_name: Windows Parity Rollout
 status: executing
-stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-10-13T16:11:11.713Z"
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-10-13T16:26:36.610Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 7db1b9c1243ca247eca7ea6a38c8a2583429502e
+state_head: 8367bf5cb0831e34d9439f4bef4cf325e5e22d60
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
   percent: 43
 ---
 
@@ -51,6 +51,7 @@ Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 | Phase 14 P01 | 14 min | 3 tasks | 2 files |
 | Phase 14 P02 | 228 min | 3 tasks | 5 files |
 | Phase 15 P01 | 26 min | 3 tasks | 3 files |
+| Phase 16 P01 | 13 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 14]: Owner disposition shim-zero-rung taken exactly once on the 14-EVIDENCE.md section F table via the D-04 blocking-human checkpoint — proceed to 14-02; WINDOWS #11/#12/#15 close fixed-with-probe-evidence (D-08) (14-01)
 - [Phase 15]: Spike cores ported verbatim as specification (5008-case bedtools v2.31.1 parity record is the design authority); case-11 plan prose corrected against the oracle — NER driver is all-hits, null vector pinned in case 7 + pin table (15-01)
 - [Phase 15]: Coverage proof at 100% via coverage-CLI form only (WINDOWS #20); module row visible = omit-list proof; baked corpus subset = one full 12-cycle per spike (the complete pattern x shuffle surface); census triple untouched — zero ci.yml/pyproject/expected_skips edits (15-01)
+- [Phase 16]: [16-01] Platform dispatch pinned as the sys.platform == "win32" equality check at the seam only (CRE cell 11; inverse guard on the showcase gate) — POSIX branch byte-preserved, no try/except-ImportError ladder (WPAR-06 shape, now structure-tested)
+- [Phase 16]: [16-01] Dispatch-direction runtime contracts live at tests/ root in test_dispatch_direction.py (monkeypatched platform + poisoned subprocess.run) — zero census movement, ci.yml triple untouched at 216/217
 
 ### Pending Todos
 
@@ -111,8 +114,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T14:54:47.405Z
-Stopped at: Phase 15 complete, ready to plan Phase 16
+Last session: 2026-10-13T16:26:36.562Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

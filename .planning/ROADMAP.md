@@ -132,11 +132,11 @@ Plans:
   4. A same-change dispatch-direction structure test proves the numpy path cannot silently execute on Linux (fail-loud dispatch, no except-fallback ladder), and the Linux nightly re-execution holds the parsed selection.md bands in the same change
   5. Every example edit lands with its docs mirror byte-identical (`check_docs_sync` green)
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 16-01-PLAN.md — Tracer: CRE cell-11 platform dispatch + showcase gate platform-aware + tests/test_dispatch_direction.py born (structure + win32/POSIX-fail-loud runtime contracts) — WPAR-04/06/08
+- [x] 16-01-PLAN.md — Tracer: CRE cell-11 platform dispatch + showcase gate platform-aware + tests/test_dispatch_direction.py born (structure + win32/POSIX-fail-loud runtime contracts) — WPAR-04/06/08
 - [ ] 16-03-PLAN.md — Frozen pairs: same-session regeneration (GPU pred sides + dual bedtools/numpy oracles) committed under tests/fixtures/, selection.md exon_f1 tolerance band row (+ mirror), tests/test_frozen_pairs.py platform-agnostic at tests/ root — WPAR-05/08
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -196,7 +196,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
-| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
+| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 1/4 | In Progress | - |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |
