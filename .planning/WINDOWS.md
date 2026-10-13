@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 7
+open_count: 4
 waived_count: 3
-fixed_count: 12
+fixed_count: 15
 total_count: 22
-last_updated: 2026-10-13T00:38:07.097Z
+last_updated: 2026-10-13T02:29:17.575Z
 ---
 
 # Broken Windows Ledger
@@ -25,11 +25,11 @@ last_updated: 2026-10-13T00:38:07.097Z
 | 8 | 04 | deviation | .github/workflows/ci.yml |  | Plan 04-02 verify commands needed --workflow CI disambiguation (Docs Validation run stole the latest-push-run slot) and mid-run job logs are 404 on GitHub's API until completion - step-state is the runtime health proof | fixed |  | 2026-09-30T17:03:40.700Z | 2026-10-01T14:32:27.597Z |
 | 9 | 04 | deviation | .planning/phases/04-ci-gate-enforcement/04-03-PLAN.md |  | Plan arithmetic defect: single-file tests/models/test_model.py deletion cannot clear the 90 floor under -m 'not slow' (91.64% green); probe target re-planned to directory deletion (78.92% red local, 78.91% CI) per the plan own rehearsal gate — resolved in 04-03 | fixed |  | 2026-09-30T18:17:11.661Z | 2026-10-01T14:32:27.683Z |
 | 10 | 04 | deviation | .planning/phases/04-ci-gate-enforcement/04-03-PLAN.md |  | Verify mechanics: gh run view --job --log-failed gates on whole-run completion; evidence harvested via job-level logs API (gh api actions/jobs/<id>/logs) which serves completed jobs mid-run — resolved in 04-03 | fixed |  | 2026-09-30T18:17:11.751Z | 2026-10-01T14:32:27.771Z |
-| 11 | 05 | deviation | example/notebooks/benchmark/benchmark.ipynb |  | Census FAIL row (05-04, D-07 ladder terminal): third registry model zhangtaolab/nucleotide-transformer-v2-100m-promoter not loadable on transformers 5.17 - remote code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention); native-ESM route refuted (FFN shape mismatch); owner disposition pending per D-09 | open |  | 2026-10-02T05:12:38.864Z |  |
-| 12 | 05 | stub | tests/examples/test_script_execution.py |  | environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending | open |  | 2026-10-02T05:48:40.008Z |  |
+| 11 | 05 | deviation | example/notebooks/benchmark/benchmark.ipynb |  | Census FAIL row (05-04, D-07 ladder terminal): third registry model zhangtaolab/nucleotide-transformer-v2-100m-promoter not loadable on transformers 5.17 - remote code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention); native-ESM route refuted (FFN shape mismatch); owner disposition pending per D-09 | fixed |  | 2026-10-02T05:12:38.864Z | 2026-10-13T02:29:17.247Z |
+| 12 | 05 | stub | tests/examples/test_script_execution.py |  | environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending | fixed |  | 2026-10-02T05:48:40.008Z | 2026-10-13T02:29:17.411Z |
 | 13 | 05 | unrun-verify | example/mcp_example |  | Census deferred-owner rows (05-06, D-08/T-05-16): both ollama mcp client notebooks never executed - ollama probe GREEN (qwen3.8:latest) but dnallm MCP server endpoint down and uv pip install cells must never touch the project venv; needs the Phase-8 ollama/VRAM coexistence plan (owner decision); durable gated tests skip network-unavailable with live probe evidence and fail loudly if both endpoints come up | open |  | 2026-10-02T08:34:21.484Z |  |
 | 14 | 05 | deviation | dnallm/inference/benchmark.py | 296 | Census FAIL finding (05-06): Benchmark.run hardcodes self.datasets[di]['labels'] while example benchmark_config.yaml declares label_column 'label' - KeyError before any model loads; blocks the benchmark notebook (and its NT third-model disposition) until repaired; Phase 8 repair queue | fixed | run() label resolution honors configured label_column with 'labels' fallback and descriptive ValueError; red-first regression tests in TestRunLabelColumnResolution; note: census's ['sequence']-only shape stemmed from generate_dataset's silent path-to-sequence fallback, a separate latent bug deliberately left out of scope | 2026-10-02T08:34:21.569Z | 2026-10-10T14:39:32.164Z |
-| 15 | 05 | skipped-test | tests/examples/test_notebook_execution.py |  | 05-06 gated typed skips (sanctioned, self-healing): optional-dep probe-then-execute for evo/megaDNA prerequisites, finetune_custom_head megaDNA demo cell and PlantCAD lora pair (mamba_ssm); environment-unavailable script-lane skip (05-05 pattern) unchanged; all matched by audit_skips against registered prefixes | open |  | 2026-10-02T08:34:21.655Z |  |
+| 15 | 05 | skipped-test | tests/examples/test_notebook_execution.py |  | 05-06 gated typed skips (sanctioned, self-healing): optional-dep probe-then-execute for evo/megaDNA prerequisites, finetune_custom_head megaDNA demo cell and PlantCAD lora pair (mamba_ssm); environment-unavailable script-lane skip (05-05 pattern) unchanged; all matched by audit_skips against registered prefixes | fixed |  | 2026-10-02T08:34:21.655Z | 2026-10-13T02:29:17.575Z |
 | 16 | 09 | unmet-truth | tests/benchmark/test_benchmark.py |  | Pre-existing fast-lane failure (found by 09-02 verify, reproduced at plan-start 3557e0b): TestBenchmark::test_plot_for_regression pandas TypeError float() argument ... not dict via _astype_nansafe in the plot path; not caused by any Phase 09 change (09-02 delta +8P/+0F/+0S); likely quick-task 13/14 Mapping fallout; logged in 09 deferred-items.md | fixed |  | 2026-10-05T15:45:36.353Z | 2026-10-06T01:31:42.584Z |
 | 17 | quick-261007-vxx | unmet-truth | docs/user_guide/fine_tuning/getting_started.md |  | Push of ruff-format fix commit 97a7c30 to origin/dev blocked by GitHub receive-side Internal Server Error (4 attempts, Request IDs 8832:3513C8/C942:3774A8/B48E:2E4A69/991C:246D9C, 2026-10-07 15:07-15:12Z); local ruff format --check green at dev 97a7c30; re-run 'git push origin dev' when GitHub receive recovers to unblock ci.yml format gates + PR #40 | fixed | GitHub receive recovered; orchestrator re-push at 2026-10-07T15:17:44Z landed cfc8346..97a7c30 on origin/dev; CI + Docs Validation re-triggered | 2026-10-07T15:20:00.000Z | 2026-10-07T15:18:00.000Z |
 | 18 | quick-261008-env | deviation | pyproject.toml |  | Windows fla installability gap (env adaptation 2026-10-08): pip install -e '.[fla]' on Windows succeeds but leaves fla broken - torch Windows wheels declare no triton dependency (Linux pulls it) and fla-core requires triton only under its [cuda]/[cpu] extras which the pyproject deliberately avoids, so fla imports top-level but fla.ops.* raises ModuleNotFoundError and test_chunk_kda_importable_when_fla_installed FAILS instead of skipping. Remedy installed in dnallm-cuda: triton-windows==3.7.1.post27 (community wheels; upstream triton ships no win_amd64) - KDA chunk kernel proven compiling+executing on RTX 5080 sm_120. Open owner decision: whether to declare triton-windows behind a Windows platform marker in the fla extra (third-party fork enters declared deps) or document the manual step | open |  | 2026-10-08T04:30:00.000Z |  |
@@ -177,10 +177,10 @@ last_updated: 2026-10-13T00:38:07.097Z
     "file": "example/notebooks/benchmark/benchmark.ipynb",
     "line": null,
     "description": "Census FAIL row (05-04, D-07 ladder terminal): third registry model zhangtaolab/nucleotide-transformer-v2-100m-promoter not loadable on transformers 5.17 - remote code needs removed 4.x PretrainedConfig defaults (is_decoder/add_cross_attention); native-ESM route refuted (FFN shape mismatch); owner disposition pending per D-09",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-02T05:12:38.864Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-13T02:29:17.247Z",
     "milestone": "v1.1"
   },
   {
@@ -190,10 +190,10 @@ last_updated: 2026-10-13T00:38:07.097Z
     "file": "tests/examples/test_script_execution.py",
     "line": null,
     "description": "environment-unavailable typed skip: generate_bpe_dataset.py pkl-production leg blocked by GAP-1-class remote-code gap (plant-nucleotide-transformer-BPE needs removed 4.x PretrainedConfig defaults on transformers 5.17); self-healing, owner disposition pending",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-02T05:48:40.008Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-13T02:29:17.411Z",
     "milestone": "v1.1"
   },
   {
@@ -229,10 +229,10 @@ last_updated: 2026-10-13T00:38:07.097Z
     "file": "tests/examples/test_notebook_execution.py",
     "line": null,
     "description": "05-06 gated typed skips (sanctioned, self-healing): optional-dep probe-then-execute for evo/megaDNA prerequisites, finetune_custom_head megaDNA demo cell and PlantCAD lora pair (mamba_ssm); environment-unavailable script-lane skip (05-05 pattern) unchanged; all matched by audit_skips against registered prefixes",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-10-02T08:34:21.655Z",
-    "resolved_at": null,
+    "resolved_at": "2026-10-13T02:29:17.575Z",
     "milestone": "v1.1"
   },
   {

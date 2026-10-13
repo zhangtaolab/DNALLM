@@ -1,20 +1,25 @@
 """Slow real-model smoke tests for trust_remote_code checkpoints on the installed transformers.
 
-GAP-1 provenance (Phase 5 post-closure reopen, decision D-07): the registry checkpoint
+GAP-1 provenance (Phase 5 reopen; resolved Phase 14 -- disposition
+shim-zero-rung): the registry checkpoint
 ``zhangtaolab/nucleotide-transformer-v2-100m-promoter`` (``dnallm/models/model_info.yaml``,
 third model of ``example/notebooks/benchmark/benchmark_config.yaml``) ships a
 transformers-4.x-era remote-code ``modeling_esm.py`` whose
 ``from transformers.modeling_utils import ...`` of the pruning helpers crashed on
-transformers 5.x, where both symbols were removed.
-``dnallm.utils.transformers_compat`` vendors and re-attaches the helpers, which closed
-the import failure; the load then hit the sanctioned fallback ladder's terminal rung:
-the remote code also reads ``config.is_decoder``/``config.add_cross_attention`` —
-transformers-4.x ``PretrainedConfig`` defaults that 5.x removed and the checkpoint's
-``config.json`` does not carry. That is a config-attribute dependency, not a vendored
-pure helper, so per D-07's ladder the smoke records the exact traceback as a typed
-``environment-unavailable:`` skip and the benchmark notebook is flagged as a census
-FAIL row for the owner hand-off. The test keeps attempting the REAL load plus forward
-so it self-heals into a green real-model smoke the moment the environment gap closes.
+transformers 5.x, where both symbols were removed;
+``dnallm.utils.transformers_compat`` vendors and re-attaches the helpers. The
+remote code also reads ``config.is_decoder``/``config.add_cross_attention`` --
+transformers-4.x ``PretrainedConfig`` defaults that 5.x removed and the
+checkpoint's ``config.json`` does not carry -- and the closed-map
+``_patch_pretrained_config_legacy_defaults`` rung
+(``dnallm/utils/transformers_compat.py``, landed 2026-10-02) answers both
+names, so the GAP-1 load failure is closed: the checkpoint loads and forwards
+with ``(1, 2)`` logits on transformers 5.17 (recorded GAPC-01 run --
+``.planning/phases/14-gap-1-transformers-5-x-disposition/14-EVIDENCE.md``
+section A), and WINDOWS #11 closed fixed in phase 14. The typed-skip branch
+below remains as the regression tripwire: it fires only if a future
+transformers regression re-breaks the remote-code load, re-skipping loudly
+with the exact traceback.
 """
 
 import traceback
@@ -26,10 +31,12 @@ from dnallm.configuration.configs import TaskConfig
 from dnallm.models.model import load_model_and_tokenizer
 from tests.examples._execution import environment_unavailable_skip
 
-# The documented terminal-rung breakage on transformers 5.17.0: the remote
-# modeling_esm.py reads the removed PretrainedConfig legacy default
-# ``is_decoder`` (EsmSelfAttention.__init__, line 335) with
-# ``add_cross_attention`` (EsmLayer.__init__, line 584) directly behind it.
+# Dormant regression tripwire (GAP-1 resolved, phase 14): the closed-map
+# legacy-defaults rung answers ``is_decoder`` (EsmSelfAttention.__init__,
+# line 335) and ``add_cross_attention`` (EsmLayer.__init__, line 584), so
+# the marker's AttributeError text cannot occur unless transformers
+# regresses; if it ever does, the branch below re-skips loudly (typed,
+# with traceback evidence).
 _STRUCTURAL_MARKER = "'EsmConfig' object has no attribute 'is_decoder'"
 
 

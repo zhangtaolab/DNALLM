@@ -246,3 +246,63 @@ ms  zhangtaolab/nucleotide-transformer-v2-100m-promoter@c138b8c50e0013354a3aac0c
 **Consequence (one line):** proceed to plan 14-02 (shim-path disposition: comment-only prose resolution, local gates, WINDOWS #11/#12/#15 fixed with probe evidence per D-08, CI re-verification).
 
 **Closure semantics this selection locks (GAPC-02 edge, D-08):** WINDOWS #11/#12/#15 close as fixed-with-probe-evidence (the recorded sections A-D are that evidence; #15 per-item via the section D nightly classification — zero #15-class skips in the green run).
+
+## H. Execution proofs
+
+**Executed:** 2026-10-13 (executor run of plan 14-02, on the dev venv transformers 5.17.0 / torch 2.11.0+cu130). Section H is appended by plan 14-02 per the section-order contract (A-G fixed by 14-01).
+
+### H.1 Local gates (D-06)
+
+**Full fast lane** (`.venv/bin/python -m pytest -m "not slow" --no-cov -q --junitxml=/tmp/gapc14-fastlane-junit.xml`) — exit 0, verbatim tail line:
+
+```
+==== 2487 passed, 2 skipped, 75 deselected, 7 warnings in 101.77s (0:01:41) ====
+```
+
+**35-family benchmark gate** (`.venv/bin/python -m pytest tests/benchmark/test_benchmark.py -q --no-cov`) — exit 0, verbatim tail line:
+
+```
+======================== 35 passed, 2 warnings in 7.86s ========================
+```
+
+**Skip audit over the fast-lane junit** (`.venv/bin/python scripts/audit_skips.py /tmp/gapc14-fastlane-junit.xml tests/expected_skips.yaml`) — exit 0, verbatim output:
+
+```
+Skip audit: 2 skipped test(s) in /tmp/gapc14-fastlane-junit.xml
+  allowed    tests.examples.test_examples.TestNotebookExamples::test_notebook_imports[notebooks/data_prepare/predict/predict_data.ipynb] [content] -> 'No import statements found'
+  allowed    tests.models.test_plant_helixseek_fla_kernels.TestChunkKdaImportPath::test_chunk_kda_importable_when_fla_installed [environment] -> 'environment-unavailable: flash-linear-attention not installed (PlantHelixSeek KDA kernels absent — models silently degrade, see docs/faq)'
+OK: every skip in /tmp/gapc14-fastlane-junit.xml matches the allowlist
+```
+
+**Comment-only discipline gates** (Task 1, T-14-03 mitigation) — all green on the working tree vs HEAD:
+
+```
+$ .venv/bin/python /tmp/gapc14-ast-gate.py
+AST-IDENTICAL: tests/models/test_model_remote_code.py
+AST-IDENTICAL: tests/examples/test_script_execution.py
+AST-GATE: PASSED (both files)
+
+$ grep -cF marker literals (both files) -> 1 each -> MARKERS-INTACT
+$ census collect -m "not giants" vs ci.yml pin -> 216/217 tests collected (1 deselected) -> CENSUS-MATCH
+$ matcher diff HEAD vs working tree over tests/expected_skips.yaml -> MATCHERS-UNCHANGED (file untouched)
+```
+
+### H.2 D-07 reconciliation — vacuous-satisfaction statement
+
+This change performs **no un-skip and no removal**: the zero-rung disposition leaves every skip machinery byte-identical. No collected id moved (CENSUS-MATCH above — the measured census triple `216/217 tests collected (1 deselected)` equals the ci.yml pin under the exact stage-0.5 flags), and the `tests/expected_skips.yaml` matcher set is byte-identical to HEAD (MATCHERS-UNCHANGED; the file is untouched in the diff). The census triple therefore stays pinned at its current value — nothing to re-pin — and the reconciliation proof (census + matcher identity + the pruned-AST comment-only gate) rides this same change set as the prose resolution and the ledger closures (one atomic commit).
+
+### H.3 Ledger closures (D-08)
+
+Closed via `node ~/.claude/gsd-core/bin/gsd-tools.cjs windows fixed <id>` (one positional id each; no reason flag exists — this evidence file is the reason of record):
+
+| Entry | Status | resolved_at (UTC) | Evidence of record |
+|-------|--------|-------------------|--------------------|
+| #11 (benchmark third model, census FAIL row) | fixed | 2026-10-13T02:29:17.247Z | sections A (recorded load run) + C (reachability); nightly benchmark-notebook PASS row section D |
+| #12 (BPE pkl script lane typed skip) | fixed | 2026-10-13T02:29:17.411Z | sections B (BPE-leg probe) + D (script-lane PASS row 102.244s) |
+| #15 (05-06 gated typed skips) | fixed | 2026-10-13T02:29:17.575Z | section D per-item classification — all 5 nightly skips classified, explicit zero-#15-class line, every #15 gate executed for real |
+
+Post-closure counters (gsd-tools recomputed, never hand-edited): `fixed_count: 15`, `open_count: 4` (was 12/7). REQUIREMENTS.md: GAPC-01 and GAPC-02 checkboxes `[x]` with traceability rows Complete.
+
+### H.4 CI re-verification (D-06 CI-side half)
+
+Filled by plan 14-02 Task 3 in its follow-on commit (the only follow-on commit of this plan per the ordering edge): dispatched ci.yml run on the pushed v1.3 ref, coverage-nightly job conclusion, and the nightly junit's row for `test_nt_v2_promoter_loads_and_forwards`.

@@ -32,17 +32,19 @@ from tests.examples._execution import (
 SCRIPT_DIR = EXAMPLE_DIR / "notebooks" / "finetune_NER_task"
 SCRIPT = SCRIPT_DIR / "generate_bpe_dataset.py"
 
-# GAP-1 terminal signature (05-04): the zhangtaolab NT-family remote
-# modeling_esm.py reads config.is_decoder / config.add_cross_attention --
-# transformers-4.x PretrainedConfig defaults removed in 5.x and absent from
-# the checkpoint's config.json.  plant-nucleotide-transformer-BPE (this
-# script's tokenizer model) carries the same remote code (failing live at
-# remote modeling_esm.py:335 after the 05-04 import shim let it load).
-# Owner disposition pending (05-04 hand-off options); per D-08 the census
-# terminal state for this item is an evidence-backed typed skip.  The skip
-# is a live probe, not a dead skip: once the environment gap closes the
-# script runs to completion and this test goes green through the real
-# artifact assertions below.
+# GAP-1 resolved (phase 14 -- disposition shim-path-zero-rung): the
+# closed-map legacy-defaults rung (dnallm/utils/transformers_compat.py,
+# landed 2026-10-02) answers config.is_decoder /
+# config.add_cross_attention for the plant-nucleotide-transformer-BPE
+# remote modeling_esm.py (this script's tokenizer model carries the same
+# NT-family remote code), and the script passed for real in the
+# example-nightly -- CI run 38308972028, stage-1 row
+# test_generate_bpe_dataset_produces_artifact PASS
+# (14-EVIDENCE.md section D).  The marker below and the branch in
+# test_generate_bpe_dataset_produces_artifact are the dormant tripwire:
+# on a transformers regression that re-breaks the remote-code load, the
+# lane re-skips loudly (typed, marker line as evidence) instead of
+# failing opaquely.
 _NT_STRUCTURAL_MARKER = "Failed to load model: 'EsmConfig' object has no attribute 'is_decoder'"
 
 # Documented input-download URLs from the sibling notebook
