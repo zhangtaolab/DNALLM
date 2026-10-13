@@ -57,7 +57,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - Integer phases (13–19): planned v1.3 milestone work (continues v1.2's Phase 12 — numbering never restarts)
 - Decimal phases (13.1, 13.2): urgent insertions (marked INSERTED)
 
-- [ ] **Phase 13: Ollama Surface Disposition** - Per-assertion remove-or-skip over the ~59 ollama pytest refs, with census triple, skip allowlist, and nightly stages reconciled same-change
+- [x] **Phase 13: Ollama Surface Disposition** - Per-assertion remove-or-skip over the ~59 ollama pytest refs, with census triple, skip allowlist, and nightly stages reconciled same-change (completed 2026-10-13)
 - [ ] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state
 - [ ] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg
 - [ ] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test
@@ -80,7 +80,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   3. Post-sweep `grep ollama tests/` residue equals exactly the sanctioned list recorded in the plan; the two mcp_example notebooks remain in-repo per WINDOWS #13 with `langchain-ollama` still declared in the mcp extra
   4. The D-03 census triple is re-pinned, `expected_skips.yaml` updated, and ci.yml example-nightly stages reconciled in the same change — the nightly run stays green (no pytest exit 5, no unexpected-skip audit failure)
 
-**Plans**: 1/1 plans executed
+**Plans**: 1/1 plans complete
 
 Plans:
 - [x] 13-01-PLAN.md — Atomic D-04 disposition: delete nightly stage 3 (gate fires the allowlisted network-unavailable: typed skip), re-pin census triple 208/217→216/217, drop the -k mcp deselect from stages 0.5/1, reconcile stage-4 audit list, comment contracts, allowlist comment, and both READMEs; 59-ref per-assertion ledger + 56-line sanctioned residue recorded in the plan
@@ -172,7 +172,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 13. Ollama Surface Disposition | 1/1 | In Progress | - |
+| 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
 | 14. GAP-1 Transformers 5.x Disposition | 0/TBD | Not started | - |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 0/TBD | Not started | - |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
