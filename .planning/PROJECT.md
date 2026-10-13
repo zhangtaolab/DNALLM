@@ -66,6 +66,7 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 - ✓ Ollama pytest surface skip-marked per owner directive — Phase 13 (stage-3 ollama batch deleted; mcp_example pair probe-gated typed-skips; census re-pinned 216/217; first green example-nightly verified 2026-10-13 run 38308972028)
 - ✓ GAP-1 disposition: shim-zero-rung — Phase 14 (NT promoter + BPE leg load real on transformers 5.17 via the 10-02 rung; invert_attention_mask dead-branch; WINDOWS #11/#12/#15/#23 closed; rice.uga.edu external transient owner-accepted)
+- ✓ Windows parity core: numpy interval evaluators — Phase 15 (genomic_intervals.py 3-function surface, 39 oracle tests, 100% module coverage, platform-neutral)
 
 ### Validated — v1.2 (Paper Revision Suite Support, shipped 2026-10-10)
 

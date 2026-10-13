@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
-current_phase: 15
-current_phase_name: Windows Parity Core — Numpy Interval Evaluators
-status: executing
-stopped_at: Completed 15-01-PLAN.md (Windows Parity Core)
-last_updated: "2026-10-13T14:54:47.443Z"
+current_phase: 16
+current_phase_name: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity
+status: planning
+stopped_at: Phase 15 complete, ready to plan Phase 16
+last_updated: "2026-10-13T15:10:09.566Z"
 last_activity: 2026-10-13
-last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: e07deac29c2f5dc3f534dc83fe7450a8af752f4d
+last_activity_desc: Phase 15 complete, transitioned to Phase 16
+state_head: 85c7034d0859b44f4835e0eef05a1a805a1a2a5d
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 4
   completed_plans: 4
-  percent: 29
+  percent: 43
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 15 — Windows Parity Core (Numpy Interval Evaluators)
+**Current focus:** Phase 16 — Windows Parity Rollout (Dispatch, Gates & Frozen-Value Parity)
 
 ## Current Position
 
-Phase: 15 (Windows Parity Core — Numpy Interval Evaluators) — PLANS COMPLETE
-Plan: 15-01 complete (1/1) — module + re-export + root-level oracle battery at 100% coverage
-Status: Phase 15 execution complete, ready for verification / Phase 16 planning
-Last activity: 2026-10-13 — 15-01 executed (parse_bed/jaccard/loj_intersect ported, WPAR-01/02 complete)
+Phase: 16 — Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-13 — Phase 15 complete, transitioned to Phase 16
 
-Progress: [███░░░░░░░] 29% (0/7 v1.3 phases)
+Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 
 ## Performance Metrics
 
@@ -112,7 +112,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-13T14:54:47.405Z
-Stopped at: Completed 15-01-PLAN.md (Windows Parity Core)
+Stopped at: Phase 15 complete, ready to plan Phase 16
 Resume file: None
 
 ## Operator Next Steps

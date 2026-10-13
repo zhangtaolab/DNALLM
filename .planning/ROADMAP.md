@@ -59,7 +59,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 
 - [x] **Phase 13: Ollama Surface Disposition** - Per-assertion remove-or-skip over the ~59 ollama pytest refs, with census triple, skip allowlist, and nightly stages reconciled same-change (completed 2026-10-13)
 - [x] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state (completed 2026-10-13)
-- [ ] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg
+- [x] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg (completed 2026-10-13)
 - [ ] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test
 - [ ] **Phase 17: Publish Chain Robustness** - Upload guard first, never-uploading smoke on dispatch + cron, OIDC Trusted Publishing migration, WINDOWS #20 fix, mypy cap
 - [ ] **Phase 18: Packaging & Install Honesty — Atomic Extras Surgery** - `base` rename, cuda121 retirement, rocm disposition, triton-windows declaration, GPU support matrix, uv/pip installer lanes
@@ -115,7 +115,7 @@ Plans:
   2. The spike corpora (seeds 261010-wx2 / 261011-0a3) plus handcrafted edge cases (boundary touching, chrom isolation, duplicates, empty B) run as fast, platform-neutral unit tests with baked oracle literals — green on every CI leg including test-windows, with no bedtools binary required anywhere in the unit layer
   3. The module sits provably outside the 7-entry coverage omit list and meets the ≥96% per-module same-change coverage standard (owner rule for library changes)
 
-**Plans**: 1/1 plans executed
+**Plans**: 1/1 plans complete
 
 Plans:
 - [x] 15-01-PLAN.md — Tracer-first port: parse_bed + jaccard wired end-to-end through the dnallm.utils re-export (Task 1), loj_intersect expansion carrying the oracle-pinned null-B fill table incl. the 6-column NER vector (Task 2), then the full oracle battery (8+11 spike cases), seeded corpora with property invariants, import-purity test, and the ≥96% coverage-CLI proof with omit-list visibility (Task 3) — three files, zero CI/census/expected_skips edits
@@ -184,7 +184,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 |-------|----------------|--------|-----------|
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
-| 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | In Progress | - |
+| 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 0/TBD | Not started | - |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
