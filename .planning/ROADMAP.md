@@ -179,7 +179,15 @@ Plans:
   4. Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build), the GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only with the minimum-GPU-line stated, 20xx→cu128, 30/40xx all extras, 50xx cu128+), and the cross-installer honesty matrix page (command × installer → what you actually get) is live
   5. Every changed extra resolves clean in a fresh venv, proven by Phase 17's smoke dispatch running against the post-surgery tree
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 18-01-PLAN.md — THE atomic surgery, one commit: base→full rename with the one-cycle self-referential alias, cuda121 retirement (extra + uv machinery + matrix leg + docs), rocm removal with the rocm7.1 restore path, triton-windows Windows-marker declaration in fla — across pyproject, the 11 workflow install lines, extended guard tests + residue grep gate, and the docs sweep; validated by fresh-venv per-extra resolves (uv + pip alias), census-verify, pickaxe atomicity proofs, and the phase-17 smoke dispatch against the post-surgery tree — PKGH-01/02/03, WPAR-07 declaration half
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 18-02-PLAN.md — Install-honesty publications: installation.md uv/pip lane split with the [tool.uv.sources] asymmetry stated up front, GPU support matrix page (0542a6b verbatim + cu121-retirement adjustment: Pascal cpu-only/Turing min-line, 20xx cu124–cu128, 30/40xx all extras, 50xx cu128+), cross-installer honesty matrix page (live-probe rows incl. the post-removal warn-and-exit-0 semantics), nav-wired, residue sanctioned-list same-change update — PKGH-04/06/07
+- [ ] 18-03-PLAN.md — WPAR-07 Windows acceptance: owner blocking-human checkpoint (RTX 5080) proving the marker pulls triton-windows 3.7.1.post27, chunk_kda imports, a KDA kernel compiles+executes under the resolved torch — closing WINDOWS #18 and retiring the SUS-with-null-signals flag (17-03 halt pattern on deferral) — WPAR-07 acceptance half
 
 ### Phase 19: Docs Accuracy Sweep & Milestone Closeout
 
