@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 3
+open_count: 4
 waived_count: 3
 fixed_count: 18
-total_count: 24
-last_updated: 2026-10-14T11:37:34.000Z
+total_count: 25
+last_updated: 2026-10-14T11:56:57.844Z
 ---
 
 # Broken Windows Ledger
@@ -39,6 +39,7 @@ last_updated: 2026-10-14T11:37:34.000Z
 | 22 | 13 | unrun-verify | .github/workflows/ci.yml |  | Phase 13 D-04 human-check deferred to the runner: first post-merge example-nightly (05:30 UTC schedule or owner dispatch) must come green — stage-1 pair typed-skips network-unavailable with probe evidence, census 216/217 (1 deselected), 4-member stage-4 audit, zero ledger lines; executor did NOT auto-dispatch (a ci.yml workflow_dispatch would co-enqueue the dispatch-only feas-spike job on the self-hosted box); standing local evidence: pair 2 typed skips + audit exit 0 (117s) and coverage-nightly exercising the same typed skip green | fixed |  | 2026-10-11T09:02:07.882Z | 2026-10-13T00:38:07.097Z |
 | 23 | 14 | unrun-verify | .github/workflows/ci.yml |  | Phase 14 D-06 CI-side re-verification deferred to the runner: re-dispatched run 38354875692 (headSha 2c737516, ref v1.3) coverage-nightly must come green — first run 38337783698 was red ONLY on the documented rice.uga.edu fasta-truncation transient (osA1_r7.asm.fa.gz 22.1MB of ~115MB, fasta Chr1-Chr2 only; models-lane smoke PASSED 3.400s on CI's transformers — drift refuted); phase close blocked until green per plan 14-02 Task 3 PENDING + 14-EVIDENCE.md section H.4 | fixed |  | 2026-10-13T06:09:34.306Z | 2026-10-13T13:18:38.402Z |
 | 24 | 16 | unrun-verify | .planning/phases/16-windows-parity-rollout-dispatch-gates-frozen-value-parity/16-EVIDENCE.md |  | 16-04 SC4 nightly evidence PENDING — dispatched run 38441258701 queued behind foreign CI work; both nightly jobs must conclude success and be recorded in 16-EVIDENCE.md section A before phase close | fixed |  | 2026-10-13T18:21:31.795Z | 2026-10-14T09:37:03.668Z |
+| 25 | 17 | unrun-verify | .planning/phases/17-publish-chain-robustness/17-03-SUMMARY.md | 106 | PyPI trusted-publisher registration for dnallm deferred by owner 2026-10-14 — five exact strings on record in 17-03-PLAN Task 2 / this SUMMARY; resume: register at pypi.org/manage/project/dnallm/publishing then re-run /gsd-execute-phase 17 (17-03 completes in minutes: registration record + README trigger docs + token-deletion carried item) | open |  | 2026-10-14T11:56:57.844Z |  |
 
 ````json
 [
@@ -352,6 +353,19 @@ last_updated: 2026-10-14T11:37:34.000Z
     "reason": "",
     "recorded_at": "2026-10-13T18:21:31.795Z",
     "resolved_at": "2026-10-14T09:37:03.668Z",
+    "milestone": "v1.3"
+  },
+  {
+    "id": 25,
+    "kind": "unrun-verify",
+    "phase": "17",
+    "file": ".planning/phases/17-publish-chain-robustness/17-03-SUMMARY.md",
+    "line": 106,
+    "description": "PyPI trusted-publisher registration for dnallm deferred by owner 2026-10-14 — five exact strings on record in 17-03-PLAN Task 2 / this SUMMARY; resume: register at pypi.org/manage/project/dnallm/publishing then re-run /gsd-execute-phase 17 (17-03 completes in minutes: registration record + README trigger docs + token-deletion carried item)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-14T11:56:57.844Z",
+    "resolved_at": null,
     "milestone": "v1.3"
   }
 ]

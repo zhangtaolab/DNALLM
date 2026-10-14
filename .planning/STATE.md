@@ -6,16 +6,16 @@ current_phase: 17
 current_phase_name: Publish Chain Robustness
 current_plan: 3
 status: executing
-stopped_at: "Completed 17-02-PLAN.md (tooling caps; WINDOWS #20 fixed via AS-1 fallback)"
-last_updated: "2026-10-14T11:41:45.870Z"
+stopped_at: Phase 17 HALTED at owner-deferred checkpoint — 17-03 Task 2 (PyPI trusted-publisher registration) deferred by owner (稍后再做) 2026-10-14; 2/3 plans complete (17-01, 17-02); environment pypi created (Task 1)
+last_updated: "2026-10-14T11:57:07.587Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: e0c6bd33344caac0be84a5b5b59b73a34144d0c4
+state_head: 26e23a574c5507872812e14e8a470bcd8c0723ea
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
   percent: 57
 ---
 
@@ -133,9 +133,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-14T11:41:31.807Z
-Stopped at: Completed 17-02-PLAN.md (tooling caps; WINDOWS #20 fixed via AS-1 fallback)
-Resume file: None
+Last session: 2026-10-14T11:57:07.537Z
+Stopped at: Phase 17 HALTED at owner-deferred checkpoint — 17-03 Task 2 (PyPI trusted-publisher registration) deferred by owner (稍后再做) 2026-10-14; 2/3 plans complete (17-01, 17-02); environment pypi created (Task 1)
+Resume file: .planning/phases/17-publish-chain-robustness/17-03-PLAN.md (Task 2 owner gate -> Task 3; carried item: WINDOWS id 25)
 
 ## Operator Next Steps
 
