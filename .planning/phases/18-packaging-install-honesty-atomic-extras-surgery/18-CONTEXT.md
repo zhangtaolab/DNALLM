@@ -47,7 +47,7 @@ Alias mechanics, grep-gate implementation, docs structure within the locked cont
 <specifics>
 ## Specific Ideas
 
-The deprecated-alias one-cycle: pip installing `dnallm[base]` on the alias must WARN and exit 0 — exactly the silent-under-install hazard the alias exists to surface loudly, not hide.
+The deprecated-alias one-cycle: `base = ["dnallm[full]"]` resolves the FULL set under both pip and uv (live-probed from a wheel, exit 0) — no silent under-install possible. During the cycle installers emit NO warning for an existing extra; the loud surface is the README/docs deprecation note naming the removal release (v1.4). AFTER the alias's eventual removal, pip/uv both warn-and-exit-0 on `[base]` — that is the documented post-removal behavior, never an in-cycle assertion.
 
 </specifics>
 
