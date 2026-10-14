@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 16
 current_phase_name: Windows Parity Rollout
 status: executing
-stopped_at: "16-04 PENDING: SC4 nightly run 38441258701 dispatched+queued behind foreign CI work — resume per async-jobs/16-04-sc4-nightly.json; complete 16-EVIDENCE.md section A then Task 2 close-out"
-last_updated: "2026-10-13T18:21:54.950Z"
+stopped_at: Completed 16-04-PLAN.md — phase 16 complete (SC4 terminal record + 5/5 matrix; rice caveat recorded)
+last_updated: "2026-10-14T09:40:41.023Z"
 last_activity: 2026-10-13
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 1cc203b3b8f68ae43a3b277b9d2017679a3c82e7
+state_head: 09296c50589fb8e822f49bd7507251f249060523
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 43
 ---
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
 | Phase 16 P01 | 13 min | 2 tasks | 4 files |
 | Phase 16 P03 | 42 min | 3 tasks | 12 files |
 | Phase 16 P02 | 21 min | 3 tasks | 8 files |
+| Phase 16 P04 | 70 min active (16h wall incl. CI run 38441258701) | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 16]: [16-02] NER dispatch = dual-truth parity: the always-on frozen 12-column literals (bedtools v2.31.1-measured, pre-verified against live pybedtools) carry the contract on every leg; the live pybedtools loj comparison runs wherever the truth chain is installed (find_spec + shutil.which gate) — no skip machinery, file stays platform-neutral for test-windows
 - [Phase 16]: [16-02] Cell 8's inline adapter composed from the script's ast-extracted segments (identity by construction) and pinned by the whitespace-normalized textual-identity test (AS-1); notebook JSON round-trip needs ensure_ascii=False — the committed file stores raw-UTF-8 outputs, the default rewrote ~800 unrelated lines
 - [Phase 16]: [16-02] Two Rule 3 same-change enablers: _strip_magic_lines substitutes magics with same-indent pass placeholders (guarded magics left bodyless branches after deletion — false syntax errors), and the four gate-contract tests pin sys.platform=linux so the win32 early-return cannot shadow the probe contracts on test-windows
+- [Phase 16]: [16-04] SC4 concluded green-where-executable with owner-accepted rice.uga.edu caveat (run 38441258701 over the complete change): live-pybedtools parity executed green on CI, CRE band re-executed green, NER notebook green end-to-end, root suites 19+4 green in the full census, D-03 gate held 216/217 byte-identical; the 2 reds sit upstream of all phase code (4th/5th manifestations, phase-14 H.4/H.4.final precedent)
+- [Phase 16]: [16-04] Phase-16 honesty ledger clean at close: census triple + expected_skips.yaml + pyproject.toml + uv.lock byte-identical to ff95ef7 across the whole phase; footprint = example seams/mirrors/gates/fixtures/2 root suites/.gitignore-tsv-exception only
 
 ### Pending Todos
 
@@ -91,7 +94,7 @@ Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside v1.
 ### Blockers/Concerns
 
 Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cadence re-evaluated by Phase 13's disposition) live in `milestones/v1.1-MILESTONE-AUDIT.md`.
-- 16-04 SC4 evidence pending: nightly run 38441258701 queued behind ~6h foreign CI work (cancel denied by classifier); phase 16 must not close before both nightly jobs conclude success and 16-EVIDENCE.md section A.4 is recorded (WINDOWS unrun-verify armed)
+- RESOLVED 2026-10-14: 16-04 SC4 evidence concluded (run 38441258701 terminal record in 16-EVIDENCE.md A.4; WINDOWS #24 fixed) — green-where-executable with owner-accepted rice.uga.edu caveat; standing external note: rice genome downloads (NER input path) remain fragile, upstream of this repo
 
 ### Quick Tasks Completed
 
@@ -123,9 +126,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-13T18:21:54.703Z
-Stopped at: 16-04 PENDING: SC4 nightly run 38441258701 dispatched+queued behind foreign CI work — resume per async-jobs/16-04-sc4-nightly.json; complete 16-EVIDENCE.md section A then Task 2 close-out
-Resume file: .planning/async-jobs/16-04-sc4-nightly.json
+Last session: 2026-10-14T09:40:40.979Z
+Stopped at: Completed 16-04-PLAN.md — phase 16 complete (SC4 terminal record + 5/5 matrix; rice caveat recorded)
+Resume file: None
 
 ## Operator Next Steps
 

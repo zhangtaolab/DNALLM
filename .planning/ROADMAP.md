@@ -132,7 +132,7 @@ Plans:
   4. A same-change dispatch-direction structure test proves the numpy path cannot silently execute on Linux (fail-loud dispatch, no except-fallback ladder), and the Linux nightly re-execution holds the parsed selection.md bands in the same change
   5. Every example edit lands with its docs mirror byte-identical (`check_docs_sync` green)
 
-**Plans**: 2/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -143,7 +143,7 @@ Plans:
 - [x] 16-02-PLAN.md — NER rollout: script + notebook cells 0/1/2/8 acquisition-only fork (inline LojRow + _loj_rows), script/notebook gates platform-aware, dispatch-direction suite extended with live pybedtools parity + import fail-loud contracts — WPAR-03/04/06/08
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 16-04-PLAN.md — SC4 evidence: manual nightly workflow_dispatch over the complete phase change + 5/5 SC proof matrix + phase-wide guard sweep (census/skips/deps/mirrors) — WPAR-06/08 close-out
+- [x] 16-04-PLAN.md — SC4 evidence: manual nightly workflow_dispatch over the complete phase change + 5/5 SC proof matrix + phase-wide guard sweep (census/skips/deps/mirrors) — WPAR-06/08 close-out
 
 ### Phase 17: Publish Chain Robustness
 
@@ -196,7 +196,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
-| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 2/4 | In Progress | - |
+| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | In Progress | - |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |
