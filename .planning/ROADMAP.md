@@ -179,11 +179,11 @@ Plans:
   4. Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build), the GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only with the minimum-GPU-line stated, 20xx→cu128, 30/40xx all extras, 50xx cu128+), and the cross-installer honesty matrix page (command × installer → what you actually get) is live
   5. Every changed extra resolves clean in a fresh venv, proven by Phase 17's smoke dispatch running against the post-surgery tree
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 18-01-PLAN.md — THE atomic surgery, one commit: base→full rename with the one-cycle self-referential alias, cuda121 retirement (extra + uv machinery + matrix leg + docs), rocm removal with the rocm7.1 restore path, triton-windows Windows-marker declaration in fla — across pyproject, the 11 workflow install lines, extended guard tests + residue grep gate, and the docs sweep; validated by fresh-venv per-extra resolves (uv + pip alias), census-verify, pickaxe atomicity proofs, and the phase-17 smoke dispatch against the post-surgery tree — PKGH-01/02/03, WPAR-07 declaration half
+- [x] 18-01-PLAN.md — THE atomic surgery, one commit: base→full rename with the one-cycle self-referential alias, cuda121 retirement (extra + uv machinery + matrix leg + docs), rocm removal with the rocm7.1 restore path, triton-windows Windows-marker declaration in fla — across pyproject, the 11 workflow install lines, extended guard tests + residue grep gate, and the docs sweep; validated by fresh-venv per-extra resolves (uv + pip alias), census-verify, pickaxe atomicity proofs, and the phase-17 smoke dispatch against the post-surgery tree — PKGH-01/02/03, WPAR-07 declaration half
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 18-02-PLAN.md — Install-honesty publications: installation.md uv/pip lane split with the [tool.uv.sources] asymmetry stated up front, GPU support matrix page (0542a6b verbatim + cu121-retirement adjustment: Pascal cpu-only/Turing min-line, 20xx cu124–cu128, 30/40xx all extras, 50xx cu128+), cross-installer honesty matrix page (live-probe rows incl. the post-removal warn-and-exit-0 semantics), nav-wired, residue sanctioned-list same-change update — PKGH-04/06/07
@@ -214,5 +214,5 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
 | 17. Publish Chain Robustness | 2/3 | In Progress | - |
-| 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
+| 18. Packaging & Install Honesty — Atomic Extras Surgery | 1/3 | In Progress | - |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |

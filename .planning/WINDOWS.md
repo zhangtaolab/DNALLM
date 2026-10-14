@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 5
 waived_count: 3
 fixed_count: 18
-total_count: 25
-last_updated: 2026-10-14T11:56:57.844Z
+total_count: 26
+last_updated: 2026-10-14T14:13:29.034Z
 ---
 
 # Broken Windows Ledger
@@ -40,6 +40,7 @@ last_updated: 2026-10-14T11:56:57.844Z
 | 23 | 14 | unrun-verify | .github/workflows/ci.yml |  | Phase 14 D-06 CI-side re-verification deferred to the runner: re-dispatched run 38354875692 (headSha 2c737516, ref v1.3) coverage-nightly must come green — first run 38337783698 was red ONLY on the documented rice.uga.edu fasta-truncation transient (osA1_r7.asm.fa.gz 22.1MB of ~115MB, fasta Chr1-Chr2 only; models-lane smoke PASSED 3.400s on CI's transformers — drift refuted); phase close blocked until green per plan 14-02 Task 3 PENDING + 14-EVIDENCE.md section H.4 | fixed |  | 2026-10-13T06:09:34.306Z | 2026-10-13T13:18:38.402Z |
 | 24 | 16 | unrun-verify | .planning/phases/16-windows-parity-rollout-dispatch-gates-frozen-value-parity/16-EVIDENCE.md |  | 16-04 SC4 nightly evidence PENDING — dispatched run 38441258701 queued behind foreign CI work; both nightly jobs must conclude success and be recorded in 16-EVIDENCE.md section A before phase close | fixed |  | 2026-10-13T18:21:31.795Z | 2026-10-14T09:37:03.668Z |
 | 25 | 17 | unrun-verify | .planning/phases/17-publish-chain-robustness/17-03-SUMMARY.md | 106 | PyPI trusted-publisher registration for dnallm deferred by owner 2026-10-14 — five exact strings on record in 17-03-PLAN Task 2 / this SUMMARY; resume: register at pypi.org/manage/project/dnallm/publishing then re-run /gsd-execute-phase 17 (17-03 completes in minutes: registration record + README trigger docs + token-deletion carried item) | open |  | 2026-10-14T11:56:57.844Z |  |
+| 26 | 18 | unrun-verify | docs/getting_started/installation.md |  | 18-01 pip-side alias full-closure resolve deferred: pip HTTP stack stalls against this box's network (5 attempts: direct PyPI x2, tuna mirror bulk+resolver, pinned dual-index metadata crawl) while uv/gh/curl unaffected; mechanism already live-probed (pip 26.2.1, 18-RESEARCH) + wheel METADATA alias line + guard test + uv parity green; re-run: uv venv --seed /tmp/xp --python 3.12 && /tmp/xp/bin/python -m pip install "$(ls dist/*.whl)[base]" on a healthy-network host | open |  | 2026-10-14T14:13:29.034Z |  |
 
 ````json
 [
@@ -365,6 +366,19 @@ last_updated: 2026-10-14T11:56:57.844Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-14T11:56:57.844Z",
+    "resolved_at": null,
+    "milestone": "v1.3"
+  },
+  {
+    "id": 26,
+    "kind": "unrun-verify",
+    "phase": "18",
+    "file": "docs/getting_started/installation.md",
+    "line": null,
+    "description": "18-01 pip-side alias full-closure resolve deferred: pip HTTP stack stalls against this box's network (5 attempts: direct PyPI x2, tuna mirror bulk+resolver, pinned dual-index metadata crawl) while uv/gh/curl unaffected; mechanism already live-probed (pip 26.2.1, 18-RESEARCH) + wheel METADATA alias line + guard test + uv parity green; re-run: uv venv --seed /tmp/xp --python 3.12 && /tmp/xp/bin/python -m pip install \"$(ls dist/*.whl)[base]\" on a healthy-network host",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-14T14:13:29.034Z",
     "resolved_at": null,
     "milestone": "v1.3"
   }

@@ -6,16 +6,16 @@ current_phase: 18
 current_phase_name: Packaging & Install Honesty
 current_plan: 3
 status: executing
-stopped_at: Phase 17 HALTED at owner-deferred checkpoint — 17-03 Task 2 (PyPI trusted-publisher registration) deferred by owner (稍后再做) 2026-10-14; 2/3 plans complete (17-01, 17-02); environment pypi created (Task 1)
-last_updated: "2026-10-14T13:07:24.043Z"
+stopped_at: Completed 18-01-PLAN.md (atomic extras surgery; smoke 38578071738 green)
+last_updated: "2026-10-14T14:16:11.048Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 3ba945bf8017f24f64956f933c804cfffa3e4250
+state_head: 399f9f15ab1790860ac175a87a6eab4905a6849d
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 57
 ---
 
@@ -59,6 +59,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 16 P04 | 70 min active (16h wall incl. CI run 38441258701) | 2 tasks | 2 files |
 | Phase 17 P01 | 10 min | 2 tasks | 2 files |
 | Phase 17 P02 | 21 min | 3 tasks | 3 files |
+| Phase 18 P01 | 65 min | 3 tasks | 42 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 17]: [17-02] WINDOWS #20 closed via PUBS-05's sanctioned coverage-CLI fallback: the live numpy==2.2.0 pin reprobe cleared the numpy facet but the torch overrides facet survived (independent, not a symptom) — numpy restored 2.5.3, bare --cov + coverage run forms are THE fix (both proven green)
 - [Phase 17]: [17-02] mypy dev-extra cap >=1.15.0,<2.5 (one line, numstat-proven): 2.4.0 admitted (observed/tolerated publish-runner resolution), 2.5.0 excluded — the resolver class is frozen, not silenced
 - [Phase 17]: [17-02] any future local numpy pin ceiling is <2.4 (2.4-series one-init guard) AND no numpy pin alone fixes the torch facet — both facts live-proven and recorded in WINDOWS row 20
+- [Phase 18]: [18-01] Atomic extras surgery landed as ONE commit (399f9f1): base→full rename with one-cycle alias base=[dnallm[full]] (remove v1.4), cuda121 retired (cu121 index frozen torch 2.5.1), rocm removed (rocm7.1 restore path), triton-windows Windows-marker in fla; residue gates hold 2+3 verbatim sanctioned lines; census 216/217 untouched — 18-CONTEXT owner-locked decisions; pickaxe 3-way proof + smoke run 38578071738 publish-skipped/smoke-success
+- [Phase 18]: [18-01] Pip-side alias full-closure resolve deferred (unrun-verify, WINDOWS ledger): pip urllib3 stalls against this box's network (5 attempts) while uv/gh/curl fine; mechanism probe-proven (pip 26.2.1) + METADATA alias line + guard + uv parity carry the evidence — box-network artifact, not repo defect; fix-attempt limit reached; exact re-run command recorded
 
 ### Pending Todos
 
@@ -133,9 +136,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-14T11:57:07.537Z
-Stopped at: Phase 17 HALTED at owner-deferred checkpoint — 17-03 Task 2 (PyPI trusted-publisher registration) deferred by owner (稍后再做) 2026-10-14; 2/3 plans complete (17-01, 17-02); environment pypi created (Task 1)
-Resume file: .planning/phases/17-publish-chain-robustness/17-03-PLAN.md (Task 2 owner gate -> Task 3; carried item: WINDOWS id 25)
+Last session: 2026-10-14T14:16:10.997Z
+Stopped at: Completed 18-01-PLAN.md (atomic extras surgery; smoke 38578071738 green)
+Resume file: None
 
 ## Operator Next Steps
 
