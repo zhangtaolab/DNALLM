@@ -13,6 +13,11 @@ Every docs/ and example/ page verified accurate against the final v1.3 code stat
 <decisions>
 ## Implementation Decisions
 
+### 收尾方向 (owner-accepted 2026-10-14)
+- test-cuda CI leg re-pointed to **13.0** (cuda130 alignment; the Turing-row exception survives in the docs matrix only)
+- Milestone matrix-green vehicle: **temporary ci.yml branch-filter line adding v1.3 to the push filter** (owner declined dev-merge for now) — GitHub-hosted legs only (push never reaches the self-hosted box per the D-19 invariant); stays until actual merge or explicit removal, removal decision recorded at closeout
+- Disposition ledger granularity: **~150 logical-file rows** (data/mirror-pair classes collapsed by category)
+
 ### Carried constraints (roadmap, phases 16-18)
 - Sweep lands AFTER every surface it describes stopped moving (deps 16/17/18 — satisfied; the two owner-deferred acceptance items, WINDOWS #25/#27, do not move docs surfaces)
 - cuda130 recommended default everywhere: overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + all install surfaces, lane-labeled per the phase-18 split
