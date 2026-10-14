@@ -4,10 +4,30 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 0'
 
 jobs:
   publish:
+    # PUBS-01 upload guard: job-level event gate — only a real release
+    # publish (types: [published]) may instantiate this job. dispatch and
+    # schedule events evaluate this gate false, so the entire upload-capable
+    # job is skipped — a step-level gate would be weaker (a later-added
+    # step could re-open the dispatch path); gating the JOB closes it
+    # structurally.
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    # PUBS-04: environment anchors the OIDC claim (the GitHub environment
+    # and the PyPI trusted-publisher registration bind this exact workflow
+    # filename + environment name — never rename either).
+    environment:
+      name: pypi
+      url: https://pypi.org/project/dnallm/
+    # PUBS-04: job-level only — never a workflow-global permissions key.
+    # id-token: write is mandatory for the OIDC trusted-publishing exchange.
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - uses: actions/checkout@v4
@@ -37,7 +57,7 @@ jobs:
         UV_CONCURRENT_DOWNLOADS: 1
       run: |
         uv pip install --system -e '.[base]'
-        uv pip install --system build twine
+        uv pip install --system 'twine>=7,<8'
     
     - name: Run tests
       run: |
@@ -45,16 +65,63 @@ jobs:
     
     - name: Build package
       run: |
-        uv build
+        uv build --no-sources
     
-    - name: Publish to PyPI
+    # PUBS-04: OIDC trusted publishing — the legacy API-token env pair and
+    # the manual upload command are gone; auth is the per-run id-token
+    # exchange against the pypi environment's registered publisher.
+    # Defaults kept: packages-dir dist/, verify-metadata on; skip-existing
+    # deliberately NOT set — fail loud on immutable-filename collisions.
+    - name: Publish to PyPI (OIDC trusted publishing)
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        print-hash: true
+        attestations: true
+
+  smoke:
+    # PUBS-02/03 never-uploading smoke, D-19 cron-string gate: the workflow's
+    # single schedule entry (0 8 * * 0, Sunday 08:00 UTC — extends the
+    # 03:00 → 05:30 stagger chain, GitHub-hosted so it never contends for
+    # the self-hosted box) triggers this gate's evaluation; the schedule arm
+    # selects exactly that entry while the dispatch disjunct stays. This job
+    # reads dist/ only — no publisher action, no upload command, no registry
+    # install, no token references.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.event.schedule == '0 8 * * 0')
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.12'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+    
+    - name: Build package (publishable metadata)
+      run: |
+        uv build --no-sources
+    
+    - name: Check distributions
       env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        UV_HTTP_TIMEOUT: 120
+        UV_CONCURRENT_DOWNLOADS: 1
       run: |
-        twine upload dist/*
+        uv pip install --system 'twine>=7,<8'
+        twine check dist/*
     
-    - name: Verify installation
+    - name: Install from dist in a clean venv
+      env:
+        UV_HTTP_TIMEOUT: 120
+        UV_CONCURRENT_DOWNLOADS: 1
       run: |
-        pip install dnallm
-        python -c "import dnallm; print('DNALLM installed successfully!')"
+        uv venv /tmp/smoke-venv
+        uv pip install --python /tmp/smoke-venv/bin/python dist/*.whl
+    
+    - name: Import probe
+      run: |
+        /tmp/smoke-venv/bin/python -c "import dnallm; print('DNALLM', dnallm.__version__, 'installed from dist')"
