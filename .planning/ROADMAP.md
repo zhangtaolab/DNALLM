@@ -60,7 +60,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - [x] **Phase 13: Ollama Surface Disposition** - Per-assertion remove-or-skip over the ~59 ollama pytest refs, with census triple, skip allowlist, and nightly stages reconciled same-change (completed 2026-10-13)
 - [x] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state (completed 2026-10-13)
 - [x] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg (completed 2026-10-13)
-- [ ] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test
+- [x] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test (completed 2026-10-14)
 - [ ] **Phase 17: Publish Chain Robustness** - Upload guard first, never-uploading smoke on dispatch + cron, OIDC Trusted Publishing migration, WINDOWS #20 fix, mypy cap
 - [ ] **Phase 18: Packaging & Install Honesty — Atomic Extras Surgery** - `base` rename, cuda121 retirement, rocm disposition, triton-windows declaration, GPU support matrix, uv/pip installer lanes
 - [ ] **Phase 19: Docs Accuracy Sweep & Milestone Closeout** - Per-file docs/ + example/ accuracy review against the final state, cuda130 default everywhere, mkdocs strict-clean
@@ -132,7 +132,7 @@ Plans:
   4. A same-change dispatch-direction structure test proves the numpy path cannot silently execute on Linux (fail-loud dispatch, no except-fallback ladder), and the Linux nightly re-execution holds the parsed selection.md bands in the same change
   5. Every example edit lands with its docs mirror byte-identical (`check_docs_sync` green)
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -196,7 +196,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 13. Ollama Surface Disposition | 1/1 | Complete    | 2026-10-13 |
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
-| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | In Progress | - |
+| 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
 | 17. Publish Chain Robustness | 0/TBD | Not started | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |

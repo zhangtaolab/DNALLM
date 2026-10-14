@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
-current_phase: 16
-current_phase_name: Windows Parity Rollout
-status: executing
-stopped_at: Completed 16-04-PLAN.md — phase 16 complete (SC4 terminal record + 5/5 matrix; rice caveat recorded)
-last_updated: "2026-10-14T09:40:41.023Z"
-last_activity: 2026-10-13
-last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 09296c50589fb8e822f49bd7507251f249060523
+current_phase: 17
+current_phase_name: Publish Chain Robustness
+status: planning
+stopped_at: Phase 16 complete, ready to plan Phase 17
+last_updated: "2026-10-14T09:58:54.092Z"
+last_activity: 2026-10-14
+last_activity_desc: Phase 16 complete, transitioned to Phase 17
+state_head: edc889d56e57bcff4e403348c703c5e457de7919
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
   completed_plans: 8
-  percent: 43
+  percent: 57
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 16 — Windows Parity Rollout (Dispatch, Gates & Frozen-Value Parity)
+**Current focus:** Phase 17 — Publish Chain Robustness
 
 ## Current Position
 
-Phase: 16 (Windows Parity Rollout) — READY TO EXECUTE
+Phase: 17 — Publish Chain Robustness
 Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-13 — Phase 16 executing: 16-01/16-03/16-02 complete, 16-04 remains
+Status: Ready to plan
+Last activity: 2026-10-14 — Phase 16 complete, transitioned to Phase 17
 
-Progress: [████░░░░░░] 43% (0/7 v1.3 phases)
+Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 
 ## Performance Metrics
 
@@ -127,7 +127,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-14T09:40:40.979Z
-Stopped at: Completed 16-04-PLAN.md — phase 16 complete (SC4 terminal record + 5/5 matrix; rice caveat recorded)
+Stopped at: Phase 16 complete, ready to plan Phase 17
 Resume file: None
 
 ## Operator Next Steps
