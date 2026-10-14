@@ -157,7 +157,15 @@ Plans:
   4. WINDOWS #20 is remediated — the local-venv `pytest --cov` dotted-target crash is fixed via a local numpy pin or the documented coverage-CLI workaround (not by a coverage version bump)
   5. mypy is capped in the dev extra (`>=1.15.0,<2.5`) so CI can never resolve an unvalidated stricter version
 
-**Plans**: TBD
+**Plans**: 0/3 plans complete
+
+Plans:
+**Wave 1**
+- [ ] 17-01-PLAN.md — Tracer: ONE atomic publish.yml commit (job-level release-only upload gate + OIDC publish job + never-uploading smoke job with dispatch + weekly `0 8 * * 0` cron, D-19 gate) + live dispatch proof (upload job skipped, smoke green through import probe) — PUBS-01/02/03/04 workflow-side
+- [ ] 17-02-PLAN.md — Dev-tooling caps: local venv `numpy==2.2.0` pin (ceiling <2.4 per live matrix) + WINDOWS #20 reprobe + row 20 fixed; mypy `>=1.15.0,<2.5` one-line cap in dev extra — PUBS-05, PKGH-08
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 17-03-PLAN.md — OIDC external readiness: GitHub `pypi` environment (gh api) + OWNER human-gate PyPI trusted-publisher registration (exact-string checklist) + README trigger docs + carried ledger items (token deletion gated on first green OIDC release; scheduled-leg post-merge verify) — PUBS-04 owner-side
 
 ### Phase 18: Packaging & Install Honesty — Atomic Extras Surgery
 
