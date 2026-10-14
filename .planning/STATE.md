@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
-current_phase: 17
-current_phase_name: Publish Chain Robustness
+current_phase: 18
+current_phase_name: Packaging & Install Honesty
 current_plan: 3
 status: executing
 stopped_at: Phase 17 HALTED at owner-deferred checkpoint — 17-03 Task 2 (PyPI trusted-publisher registration) deferred by owner (稍后再做) 2026-10-14; 2/3 plans complete (17-01, 17-02); environment pypi created (Task 1)
-last_updated: "2026-10-14T11:57:07.587Z"
+last_updated: "2026-10-14T13:07:24.043Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 26e23a574c5507872812e14e8a470bcd8c0723ea
+state_head: 3ba945bf8017f24f64956f933c804cfffa3e4250
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 11
+  total_plans: 14
   completed_plans: 11
   percent: 57
 ---
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: 17 (Publish Chain Robustness) — EXECUTING
+Phase: 18 (Packaging & Install Honesty) — READY TO EXECUTE
 Current Plan: 3
 Total Plans in Phase: 3
 Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
