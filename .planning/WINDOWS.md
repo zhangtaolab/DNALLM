@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 3
 fixed_count: 18
-total_count: 26
-last_updated: 2026-10-14T14:13:29.034Z
+total_count: 27
+last_updated: 2026-10-14T15:49:25.972Z
 ---
 
 # Broken Windows Ledger
@@ -41,6 +41,7 @@ last_updated: 2026-10-14T14:13:29.034Z
 | 24 | 16 | unrun-verify | .planning/phases/16-windows-parity-rollout-dispatch-gates-frozen-value-parity/16-EVIDENCE.md |  | 16-04 SC4 nightly evidence PENDING — dispatched run 38441258701 queued behind foreign CI work; both nightly jobs must conclude success and be recorded in 16-EVIDENCE.md section A before phase close | fixed |  | 2026-10-13T18:21:31.795Z | 2026-10-14T09:37:03.668Z |
 | 25 | 17 | unrun-verify | .planning/phases/17-publish-chain-robustness/17-03-SUMMARY.md | 106 | PyPI trusted-publisher registration for dnallm deferred by owner 2026-10-14 — five exact strings on record in 17-03-PLAN Task 2 / this SUMMARY; resume: register at pypi.org/manage/project/dnallm/publishing then re-run /gsd-execute-phase 17 (17-03 completes in minutes: registration record + README trigger docs + token-deletion carried item) | open |  | 2026-10-14T11:56:57.844Z |  |
 | 26 | 18 | unrun-verify | docs/getting_started/installation.md |  | 18-01 pip-side alias full-closure resolve deferred: pip HTTP stack stalls against this box's network (5 attempts: direct PyPI x2, tuna mirror bulk+resolver, pinned dual-index metadata crawl) while uv/gh/curl unaffected; mechanism already live-probed (pip 26.2.1, 18-RESEARCH) + wheel METADATA alias line + guard test + uv parity green; re-run: uv venv --seed /tmp/xp --python 3.12 && /tmp/xp/bin/python -m pip install "$(ls dist/*.whl)[base]" on a healthy-network host | open |  | 2026-10-14T14:13:29.034Z |  |
+| 27 | 18 | unrun-verify | pyproject.toml |  | 18-03 Windows fla KDA re-verification deferred by owner (稍后再做, coordinator-relayed 2026-10-14 ~14:5xZ) — WPAR-07 acceptance half + T-18-SC SUS retirement + WINDOWS #18 closure all gate on real-hardware execution (RTX 5080); full checklist in 18-03-SUMMARY.md Task 1 Record; resume on the Windows box from origin/v1.3 (>=399f9f1, the surgery commit): (1) pip install -e ".[fla]" in a fresh venv or the dnallm-cuda env — NO manual triton-windows step, the marker must pull it; (2) pip show triton-windows -> Version: 3.7.1.post27; (3) python -c "import torch; print(torch.__version__, torch.version.cuda)" and record both; (4) python -c "from fla.ops.kda.chunk import chunk_kda; print(callable(chunk_kda))" -> True (equivalent: pytest tests/models/test_plant_helixseek_fla_kernels.py — test_chunk_kda_importable_when_fla_installed gates this import); (5) compile + execute a KDA chunk kernel under the resolved torch (WINDOWS #18 remedy precedent, RTX 5080 sm_120) and record the output; (6) capture env/venv, triton-windows version, torch version + cuda build, import result, kernel evidence, date — then re-run /gsd-execute-phase 18 (18-03 Task 2 closes WINDOWS #18, retires the SUS flag on the evidence, marks WPAR-07) | open |  | 2026-10-14T15:49:25.972Z |  |
 
 ````json
 [
@@ -379,6 +380,19 @@ last_updated: 2026-10-14T14:13:29.034Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-14T14:13:29.034Z",
+    "resolved_at": null,
+    "milestone": "v1.3"
+  },
+  {
+    "id": 27,
+    "kind": "unrun-verify",
+    "phase": "18",
+    "file": "pyproject.toml",
+    "line": null,
+    "description": "18-03 Windows fla KDA re-verification deferred by owner (稍后再做, coordinator-relayed 2026-10-14 ~14:5xZ) — WPAR-07 acceptance half + T-18-SC SUS retirement + WINDOWS #18 closure all gate on real-hardware execution (RTX 5080); full checklist in 18-03-SUMMARY.md Task 1 Record; resume on the Windows box from origin/v1.3 (>=399f9f1, the surgery commit): (1) pip install -e \".[fla]\" in a fresh venv or the dnallm-cuda env — NO manual triton-windows step, the marker must pull it; (2) pip show triton-windows -> Version: 3.7.1.post27; (3) python -c \"import torch; print(torch.__version__, torch.version.cuda)\" and record both; (4) python -c \"from fla.ops.kda.chunk import chunk_kda; print(callable(chunk_kda))\" -> True (equivalent: pytest tests/models/test_plant_helixseek_fla_kernels.py — test_chunk_kda_importable_when_fla_installed gates this import); (5) compile + execute a KDA chunk kernel under the resolved torch (WINDOWS #18 remedy precedent, RTX 5080 sm_120) and record the output; (6) capture env/venv, triton-windows version, torch version + cuda build, import result, kernel evidence, date — then re-run /gsd-execute-phase 18 (18-03 Task 2 closes WINDOWS #18, retires the SUS flag on the evidence, marks WPAR-07)",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-14T15:49:25.972Z",
     "resolved_at": null,
     "milestone": "v1.3"
   }
