@@ -14,7 +14,7 @@ This tutorial shows how to run inference with a base model plus LoRA adapter wei
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda124]'
 ```
 
 ## Load Configuration

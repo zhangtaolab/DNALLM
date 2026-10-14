@@ -6,7 +6,7 @@ This section contains interactive Jupyter notebooks demonstrating various DNALLM
 
 Before running notebooks, ensure you have:
 
-- Installed DNALLM with `uv pip install -e '.[base,notebook,cuda124]'`
+- Installed DNALLM with `uv pip install -e '.[full,notebook,cuda124]'`
 - Downloaded required models from Hugging Face/ModelScope
 - Prepared data files in the expected locations
 
@@ -22,7 +22,7 @@ git clone https://github.com/zhangtaolab/DNALLM.git
 cd DNALLM
 
 # Install dependencies
-uv pip install -e '.[base,notebook,cuda124]'
+uv pip install -e '.[full,notebook,cuda124]'
 
 # Start Jupyter
 jupyter lab example/notebooks/

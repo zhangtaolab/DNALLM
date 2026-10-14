@@ -20,7 +20,7 @@ With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in
 
 ```bash
 # Install without the [mamba] extra
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 ```
 
 Then load a Mamba model through `transformers` (cpu only) as usual. Note that this fallback path is significantly slower than the optimized `mamba-ssm` kernels (which require Linux + CUDA).

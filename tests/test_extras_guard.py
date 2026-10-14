@@ -56,6 +56,25 @@ EXPECTED_NOTEBOOK_MEMBERS = frozenset({
     "pygenometracks>=3.9; platform_system != 'Windows'",
 })
 
+# The full extra's exact members after the 18-01 atomic rename (base -> full,
+# owner decision 2026-10-14): the rename must carry the former base surface
+# verbatim -- nothing lost, nothing added.
+EXPECTED_FULL_MEMBERS = frozenset({
+    "dnallm[dev,test,notebook,mcp]",
+    "isort>=6.0.1",
+    "types-transformers>=0.1.0",
+})
+
+# The deprecated one-cycle alias: a pure self-reference to the full extra.
+# An EMPTY extra is the forbidden shape -- live-probed 2026-10-14 (18-RESEARCH
+# "Deprecated-Alias Mechanism"), pip AND uv both install nothing and print no
+# warning for an empty extra: the exact silent under-install hazard.
+EXPECTED_BASE_ALIAS = ["dnallm[full]"]
+
+# WPAR-07 declaration: the exact marker-gated triton-windows spec in the fla
+# extra (exact-string assertion; any drift in the band or marker fails).
+EXPECTED_TRITON_WINDOWS_SPEC = "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'"
+
 
 def _load_mcp_extra() -> list[str]:
     """Parse pyproject.toml with tomllib and return the mcp extra members."""
@@ -69,6 +88,13 @@ def _load_notebook_extra() -> list[str]:
     with PYPROJECT.open("rb") as fh:
         data = tomllib.load(fh)
     return list(data["project"]["optional-dependencies"]["notebook"])
+
+
+def _load_extras() -> dict[str, list[str]]:
+    """Parse pyproject.toml with tomllib and return the whole extras table."""
+    with PYPROJECT.open("rb") as fh:
+        data = tomllib.load(fh)
+    return dict(data["project"]["optional-dependencies"])
 
 
 class TestMcpExtraMembers:
@@ -107,6 +133,207 @@ class TestNotebookExtraMembers:
         notebook = _load_notebook_extra()
         missing = EXPECTED_NOTEBOOK_MEMBERS - set(notebook)
         assert not missing, f"notebook extra lost pre-existing members: {sorted(missing)}"
+
+
+class TestFullExtraAndBaseAlias:
+    """18-01 atomic extras surgery guards: full rename, one-cycle alias, retirements.
+
+    The rename base -> full (owner decision 2026-10-14) must land with the
+    full extra carrying the former base members verbatim, the deprecated
+    base alias a pure self-reference (never an empty extra -- live-probed
+    silent under-install under pip AND uv), the triton-windows declaration
+    marker-gated to Windows in fla (WPAR-07), and cuda121/rocm absent from
+    both the extras table and the uv index/sources machinery.
+    """
+
+    def test_full_extra_members_preserved(self) -> None:
+        """The rename carried the former base member set verbatim."""
+        full = _load_extras().get("full", [])
+        missing = EXPECTED_FULL_MEMBERS - set(full)
+        assert not missing, f"full extra lost former-base members: {sorted(missing)}"
+        extra_members = set(full) - EXPECTED_FULL_MEMBERS
+        assert not extra_members, (
+            f"full extra gained members beyond the former base set: {sorted(extra_members)}"
+        )
+
+    def test_base_alias_is_pure_self_reference(self) -> None:
+        """base == ["dnallm[full]"] exactly -- one self-referential member, never empty."""
+        base = _load_extras().get("base")
+        assert base is not None, (
+            "the deprecated base alias is missing from optional-dependencies "
+            "(18-01: hard removal without the one-cycle alias exposes "
+            "pip/uv warn-and-exit-0 silent under-install)"
+        )
+        assert base == EXPECTED_BASE_ALIAS, (
+            f"the base alias must be the pure self-reference ['dnallm[full]'] "
+            f"(one-cycle deprecated alias, remove in v1.4); measured: {base} -- "
+            f"an EMPTY or diluted alias is the live-probed silent "
+            f"under-install hazard (18-RESEARCH 'Deprecated-Alias Mechanism')"
+        )
+
+    def test_triton_windows_marker_declared_in_fla(self) -> None:
+        """fla carries the exact marker-gated triton-windows spec (WPAR-07)."""
+        fla = _load_extras().get("fla", [])
+        assert EXPECTED_TRITON_WINDOWS_SPEC in fla, (
+            f"fla extra lost the exact triton-windows Windows-marker declaration "
+            f"(WPAR-07): expected {EXPECTED_TRITON_WINDOWS_SPEC!r} among {fla} -- "
+            f"exact band, no floating, Windows-only marker"
+        )
+
+    def test_cuda121_and_rocm_extras_absent(self) -> None:
+        """cuda121/rocm cannot regress into extras or the uv index machinery."""
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        extras = data["project"]["optional-dependencies"]
+        for retired in ("cuda121", "rocm"):
+            assert retired not in extras, (
+                f"the retired extra {retired!r} reappeared in "
+                f"optional-dependencies (18-01 retirement regression)"
+            )
+        uv_table = data.get("tool", {}).get("uv", {})
+        index_names = [entry.get("name") for entry in uv_table.get("index", [])]
+        for retired_index in ("torch-cuda121", "torch-rocm"):
+            assert retired_index not in index_names, (
+                f"the retired uv index {retired_index!r} reappeared in "
+                f"[[tool.uv.index]] (18-01 retirement regression)"
+            )
+        sources = uv_table.get("sources", {}).get("torch", [])
+        for source in sources:
+            assert source.get("index") not in ("torch-cuda121", "torch-rocm"), (
+                f"the retired uv source entry reappeared in [tool.uv.sources]: {source}"
+            )
+
+
+class TestExtrasSurgeryResidueGates:
+    """Repo-scan residue gates over the 18-01 surgery surface (phase-13 verbatim discipline).
+
+    The base->full rename, cuda121 retirement, and rocm removal landed as one
+    atomic commit; these gates keep the repo at exactly the sanctioned
+    residue. Scan scope: pyproject.toml, .github/, docs/, example/,
+    README.md, scripts/ -- tests/ excluded (these literals would self-match),
+    .planning/ excluded (immutable history). Edge discipline: an EMPTY or
+    short hit list is deletion creep (fail), any extra line is a straggler
+    (fail), any missing sanctioned line (fail).
+    """
+
+    # Pattern 1: bracket install forms of base (.[base...] / dnallm[base...]).
+    # The alias declaration itself (base = ["dnallm[full]"]) does NOT match.
+    # Sanctioned: exactly the two v1.3 deprecation notes (README + installation).
+    BASE_BRACKET_PATTERN = r"\.\[base|dnallm\[base"
+    SANCTIONED_BASE_BRACKET_RESIDUE = frozenset({
+        (
+            "README.md",
+            "> **Deprecation note (v1.3):** the `base` extra was renamed to "
+            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort "
+            "+ types-transformers). The old `.[base]` spelling still resolves "
+            "the full member set through a one-cycle alias and will be removed "
+            "in v1.4 — after that removal pip/uv only print a warning that the "
+            "extra does not exist and exit 0, leaving a core-only under-install "
+            "(the silent hazard the alias exists to prevent). Use `.[full]`.",
+        ),
+        (
+            "docs/getting_started/installation.md",
+            "> **Deprecation note (v1.3):** the `base` group was renamed to "
+            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort "
+            "+ types-transformers). The `.[base]` alias still installs the full "
+            "set and will be removed in v1.4 — after removal pip/uv only print "
+            "a warning that the extra does not exist and exit 0, leaving a "
+            "core-only under-install. Use `.[full]` in new environments.",
+        ),
+    })
+
+    # Pattern 2: cuda121 (any form), torch-rocm (uv index name), bracket-rocm.
+    # Sanctioned: exactly the three flash-linear-attention UPSTREAM-vocabulary
+    # lines (Pitfall 4: fla's own [cuda]/[rocm] backend extras, never dnallm's
+    # retired rocm extra) -- README:255, docs/faq/models_troubleshooting.md:13,
+    # and the pyproject fla comment kept verbatim per the same rule.
+    CUDA121_ROCM_PATTERN = r"cuda121|torch-rocm|\[rocm\]"
+    SANCTIONED_CUDA121_ROCM_RESIDUE = frozenset({
+        (
+            "pyproject.toml",
+            "# ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.",
+        ),
+        (
+            "README.md",
+            "Two install notes: install the package **bare** "
+            "(`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — "
+            "since v0.5 the backend extras pin their own torch and would "
+            "downgrade your environment; and keep the version within `0.5.x` "
+            "(`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed "
+            "stable across minor versions.",
+        ),
+        (
+            "docs/faq/models_troubleshooting.md",
+            "With the kernels installed the same checkpoints separate cleanly "
+            "(p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install "
+            "the package **bare** — since v0.5 its `[cuda]`/`[rocm]` extras "
+            "pin their own torch and would downgrade your environment — and "
+            "keep the version within `0.5.x` (`chunk_kda` semantics are not "
+            "stable across minor versions).",
+        ),
+    })
+
+    SCAN_ROOTS = ("pyproject.toml", ".github", "docs", "example", "README.md", "scripts")
+    SKIP_DIR_NAMES = frozenset({"__pycache__", ".ipynb_checkpoints", ".git", "logs", "outputs"})
+
+    def _scan_repo(self, pattern: str) -> set[tuple[str, str]]:
+        """Yield (relative path, line) pairs whose line matches the pattern."""
+        import re
+
+        regex = re.compile(pattern)
+        hits: set[tuple[str, str]] = set()
+        for root_name in self.SCAN_ROOTS:
+            root = REPO_ROOT / root_name
+            if root.is_file():
+                candidates = [root]
+            else:
+                candidates = [
+                    path
+                    for path in root.rglob("*")
+                    if path.is_file()
+                    and not any(part in self.SKIP_DIR_NAMES for part in path.parts)
+                ]
+            for path in candidates:
+                try:
+                    text = path.read_text(encoding="utf-8")
+                except (UnicodeDecodeError, OSError):
+                    continue  # binary / unreadable artifacts are out of scope
+                for line in text.splitlines():
+                    if regex.search(line):
+                        hits.add((str(path.relative_to(REPO_ROOT)), line))
+        return hits
+
+    def test_base_bracket_residue_equals_sanctioned_list(self) -> None:
+        """No unsanctioned .[base...] / dnallm[base...] install form survives."""
+        measured = self._scan_repo(self.BASE_BRACKET_PATTERN)
+        sanctioned = self.SANCTIONED_BASE_BRACKET_RESIDUE
+        extra = measured - sanctioned
+        missing = sanctioned - measured
+        assert not extra, (
+            f"unsanctioned base bracket-install residue (18-01 gate): "
+            f"{sorted(extra)} -- every install command must use .[full]; only "
+            f"the two v1.3 deprecation notes carry the old spelling"
+        )
+        assert not missing, (
+            f"sanctioned base deprecation-note residue missing (18-01 gate, "
+            f"deletion creep): {sorted(missing)}"
+        )
+
+    def test_cuda121_rocm_residue_equals_sanctioned_list(self) -> None:
+        """cuda121/torch-rocm/bracket-rocm survive only as fla-upstream vocabulary."""
+        measured = self._scan_repo(self.CUDA121_ROCM_PATTERN)
+        sanctioned = self.SANCTIONED_CUDA121_ROCM_RESIDUE
+        extra = measured - sanctioned
+        missing = sanctioned - measured
+        assert not extra, (
+            f"unsanctioned cuda121/rocm residue (18-01 gate): {sorted(extra)} "
+            f"-- the retired extras/index/matrix/doc rows must stay deleted"
+        )
+        assert not missing, (
+            f"sanctioned fla-upstream cuda121/rocm residue missing (18-01 "
+            f"gate, deletion creep -- Pitfall 4 protects these): "
+            f"{sorted(missing)}"
+        )
 
 
 class TestNotebookKernelPlotCompat:

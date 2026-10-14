@@ -46,7 +46,6 @@ DNALLM-Suite has been tested on a wide range of platforms and devices:
 ### Device
 - **CPU**
 - **Nvidia GPU (CUDA)**
-- **AMD GPU (ROCm)**
 - **Apple Silicon (MPS)**
 - **Huawei Ascend NPU (CANN)**
 - **Intel Arc GPU (XPU)**
@@ -74,9 +73,9 @@ conda install uv -c conda-forge
 uv pip install -e '.[all]'
 
 # Or install only core + base development tools
-# uv pip install -e '.[base]'
+# uv pip install -e '.[full]'
 
-# Add GPU support (choose ONE: cpu, cuda121, cuda124, cuda126, cuda128, cuda130, rocm)
+# Add GPU support (choose ONE: cpu, cuda124, cuda126, cuda128, cuda130)
 # uv pip install -e '.[all,cuda124]'
 
 # Verify installation

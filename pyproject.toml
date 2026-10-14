@@ -113,7 +113,7 @@ notebook = [
     # notebooks' zoom/combined figures; dnallm package code never imports it.
     # Windows-excluded (2026-10-07): pgt pulls pybigwig, which has no Windows
     # wheel and whose sdist setup.py dies with AttributeError 'NoneType' object
-    # has no attribute 'split' on the test-windows .[base] install; dnallm never
+    # has no attribute 'split' on the test-windows .[full] install; dnallm never
     # imports pgt, so omitting it on Windows is behavior-safe.
     "pygenometracks>=3.9; platform_system != 'Windows'",
 ]
@@ -145,19 +145,23 @@ mcp = [
     # landing on the broken 1.22.
     "pydantic-ai>=1.107.0,<2",
 ]
-base = [
+full = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
     "types-transformers>=0.1.0",
 ]
+# Deprecated one-cycle alias (owner 2026-10-14): base was renamed to full in
+# v1.3; this alias still installs the full set (no silent under-install).
+# Remove in v1.4 -- pip/uv then only warn that the extra does not exist and
+# exit 0, leaving a core-only under-install (which this cycle prevents).
+base = [
+    "dnallm[full]",
+]
 all = [
-    "dnallm[base,dev,test,notebook,docs,ui,mcp,fla]",
+    "dnallm[full,dev,test,notebook,docs,ui,mcp,fla]",
 ]
 cpu = [
     "torch>=2.4.0,<2.12",
-]
-cuda121 = [
-    "torch>=2.2.0,<2.12",
 ]
 cuda124 = [
     "torch>=2.4.0,<2.12",
@@ -171,9 +175,6 @@ cuda128 = [
 cuda130 = [
     "torch>=2.9.0,<2.12",
 ]
-rocm = [
-    "torch>=2.5.0,<2.12",
-]
 mamba = [
     "causal_conv1d==1.7.0",
     "mamba-ssm==2.3.2.post1",
@@ -184,6 +185,11 @@ mamba = [
 # ([cuda]/[rocm]), they pin their own torch and would downgrade this environment.
 fla = [
     "flash-linear-attention>=0.5.2,<0.6",
+    # WPAR-07 (18-01): torch Windows wheels declare no triton, but fla's
+    # fla.ops.* kernels need it -- declare the triton-lang-org fork wheel,
+    # Windows-only, exact band (no floating). Linux resolvers see the marker
+    # evaluate false and never pull it.
+    "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'",
 ]
 
 #mamba = [
@@ -200,11 +206,6 @@ explicit = true
 [[tool.uv.index]]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[[tool.uv.index]]
-name = "torch-cuda121"
-url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 [[tool.uv.index]]
@@ -227,43 +228,27 @@ name = "torch-cuda130"
 url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
-[[tool.uv.index]]
-name = "torch-rocm"
-url = "https://download.pytorch.org/whl/rocm6.2"
-explicit = true
-
 [tool.uv.sources]
 torch = [
   { index = "torch-cpu", extra = "cpu" },
-  { index = "torch-cuda121", extra = "cuda121" },
   { index = "torch-cuda124", extra = "cuda124" },
   { index = "torch-cuda126", extra = "cuda126" },
   { index = "torch-cuda128", extra = "cuda128" },
   { index = "torch-cuda130", extra = "cuda130" },
-#   { index = "torch-rocm", extra = "rocm" },
 ]
 
 [tool.uv]
 conflicts = [
-  [ { extra = "cpu" }, { extra = "cuda121" } ],
   [ { extra = "cpu" }, { extra = "cuda124" } ],
   [ { extra = "cpu" }, { extra = "cuda126" } ],
   [ { extra = "cpu" }, { extra = "cuda128" } ],
   [ { extra = "cpu" }, { extra = "cuda130" } ],
-#   [ { extra = "cpu" }, { extra = "rocm" } ],
-  [ { extra = "cuda121" }, { extra = "cuda124" } ],
-  [ { extra = "cuda121" }, { extra = "cuda126" } ],
-  [ { extra = "cuda121" }, { extra = "cuda128" } ],
-  [ { extra = "cuda121" }, { extra = "cuda130" } ],
   [ { extra = "cuda124" }, { extra = "cuda126" } ],
   [ { extra = "cuda124" }, { extra = "cuda128" } ],
   [ { extra = "cuda124" }, { extra = "cuda130" } ],
   [ { extra = "cuda126" }, { extra = "cuda128" } ],
   [ { extra = "cuda126" }, { extra = "cuda130" } ],
   [ { extra = "cuda128" }, { extra = "cuda130" } ],
-#   [ { extra = "cuda121" }, { extra = "rocm" } ],
-#   [ { extra = "cuda124" }, { extra = "rocm" } ],
-#   [ { extra = "cuda126" }, { extra = "rocm" } ],
 ]
 
 [tool.setuptools.packages.find]

@@ -41,7 +41,7 @@ pip install --upgrade pip
 pip install uv
 
 # Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c 'import dnallm; print("DNALLM installed successfully!")'
@@ -64,7 +64,7 @@ conda activate dnallm
 conda install uv -c conda-forge
 
 # Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c 'import dnallm; print("DNALLM installed successfully!")'
@@ -98,8 +98,7 @@ uv pip install -e '.[cuda124]'
 # CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
 uv pip install -e '.[cuda130]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128
-uv pip install -e '.[cuda121]'
+# Other supported versions: cpu, cuda126, cuda128
 ```
 
 ### Huawei NPU Support
@@ -326,7 +325,7 @@ DNALLM supports the following task types:
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
   - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
-  - Hardware-specific groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) — mutually exclusive
+  - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) — mutually exclusive
   - Installation scenarios for different use cases
   - Troubleshooting common issues
 

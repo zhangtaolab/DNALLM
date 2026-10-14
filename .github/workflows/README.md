@@ -78,7 +78,7 @@ The workflows are triggered on:
 2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
 4. **UV Installation**: Installs the UV package manager
-5. **Mamba Dependency Installation**: Installs `.[base]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport) — plus `.[mamba]` (kernel source build)
+5. **Mamba Dependency Installation**: Installs `.[full]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport) — plus `.[mamba]` (kernel source build)
 6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
@@ -103,7 +103,7 @@ The workflows are triggered on:
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
-**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[base,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
+**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[full,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
 
 **Model Caches**: none — the `models.lock`-keyed hub cache layer was removed (D-11, owner decision 2026-10-05): cold pulls are proven (a 65-min all-cold example stage 1 against a 2700-min budget) and the lock-only cache (~15.2GiB) exceeded the 10GB Actions cache quota without ever successfully saving. The runner box's local `$HOME` hub caches remain the warm path and are never cleaned (owner rule).
 
@@ -152,7 +152,7 @@ The workflows are triggered on:
 
 **Steps**:
 1. **GPU Check** (runs BEFORE checkout): on GPU absence writes a `gpu_absent` marker into the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe no-op, this job's deliverable is evidence, so zero-evidence green is forbidden (the `if: always()` upload still delivers the marker). **Code Checkout** follows, gated on the GPU check's `has_gpu` output — the check must precede checkout so the marker survives the skipped checkout
-2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[base]"` (the coverage-nightly-proven extras set; their absence from this venv is deliberate evidence)
+2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[full]"` (the coverage-nightly-proven extras set; their absence from this venv is deliberate evidence)
 3. **Runner Identity**: records the `nvidia-smi` identity line (the D-04 parity claim)
 4. **Spike Execution**: `--family all --fallback` (D-06 fallback variants only — `--fallback` replaces the notebook variant, it does not run both; notebook-variant verdicts rest on the committed local evidence in `spike-logs/`); expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
 5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)

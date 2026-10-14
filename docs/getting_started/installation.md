@@ -38,8 +38,8 @@ pip install --upgrade pip
 # Install uv in virtual environment
 pip install uv
 
-# Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+# Install DNALLM with the full development environment
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -61,8 +61,8 @@ conda activate dnallm
 # Install uv in conda environment
 conda install uv -c conda-forge
 
-# Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+# Install DNALLM with the full development environment
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -114,8 +114,7 @@ uv pip install -e '.[cuda124]'
 # CUDA 13.0 (requires torch >= 2.9, NVIDIA driver >= 580)
 uv pip install -e '.[cuda130]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128
-uv pip install -e '.[cuda121]'
+# Other supported versions: cpu, cuda126, cuda128
 ```
 
 ### GPU Support with plain pip
@@ -138,14 +137,14 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 Two rules to avoid the most common pitfalls:
 
-1. **Install torch LAST.** Run `pip install -e '.[base]'` (or `pip install
+1. **Install torch LAST.** Run `pip install -e '.[full]'` (or `pip install
    dnallm`) FIRST, then install torch from the index above. The editable
    install re-resolves `torch` from PyPI, whose default Windows wheel is the
    CPU build (`+cpu`) — it will silently replace a GPU torch installed
    earlier. Respect the `torch<2.12` pin from `pyproject.toml`, e.g.:
 
    ```bash
-   pip install -e '.[base]'                                  # dnallm + deps
+   pip install -e '.[full]'                                  # dnallm + deps
    pip install --force-reinstall --no-deps 'torch==2.11.0' \
        --index-url https://download.pytorch.org/whl/cu130    # GPU torch LAST
    ```
@@ -178,7 +177,7 @@ python -m venv .venv
 
 # 3. Install DNALLM with CUDA 13.0 support
 pip install uv
-uv pip install -e '.[base,cuda130]'
+uv pip install -e '.[full,cuda130]'
 
 # 4. Verify GPU is detected
 python -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
@@ -197,8 +196,8 @@ DNALLM provides multiple dependency groups for different use cases:
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
-| **base** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
+| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit, mypy, pandas-stubs) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
 | **notebook** | Jupyter and Marimo support | Jupyter Lab, Marimo |
@@ -210,18 +209,22 @@ DNALLM provides multiple dependency groups for different use cases:
 
 ### Hardware-Specific Groups
 
-> **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `rocm` and `mamba` declare no conflicts: `mamba` is designed to be combined with a CUDA group (e.g., `.[cuda124,mamba]`, see Scenario 6), while `rocm` still cannot share an environment with another hardware group because only one torch build can be installed.
+> **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda124,mamba]`, see Scenario 6).
+
+> **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
 
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|
 | **cpu** | 2.4.0-2.12 | CPU only | Development without GPU |
-| **cuda121** | 2.2.0-2.12 | NVIDIA (older) | Volta/Turing/Ampere early |
 | **cuda124** | 2.4.0-2.12 | NVIDIA (recommended) | Most modern GPUs |
 | **cuda126** | 2.6.0-2.12 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
 | **cuda128** | 2.6.0-2.12 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
 | **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) | Newest driver / RTX 50-series, Windows with driver >= 580 |
-| **rocm** | 2.5.0-2.12 | AMD GPUs | AMD GPU users |
 | **mamba** | 2.6.0-2.12 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
+
+> **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.12` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
+
+> **Note:** ROCm is not offered as an extra — the lane was never execution-tested on AMD hardware. AMD MI-series users can manually install torch from AMD's wheel lane — modern: `uv pip install torch --index-url https://download.pytorch.org/whl/rocm7.1` (torch 2.10/2.11, Linux x86_64 only, resolution-tested-only); older series: the rocm6.4 index tops out at torch 2.9.1. ROCm 7.2+ requires torch >=2.12, above dnallm's cap. This is a manual lane — dnallm makes no AMD claim.
 
 > **Note:** Hardware groups are NOT included in `all` because the `cpu`/`cuda*` groups conflict with each other. Always combine a hardware group with your chosen feature group: e.g., `.[all,cuda124]`
 
@@ -272,10 +275,10 @@ conda create -n dnallm-xpu python=3.13 -y
 conda activate dnallm-xpu
 
 # Install base dependencies first
-pip install jupyterlab -e '.[base]'
+pip install jupyterlab -e '.[full]'
 
 # Install the XPU build of PyTorch LAST (plain pip only —
-# uv users can simply do: uv pip install -e '.[base]' then the xpu index)
+# uv users can simply do: uv pip install -e '.[full]' then the xpu index)
 pip install --force-reinstall --no-deps 'torch==2.11.0' \
     --index-url https://download.pytorch.org/whl/xpu
 
@@ -321,7 +324,7 @@ uv pip install -e '.[all,cuda130]'        # or plain pip: see Scenario 2 / GPU S
 # Intel environment
 conda create -n dnallm-xpu python=3.13 -y
 conda activate dnallm-xpu
-pip install jupyterlab -e '.[base]'
+pip install jupyterlab -e '.[full]'
 pip install 'torch==2.11.0' --index-url https://download.pytorch.org/whl/xpu
 
 # CPU fallback environment
@@ -398,7 +401,7 @@ conda create -n dnallm-mamba python=3.12 -y
 conda activate dnallm-mamba
 
 # Install base dependencies first
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 
 # Install Mamba support (requires GPU)
 uv pip install -e '.[cuda124,mamba]' --no-cache-dir --no-build-isolation
@@ -439,7 +442,7 @@ conda create -n dnallm-mcp python=3.13 -y
 conda activate dnallm-mcp
 
 # MCP dependencies are included in core, just install with CUDA support
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda124]'
 
 # Verify installation
 python -c 'from dnallm.mcp import server; print("MCP server dependencies installed!")'
@@ -514,7 +517,7 @@ nvcc --version
 uv pip uninstall torch torchvision torchaudio
 
 # 3. Reinstall matching version
-uv pip install -e '.[cuda121]'  # Choose based on actual situation
+uv pip install -e '.[cuda124]'  # Choose based on actual situation
 ```
 
 ### GPU Present but `torch.cuda.is_available()` Returns False
@@ -588,7 +591,7 @@ conda create -n dnallm-new python=3.13 -y
 conda activate dnallm-new
 
 # 2. Use uv to resolve dependencies
-uv pip install -e '.[base]' --resolution=lowest
+uv pip install -e '.[full]' --resolution=lowest
 ```
 
 ## Native Mamba Support

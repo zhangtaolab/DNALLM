@@ -73,7 +73,6 @@ DNALLM-Suite has been tested on a wide range of platforms and devices:
 ### Device:
 - **CPU**
 - **Nvidia GPU (CUDA)**
-- **AMD GPU (ROCm)**
 - **Apple Silicon (MPS)**
 - **Huawei Ascend NPU (CANN)**
 - **Intel Arc GPU (XPU)**
@@ -118,8 +117,8 @@ pip install uv
 # Install DNALLM with all optional dependencies
 uv pip install -e '.[all]'
 
-# Or install only base development tools
-# uv pip install -e '.[base]'
+# Or install only the full development environment
+# uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -144,8 +143,8 @@ conda install uv -c conda-forge
 # Install DNALLM with all optional dependencies
 uv pip install -e '.[all]'
 
-# Or install only base development tools
-# uv pip install -e '.[base]'
+# Or install only the full development environment
+# uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -167,7 +166,7 @@ source .venv/bin/activate  # Linux/MacOS
 # CUDA 12.4 (recommended for recent GPUs)
 uv pip install -e '.[all,cuda124]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128, cuda130
+# Other supported versions: cpu, cuda126, cuda128, cuda130
 # Nvidia 5090 Please use cuda128 & torch==2.7
 uv pip install -e '.[all,cuda128]'
 
@@ -175,14 +174,16 @@ uv pip install -e '.[all,cuda128]'
 uv pip install -e '.[all,cuda130]'
 ```
 
-> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver; `rocm` cannot share an environment with another hardware group (only one torch build installs), while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
+> **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
+
+> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
-| `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
+| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting/typing tools |
 | `test` | Testing only | pytest and plugins |
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
@@ -196,18 +197,18 @@ uv pip install -e '.[all,cuda130]'
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
 | `cpu` | 2.4.0-2.11 | No GPU |
-| `cuda121` | 2.2.0-2.11 | Older NVIDIA GPUs |
 | `cuda124` | 2.4.0-2.11 | Most modern GPUs (recommended) |
 | `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
 | `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
 | `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) |
-| `rocm` | 2.5.0-2.11 | AMD GPUs |
 | `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
+
+Retired in v1.3: the cu121 lane (index frozen at torch 2.5.1) and the ROCm extra (never execution-tested on AMD hardware — see the [Installation Guide](docs/getting_started/installation.md) for the manual AMD restore path).
 
 ```bash
 # Examples:
 uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
-uv pip install -e '.[base,mamba]'     # Dev tools + native Mamba
+uv pip install -e '.[full,mamba]'    # Dev tools + native Mamba
 uv pip install -e '.[test,cpu]'       # Testing only, no GPU (add ,mcp for the MCP example tests)
 ```
 
