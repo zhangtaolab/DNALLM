@@ -14,8 +14,8 @@ One atomic, grep-guarded extras surgery: base renamed, cuda121 retired, rocm dis
 ## Implementation Decisions
 
 ### extras 命名与处置 (owner-accepted 2026-10-14)
-- base → **`full`** (dev/test/notebook/mcp superset; self-referential `all` chain intact; one-cycle deprecated alias so pip's warn-and-exit-0 cannot silently under-install; grep gate holds stale `.[base]` residue to a sanctioned list)
-- rocm: **REMOVED with documented restore path** (no rocm wheel exists for torch>=2.10 — keeping it would be a false promise)
+- base → **`full`** (dev/test/notebook/mcp superset; self-referential `all` chain intact; deprecated alias `base = ["dnallm[full]"]` — live-probed: resolves the full set under pip AND uv with exit 0, so no silent under-install; the loud deprecation surface during the cycle is docs/README, since installers only warn on the alias AFTER its eventual removal — post-removal pip/uv both warn-and-exit-0; grep gate holds stale `.[base]` residue to a sanctioned list)
+- rocm: **REMOVED with documented restore path** (rationale corrected 2026-10-14 per live index fetch: rocm7.1 wheels for torch 2.10/2.11 NOW EXIST — the earlier no-wheel fact is stale; removal stands on the intact legs: the lane is inert in-repo, never AMD-execution-tested, no AMD hardware to validate on; the restore path documents against rocm7.1)
 - WPAR-07 triton-windows: **DECLARED** behind `platform_system == 'Windows'` marker in the fla extra (`>=3.7.1.post27,<3.8`, research-recommended); fla KDA smoke re-verified on Windows under the resolved torch
 - Validation depth: fresh-venv resolve per changed extra + smoke dispatch against the post-surgery tree (each extras change validated)
 
