@@ -178,6 +178,8 @@ uv pip install -e '.[all,cuda130]'
 
 > **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
 
+> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the deprecated `base` alias rows.
+
 ### Dependency Groups
 
 | Group | Purpose | Includes |

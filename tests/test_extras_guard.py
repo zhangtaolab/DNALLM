@@ -218,7 +218,10 @@ class TestExtrasSurgeryResidueGates:
 
     # Pattern 1: bracket install forms of base (.[base...] / dnallm[base...]).
     # The alias declaration itself (base = ["dnallm[full]"]) does NOT match.
-    # Sanctioned: exactly the two v1.3 deprecation notes (README + installation).
+    # Sanctioned: the two v1.3 deprecation notes (README + installation) plus,
+    # since 18-02, the two dnallm[base] rows of the cross-installer honesty
+    # matrix page (the during-alias-cycle row and the post-v1.4-removal row —
+    # the page exists precisely to document those two commands honestly).
     BASE_BRACKET_PATTERN = r"\.\[base|dnallm\[base"
     SANCTIONED_BASE_BRACKET_RESIDUE = frozenset({
         (
@@ -239,6 +242,21 @@ class TestExtrasSurgeryResidueGates:
             "set and will be removed in v1.4 — after removal pip/uv only print "
             "a warning that the extra does not exist and exit 0, leaving a "
             "core-only under-install. Use `.[full]` in new environments.",
+        ),
+        (
+            "docs/getting_started/install_honesty.md",
+            "| `dnallm[base]` — during the v1.3 alias cycle | resolves the "
+            "alias → the **full member set**, exit 0, **no warning** | "
+            "identical — full set, exit 0, **no warning** | live probe "
+            "2026-10-14 |",
+        ),
+        (
+            "docs/getting_started/install_honesty.md",
+            "| `dnallm[base]` — after the v1.4 alias removal | `warning: The "
+            "package ... does not have an extra named 'base'`; installs "
+            "**core only**; exit 0 | `WARNING: dnallm X.Y.Z does not provide "
+            "the extra 'base'`; installs **core only**; exit 0 | live probe "
+            "2026-10-14 (missing-extra case) |",
         ),
     })
 
@@ -312,7 +330,8 @@ class TestExtrasSurgeryResidueGates:
         assert not extra, (
             f"unsanctioned base bracket-install residue (18-01 gate): "
             f"{sorted(extra)} -- every install command must use .[full]; only "
-            f"the two v1.3 deprecation notes carry the old spelling"
+            f"the two v1.3 deprecation notes and the two honesty-matrix rows "
+            f"carry the old spelling"
         )
         assert not missing, (
             f"sanctioned base deprecation-note residue missing (18-01 gate, "
