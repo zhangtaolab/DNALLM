@@ -4,17 +4,18 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 17
 current_phase_name: Publish Chain Robustness
+current_plan: 3
 status: executing
-stopped_at: Completed 17-01-PLAN.md (publish guard + smoke tracer; run 38554913144)
-last_updated: "2026-10-14T11:17:14.147Z"
+stopped_at: "Completed 17-02-PLAN.md (tooling caps; WINDOWS #20 fixed via AS-1 fallback)"
+last_updated: "2026-10-14T11:41:45.870Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 2c649fa0c48bc0fc465e404ab38094c3b538040d
+state_head: e0c6bd33344caac0be84a5b5b59b73a34144d0c4
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 57
 ---
 
@@ -30,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 17 (Publish Chain Robustness) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 3
 Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
 Last activity: 2026-10-14 — 17-01 complete, next is 17-02
@@ -57,6 +58,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 16 P02 | 21 min | 3 tasks | 8 files |
 | Phase 16 P04 | 70 min active (16h wall incl. CI run 38441258701) | 2 tasks | 2 files |
 | Phase 17 P01 | 10 min | 2 tasks | 2 files |
+| Phase 17 P02 | 21 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +90,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 16]: [16-02] Two Rule 3 same-change enablers: _strip_magic_lines substitutes magics with same-indent pass placeholders (guarded magics left bodyless branches after deletion — false syntax errors), and the four gate-contract tests pin sys.platform=linux so the win32 early-return cannot shadow the probe contracts on test-windows
 - [Phase 16]: [16-04] SC4 concluded green-where-executable with owner-accepted rice.uga.edu caveat (run 38441258701 over the complete change): live-pybedtools parity executed green on CI, CRE band re-executed green, NER notebook green end-to-end, root suites 19+4 green in the full census, D-03 gate held 216/217 byte-identical; the 2 reds sit upstream of all phase code (4th/5th manifestations, phase-14 H.4/H.4.final precedent)
 - [Phase 16]: [16-04] Phase-16 honesty ledger clean at close: census triple + expected_skips.yaml + pyproject.toml + uv.lock byte-identical to ff95ef7 across the whole phase; footprint = example seams/mirrors/gates/fixtures/2 root suites/.gitignore-tsv-exception only
+- [Phase 17]: [17-02] WINDOWS #20 closed via PUBS-05's sanctioned coverage-CLI fallback: the live numpy==2.2.0 pin reprobe cleared the numpy facet but the torch overrides facet survived (independent, not a symptom) — numpy restored 2.5.3, bare --cov + coverage run forms are THE fix (both proven green)
+- [Phase 17]: [17-02] mypy dev-extra cap >=1.15.0,<2.5 (one line, numstat-proven): 2.4.0 admitted (observed/tolerated publish-runner resolution), 2.5.0 excluded — the resolver class is frozen, not silenced
+- [Phase 17]: [17-02] any future local numpy pin ceiling is <2.4 (2.4-series one-init guard) AND no numpy pin alone fixes the torch facet — both facts live-proven and recorded in WINDOWS row 20
 
 ### Pending Todos
 
@@ -128,8 +133,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-14T11:17:14.098Z
-Stopped at: Completed 17-01-PLAN.md (publish guard + smoke tracer; run 38554913144)
+Last session: 2026-10-14T11:41:31.807Z
+Stopped at: Completed 17-02-PLAN.md (tooling caps; WINDOWS #20 fixed via AS-1 fallback)
 Resume file: None
 
 ## Operator Next Steps

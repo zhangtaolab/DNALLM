@@ -27,7 +27,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [ ] **PKGH-05**: cuda130 is the recommended default install across all surfaces (overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + docs + examples)
 - [ ] **PKGH-06**: The GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only stated explicitly with the minimum-GPU-line; 20xx→cu128; 30/40xx all extras; 50xx cu128+; optional driver-based chooser note)
 - [ ] **PKGH-07**: A cross-installer honesty matrix page is published — command × installer → what you actually get
-- [ ] **PKGH-08**: mypy is capped (research: `>=1.15.0,<2.5`) so CI cannot resolve an unvalidated stricter version
+- [x] **PKGH-08**: mypy is capped (research: `>=1.15.0,<2.5`) so CI cannot resolve an unvalidated stricter version
 
 ### Publish Chain Robustness (PUBS)
 
@@ -35,7 +35,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [x] **PUBS-02**: A publish smoke runs the never-uploading chain on dispatch: `uv build --no-sources` → `twine check` (twine pinned `>=7,<8`; redundant `build` dep dropped) → clean-venv install-from-dist → import probe — verification reads `dist/`, never PyPI
 - [x] **PUBS-03**: The smoke also runs on a periodic cron schedule, schedule-aware, still never uploading
 - [ ] **PUBS-04**: OIDC Trusted Publishing migration via `pypa/gh-action-pypi-publish@release/v1` (job-level `id-token: write`; publisher registered for the exact owner/repo/workflow-filename/environment; no reusable-workflow factoring); `PYPI_API_TOKEN` deleted only after the first observed green OIDC release
-- [ ] **PUBS-05**: WINDOWS #20 remediated — local-venv `pytest --cov` dotted-target crash fixed via a local numpy pin or the documented coverage-CLI workaround (not fixable by a coverage version bump)
+- [x] **PUBS-05**: WINDOWS #20 remediated — local-venv `pytest --cov` dotted-target crash fixed via a local numpy pin or the documented coverage-CLI workaround (not fixable by a coverage version bump)
 
 ### Ollama Surface (OLLM)
 
@@ -102,12 +102,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKGH-05 | Phase 19 | Pending |
 | PKGH-06 | Phase 18 | Pending |
 | PKGH-07 | Phase 18 | Pending |
-| PKGH-08 | Phase 17 | Pending |
+| PKGH-08 | Phase 17 | Complete |
 | PUBS-01 | Phase 17 | Complete |
 | PUBS-02 | Phase 17 | Complete |
 | PUBS-03 | Phase 17 | Complete |
 | PUBS-04 | Phase 17 | Pending |
-| PUBS-05 | Phase 17 | Pending |
+| PUBS-05 | Phase 17 | Complete |
 | OLLM-01 | Phase 13 | Complete |
 | OLLM-02 | Phase 13 | Complete |
 | OLLM-03 | Phase 13 | Complete |
