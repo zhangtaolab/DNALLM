@@ -5,16 +5,16 @@ milestone_name: Platform Reach & Packaging Honesty
 current_phase: 17
 current_phase_name: Publish Chain Robustness
 status: executing
-stopped_at: Phase 16 complete, ready to plan Phase 17
-last_updated: "2026-10-14T11:04:31.490Z"
+stopped_at: Completed 17-01-PLAN.md (publish guard + smoke tracer; run 38554913144)
+last_updated: "2026-10-14T11:17:14.147Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: bc0be2911e42158f0d9c78819f51f259040782be
+state_head: 2c649fa0c48bc0fc465e404ab38094c3b538040d
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 57
 ---
 
@@ -29,10 +29,11 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: 17 (Publish Chain Robustness) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-14 — Phase 16 complete, transitioned to Phase 17
+Phase: 17 (Publish Chain Robustness) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 3
+Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
+Last activity: 2026-10-14 — 17-01 complete, next is 17-02
 
 Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 
@@ -55,6 +56,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 16 P03 | 42 min | 3 tasks | 12 files |
 | Phase 16 P02 | 21 min | 3 tasks | 8 files |
 | Phase 16 P04 | 70 min active (16h wall incl. CI run 38441258701) | 2 tasks | 2 files |
+| Phase 17 P01 | 10 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -126,8 +128,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-14T09:40:40.979Z
-Stopped at: Phase 16 complete, ready to plan Phase 17
+Last session: 2026-10-14T11:17:14.098Z
+Stopped at: Completed 17-01-PLAN.md (publish guard + smoke tracer; run 38554913144)
 Resume file: None
 
 ## Operator Next Steps

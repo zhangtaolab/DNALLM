@@ -21,7 +21,7 @@
     {
       "number": "16",
       "name": "Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "17",
@@ -42,7 +42,7 @@
   "next": {
     "command": "/gsd:progress --next",
     "label": "Advance to the next step",
-    "reason": "Phase 16 of 7 · 43% · executing"
+    "reason": "Phase 17 of 7 · 57% · executing"
   },
-  "updated_at": "2026-10-13T16:11:11.726Z"
+  "updated_at": "2026-10-14T11:04:31.507Z"
 }

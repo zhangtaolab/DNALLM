@@ -157,11 +157,11 @@ Plans:
   4. WINDOWS #20 is remediated — the local-venv `pytest --cov` dotted-target crash is fixed via a local numpy pin or the documented coverage-CLI workaround (not by a coverage version bump)
   5. mypy is capped in the dev extra (`>=1.15.0,<2.5`) so CI can never resolve an unvalidated stricter version
 
-**Plans**: 0/3 plans complete
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 17-01-PLAN.md — Tracer: ONE atomic publish.yml commit (job-level release-only upload gate + OIDC publish job + never-uploading smoke job with dispatch + weekly `0 8 * * 0` cron, D-19 gate) + live dispatch proof (upload job skipped, smoke green through import probe) — PUBS-01/02/03/04 workflow-side
+- [x] 17-01-PLAN.md — Tracer: ONE atomic publish.yml commit (job-level release-only upload gate + OIDC publish job + never-uploading smoke job with dispatch + weekly `0 8 * * 0` cron, D-19 gate) + live dispatch proof (upload job skipped, smoke green through import probe) — PUBS-01/02/03/04 workflow-side
 - [ ] 17-02-PLAN.md — Dev-tooling caps: local venv `numpy==2.2.0` pin (ceiling <2.4 per live matrix) + WINDOWS #20 reprobe + row 20 fixed; mypy `>=1.15.0,<2.5` one-line cap in dev extra — PUBS-05, PKGH-08
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -205,6 +205,6 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
-| 17. Publish Chain Robustness | 0/TBD | Not started | - |
+| 17. Publish Chain Robustness | 1/3 | In Progress | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 0/TBD | Not started | - |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |

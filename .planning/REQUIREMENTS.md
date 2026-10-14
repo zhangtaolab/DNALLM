@@ -31,9 +31,9 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 
 ### Publish Chain Robustness (PUBS)
 
-- [ ] **PUBS-01**: The unguarded `workflow_dispatch`→`twine upload` path is event-gated or split BEFORE any smoke trigger exists — a dry-run dispatch can never upload (PyPI filenames are immutable)
-- [ ] **PUBS-02**: A publish smoke runs the never-uploading chain on dispatch: `uv build --no-sources` → `twine check` (twine pinned `>=7,<8`; redundant `build` dep dropped) → clean-venv install-from-dist → import probe — verification reads `dist/`, never PyPI
-- [ ] **PUBS-03**: The smoke also runs on a periodic cron schedule, schedule-aware, still never uploading
+- [x] **PUBS-01**: The unguarded `workflow_dispatch`→`twine upload` path is event-gated or split BEFORE any smoke trigger exists — a dry-run dispatch can never upload (PyPI filenames are immutable)
+- [x] **PUBS-02**: A publish smoke runs the never-uploading chain on dispatch: `uv build --no-sources` → `twine check` (twine pinned `>=7,<8`; redundant `build` dep dropped) → clean-venv install-from-dist → import probe — verification reads `dist/`, never PyPI
+- [x] **PUBS-03**: The smoke also runs on a periodic cron schedule, schedule-aware, still never uploading
 - [ ] **PUBS-04**: OIDC Trusted Publishing migration via `pypa/gh-action-pypi-publish@release/v1` (job-level `id-token: write`; publisher registered for the exact owner/repo/workflow-filename/environment; no reusable-workflow factoring); `PYPI_API_TOKEN` deleted only after the first observed green OIDC release
 - [ ] **PUBS-05**: WINDOWS #20 remediated — local-venv `pytest --cov` dotted-target crash fixed via a local numpy pin or the documented coverage-CLI workaround (not fixable by a coverage version bump)
 
@@ -103,9 +103,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKGH-06 | Phase 18 | Pending |
 | PKGH-07 | Phase 18 | Pending |
 | PKGH-08 | Phase 17 | Pending |
-| PUBS-01 | Phase 17 | Pending |
-| PUBS-02 | Phase 17 | Pending |
-| PUBS-03 | Phase 17 | Pending |
+| PUBS-01 | Phase 17 | Complete |
+| PUBS-02 | Phase 17 | Complete |
+| PUBS-03 | Phase 17 | Complete |
 | PUBS-04 | Phase 17 | Pending |
 | PUBS-05 | Phase 17 | Pending |
 | OLLM-01 | Phase 13 | Complete |
