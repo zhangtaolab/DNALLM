@@ -447,17 +447,21 @@ Registry landscape [VERIFIED: pip index versions mypy]: latest is 2.4.0 (series:
 | A7 | No trusted publisher is currently registered on PyPI for dnallm | Runtime State Inventory | None operationally (registering a fresh publisher is idempotent-ish: one project can have multiple publishers) — unverifiable without owner's PyPI login; stated as assumed |
 | A8 | Runner uv (setup-uv "latest") ≥ 0.13.1, so `--no-sources` (verified locally on 0.13.1) exists on the runner | Smoke chain | Low — runners resolve newer-than-local; the flag has existed across recent releases |
 
-## Open Questions
+## Open Questions (RESOLVED — all four adopted by plans 17-01/17-02)
 
 1. **Exact numpy pin form — `==2.2.0` vs `<2.4`?**
    - What we know: both fix the crash (probed); CI pins `numpy==2.2.0` explicitly on its legs; pyproject floor is `>=2.0.0`.
    - What's unclear: whether the owner wants the venv frozen to the CI-identical version or allowed to track 2.3.x.
    - Recommendation: `==2.2.0` (maximal CI-parity, zero drift surface); record the alternative in the plan.
+   - RESOLVED → 17-02 Task 1 pins `numpy==2.2.0` exactly in the shared dev venv (17-02 TRUTH-1); the `<2.4` form survives as the operative ceiling recorded in WINDOWS row 20.
 2. **Does the release job keep a post-upload verify step, and from where?**
    - What we know: the old verify pip-installs from PyPI (forbidden on non-publish runs only); the release job IS a publish run.
    - Recommendation: drop the old verify on the release job and rely on the smoke chain's install-from-dist + import probe shape for artifact verification (uniform, and one less PyPI-polluting moving part); alternatively keep `pip install dnallm` gated inside the release job. Either satisfies the locked decision — planner picks.
+   - RESOLVED → 17-01 Task 1 takes the drop branch: the registry-install verify step is deleted entirely, and the smoke's install-from-dist + import probe is the uniform artifact verification (17-01 TRUTH-2 / AS-2).
 3. **Smoke python version** — 3.12 (matches the current publish job) vs 3.13 (matches local dev where the #20 crash lives)? Recommendation: 3.12, byte-compatible with today's job; the smoke is about packaging, not interpreter coverage (ci.yml owns 3.11–3.13).
+   - RESOLVED → 17-01 Task 1's smoke job runs python 3.12 (17-01 AS-3).
 4. **Attestations on/off** (A4) and `print-hash: true` for release-run evidence? Recommendation: attestations on (default), `print-hash: true` for the evidence trail — decide at plan time.
+   - RESOLVED → 17-01 Task 1 sets both explicitly on the pypa step (`print-hash: true` AND `attestations: true`), structurally asserted by 17-01's verify (TRUTH-5).
 
 ## Environment Availability
 
