@@ -23,10 +23,10 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [x] **PKGH-01**: The `base` extra is renamed/re-scoped per owner decision with a one-cycle deprecated alias; landed atomically across pyproject (self-referential `all` chain), the 5 CI/publish call sites, extras guard tests, and docs; a grep gate holds stale `.[base]` residue to a sanctioned list
 - [x] **PKGH-02**: The cuda121 extra is retired — extra, uv index/sources/conflicts entries, and docs references removed in one atomic change (index frozen at torch 2.5.1, dead lane under the `torch>=2.4,<2.12` floor)
 - [x] **PKGH-03**: The rocm disposition is executed on verified facts (research-recommended: remove — no rocm wheel exists for torch>=2.10; restore path documented if removed)
-- [ ] **PKGH-04**: Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build)
+- [x] **PKGH-04**: Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build)
 - [ ] **PKGH-05**: cuda130 is the recommended default install across all surfaces (overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + docs + examples)
-- [ ] **PKGH-06**: The GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only stated explicitly with the minimum-GPU-line; 20xx→cu128; 30/40xx all extras; 50xx cu128+; optional driver-based chooser note)
-- [ ] **PKGH-07**: A cross-installer honesty matrix page is published — command × installer → what you actually get
+- [x] **PKGH-06**: The GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only stated explicitly with the minimum-GPU-line; 20xx→cu128; 30/40xx all extras; 50xx cu128+; optional driver-based chooser note)
+- [x] **PKGH-07**: A cross-installer honesty matrix page is published — command × installer → what you actually get
 - [x] **PKGH-08**: mypy is capped (research: `>=1.15.0,<2.5`) so CI cannot resolve an unvalidated stricter version
 
 ### Publish Chain Robustness (PUBS)
@@ -98,10 +98,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKGH-01 | Phase 18 | Complete |
 | PKGH-02 | Phase 18 | Complete |
 | PKGH-03 | Phase 18 | Complete |
-| PKGH-04 | Phase 18 | Pending |
+| PKGH-04 | Phase 18 | Complete |
 | PKGH-05 | Phase 19 | Pending |
-| PKGH-06 | Phase 18 | Pending |
-| PKGH-07 | Phase 18 | Pending |
+| PKGH-06 | Phase 18 | Complete |
+| PKGH-07 | Phase 18 | Complete |
 | PKGH-08 | Phase 17 | Complete |
 | PUBS-01 | Phase 17 | Complete |
 | PUBS-02 | Phase 17 | Complete |
