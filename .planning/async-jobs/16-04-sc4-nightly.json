@@ -7,7 +7,7 @@
   ],
   "backend": "github-actions",
   "runner": "self-hosted local GB10 (forrest@edgexpert, runner id 22, ~/github-runners/dnallm-nightly)",
-  "status": "queued — SC4 evidence PENDING; run sits behind the phase-14 re-dispatch's in-flight example-nightly (38354875692) and two scheduled main-branch runs (38381090082, 38400225941); est. lease ~01:00Z 2026-10-14, est. full evidence ~08:00-09:00Z",
+  "status": "terminal — run concluded failure 2026-10-14T09:27:42Z; every phase-16 surface green (live-pybedtools parity executed green, CRE band re-executed green, NER notebook green in example-nightly, both root suites 19+4 green in the full census, D-03 census gate held byte-identical); the only reds are the owner-accepted rice.uga.edu external-host class on two input-download lanes (4th/5th manifestations, phase-14 H.4/H.4.final precedent; owner-directed accept-with-caveat). Terminal record: 16-EVIDENCE.md section A.4/A.5. WINDOWS #24 resolved with that record.",
   "submitted_at": "2026-10-13T17:45:44Z",
   "plan_id": "16-04",
   "purpose": "SC4 (WPAR-06 same-change clause + WPAR-08 nightly clause): prove the Linux nightly re-execution holds the parsed selection.md bands over the COMPLETE phase-16 change (headSha 4863883890fe62c845e3c81da06c7e07d4e8e282 = all 16-01/02/03 commits). Both nightly jobs must conclude success. No SUMMARY.md for 16-04 until this resolves and the SC matrix flips 5/5.",
