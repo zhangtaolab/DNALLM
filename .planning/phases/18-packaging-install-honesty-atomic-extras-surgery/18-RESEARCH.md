@@ -438,14 +438,14 @@ And in tests/models/test_plant_helixseek_fla_kernels.py — flip the :51 expecte
 | A4 | cuda124 stays the test-cuda matrix's surviving leg and the recommended-lane examples after cuda121 retires (PKGH-05's cuda130-default push is Phase 19's surface) | cuda121 Retirement | Low — matrix shape is a one-line planner choice |
 | A5 | Fresh-venv resolve budget on the GB10 box is acceptable for full/all/cpu/fla lanes (torch multi-GB downloads; uv cache mitigates) | Validation Mechanics | Time cost only; sequence resolves to keep the phase fast |
 
-## Open Questions
+## Open Questions (RESOLVED — all three decided at planning, 2026-10-14)
 
-1. **Should the smoke carry an extras proof?**
+1. **Should the smoke carry an extras proof?** — **RESOLVED: core-only smoke** (owner decision, CONTEXT-locked validation depth: fresh-venv resolve per changed extra IS the extras proof; the smoke stays the artifact gate). The one-line `"$W[full]"` smoke extension stays noted for later, unadopted. Executed as-is in 18-01 Task 3 (4).
    - What we know: the smoke installs `dist/*.whl` bracketless (core-only); per-extra fresh-venv resolves are the CONTEXT-locked extras proof; the probe proves the `"$W[full]"` extension works.
    - What's unclear: whether the owner wants the weekly cron to also exercise one extra from the wheel (heavier cron) or keep the smoke core-only.
    - Recommendation: keep the smoke core-only this phase (matches the locked validation depth); note the one-line extension for later.
-2. **Alias cycle boundary (A2):** which release removes the `base` alias — record the exact version/timing in the deprecation note at landing.
-3. **test-cuda matrix post-retirement shape:** single 12.4 leg vs re-pointing the leg to a newer CUDA variant — planner's one-line choice (A4).
+2. **Alias cycle boundary (A2):** which release removes the `base` alias — **RESOLVED: v1.4**; both deprecation notes written at landing name v1.4 as the removal release (18-01 Task 2 (7)).
+3. **test-cuda matrix post-retirement shape:** single 12.4 leg vs re-pointing the leg to a newer CUDA variant — **RESOLVED: single 12.4 leg**; the matrix collapses to `cuda-version: ['12.4']` with one unconditional `.[full,cuda124]` install line (18-01 Task 2 (2)); re-pointing to a newer variant is Phase 19's PKGH-05 surface.
 
 ## Environment Availability
 
