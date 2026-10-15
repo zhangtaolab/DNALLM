@@ -167,6 +167,11 @@ MCP enables AI assistants to:
 - `_dna_mutagenesis`: In silico mutagenesis analysis
 - `_dna_interpret`: Model interpretation via attribution methods
 
+**Variant-Effect and Zero-Shot Tools**:
+- `_ism_scan`: In silico mutagenesis (ISM) scanning for variant effects
+- `_hotspots`: Identify functional hotspots within sequences
+- `_zero_shot_score`: Zero-shot scoring of sequences or variants
+
 ### Client Access Points
 
 The DNALLM MCP Server provides different access points depending on the transport protocol:
@@ -257,17 +262,19 @@ Using DNA prediction in Python scripts:
 
 ```python
 import asyncio
-from mcp.client.session import ClientSession
+from mcp import ClientSession
+from mcp.client.sse import sse_client
 
 
 async def predict_dna_sequence(sequence):
-    async with ClientSession("http://localhost:8000/sse") as session:
-        await session.initialize()
-        result = await session.call_tool(
-            "_dna_sequence_predict",
-            {"sequence": sequence, "model_name": "promoter_model"},
-        )
-        return result
+    async with sse_client("http://localhost:8000/sse") as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "_dna_sequence_predict",
+                {"sequence": sequence, "model_name": "promoter_model"},
+            )
+            return result
 ```
 
 ## Summary

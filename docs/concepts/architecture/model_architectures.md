@@ -17,7 +17,7 @@ There are two primary variants of the Transformer architecture:
 
 - **Encoder-Only (e.g., BERT)**: These models, like `DNABERT`, process the entire input sequence at once, allowing them to gather context from both directions (bi-directional). This makes them exceptionally powerful for **understanding** tasks.
   - **Best for**: Sequence classification, feature extraction, and token-level predictions.
-  - **DNALLM Examples**: `DNABERT`, `Nucleotide Transformer`, `Caduceus`.
+  - **DNALLM Examples**: `DNABERT`, `Nucleotide Transformer` (the bi-directional SSM model `Caduceus` is covered under State-Space Models below — bi-directional, but not a Transformer encoder).
 
 - **Decoder-Only (e.g., GPT)**: These models process the sequence token-by-token in one direction (auto-regressive), predicting the next token based on the preceding ones. This makes them ideal for **generation** tasks.
   - **Best for**: Generating new DNA sequences, scoring sequence likelihood.
