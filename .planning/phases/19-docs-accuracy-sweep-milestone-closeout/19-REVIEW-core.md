@@ -63,3 +63,33 @@ pattern); external citations checked for repo-relevance only.
 | docs/faq/finetuning_troubleshooting.md | **accurate** | Stub + link; ../user_guide/fine_tuning/getting_started.md exists |
 | docs/faq/inference_troubleshooting.md | **accurate** | Stub + link; ../user_guide/inference/getting_started.md exists |
 | docs/faq/mcp_troubleshooting.md | **accurate** | Stub + link; ../user_guide/mcp/usage.md exists |
+
+## Batch battery record (Task 3 — post-review tree, 2026-10-15)
+
+Commands + outcomes (16-EVIDENCE evidence-block shape), run on the Task-3
+tree (Task 2 commit 3c5a23e):
+
+| Gate | Command | Outcome |
+|------|---------|---------|
+| Mirror sync | `python scripts/check_docs_sync.py` | `OK: docs/example/ is in sync with example/` — PASS (docs-only batch; no mirror files touched) |
+| Notebook-md sync | `python scripts/check_notebook_md_sync.py` | `Checked 24 markdown/notebook pair(s). All markdown code blocks are in sync with their notebooks.` — PASS |
+| Strict build | `PATH="/tmp/mkdocs-venv19/bin:$PATH" mkdocs build --strict` (log `/tmp/strict-19-05.txt`) | exit 0, **0 WARNING** lines, `Documentation built in 4.45 seconds` — PASS. First run of the post-fix tree was green — the two new internal links this batch added (concepts → `../../user_guide/performance_guide.md` ×2) and the re-pointed model_zoo CONTRIBUTING URL validated by the build itself; 19-01's zero-warning state holds |
+| Census | `.venv/bin/python -m pytest tests/examples --collect-only -q -m "not giants"` | `216/217 tests collected (1 deselected) in 0.88s` — STABLE (docs-only batch did not move the triple) |
+| Ledger completeness | `find docs/concepts docs/resources docs/faq` vs ledger row count | files=37, rows=37 — COMPLETE (15 Task 1 + 22 Task 2, same-commit as their fixes) |
+| Snippet syntax (extra) | `python scripts/validate_docs_snippets.py` | 149 files, 350 Python blocks, all passed (covers this batch's rewritten ClientSession and output_hidden_states examples) |
+
+Link-surface note (19-04's non-.md-link blind-spot pattern): all 90 links
+across resources/faq extracted and classified — external citations (doi.org,
+journal sites, github.com, huggingface.co, gitcode.com, flash-linear-attention)
+are pre-existing repo-relevant references; every internal link is .md-form
+(validated by the strict build above) or a same-page anchor; a targeted scan
+for bare-directory/URL-shaped non-.md internal links returned empty — the
+blind-spot class is absent from this batch. Concepts likewise carry only 4
+credited external images and zero internal .md links beyond the two added
+this batch.
+
+Threat-register check (T-19-07): this batch's fixes did not ADD any external
+URL; the one link introduced (model_zoo's Development-Guide re-point) is the
+sanctioned `github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md` form;
+the removed content was a malformed image line and a duplicated sentence.
+The strict build validates every .md link this batch touched.
