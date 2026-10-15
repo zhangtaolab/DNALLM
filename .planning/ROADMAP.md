@@ -200,7 +200,16 @@ Plans:
   3. `mkdocs --strict` builds with zero warnings — the 15 ledgered pre-existing warnings cleared, with the nav/mirror interplay respected
   4. Every example edit in the sweep lands with its docs mirror byte-identical and the automated sync/masking gates green; the milestone closes honest-green (fast lane, coverage gate, full CI matrix)
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+- [ ] 19-01-PLAN.md — Tracer: the 4-file strict fix (15 mkdocs warnings → 0, proven RED first) + the two em-dash anchor fixes; ledger discipline established (19-REVIEW-strict.md)
+- [ ] 19-02-PLAN.md — cuda130 default re-point across all install surfaces (PKGH-05/DOCR-02): mirrored overview.md pair, 22 wrappers, installation.md flip, quick_start/getting_started/index/tutorial, README (headline/table/5090 line/test counts)
+- [ ] 19-03-PLAN.md — Review wave: user_guide heavy half (fine_tuning/inference/benchmark/tutorial, 18 files) with same-pass fixes + ledger rows
+- [ ] 19-04-PLAN.md — Review wave: user_guide light half + root (incl. continuous_integration.md ollama-stage fix) + api stubs + index (61 files)
+- [ ] 19-05-PLAN.md — Review wave: concepts/resources/faq (37 files)
+- [ ] 19-06-PLAN.md — Review wave: getting_started post-re-point verification + the 29 example wrappers (selection.md frozen-verified)
+- [ ] 19-07-PLAN.md — Closeout: ci.yml vehicle (test-cuda cuda130 + temp v1.3 push-filter entry with removal-decision record), the honest-green evidence battery (push matrix/publish smoke/nightly trio), 19-EVIDENCE.md consolidation (~150 logical rows)
 
 ## Progress
 
