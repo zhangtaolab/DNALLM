@@ -19,9 +19,9 @@ Start the server with default configuration:
 
 ```bash
 # Using the module directly
-dnallm-mcp-server
+python -m dnallm.mcp.server
 
-# Or using the CLI entry point
+# Or using the installed entry point
 dnallm-mcp-server
 ```
 
@@ -443,7 +443,7 @@ After successfully starting the MCP server:
 
 1. [Read the Usage Guide](usage.md) for detailed API documentation
 2. [Check the Configuration Reference](configuration.md) for advanced settings
-4. [Review Troubleshooting](../../faq/mcp_troubleshooting.md) for common issues
+3. [Review Troubleshooting](../../faq/mcp_troubleshooting.md) for common issues
 
 ## Support
 
@@ -451,5 +451,4 @@ For additional help:
 
 - Check the [FAQ](../../faq/index.md)
 - Review [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
-- Join our [Discord Community](https://discord.gg/dnallm)
 - Read the [API Documentation](../../api/mcp/server.md)

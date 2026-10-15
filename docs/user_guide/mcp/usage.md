@@ -177,7 +177,7 @@ Get detailed information about a specific model.
 List models filtered by task type.
 
 **Parameters:**
-- `task_type` (string): Task type to filter by ("binary", "multiclass", "multilabel", "regression", "token", "mask", "generation", "classification")
+- `task_type` (string): Task type to filter by — one of the validated task-config values: "binary", "multiclass", "multilabel", "regression" (loaded MCP models carry only these four; any other string returns an empty match list)
 
 **Returns:**
 - List of models matching the specified task type
@@ -237,6 +237,10 @@ Interpret model predictions using attribution methods — computes attribution s
 
 **Returns:**
 - Interpretation results containing `attributions`, `tokens`, `method`, `target_class`, `model_name`, `sequence` (or `error`/`isError` on failure)
+
+### Variant-Effect and Zero-Shot Tools
+
+The server additionally registers three Phase-12 analysis tools: `_ism_scan` (in-silico mutagenesis saturation scan), `_hotspots` (scan-window hotspot detection), and `_zero_shot_score` (zero-shot variant effect scoring of a VCF against a reference genome). Their parameters and output records are documented in the [API reference](../../api/mcp/server.md) — the same zero-shot scoring surface is exposed through the `dnallm-vep` CLI for non-server use.
 
 ### Python with Pydantic AI
 <!-- skip-verify: requires async event loop and running server -->
@@ -336,26 +340,30 @@ if __name__ == "__main__":
 <!-- skip-verify: requires async event loop and running server -->
 ```python
 import asyncio
+from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 
 async def main():
     # Connect to SSE server
     async with sse_client("http://localhost:8000/sse") as (read, write):
-        # List available models
-        models = await read.call_tool("_list_loaded_models", {})
-        print(f"Available models: {models}")
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-        # Test streaming prediction
-        result = await read.call_tool(
-            "_dna_stream_predict",
-            {
-                "sequence": "ATCGATCGATCG",
-                "model_name": "promoter_model",
-                "stream_progress": True,
-            },
-        )
-        print(f"Streaming prediction result: {result}")
+            # List available models
+            models = await session.call_tool("_list_loaded_models", {})
+            print(f"Available models: {models}")
+
+            # Test streaming prediction
+            result = await session.call_tool(
+                "_dna_stream_predict",
+                {
+                    "sequence": "ATCGATCGATCG",
+                    "model_name": "promoter_model",
+                    "stream_progress": True,
+                },
+            )
+            print(f"Streaming prediction result: {result}")
 
 
 if __name__ == "__main__":
@@ -440,98 +448,104 @@ curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
 ```
 
 #### Multi-Model Prediction
-```python
-async def basic_dna_analysis(sequence):
-    async with sse_client("http://localhost:8000/sse") as (read, write):
-        # 1. Check available models
-        models = await read.call_tool("_list_loaded_models", {})
-        print(f"Available models: {models}")
-
-        # 2. Single model prediction
-        result = await read.call_tool(
-            "_dna_sequence_predict",
-            {"sequence": sequence, "model_name": "promoter_model"},
-        )
-        print(f"Promoter prediction: {result}")
-
-        # 3. Multi-model analysis
-        multi_result = await read.call_tool("_dna_multi_model_predict", {"sequence": sequence})
-        print(f"Multi-model analysis: {multi_result}")
-
-        return multi_result
+```bash
+curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_multi_model_predict", "arguments": {"sequence": "ATCGATCGATCG", "model_names": ["promoter_model", "conservation_model"]}}}'
 ```
 
 ### 2. Batch Processing Workflow
 
 ```python
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+
 async def batch_dna_analysis(sequences):
     async with sse_client("http://localhost:8000/sse") as (read, write):
-        # Process sequences in batches
-        batch_size = 10
-        results = []
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-        for i in range(0, len(sequences), batch_size):
-            batch = sequences[i : i + batch_size]
+            # Process sequences in batches
+            batch_size = 10
+            results = []
 
-            # Use streaming for progress updates
-            result = await read.call_tool(
-                "_dna_stream_batch_predict",
-                {
-                    "sequences": batch,
-                    "model_name": "promoter_model",
-                    "stream_progress": True,
-                },
-            )
-            results.extend(result.get("results", []))
+            for i in range(0, len(sequences), batch_size):
+                batch = sequences[i : i + batch_size]
 
-        return results
+                # Use streaming for progress updates
+                result = await session.call_tool(
+                    "_dna_stream_batch_predict",
+                    {
+                        "sequences": batch,
+                        "model_name": "promoter_model",
+                        "stream_progress": True,
+                    },
+                )
+                results.extend(result.get("results", []))
+
+            return results
 ```
 
 ### 3. Real-time Analysis with Progress
 
 ```python
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+
 async def real_time_analysis(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
-        # Use streaming prediction for real-time updates
-        result = await read.call_tool(
-            "_dna_stream_predict",
-            {
-                "sequence": sequence,
-                "model_name": "promoter_model",
-                "stream_progress": True,
-            },
-        )
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-        # Process streaming results
-        if result.get("streamed"):
-            print("Prediction completed with progress updates")
+            # Use streaming prediction for real-time updates
+            result = await session.call_tool(
+                "_dna_stream_predict",
+                {
+                    "sequence": sequence,
+                    "model_name": "promoter_model",
+                    "stream_progress": True,
+                },
+            )
 
-        return result
+            # Process streaming results
+            if result.get("streamed"):
+                print("Prediction completed with progress updates")
+
+            return result
 ```
 
 ### 4. Model Comparison Workflow
 
 ```python
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+
 async def model_comparison(sequence):
     async with sse_client("http://localhost:8000/sse") as (read, write):
-        # Get all loaded models
-        models = await read.call_tool("_list_loaded_models", {})
-        model_names = list(models["models"].keys())
+        async with ClientSession(read, write) as session:
+            await session.initialize()
 
-        # Compare all models
-        comparison = await read.call_tool(
-            "_dna_multi_model_predict",
-            {"sequence": sequence, "model_names": model_names},
-        )
+            # Get all loaded models
+            models = await session.call_tool("_list_loaded_models", {})
+            model_names = list(models["models"].keys())
 
-        # Analyze per-model results
-        results = comparison.get("results", {})
+            # Compare all models
+            comparison = await session.call_tool(
+                "_dna_multi_model_predict",
+                {"sequence": sequence, "model_names": model_names},
+            )
 
-        print(f"Model comparison for sequence: {sequence}")
-        for model_name, result in results.items():
-            print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
+            # Analyze per-model results
+            results = comparison.get("results", {})
 
-        return comparison
+            print(f"Model comparison for sequence: {sequence}")
+            for model_name, result in results.items():
+                print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
+
+            return comparison
 ```
 
 ## Error Handling
@@ -562,19 +576,26 @@ async def model_comparison(sequence):
 ### Error Handling in Python
 
 ```python
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+
+
 async def safe_prediction(sequence, model_name):
     try:
         async with sse_client("http://localhost:8000/sse") as (read, write):
-            result = await read.call_tool(
-                "_dna_sequence_predict",
-                {"sequence": sequence, "model_name": model_name},
-            )
+            async with ClientSession(read, write) as session:
+                await session.initialize()
 
-            if result.get("isError"):
-                print(f"Prediction error: {result.get('error')}")
-                return None
+                result = await session.call_tool(
+                    "_dna_sequence_predict",
+                    {"sequence": sequence, "model_name": model_name},
+                )
 
-            return result
+                if result.get("isError"):
+                    print(f"Prediction error: {result.get('error')}")
+                    return None
+
+                return result
 
     except Exception as e:
         print(f"Connection error: {e}")
