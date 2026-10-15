@@ -245,7 +245,7 @@ mo.vstack([charts1, charts2], align='center', justify='center')
 
 ## See Also
 
-- [Benchmark Notebook](example/notebooks/benchmark.md) — Static tutorial for benchmarking
-- [Inference Demo](example/marimo/inference/inference_demo.md) — Interactive inference with attention visualization
-- [Benchmark User Guide](user_guide/benchmark/getting_started.md) — Comprehensive benchmark documentation
-- [Benchmark API](api/inference/benchmark.md) — API reference for the Benchmark class
+- [Benchmark Notebook](../../notebooks/benchmark.md) — Static tutorial for benchmarking
+- [Inference Demo](../inference/inference_demo.md) — Interactive inference with attention visualization
+- [Benchmark User Guide](../../../user_guide/benchmark/getting_started.md) — Comprehensive benchmark documentation
+- [Benchmark API](../../../api/inference/benchmark.md) — API reference for the Benchmark class
