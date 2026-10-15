@@ -21,3 +21,32 @@ overview cuda130 sites C1=C2=2 per side; `check_docs_sync` OK (MIRROR-INTACT).
 
 Post-Task-1 residue: `docs/example/` cuda124 mentions remain only in… none — the docs-side
 wrappers are fully cuda130; `example/` carries zero cuda124 strings.
+
+## Task 2 — getting-started surfaces (installation.md default flip + 4 surfaces)
+
+| File (or class) | Verdict | Fix summary |
+|---|---|---|
+| `docs/getting_started/installation.md` — GPU-section lead block (was :119-126) | **FIXED** | cuda130 now leads as "(recommended default — requires torch >= 2.9, NVIDIA driver >= 580)"; the cuda124 install command is replaced by the prose older-GPU lane ("Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the GPU Support Matrix above"). Before: 1 cuda124 install cmd; after: 0. Lane labels intact. |
+| `docs/getting_started/installation.md` — extras table (:262/:265 post-edit) | **FIXED (annotation moved)** | "(recommended)" MOVED from the cuda124 row to the cuda130 row — not a bare string swap. cuda124 row keeps its class description ("Most modern GPUs") minus the label; cuda130 row now reads "NVIDIA (CUDA 13.0, Windows & Linux) — recommended". |
+| `docs/getting_started/installation.md` — scenario blocks :307/:455/:472/:495/:571 (post-shift) | **FIXED** | Scenario 2 `.[all,cuda124]` → `.[all,cuda130]` (+ its "using CUDA 12.4/12.4 support" comments → 13.0); Scenario 6 `.[cuda124,mamba]` → `.[cuda130,mamba]` (resolves: mamba torch>=2.6.0,<2.12 ∩ cuda130 torch>=2.9.0,<2.12); Scenario 7 `.[all,cuda124]` → cuda130; Scenario 8 `.[full,cuda124]` → cuda130; troubleshooting :571 `.[cuda124]` → cuda130 ("# Choose based on actual situation" comment kept). |
+| `docs/getting_started/installation.md` — 5 sanctioned survivors | **KEPT (verify-only)** | :213 index-mechanics prose (`.[cuda124]`–`.[cuda130]` range), :223 uv-lane enumeration (`.[all,cuda124]`), :255 mamba-combination warning example, :268 Turing note (cu121 retirement), :272 hardware+feature-group note. Untouched. |
+| `docs/getting_started/quick_start.md` (:96 block) | **FIXED** | Same lead-flip shape: cuda130 leads as recommended; cuda124 command replaced by the prose older-GPU lane (CUDA 12.4–12.8, pointer to the Installation guide). :328's choose-ONE hardware enumeration kept (Q=1). |
+| `docs/user_guide/getting_started.md` (:67) | **FIXED** | `.[cuda124]` → `.[cuda130]`; comment notes the Turing 20xx CUDA 12.4/12.8 lanes. |
+| `docs/index.md` (:79) | **FIXED** | Example comment `.[all,cuda124]` → `.[all,cuda130]`; :78's choose-ONE enumeration kept (N=1). |
+| `docs/user_guide/tutorial/end_to_end_workflow.md` (:983) | **FIXED** | Dockerfile RUN line `.[full,cuda124] --system` → `.[full,cuda130] --system`. |
+| `docs/getting_started/gpu_support.md` | **VERIFY-ONLY, UNTOUCHED** | cuda124 count = 4 (Turing row `cuda124`–`cuda128` intact, Ampere row `cpu`,`cuda124`–`cuda130`, driver chooser). No edit made — the Turing exception survives the re-point. |
+
+Task 2 verify (grep-verified): installation cuda124-total I=6 (5 sanctioned survivors + the
+label-stripped extras-table row; band 1..6), cuda130-total T=14 (≥13), cuda124 install-cmds
+IC=0 (≤1), recommended-on-cuda124 R=0, gpu_support G=4, quick_start Q=1, ug-getting_started
+U=0, tutorial W=0, index N=1, lane labels L=29, census `216/217 tests collected (1 deselected)`
+→ CENSUS-STABLE.
+
+**Plan-literal reconciliation (documented):** the plan's action (1) parenthetical marked
+:457's `.[cuda124,mamba]` "sanctioned survivor, keep", but its own count arithmetic
+overrides that: the 5 listed survivors + the kept table row already total 6 — the band's
+exact ceiling — so keeping :457 would land I=7 outside the verify band. Flipped :457 to
+`.[cuda130,mamba]` (the action clause's main list ":309, :457, :474, :497, :573 switch
+their generic default" includes it; three "exactly 5 sanctioned survivors" statements +
+the verification section agree). IC=0 lands under the ≤1 bound; the mamba-combination
+example class survives at :255 (warning) and README :177.

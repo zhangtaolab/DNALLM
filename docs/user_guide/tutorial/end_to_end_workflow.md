@@ -980,7 +980,7 @@ COPY README.md ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir uv && \
-    uv pip install -e '.[full,cuda124]' --system
+    uv pip install -e '.[full,cuda130]' --system
 
 # Copy application code
 COPY dnallm/ ./dnallm/

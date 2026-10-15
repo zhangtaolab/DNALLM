@@ -76,7 +76,7 @@ uv pip install -e '.[all]'
 # uv pip install -e '.[full]'
 
 # Add GPU support (choose ONE: cpu, cuda124, cuda126, cuda128, cuda130)
-# uv pip install -e '.[all,cuda124]'
+# uv pip install -e '.[all,cuda130]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"

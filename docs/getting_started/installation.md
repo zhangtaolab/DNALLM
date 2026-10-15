@@ -116,12 +116,10 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
-# CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[cuda124]'
-
-# CUDA 13.0 (requires torch >= 2.9, NVIDIA driver >= 580)
+# CUDA 13.0 (recommended default — requires torch >= 2.9, NVIDIA driver >= 580)
 uv pip install -e '.[cuda130]'
 
+# Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the GPU Support Matrix above
 # Other supported versions: cpu, cuda126, cuda128
 ```
 
@@ -261,10 +259,10 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|
 | **cpu** | 2.4.0-2.12 | CPU only | Development without GPU |
-| **cuda124** | 2.4.0-2.12 | NVIDIA (recommended) | Most modern GPUs |
+| **cuda124** | 2.4.0-2.12 | NVIDIA | Most modern GPUs |
 | **cuda126** | 2.6.0-2.12 | NVIDIA (latest) | Ada/Hopper with Flash Attention |
 | **cuda128** | 2.6.0-2.12 | NVIDIA (cutting-edge) | RTX 5090 and latest hardware |
-| **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) | Newest driver / RTX 50-series, Windows with driver >= 580 |
+| **cuda130** | 2.9.0-2.12 | NVIDIA (CUDA 13.0, Windows & Linux) — recommended | Newest driver / RTX 50-series, Windows with driver >= 580 |
 | **mamba** | 2.6.0-2.12 | NVIDIA + Mamba | Native Mamba architecture (requires CUDA) |
 
 > **Note:** the cu121 lane was retired in v1.3. The `https://download.pytorch.org/whl/cu121` wheel index is FROZEN at torch 2.5.1 (re-verified 2026-10-14) — the retired extra's torch spec (`>=2.2.0,<2.12`) could never resolve past 2.5.1 on its own index, a dead lane under the core `torch>=2.4.0,<2.12` floor. Turing (20xx) GPUs are served by `cuda124`–`cuda128`.
@@ -301,12 +299,12 @@ For GPU-accelerated training and inference:
 # Determine CUDA version
 nvidia-smi
 
-# Create environment (using CUDA 12.4 as example)
+# Create environment (using CUDA 13.0 as example)
 conda create -n dnallm-gpu python=3.13 uv -y
 conda activate dnallm-gpu
 
-# Install all dependencies and CUDA 12.4 support
-uv pip install -e '.[all,cuda124]'
+# Install all dependencies and CUDA 13.0 support
+uv pip install -e '.[all,cuda130]'
 
 # Verify installation
 python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
@@ -454,7 +452,7 @@ conda activate dnallm-mamba
 uv pip install -e '.[full]'
 
 # Install Mamba support (requires GPU)
-uv pip install -e '.[cuda124,mamba]' --no-cache-dir --no-build-isolation
+uv pip install -e '.[cuda130,mamba]' --no-cache-dir --no-build-isolation
 
 # Verify installation
 python -c "from mambapy.mamba import Mamba; print('Mamba installed successfully!')"
@@ -471,7 +469,7 @@ conda create -n dnallm-dev python=3.13 -y
 conda activate dnallm-dev
 
 # Install all dependencies + CUDA support
-uv pip install -e '.[all,cuda124]'
+uv pip install -e '.[all,cuda130]'
 
 # Verify installation
 python -c "
@@ -494,7 +492,7 @@ conda create -n dnallm-mcp python=3.13 -y
 conda activate dnallm-mcp
 
 # MCP dependencies are included in core, just install with CUDA support
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 
 # Verify installation
 python -c 'from dnallm.mcp import server; print("MCP server dependencies installed!")'
@@ -570,7 +568,7 @@ nvcc --version
 uv pip uninstall torch torchvision torchaudio
 
 # 3. Reinstall matching version
-uv pip install -e '.[cuda124]'  # Choose based on actual situation
+uv pip install -e '.[cuda130]'  # Choose based on actual situation
 ```
 
 ### GPU Present but `torch.cuda.is_available()` Returns False

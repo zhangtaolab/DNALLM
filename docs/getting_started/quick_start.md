@@ -92,12 +92,10 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
-# CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[cuda124]'
-
-# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+# CUDA 13.0 (recommended — torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
 uv pip install -e '.[cuda130]'
 
+# Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the Installation guide
 # Other supported versions: cpu, cuda126, cuda128
 ```
 
