@@ -4,18 +4,18 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: "Completed 19-02-PLAN.md (cuda130 default re-point: ~30 sites, Turing survivor intact, battery green)"
-last_updated: "2026-10-15T01:13:18.623Z"
+stopped_at: "Completed 19-03-PLAN.md (user_guide heavy half: 18 files reviewed, 11 fixed in-pass, battery green)"
+last_updated: "2026-10-15T01:39:59.036Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 313579e1b40362aa06ef891af7bbc951d101e14f
+state_head: d2124ecf940b550ed78eb2dced37fc0de3a638e1
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 16
+  completed_plans: 17
   percent: 57
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 19 (Docs Accuracy Sweep & Milestone Closeout) — READY TO EXECUTE
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 7
 Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
 Last activity: 2026-10-14 — 17-01 complete, next is 17-02
@@ -63,6 +63,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 18 P02 | 24 min | 3 tasks | 6 files |
 | Phase 19 P01 | 9 min | 2 tasks | 7 files |
 | Phase 19 P02 | 20 min | 3 tasks | 31 files |
+| Phase 19 P03 | 21 min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 18]: [18-01] Pip-side alias full-closure resolve deferred (unrun-verify, WINDOWS ledger): pip urllib3 stalls against this box's network (5 attempts) while uv/gh/curl fine; mechanism probe-proven (pip 26.2.1) + METADATA alias line + guard + uv parity carry the evidence — box-network artifact, not repo defect; fix-attempt limit reached; exact re-run command recorded
 - [Phase 19]: 19-01 strict-clean: 15 mkdocs warnings to zero via hand-edited page-relative See-Also tails + GitHub-URL precedent for the docs escape; anchors always confirmed against built-site id= (mkdocs slugify drops em-dashes); ledger rows same-commit as fixes
 - [Phase 19]: :457 (Scenario 6 mamba combo) flipped to .[cuda130,mamba] — plan's count arithmetic (5 survivors + kept table row = band ceiling 6) overrode its 'keep' parenthetical; older-GPU lanes demoted to spaced 'CUDA 12.4-12.8' prose + matrix pointer where install-cmd gates forbid literal cuda124 commands
+- [Phase 19]: [19-03] Model-name lock-alignment standard: docs examples citing models with no in-repo evidence (lgq12697/* modelscope ids) re-pointed to the lock-pinned/executed artifacts (kuleshov-group/PlantCAD2 + plantcad adapter, arcinstitute/evo2_1b_base, benchmark_config.yaml trio); names with no lock row and no contradiction left alone
+- [Phase 19]: [19-03] train()/evaluate() metric contract enforced in docs: DNATrainer.train() returns HF train-loop metrics only; eval_* keys come exclusively from evaluate() — tutorial Task 2/3 prints fixed accordingly (eval_hamming_loss never existed)
 
 ### Pending Todos
 
@@ -141,8 +144,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T01:13:04.768Z
-Stopped at: Completed 19-02-PLAN.md (cuda130 default re-point: ~30 sites, Turing survivor intact, battery green)
+Last session: 2026-10-15T01:39:40.510Z
+Stopped at: Completed 19-03-PLAN.md (user_guide heavy half: 18 files reviewed, 11 fixed in-pass, battery green)
 Resume file: None
 
 ## Operator Next Steps
