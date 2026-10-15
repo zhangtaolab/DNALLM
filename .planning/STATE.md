@@ -6,8 +6,8 @@ current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
 current_plan: 7
 status: executing
-stopped_at: "19-07 external_job_waiting: nightly trio 38695301631 in flight (redispatch after repo-caused Stage 0 red fixed in bdf6ba3) - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY"
-last_updated: "2026-10-15T07:00:00.000Z"
+stopped_at: "19-07 complete - closeout battery green (push matrix 38677302395 + smoke 38678155010 + nightly trio 38695301631 all green); phase 19 ready for verification"
+last_updated: "2026-10-15T15:15:00.000Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
 state_head: 060a58364a0744923b26fd5b52da99b30bb49f2e
@@ -15,7 +15,7 @@ progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
   percent: 57
 ---
 
@@ -30,11 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: 19 (Docs Accuracy Sweep & Milestone Closeout) — READY TO EXECUTE
-Current Plan: 7
-Total Plans in Phase: 7
-Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
-Last activity: 2026-10-14 — 17-01 complete, next is 17-02
+Phase: 19 (Docs Accuracy Sweep & Milestone Closeout) — ALL 7 PLANS COMPLETE
+Current Plan: 7 of 7 (19-07 complete)
+Status: 19-07 closeout battery green — nightly trio 38695301631 all three legs green under interpreter-pinned labels (repo-caused Stage 0 red of 38678158479 fixed in bdf6ba3); PKGH-05/DOCR-01/DOCR-02/DOCR-03 marked complete; next: phase 19 verification
+Last activity: 2026-10-15 — 19-07 reconciled, phase 19 execution complete
 
 Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 
@@ -67,6 +66,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 19 P04 | 27 min | 3 tasks | 18 files |
 | Phase 19 P05 | 23 min | 3 tasks | 18 files |
 | Phase 19 P06 | 22 min | 3 tasks | 9 files |
+| Phase 19 P07 | 260 min active (~34h wall incl. nightly runs 38678158479 + 38695301631) | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -114,6 +114,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 19]: :255 Scenario-6 pointer flipped to .[cuda130,mamba] (19-06): the pointer example must name the combination the scenario demonstrates — 19-02's survivor sanction was for its own count gates; this batch owns post-re-point coherence
 - [Phase 19]: Vacuous-verification pattern (19-06): mamba verify commands tested mambapy (core) — a check that passes in every env proves nothing about the extra; both now import mamba-ssm, the extra's member
 - [Phase 19]: Retired-extras vocabulary swept from wrapper prose (19-06): 'base/inference/benchmark extras' phrasing named extras that do not exist while the commands show .[full,cuda130] — prose may only name extras on the final surface
+- [Phase 19]: [19-07] Nightly interpreter honesty (fix bdf6ba3, run 38678158479 repo-caused red): self-hosted nightly venvs pinned to setup-python's exact toolcache interpreter (`uv venv --python "$pythonLocation/bin/python"`) + mamba wheelhouse cache key py-tagged — closes the unpinned-uv-venv drift class (uv-managed 3.11 since 10-07, 3.13 since 10-14 silently replaced the labeled 3.12/3.11); disclosure recorded in 19-EVIDENCE.md; re-dispatched trio 38695301631 all green
 
 ### Pending Todos
 
@@ -154,8 +155,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T07:00:00.000Z
-Stopped at: 19-07 external_job_waiting: nightly trio 38695301631 in flight (redispatch after repo-caused Stage 0 red fixed in bdf6ba3; prior run 38678158479 terminal record in 19-EVIDENCE.md) - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY
+Last session: 2026-10-15T15:15:00.000Z
+Stopped at: 19-07 complete — closeout battery green (nightly trio 38695301631 all green after the bdf6ba3 interpreter-pin fix); phase 19 all 7 plans complete, ready for verification → transition → milestone lifecycle
 Resume file: .planning/async-jobs/19-07-nightly.json
 
 ## Operator Next Steps

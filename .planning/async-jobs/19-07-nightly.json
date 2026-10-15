@@ -11,11 +11,15 @@
   "head_sha": "bdf6ba3",
   "dispatched_at": "2026-10-15T06:54:46Z",
   "dispatched_by": "orchestrator (19-07 repo-caused-red fix cycle)",
-  "status": "external_job_waiting",
+  "status": "concluded",
   "expected_jobs": ["test-mamba", "example-nightly", "coverage-nightly"],
-  "expected_wall": "~8h serial on the single dnallm-nightly runner; the first pinned run adds the ~23-24 min wheelhouse rebuild in example-nightly Stage 0",
   "red_classification_rule": "A.5 classify-before-retry: repo-caused = blocker/fix; rice.uga.edu input-download class = owner-accepted caveat (phase-14 H.4 precedent); infra reds = cancel-and-re dispatch of owned runs only",
-  "reconciliation": "When run 38695301631 reaches a terminal state, update the nightly table in 19-EVIDENCE.md 'Closeout battery' section and 19-07-SUMMARY.md with per-job conclusions + dispositions, then flip this manifest to terminal (status: concluded, conclusions: {...}). Per 16-04 precedent (async-jobs/16-04-sc4-nightly.json).",
+  "conclusions": {
+    "run": "success (concluded 2026-10-15T15:09:43Z)",
+    "test-mamba": "success (09:59:03→10:08:52)",
+    "example-nightly": "success (06:54:50→09:59:00; Stage 0 wheelhouse rebuilt under the pinned 3.12 and saved under the py-tagged key, entry 8986514177)",
+    "coverage-nightly": "success (10:49:19→15:09:43, 4h20m; full slow suite green)"
+  },
   "prior_runs": [
     {
       "run_id": 38678158479,
@@ -28,6 +32,5 @@
       "fix_commit": "bdf6ba3",
       "cache_entry_deleted": 8913155507
     }
-  ],
-  "conclusions": null
+  ]
 }

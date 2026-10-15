@@ -24,7 +24,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [x] **PKGH-02**: The cuda121 extra is retired — extra, uv index/sources/conflicts entries, and docs references removed in one atomic change (index frozen at torch 2.5.1, dead lane under the `torch>=2.4,<2.12` floor)
 - [x] **PKGH-03**: The rocm disposition is executed on verified facts (research-recommended: remove — no rocm wheel exists for torch>=2.10; restore path documented if removed)
 - [x] **PKGH-04**: Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build)
-- [ ] **PKGH-05**: cuda130 is the recommended default install across all surfaces (overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + docs + examples)
+- [x] **PKGH-05**: cuda130 is the recommended default install across all surfaces (overview.md's 3 stale `.[base,notebook,cuda124]`-class mentions + docs + examples)
 - [x] **PKGH-06**: The GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only stated explicitly with the minimum-GPU-line; 20xx→cu128; 30/40xx all extras; 50xx cu128+; optional driver-based chooser note)
 - [x] **PKGH-07**: A cross-installer honesty matrix page is published — command × installer → what you actually get
 - [x] **PKGH-08**: mypy is capped (research: `>=1.15.0,<2.5`) so CI cannot resolve an unvalidated stricter version
@@ -50,9 +50,9 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 
 ### Docs Accuracy Review (DOCR)
 
-- [ ] **DOCR-01**: Every file under docs/ and example/ is reviewed per-file for accuracy vs current code and post-numpy2/py311 staleness, with fixes in the same pass (beyond the automated sync/masking gates)
-- [ ] **DOCR-02**: Install commands are re-verified against the final extras surface — the sweep lands after the packaging phase so reviewed docs describe the final state
-- [ ] **DOCR-03**: `mkdocs --strict` builds with zero warnings (the 15 ledgered pre-existing warnings cleared; nav/mirror interplay respected)
+- [x] **DOCR-01**: Every file under docs/ and example/ is reviewed per-file for accuracy vs current code and post-numpy2/py311 staleness, with fixes in the same pass (beyond the automated sync/masking gates)
+- [x] **DOCR-02**: Install commands are re-verified against the final extras surface — the sweep lands after the packaging phase so reviewed docs describe the final state
+- [x] **DOCR-03**: `mkdocs --strict` builds with zero warnings (the 15 ledgered pre-existing warnings cleared; nav/mirror interplay respected)
 
 ## Future Requirements (post-v1.3)
 
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKGH-02 | Phase 18 | Complete |
 | PKGH-03 | Phase 18 | Complete |
 | PKGH-04 | Phase 18 | Complete |
-| PKGH-05 | Phase 19 | Pending |
+| PKGH-05 | Phase 19 | Complete |
 | PKGH-06 | Phase 18 | Complete |
 | PKGH-07 | Phase 18 | Complete |
 | PKGH-08 | Phase 17 | Complete |
@@ -113,9 +113,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OLLM-03 | Phase 13 | Complete |
 | GAPC-01 | Phase 14 | Complete |
 | GAPC-02 | Phase 14 | Complete |
-| DOCR-01 | Phase 19 | Pending |
-| DOCR-02 | Phase 19 | Pending |
-| DOCR-03 | Phase 19 | Pending |
+| DOCR-01 | Phase 19 | Complete |
+| DOCR-02 | Phase 19 | Complete |
+| DOCR-03 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 29 total
