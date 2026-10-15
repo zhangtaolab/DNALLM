@@ -338,7 +338,11 @@ jobs:
         # torch/triton (no backend extras). Same extras set coverage-nightly
         # installs; it proves they resolve green on this exact box.
         run: |
-          uv venv
+          # run 38678158479: unpinned `uv venv` prefers uv-managed
+          # interpreters, so the newest one installed on this persistent box
+          # silently replaced setup-python's 3.11. Pin to the exact
+          # toolcache interpreter the job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
           # 37184990854): see the example-nightly stage-0 comment — sysconfig
           # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
@@ -529,7 +533,11 @@ jobs:
           UV_HTTP_TIMEOUT: 300
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
-          uv venv
+          # run 38678158479: unpinned `uv venv` prefers uv-managed
+          # interpreters, so the newest one installed on this persistent box
+          # silently replaced setup-python's 3.12. Pin to the exact
+          # toolcache interpreter the job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
           # 37184990854): see the example-nightly stage-0 comment — sysconfig
           # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
@@ -729,7 +737,15 @@ jobs:
           UV_HTTP_TIMEOUT: 300
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
-          uv venv
+          # run 38678158479 (repo-caused red, root cause): an unpinned
+          # `uv venv` prefers uv-managed interpreters, so the newest one
+          # installed on this persistent box (cpython-3.13.16, picked up
+          # 2026-10-14 mid-cycle) silently replaced setup-python's 3.12 —
+          # Stage 0 then restored the cp311 wheelhouse saved earlier by the
+          # py3.11-discovered venv (run 38400225941) and died in 15ms on the
+          # wheel-tag mismatch. Pin to the exact toolcache interpreter the
+          # job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig (pulled by pygenometracks in the notebook extra since
           # 261004-dyw) builds from sdist on aarch64 — no arm64 wheels —
           # and its extension links -lpython against the LIBDIR the
@@ -786,9 +802,14 @@ jobs:
 
       - name: "Stage 0: capture wheel-cache key versions"
         id: wheelkeys
+        # The py tag is load-bearing (run 38678158479): the wheelhouse cache
+        # keyed only on arch+torch, so a wheelhouse built under one venv
+        # python restored into another and Stage 0 failed on the wheel-tag
+        # mismatch with nothing in the key explaining it.
         run: |
           {
             echo "torch=$(.venv/bin/python -c 'import torch; print(torch.__version__)')"
+            echo "py=$(.venv/bin/python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')"
           } >> "$GITHUB_OUTPUT"
 
       # D-04 (owner directive 2026-10-05): evo/giants exited the pytest
@@ -802,7 +823,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: wheelhouse-mamba
-          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.torch }}
+          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-${{ steps.wheelkeys.outputs.py }}-torch${{ steps.wheelkeys.outputs.torch }}
 
       - name: "Stage 0: build/install mamba kernels (cached wheelhouse, project venv)"
         # Cached-wheelhouse variant of the test-mamba install flags
