@@ -252,7 +252,7 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 ### Hardware-Specific Groups
 
-> **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda124,mamba]`, see Scenario 6).
+> **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda130,mamba]`, see Scenario 6).
 
 > **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
 
@@ -454,8 +454,9 @@ uv pip install -e '.[full]'
 # Install Mamba support (requires GPU)
 uv pip install -e '.[cuda130,mamba]' --no-cache-dir --no-build-isolation
 
-# Verify installation
-python -c "from mambapy.mamba import Mamba; print('Mamba installed successfully!')"
+# Verify installation (mamba_ssm is the extra's package; the pure-PyTorch
+# mambapy is a core dependency and imports in every DNALLM environment)
+python -c "from mamba_ssm import Mamba; print('Mamba installed successfully!')"
 ```
 
 ### Scenario 7: Complete Development Environment
@@ -533,7 +534,7 @@ if torch.cuda.is_available():
 # Verify Mamba (if installed)
 python -c "
 try:
-    from mambapy.mamba import Mamba
+    from mamba_ssm import Mamba
     print('Mamba: Available')
 except ImportError:
     print('Mamba: Not installed')
@@ -610,7 +611,7 @@ pip install --force-reinstall 'torch==2.11.0' \
 ```
 
 or install the exact runtime pins listed in the installed torch wheel's
-`METADATA` (`<env>/Lib/site-packages/torch-2.11.0+xpu.dist-info/META-DATA`),
+`METADATA` (`<env>/Lib/site-packages/torch-2.11.0+xpu.dist-info/METADATA`),
 e.g. `intel-sycl-rt==2025.3.2`, `intel-cmplr-lib-rt==2025.3.2`,
 `intel-openmp==2025.3.2`, `tbb==2022.3.1`, `intel-pti==0.16.0`,
 `onemkl-sycl-*==2025.3.1`, ...
@@ -728,7 +729,7 @@ uv pip install lucagplm
 ```
 
 #### Omni-DNA
-Project address: https://huggingface.co/zehui127/Omni-DNA-20M
+Project address: https://huggingface.co/zehui127/Omni-DNA-116M
 ```bash
 uv pip install ai2-olmo
 ```

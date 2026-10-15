@@ -173,7 +173,7 @@ configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_confi
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # Initialize mutagenesis analyzer
@@ -202,7 +202,7 @@ configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml"
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnabert-BPE"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # Prepare dataset
@@ -289,8 +289,8 @@ DNALLM provides convenient CLI tools:
 # Training
 dnallm-train --config path/to/config.yaml
 
-# Inference
-dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
+# Inference (input data comes from the config's data section)
+dnallm-inference --config path/to/config.yaml
 
 # Model configuration generator
 dnallm-model-config-generator
@@ -323,7 +323,7 @@ DNALLM supports the following task types:
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
   - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
-  - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) — mutually exclusive
+  - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130` — mutually exclusive; `mamba` combines with a CUDA group)
   - Installation scenarios for different use cases
   - Troubleshooting common issues
 
