@@ -905,9 +905,7 @@ health = client.health_check()
 print(f"Server status: {health}")
 
 # Single sequence prediction
-result = client.dna_sequence_predict(
-    "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC", "promoter_model"
-)
+result = client.dna_sequence_predict("ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC", "promoter_model")
 print(f"Prediction result: {result}")
 
 # Batch prediction

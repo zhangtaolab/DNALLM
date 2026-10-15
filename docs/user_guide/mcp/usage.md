@@ -543,7 +543,9 @@ async def model_comparison(sequence):
 
             print(f"Model comparison for sequence: {sequence}")
             for model_name, result in results.items():
-                print(f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})")
+                print(
+                    f"{model_name}: {result['prediction']} (confidence: {result['confidence']:.3f})"
+                )
 
             return comparison
 ```
