@@ -14,7 +14,7 @@ This tutorial demonstrates two specialized models for tRNA analysis: **tRNADetec
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 ## tRNADetector: Binary Classification

@@ -14,7 +14,7 @@ This tutorial demonstrates how to fine-tune causal language models (DNAGPT and m
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 uv pip install pyfastx
 ```
 

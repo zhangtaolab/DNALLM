@@ -14,7 +14,7 @@ This tutorial covers two complementary interpretation techniques: **DeepLIFT att
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 uv pip install logomaker
 ```
 

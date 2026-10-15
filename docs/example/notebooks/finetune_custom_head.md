@@ -14,7 +14,7 @@ This tutorial shows how to fine-tune with a custom classification head. You will
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 The megaDNA half (Part 2) additionally needs the FEASIBILITY-locked prerequisites: the

@@ -15,7 +15,7 @@ This interactive demo shows how to benchmark multiple DNA large language models 
 Install DNALLM with the inference and benchmark extras:
 
 ```bash
-uv pip install -e '.[full,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 Then launch the demo:
