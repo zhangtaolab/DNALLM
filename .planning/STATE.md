@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
-current_phase: 18
+current_phase: 20
 current_plan: Not started
-status: completed
-stopped_at: Phase 18 complete — all phases complete
-last_updated: "2026-10-15T15:44:41.190Z"
+status: planning
+stopped_at: Milestone audit tech_debt (27/29 satisfied) — owner chose option B: phase 20 tech-debt closeout added (CLI flag-only crash + residual docs mentions); owner human-gates #25/#27/#26 stay in WINDOWS ledger
+last_updated: "2026-10-15T16:30:00.000Z"
 last_activity: 2026-10-15
-last_activity_desc: Phase 18 complete
+last_activity_desc: Phase 20 added post-audit (option B)
 state_head: 6b397d1fdc96e943b72443eeee29f4269d538757
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 7
   total_plans: 21
   completed_plans: 21
-  percent: 100
+  percent: 88
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 17 — Publish Chain Robustness
+**Current focus:** Phase 20 — Tech-debt closeout (post-audit option B)
 
 ## Current Position
 
-Phase: 18
+Phase: 20 (Tech-debt closeout: CLI flag-only crash + residual docs mentions)
 Current Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-15 — Phase 18 complete
+Status: Awaiting context gathering + planning
+Last activity: 2026-10-15 — v1.3 audit complete (tech_debt, 27/29); phase 20 added by owner decision
 
-Progress: [██████████] 100% (0/7 v1.3 phases)
+Progress: [████████░░] 88% (7/8 v1.3 phases)
 
 ## Performance Metrics
 

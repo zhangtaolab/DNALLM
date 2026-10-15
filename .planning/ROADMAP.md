@@ -235,3 +235,13 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 17. Publish Chain Robustness | 3/3 | Complete    | 2026-10-15 |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 3/3 | Complete    | 2026-10-15 |
 | 19. Docs Accuracy Sweep & Milestone Closeout | 7/7 | Complete    | 2026-10-15 |
+
+### Phase 20: Tech-debt closeout: CLI flag-only crash + residual docs mentions
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 19
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 20 to break down)
