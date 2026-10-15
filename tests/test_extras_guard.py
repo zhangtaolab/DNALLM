@@ -318,7 +318,11 @@ class TestExtrasSurgeryResidueGates:
                     continue  # binary / unreadable artifacts are out of scope
                 for line in text.splitlines():
                     if regex.search(line):
-                        hits.add((str(path.relative_to(REPO_ROOT)), line))
+                        # as_posix: the sanctioned frozensets store forward-slash
+                        # relative paths; str(Path) on Windows yields backslashes,
+                        # which unsanctioned every subdirectory row on the Windows
+                        # leg (first exposed 2026-10-15, run 38676354432).
+                        hits.add((path.relative_to(REPO_ROOT).as_posix(), line))
         return hits
 
     def test_base_bracket_residue_equals_sanctioned_list(self) -> None:
