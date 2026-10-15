@@ -50,3 +50,31 @@ exact ceiling — so keeping :457 would land I=7 outside the verify band. Flippe
 their generic default" includes it; three "exactly 5 sanctioned survivors" statements +
 the verification section agree). IC=0 lands under the ≤1 bound; the mamba-combination
 example class survives at :255 (warning) and README :177.
+
+## Task 3 — README + full gate battery
+
+| File (or class) | Verdict | Fix summary |
+|---|---|---|
+| `README.md` install block (:166-172) | **FIXED** | Recommended default is now `uv pip install -e '.[all,cuda130]'` (CUDA 13.0 leads). Stale 5090 line "cuda128 & torch==2.7" DELETED, replaced by the 18-02 GPU-matrix guidance ("driver < 580: cuda128; driver >= 580: cuda130 works"). cuda124 appears only as the spaced "CUDA 12.4–12.8 lanes" prose older-GPU mention with the matrix pointer — no literal cuda124 install command (RC=0). "Other supported versions" enumeration stays verbatim (cpu, cuda126, cuda128, cuda130). |
+| `README.md` extras table (:201/:204) | **FIXED (annotation moved)** | "(recommended)" MOVED from the cuda124 row to the cuda130 row; cuda124 row keeps "Most modern GPUs" minus the label. |
+| `README.md` examples (:211) | **FIXED** | `.[all,cuda124]` → `.[all,cuda130]` ("Everything + CUDA 13.0" comment). |
+| `README.md` test counts (:30/:558/:580) | **FIXED (honest)** | Three stale "1,900+" / "~1,900" claims replaced by the 2556-passed fast-lane baseline (18-02-SUMMARY D4): "2,500+ test cases" ×2 (:30, :558) and "fast lane (2,556 tests)" (:580). |
+| `README.md` 3 sanctioned survivors | **KEPT** | :176 hardware-group Warning (enumeration + `.[cuda124,mamba]` combination example, one line), :180 GPU-matrix pointer prose ("Turing 20xx → cuda124–cuda128"), :201 extras-table cuda124 row (label-stripped). R=3 exactly. |
+
+Task 3 gate battery (all green, 2026-10-15):
+- README greps: stale-counts A=0, recommended-on-cuda124 B=0, stale-5090 S=0,
+  cuda124-total R=3 (≤3), cuda130 T=6 (≥6), cuda124-install-cmds RC=0
+- Extras residue gate: `pytest tests/test_extras_guard.py -q --no-cov` → **11 passed**
+- Sync gates: `check_docs_sync.py` OK; `check_notebook_md_sync.py` 24 pairs in sync
+- Fast lane: `pytest -m 'not slow' --no-cov -q` → **2556 passed, 1 skipped, 75 deselected**
+  (exit 0 — exactly the 18-02 D4 baseline, unchanged)
+- Census (verified Task 2, still binding — README/docs edits cannot move collection):
+  `216/217 tests collected (1 deselected)` → CENSUS-STABLE
+- Strict build: `PATH=/tmp/mkdocs-venv19/bin:$PATH mkdocs build --strict` → **exit 0,
+  0 WARNING lines** (19-01's zero-warning state survived this plan's edits) → BATTERY-GREEN
+
+**Task 3 execution note:** the first block rewrite dropped `cuda130` from the "Other
+supported versions" enumeration, landing T=4 (< the ≥6 gate). Restored the enumeration
+verbatim per the plan's "the 'Other supported versions' enumeration stays" and carried
+the driver>=580/cuda130 fact on the 5090 line — T=6, gates green. Fixed before commit;
+no plan deviation (the plan's own T≥6 arithmetic exposed it).

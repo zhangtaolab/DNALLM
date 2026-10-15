@@ -27,7 +27,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
-- **🧪 Comprehensive Testing**: 1,900+ test cases covering all major functionality
+- **🧪 Comprehensive Testing**: 2,500+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
@@ -163,15 +163,14 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
-# CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[all,cuda124]'
+# CUDA 13.0 (recommended default — torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+uv pip install -e '.[all,cuda130]'
 
-# Other supported versions: cpu, cuda126, cuda128, cuda130
-# Nvidia 5090 Please use cuda128 & torch==2.7
+# Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the GPU Support Matrix below
+# Nvidia 5090 with driver < 580: use the cuda128 lane; with driver >= 580 the cuda130 lane works
 uv pip install -e '.[all,cuda128]'
 
-# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
-uv pip install -e '.[all,cuda130]'
+# Other supported versions: cpu, cuda126, cuda128, cuda130
 ```
 
 > **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
@@ -199,17 +198,17 @@ uv pip install -e '.[all,cuda130]'
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
 | `cpu` | 2.4.0-2.11 | No GPU |
-| `cuda124` | 2.4.0-2.11 | Most modern GPUs (recommended) |
+| `cuda124` | 2.4.0-2.11 | Most modern GPUs |
 | `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
 | `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) |
+| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
 | `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
 
 Retired in v1.3: the cu121 lane (index frozen at torch 2.5.1) and the ROCm extra (never execution-tested on AMD hardware — see the [Installation Guide](docs/getting_started/installation.md) for the manual AMD restore path).
 
 ```bash
 # Examples:
-uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
+uv pip install -e '.[all,cuda130]'    # Everything + CUDA 13.0
 uv pip install -e '.[full,mamba]'    # Dev tools + native Mamba
 uv pip install -e '.[test,cpu]'       # Testing only, no GPU (add ,mcp for the MCP example tests)
 ```
@@ -555,7 +554,7 @@ Within-convention comparables from the literature (compare only within paradigm 
 
 ## 🧪 Testing
 
-DNALLM-Suite includes a comprehensive test suite with 1,900+ test cases:
+DNALLM-Suite includes a comprehensive test suite with 2,500+ test cases:
 
 ```bash
 # Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
@@ -577,7 +576,7 @@ uv run pytest tests/tasks/ -v
 uv run pytest --cov=dnallm --cov-report=html
 ```
 
-CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
+CI runs the fast lane (2,556 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 
