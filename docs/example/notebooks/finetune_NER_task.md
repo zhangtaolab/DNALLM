@@ -13,7 +13,7 @@ This tutorial demonstrates how to fine-tune a DNA large language model for Named
 
 ## Prerequisites
 
-Install DNALLM with the base extras:
+Install DNALLM with the full extras:
 
 ```bash
 uv pip install -e '.[full,cuda130]'

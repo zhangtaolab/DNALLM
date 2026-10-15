@@ -13,7 +13,7 @@ This tutorial demonstrates how to fine-tune a DNA large language model for binar
 
 ## Prerequisites
 
-Install DNALLM with the base extras:
+Install DNALLM with the full extras:
 
 ```bash
 uv pip install -e '.[full,cuda130]'
@@ -86,7 +86,7 @@ metrics = trainer.train()
 print(metrics)
 ```
 
-After training, a dictionary of evaluation metrics (validation loss and accuracy) is returned.
+After training, a dictionary of training-loop metrics (train loss, runtime, learning-rate stats) is returned; evaluation metrics come from `evaluate()`.
 
 ## Run Inference
 

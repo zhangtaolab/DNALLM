@@ -12,7 +12,7 @@ This interactive demo shows how to run inference with pre-trained DNA large lang
 
 ## Prerequisites
 
-Install DNALLM with the inference extras:
+Install DNALLM with the full extras:
 
 ```bash
 uv pip install -e '.[full,cuda130]'
