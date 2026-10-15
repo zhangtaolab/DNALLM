@@ -38,3 +38,12 @@ WARNING -  Doc file 'user_guide/benchmark/advanced_techniques.md' contains a lin
 | `docs/example/marimo/finetune/finetune_demo.md` | **FIXED (warnings 5-9)** | See-Also tail hand-edited to page-relative: `../../notebooks/{finetune_binary,finetune_multi_labels,lora_finetune}.md`, `../../../user_guide/fine_tuning/getting_started.md`, `../../../api/finetune/trainer.md` — all 5 warnings cleared |
 | `docs/example/marimo/inference/inference_demo.md` | **FIXED (warnings 10-14)** | See-Also tail hand-edited page-relative + warning 14's rotten target re-pointed: `api/inference/visualization.md` → `../../../user_guide/inference/visualization.md` (`docs/api/inference/` contains no visualization page; the real page is user_guide) — all 5 warnings cleared |
 | `docs/user_guide/benchmark/advanced_techniques.md` | **FIXED (warning 15)** | docs-dir escape substituted with the in-repo GitHub-URL precedent: `[CONTRIBUTING.md](../../../CONTRIBUTING.md)` → `https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md` (same form as continuous_integration.md's workflows-README link); root-absolute `/CONTRIBUTING.md` deliberately NOT used |
+
+## Per-file rows (Task 2 — Class-4 broken anchors)
+
+Slug source: `grep -o 'id="two-install-lanes[^"]*"' site/getting_started/installation/index.html` → `two-install-lanes-uv-and-pip-the-tooluvsources-asymmetry` (single dash — mkdocs's default slugify DROPS the em-dash in the heading `Two install lanes: uv and pip — the [tool.uv.sources] asymmetry` at installation.md:213; never hand-computed).
+
+| File | Verdict | Fix summary |
+|------|---------|-------------|
+| `docs/getting_started/gpu_support.md` | **FIXED (anchor, 1 char)** | `:24` anchor `pip--the-tooluvsources` → `pip-the-tooluvsources`, slug confirmed against the built site's `id=`; rest of the file byte-untouched (18-02's verified record — verify-only file) |
+| `docs/getting_started/install_honesty.md` | **FIXED (anchor, 1 char)** | `:7` anchor `pip--the-tooluvsources` → `pip-the-tooluvsources`, same built-site confirmation; no other change |

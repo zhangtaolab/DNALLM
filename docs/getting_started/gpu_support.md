@@ -21,7 +21,7 @@ sm_80 / sm_90 / sm_100 / sm_110 / sm_120 — no sm_75, no PTX fallback).
 serves Ampere (30xx) and newer — that is the "cuda130 default = Ampere+"
 boundary. On Windows the default PyPI torch wheel is CPU-only; the CUDA
 extras' index pins are uv-only (see the
-[lane asymmetry note](installation.md#two-install-lanes-uv-and-pip--the-tooluvsources-asymmetry)).
+[lane asymmetry note](installation.md#two-install-lanes-uv-and-pip-the-tooluvsources-asymmetry)).
 
 ## Forward notes
 

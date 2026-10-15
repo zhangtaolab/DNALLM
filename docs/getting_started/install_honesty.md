@@ -4,7 +4,7 @@ What each dnallm install command actually delivers under each installer —
 command × installer → the honest outcome. This page exists because the two
 installers read different parts of `pyproject.toml`: the CUDA wheel-index
 pins live in `[tool.uv.sources]`, which only uv respects (see the
-[lane asymmetry note](installation.md#two-install-lanes-uv-and-pip--the-tooluvsources-asymmetry)).
+[lane asymmetry note](installation.md#two-install-lanes-uv-and-pip-the-tooluvsources-asymmetry)).
 
 ## The matrix
 
