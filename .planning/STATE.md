@@ -4,18 +4,18 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: "Completed 19-01-PLAN.md (strict-clean tracer: 15->0 warnings + 2 anchor fixes)"
-last_updated: "2026-10-15T00:48:07.516Z"
+stopped_at: "Completed 19-02-PLAN.md (cuda130 default re-point: ~30 sites, Turing survivor intact, battery green)"
+last_updated: "2026-10-15T01:13:18.623Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 09f9d911baa2814bc9dc6c1cead9807b3747940f
+state_head: 313579e1b40362aa06ef891af7bbc951d101e14f
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 15
+  completed_plans: 16
   percent: 57
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 19 (Docs Accuracy Sweep & Milestone Closeout) — READY TO EXECUTE
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 7
 Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
 Last activity: 2026-10-14 — 17-01 complete, next is 17-02
@@ -62,6 +62,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 18 P01 | 65 min | 3 tasks | 42 files |
 | Phase 18 P02 | 24 min | 3 tasks | 6 files |
 | Phase 19 P01 | 9 min | 2 tasks | 7 files |
+| Phase 19 P02 | 20 min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 18]: [18-01] Atomic extras surgery landed as ONE commit (399f9f1): base→full rename with one-cycle alias base=[dnallm[full]] (remove v1.4), cuda121 retired (cu121 index frozen torch 2.5.1), rocm removed (rocm7.1 restore path), triton-windows Windows-marker in fla; residue gates hold 2+3 verbatim sanctioned lines; census 216/217 untouched — 18-CONTEXT owner-locked decisions; pickaxe 3-way proof + smoke run 38578071738 publish-skipped/smoke-success
 - [Phase 18]: [18-01] Pip-side alias full-closure resolve deferred (unrun-verify, WINDOWS ledger): pip urllib3 stalls against this box's network (5 attempts) while uv/gh/curl fine; mechanism probe-proven (pip 26.2.1) + METADATA alias line + guard + uv parity carry the evidence — box-network artifact, not repo defect; fix-attempt limit reached; exact re-run command recorded
 - [Phase 19]: 19-01 strict-clean: 15 mkdocs warnings to zero via hand-edited page-relative See-Also tails + GitHub-URL precedent for the docs escape; anchors always confirmed against built-site id= (mkdocs slugify drops em-dashes); ledger rows same-commit as fixes
+- [Phase 19]: :457 (Scenario 6 mamba combo) flipped to .[cuda130,mamba] — plan's count arithmetic (5 survivors + kept table row = band ceiling 6) overrode its 'keep' parenthetical; older-GPU lanes demoted to spaced 'CUDA 12.4-12.8' prose + matrix pointer where install-cmd gates forbid literal cuda124 commands
 
 ### Pending Todos
 
@@ -139,8 +141,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T00:48:07.463Z
-Stopped at: Completed 19-01-PLAN.md (strict-clean tracer: 15->0 warnings + 2 anchor fixes)
+Last session: 2026-10-15T01:13:04.768Z
+Stopped at: Completed 19-02-PLAN.md (cuda130 default re-point: ~30 sites, Turing survivor intact, battery green)
 Resume file: None
 
 ## Operator Next Steps
