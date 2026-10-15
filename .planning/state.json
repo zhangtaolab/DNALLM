@@ -26,23 +26,23 @@
     {
       "number": "17",
       "name": "Publish Chain Robustness",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "18",
       "name": "Packaging & Install Honesty — Atomic Extras Surgery",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "19",
       "name": "Docs Accuracy Sweep & Milestone Closeout",
-      "status": "in_progress"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 19 of 7 · 57% · executing"
+    "command": "/gsd-new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-15T02:12:53.204Z"
+  "updated_at": "2026-10-15T15:44:41.201Z"
 }

@@ -61,9 +61,9 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - [x] **Phase 14: GAP-1 Transformers 5.x Disposition** - Evidence-sized absence-gated shim ladder or honest removal — WINDOWS #11/#12 leave the owner-pending state (completed 2026-10-13)
 - [x] **Phase 15: Windows Parity Core — Numpy Interval Evaluators** - `dnallm/utils/genomic_intervals.py` carrying the oracle-pinned spike contracts, locked by platform-neutral unit tests on every CI leg (completed 2026-10-13)
 - [x] **Phase 16: Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity** - Acquisition-fork platform dispatch, platform-aware test gates, test-windows numpy executor with tolerance pins, and the dispatch-leak structure test (completed 2026-10-14)
-- [ ] **Phase 17: Publish Chain Robustness** - Upload guard first, never-uploading smoke on dispatch + cron, OIDC Trusted Publishing migration, WINDOWS #20 fix, mypy cap
-- [ ] **Phase 18: Packaging & Install Honesty — Atomic Extras Surgery** - `base` rename, cuda121 retirement, rocm disposition, triton-windows declaration, GPU support matrix, uv/pip installer lanes
-- [ ] **Phase 19: Docs Accuracy Sweep & Milestone Closeout** - Per-file docs/ + example/ accuracy review against the final state, cuda130 default everywhere, mkdocs strict-clean
+- [x] **Phase 17: Publish Chain Robustness** - Upload guard first, never-uploading smoke on dispatch + cron, OIDC Trusted Publishing migration, WINDOWS #20 fix, mypy cap (completed 2026-10-15)
+- [x] **Phase 18: Packaging & Install Honesty — Atomic Extras Surgery** - `base` rename, cuda121 retirement, rocm disposition, triton-windows declaration, GPU support matrix, uv/pip installer lanes (completed 2026-10-15)
+- [x] **Phase 19: Docs Accuracy Sweep & Milestone Closeout** - Per-file docs/ + example/ accuracy review against the final state, cuda130 default everywhere, mkdocs strict-clean (completed 2026-10-15)
 
 ## Phase Details
 
@@ -157,7 +157,7 @@ Plans:
   4. WINDOWS #20 is remediated — the local-venv `pytest --cov` dotted-target crash is fixed via a local numpy pin or the documented coverage-CLI workaround (not by a coverage version bump)
   5. mypy is capped in the dev extra (`>=1.15.0,<2.5`) so CI can never resolve an unvalidated stricter version
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -165,7 +165,7 @@ Plans:
 - [x] 17-02-PLAN.md — Dev-tooling caps: local venv `numpy==2.2.0` pin (ceiling <2.4 per live matrix) + WINDOWS #20 reprobe + row 20 fixed; mypy `>=1.15.0,<2.5` one-line cap in dev extra — PUBS-05, PKGH-08
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 17-03-PLAN.md — OIDC external readiness: GitHub `pypi` environment (gh api) + OWNER human-gate PyPI trusted-publisher registration (exact-string checklist) + README trigger docs + carried ledger items (token deletion gated on first green OIDC release; scheduled-leg post-merge verify) — PUBS-04 owner-side
+- [x] 17-03-PLAN.md — OIDC external readiness: GitHub `pypi` environment (gh api) + OWNER human-gate PyPI trusted-publisher registration (exact-string checklist) + README trigger docs + carried ledger items (token deletion gated on first green OIDC release; scheduled-leg post-merge verify) — PUBS-04 owner-side
 
 ### Phase 18: Packaging & Install Honesty — Atomic Extras Surgery
 
@@ -179,7 +179,7 @@ Plans:
   4. Install docs split into explicit uv vs pip lanes stating the `[tool.uv.sources]` asymmetry (plain pip never sees the cuda index pins and gets the default torch build), the GPU support matrix is published from the pre-verified boundaries (Pascal cpu-only with the minimum-GPU-line stated, 20xx→cu128, 30/40xx all extras, 50xx cu128+), and the cross-installer honesty matrix page (command × installer → what you actually get) is live
   5. Every changed extra resolves clean in a fresh venv, proven by Phase 17's smoke dispatch running against the post-surgery tree
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -187,7 +187,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 18-02-PLAN.md — Install-honesty publications: installation.md uv/pip lane split with the [tool.uv.sources] asymmetry stated up front, GPU support matrix page (0542a6b verbatim + cu121-retirement adjustment: Pascal cpu-only/Turing min-line, 20xx cu124–cu128, 30/40xx all extras, 50xx cu128+), cross-installer honesty matrix page (live-probe rows incl. the post-removal warn-and-exit-0 semantics), nav-wired, residue sanctioned-list same-change update — PKGH-04/06/07
-- [ ] 18-03-PLAN.md — WPAR-07 Windows acceptance: owner blocking-human checkpoint (RTX 5080) proving the marker pulls triton-windows 3.7.1.post27, chunk_kda imports, a KDA kernel compiles+executes under the resolved torch — closing WINDOWS #18 and retiring the SUS-with-null-signals flag (17-03 halt pattern on deferral) — WPAR-07 acceptance half
+- [x] 18-03-PLAN.md — WPAR-07 Windows acceptance: owner blocking-human checkpoint (RTX 5080) proving the marker pulls triton-windows 3.7.1.post27, chunk_kda imports, a KDA kernel compiles+executes under the resolved torch — closing WINDOWS #18 and retiring the SUS-with-null-signals flag (17-03 halt pattern on deferral) — WPAR-07 acceptance half
 
 ### Phase 19: Docs Accuracy Sweep & Milestone Closeout
 
@@ -200,7 +200,7 @@ Plans:
   3. `mkdocs --strict` builds with zero warnings — the 15 ledgered pre-existing warnings cleared, with the nav/mirror interplay respected
   4. Every example edit in the sweep lands with its docs mirror byte-identical and the automated sync/masking gates green; the milestone closes honest-green (fast lane, coverage gate, full CI matrix)
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans complete
 
 Plans:
 **Wave 1**
@@ -216,7 +216,7 @@ Plans:
 - [x] 19-06-PLAN.md — Review wave: getting_started post-re-point verification + the 29 example wrappers (selection.md frozen-verified)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 19-07-PLAN.md — Closeout: ci.yml vehicle (test-cuda cuda130 + temp v1.3 push-filter entry with removal-decision record), the honest-green evidence battery (push matrix/publish smoke/nightly trio), 19-EVIDENCE.md consolidation (~150 logical rows)
+- [x] 19-07-PLAN.md — Closeout: ci.yml vehicle (test-cuda cuda130 + temp v1.3 push-filter entry with removal-decision record), the honest-green evidence battery (push matrix/publish smoke/nightly trio), 19-EVIDENCE.md consolidation (~150 logical rows)
 
 **Cross-cutting constraints:**
 - No edit breaks the strict zero-warning state or moves the census off 216/217
@@ -232,6 +232,6 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 14. GAP-1 Transformers 5.x Disposition | 2/2 | Complete    | 2026-10-13 |
 | 15. Windows Parity Core — Numpy Interval Evaluators | 1/1 | Complete    | 2026-10-13 |
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
-| 17. Publish Chain Robustness | 2/3 | In Progress | - |
-| 18. Packaging & Install Honesty — Atomic Extras Surgery | 2/3 | In Progress | - |
-| 19. Docs Accuracy Sweep & Milestone Closeout | 6/7 | In Progress | - |
+| 17. Publish Chain Robustness | 3/3 | Complete    | 2026-10-15 |
+| 18. Packaging & Install Honesty — Atomic Extras Surgery | 3/3 | Complete    | 2026-10-15 |
+| 19. Docs Accuracy Sweep & Milestone Closeout | 7/7 | Complete    | 2026-10-15 |

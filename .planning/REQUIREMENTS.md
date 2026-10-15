@@ -15,7 +15,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [x] **WPAR-04**: The three inventoried test gates (`test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`) become platform-aware — Linux probe-then-execute unchanged, Windows executes the numpy path (fail-loud, no ever-green skip)
 - [x] **WPAR-05**: test-windows executes the numpy evaluators over committed frozen interval pairs with pinned comparison tolerances (trailing-float deltas); frozen metrics hold in band on BOTH paths — jaccard=0.324727 and exon_f1=0.7522 (its band/tolerance newly pinned as part of this work); selection.md stays the single truth source parsed on both paths
 - [x] **WPAR-06**: A same-change dispatch-direction structure test proves the numpy path cannot silently execute on Linux (fail-loud dispatch, no except-fallback ladder)
-- [ ] **WPAR-07**: WINDOWS #18 decided and executed — triton-windows declared behind a Windows platform marker in the `fla` extra (research-recommended: `>=3.7.1.post27,<3.8`) or the manual step documented; fla KDA smoke re-verified on Windows under the resolved torch
+- [x] **WPAR-07**: WINDOWS #18 decided and executed — triton-windows declared behind a Windows platform marker in the `fla` extra (research-recommended: `>=3.7.1.post27,<3.8`) or the manual step documented; fla KDA smoke re-verified on Windows under the resolved torch
 - [x] **WPAR-08**: Every example edit lands with its docs mirror byte-identical (`check_docs_sync` green) and the Linux nightly re-execution holds the parsed selection.md bands
 
 ### Packaging & Install Honesty (PKGH)
@@ -34,7 +34,7 @@ Requirements for milestone **v1.3 Platform Reach & Packaging Honesty**. Each map
 - [x] **PUBS-01**: The unguarded `workflow_dispatch`→`twine upload` path is event-gated or split BEFORE any smoke trigger exists — a dry-run dispatch can never upload (PyPI filenames are immutable)
 - [x] **PUBS-02**: A publish smoke runs the never-uploading chain on dispatch: `uv build --no-sources` → `twine check` (twine pinned `>=7,<8`; redundant `build` dep dropped) → clean-venv install-from-dist → import probe — verification reads `dist/`, never PyPI
 - [x] **PUBS-03**: The smoke also runs on a periodic cron schedule, schedule-aware, still never uploading
-- [ ] **PUBS-04**: OIDC Trusted Publishing migration via `pypa/gh-action-pypi-publish@release/v1` (job-level `id-token: write`; publisher registered for the exact owner/repo/workflow-filename/environment; no reusable-workflow factoring); `PYPI_API_TOKEN` deleted only after the first observed green OIDC release
+- [x] **PUBS-04**: OIDC Trusted Publishing migration via `pypa/gh-action-pypi-publish@release/v1` (job-level `id-token: write`; publisher registered for the exact owner/repo/workflow-filename/environment; no reusable-workflow factoring); `PYPI_API_TOKEN` deleted only after the first observed green OIDC release
 - [x] **PUBS-05**: WINDOWS #20 remediated — local-venv `pytest --cov` dotted-target crash fixed via a local numpy pin or the documented coverage-CLI workaround (not fixable by a coverage version bump)
 
 ### Ollama Surface (OLLM)
@@ -93,7 +93,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | WPAR-04 | Phase 16 | Complete |
 | WPAR-05 | Phase 16 | Complete |
 | WPAR-06 | Phase 16 | Complete |
-| WPAR-07 | Phase 18 | Pending |
+| WPAR-07 | Phase 18 | Complete |
 | WPAR-08 | Phase 16 | Complete |
 | PKGH-01 | Phase 18 | Complete |
 | PKGH-02 | Phase 18 | Complete |
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PUBS-01 | Phase 17 | Complete |
 | PUBS-02 | Phase 17 | Complete |
 | PUBS-03 | Phase 17 | Complete |
-| PUBS-04 | Phase 17 | Pending |
+| PUBS-04 | Phase 17 | Complete |
 | PUBS-05 | Phase 17 | Complete |
 | OLLM-01 | Phase 13 | Complete |
 | OLLM-02 | Phase 13 | Complete |
