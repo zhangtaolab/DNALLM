@@ -64,3 +64,19 @@ citations checked for repo-relevance only.
 | docs/example/mcp_langchain.md | **accurate** | `dnallm mcp-server --transport streamable-http` valid (cli.py:305 mcp_server subcommand, --transport :296); /mcp endpoint and MultiServerMCPClient shape match the 19-04-verified server surface; langchain/langchain-mcp-adapters/langchain-ollama are exactly the mcp extra's members (floor-pinned per REPAIR-04); nest_asyncio core-mcp claim true; startserver.md link exists; code blocks gate-synced to the executed (typed-skip-when-offline) notebook |
 | docs/example/mcp_pydantic_ai.md | **accurate** | `dnallm mcp-server` ✓; pydantic-ai/nest-asyncio match the mcp extra; MCPToolset/FastMCPClient shapes match the 19-04-verified surface; the system prompt's `_list_loaded_models` IS the real exposed tool name (functools.update_wrapper at server.py:488 preserves the method's leading underscore — the 19-03-verified mechanism). NOTE routed cross-batch: the same prompt's bare "dna_multi_model_predict" omits the exposed name's leading underscore ("_dna_multi_model_predict") — sits inside a gate-synced python block of the frozen notebook; not fixable in-pass without breaking check_notebook_md_sync + the mirror discipline; left for owner/19-07 disposition (cosmetic for execution — the LLM receives the exact tool list from the server) |
 
+## Batch battery record (Task 3 — post-review tree, 2026-10-15)
+
+Commands + outcomes (16-EVIDENCE evidence-block shape), run on the Task-2
+tree (commit f4cea67):
+
+| Gate | Command | Outcome |
+|------|---------|---------|
+| Mirror sync | `python scripts/check_docs_sync.py` | `OK: docs/example/ is in sync with example/` — PASS (overview.md pair byte-identical untouched; zero example/ edits this batch) |
+| Notebook-md sync | `python scripts/check_notebook_md_sync.py` | `Checked 24 markdown/notebook pair(s). All markdown code blocks are in sync with their notebooks.` — PASS (this batch's wrapper edits were prose-only; the gate proves no python block drifted) |
+| Strict build | `PATH="/tmp/mkdocs-venv19/bin:$PATH" mkdocs build --strict` (log `/tmp/strict-19-06.txt`) | exit 0, **0 WARNING** lines, `Documentation built in 4.49 seconds` — PASS. 19-01's zero-warning state holds through the batch; the plan's threat T-19-09 (one-sided overview.md edit) could not have passed this gate |
+| Census | `.venv/bin/python -m pytest tests/examples --collect-only -q -m "not giants"` | `216/217 tests collected (1 deselected)` — STABLE (docs-prose-only batch did not move the triple) |
+| Ledger completeness | `find docs/getting_started docs/example -name "*.md"` vs ledger row count | files=33, rows=33 — COMPLETE (4 Task 1 + 29 Task 2, same-commit as their fixes) |
+| Snippet syntax (extra) | `python scripts/validate_docs_snippets.py` | 149 files, 350 Python blocks, all passed (run at Task 1; covers this batch's edited code comments) |
+| Non-.md-link blind spot (extra, 19-04 pattern) | link-extraction sweep over all 29 wrappers | every relative link resolves against the tree (scripted check); the batch's non-.md links are pre-existing external URLs (GitHub blob / readthedocs) — repo-relevance OK, none added |
+
+
