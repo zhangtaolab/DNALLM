@@ -14,7 +14,7 @@ The examples in this guide cover:
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from dnallm import Benchmark
+from dnallm import Benchmark, load_config
 
 # Load configurations
 configs = load_config("./benchmark_config.yaml")
@@ -44,22 +44,22 @@ pbar, pline = benchmark.plot(results, save_path="plot.pdf")
 from dnallm import Benchmark
 from dnallm.datahandling import DNADataset
 
-# Define research models
+# Define research models (the same trio as example/notebooks/benchmark/benchmark_config.yaml)
 research_models = [
     {
         "name": "Plant DNABERT",
-        "path": "zhangtaolab/plant-dnabert-BPE",
-        "source": "huggingface",
+        "path": "zhangtaolab/plant-dnabert-BPE-promoter",
+        "source": "modelscope",
+    },
+    {
+        "name": "Plant DNAGPT",
+        "path": "zhangtaolab/plant-dnagpt-BPE-promoter",
+        "source": "modelscope",
     },
     {
         "name": "Nucleotide Transformer",
-        "path": "lgq12697/nucleotide-transformer-500m-human-ref",
-        "source": "huggingface",
-    },
-    {
-        "name": "DNABERT-2",
-        "path": "lgq12697/DNABERT-2-117M",
-        "source": "huggingface",
+        "path": "zhangtaolab/nucleotide-transformer-v2-100m-promoter",
+        "source": "modelscope",
     },
 ]
 

@@ -267,7 +267,7 @@ def detailed_memory_profile(model, dataset, batch_size=32):
 
 ## Optimization Strategies
 
-### Mixed Precision Training
+### Mixed Precision Inference
 
 ```python
 from torch.cuda.amp import autocast, GradScaler

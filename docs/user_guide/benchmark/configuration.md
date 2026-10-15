@@ -221,7 +221,7 @@ evaluation:
 | Task Type | Metric Keys |
 |-----------|-------------|
 | `binary` | `accuracy`, `precision`, `recall`, `f1`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
-| `multiclass` | `accuracy`, `precision`, `recall`, `f1`, `precision_micro`, `recall_micro`, `precision_weighted`, `recall_weighted`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
+| `multiclass` | `accuracy`, `precision`, `recall`, `f1`, `precision_micro`, `recall_micro`, `f1_micro`, `precision_weighted`, `recall_weighted`, `f1_weighted`, `mcc`, `AUROC`, `AUPRC`, `TPR`, `TNR`, `FPR`, `FNR` |
 | `multilabel` | Per-label and macro-averaged metrics, including `AUROC`, `AUPRC`, `TPR` |
 | `regression` | `mse`, `mae`, `r2`, `pearsonr`, `spearmanr` |
 | `token` | Sequence-level `accuracy`, `precision`, `recall`, `f1` |

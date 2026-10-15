@@ -404,15 +404,16 @@ dataset = DNADataset.load_local_data(
 # Encode
 dataset.encode_sequences(remove_unused_columns=True)
 
-# Train
+# Train (train() returns train-loop metrics; evaluation metrics come from evaluate())
 trainer = DNATrainer(config=configs, model=model, datasets=dataset)
-metrics = trainer.train()
+trainer.train()
 
-# Multi-label evaluation metrics
+# Multi-label evaluation metrics (from the evaluation split)
+metrics = trainer.evaluate()
 print("Multi-label evaluation metrics:")
-print(f"  - Hamming Loss: {metrics['eval_hamming_loss']:.4f}")
 print(f"  - Accuracy: {metrics['eval_accuracy']:.4f}")
-print(f"  - F1 Score: {metrics['eval_f1']:.4f}")
+print(f"  - F1 (macro): {metrics['eval_f1']:.4f}")
+print(f"  - F1 (micro): {metrics['eval_f1_micro']:.4f}")
 ```
 
 ---
@@ -489,11 +490,12 @@ dataset = DNADataset.load_local_data(
 # Encode
 dataset.encode_sequences(remove_unused_columns=True)
 
-# Train
+# Train (train() returns train-loop metrics; evaluation metrics come from evaluate())
 trainer = DNATrainer(config=configs, model=model, datasets=dataset)
-metrics = trainer.train()
+trainer.train()
 
-# NER evaluation
+# NER evaluation (seqeval strict sequence-level metrics)
+metrics = trainer.evaluate()
 print("NER evaluation metrics:")
 print(f"  - Precision: {metrics['eval_precision']:.4f}")
 print(f"  - Recall: {metrics['eval_recall']:.4f}")
@@ -872,93 +874,56 @@ if __name__ == "__main__":
 
 ### 7.4 MCP Client Usage
 
+The server speaks the MCP protocol (JSON-RPC over `streamable-http` at `/mcp`, SSE, or stdio) — there are no plain REST routes such as `/predict` or `/health`. Call it with an MCP client, or poke it with curl by posting MCP JSON-RPC messages.
+
 #### 7.4.1 Using curl for Testing
 
 <!-- skip-verify: requires running server instance to connect to -->
 ```bash
-# Health check
-curl http://localhost:8000/health
-
-# Single sequence prediction
-curl -X POST http://localhost:8000/predict \
+# Health check (MCP tools/call — the _health_check tool)
+curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"sequence": "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC", "model": "promoter_model"}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_health_check", "arguments": {}}}'
 
-# SSE real-time prediction
-curl -N http://localhost:8000/mcp/stream \
+# Single sequence prediction (the _dna_sequence_predict tool)
+curl -X POST "http://localhost:8000/mcp/messages/?session_id=test" \
   -H "Content-Type: application/json" \
-  -d '{"sequence": "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC"}'
-<!-- skip-verify: requires running server instance to connect to -->
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "_dna_sequence_predict", "arguments": {"sequence": "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC", "model_name": "promoter_model"}}}'
 ```
-<!-- skip-verify: requires running server instance to connect to -->
 
-<!-- skip-verify: requires running server instance to connect to -->
 #### 7.4.2 Python Client Example
 
 <!-- skip-verify: requires running server instance to connect to -->
 ```python
-import asyncio
-import aiohttp
+from dnallm.mcp import DNALLMMCPClient
 
+# Connect using streamable-http transport (recommended)
+client = DNALLMMCPClient(transport="streamable-http", url="http://localhost:8000/mcp")
 
-class DNALLMClient:
-    def __init__(self, base_url="http://localhost:8000"):
-        self.base_url = base_url
+# Health check
+health = client.health_check()
+print(f"Server status: {health}")
 
-    async def health_check(self):
-        """Health check"""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{self.base_url}/health") as response:
-                return await response.json()
+# Single sequence prediction
+result = client.dna_sequence_predict(
+    "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC", "promoter_model"
+)
+print(f"Prediction result: {result}")
 
-    async def predict(self, sequence, model="promoter_model"):
-        """Single sequence prediction"""
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/predict",
-                json={"sequence": sequence, "model": model},
-            ) as response:
-                return await response.json()
+# Batch prediction
+sequences = [
+    "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC",
+    "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",
+]
+results = client.dna_batch_predict(sequences, "promoter_model")
+print(f"Batch prediction results: {results}")
 
-    async def batch_predict(self, sequences, model="promoter_model"):
-        """Batch prediction"""
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/batch_predict",
-                json={"sequences": sequences, "model": model},
-            ) as response:
-                return await response.json()
-
-    async def list_models(self):
-        """List available models"""
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{self.base_url}/models") as response:
-                return await response.json()
-
-
-# Usage example
-async def main():
-    client = DNALLMClient()
-
-    # Health check
-    health = await client.health_check()
-    print(f"Server status: {health}")
-
-    # Single sequence prediction
-    result = await client.predict("ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC")
-    print(f"Prediction result: {result}")
-
-    # Batch prediction
-    sequences = [
-        "ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGC",
-        "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",
-    ]
-    results = await client.batch_predict(sequences)
-    print(f"Batch prediction results: {results}")
-
-
-asyncio.run(main())
+# List available models
+models = client.list_loaded_models()
+print(f"Available models: {models}")
 ```
+
+See the [MCP Usage Guide](../mcp/usage.md) for the full tool surface and transport options.
 
 ### 7.5 Docker Deployment
 
