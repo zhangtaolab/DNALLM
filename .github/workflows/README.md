@@ -56,7 +56,7 @@ The workflows are triggered on:
 
 **Matrix Strategy**:
 - Python version: 3.11
-- CUDA versions: 12.1, 12.4
+- CUDA version: 13.0
 - Operating system: Ubuntu Latest
 
 **Steps**:

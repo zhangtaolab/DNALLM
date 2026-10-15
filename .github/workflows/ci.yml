@@ -6,6 +6,7 @@ on:
       - main
       - master
       - dev
+      - v1.3
       # 2026-10-07 lesson: the matrix legs run on push/PR only, so a
       # long-lived working branch that never opens PRs reaches the merge
       # to dev with ZERO matrix exposure -- the v1.1 merge surfaced three
@@ -14,6 +15,13 @@ on:
       # only and the nightly legs stay dispatch/schedule-gated.
       # 2026-10-10: same reasoning for the v1.2 revision branch.
       # 2026-10-10: phs and revision both deleted; entries removed.
+      # 2026-10-15: temporary v1.3 milestone-closeout vehicle (the 2026-10-07
+      # lesson applied -- the matrix legs need push/PR exposure on the
+      # working branch for first-exposure-free merge evidence). Nightly legs
+      # stay cron/workflow_dispatch-gated (D-19) so these pushes never reach
+      # the self-hosted box; deploy stays main/master-only. Removal decision
+      # recorded at phase-19 closeout in 19-EVIDENCE.md -- the entry stays
+      # until the actual merge to main or explicit owner removal.
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:
@@ -215,7 +223,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.11']
-        cuda-version: ['12.4']
+        cuda-version: ['13.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -260,7 +268,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[full,cuda124]"
+          uv pip install -e ".[full,cuda130]"
           
       - name: Run GPU-enabled tests
         run: |
