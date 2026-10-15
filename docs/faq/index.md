@@ -81,17 +81,17 @@ uv pip install evo-model
 **Problem**: Your model, data, and gradients are too large to fit in your GPU's VRAM.
 
 **Solution**: This is the most common training error. Try these steps in order:
-1. **Enable Gradient Accumulation**: In your config file, set `training_args.gradient_accumulation_steps` to a value like 4 or 8. This is the most effective solution.
-2. **Reduce Batch Size**: Lower `training_args.per_device_train_batch_size` to 4, 2, or even 1.
-3. **Enable Mixed Precision**: Set `training_args.fp16: true`. This halves the memory required for the model and activations.
-4. **Enable Gradient Checkpointing**: Set `training_args.gradient_checkpointing: true`. This saves a lot of memory at the cost of slower training.
+1. **Enable Gradient Accumulation**: In your config file, set `finetune.gradient_accumulation_steps` to a value like 4 or 8. This is the most effective solution.
+2. **Reduce Batch Size**: Lower `finetune.per_device_train_batch_size` to 4, 2, or even 1.
+3. **Enable Mixed Precision**: Set `finetune.fp16: true`. This halves the memory required for the model and activations.
+4. **Enable Gradient Checkpointing**: Set `finetune.gradient_checkpointing: true`. This saves a lot of memory at the cost of slower training.
 
 ### Q: Loss is `NaN` or Explodes
 
 **Problem**: The training process is unstable. This can be caused by a learning rate that is too high, or numerical instability with FP16.
 
 **Solution**:
-- **Lower the Learning Rate**: Decrease `training_args.learning_rate` by a factor of 10 (e.g., from `5e-5` to `5e-6`).
+- **Lower the Learning Rate**: Decrease `finetune.learning_rate` by a factor of 10 (e.g., from `5e-5` to `5e-6`).
 - **Use a Learning Rate Scheduler**: Ensure `lr_scheduler_type` is set to `linear` or `cosine`.
 - **Use BF16 instead of FP16**: If you have an Ampere-based GPU (A100, RTX 30xx/40xx) or newer, use `bf16: true` instead of `fp16: true`. Bfloat16 is more numerically stable.
 
@@ -203,7 +203,7 @@ uv pip install "flash_attn<=2.7.4.post1" --no-build-isolation --no-cache-dir
 **Cause**: The model, data, and intermediate activations require more GPU VRAM than is available.
 
 **Solutions**:
-- **Primary**: Reduce `batch_size` in your `inference` configuration (or `training_args.per_device_train_batch_size` for training). This is the most effective way to lower memory usage.
+- **Primary**: Reduce `batch_size` in your `inference` configuration (or `finetune.per_device_train_batch_size` for training). This is the most effective way to lower memory usage.
 - **Secondary**: Reduce `max_length`. The memory requirement for transformers scales quadratically with sequence length.
 - **Use Half-Precision**: Set `use_fp16: true` or `use_bf16: true`. This can nearly halve the model's memory footprint.
 - **Avoid Attention/Hidden-State Extraction**: `output_hidden_states` and `output_attentions` default to `False` and are only enabled by the extraction methods (e.g., `DNAInference.get_embeddings`), so skip those methods for large-scale runs.

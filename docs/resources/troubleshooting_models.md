@@ -112,7 +112,7 @@ This is a general error that can have several causes.
 **Solutions**:
 - **Primary**: Reduce `batch_size` in your `inference` or `training` configuration. This is the most effective way to lower memory usage.
 - **Secondary**: Reduce `max_length`. The memory requirement for transformers scales quadratically with sequence length.
-- **Use Half-Precision**: Set `use_fp16: true` or `use_bf16: true`. This can nearly halve the model's memory footprint.
+- **Use Half-Precision**: Set `fp16: true` / `bf16: true` in the training configuration (`use_fp16` / `use_bf16` in the inference configuration). This can nearly halve the model's memory footprint.
 - **Disable Interpretability Features**: For large-scale runs, ensure `output_hidden_states` and `output_attentions` are `False`.
 
 For a detailed guide, see the Performance Optimization tutorial.

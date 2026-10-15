@@ -52,9 +52,9 @@ The following table shows all currently supported models and their fine-tuning/i
 ### By Architecture Type
 
 #### **Masked Language Models (MLM)**
-- **BERT-based**: DNABERT, DNABERT-2, DNABERT-S, Plant DNABERT, GENA-LM, GROVER, MutBERT, ProkBERT, MutBERT, Plant DNAModernBert
+- **BERT-based**: DNABERT, DNABERT-2, DNABERT-S, Plant DNABERT, GENA-LM, GROVER, MutBERT, ProkBERT, Plant DNAModernBert
 - **ESM-based**: Nucleotide Transformer, AgroNT, Plant Nucleotide Transformer
-- **Caduceus-based**: Caduceus-Ph, Caduceus-Ps, PlantCaduceus、PlantCAD2
+- **Caduceus-based**: Caduceus-Ph, Caduceus-Ps, PlantCaduceus, PlantCAD2
 - **Other**: GENA-LM-BigBird, GPN, LucaOne, PlantHelixSeek, CrossDNA
 
 #### **Causal Language Models (CLM)**
@@ -65,12 +65,16 @@ The following table shows all currently supported models and their fine-tuning/i
 
 ### By Model Size
 
-| Size Category | Model Count | Examples |
-|---------------|-------------|----------|
-| **Small (<100M)** | 15 | Caduceus-Ph, HyenaDNA variants, ModernBert-DNA |
-| **Medium (100M-1B)** | 18 | DNABERT series, Plant models, GENA-LM |
-| **Large (1B-10B)** | 8 | Nucleotide Transformer, EVO-1, GENERator |
-| **Extra Large (>10B)** | 2 | EVO-2 40B (evo2-40b-8k / evo2-40b-1m) |
+Model families span sizes (see the Model Size column above), so bucket counts
+would be ambiguous — the examples place each family by its smallest-to-largest
+range:
+
+| Size Category | Examples |
+|---------------|----------|
+| **Small (<100M)** | Caduceus-Ph, HyenaDNA variants, ModernBert-DNA, MutBERT, ProkBERT, CrossDNA, LucaOne |
+| **Medium (100M-1B)** | DNABERT series, Plant models, GENA-LM |
+| **Large (1B-10B)** | Nucleotide Transformer (up to 2.5B), EVO-1, GENERator |
+| **Extra Large (>10B)** | EVO-2 40B (evo2-40b-8k / evo2-40b-1m) |
 
 ### By Source Platform
 
@@ -123,7 +127,7 @@ from dnallm.models import load_model_and_tokenizer
 # Load a supported model (Plant DNABERT is pre-trained with MLM)
 model_name = "zhangtaolab/plant-dnabert-BPE"
 task_config = TaskConfig(task_type="mask")
-model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
+model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="modelscope")
 
 # For fine-tuning
 from dnallm.finetune import DNATrainer
@@ -141,5 +145,5 @@ To add support for new DNA large language models:
 3. Submit a pull request with integration code
 4. Include proper documentation and examples
 
-For detailed integration instructions, see the [Development Guide](../concepts/training.md).
+For detailed integration instructions, see the [contributing guide](https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md).
 

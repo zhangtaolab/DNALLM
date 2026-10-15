@@ -1,6 +1,6 @@
 # Using ESM Models in DNALLM
 
-ESM (Evolutionary Scale Modeling) models are a family of protein language models adapted for genomics. While originally trained on protein sequences, their Transformer-encoder architecture is highly effective for DNA, and they have been successfully fine-tuned for various nucleotide tasks. Models like the Nucleotide Transformer and AgroNT are prominent examples of this approach.
+ESM (Evolutionary Scale Modeling) names a Transformer-encoder architecture first made prominent by protein language models. The same architecture is the basis for DNA-native language models pre-trained directly on genomes: the Nucleotide Transformer and AgroNT — the ESM-family models DNALLM ships — are prominent examples.
 
 **DNALLM Examples**: `Nucleotide Transformer`, `AgroNT` (adapted for DNA)
 
@@ -52,7 +52,7 @@ print("Model:", type(model))
 print("Tokenizer:", type(tokenizer))
 ```
 
-**Important**: When using ESM for DNA, you typically replace its original amino acid tokenizer with a nucleotide tokenizer (e.g., one for k-mers). The fine-tuning process adapts the model's weights to the new vocabulary.
+**Important**: DNA-native ESM-architecture models like the Nucleotide Transformer and AgroNT ship nucleotide tokenizers and need no vocabulary surgery. The amino-acid-to-nucleotide swap below applies only if you bring a genuine protein ESM checkpoint (e.g., `facebook/esm2_*`): you must then pair it with a nucleotide tokenizer, and the fine-tuning process adapts the model's weights to the new vocabulary.
 
 ## 4. Inference Example
 
@@ -84,7 +84,7 @@ print("Shape of embeddings:", embeddings.shape)
 ## 5. Common Issues and Solutions
 
 1.  **Tokenizer Mismatch**:
-    -   **Issue**: The default ESM tokenizer is for amino acids, not nucleotides. Using it directly with DNA will fail.
+    -   **Issue**: The default tokenizer of a protein ESM checkpoint is for amino acids, not nucleotides. Using it directly with DNA will fail.
     -   **Solution**: You must use a nucleotide-based tokenizer. When fine-tuning, you need to resize the model's token embeddings yourself to match the new vocabulary size of the DNA tokenizer.
 
 2.  **Poor Performance on DNA Tasks Out-of-the-Box**:

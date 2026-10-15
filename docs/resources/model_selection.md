@@ -124,7 +124,7 @@ Here are some general guidelines for choosing a model. Always consider benchmark
 
 #### For Sequence Generation or Zero-Shot Scoring
 - **Good Start**: `zhangtaolab/plant-dnagpt-BPE` (for plants), `LongSafari/hyenadna-small-32k-seqlen-hf`.
-- **High Performance / Long Context**: `arcinstitute/evo-1-131k-base` or `lgq12697/evo2_1b_base`. These are state-of-the-art but require significant resources.
+- **High Performance / Long Context**: `arcinstitute/evo-1-131k-base` or `arcinstitute/evo2_1b_base`. These are state-of-the-art but require significant resources.
 
 #### For Token Classification (e.g., finding binding sites)
 - **Good Start**: Any BERT-based model like `zhihan1996/DNABERT-2-117M`.

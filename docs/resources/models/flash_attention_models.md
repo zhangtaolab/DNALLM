@@ -57,9 +57,9 @@ uv pip install flash-attn --no-build-isolation --no-cache-dir
 
 ## 4. Usage
 
-Usage is largely automatic. If Flash Attention is correctly installed, DNALLM and the underlying `transformers` library will detect and use it.
+Usage is automatic on the EVO paths only. With Flash Attention correctly installed and supported, the EVO loaders in `dnallm/models/special/evo.py` select the flash-attention architecture configuration; without it they fall back to the `-noFA` variant (see §2). Generic Transformers loads stay on eager attention regardless of whether Flash Attention is installed.
 
-You can verify its usage by checking the model's configuration after loading it.
+For the EVO models this choice lives in the architecture configuration the loader picks, not in transformers' `_attn_implementation` field. For transformers-based models loaded through other routes, the attention implementation is visible on the model config:
 
 ```python
 from dnallm import load_config, load_model_and_tokenizer
@@ -71,11 +71,9 @@ model, tokenizer = load_model_and_tokenizer(
     source="huggingface",
 )
 
-# Check the attention implementation in the model's config
-# For transformers-based models
+# For transformers-based models (DNALLM's generic route pins "eager")
 if hasattr(model, "config") and hasattr(model.config, "_attn_implementation"):
     print(f"Attention implementation: {model.config._attn_implementation}")
-    # >> Attention implementation: flash_attention_2
 ```
 
-If Flash Attention is not installed or incompatible, the framework will gracefully fall back to a slower but functional implementation like `"eager"` or `"sdpa"`.
+If Flash Attention is not installed or incompatible, the EVO loaders gracefully fall back to the `-noFA` architecture variant, and generic loads remain on the always-pinned `"eager"` implementation.
