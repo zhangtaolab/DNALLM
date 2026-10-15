@@ -4,18 +4,18 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: "Halted 18-03-PLAN.md at owner-deferred Windows KDA checkpoint (稍后再做 — WPAR-07 acceptance + T-18-SC SUS retirement open, WINDOWS #27 carries the six-step resume; phase 18 at 2/3 plans)"
-last_updated: "2026-10-15T00:36:54.843Z"
+stopped_at: "Completed 19-01-PLAN.md (strict-clean tracer: 15->0 warnings + 2 anchor fixes)"
+last_updated: "2026-10-15T00:48:07.516Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: efc7b7318269bbff2de802cb06ed9b1f1f467956
+state_head: 09f9d911baa2814bc9dc6c1cead9807b3747940f
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 13
+  completed_plans: 15
   percent: 57
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 19 (Docs Accuracy Sweep & Milestone Closeout) — READY TO EXECUTE
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 7
 Status: Executing — 17-01 complete (publish guard + never-uploading smoke, live-proven on run 38554913144)
 Last activity: 2026-10-14 — 17-01 complete, next is 17-02
@@ -61,6 +61,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 17 P02 | 21 min | 3 tasks | 3 files |
 | Phase 18 P01 | 65 min | 3 tasks | 42 files |
 | Phase 18 P02 | 24 min | 3 tasks | 6 files |
+| Phase 19 P01 | 9 min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 17]: [17-02] any future local numpy pin ceiling is <2.4 (2.4-series one-init guard) AND no numpy pin alone fixes the torch facet — both facts live-proven and recorded in WINDOWS row 20
 - [Phase 18]: [18-01] Atomic extras surgery landed as ONE commit (399f9f1): base→full rename with one-cycle alias base=[dnallm[full]] (remove v1.4), cuda121 retired (cu121 index frozen torch 2.5.1), rocm removed (rocm7.1 restore path), triton-windows Windows-marker in fla; residue gates hold 2+3 verbatim sanctioned lines; census 216/217 untouched — 18-CONTEXT owner-locked decisions; pickaxe 3-way proof + smoke run 38578071738 publish-skipped/smoke-success
 - [Phase 18]: [18-01] Pip-side alias full-closure resolve deferred (unrun-verify, WINDOWS ledger): pip urllib3 stalls against this box's network (5 attempts) while uv/gh/curl fine; mechanism probe-proven (pip 26.2.1) + METADATA alias line + guard + uv parity carry the evidence — box-network artifact, not repo defect; fix-attempt limit reached; exact re-run command recorded
+- [Phase 19]: 19-01 strict-clean: 15 mkdocs warnings to zero via hand-edited page-relative See-Also tails + GitHub-URL precedent for the docs escape; anchors always confirmed against built-site id= (mkdocs slugify drops em-dashes); ledger rows same-commit as fixes
 
 ### Pending Todos
 
@@ -137,8 +139,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-14T15:49:47.268Z
-Stopped at: Halted 18-03-PLAN.md at owner-deferred Windows KDA checkpoint (稍后再做 — WPAR-07 acceptance + T-18-SC SUS retirement open, WINDOWS #27 carries the six-step resume; phase 18 at 2/3 plans)
+Last session: 2026-10-15T00:48:07.463Z
+Stopped at: Completed 19-01-PLAN.md (strict-clean tracer: 15->0 warnings + 2 anchor fixes)
 Resume file: None
 
 ## Operator Next Steps

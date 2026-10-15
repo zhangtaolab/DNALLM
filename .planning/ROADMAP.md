@@ -200,11 +200,11 @@ Plans:
   3. `mkdocs --strict` builds with zero warnings — the 15 ledgered pre-existing warnings cleared, with the nav/mirror interplay respected
   4. Every example edit in the sweep lands with its docs mirror byte-identical and the automated sync/masking gates green; the milestone closes honest-green (fast lane, coverage gate, full CI matrix)
 
-**Plans**: 7 plans
+**Plans**: 1/7 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 19-01-PLAN.md — Tracer: the 4-file strict fix (15 mkdocs warnings → 0, proven RED first) + the two em-dash anchor fixes; ledger discipline established (19-REVIEW-strict.md)
+- [x] 19-01-PLAN.md — Tracer: the 4-file strict fix (15 mkdocs warnings → 0, proven RED first) + the two em-dash anchor fixes; ledger discipline established (19-REVIEW-strict.md)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 19-02-PLAN.md — cuda130 default re-point across all install surfaces (PKGH-05/DOCR-02): mirrored overview.md pair, 22 wrappers, installation.md flip, quick_start/getting_started/index/tutorial, README (headline/table/5090 line/test counts)
@@ -234,4 +234,4 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
 | 17. Publish Chain Robustness | 2/3 | In Progress | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 2/3 | In Progress | - |
-| 19. Docs Accuracy Sweep & Milestone Closeout | 0/TBD | Not started | - |
+| 19. Docs Accuracy Sweep & Milestone Closeout | 1/7 | In Progress | - |
