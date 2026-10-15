@@ -488,17 +488,26 @@ Landed in 19-02 (batch table above): mirrored overview.md (both sides, byte-iden
 
 - Run 38678155010 (dispatch, ref v1.3 @ 15bf646): `smoke: success`, `publish: skipped` — fresh wheel installs and imports; the upload guard holds. (An identical earlier dispatch 38676424792 on 3075b09: same split — smoke success / publish skipped; superseded as final-tree evidence by 38678155010.)
 
-### Nightly trio (dispatch 38678158479, ref v1.3 @ 15bf646) — PENDING at ledger time (16-04 precedent)
+### Nightly trio — run 38678158479 TERMINAL (repo-caused red, fixed) → re-dispatch 38695301631 PENDING
 
-- Dispatched on the final tree immediately after matrix green; serializes on the single `dnallm-nightly` runner (expected wall ~8 h: coverage-nightly ~3h43m + example-nightly ~4h01m + test-mamba ~5m).
-- Status at this ledger's commit: **test-mamba in_progress; example-nightly + coverage-nightly queued** — honestly recorded as PENDING per the 16-04 async-jobs precedent; manifest at `.planning/async-jobs/19-07-nightly.json`; terminal reconciliation updates this section's table (rows below) when the run concludes.
-- Red-classification rule pre-registered (A.5): repo-caused reds are blockers to fix and re-run; the rice.uga.edu input-download class is the owner-accepted caveat (phase-14 H.4 precedent; 4th/5th manifestations in run 38441258701); runner/queue infrastructure reds get cancel-and-re dispatch of runs this executor owns only.
+**Run 38678158479 (dispatch, ref v1.3 @ 15bf646) terminal record — concluded 2026-10-15T06:33Z:**
 
-| Job | Expected | Status at ledger time |
-|-----|----------|----------------------|
-| test-mamba (3.11) | success | **completed success** (terminal) |
-| example-nightly | green or rice-class classified | queued |
-| coverage-nightly | green or rice-class classified | in_progress (leased after mamba) |
+| Job | Conclusion | A.5 disposition |
+|-----|------------|-----------------|
+| test-mamba (3.11) | success | green |
+| coverage-nightly (py3.12) | success | green — census 216/217 + coverage gate + slow suite held on the final tree |
+| example-nightly (py3.12) | **failure** | **repo-caused** — root-caused, fixed (bdf6ba3), re-dispatched |
+
+- **Root cause (repo-caused; not rice, not infra):** example-nightly Stage 0 (mamba wheelhouse install) died in 15 ms — `uv pip install wheelhouse-mamba/*.whl` found no wheel with a matching Python tag. Chain: the unpinned `uv venv` in the three self-hosted nightly legs prefers uv-managed interpreters, so the newest one on this persistent box (cpython-3.13.16, picked up 2026-10-14T10:12Z mid-cycle as a local-dev side effect) silently replaced setup-python's 3.12 — the workspace `.venv` at failure time was Python 3.13.16 (uv's error text names `cp313`). The restored wheelhouse (cache key `mamba-conv1d-1.7.0-ssm-2.3.2.post1-ARM64-torch2.10.0+cu130`, entry 8913155507, created 2026-10-14T00:39Z by scheduled run 38400225941's successful example-nightly) held **cp311** wheels — its own unpinned venv had discovered 3.11.16 (on the box since 2026-10-07). The key carried arch+torch but **no Python tag**, so the cp311 wheelhouse restored into the cp313 venv. Stages 0.5–3 never ran (skipped); the four stage-4 junit audits record `=1 (junit missing: pytest never wrote it)` by design (D-08).
+- **Fix (commit bdf6ba3, pushed):** `uv venv --python "$pythonLocation/bin/python"` pinned in test-mamba / coverage-nightly / example-nightly — job labels become the truth (hosted legs stay unpinned: ephemeral runners cannot accumulate managed interpreters, PATH resolution is stable there). Wheel-cache key gains the venv's `cpXY` tag (wheelkeys step). Poisoned cache entry 8913155507 deleted (3.57 GiB freed of the 10 GiB quota). First pinned run rebuilds the wheelhouse (~23–24 min, D-12 measured), then amortizes under the Python-tagged key.
+- **Honesty note (interpreter-drift disclosure, surfaced for the milestone audit):** since 2026-10-07 (uv-managed 3.11.16 install) the nightly venvs ran under uv-discovered **3.11**, and since 2026-10-14T10:12Z under **3.13.16** — never the setup-python versions the job labels claim. Every green in that window (incl. this run's coverage-nightly and the 38381090082 / 38400225941 scheduled greens) is a real result under the actual interpreter; the pin makes the labels true from bdf6ba3 onward. Recorded here as fixed-and-disclosed; no WINDOWS row opened (no going-forward defect remains).
+- **Re-dispatch: run 38695301631** (workflow_dispatch, ref v1.3 @ bdf6ba3, 2026-10-15T06:54:46Z) — PENDING per the 16-04 async-jobs precedent; manifest updated (prior_runs keeps the 38678158479 chain); terminal reconciliation fills the table below when the run concludes.
+
+| Job | Expected | Status |
+|-----|----------|--------|
+| test-mamba (3.11, pinned) | success | pending |
+| coverage-nightly (3.12, pinned) | green | pending (serial: after mamba) |
+| example-nightly (3.12, pinned) | green or rice-class classified | pending (serial: last; Stage 0 wheelhouse rebuild ~23–24 min on the first pinned run) |
 
 ---
 

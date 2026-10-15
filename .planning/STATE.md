@@ -6,8 +6,8 @@ current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
 current_plan: 7
 status: executing
-stopped_at: "19-07 external_job_waiting: nightly trio 38678158479 in flight - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY"
-last_updated: "2026-10-15T03:55:12.229Z"
+stopped_at: "19-07 external_job_waiting: nightly trio 38695301631 in flight (redispatch after repo-caused Stage 0 red fixed in bdf6ba3) - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY"
+last_updated: "2026-10-15T07:00:00.000Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
 state_head: 060a58364a0744923b26fd5b52da99b30bb49f2e
@@ -154,8 +154,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T03:55:12.169Z
-Stopped at: 19-07 external_job_waiting: nightly trio 38678158479 in flight - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY
+Last session: 2026-10-15T07:00:00.000Z
+Stopped at: 19-07 external_job_waiting: nightly trio 38695301631 in flight (redispatch after repo-caused Stage 0 red fixed in bdf6ba3; prior run 38678158479 terminal record in 19-EVIDENCE.md) - reconcile async-jobs/19-07-nightly.json then write 19-07-SUMMARY
 Resume file: .planning/async-jobs/19-07-nightly.json
 
 ## Operator Next Steps
