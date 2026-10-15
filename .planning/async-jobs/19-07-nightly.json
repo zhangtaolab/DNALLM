@@ -1,0 +1,20 @@
+{
+  "job_id": "19-07-nightly",
+  "plan_id": "19-07",
+  "phase_dir": ".planning/phases/19-docs-accuracy-sweep-milestone-closeout",
+  "kind": "github_actions_dispatch",
+  "workflow": "ci.yml",
+  "run_id": 38678158479,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/38678158479",
+  "repo": "zhangtaolab/DNALLM",
+  "ref": "v1.3",
+  "head_sha": "15bf646",
+  "dispatched_at": "2026-10-15T03:44:30Z",
+  "dispatched_by": "executor 19-07 (sequential, main working tree)",
+  "status": "external_job_waiting",
+  "expected_jobs": ["test-mamba", "example-nightly", "coverage-nightly"],
+  "expected_wall": "~8h serial on the single dnallm-nightly runner",
+  "red_classification_rule": "A.5 classify-before-retry: repo-caused = blocker/fix; rice.uga.edu input-download class = owner-accepted caveat (phase-14 H.4 precedent); infra reds = cancel-and-re dispatch of owned runs only",
+  "reconciliation": "When run 38678158479 reaches a terminal state, update the nightly table in 19-EVIDENCE.md 'Closeout battery' section and 19-07-SUMMARY.md with per-job conclusions + dispositions, then flip this manifest to terminal (status: concluded, conclusions: {...}). Per 16-04 precedent (async-jobs/16-04-sc4-nightly.json).",
+  "conclusions": null
+}
