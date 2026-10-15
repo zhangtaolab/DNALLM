@@ -1,0 +1,33 @@
+# Phase 19 User-Guide Heavy-Half Review Ledger (19-03)
+
+Per-file disposition ledger for the DOCR-01 human-grade accuracy review of the
+user_guide heavy half — fine_tuning (6), inference (6), benchmark (5),
+tutorial/end_to_end_workflow.md (1); 18 rows total (19-REVIEW-strict.md table
+shape: bold verdict + one-line evidence per row). Rows land in the same commit
+as the fixes they record. Consolidated into 19-EVIDENCE.md by 19-07.
+
+Check vocabulary (19-RESEARCH "State of the Art" currency table + catch
+classes): install commands vs the final extras surface (full/base-alias/cpu/
+cuda124–cuda130/mamba/fla; cuda130 default generic; Turing exception per
+gpu_support.md); removed machinery (ollama nightly stage 3, cuda121, rocm,
+pre-18-01 `.[base]` install forms); floors py>=3.11 / numpy>=2.0; API names /
+CLI flags verified against the dnallm package by targeted grep (never trusted
+from prose); model names cross-checked against models.lock where listed;
+terminology "DNA large language models".
+
+## Per-file rows (Task 1 — fine_tuning + inference, 12 files)
+
+| File | Verdict | Fix summary |
+|------|---------|-------------|
+| docs/user_guide/fine_tuning/index.md | **accurate** | Root exports (load_config/load_model_and_tokenizer/DNADataset/DNATrainer), load_model_and_tokenizer(task_config=, source=), DNADataset.load_local_data(seq_col/label_col/tokenizer/max_length), DNATrainer(model/config/datasets) all grep-verified in dnallm; no install commands; terminology clean |
+| docs/user_guide/fine_tuning/getting_started.md | **fixed** | Prerequisites claimed `pip install torch transformers datasets accelerate` as "additional dependencies for fine-tuning" — all four are core deps installed by `pip install dnallm` (pyproject dependencies array); replaced with the core-deps statement + cuda130 CUDA-extra pointer with the Turing 20xx exception and GPU-matrix pointer; CLI section (dnallm train / dnallm-train, --config/--model/--data/--output only, no training-flag CLI) verified against dnallm/cli/cli.py + project.scripts; early-stopping callbacks + "no dropout field" negative claim verified against TrainingConfig |
+| docs/user_guide/fine_tuning/configuration.md | **accurate** | Every documented field (task.*, finetune.*, callbacks.early_stopping.patience/threshold) verified against TaskConfig/TrainingConfig/CallbackConfig pydantic models in dnallm/configuration/configs.py; task-type requirements table matches the num_labels enforcement in models/model.py |
+| docs/user_guide/fine_tuning/task_guides.md | **accurate** | trainer.evaluate()/infer() semantics, metric keys (f1=macro, f1_micro, f1_weighted, mse/mae/r2) verified against dnallm/tasks/metrics.py + finetune/trainer.py; mlm_probability, multi_label_sep, augment_reverse_complement verified; 7 head-bearing task types match the model.py head-selection chain |
+| docs/user_guide/fine_tuning/advanced_techniques.md | **fixed** | 3 fixes: (a) gradient-checkpointing YAML block was truncated (`finetune:` with no field) — completed with `gradient_checkpointing: true`; (b) `torch.optim.lr_scheduler.get_scheduler` misattribution — the kwargs signature (name/num_warmup_steps/num_training_steps) belongs to `transformers.get_scheduler`, fixed with a local import; (c) GradScaler gated on `bf16` — GradScaler is the fp16 companion, gate moved to `fp16`. customize_trainer/search()/FocalLoss(alpha=0.25, gamma=2.0)/loss_function names all verified against the package |
+| docs/user_guide/fine_tuning/peft_adapters.md | **accurate** | LoraConfig/Ia3Config fields (r/lora_alpha/target_modules/lora_dropout/bias/task_type; target_modules/feedforward_modules/exclude_modules/fan_in_fan_out/init_ia3_weights/modules_to_save), use_qlora/use_ia3, both early-rejection paths (config-load for ia3×qlora, trainer-init for use_lora×use_ia3), prepare_model_for_kbit_training, lora_adapter reload via PeftModel.from_pretrained, peft-0.21.1 parity (matches the code docstring) — all verified |
+| docs/user_guide/inference/getting_started.md | **accurate** | InferenceConfig fields (batch_size/device auto-cpu-cuda-mps/max_length/num_workers/output_dir/use_fp16) verified; MPS support verified (inference.py mps/apple/mac device aliases + torch.backends.mps); `pip install .` + pytorch.org GPU pointer is the honest pip-lane story |
+| docs/user_guide/inference/basic_inference.md | **accurate** | infer(sequences=/file_path=/evaluate=/output_hidden_states=/output_attentions=) dispatch + tuple-on-evaluate verified; infer_file formats (csv/tsv/json/parquet/arrow/fasta/txt/pkl) match DNADataset.load_local_data; engine.embeddings attribute verified; referenced notebook exists |
+| docs/user_guide/inference/advanced_inference.md | **fixed** | LoRA example cited `lgq12697/PlantCAD2-Small-l24-d0768` + `lgq12697/cross_species_acr_train_on_arabidopsis_plantcad2_small` (source=modelscope) — neither repo id appears in models.lock nor any executed example; the lock-pinned nightly-executed pair is `kuleshov-group/PlantCAD2-Small-l24-d0768` (hf row) + `plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_small` (the lora_finetune_inference notebook's exact strings) — example aligned to the verified pair; batch_infer/generate_dataset/plot_attentions/plot_hidden_states signatures all verified |
+| docs/user_guide/inference/performance_optimization.md | **accurate** | estimate_memory_usage/get_model_info/force_eager_attention methods + torch.no_grad() in batch paths all verified in dnallm/inference/inference.py; use_fp16/use_bf16 config fields verified |
+| docs/user_guide/inference/mutagenesis_analysis.md | **fixed** | Evo2 example cited `lgq12697/evo2_1b_base` (source=modelscope) — not in models.lock nor any executed example; aligned to the pinned lane `arcinstitute/evo2_1b_base` (hf row, the generation_evo_models notebook's model) with source="huggingface"; everything else verified: dnallm.Mutagenesis root export, mutate_sequence/evaluate/plot, mlm_evaluate/clm_evaluate, strategy values (first/last/sum/mean/max/int), task_type routing (mask→mlm, generation→clm, embedding→scoring, else batch_infer) |
+| docs/user_guide/inference/visualization.md | **fixed** | Troubleshooting claimed scikit-learn and umap-learn are optional plotting deps to `pip install` on ImportError — both are core dependencies (pyproject: `scikit-learn>=1.4.0`, `umap-learn>=0.5.7`); the one genuinely optional reducer dep is `pacmap` (lazy guarded import in plot.py) — entry rewritten around pacmap; Benchmark.plot filename derivation (benchmark.pdf → benchmark_metrics.pdf/_roc.pdf), plot_muts/plot_bars, and the module-level width/height params verified |

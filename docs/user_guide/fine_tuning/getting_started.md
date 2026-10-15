@@ -15,14 +15,17 @@ Fine-tuning in DNALLM allows you to:
 Ensure you have the following installed and configured:
 
 ```bash
-# Install DNALLM
+# Install DNALLM — torch, transformers, datasets, and accelerate are core
+# dependencies and install with it
 pip install dnallm
 
 # Or with uv (recommended)
 uv pip install dnallm
 
-# Install additional dependencies for fine-tuning
-pip install torch transformers datasets accelerate
+# For NVIDIA GPU acceleration, use a CUDA extra instead of the plain install
+# (cuda130 is the recommended default; older Turing 20xx GPUs need the
+# CUDA 12.4/12.8 lanes — see the GPU Support Matrix in the Installation Guide)
+uv pip install -e '.[cuda130]'
 ```
 
 ## Basic Setup

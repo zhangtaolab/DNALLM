@@ -156,7 +156,7 @@ configs = load_config("inference_evo_config.yaml")
 
 # Load an Evo model
 model, tokenizer = load_model_and_tokenizer(
-    "lgq12697/evo2_1b_base", task_config=configs["task"], source="modelscope"
+    "arcinstitute/evo2_1b_base", task_config=configs["task"], source="huggingface"
 )
 
 mut_analyzer = Mutagenesis(model=model, tokenizer=tokenizer, config=configs)
