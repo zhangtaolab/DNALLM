@@ -69,6 +69,10 @@ Progress: [████████░░] 88% (7/8 v1.3 phases)
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 20 added (2026-10-15, post-audit option B): tech-debt closeout — CLI flag-only invocation crash (deferred-items #1) + residual docs mentions (faq legacy [cuda]/[rocm], task_guides hf route prose); owner human-gates #25/#27/#26 stay in the WINDOWS ledger outside this phase
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-10-11):
