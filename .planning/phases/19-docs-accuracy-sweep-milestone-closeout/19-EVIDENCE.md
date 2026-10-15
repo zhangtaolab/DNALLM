@@ -496,9 +496,9 @@ Landed in 19-02 (batch table above): mirrored overview.md (both sides, byte-iden
 
 | Job | Expected | Status at ledger time |
 |-----|----------|----------------------|
-| test-mamba (3.11) | success | in_progress |
+| test-mamba (3.11) | success | **completed success** (terminal) |
 | example-nightly | green or rice-class classified | queued |
-| coverage-nightly | green or rice-class classified | queued |
+| coverage-nightly | green or rice-class classified | in_progress (leased after mamba) |
 
 ---
 
