@@ -47,3 +47,45 @@ models.lock and the shipped catalog dnallm/models/model_info.yaml; terminology
 | docs/user_guide/models.md | **fixed** | 1 fix: Basic Model Loading example used source="huggingface" for plant-dnabert-BPE — lock:21 pins the ms route (no hf evidence in-repo); aligned to source="modelscope"; all 9 architecture-guide links + 4 resource links verified live; GenomeOcean/PlantCaduceus/HyenaDNA/EVO sizes verified against model_zoo.md; inference/performance_optimization.md and other relative links resolve |
 | docs/user_guide/performance_guide.md | **accurate** | Flash-attention honesty block verified exactly (eager pin model.py:593, Evo-only auto-wiring, -noFA fallback variant in evo.py:263/401, "model_args is not a recognized section"); fp16/bf16, torchrun, gradient accumulation fields verified |
 | docs/user_guide/troubleshooting.md | **fixed** | 1 fix: the Model Loading snippet called load_model_and_tokenizer without importing it — added `from dnallm.models import load_model_and_tokenizer`; mamba/evo install commands match the authoritative installation.md record (evo2 :689, evo-model :702); trust_remote_code note verified (load_kwargs + ModelConfig default true); GitHub issues link domain-sanctioned |
+
+## Per-file rows (Task 2 — api stubs + index, 35 files)
+
+All 33 pure-stub pages verified by a scripted import check: every `:::` directive target module imported live with the repo .venv python under `-I` (33/33 ok) — resolution is also build-proven (a failed mkdocstrings directive is a build ERROR); none carries hand-prose beyond its title line.
+
+| File | Verdict | Fix summary |
+|------|---------|-------------|
+| docs/api/index.md | **accurate** | Every section and subpage link matches the actual package layout: configuration, models (model/modeling_auto/head/tokenizer + all 11 special/* pages), datahandling (data/dataset_auto), tasks (task/metrics), finetune/trainer, inference (inference/benchmark/mutagenesis/interpret/plot), mcp (server/config_manager/config_validators/model_manager), utils (sequence/logger/support) — all 33 sibling pages referenced with resolving relative links; section descriptions match the modules' roles |
+| docs/api/configuration/configs.md | **accurate** | Pure stub — `::: dnallm.configuration.configs` resolves to live module, no prose |
+| docs/api/datahandling/data.md | **accurate** | Pure stub — `::: dnallm.datahandling.data` resolves to live module, no prose |
+| docs/api/datahandling/dataset_auto.md | **accurate** | Pure stub — `::: dnallm.datahandling.dataset_auto` resolves to live module, no prose |
+| docs/api/finetune/trainer.md | **accurate** | Pure stub — `::: dnallm.finetune.trainer` resolves to live module, no prose |
+| docs/api/inference/benchmark.md | **accurate** | Pure stub — `::: dnallm.inference.benchmark` resolves to live module, no prose |
+| docs/api/inference/inference.md | **accurate** | Pure stub — `::: dnallm.inference.inference` resolves to live module, no prose |
+| docs/api/inference/interpret.md | **accurate** | Pure stub — `::: dnallm.inference.interpret` resolves to live module, no prose |
+| docs/api/inference/mutagenesis.md | **accurate** | Pure stub — `::: dnallm.inference.mutagenesis` resolves to live module, no prose |
+| docs/api/inference/plot.md | **accurate** | Pure stub — `::: dnallm.inference.plot` resolves to live module, no prose |
+| docs/api/mcp/config_manager.md | **accurate** | Pure stub — `::: dnallm.mcp.config_manager` resolves to live module, no prose |
+| docs/api/mcp/config_validators.md | **accurate** | Pure stub — `::: dnallm.mcp.config_validators` resolves to live module, no prose |
+| docs/api/mcp/model_manager.md | **accurate** | Pure stub — `::: dnallm.mcp.model_manager` resolves to live module, no prose |
+| docs/api/mcp/server.md | **accurate** | Pure stub — `::: dnallm.mcp.server` resolves to live module, no prose |
+| docs/api/models/head.md | **accurate** | Pure stub — `::: dnallm.models.head` resolves to live module, no prose |
+| docs/api/models/model.md | **accurate** | Pure stub — `::: dnallm.models.model` resolves to live module, no prose |
+| docs/api/models/modeling_auto.md | **accurate** | Pure stub — `::: dnallm.models.modeling_auto` resolves to live module, no prose |
+| docs/api/models/special/basenji2.md | **accurate** | Pure stub — `::: dnallm.models.special.basenji2` resolves to live module, no prose |
+| docs/api/models/special/borzoi.md | **accurate** | Pure stub — `::: dnallm.models.special.borzoi` resolves to live module, no prose |
+| docs/api/models/special/dnabert2.md | **accurate** | Pure stub — `::: dnallm.models.special.dnabert2` resolves to live module, no prose |
+| docs/api/models/special/enformer.md | **accurate** | Pure stub — `::: dnallm.models.special.enformer` resolves to live module, no prose |
+| docs/api/models/special/evo.md | **accurate** | Pure stub — `::: dnallm.models.special.evo` resolves to live module, no prose |
+| docs/api/models/special/gpn.md | **accurate** | Pure stub — `::: dnallm.models.special.gpn` resolves to live module, no prose |
+| docs/api/models/special/lucaone.md | **accurate** | Pure stub — `::: dnallm.models.special.lucaone` resolves to live module, no prose |
+| docs/api/models/special/megadna.md | **accurate** | Pure stub — `::: dnallm.models.special.megadna` resolves to live module, no prose |
+| docs/api/models/special/mutbert.md | **accurate** | Pure stub — `::: dnallm.models.special.mutbert` resolves to live module, no prose |
+| docs/api/models/special/omnidna.md | **accurate** | Pure stub — `::: dnallm.models.special.omnidna` resolves to live module, no prose |
+| docs/api/models/special/space.md | **accurate** | Pure stub — `::: dnallm.models.special.space` resolves to live module, no prose |
+| docs/api/models/tokenizer.md | **accurate** | Pure stub — `::: dnallm.models.tokenizer` resolves to live module, no prose |
+| docs/api/tasks/metrics.md | **accurate** | Pure stub — `::: dnallm.tasks.metrics` resolves to live module, no prose |
+| docs/api/tasks/task.md | **accurate** | Pure stub — `::: dnallm.tasks.task` resolves to live module, no prose |
+| docs/api/utils/logger.md | **accurate** | Pure stub — `::: dnallm.utils.logger` resolves to live module, no prose |
+| docs/api/utils/sequence.md | **accurate** | Pure stub — `::: dnallm.utils.sequence` resolves to live module, no prose |
+| docs/api/utils/support.md | **accurate** | Pure stub — `::: dnallm.utils.support` resolves to live module, no prose |
+| docs/index.md | **fixed** | 9 fixes: (a) "200+ test cases" → "2,500+ test cases" (fast-lane 2556 baseline, matching README's 19-02 re-point); (b) Quick-Start model example source="huggingface" for plant-dnagpt-BPE-promoter_strength_protoplast → "modelscope" (lock:37 pins ms; the notebook's executed route); (c) from_huggingface("plant-multi-species-core-promoters") → from_modelscope (lock:43 records the modelscope route; same loader signature incl. tokenizer, so the example still runs); (d) MCP example comment said "SSE transport" while the call passes transport="streamable-http"; (e) project-structure comment "cli/ # Legacy CLI scripts (deprecated)" — root cli/model_config_generator.py is imported at runtime by the package shim (dnallm/cli/model_config_generator.py), not deprecated; (f) "README.md # This file" copy-paste artifact (this is the docs landing page, not README); (g) duplicate "Development setup" bullet; (h) the four Documentation links carried a docs/ prefix (docs/getting_started/, docs/api/, docs/concepts/, docs/faq/) that 404s on the built site — verified against the built site/ tree (site/docs/* absent); re-pointed to the real relative .md targets so strict validates them; (i) Support-section [docs/](docs/) link → the documentation home; everything else verified: 219-entry catalog backs "200+ models", 8 task types match the TaskConfig pattern, :78-79 cuda130 install state (19-02) with agreeing enumeration, DNALLMMCPServer export + async initialize + sync start_server(host/port/transport), all 15 notebook paths and 3 ui/ app paths exist, platforms/devices claims, MIT license, DeepWiki/GitHub links sanctioned |
