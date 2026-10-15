@@ -251,9 +251,9 @@ DNALLM/
 
 For more details, please refer to the following guidelines.
 
-- **[Getting Started](getting_started/index.md)** - Installation and basic usage
+- **[Getting Started](getting_started/quick_start.md)** - Installation and basic usage
 - **[API Reference](api/index.md)** - Detailed function documentation
-- **[Concepts](concepts/index.md)** - Core concepts and architecture
+- **[Concepts](concepts/biology/dna_sequences.md)** - Core concepts and architecture
 - **[FAQ](faq/index.md)** - Common questions and solutions
 
 - **[DeepWiki](https://deepwiki.com/zhangtaolab/DNALLM)** - A documentation that can ask
@@ -278,7 +278,7 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-- **Documentation**: [Documentation home](./)
+- **Documentation**: [Documentation home](index.md)
 - **Issues**: [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/zhangtaolab/DNALLM/discussions)
 - **Examples**: Check the `example/` directory for working code
