@@ -140,7 +140,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 | deferred_items | 05: `uv run pytest` resolver failure under uv 0.12.20 (use `--no-sync`) | acknowledged | 2026-10-06 | v1.1 |
 | deferred_items | 03: import-time `logs/dnallm.log` sink recreated under pytest cwd | acknowledged | 2026-10-01 | v1 |
 | deferred_items | 03: test_timeout.py fixed ~60s cost | acknowledged | 2026-10-01 | v1 |
-| deferred_items | `DNADataset.raw_reverse_complement` no-op (data.py:983) | acknowledged | 2026-10-01 | v1 |
+| deferred_items | `DNADataset.raw_reverse_complement` — RESOLVED: fully implemented at data.py:1013 (verified 2026-10-15 during 19-03 docs sweep; was stale-recorded as a no-op) | resolved | 2026-10-15 | v1 |
 
 ## Session Continuity
 
