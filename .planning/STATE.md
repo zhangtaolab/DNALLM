@@ -6,16 +6,16 @@ current_phase: 19
 current_phase_name: Docs Accuracy Sweep & Milestone Closeout
 current_plan: 7
 status: executing
-stopped_at: "Completed 19-05-PLAN.md (concepts/resources/faq: 37 files reviewed, 17 fixed in-pass, battery green)"
-last_updated: "2026-10-15T02:40:23.995Z"
+stopped_at: "Completed 19-06-PLAN.md (getting_started + 29 wrappers: 33 files reviewed, 9 fixed in-pass, battery green)"
+last_updated: "2026-10-15T03:07:29.985Z"
 last_activity: 2026-10-14
 last_activity_desc: Phase 16 complete, transitioned to Phase 17
-state_head: 8e3c638b9536d2443b0de1fb629b367b9e078ce6
+state_head: 49b8b1409e081d0a5f8ad0acfe24a37938292cd3
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
   percent: 57
 ---
 
@@ -66,6 +66,7 @@ Progress: [██████░░░░] 57% (0/7 v1.3 phases)
 | Phase 19 P03 | 21 min | 3 tasks | 12 files |
 | Phase 19 P04 | 27 min | 3 tasks | 18 files |
 | Phase 19 P05 | 23 min | 3 tasks | 18 files |
+| Phase 19 P06 | 22 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 19]: [19-04] Lock-route alignment extended to runnable examples: 4 source="huggingface" sites aligned to lock-pinned modelscope routes; catalog/prose mentions stay per 19-03's distinction (task_guides.md flag noted in deferred-items.md #2)
 - [Phase 19]: [19-04] Non-.md-link blind spot recorded: mkdocs --strict does not validate bare directory/URL-shaped links — docs/index.md docs/-prefix links and api/index.md models/special/ link had 404ed invisibly; sweep must check non-.md links against the built site tree
 - [Phase 19]: [19-04] Fabricated support surfaces removed: lone repo-wide discord.gg link dropped (T-19-06 domain rule); landing-page '200+ test cases' moved to the 2556-based '2,500+' README parity
+- [Phase 19]: :255 Scenario-6 pointer flipped to .[cuda130,mamba] (19-06): the pointer example must name the combination the scenario demonstrates — 19-02's survivor sanction was for its own count gates; this batch owns post-re-point coherence
+- [Phase 19]: Vacuous-verification pattern (19-06): mamba verify commands tested mambapy (core) — a check that passes in every env proves nothing about the extra; both now import mamba-ssm, the extra's member
+- [Phase 19]: Retired-extras vocabulary swept from wrapper prose (19-06): 'base/inference/benchmark extras' phrasing named extras that do not exist while the commands show .[full,cuda130] — prose may only name extras on the final surface
 
 ### Pending Todos
 
@@ -150,8 +154,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T02:40:23.939Z
-Stopped at: Completed 19-05-PLAN.md (concepts/resources/faq: 37 files reviewed, 17 fixed in-pass, battery green)
+Last session: 2026-10-15T03:07:29.929Z
+Stopped at: Completed 19-06-PLAN.md (getting_started + 29 wrappers: 33 files reviewed, 9 fixed in-pass, battery green)
 Resume file: None
 
 ## Operator Next Steps

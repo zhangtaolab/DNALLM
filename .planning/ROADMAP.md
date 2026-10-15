@@ -200,7 +200,7 @@ Plans:
   3. `mkdocs --strict` builds with zero warnings — the 15 ledgered pre-existing warnings cleared, with the nav/mirror interplay respected
   4. Every example edit in the sweep lands with its docs mirror byte-identical and the automated sync/masking gates green; the milestone closes honest-green (fast lane, coverage gate, full CI matrix)
 
-**Plans**: 5/7 plans executed
+**Plans**: 6/7 plans executed
 
 Plans:
 **Wave 1**
@@ -213,7 +213,7 @@ Plans:
 - [x] 19-03-PLAN.md — Review wave: user_guide heavy half (fine_tuning/inference/benchmark/tutorial, 18 files) with same-pass fixes + ledger rows
 - [x] 19-04-PLAN.md — Review wave: user_guide light half + root (incl. continuous_integration.md ollama-stage fix) + api stubs + index (61 files)
 - [x] 19-05-PLAN.md — Review wave: concepts/resources/faq (37 files)
-- [ ] 19-06-PLAN.md — Review wave: getting_started post-re-point verification + the 29 example wrappers (selection.md frozen-verified)
+- [x] 19-06-PLAN.md — Review wave: getting_started post-re-point verification + the 29 example wrappers (selection.md frozen-verified)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 19-07-PLAN.md — Closeout: ci.yml vehicle (test-cuda cuda130 + temp v1.3 push-filter entry with removal-decision record), the honest-green evidence battery (push matrix/publish smoke/nightly trio), 19-EVIDENCE.md consolidation (~150 logical rows)
@@ -234,4 +234,4 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 | 16. Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity | 4/4 | Complete    | 2026-10-14 |
 | 17. Publish Chain Robustness | 2/3 | In Progress | - |
 | 18. Packaging & Install Honesty — Atomic Extras Surgery | 2/3 | In Progress | - |
-| 19. Docs Accuracy Sweep & Milestone Closeout | 5/7 | In Progress | - |
+| 19. Docs Accuracy Sweep & Milestone Closeout | 6/7 | In Progress | - |
