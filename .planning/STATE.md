@@ -4,13 +4,13 @@ milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 20
 current_phase_name: "Tech-debt closeout: CLI flag-only crash + residual docs mentions"
-current_plan: Not started
-status: planning
+current_plan: 1
+status: executing
 stopped_at: Phase 20 context gathered
-last_updated: "2026-10-15T23:59:53.735Z"
-last_activity: 2026-10-15
-last_activity_desc: Phase 20 added post-audit (option B)
-state_head: 368f065c845e5a7ad18dc64111d1a722a80d43f1
+last_updated: "2026-10-16T00:00:40.657Z"
+last_activity: 2026-10-16
+last_activity_desc: Phase 20 execution started
+state_head: 67a987a01af92d1edad0cfad426f936b6f3238e6
 progress:
   total_phases: 8
   completed_phases: 7
@@ -26,14 +26,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 20 — Tech-debt closeout (post-audit option B)
+**Current focus:** Phase 20 — Tech-debt closeout: CLI flag-only crash + residual docs mentions
 
 ## Current Position
 
-Phase: 20 (Tech-debt closeout: CLI flag-only crash + residual docs mentions) — READY TO EXECUTE
-Current Plan: Not started
-Status: Awaiting context gathering + planning
-Last activity: 2026-10-15 — v1.3 audit complete (tech_debt, 27/29); phase 20 added by owner decision
+Phase: 20 (Tech-debt closeout: CLI flag-only crash + residual docs mentions) — EXECUTING
+Current Plan: 1
+Status: Executing Phase 20
+Last activity: 2026-10-16 — Phase 20 execution started
 
 Progress: [█████████░] 88% (7/8 v1.3 phases)
 
