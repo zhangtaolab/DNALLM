@@ -23,7 +23,9 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
+from dnallm.cli import inference as inference_module
 from dnallm.cli import train as train_module
+from dnallm.cli.cli import cli
 
 SENTINEL_CONFIG = {"sentinel": "config"}
 
@@ -66,6 +68,15 @@ def _assert_no_traceback(result):
     )
 
 
+def _extract_error_message(result):
+    """Return the message text after click's ``Error: `` prefix."""
+    for line in result.output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Error:"):
+            return stripped[len("Error:"):].strip()
+    raise AssertionError(f"no 'Error:' line in output: {result.output!r}")
+
+
 class TestStandaloneTrainConfigRequired:
     """The dnallm-train console script module (dnallm.cli.train.main)."""
 
@@ -104,3 +115,96 @@ class TestStandaloneTrainConfigRequired:
         assert result.exit_code == 0
         trainer_cls.assert_called_once_with(model=None, config=SENTINEL_CONFIG)
         trainer_cls.return_value.train.assert_called_once_with()
+
+
+class TestGroupTrainConfigRequired:
+    """The train subcommand of the dnallm group (dnallm.cli.cli)."""
+
+    def test_bare_invocation_is_a_usage_error(self, runner):
+        """`dnallm train` with no options exits 2 naming --config."""
+        result = runner.invoke(cli, ["train"])
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        _assert_no_traceback(result)
+
+    def test_full_flags_still_requires_config(self, runner, data_file, tmp_path):
+        """-m/-d/-o without -c exits 2; the core is never built."""
+        output_dir = str(tmp_path / "run")
+        with patch("dnallm.finetune.DNATrainer") as trainer_cls:
+            result = runner.invoke(
+                cli,
+                ["train", "-m", "tiny-dna", "-d", data_file, "-o", output_dir],
+            )
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        trainer_cls.assert_not_called()
+        _assert_no_traceback(result)
+
+
+class TestGroupInferenceConfigRequired:
+    """The inference subcommand of the dnallm group (dnallm.cli.cli)."""
+
+    def test_bare_invocation_is_a_usage_error(self, runner):
+        """`dnallm inference` with no options exits 2 naming --config."""
+        result = runner.invoke(cli, ["inference"])
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        _assert_no_traceback(result)
+
+    def test_full_flags_still_requires_config(self, runner, data_file):
+        """-m/-i without -c exits 2; the core is never built."""
+        with patch("dnallm.inference.DNAInference") as engine_cls:
+            result = runner.invoke(cli, ["inference", "-m", "m1", "-i", data_file])
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        engine_cls.assert_not_called()
+        _assert_no_traceback(result)
+
+
+class TestStandaloneInferenceConfigRequired:
+    """The dnallm-inference console script module (dnallm.cli.inference)."""
+
+    def test_bare_invocation_is_a_usage_error(self, runner):
+        """Standalone main with no options exits 2 naming --config."""
+        result = runner.invoke(inference_module.main, [])
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        _assert_no_traceback(result)
+
+    def test_full_flags_still_requires_config(self, runner, data_file):
+        """-m/-i without -c exits 2; the core is never built."""
+        with patch("dnallm.inference.DNAInference") as engine_cls:
+            result = runner.invoke(inference_module.main, ["-m", "m2", "-i", data_file])
+
+        assert result.exit_code == 2
+        assert CONFIG_REQUIRED_SUBSTRING in result.output
+        engine_cls.assert_not_called()
+        _assert_no_traceback(result)
+
+
+class TestConfigRequiredMessageConsistency:
+    """One static message across all four train/inference entry points."""
+
+    def test_all_four_entry_points_emit_identical_message(self, runner):
+        """Bare invocation of each site emits byte-identical error text."""
+        invocations = (
+            (train_module.main, []),
+            (inference_module.main, []),
+            (cli, ["train"]),
+            (cli, ["inference"]),
+        )
+        messages = []
+        for fn, args in invocations:
+            result = runner.invoke(fn, args)
+            assert result.exit_code == 2, (fn, args, result.exit_code)
+            messages.append(_extract_error_message(result))
+
+        assert CONFIG_REQUIRED_SUBSTRING in messages[0]
+        assert "dnallm-model-config-generator" in messages[0]
+        assert "docs/user_guide/cli/usage.md" in messages[0]
+        assert len(set(messages)) == 1, f"messages diverged: {messages!r}"

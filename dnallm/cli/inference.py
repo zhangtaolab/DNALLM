@@ -2,7 +2,6 @@
 """Inference CLI for DNALLM."""
 
 import click
-import sys
 from ..utils import get_logger
 
 logger = get_logger("dnallm.cli.inference")
@@ -35,35 +34,26 @@ logger = get_logger("dnallm.cli.inference")
 )
 def main(config, model, input, output):
     """Run inference with a trained DNA large language model."""
+    if not config:
+        raise click.UsageError(
+            "--config is required: the task section and other core settings "
+            "come only from a configuration file, so a flag-only invocation "
+            "is not supported. Generate a config with "
+            "`dnallm-model-config-generator --output config.yaml` and rerun "
+            "with --config. See the CLI usage docs "
+            "(docs/user_guide/cli/usage.md)."
+        )
+
     from ..inference import DNAInference
     from ..configuration import load_config
 
-    if config:
-        config_dict = load_config(config)
-        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
-        results = inference_engine.infer()
-        if output:
-            click.echo(f"Results saved to: {output}")
-        else:
-            logger.info(f"Inference results: {results}")
+    config_dict = load_config(config)
+    inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
+    results = inference_engine.infer()
+    if output:
+        click.echo(f"Results saved to: {output}")
     else:
-        if not all([model, input]):
-            click.echo(
-                "Error: --model and --input are required when not using --config",
-                err=True,
-            )
-            sys.exit(1)
-
-        config_dict = {
-            "model_name_or_path": model,
-            "data_path": input,
-        }
-        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
-        results = inference_engine.infer()
-        if output:
-            click.echo(f"Results saved to: {output}")
-        else:
-            logger.info(f"Inference results: {results}")
+        logger.info(f"Inference results: {results}")
 
 
 if __name__ == "__main__":
