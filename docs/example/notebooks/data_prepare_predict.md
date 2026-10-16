@@ -42,7 +42,7 @@ configs = load_config("inference_config.yaml")
 model, tokenizer = load_model_and_tokenizer(
     model_name="zhangtaolab/plant-dnabert-BPE",
     task_config=configs['task'],
-    source="huggingface"
+    source="modelscope"
 )
 
 inferencer = DNAInference(

@@ -148,14 +148,11 @@ DNALLM also provides a convenient command-line interface:
 # Basic fine-tuning run — model, data, and all training parameters live in the YAML config
 dnallm train --config finetune_config.yaml
 
-# Without a config, --model, --data, and --output must all be provided
-dnallm train --model zhangtaolab/plant-dnabert-BPE --data path/to/data.csv --output ./outputs
-
 # The standalone entry point takes the same options
 dnallm-train --config finetune_config.yaml
 ```
 
-The CLI only accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o`. Training parameters such as epochs, batch size, and learning rate are set in the `finetune` section of the config file, not via command-line flags. To resume an interrupted run, set `resume_from_checkpoint` in the `finetune` section:
+A config file is required — flag-only invocation exits with a `--config is required` usage error. The CLI only accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o`. Training parameters such as epochs, batch size, and learning rate are set in the `finetune` section of the config file, not via command-line flags. To resume an interrupted run, set `resume_from_checkpoint` in the `finetune` section:
 
 ```yaml
 finetune:

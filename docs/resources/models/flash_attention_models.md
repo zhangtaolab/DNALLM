@@ -66,7 +66,7 @@ from dnallm import load_config, load_model_and_tokenizer
 
 configs = load_config("config.yaml")
 model, tokenizer = load_model_and_tokenizer(
-    "arcinstitute/evo-1-131k-base",
+    "togethercomputer/evo-1-131k-base",
     task_config=configs["task"],
     source="huggingface",
 )
