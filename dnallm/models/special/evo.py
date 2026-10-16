@@ -197,6 +197,18 @@ class EvoTokenizerWrapper:
         self._model_max_length = value
 
 
+def _transformer_engine_available() -> bool:
+    """Probe for the transformer_engine package without importing it.
+
+    The fp8-config guard below consults this; find_spec keeps the probe
+    side-effect-free and gives tests a stable patch seam (an import-based
+    probe cannot be monkeypatched).
+    """
+    import importlib.util
+
+    return importlib.util.find_spec("transformer_engine") is not None
+
+
 def _handle_evo2_models(
     model_name: str,
     source: str,
@@ -306,15 +318,12 @@ def _handle_evo2_models(
                 model_path = model_name
             # Check the dependencies and find the correct config file
             is_fp8 = is_fp8_capable()
-            if is_fp8:
+            if is_fp8 and not _transformer_engine_available():
                 # evo2>=0.6 hard-requires Transformer Engine whenever the
                 # config carries use_fp8_input_projections=True (non-7b
                 # models raise ImportError at load), so without the TE
                 # package the -noFP8 config variant is the loadable one.
-                try:
-                    import transformer_engine  # noqa: F401  # pyright: ignore[reportMissingImports]
-                except ImportError:
-                    is_fp8 = False
+                is_fp8 = False
             has_flash_attention = is_flash_attention_capable()
             config_dir = os.path.abspath(
                 os.path.join(os.path.dirname(__file__), "..", "..", "configuration/evo")

@@ -271,10 +271,14 @@ class FakeVortexCharLevelTokenizer:
         return [(ord(c) % 8) + 3 for c in sequence]
 
 
-def _install_evo2_stubs(monkeypatch):
+def _install_evo2_stubs(monkeypatch, tmp_path):
     """Inject evo2 + vortex stubs into sys.modules (auto-restored)."""
     FakeEvo2.load_calls = []
     fake_evo2_module = types.ModuleType("evo2")
+    # A real installed package always carries __file__ — the handler stages
+    # its config copy against dirname(evo2.__file__) — so the stub must too;
+    # pointing it into the tmp tree keeps the staging write sandboxed.
+    fake_evo2_module.__file__ = str(tmp_path / "evo2_pkg" / "__init__.py")
     fake_evo2_module.Evo2 = FakeEvo2
 
     fake_vortex = types.ModuleType("vortex")
@@ -288,7 +292,7 @@ def _install_evo2_stubs(monkeypatch):
     monkeypatch.setitem(sys.modules, "vortex.model.tokenizer", fake_vortex_tok)
 
 
-def _capability_patchers(flash_attention=True, fp8=True):
+def _capability_patchers(flash_attention=True, fp8=True, transformer_engine=True):
     """Patch the capability probes the evo handler consults."""
     return [
         patch(
@@ -296,6 +300,10 @@ def _capability_patchers(flash_attention=True, fp8=True):
             return_value=flash_attention,
         ),
         patch("dnallm.models.special.evo.is_fp8_capable", return_value=fp8),
+        patch(
+            "dnallm.models.special.evo._transformer_engine_available",
+            return_value=transformer_engine,
+        ),
     ]
 
 
@@ -317,7 +325,7 @@ class TestHandleEvo2Models:
         The glob used to index [0] unguarded, so a directory with no .pt
         files escaped as a bare IndexError.
         """
-        _install_evo2_stubs(monkeypatch)
+        _install_evo2_stubs(monkeypatch, tmp_path)
         model_dir = tmp_path / "evo2_1b_base"
         model_dir.mkdir()
 
@@ -326,7 +334,7 @@ class TestHandleEvo2Models:
 
     def test_local_source_loads_checkpoint(self, monkeypatch, tmp_path):
         """Local source resolves the .pt file inside the model directory."""
-        _install_evo2_stubs(monkeypatch)
+        _install_evo2_stubs(monkeypatch, tmp_path)
         model_dir = tmp_path / "evo2_1b_base"
         model_dir.mkdir()
         (model_dir / "weights.pt").write_bytes(b"fake")
@@ -347,7 +355,7 @@ class TestHandleEvo2Models:
 
     def test_capability_suffixes_selected(self, monkeypatch, tmp_path):
         """No-FA / no-FP8 environments pick the suffixed architecture config."""
-        _install_evo2_stubs(monkeypatch)
+        _install_evo2_stubs(monkeypatch, tmp_path)
         model_dir = tmp_path / "evo2_1b_base"
         model_dir.mkdir()
         (model_dir / "weights.pt").write_bytes(b"fake")
@@ -361,9 +369,9 @@ class TestHandleEvo2Models:
 
         assert FakeEvo2.load_calls[-1]["config_path"].endswith("evo2-1b-8k-noFA-noFP8.yml")
 
-    def test_remote_source_joins_model_file(self, monkeypatch):
+    def test_remote_source_joins_model_file(self, monkeypatch, tmp_path):
         """Non-local sources download and join <model>.pt onto the path."""
-        _install_evo2_stubs(monkeypatch)
+        _install_evo2_stubs(monkeypatch, tmp_path)
 
         from contextlib import ExitStack
 
@@ -384,7 +392,7 @@ class TestHandleEvo2Models:
 
     def test_head_config_wraps_in_sequence_classifier(self, monkeypatch, tmp_path):
         """A head_config wraps the loaded model in DNALLMforSequenceClassification."""
-        _install_evo2_stubs(monkeypatch)
+        _install_evo2_stubs(monkeypatch, tmp_path)
         model_dir = tmp_path / "evo2_1b_base"
         model_dir.mkdir()
         (model_dir / "weights.pt").write_bytes(b"fake")
