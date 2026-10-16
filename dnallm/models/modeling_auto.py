@@ -280,12 +280,14 @@ MODEL_INFO = {
         " gene-structure fine-tuned variants",
         "reference": "https://github.com/zhangtaolab/PlantHelixSeek",
         "model_architecture": "HelixSeekForCausalLM",
-        "model_tags": ["CRE", "Anno"],
+        "model_tags": ["Base", "CRE", "Anno"],
         "huggingface": [
+            "zhangtaolab/PlantHelixSeek",
             None,
             None,
         ],
         "modelscope": [
+            "zhangtaolab/PlantHelixSeek",
             "zhangtaolab/PlantHelixSeek-CRE",
             "zhangtaolab/PlantHelixSeek-Anno",
         ],
