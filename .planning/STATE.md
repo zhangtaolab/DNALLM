@@ -130,14 +130,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 261010-rpa | Retire numpy 1.x support: floor >=2.0.0, drop pyarrow cap, CI matrix numpy 2.2.0 only | 2026-10-10 | 834f9e2 | [261010-rpa](./quick/261010-rpa-numpy-1-x-pyproject-numpy-floor-2-0-0-py/) |
-| 261010-s3k | Bump package version 0.8.0 -> 1.2.1 (milestone-aligned numbering) | 2026-10-10 | 526d539 | [261010-s3k](./quick/261010-s3k-bump-package-version-0-8-0-to-1-2-1-alig/) |
-| 261010-sv2 | Raise requires-python floor to >=3.11; ruff/mypy py311 sync; dead 3.10 code removed | 2026-10-10 | e3a5e94 | [261010-sv2](./quick/261010-sv2-raise-requires-python-floor-to-3-11-3-10/) |
-| 261010-uz0 | Fix window #14: Benchmark.run label-column KeyError (+ regression test) | 2026-10-10 | 4db85d0 | [261010-uz0](./quick/261010-uz0-fix-window-14-benchmark-run-label-column/) |
-| 261010-vo6 | Fix latent bug: DNAInference.generate_dataset path-shaped strings raise ValueError | 2026-10-10 | 67953b6 | [261010-vo6](./quick/261010-vo6-fix-latent-bug-dnainference-generate-dat/) |
-| 261010-w6a | Fix Windows-only CI failure in test_generate_dataset_missing_path_raises (repr-based assertion) | 2026-10-10 | 3b99359 | [261010-w6a](./quick/261010-w6a-fix-windows-only-ci-failure-in-test-gene/) |
-| 261010-wx2 | Spike: numpy interval-jaccard parity vs bedtools — VERDICT PARITY (enabling evidence for #19) | 2026-10-11 | 454623e | [261010-wx2](./quick/261010-wx2-spike-numpy-interval-jaccard-parity-vs-b/) |
-| 261011-0a3 | Spike: numpy loj-intersect parity vs bedtools — VERDICT PARITY (null-fill/order/multiplicity pins recorded) | 2026-10-11 | 9ddc35d | [261011-0a3](./quick/261011-0a3-spike-numpy-pandas-loj-intersect-parity-/) |
+*Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
 
