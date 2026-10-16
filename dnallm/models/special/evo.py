@@ -234,7 +234,7 @@ def _handle_evo2_models(
             # "Tried to access the schema for ..."). Importing flash_attn
             # BEFORE evo2/vortex avoids the clobbering.
             try:
-                import flash_attn  # noqa: F401  # pyright: ignore[reportMissingImports]
+                import flash_attn  # ruff: ignore[unused-import]  # pyright: ignore[reportMissingImports]
             except ImportError:
                 pass
             try:
@@ -265,8 +265,7 @@ def _handle_evo2_models(
                         if return_embeddings:
                             if layer_names is None:
                                 raise ValueError(
-                                    "layer_names must be specified when "
-                                    "return_embeddings=True"
+                                    "layer_names must be specified when return_embeddings=True"
                                 )
 
                             def hook_fn(layer_name):
@@ -274,13 +273,12 @@ def _handle_evo2_models(
                                     if isinstance(output, tuple):
                                         output = output[0]
                                     embeddings[layer_name] = output
+
                                 return hook
 
                             for name in layer_names:
                                 layer = self.model.get_submodule(name)
-                                handles.append(
-                                    layer.register_forward_hook(hook_fn(name))
-                                )
+                                handles.append(layer.register_forward_hook(hook_fn(name)))
                         try:
                             logits = self.model.forward(input_ids)
                             if return_embeddings:
@@ -344,14 +342,13 @@ def _handle_evo2_models(
             # resource name (older evo2 accepted the absolute path directly).
             import evo2 as _evo2_pkg
 
-            stage_dir = os.path.join(
-                os.path.dirname(_evo2_pkg.__file__), "configs"
-            )
+            stage_dir = os.path.join(os.path.dirname(_evo2_pkg.__file__), "configs")
             os.makedirs(stage_dir, exist_ok=True)
             staged_name = "dnallm_" + os.path.basename(config_path)
-            with open(config_path, encoding="utf-8") as src, open(
-                os.path.join(stage_dir, staged_name), "w", encoding="utf-8"
-            ) as dst:
+            with (
+                open(config_path, encoding="utf-8") as src,
+                open(os.path.join(stage_dir, staged_name), "w", encoding="utf-8") as dst,
+            ):
                 dst.write(src.read())
             config_path = os.path.join("configs", staged_name)
             # Load the model with the built-in method
