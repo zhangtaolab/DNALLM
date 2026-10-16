@@ -8,6 +8,7 @@ PRETRAIN_MODEL_MAPS = OrderedDict([
     ("Plant DNAMamba", ["Zhangtaolab", "Causal Language Model"]),
     ("Plant NT", ["Zhangtaolab", "Masked Language Model"]),
     ("Plant DNAModernBert", ["Zhangtaolab", "Masked Language Model"]),
+    ("PlantHelixSeek", ["Zhangtaolab", "Masked Language Model"]),
     ("AgroNT", ["InstaDeepAI", "Masked Language Model"]),
     ("Nucleotide Transformer", ["InstaDeepAI", "Masked Language Model"]),
     ("Caduceus-Ph", ["Kuleshov-Group", "Masked Language Model"]),
@@ -272,6 +273,23 @@ MODEL_INFO = {
             None,
         ],
         "default": "lgq12697/PlantCAD2-Small-l24-d0768",
+    },
+    "PlantHelixSeek": {
+        "title": "PlantHelixSeek: plant DNA language model with CRE and"
+        " gene-structure fine-tuned variants",
+        "reference": "https://github.com/zhangtaolab/PlantHelixSeek",
+        "model_architecture": "HelixSeekForCausalLM",
+        "model_tags": ["CRE", "Anno"],
+        "huggingface": [
+            None,
+            None,
+        ],
+        "modelscope": [
+            "zhangtaolab/PlantHelixSeek-CRE",
+            "zhangtaolab/PlantHelixSeek-Anno",
+        ],
+        "default": "zhangtaolab/PlantHelixSeek-CRE",
+        "dependencies": "pip install 'flash-linear-attention>=0.5.2,<0.6'",
     },
     "DNABERT": {
         "title": "DNABERT: pre-trained Bidirectional Encoder Representations"
