@@ -29,9 +29,10 @@ dnallm-mcp-server --config config.yaml
 ```
 
 Note: the `--model`/`--data`/`--input` flags exist on the training and inference
-entry points, but the flag-only path (no `--config`) is currently broken — the
-trainer and inference engine read the `task` section from the config and the
-minimal dict the CLI builds without one lacks it. Always pass `--config`.
+entry points, but invoking them without `--config` exits with a usage error —
+`--config is required`. The `task` section (and the finetune/inference
+sections) come only from a configuration file; generate one with
+`dnallm-model-config-generator --output config.yaml`.
 
 ## Development Environment Usage
 
