@@ -129,6 +129,23 @@ families:
       attention Wqkv/Wo and gated MLP W_in/W_gate/W_out per the transformers
       modernbert layout.
 
+  PlantBiMoE:
+    match_names: [plantbimoe]
+    model_types: [plantbimoe]
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      cached-remote: PlantBiMoE remote code — BiMamba (Caduceus-lineage)
+      mixers via PlantbimoeMixerModel/BiMambaWrapper plus MoE FFN
+      (PlantbimoeSparseMoeBlock router + llama-style gate/up/down experts in
+      PlantbimoeMlp). Mamba-block projections targeted (the PlantCAD2
+      convention); router and expert Linears deliberately excluded (the
+      Mistral-DNA MoE convention). Run peft_dry_run to confirm.
+
   PlantHelixSeek:
     match_names: [planthelixseek]
     model_types: [HelixSeek]
@@ -259,15 +276,18 @@ families:
   DNABERT-2:
     match_names: [dnabert-2]
     model_types: []
-    lora_target_modules: [query, value]
-    ia3_target_modules: [key, value, intermediate.dense]
-    feedforward_modules: [intermediate.dense]
+    lora_target_modules: [Wqkv]
+    ia3_target_modules: [Wqkv, gated_layers]
+    feedforward_modules: [gated_layers]
     lora_r: 8
     ia3_ratio_band: [1.0e-4, 5.0e-3]
     lora_ratio_band: [5.0e-4, 3.0e-2]
     derivation: >-
-      config-fetch: no model_type; auto_map bert_layers.BertModel — BERT-style
-      module names per the DNABERT-2 remote code lineage.
+      cached-remote: DNABERT-2 remote code bert_layers.py — MosaicBERT fused
+      attention Wqkv (bert_layers.py:122) and gated FFN gated_layers/wo
+      (:268/:272); NO separate query/key/value modules (the previous
+      [query, value] row raised NoMatchingPeftModuleError live, 2026-10-16).
+      Same fused-Wqkv convention as Plant DNAModernBert / ModernBert-DNA.
 
   DNABERT-S:
     match_names: [dnabert-s]
@@ -300,18 +320,23 @@ families:
 
   EVO-2:
     match_names: [evo2, evo_2]
-    model_types: []
-    lora_target_modules: [in_proj, x_proj, dt_proj]
-    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
-    feedforward_modules: []
+    model_types: [evo2]
+    lora_target_modules: [Wqkv, out_filter_dense]
+    ia3_target_modules: [Wqkv, out_filter_dense, mlp.l1, mlp.l3]
+    feedforward_modules: [mlp.l1, mlp.l3]
     lora_r: 8
     ia3_ratio_band: [5.0e-5, 2.0e-2]
     lora_ratio_band: [2.0e-4, 1.0e-1]
     derivation: >-
-      arch-canonical (stripedhyena 2.0): the stripy package's mixing and
-      attention blocks use mamba-style in_proj/out_proj/x_proj/dt_proj
-      projections; loaded via dnallm's evo2 special handler from
-      dnallm/configuration/evo/*.yml. Run peft_dry_run before training.
+      cached-remote (evo2 0.6.0 / vortex StripedHyena 2, verified live
+      2026-10-16): the backbone carries no in_proj/x_proj/dt_proj Linears —
+      the only nn.Linear modules are inner_mha_cls.Wqkv (4 attention
+      blocks), out_filter_dense (22 hyena-mixer output projections) and
+      mlp.l1/l2/l3 (25 FFN blocks). LoRA targets attention + mixer
+      projections (the JanusDNA hybrid convention); the mamba-style target
+      list of the old row matched 0 modules. evo2 0.6's Evo2 is a plain
+      class, so the dnallm wrapper must register the backbone as an
+      nn.Module child for these modules to be reachable at all.
 
   GENA-LM:
     match_names: [gena-lm-bert]
