@@ -46,6 +46,7 @@ The following table shows all currently supported models and their fine-tuning/i
 | ProkBERT | MaskedLM | MegatronBert | ✅ | neuralbioinfo | 21M / 25M / 27M | 3 | [Frontiers in Microbiology](https://doi.org/10.3389/fmicb.2023.1331233) |
 | PlantHelixSeek | MaskedLM | HelixSeek | ✅ | zhangtaolab | 470M (240M) | 1 | [GitHub](https://github.com/zhangtaolab/PlantHelixSeek) |
 | FungiHelixSeek | MaskedLM | HelixSeek | ✅ | zhangtaolab | 263M (112M active) | 15 | [GitHub](https://github.com/zhangtaolab/FungiHelixSeek) |
+| PlantBiMoE | MaskedLM | plantbimoe | ✅ | lgq12697 | 87M (64M active) | 1 | [arXiv](https://doi.org/10.48550/arXiv.2512.07113) |
 | CrossDNA | MaskedLM | Comba | ✅ | chengCCC | 8.1M | 1 | [Nature Machine Intelligence](https://doi.org/10.1038/s42256-026-01249-1) |
 
 ## Model Categories
@@ -56,7 +57,7 @@ The following table shows all currently supported models and their fine-tuning/i
 - **BERT-based**: DNABERT, DNABERT-2, DNABERT-S, Plant DNABERT, GENA-LM, GROVER, MutBERT, ProkBERT, Plant DNAModernBert
 - **ESM-based**: Nucleotide Transformer, AgroNT, Plant Nucleotide Transformer
 - **Caduceus-based**: Caduceus-Ph, Caduceus-Ps, PlantCaduceus, PlantCAD2
-- **Other**: GENA-LM-BigBird, GPN, LucaOne, PlantHelixSeek, FungiHelixSeek, CrossDNA
+- **Other**: GENA-LM-BigBird, GPN, LucaOne, PlantHelixSeek, FungiHelixSeek, PlantBiMoE, CrossDNA
 
 #### **Causal Language Models (CLM)**
 - **Llama-based**: GENERator, OmniNA
@@ -89,7 +90,7 @@ range:
 ## Usage Guidelines
 
 ### Fine-tuning Support
-- ✅ **Native Supported**: 35 models with full fine-tuning capabilities based on its own model implementation
+- ✅ **Native Supported**: 36 models with full fine-tuning capabilities based on its own model implementation
 - ⭕ **Custom Supported**: 2 models (LucaOne, megaDNA) with fine-tuning capabilities based on custom implementation for sequence classification
 - ❌ **Not Supported**: 2 models (EVO-1, EVO-2) - inference only
 

@@ -129,6 +129,23 @@ families:
       attention Wqkv/Wo and gated MLP W_in/W_gate/W_out per the transformers
       modernbert layout.
 
+  PlantBiMoE:
+    match_names: [plantbimoe]
+    model_types: [plantbimoe]
+    lora_target_modules: [in_proj, x_proj, dt_proj]
+    ia3_target_modules: [in_proj, out_proj, x_proj, dt_proj]
+    feedforward_modules: []
+    lora_r: 8
+    ia3_ratio_band: [2.5e-4, 2.0e-2]
+    lora_ratio_band: [1.0e-3, 6.0e-2]
+    derivation: >-
+      cached-remote: PlantBiMoE remote code — BiMamba (Caduceus-lineage)
+      mixers via PlantbimoeMixerModel/BiMambaWrapper plus MoE FFN
+      (PlantbimoeSparseMoeBlock router + llama-style gate/up/down experts in
+      PlantbimoeMlp). Mamba-block projections targeted (the PlantCAD2
+      convention); router and expert Linears deliberately excluded (the
+      Mistral-DNA MoE convention). Run peft_dry_run to confirm.
+
   PlantHelixSeek:
     match_names: [planthelixseek]
     model_types: [HelixSeek]

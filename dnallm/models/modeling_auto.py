@@ -10,6 +10,7 @@ PRETRAIN_MODEL_MAPS = OrderedDict([
     ("Plant DNAModernBert", ["Zhangtaolab", "Masked Language Model"]),
     ("PlantHelixSeek", ["Zhangtaolab", "Masked Language Model"]),
     ("FungiHelixSeek", ["Zhangtaolab", "Masked Language Model"]),
+    ("PlantBiMoE", ["lgq12697", "Masked Language Model"]),
     ("AgroNT", ["InstaDeepAI", "Masked Language Model"]),
     ("Nucleotide Transformer", ["InstaDeepAI", "Masked Language Model"]),
     ("Caduceus-Ph", ["Kuleshov-Group", "Masked Language Model"]),
@@ -353,6 +354,20 @@ MODEL_INFO = {
         ],
         "default": "zhangtaolab/FungiHelixSeek",
         "dependencies": "pip install 'flash-linear-attention>=0.5.2,<0.6'",
+    },
+    "PlantBiMoE": {
+        "title": "PlantBiMoE: A Plant Genome Foundation Model with BiMamba"
+        " and Sparse Mixture-of-Experts",
+        "reference": "https://www.modelscope.cn/models/lgq12697/PlantBiMoE",
+        "model_architecture": "PlantbimoeForMaskedLM",
+        "model_tags": ["Base"],
+        "huggingface": [
+            None,
+        ],
+        "modelscope": [
+            "lgq12697/PlantBiMoE",
+        ],
+        "default": "lgq12697/PlantBiMoE",
     },
     "DNABERT": {
         "title": "DNABERT: pre-trained Bidirectional Encoder Representations"
