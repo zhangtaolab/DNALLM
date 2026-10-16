@@ -3,16 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 20
+current_phase_name: "Tech-debt closeout: CLI flag-only crash + residual docs mentions"
 current_plan: Not started
-status: completed
-stopped_at: Phase 20 complete — all phases complete
-last_updated: "2026-10-16T00:20:29.846Z"
+status: planning
+stopped_at: Phase 19 complete, ready to plan Phase 20
+last_updated: "2026-10-16T00:32:56.601Z"
 last_activity: 2026-10-16
-last_activity_desc: Phase 20 complete
-state_head: 774fc1b8b162b19cf852ea03375e02acb1e9e34c
+last_activity_desc: Phase 19 complete, transitioned to Phase 20
+state_head: cfdf35fa20357fb5779190afdbdb77315298752c
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 22
   completed_plans: 22
   percent: 100
@@ -29,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: 20
+Phase: 20 — Tech-debt closeout: CLI flag-only crash + residual docs mentions
 Current Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-16 — Phase 20 complete
+Status: Ready to plan
+Last activity: 2026-10-16 — Phase 19 complete, transitioned to Phase 20
 
 Progress: [██████████] 100% (7/8 v1.3 phases)
 
@@ -159,7 +160,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-15T23:43:19.812Z
-Stopped at: Phase 20 complete — all phases complete
+Stopped at: Phase 19 complete, ready to plan Phase 20
 Resume file: .planning/phases/20-tech-debt-closeout-cli-flag-only-crash-residual-docs-mention/20-CONTEXT.md
 
 ## Operator Next Steps
