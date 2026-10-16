@@ -291,7 +291,7 @@ MODEL_INFO = {
             "zhangtaolab/PlantHelixSeek-CRE",
             "zhangtaolab/PlantHelixSeek-Anno",
         ],
-        "default": "zhangtaolab/PlantHelixSeek-CRE",
+        "default": "zhangtaolab/PlantHelixSeek",
         "dependencies": "pip install 'flash-linear-attention>=0.5.2,<0.6'",
     },
     "FungiHelixSeek": {
