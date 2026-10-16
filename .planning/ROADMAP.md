@@ -241,7 +241,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17 → 18 → 19
 **Goal:** The three audited v1.3 debt items closed in-repo — flag-only train/inference CLI invocations exit with an actionable --config-required usage error (no KeyError crash) with regression coverage and census discipline held; the faq [cuda]/[rocm] legacy mention marked not-current with a GPU-matrix pointer (guard re-pinned same-change); task_guides.md hf-route sites aligned to lock-pinned routes
 **Requirements**: None mapped — debt closeout scoped by the v1.3 milestone audit (option B); see 20-CONTEXT.md and .planning/v1.3-MILESTONE-AUDIT.md
 **Depends on:** Phase 19
-**Plans:** 1 plan
+**Plans:** 1/1 plans executed
 
 Plans:
-- [ ] 20-01-PLAN.md — tracer: CLI --config-required exit at all four entry points + regression test + census hold; docs residue (usage.md note, faq line + extras-guard re-pin, task_guides six route flips)
+- [x] 20-01-PLAN.md — tracer: CLI --config-required exit at all four entry points + regression test + census hold; docs residue (usage.md note, faq line + extras-guard re-pin, task_guides six route flips)
