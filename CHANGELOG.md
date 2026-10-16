@@ -7,9 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-16
+
+### Overview
+
+Platform Reach & Packaging Honesty (milestone v1.3): Windows-native example execution via pure-numpy interval evaluators behind platform dispatch seams, an honest packaging surface (`full` extras with the one-cycle deprecated `base` alias; cuda130 as the recommended default with the first-ever cuda130 CI leg; cuda121 retired; rocm removed with a documented restore path; triton-windows declared behind the Windows platform marker), a never-uploading publish chain (release-event-gated upload, OIDC trusted publishing ready, weekly smoke), and a docs surface verified accurate against the final code state (149-file disposition ledger, mkdocs --strict zero warnings). CLI train/inference now require `--config` with a clear usage error instead of crashing.
+
 ### Changed
 
+- **Breaking**: the `base` extra is renamed to `full`; `dnallm[base]` keeps resolving through a deprecated alias until v1.4
+- **Breaking**: the `cuda121` extra is retired (index frozen at torch 2.5.1) and `rocm` is removed (restore path documented in docs/getting_started/gpu_support.md)
+- `cuda130` is the recommended default GPU lane everywhere (install docs, examples, CI; test-cuda leg re-pointed to 13.0)
 - **Breaking**: the `requires-python` floor is raised from `>=3.10` to `>=3.11` (Python 3.10 reaches end-of-life 2026-10-31). Users on Python 3.10 should stay on 1.2.1.
+- `dnallm-train`/`dnallm-inference` flag-only invocation exits with a `--config is required` usage error (was: `KeyError: 'task'` crash)
+- `mypy` dev-extra capped `>=1.15.0,<2.5`
+
+### Added
+
+- Windows parity: `dnallm.utils.genomic_intervals` (numpy jaccard/loj-intersect evaluators), platform dispatch seams with fail-loud direction tests, frozen interval pairs with dual oracles, `triton-windows` declared for the `fla` extra on Windows
+
+### Fixed
+
+- Nightly CI interpreter honesty: self-hosted nightly venvs pinned to the labeled interpreter; mamba wheelhouse cache keyed with the Python tag
 
 ## [1.2.1] - 2026-10-10
 
