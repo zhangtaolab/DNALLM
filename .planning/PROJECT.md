@@ -8,23 +8,13 @@ DNALLM (`dnallm` v0.8.0) is a Python toolkit for fine-tuning, inference, and ben
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: v1.3 Platform Reach & Packaging Honesty
+## Current Milestone: none (v1.3 shipped 2026-10-16)
 
-**Goal:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, and a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-
-**Target features:**
-- Windows platform parity — #19 platform-split landing (numpy jaccard + loj-intersect evaluators, runtime platform detection in `generate_bpe_dataset.py` + the NER notebook, platform-aware test gates, test-windows as the numpy-path executor, frozen-value tolerance pins; exon_f1=0.7522 holds in band on both paths) + #18 triton-windows declaration decision
-- Packaging & install honesty — extras hygiene (`base` rename/re-scope, rocm pin restore-or-remove, cuda121 retirement, uv-vs-pip lane docs), cuda130 default recommendation, verified GPU support matrix documentation (Pascal cpu-only, 20xx→cu128, 30/40xx all extras, 50xx cu128+)
-- Publish chain robustness — periodic publish smoke (workflow_dispatch dry-run; may subsume the Trusted Publishing OIDC migration), #20 local-venv `pytest --cov` crash fix, mypy cap for the dev extra
-- Docs accuracy review — systematic per-file review of docs/ + example/ (accuracy vs code, post-numpy2/py311 staleness, install-command correctness) with fixes in the same pass
-- Ollama surface directive — all ollama-related pytest surface removed or marked skip (~59 refs across 5 test files + 2 mcp_example notebooks); remove-vs-skip per item at planning time
-- GAP-1 windows #11/#12 — in scope; compat-shim vs removal approach decided at planning time (closure of #15 rides along if shimming succeeds)
-
-**Key context:** both numpy parity spikes landed VERDICT PARITY (261010-wx2 jaccard, 261011-0a3 loj-intersect) — #19's ships-only-under-parity precondition is met; GPU matrix boundaries pre-verified 2026-10-11; MOTIF-01 (issue #44) stays deferred (fixture-files-only until manuscript values arrive); package at 1.2.1 on the py≥3.11 / numpy≥2.0 floors; phase numbering continues from 13.
+v1.3 Platform Reach & Packaging Honesty shipped 2026-10-16: 8 phases (13–20), 22 plans, 54 tasks; audit tech_debt cleared by the Phase-20 closeout; 27/29 requirements satisfied (PUBS-04/WPAR-07 acceptance halves owner-deferred as WINDOWS #25/#27). Start the next milestone with `/gsd-new-milestone` (phase numbering continues from 21).
 
 ## Current State
 
-v1.2 shipped 2026-10-10 (11/11 requirements, 3/3 phases verified at the milestone fixpoint, audit 0 blockers / 2 owner-accepted overrides / tech-debt ledger in `milestones/v1.2-MILESTONE-AUDIT.md`). Package at 0.8.0. Fast lane at close: 2404 passed / 0 failed; coverage 96.72% against `fail_under=90`; full CI matrix green (3.11/3.12/3.13 × numpy 1.26.4/2.2.0 + windows). Zero new dependencies beyond owner-approved scikit-allel; facade byte-stable; zero Co-Authored-By trailers. Known carried debt (owner-tracked): golden-fixture activation inputs (GitHub issue #44 — fixture-files-only when the manuscript values arrive), mkdocs --strict 15 pre-existing warnings, numpy 2.5.x/coverage py3.13 instrumentation incompatibility (numpy ceiling call when the 1.26.4 matrix leg retires), pytest-cov dotted-target env crash (workaround: coverage CLI), old-terminology prose hits outside the check surface, runner-box operational items carried from v1.1 (ollama loopback re-apply, cache-quota, `$HOME` cleanup), giants-lane manual-execution policy (W1).
+v1.3 shipped 2026-10-16 (8/8 phases verified at the final-tree fixpoint; audit record in `milestones/v1.3-MILESTONE-AUDIT.md`; closeout override for the two owner-deferred acceptance halves). Package at 1.2.1 on the py≥3.11 / numpy≥2.0 floors; extras surface post-surgery: `full` (one-cycle `base` alias, removal v1.4) + `cuda130` recommended default (first-ever cuda130 CI leg green, run 38677302395) + `mamba`/`fla` (triton-windows marker); cuda121 retired, rocm removed (restore path documented). Publish chain never uploads off-release (event-gated, live-proven ×3), OIDC workflow-side ready (registration = WINDOWS #25). Census triple 216/217 held across the whole milestone; mkdocs --strict zero warnings; docs/ + example/ carry per-file disposition ledgers (19-EVIDENCE.md). Nightly venvs interpreter-pinned (bdf6ba3 — closes the uv-managed drift class). Known carried debt (owner-tracked): #25 PyPI trusted-publisher registration, #27 Windows KDA smoke (six-step checklist), #26 pip-side alias resolve (box-network), #13 mcp notebook execution, #18/#19 Windows items; temp `- v1.3` push-filter removal bound to the actual merge; runner-box ops items carried from v1.1.
 
 ## Requirements
 
@@ -61,6 +51,16 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 - [ ] Packaging & install honesty — extras hygiene, cuda130 default recommendation, GPU support matrix docs (v1.3)
 - [ ] Publish chain robustness — publish smoke (+ OIDC migration decision), #20 cov crash fix, mypy cap (v1.3)
 - [ ] Docs accuracy review — per-file docs/ + example/ sweep with same-pass fixes (v1.3)
+
+### Validated — v1.3 (Platform Reach & Packaging Honesty, shipped 2026-10-16)
+
+- ✓ Ollama surface dispositioned per directive — OLLM-01..03 (census 216/217 re-pinned, sanctioned-residue oracle, nightly stage-3 deleted)
+- ✓ GAP-1 zero-rung disposition — GAPC-01/02 (transformers 5.17 green under the existing ladder; dead-branch proof)
+- ✓ Windows parity core + rollout — WPAR-01..06/08 (numpy evaluators, dispatch seams, frozen pairs, direction tests; test-windows green)
+- ✓ Publish chain — PUBS-01/02/03/05, PKGH-08 (event-gated upload, never-uploading smoke, coverage-CLI fix, mypy cap)
+- ✓ Packaging honesty — PKGH-01..04/06/07 (atomic extras surgery, alias, cuda121/rocm retirement, lane-split docs, GPU matrix)
+- ✓ Docs accuracy — DOCR-01..03 + PKGH-05 (149-file ledger, cuda130 default everywhere, strict zero warnings)
+- ○ PUBS-04 / WPAR-07 — declaration/delivery halves verified; acceptance halves owner-deferred (WINDOWS #25/#27) — Known Gaps at close
 
 ### Validated — v1.3 partial (shipped 2026-10-13)
 
@@ -208,6 +208,11 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | giants/evo exit the pytest census as a deselect, not a skip (owner directive 2026-10-05) | runner env is AVAILABLE — a typed skip would fake environment-unavailability; committed executed-notebook outputs remain the evidence | ✓ Adopted Phase 9 (D-01, marker + not-giants deselect) |
 | mcp_example agent brain swapped qwen3.8→qwen3.5:4b; num_ctx cut stays deferred (owner 2026-10-06) | 17GB/256k-ctx latency tail broke the 1800s cell timeout; 3.3GB 4b model probe-proven for tool-calling, stage-3 87s; server config never touched | ✓ Adopted Phase 9 (11-file sweep; timeout stays 3600s guard) |
 
+| Nightly interpreter honesty (v1.3, fix bdf6ba3) | Unpinned `uv venv` on a persistent self-hosted box resolves uv-managed interpreters first — pin to setup-python's exact toolcache interpreter and py-tag any wheelhouse cache key | ✓ Drift class closed; trio 38695301631 all green under true labels |
+| Publish upload guard lands before any trigger exists (v1.3 phase 17 first act) | PyPI filenames are immutable — an unguarded dispatch→upload path is un-recoverable | ✓ Event gate live-proven ×3 (publish always skipped off-release) |
+| Owner human-gates halt plans, never improvise past them (17-03/18-03 pattern) | Supply-chain registration and real-hardware acceptance are owner-only acts; the ledger carries the resume checklist | ✓ Both carried as WINDOWS #25/#27 with minute-level resume paths |
+| One census-moving edit per phase (D-03 discipline, held all milestone) | The 216/217 triple is the suite's integrity anchor; every test-set change re-pins triple + skips + stages same-change | ✓ Triple byte-stable through 8 phases incl. the phase-20 test additions (measured hold, no blind re-pin) |
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -226,4 +231,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-11 after v1.3 milestone kickoff (Platform Reach & Packaging Honesty — Windows parity, packaging honesty, publish chain, docs accuracy)*
+*Last updated: 2026-10-16 after v1.3 milestone (Platform Reach & Packaging Honesty shipped; next milestone not yet defined)*
