@@ -2,7 +2,6 @@
 """Training CLI for DNALLM."""
 
 import click
-import sys
 from ..utils import get_logger
 
 logger = get_logger("dnallm.cli.train")
@@ -35,35 +34,22 @@ logger = get_logger("dnallm.cli.train")
 )
 def main(config, model, data, output):
     """Train a DNA large language model."""
+    if not config:
+        raise click.UsageError(
+            "--config is required: the task section and other core settings "
+            "come only from a configuration file, so a flag-only invocation "
+            "is not supported. Generate a config with "
+            "`dnallm-model-config-generator --output config.yaml` and rerun "
+            "with --config. See the CLI usage docs "
+            "(docs/user_guide/cli/usage.md)."
+        )
+
     from ..finetune import DNATrainer
     from ..configuration import load_config
 
-    if config:
-        config_dict = load_config(config)
-        trainer = DNATrainer(model=None, config=config_dict)
-        trainer.train()
-    else:
-        if not all([model, data, output]):
-            click.echo(
-                "Error: --model, --data, and --output are required when not using --config",
-                err=True,
-            )
-            sys.exit(1)
-
-        minimal_config = {
-            "model_name_or_path": model,
-            "data_path": data,
-            "output_dir": output,
-            "finetune": {
-                "num_train_epochs": 3,
-                "per_device_train_batch_size": 4,
-                "learning_rate": 5e-5,
-                "save_steps": 1000,
-                "eval_steps": 1000,
-            },
-        }
-        trainer = DNATrainer(model=None, config=minimal_config)  # type: ignore[arg-type]
-        trainer.train()
+    config_dict = load_config(config)
+    trainer = DNATrainer(model=None, config=config_dict)
+    trainer.train()
 
 
 if __name__ == "__main__":
