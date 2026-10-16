@@ -73,7 +73,7 @@ def _extract_error_message(result):
     for line in result.output.splitlines():
         stripped = line.strip()
         if stripped.startswith("Error:"):
-            return stripped[len("Error:"):].strip()
+            return stripped[len("Error:") :].strip()
     raise AssertionError(f"no 'Error:' line in output: {result.output!r}")
 
 
