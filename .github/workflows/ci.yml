@@ -422,19 +422,24 @@ jobs:
           source .venv/bin/activate
           python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 
-      - name: "Run type checking (ty, hard gate — D-09 flip)"
+      - name: "Run type checking (ty, hard gate — pinned stub env)"
         # D-08/D-09 (v1.1 Phase 9) discharged 2026-10-17 (Phase 21): the
         # 232-diagnostic baseline cleared to zero (real fixes + line-level
         # `# ty: ignore[code]` pragmas for library dynamics — no severity
         # overrides, no new [tool.ty.src] excludes), so ty hardens here and
-        # mypy retires in the same atomic change (advisory mypy steps
-        # deleted from both test jobs, pre-commit hook, check_code.py, the
-        # dev-dep pin, and [tool.mypy]). Exact-pinned invocation (never
-        # floating) — no pyproject dependency added.
+        # mypy retires in the same atomic change. The gate runs against a
+        # PINNED stub environment (ty-stub-constraints.txt): CI re-resolves
+        # fresh every run, and unpinned typing-bearing packages drifted the
+        # diagnostic set three times on flip day — the pinned surface makes
+        # upstream releases unable to flap the gate (bump deliberately, per
+        # the constraints file header).
         # D-10: static checks never enter pytest (lint lane, not behavior).
         run: |
           source .venv/bin/activate
-          uvx ty@0.0.84 check dnallm/
+          uv venv /tmp/ty-stub-env --python 3.12
+          uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" \
+            -c .github/workflows/ty-stub-constraints.txt
+          uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env
 
   coverage-nightly:
     name: coverage-nightly (py3.12, full suite incl. slow)
