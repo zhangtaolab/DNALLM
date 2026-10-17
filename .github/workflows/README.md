@@ -40,7 +40,8 @@ The workflows are triggered on:
 6. **Test Execution**: Runs the fast test suite (`pytest -m "not slow" --cov`); the coverage total is enforced against the `fail_under = 90` floor from `pyproject.toml [tool.coverage.report]` — dropping below it fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the junit — unexpected skips fail the job
 8. **Exit-Code Canary**: an intentionally failing test must make pytest exit non-zero (guards against exit-code masking regressions)
-9. **Type Checking**: Runs MyPy for static type analysis (advisory — does not fail the job)
+
+No type-check step runs on this leg — type checking lives only on the `coverage-gate` job's ty hard gate (the advisory mypy steps were deleted in the 2026-10-17 D-09 flip; mypy retired).
 
 ### 2. Windows Test Job (`test-windows`)
 
@@ -48,7 +49,7 @@ The workflows are triggered on:
 
 **Runner**: `windows-latest` (push/PR only), Python 3.12, 60-minute timeout
 
-**Steps**: mirrors the `test` job — Ruff format/lint checks, fast tests with the coverage floor, skip audit, exit-code canary, advisory MyPy. Sets `PYTHONUTF8=1` (the root conftest prints emoji, which would crash non-UTF8 pipes on Windows) and disables git `autocrlf` so `ruff format` line endings match.
+**Steps**: mirrors the `test` job — Ruff format/lint checks, fast tests with the coverage floor, skip audit, exit-code canary (no type-check step; type checking lives only on the `coverage-gate` ty hard gate). Sets `PYTHONUTF8=1` (the root conftest prints emoji, which would crash non-UTF8 pipes on Windows) and disables git `autocrlf` so `ruff format` line endings match.
 
 ### 3. CUDA Test Job (`test-cuda`)
 
@@ -95,7 +96,7 @@ The workflows are triggered on:
 5. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
 6. **Gated Fast Census**: Runs the fast census with coverage; a total below the 90 floor fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the gate junit — unexpected skips fail the job
-8. **Type Checking (ty, advisory)**: `uvx ty@0.0.84 check dnallm/` — an exact-pinned advisory step (D-08, same seconds-scale layer as the ruff statistics step) that does not fail the job; the hard flip plus the mypy retirement land together in one later atomic change (D-09). The advisory MyPy steps on the other legs are unchanged until that swap
+8. **Type Checking (ty, hard gate)**: `uvx ty@0.0.84 check dnallm/` — an exact-pinned step that fails the job. Flipped hard and mypy retired in one atomic change on 2026-10-17 (Phase 21, discharging D-08/D-09 from v1.1 Phase 9); the former advisory mypy steps on the test legs are deleted
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
@@ -138,7 +139,7 @@ The workflows are triggered on:
 
 **Complete failure scene** (D-14): the `if: always()` artifact upload carries everything needed to diagnose a red (or green) run — every junit xml, every per-stage tee'd log (`stage*.log`), the D-03 census capture (`census-collect.txt`), the stage-results ledger, and the MCP server logs (`mcp-server-*.log`). A red run never loses its own evidence.
 
-**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus an advisory `uvx ty@0.0.84 check dnallm/` step (D-08); the mypy advisory steps elsewhere are unchanged until the later atomic swap (D-09) that flips ty hard and retires mypy together.
+**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus the hard ty gate `uvx ty@0.0.84 check dnallm/` (hard since the 2026-10-17 D-09 flip; mypy is retired — no mypy step runs anywhere).
 
 **Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
 
@@ -195,7 +196,7 @@ The project uses pytest markers to categorize tests:
 
 - **Code Formatting**: Must pass `ruff format --check .` (ruff's Black-compatible formatter)
 - **Linting**: Must pass `ruff check .` (rule set configured in `pyproject.toml [tool.ruff.lint]`)
-- **Type Safety**: MyPy type checking runs in CI as an advisory step (it does not fail the job)
+- **Type Safety**: Must pass `uvx ty@0.0.84 check dnallm/` — the exact-pinned ty hard gate on the `coverage-gate` job (mypy retired 2026-10-17); it fails the job
 
 Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy `.flake8` config.
 
@@ -237,7 +238,7 @@ Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy
 3. **Quality Check Failures**
    - Run `ruff format .` to auto-format code
    - Run `ruff check . --fix` to auto-fix lint violations
-   - Address MyPy type annotation issues
+   - Address ty type annotation issues
 
 4. **CUDA Test Failures**
    - Verify CUDA toolkit installation
@@ -255,7 +256,7 @@ uv pip install -e ".[test,dev]"
 # Run quality checks (what CI runs)
 ruff format --check .
 ruff check .
-mypy dnallm/
+uvx ty@0.0.84 check dnallm/
 
 # Run tests
 pytest --cov

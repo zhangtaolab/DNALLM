@@ -264,7 +264,7 @@ scripts\check_code.bat --verbose
 1. **Code Formatting** (Ruff)
 2. **Code Quality** (Ruff linting)
 3. **MCP Module Compatibility** (Flake8 — legacy `check_code.sh`/`check_code.bat` only, not `check_code.py`)
-4. **Type Checking** (MyPy with relaxed settings)
+4. **Type Checking** (ty — exact-pinned `uvx ty@0.0.84 check dnallm/`, hard gate since the 2026-10-17 D-09 flip; mypy retired)
 5. **Test Suite** (Pytest)
 6. **Test Coverage** (Pytest with coverage)
 
@@ -283,8 +283,8 @@ $ python scripts/check_code.py
 [INFO] Step 3: Test suite (fast tests only, excludes slow) with coverage
 [SUCCESS] Test suite (fast tests only, excludes slow) with coverage passed
 
-[INFO] Step 4: MyPy type checking (informational)
-[SUCCESS] MyPy type checking (informational) passed
+[INFO] Step 4: ty type checking (CI-matching hard gate)
+[SUCCESS] ty type checking (CI-matching hard gate) passed
 
 ==================================================
 [SUCCESS] All required checks passed! Your code is ready for commit.
@@ -320,11 +320,11 @@ $ python scripts/check_code.py --fix
 - **Ignored errors**: E203
 - **Purpose**: Ensure MCP module compatibility
 
-#### MyPy Configuration
-- **Strict mode**: Disabled for development
-- **Missing imports**: Ignored
-- **Implicit Optional**: Disallowed (`no_implicit_optional = true`)
-- **Error codes**: None disabled; `check_untyped_defs` and `warn_unreachable` enabled
+#### ty Configuration
+- **Invocation**: Exact-pinned `uvx ty@0.0.84 check dnallm/` (never a floating `ty`; no pyproject dependency)
+- **Gate**: Hard — the sole type gate since the 2026-10-17 D-09 flip (mypy retired), enforced by the CI `coverage-gate` job and `check_code.py` step 4
+- **Pragmas**: Line-level `# ty: ignore[code]` for verified library dynamics only
+- **No escapes**: No severity overrides, no `[tool.ty.src]` excludes
 
 #### File Organization
 - **Maximum file size**: < 1000 lines

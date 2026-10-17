@@ -40,21 +40,10 @@ if ! .venv/bin/flake8 "$TARGET_PATH"; then
 fi
 echo "✅ flake8 检查通过"
 
-# 检查 mypy (只检查指定文件中的错误)
-echo "📋 运行 mypy 检查..."
-MYPY_OUTPUT=$(.venv/bin/mypy "$TARGET_PATH" --ignore-missing-imports 2>&1 || true)
-if echo "$MYPY_OUTPUT" | grep -E "^$TARGET_PATH"; then
-    echo "⚠️  mypy 发现问题，检查是否已在手动修复清单中..."
-    # 检查是否是已知问题
-    if grep -q "Subclass of.*BaseModel.*dict.*cannot exist" "$MANUAL_FIX_FILE" 2>/dev/null; then
-        echo "ℹ️  此问题已在手动修复清单中，跳过..."
-    else
-        echo "⚠️  新问题，需要手动修复"
-        echo "记录到手动修复清单..."
-        exit 1
-    fi
-fi
-echo "✅ mypy 检查通过"
+# 类型检查:ty(2026-10-17 D-09 翻转后唯一类型门,mypy 已退役)
+echo "📋 运行 ty 检查..."
+uvx ty@0.0.84 check "$TARGET_PATH" || exit 1
+echo "✅ ty 检查通过"
 
 # 运行测试文件（如果是测试文件）
 if [[ "$TARGET_PATH" == *.py ]] && [[ "$TARGET_PATH" == test_*.py ]]; then

@@ -327,7 +327,7 @@ def _attach_remote_code_pruning_helpers(module: object) -> None:
 
     attached = False
     # setattr with a literal name is invisible to static attribute resolution,
-    # keeping mypy AND ty/pyright clean without dialect-specific ignore
+    # keeping ty/pyright clean without dialect-specific ignore
     # comments (ruff B010 is silenced because the dynamic form is deliberate).
     if not hasattr(module, "find_pruneable_heads_and_indices"):
         setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
