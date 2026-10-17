@@ -44,15 +44,22 @@ Usage Example:
 
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 from collections.abc import Callable
 from dataclasses import fields as dataclass_fields
 from datetime import datetime, UTC
 import json
 import math
 import torch
-from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from datasets import Dataset, DatasetDict
+from transformers import (  # transformers lazy export, resolves live
+    EarlyStoppingCallback,
+    PreTrainedTokenizerBase,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+)
+from transformers.trainer_utils import BestRun, PredictionOutput
 import transformers
 from packaging.version import Version
 from peft import get_peft_model, LoraConfig, IA3Config
@@ -630,27 +637,36 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import (
+                DataCollatorForLanguageModeling,
+            )  # transformers lazy export, resolves live
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
+                # encode_sequences guarantees a tokenizer is attached before
+                # the trainer is built; the cast only erases the Optional.
+                tokenizer=cast(PreTrainedTokenizerBase, self.datasets.tokenizer),
                 mlm=True,
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import (
+                DataCollatorForLanguageModeling,
+            )  # transformers lazy export, resolves live
 
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
+                # encode_sequences guarantees a tokenizer is attached before
+                # the trainer is built; the cast only erases the Optional.
+                tokenizer=cast(PreTrainedTokenizerBase, self.datasets.tokenizer),
                 mlm=False,
             )
         else:
             data_collator = None
 
-        # Assemble callbacks
-        callbacks = []
+        # Assemble callbacks (annotated as the base type: list invariance
+        # would otherwise reject the EarlyStoppingCallback subclass below)
+        callbacks: list[TrainerCallback] = []
         if (
             self.train_config.callbacks
             and self.train_config.callbacks.early_stopping
@@ -678,12 +694,15 @@ class DNATrainer:
                 )
                 self.training_args.load_best_model_at_end = True
 
-        # Initialize trainer
+        # Initialize trainer. The casts pin the datasets contract: split
+        # lookups yield datasets.Dataset (datasets annotates str-keyed
+        # __getitem__ as `list`), and the unsplit branch re-joins the
+        # Dataset | DatasetDict union after the isinstance check above.
         self.trainer = Trainer(
             model=self.model,
             args=self.training_args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
+            train_dataset=cast(Dataset, train_dataset),
+            eval_dataset=cast("Dataset | None", eval_dataset),
             compute_metrics=compute_metrics,
             data_collator=data_collator,
             preprocess_logits_for_metrics=preprocess_logits,
@@ -845,12 +864,18 @@ class DNATrainer:
 
         self.model.train()
 
-        best_run = self.trainer.hyperparameter_search(  # ty: ignore[unresolved-attribute]
-            direction=search_config.direction,
-            backend="optuna",
-            n_trials=search_config.n_trials,
-            hp_space=self._create_hp_space_fn(),
-            study_name=search_config.study_name,
+        # Single-objective searches (direction: str) return one BestRun; the
+        # list variant of the return union only arises for multi-objective
+        # directions, which the dnallm config schema does not expose.
+        best_run = cast(
+            BestRun,
+            self.trainer.hyperparameter_search(  # ty: ignore[unresolved-attribute]
+                direction=search_config.direction,
+                backend="optuna",
+                n_trials=search_config.n_trials,
+                hp_space=self._create_hp_space_fn(),
+                study_name=search_config.study_name,
+            ),
         )
 
         result = {
@@ -958,8 +983,11 @@ class DNATrainer:
             self.datasets.dataset[split],  # type: ignore
             ignore_keys=ignore_keys,
         )
+        # Trainer.predict() always returns populated metrics; the Optional in
+        # transformers' PredictionOutput covers other evaluation-loop reuse.
         stripped: dict[str, float] = {
-            key.removeprefix("test_"): value for key, value in predict_result.metrics.items()
+            key.removeprefix("test_"): value
+            for key, value in cast("dict[str, float]", predict_result.metrics).items()
         }
         runtime: dict[str, float] = {
             key: stripped.pop(key) for key in PREDICT_RUNTIME_KEYS if key in stripped
@@ -980,7 +1008,7 @@ class DNATrainer:
             )
         return metrics
 
-    def infer(self) -> dict[str, float]:
+    def infer(self) -> dict[str, float] | PredictionOutput:
         """Generate inference results on the test dataset.
 
         This method generates inference results on the test dataset if
@@ -996,7 +1024,12 @@ class DNATrainer:
         result = {}
         if "test" in self.data_split:
             test_dataset = self.datasets.dataset["test"]  # type: ignore
-            result = self.trainer.predict(test_dataset)  # ty: ignore[unresolved-attribute]
+            # Suppression on the line below covers two rules:
+            # unresolved-attribute (trainer union from the dry-run None
+            # path) and invalid-argument-type (root cause: transformers 5.x
+            # annotates predict(torch Dataset) only, while datasets.Dataset
+            # is supported at runtime).
+            result = self.trainer.predict(test_dataset)  # ty: ignore[unresolved-attribute, invalid-argument-type]
         return result
 
     def plot_history(

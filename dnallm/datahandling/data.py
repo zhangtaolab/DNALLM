@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedTokenizerBase  # transformers lazy export, resolves live
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
@@ -245,7 +245,7 @@ class DNADataset:
             ds = load_dataset("json", data_files=file_path, split="train")
         elif file_type in ["parquet", "arrow"]:
             ds = load_dataset(file_type, data_files=file_path, split="train")
-        return cast(Dataset, ds)  # split="train" always yields a Dataset
+        return ds  # split="train" always yields a Dataset
 
     @classmethod
     def _load_dict_data(cls, file_path: str) -> Dataset:
@@ -287,14 +287,11 @@ class DNADataset:
         with open(file_path) as f:
             for i, line in enumerate(f):
                 if i == 0 and seq_col in line and label_col in line:
-                    return cast(
-                        Dataset,
-                        load_dataset(
-                            "csv",
-                            data_files=file_path,
-                            split="train",
-                            delimiter=sep,
-                        ),
+                    return load_dataset(
+                        "csv",
+                        data_files=file_path,
+                        split="train",
+                        delimiter=sep,
                     )  # split="train" always yields a Dataset
                 record = line.strip().split(sep) if sep else line.strip().split()
                 if len(record) >= 2:
@@ -492,7 +489,9 @@ class DNADataset:
             raise ValueError("Tokenizer is required")
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
-        sp_token_map = (
+        # Special-token lookups mix str ids with str | list[str] token
+        # fields, so the accumulator is deliberately Any-valued.
+        sp_token_map: dict[str, Any] = (
             self.tokenizer.special_tokens_map
             if hasattr(self.tokenizer, "special_tokens_map")
             else {}

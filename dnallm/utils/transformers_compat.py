@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import
-    from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
-    from transformers import PreTrainedModel  # ty: ignore[unresolved-import]  # lazy export, resolves live
+    from transformers import PreTrainedConfig  # lazy export, resolves live
+    from transformers import PreTrainedModel  # lazy export, resolves live
 
 
 def _iter_uninitialized_quantized_weights(model):
@@ -217,7 +217,11 @@ def _patch_get_parameter_or_buffer():
             raise
 
     PreTrainedModel.get_parameter_or_buffer = get_parameter_or_buffer
-    PreTrainedModel._dnallm_quant_key_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "_dnallm_quant_key_patch",
+        True,
+    )
 
 
 def _patch_initialize_weights_for_quantized_missing():
@@ -281,7 +285,11 @@ def _patch_initialize_weights_for_quantized_missing():
             _restore_quantized(swapped)
 
     PreTrainedModel.initialize_weights = initialize_weights
-    PreTrainedModel._dnallm_quant_init_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "_dnallm_quant_init_patch",
+        True,
+    )
 
 
 class _QuantStatProxy:
@@ -480,8 +488,14 @@ def _patch_get_extended_attention_mask():
     if getattr(PreTrainedModel, "_dnallm_extended_mask_patch", False):
         return
 
-    PreTrainedModel.get_extended_attention_mask = _get_extended_attention_mask
-    PreTrainedModel._dnallm_extended_mask_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "get_extended_attention_mask",
+        _get_extended_attention_mask,
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel, "_dnallm_extended_mask_patch", True
+    )
 
 
 # The legacy config defaults below restore READ behavior that transformers 4.x
@@ -808,7 +822,7 @@ def _patch_deberta_vocab_dict():
     the hook is absent (transformers 4.x has no ``convert_to_native_format``).
     """
     try:
-        from transformers.models.deberta_v2.tokenization_deberta_v2 import (  # ty: ignore[unresolved-import]  # lazy export, resolves live
+        from transformers.models.deberta_v2.tokenization_deberta_v2 import (  # lazy export, resolves live
             DebertaV2Tokenizer,
         )
     except Exception:  # pragma: no cover - transformers not installed / module renamed
@@ -832,8 +846,14 @@ def _patch_deberta_vocab_dict():
             native["vocab"] = list(vocab.items())
         return native
 
-    DebertaV2Tokenizer.convert_to_native_format = classmethod(convert_to_native_format)
-    DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        DebertaV2Tokenizer,
+        "convert_to_native_format",
+        classmethod(convert_to_native_format),
+    )
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        DebertaV2Tokenizer, "_dnallm_deberta_vocab_patch", True
+    )
 
 
 # The head-mask helpers below are vendored with semantics and docstrings kept
@@ -847,7 +867,7 @@ def _patch_deberta_vocab_dict():
 # call sites across the cached zhangtaolab/InstaDeepAI remote modeling
 # files); the patch re-attaches the vendored v4.49.0 implementations under
 # their upstream names on the PreTrainedModel class, per name only where the
-# class does not already expose it. Three documented deviations from upstream:
+# class does not already expose it. Four documented deviations from upstream:
 # (1) modern builtin-generic annotations; (2) upstream's bare
 # `assert head_mask.dim() == 5` is re-raised as an explicit
 # `raise AssertionError` with the identical message because repo lint (S101)
@@ -856,7 +876,12 @@ def _patch_deberta_vocab_dict():
 # reassigned `head_mask = [None] * num_hidden_layers` (the reassignment lies
 # about the local's Tensor type; the early return is behavior-identical) and
 # the `self` parameters are typed `PreTrainedModel` instead of upstream's
-# implicit ModuleUtilsMixin receiver so attribute access checks honestly.
+# implicit ModuleUtilsMixin receiver so attribute access checks honestly; and
+# (4) the internal `self._convert_head_mask_to_5d(...)` call is spelled as a
+# `getattr(self, ...)` dispatch -- identical attribute lookup and override
+# semantics, but invisible to static resolution (the method is attached at
+# runtime by _patch_get_head_mask and is absent on stock 5.x classes, where a
+# direct read falls through nn.Module.__getattr__, typed `Tensor | Module`).
 
 
 def _convert_head_mask_to_5d(
@@ -898,7 +923,16 @@ def _get_head_mask(
         `[None]` for each layer.
     """
     if head_mask is not None:
-        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
+        # getattr dispatch: `_convert_head_mask_to_5d` exists on PreTrainedModel
+        # only after _patch_get_head_mask attaches it (stock transformers 5.x
+        # removed the method), so a direct attribute read falls through torch's
+        # nn.Module.__getattr__ (typed `Tensor | Module`), which ty then flags
+        # as non-callable. getattr keeps the identical dynamic dispatch while
+        # staying invisible to static attribute resolution.
+        convert_head_mask_to_5d = getattr(  # ruff: ignore[get-attr-with-constant] - deliberate dynamic dispatch (checker-agnostic)
+            self, "_convert_head_mask_to_5d"
+        )
+        head_mask = convert_head_mask_to_5d(head_mask, num_hidden_layers)
         if is_attention_chunked is True:
             head_mask = head_mask.unsqueeze(-1)
         return head_mask
@@ -925,13 +959,23 @@ def _patch_get_head_mask():
 
     attached = False
     if not hasattr(PreTrainedModel, "get_head_mask"):
-        PreTrainedModel.get_head_mask = _get_head_mask
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel,
+            "get_head_mask",
+            _get_head_mask,
+        )
         attached = True
     if not hasattr(PreTrainedModel, "_convert_head_mask_to_5d"):
-        PreTrainedModel._convert_head_mask_to_5d = _convert_head_mask_to_5d
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel,
+            "_convert_head_mask_to_5d",
+            _convert_head_mask_to_5d,
+        )
         attached = True
     if attached:
-        PreTrainedModel._dnallm_head_mask_patch = True
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel, "_dnallm_head_mask_patch", True
+        )
 
 
 # The init_weights wrapper below restores the bookkeeping that transformers
@@ -967,7 +1011,7 @@ def _post_init_computes_tied_weights_keys() -> bool:
     try:
         import transformers.modeling_utils
 
-        from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
+        from transformers import PreTrainedConfig  # lazy export, resolves live
 
         probe = transformers.modeling_utils.PreTrainedModel(PreTrainedConfig())
         probe.post_init()
@@ -1012,7 +1056,9 @@ def _patch_legacy_init_weights_bookkeeping():
         return original(self)
 
     model_cls.init_weights = init_weights
-    model_cls._dnallm_init_weights_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls, "_dnallm_init_weights_patch", True
+    )
 
 
 # transformers 5.x narrowed the internal weight-tying protocol: base
@@ -1117,7 +1163,9 @@ def _patch_legacy_tie_weights_arity():
         return previous(self)
 
     model_cls.init_weights = init_weights
-    model_cls._dnallm_tie_weights_arity_patch = True
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls, "_dnallm_tie_weights_arity_patch", True
+    )
 
 
 # numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been

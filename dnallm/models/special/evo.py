@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PreTrainedConfig, BatchEncoding  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedConfig, BatchEncoding
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 

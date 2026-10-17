@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 from captum.attr import (
     LayerIntegratedGradients,
     Occlusion,
@@ -14,7 +14,10 @@ from captum.attr import (
     DeepLift,
     GradientShap,
 )
-from transformers import PreTrainedModel, PreTrainedTokenizer  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import (
+    PreTrainedModel,
+    PreTrainedTokenizer,
+)  # transformers lazy export, resolves live
 from .plot import (
     plot_attributions_token,
     plot_attributions_line,
@@ -238,8 +241,15 @@ class DNAInterpret:
         self, token_ids: torch.Tensor | int | list[int], input_seq: str | None = None
     ) -> list[str]:
         """Convert token IDs to string tokens."""
+        tokens: list[str]
         if hasattr(self.tokenizer, "convert_ids_to_tokens"):
-            tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
+            # Callers pass 1-D id tensors, which iterate exactly like
+            # list[int] for the tokenizer backends; the casts pin that
+            # protocol without touching the runtime value.
+            tokens = cast(
+                "list[str]",
+                self.tokenizer.convert_ids_to_tokens(cast("int | list[int]", token_ids)),
+            )
         elif hasattr(self.tokenizer, "decode"):
             tokens = [self.tokenizer.decode(tid) for tid in token_ids]  # type: ignore
         elif hasattr(self.tokenizer, "decode_token"):

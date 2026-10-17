@@ -10,10 +10,10 @@ import hashlib
 import os
 import time
 from glob import glob
-from typing import Any
+from typing import Any, cast
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -58,7 +58,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
     def __init__(self, config, custom_model: Any = None):
         super().__init__(config)
-        from transformers import AutoModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
@@ -112,7 +112,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -500,13 +500,13 @@ def _get_model_path_and_imports(
     # Import transformers modules for local and huggingface sources
     try:
         from transformers import (
-            AutoConfig,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModel,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoTokenizer,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+            AutoConfig,
+            AutoModel,
+            AutoModelForMaskedLM,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
+            AutoTokenizer,
         )
     except ImportError as e:
         raise ImportError(
@@ -910,13 +910,13 @@ def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
     elif source.lower() in ("local", "huggingface"):
         try:
             from transformers import (
-                AutoConfig,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModel,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoTokenizer,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+                AutoConfig,
+                AutoModel,
+                AutoModelForMaskedLM,
+                AutoModelForCausalLM,
+                AutoModelForSequenceClassification,
+                AutoModelForTokenClassification,
+                AutoTokenizer,
             )
         except ImportError as e:
             raise ImportError(
@@ -1335,7 +1335,10 @@ def load_model_and_tokenizer(
     if bnb_config is not None:
         _fix_bnb_quantized_layers(model)
 
-    return model, tokenizer
+    # The dispatch chain above guarantees non-None halves here (a None model
+    # would already have raised at the attribute assignments); cast makes that
+    # invariant explicit for the declared tuple[PreTrainedModel, PreTrainedTokenizer].
+    return cast(PreTrainedModel, model), cast(PreTrainedTokenizer, tokenizer)
 
 
 def _fix_bnb_quantized_layers(model: Any) -> None:
