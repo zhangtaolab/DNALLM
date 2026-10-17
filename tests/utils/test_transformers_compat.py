@@ -1321,6 +1321,7 @@ EXPECTED_PATCH_INSTALLERS = frozenset({
     "_patch_numpy_fromstring",
     "_patch_get_head_mask",
     "_patch_legacy_init_weights_bookkeeping",
+    "_patch_legacy_tie_weights_arity",
 })
 
 

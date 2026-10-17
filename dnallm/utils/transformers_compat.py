@@ -1021,6 +1021,111 @@ def _patch_legacy_init_weights_bookkeeping():
     model_cls._dnallm_init_weights_patch = True  # type: ignore[attr-defined]
 
 
+# transformers 5.x narrowed the internal weight-tying protocol: base
+# ``tie_weights(self, missing_keys=None, recompute_mapping=True)`` is now
+# invoked WITH kwargs from ``init_weights`` (modeling_utils: self.tie_weights
+# (recompute_mapping=False)) and again post-load in ``from_pretrained``
+# (model.tie_weights(missing_keys=..., recompute_mapping=False)). A
+# remote-code class that overrides ``tie_weights`` with the older
+# zero-kwarg signature -- first seen live on lgq12697/PlantBiMoE's
+# PlantbimoeForMaskedLM.tie_weights(self) (modeling_plantbimoe.py:533,
+# 2026-10-17) -- then dies with ``TypeError: ... got an unexpected keyword
+# argument 'recompute_mapping'`` inside ``post_init``, before any weights
+# load. The rung below bridges exactly that arity gap: when the model's
+# EFFECTIVE tie_weights (MRO-resolved) neither names ``recompute_mapping``
+# nor takes **kwargs, a per-instance forwarder is installed that strips the
+# 5.x-only kwargs and delegates to the legacy override under its historical
+# bare-call contract. Consequence, recorded honestly: ``missing_keys``
+# filtering is dropped for such models, so a from_pretrained missing-keys
+# report may list tied parameters -- cosmetic, versus the hard crash.
+# Signatures that already carry the kwarg or **kwargs are never touched
+# (absence-gated per instance, self-guarding because the installed
+# forwarder reads as VAR_KEYWORD on any re-run); a class sentinel keeps the
+# init_weights wrap idempotent; the rung no-ops entirely on transformers
+# 4.x, whose init_weights passes no kwargs (probe-gated on the base
+# signature).
+
+
+def _base_tie_weights_takes_recompute_mapping() -> bool:
+    """Probe whether the installed base ``tie_weights`` carries the 5.x kwarg.
+
+    Returns:
+        True when ``PreTrainedModel.tie_weights`` names ``recompute_mapping``
+        (the 5.x protocol this rung bridges toward).
+    """
+    try:
+        import inspect
+
+        import transformers.modeling_utils
+
+        params = inspect.signature(
+            transformers.modeling_utils.PreTrainedModel.tie_weights
+        ).parameters
+        return "recompute_mapping" in params
+    except Exception:
+        return False
+
+
+def _bridge_legacy_tie_weights(model: object) -> None:
+    """Install the per-instance forwarder when ``model`` runs a legacy override.
+
+    No-op when the effective signature already accepts the 5.x kwargs
+    (explicitly or via ``**kwargs``), or when no signature can be read.
+    """
+    import inspect
+
+    bound = model.tie_weights  # type: ignore[attr-defined]
+    try:
+        params = inspect.signature(bound).parameters
+    except (TypeError, ValueError):
+        return
+    if "recompute_mapping" in params:
+        return
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return
+
+    def bridged(*args, **kwargs):
+        kwargs.pop("recompute_mapping", None)
+        kwargs.pop("missing_keys", None)
+        accepted = {k: v for k, v in kwargs.items() if k in params}
+        return bound(*args, **accepted)
+
+    model.tie_weights = bridged  # type: ignore[method-assign]
+
+
+def _patch_legacy_tie_weights_arity():
+    """Wrap ``init_weights`` to bridge 4.x-signed remote ``tie_weights`` overrides.
+
+    The wrap only adds the instance bridge before delegating to the previous
+    ``init_weights`` (the bookkeeping rung's, when installed); it is gated on
+    the :func:`_base_tie_weights_takes_recompute_mapping` probe (no-op on
+    transformers 4.x) and a class sentinel for idempotency.
+    """
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_tie_weights_arity_patch", False):
+        return
+
+    if not _base_tie_weights_takes_recompute_mapping():
+        return
+
+    previous = vars(model_cls).get("init_weights")
+    if previous is None:
+        return
+
+    def init_weights(self):
+        _bridge_legacy_tie_weights(self)
+        return previous(self)
+
+    model_cls.init_weights = init_weights  # type: ignore[method-assign]
+    model_cls._dnallm_tie_weights_arity_patch = True  # type: ignore[attr-defined]
+
+
 # numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been
 # deprecated since numpy 1.14 with "use frombuffer instead"; the text mode
 # went with it). stripedhyena's ``CharLevelTokenizer`` -- the evo-1 family
@@ -1243,6 +1348,7 @@ def apply_patches():
     _patch_deberta_vocab_dict()
     _patch_get_head_mask()
     _patch_legacy_init_weights_bookkeeping()
+    _patch_legacy_tie_weights_arity()
     _patch_numpy_fromstring()
 
 
