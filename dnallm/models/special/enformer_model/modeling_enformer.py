@@ -14,7 +14,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_enformer import EnformerConfig
 
-from transformers import PreTrainedModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 # constants
@@ -633,10 +633,10 @@ class EnformerForSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                loss_fct = nn.CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
+                loss_fct = nn.BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
             else:
                 raise NotImplementedError(self.config.problem_type)

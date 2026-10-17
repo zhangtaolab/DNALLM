@@ -216,8 +216,8 @@ def _patch_get_parameter_or_buffer():
                     return _QuantStatProxy(tensor)
             raise
 
-    PreTrainedModel.get_parameter_or_buffer = get_parameter_or_buffer  # type: ignore[method-assign]
-    PreTrainedModel._dnallm_quant_key_patch = True  # type: ignore[attr-defined]
+    PreTrainedModel.get_parameter_or_buffer = get_parameter_or_buffer
+    PreTrainedModel._dnallm_quant_key_patch = True
 
 
 def _patch_initialize_weights_for_quantized_missing():
@@ -280,8 +280,8 @@ def _patch_initialize_weights_for_quantized_missing():
         finally:
             _restore_quantized(swapped)
 
-    PreTrainedModel.initialize_weights = initialize_weights  # type: ignore[method-assign]
-    PreTrainedModel._dnallm_quant_init_patch = True  # type: ignore[attr-defined]
+    PreTrainedModel.initialize_weights = initialize_weights
+    PreTrainedModel._dnallm_quant_init_patch = True
 
 
 class _QuantStatProxy:
@@ -480,10 +480,8 @@ def _patch_get_extended_attention_mask():
     if getattr(PreTrainedModel, "_dnallm_extended_mask_patch", False):
         return
 
-    PreTrainedModel.get_extended_attention_mask = (  # type: ignore[method-assign]
-        _get_extended_attention_mask
-    )
-    PreTrainedModel._dnallm_extended_mask_patch = True  # type: ignore[attr-defined]
+    PreTrainedModel.get_extended_attention_mask = _get_extended_attention_mask
+    PreTrainedModel._dnallm_extended_mask_patch = True
 
 
 # The legacy config defaults below restore READ behavior that transformers 4.x
@@ -834,10 +832,8 @@ def _patch_deberta_vocab_dict():
             native["vocab"] = list(vocab.items())
         return native
 
-    DebertaV2Tokenizer.convert_to_native_format = classmethod(  # type: ignore[method-assign]
-        convert_to_native_format
-    )
-    DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True  # type: ignore[attr-defined]
+    DebertaV2Tokenizer.convert_to_native_format = classmethod(convert_to_native_format)
+    DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True
 
 
 # The head-mask helpers below are vendored with semantics and docstrings kept
@@ -929,15 +925,13 @@ def _patch_get_head_mask():
 
     attached = False
     if not hasattr(PreTrainedModel, "get_head_mask"):
-        PreTrainedModel.get_head_mask = _get_head_mask  # type: ignore[method-assign]
+        PreTrainedModel.get_head_mask = _get_head_mask
         attached = True
     if not hasattr(PreTrainedModel, "_convert_head_mask_to_5d"):
-        PreTrainedModel._convert_head_mask_to_5d = (  # type: ignore[method-assign]
-            _convert_head_mask_to_5d
-        )
+        PreTrainedModel._convert_head_mask_to_5d = _convert_head_mask_to_5d
         attached = True
     if attached:
-        PreTrainedModel._dnallm_head_mask_patch = True  # type: ignore[attr-defined]
+        PreTrainedModel._dnallm_head_mask_patch = True
 
 
 # The init_weights wrapper below restores the bookkeeping that transformers
@@ -1017,8 +1011,8 @@ def _patch_legacy_init_weights_bookkeeping():
             return self.post_init()
         return original(self)
 
-    model_cls.init_weights = init_weights  # type: ignore[method-assign]
-    model_cls._dnallm_init_weights_patch = True  # type: ignore[attr-defined]
+    model_cls.init_weights = init_weights
+    model_cls._dnallm_init_weights_patch = True
 
 
 # transformers 5.x narrowed the internal weight-tying protocol: base
@@ -1074,7 +1068,7 @@ def _bridge_legacy_tie_weights(model: object) -> None:
     """
     import inspect
 
-    bound = model.tie_weights  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+    bound = model.tie_weights  # ty: ignore[unresolved-attribute]
     try:
         params = inspect.signature(bound).parameters
     except (TypeError, ValueError):
@@ -1090,7 +1084,7 @@ def _bridge_legacy_tie_weights(model: object) -> None:
         accepted = {k: v for k, v in kwargs.items() if k in params}
         return bound(*args, **accepted)
 
-    model.tie_weights = bridged  # type: ignore[method-assign]  # ty: ignore[unresolved-attribute]
+    model.tie_weights = bridged  # ty: ignore[unresolved-attribute]
 
 
 def _patch_legacy_tie_weights_arity():
@@ -1122,8 +1116,8 @@ def _patch_legacy_tie_weights_arity():
         _bridge_legacy_tie_weights(self)
         return previous(self)
 
-    model_cls.init_weights = init_weights  # type: ignore[method-assign]
-    model_cls._dnallm_tie_weights_arity_patch = True  # type: ignore[attr-defined]
+    model_cls.init_weights = init_weights
+    model_cls._dnallm_tie_weights_arity_patch = True
 
 
 # numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been
@@ -1211,7 +1205,7 @@ def _patch_numpy_fromstring():
         return
 
     numpy.fromstring = _np_fromstring  # ty: ignore[invalid-assignment]  # intentional monkeypatch
-    numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+    numpy._dnallm_fromstring_patch = True  # ty: ignore[unresolved-attribute]
 
 
 # transformers 5.19.0 (freshly resolved by the open >=4.49,<6 range on
@@ -1321,7 +1315,7 @@ def _patch_device_type_query():
             raise
 
     module.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # intentional monkeypatch
-    module._dnallm_device_type_patch = True  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
+    module._dnallm_device_type_patch = True  # ty: ignore[unresolved-attribute]
 
     # transformers.utils re-exports import_utils names; mirror the wrapper
     # there too, but only where the re-export still holds the exact original

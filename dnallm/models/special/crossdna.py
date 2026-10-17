@@ -406,7 +406,7 @@ def _build_crossdna_sequence_classification_class(
                 return ((loss,) + output) if loss is not None else output  # ruff: ignore[collection-literal-concatenation]
 
             return SequenceClassifierOutput(
-                loss=loss,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]  # stubs: FloatTensor vs Tensor
+                loss=loss,  # ty: ignore[invalid-argument-type]  # stubs: FloatTensor vs Tensor
                 logits=logits,
                 hidden_states=hidden_output,
                 attentions=None,

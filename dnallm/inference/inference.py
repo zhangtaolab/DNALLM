@@ -266,7 +266,7 @@ class DNAInference:
                 )
                 return torch.device("cpu")
 
-        if not is_available():  # type: ignore[operator]
+        if not is_available():
             warnings.warn(
                 f"{device_name} is not available. Please check your installation. Use CPU instead.",
                 stacklevel=2,
@@ -559,7 +559,7 @@ class DNAInference:
                 self.labels = dataset.dataset["labels"]
         # Create DataLoader
         dataloader: DataLoader = DataLoader(
-            dataset,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
+            dataset,  # ty: ignore[invalid-argument-type]
             batch_size=batch_size,
             num_workers=self.pred_config.num_workers,
         )
@@ -710,11 +710,11 @@ class DNAInference:
             import inspect
 
             sig = inspect.signature(self.model.forward)
-            params = sig.parameters  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
+            params = sig.parameters  # ty: ignore[invalid-assignment]
 
         embeddings = {"attentions": None}
 
-        if "output_attentions" in params:  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+        if "output_attentions" in params:  # ty: ignore[unsupported-operator]
             try:
                 self.model.config.output_attentions = True
             except ValueError as e:
@@ -1787,7 +1787,7 @@ class DNAInference:
         else:
             raise ValueError("This model is not supported for sequence generation.")
 
-        return {}  # type: ignore[unreachable]
+        return {}
 
     def scoring(
         self,
@@ -1888,7 +1888,7 @@ class DNAInference:
             else:
                 dataloader = inputs
         else:
-            dataloader = inputs  # type: ignore[unreachable]
+            dataloader = inputs
         all_logits, _, embeddings = self.batch_infer(
             dataloader,
             output_hidden_states=True if score_type == "embedding" else False,
@@ -1902,7 +1902,7 @@ class DNAInference:
             # assume shape (N, L, V)
             for i in range(all_logits.size(0)):
                 logits_list.append(all_logits[i].detach().cpu())
-        elif isinstance(all_logits, (list, tuple)):  # type: ignore[unreachable]
+        elif isinstance(all_logits, (list, tuple)):
             for item in all_logits:
                 if item is not None:
                     logits_list.append(
@@ -2110,7 +2110,7 @@ class DNAInference:
                     else:
                         all_embeddings[i].append(tmp)
             for i, _ in enumerate(layers):
-                all_embeddings[i] = np.stack(all_embeddings[i], axis=0)  # type: ignore[call-overload]
+                all_embeddings[i] = np.stack(all_embeddings[i], axis=0)
             if self.embeddings["hidden_states"] is None:
                 self.embeddings["hidden_states"] = all_embeddings
             return all_embeddings
@@ -2118,7 +2118,7 @@ class DNAInference:
         elif is_special == "MEGADNA":
             model = self.model
             tokenizer = self.tokenizer
-            all_embeddings: list[Any] = [None] * 3  # type: ignore[no-redef]
+            all_embeddings: list[Any] = [None] * 3
             out_embeddings = []
             for sequence in tqdm(sequences):
                 input_ids = tokenizer(sequence, return_tensors="pt").to(self.device)["input_ids"]

@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PreTrainedConfig, BatchEncoding  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedConfig, BatchEncoding  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
@@ -404,7 +404,7 @@ def _handle_evo2_models(
                 model_config.head_config = head_config
                 evo2_model.config = model_config
                 evo2_model.config.pad_token_id = evo2_model.tokenizer.pad_id
-                evo2_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
+                evo2_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo2_model,
                 )
@@ -450,8 +450,8 @@ def _handle_evo1_models(
                         config_path: str | None = None,
                         modules: dict | None = None,
                     ) -> StripedHyena:
-                        autoconfig = modules["AutoConfig"]  # type: ignore[index]  # ty: ignore[not-subscriptable]
-                        automodelforcausallm = modules["AutoModelForCausalLM"]  # type: ignore[index]  # ty: ignore[not-subscriptable]
+                        autoconfig = modules["AutoConfig"]  # ty: ignore[not-subscriptable]
+                        automodelforcausallm = modules["AutoModelForCausalLM"]  # ty: ignore[not-subscriptable]
                         # Load the model configuration and weights
                         model_config = autoconfig.from_pretrained(
                             model_name,
@@ -539,7 +539,7 @@ def _handle_evo1_models(
                 model_config.head_config = head_config
                 evo_model.config = model_config
                 evo_model.config.pad_token_id = evo_model.tokenizer.pad_id
-                evo_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
+                evo_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo_model,
                 )

@@ -526,7 +526,7 @@ class DNALLMMCPServer:
             if request_id is not None:
                 log_entry["request_id"] = request_id
             if duration_ms is not None:
-                log_entry["duration_ms"] = round(duration_ms, 2)  # type: ignore[assignment]
+                log_entry["duration_ms"] = round(duration_ms, 2)
             if status is not None:
                 log_entry["status"] = status
             log_entry.update(extra)
@@ -923,9 +923,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if stream_progress and context:
                     # Send initial progress update
                     await context.report_progress(
@@ -1045,9 +1043,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_batch_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if stream_progress and context:
                     await context.report_progress(
                         0,
@@ -1194,9 +1190,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_multi_model_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if model_names is None:
                     model_names = self.model_manager.get_loaded_models()
 
@@ -1711,7 +1705,7 @@ class DNALLMMCPServer:
                 # lock so a timeout-cancellation cannot stack concurrent
                 # attributions on one shared torch model.
                 with self._interpret_thread_lock:
-                    interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
+                    interpreter = DNAInterpret(model, tokenizer, config)
 
                     # Handle layer_conductance: auto-detect embedding layer
                     kwargs: dict[str, Any] = {}
@@ -1725,7 +1719,7 @@ class DNALLMMCPServer:
                         method=mapped_method,
                         target=target_class,
                         max_length=max_length,
-                        **kwargs,  # type: ignore[arg-type]
+                        **kwargs,
                     )
 
             # WR-01 (261003-ij4): a synchronous captum attribution (observed

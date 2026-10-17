@@ -240,8 +240,8 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 | Group | Purpose | Includes |
 |-------|---------|----------|
 | **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
-| **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort, types-transformers) |
-| **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit, mypy, pandas-stubs) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
+| **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort) |
+| **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
 | **notebook** | Jupyter and Marimo support | Jupyter Lab, Marimo |
 | **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |

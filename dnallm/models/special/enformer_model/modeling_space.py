@@ -8,7 +8,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_space import SpaceConfig
 
-from transformers import PreTrainedModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from .modules import (
@@ -105,7 +105,7 @@ class Space(PreTrainedModel):
         )
 
         # create final heads for human and mouse
-        self.heads = nn.ModuleDict({  # type: ignore[misc]  # ty: ignore[invalid-assignment]  # nn.Module.__setattr__ stores into _modules
+        self.heads = nn.ModuleDict({  # ty: ignore[invalid-assignment]  # nn.Module.__setattr__ stores into _modules
             key: nn.Sequential(
                 nn.Linear(self.dim * 2, features),
             )
@@ -414,10 +414,10 @@ class SpaceForSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                loss_fct = nn.CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
+                loss_fct = nn.BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
             else:
                 raise NotImplementedError(self.config.problem_type)

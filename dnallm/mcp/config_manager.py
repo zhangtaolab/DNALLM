@@ -272,7 +272,7 @@ class MCPConfigManager:
         }
 
         for model_name, model_config in self.model_configs.items():
-            summary["models"][model_name] = {  # type: ignore[index]
+            summary["models"][model_name] = {
                 "task_type": model_config.task.task_type,
                 "num_labels": model_config.task.num_labels,
                 "label_names": model_config.task.label_names,

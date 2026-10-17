@@ -142,7 +142,7 @@ class DNAOneHotTokenizer:
 
         if return_tensors == "np" and return_dict:
             for key in output:
-                output[key] = output[key].numpy()  # type: ignore[assignment]
+                output[key] = output[key].numpy()
 
         return output if return_dict else None
 

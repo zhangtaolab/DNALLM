@@ -478,7 +478,7 @@ def _load_reference(reference: str | Path | Mapping[str, str]) -> dict[str, str]
     sequences: dict[str, str] = {}
     name: str | None = None
     chunks: list[str] = []
-    with opener(path, "rt", encoding="utf-8") as handle:  # type: ignore[operator]
+    with opener(path, "rt", encoding="utf-8") as handle:
         for line in handle:
             line = line.rstrip("\n")
             if line.startswith(">"):

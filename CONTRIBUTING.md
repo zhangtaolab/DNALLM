@@ -81,7 +81,7 @@ pytest tests/ -v
 # Check code quality
 ruff format --check .
 ruff check .
-mypy dnallm/
+uvx ty@0.0.84 check dnallm/
 ```
 
 ## Contributing Guidelines
@@ -139,7 +139,7 @@ We welcome several types of contributions:
    flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402
 
    # Type checking (relaxed settings)
-   mypy dnallm/ --show-error-codes --pretty
+   uvx ty@0.0.84 check dnallm/
    ```
 
 5. **Commit your changes**:
@@ -161,7 +161,7 @@ We follow the following standards:
 
 - **Ruff**: Code formatting and linting (line length: 100 characters; 79 applies only to the MCP module via .flake8)
 - **flake8**: Additional linting for MCP module compatibility
-- **mypy**: Type checking (with relaxed settings for development)
+- **ty**: Type checking (astral ty, the CI hard gate; exact-pinned `ty@0.0.84` via uvx)
 
 ### Pre-commit Checklist
 
@@ -187,8 +187,8 @@ We follow the following standards:
 
 3. **Type Checking**:
    ```bash
-   # Run mypy with relaxed settings
-   mypy dnallm/ --show-error-codes --pretty
+   # Run the ty type gate (CI-matching hard gate)
+   uvx ty@0.0.84 check dnallm/
    ```
 
 4. **Test Suite**:
@@ -206,10 +206,10 @@ We follow the following standards:
    python scripts/check_code.py
 
    # Option 2: Run all checks manually in one command
-   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && uvx ty@0.0.84 check dnallm/
    ```
 
-**All checks must pass before committing!** CI gates on ruff format/lint, the pytest suite with a coverage hard gate, skip audits, and an exit-code canary; mypy and ty type checks run advisory only (`|| true`), and CI runs no flake8 step.
+**All checks must pass before committing!** CI gates on ruff format/lint, the ty type check (hard gate since 2026-10-17 — mypy retired), the pytest suite with a coverage hard gate, skip audits, and an exit-code canary; CI runs no flake8 step.
 
 ### Code Check Scripts
 
@@ -506,7 +506,7 @@ mkdocs serve
 1. **Run the complete pre-commit checklist** (see [Pre-commit Checklist](#pre-commit-checklist) above):
    ```bash
    # Quick validation - all checks must pass
-   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
+   ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && uvx ty@0.0.84 check dnallm/
    ```
 
 2. **Ensure all tests pass**:
@@ -648,7 +648,7 @@ python scripts/check_code.py
 python scripts/check_code.py --all
 
 # Option 3: Manual validation
-ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && mypy dnallm/ --show-error-codes --pretty
+ruff format --check . && ruff check . --statistics && flake8 dnallm/mcp/ --max-line-length=79 --extend-ignore=E203,W503,C901,E402 && uvx ty@0.0.84 check dnallm/
 
 # Auto-fix code issues
 python scripts/check_code.py --fix
@@ -680,8 +680,8 @@ mkdocs serve
    - Run `ruff check . --fix` to auto-fix some import issues
 
 4. **Type checking errors**:
-   - Most are disabled in development, but fix critical ones
-   - Check specific files: `mypy dnallm/specific_file.py`
+   - Fix the diagnostic, or annotate with a line-level `# ty: ignore[rule]` plus a root-cause comment when it is verified library dynamics
+   - Check specific files: `uvx ty@0.0.84 check dnallm/specific_file.py`
 
 5. **Test failures**:
    - Run specific test files: `pytest tests/specific_test.py -v`

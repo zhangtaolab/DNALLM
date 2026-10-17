@@ -62,8 +62,8 @@ EXPECTED_NOTEBOOK_MEMBERS = frozenset({
 EXPECTED_FULL_MEMBERS = frozenset({
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
-    "types-transformers>=0.1.0",
-})
+})  # types-transformers removed 2026-10-17: mypy-only stub (ty bundles its
+# own typeshed and never reads installed stub packages) — D-09 flip
 
 # The deprecated one-cycle alias: a pure self-reference to the full extra.
 # An EMPTY extra is the forbidden shape -- live-probed 2026-10-14 (18-RESEARCH

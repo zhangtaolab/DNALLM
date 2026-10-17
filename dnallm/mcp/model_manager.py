@@ -176,7 +176,7 @@ class ModelManager:
                 logger.error(f"Exception loading model {model_name}: {result}")
                 loading_results[model_name] = False
             else:
-                loading_results[model_name] = result  # type: ignore[assignment]  # ty: ignore[invalid-assignment]  # load_model only returns bool; non-Exception BaseExceptions never occur
+                loading_results[model_name] = result  # ty: ignore[invalid-assignment]  # load_model only returns bool; non-Exception BaseExceptions never occur
 
         successful_loads = sum(loading_results.values())
         logger.info("\n📊 Loading Summary:")
@@ -334,7 +334,7 @@ class ModelManager:
                 logger.error(f"Exception in multi-model prediction for {model_name}: {result}")
                 multi_results[model_name] = {"error": str(result)}
             else:
-                multi_results[model_name] = result  # type: ignore[assignment]
+                multi_results[model_name] = result
 
         return multi_results
 

@@ -137,7 +137,7 @@ def _prepare_annotations(data: list | dict) -> dict:
         return annotations
     elif isinstance(data, dict):
         models = list(data.keys())
-        label_names = set(data[models[0]])  # type: ignore[index]
+        label_names = set(data[models[0]])
         annotations = {model: {name: set() for name in label_names} for model in models}
         for model in models:
             for i, name in enumerate(data[model]):
@@ -1009,7 +1009,7 @@ def plot_token_scatter(
         # Convert to zero started index if necessary
         start_pos = extra_data[0][1]
         if len(extra_data[0]) == 4:
-            color_map = {item[0]: item[3] for item in extra_data}  # type: ignore[unreachable]
+            color_map = {item[0]: item[3] for item in extra_data}
         else:
             color_map: dict[str, str] = {}
         for i, item in enumerate(extra_data):
@@ -1583,7 +1583,7 @@ def _compute_mean_embeddings(
         else:  # mean pooling without mask
             attention_mask_array = np.ones((embeddings.shape[0], embeddings.shape[1]), dtype=int)
     else:
-        attention_mask_array = np.array(attention_mask)  # type: ignore[assignment]
+        attention_mask_array = np.array(attention_mask)
 
     # use center (middle of window) embeddings within window size
     if isinstance(strategy, int):
@@ -1930,9 +1930,9 @@ def _build_mutation_datasets(
         # Update line plot data
         for score in dheat_pos["score"]:
             if score >= 0:
-                dline["score"][i] += score  # type: ignore[index]
+                dline["score"][i] += score
             else:
-                dline["score"][i + seqlen] -= score  # type: ignore[index]
+                dline["score"][i + seqlen] -= score
 
         # Update bar chart data
         dbar["x"].append(f"{str(i).zfill(flen)}{base1}")

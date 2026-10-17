@@ -14,7 +14,7 @@ from captum.attr import (
     DeepLift,
     GradientShap,
 )
-from transformers import PreTrainedModel, PreTrainedTokenizer  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel, PreTrainedTokenizer  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from .plot import (
     plot_attributions_token,
     plot_attributions_line,
@@ -122,8 +122,8 @@ class DNAInterpret:
         """
         self.model = model.eval()
         self.tokenizer = tokenizer
-        self.task_config = config["task"]  # type: ignore[index]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
-        self.pred_config = config["inference"]  # type: ignore[index]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
+        self.task_config = config["task"]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
+        self.pred_config = config["inference"]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
         self.device = self.pred_config.device
         self.embedding_layer = None
         self.model.to(self.device)
@@ -188,7 +188,7 @@ class DNAInterpret:
                 if isinstance(obj, nn.Embedding):
                     if self.embedding_layer != path:
                         print(f"Auto-detected embedding layer at: {path}")
-                    self.embedding_layer = path  # type: ignore[assignment]
+                    self.embedding_layer = path
                     return obj
             except AttributeError:
                 continue
@@ -239,7 +239,7 @@ class DNAInterpret:
     ) -> list[str]:
         """Convert token IDs to string tokens."""
         if hasattr(self.tokenizer, "convert_ids_to_tokens"):
-            tokens = self.tokenizer.convert_ids_to_tokens(token_ids)  # type: ignore[arg-type]
+            tokens = self.tokenizer.convert_ids_to_tokens(token_ids)
         elif hasattr(self.tokenizer, "decode"):
             tokens = [self.tokenizer.decode(tid) for tid in token_ids]  # type: ignore
         elif hasattr(self.tokenizer, "decode_token"):
@@ -248,7 +248,7 @@ class DNAInterpret:
             tokens = self.tokenizer.tokenize(input_seq)
         else:
             tokens = input_seq.split()  # type: ignore
-        return tokens  # type: ignore[return-value]
+        return tokens
 
     def _get_pad_baseline(self, input_ids: torch.Tensor) -> torch.Tensor:
         """Create a baseline tensor filled with PAD token IDs."""
@@ -814,7 +814,7 @@ class DNAInterpret:
                 base_method,
                 token_index=token_index,
                 max_length=max_length,
-                **kwargs,  # type: ignore[arg-type]
+                **kwargs,
             )
         else:
             raise ValueError(
@@ -903,7 +903,7 @@ class DNAInterpret:
 
         plot_type = plot_type.lower()
         if isinstance(self.attributions, list):
-            if plot_type != "multi":  # type: ignore[unreachable]
+            if plot_type != "multi":
                 print("Warning: Multiple attributions found, falling back to 'multi' plot.")
             # Multiple sequences' attributions
             plot = plot_attributions_multi(self.attributions, **kwargs)

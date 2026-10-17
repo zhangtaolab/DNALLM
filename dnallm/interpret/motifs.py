@@ -792,7 +792,7 @@ def scan(
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Refuse HTTP redirects (T-12-02: no redirect-following to arbitrary hosts)."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise urllib.error.URLError(f"redirect to {newurl} refused (redirects disabled)")
 
 

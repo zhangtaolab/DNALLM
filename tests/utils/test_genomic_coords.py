@@ -70,7 +70,7 @@ def test_normalize_chrom_rejects_unknown_forms():
     with pytest.raises(ValueError, match=r"non-empty"):
         normalize_chrom("")
     with pytest.raises(ValueError, match=r"non-empty"):
-        normalize_chrom(None)  # type: ignore[arg-type]
+        normalize_chrom(None)
     # Undocumented name forms are never best-effort renamed (Pitfall-11 failure
     # mode is silence; guessing recreates it)
     for bad in ("scaffold_1", "chromosome1", "AT1G01010", "Chr", "Chr-1", "C", "M", "-1", "1 "):
@@ -124,7 +124,7 @@ def test_gff1_to_half_open_rejects_invalid_coordinates():
     with pytest.raises(ValueError, match=r"integer"):
         gff1_to_half_open(1.5, 10)
     with pytest.raises(ValueError, match=r"integer"):
-        gff1_to_half_open("1", 10)  # type: ignore[arg-type]
+        gff1_to_half_open("1", 10)
 
 
 def test_half_open_to_gff1_round_trip():

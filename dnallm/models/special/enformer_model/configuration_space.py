@@ -1,4 +1,4 @@
-from transformers import PreTrainedConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
 
 class SpaceConfig(PreTrainedConfig):

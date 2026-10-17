@@ -75,10 +75,10 @@ class Benchmark:
         """
         self.all_models = {
             "huggingface": set(
-                np.concatenate([MODEL_INFO[m]["huggingface"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
+                np.concatenate([MODEL_INFO[m]["huggingface"] for m in MODEL_INFO]).tolist()
             ),
             "modelscope": set(
-                np.concatenate([MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]).tolist()  # type: ignore[index]
+                np.concatenate([MODEL_INFO[m]["modelscope"] for m in MODEL_INFO]).tolist()
             ),
         }
         self.datasets: list[Any] = []
@@ -278,7 +278,7 @@ class Benchmark:
         if show_all:
             return MODEL_INFO
         else:
-            models_list = {m: MODEL_INFO[m]["model_tags"] for m in MODEL_INFO}  # type: ignore[index]
+            models_list = {m: MODEL_INFO[m]["model_tags"] for m in MODEL_INFO}
             return models_list
 
     def run(
@@ -571,7 +571,10 @@ class Benchmark:
                 for fold, (_, val_idx) in enumerate(kfold_split):
                     print(f"Running fold {fold + 1}/{k_folds} for {model_name} on {dataset_name}")
 
-                    val_indices = val_idx.tolist()
+                    # kfold .split() index arrays tolist() to list[int]; the
+                    # stub-level tolist() union (nested lists) is not
+                    # Sequence[int]-assignable under torch's Subset signature.
+                    val_indices = cast("list[int]", val_idx.tolist())
 
                     # Support HuggingFace `.select()` or PyTorch `.Subset()`
                     if hasattr(dataset.dataset, "select"):
@@ -641,7 +644,7 @@ class Benchmark:
             else:
                 raise ValueError(f"Dataset name '{dataset}' not found in metrics.")
         else:
-            metrics = metrics[next(iter(metrics.keys()))]  # type: ignore[unreachable]
+            metrics = metrics[next(iter(metrics.keys()))]
         if task_type in ["binary", "multiclass", "multilabel", "token"]:
             # Prepare data for plotting
             bars_data, curves_data = prepare_data(metrics, task_type=task_type)

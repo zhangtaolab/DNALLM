@@ -560,7 +560,7 @@ class TransformerBlock(nn.Module):
                 config.dropout_rate,
             )
         else:
-            self.feed_forward = MLP(config.dim, config.dropout_rate)  # type: ignore[assignment]
+            self.feed_forward = MLP(config.dim, config.dropout_rate)
 
     def forward(self, x, species):
         x = self.attention(x)

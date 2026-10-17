@@ -598,7 +598,7 @@ def preprocess_logits_for_metrics(logits: torch.Tensor, labels: torch.Tensor) ->
     Returns:
         Tuple of (processed_logits, labels)
     """
-    logits = logits[0] if isinstance(logits, tuple) else logits  # type: ignore[unreachable]
+    logits = logits[0] if isinstance(logits, tuple) else logits
 
     return logits
 

@@ -83,7 +83,6 @@ dev = [
     "dnallm[test,notebook]",
     "ruff==0.16.10",
     "pre-commit>=3.6.0",
-    "pandas-stubs>=2.3.0",
     "logomaker>=0.8.2",
     "pybedtools>=0.11.0; platform_system != 'Windows'",
     "pyfastx>=2.2.0",
@@ -147,7 +146,6 @@ mcp = [
 full = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
-    "types-transformers>=0.1.0",
 ]
 # Deprecated one-cycle alias (owner 2026-10-14): base was renamed to full in
 # v1.3; this alias still installs the full set (no silent under-install).

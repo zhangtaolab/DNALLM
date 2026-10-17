@@ -52,7 +52,7 @@ import json
 import math
 import torch
 from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 import transformers
 from packaging.version import Version
 from peft import get_peft_model, LoraConfig, IA3Config
@@ -60,7 +60,7 @@ from peft import get_peft_model, LoraConfig, IA3Config
 try:
     import optuna
 except ImportError:
-    optuna = None  # type: ignore[assignment]
+    optuna = None
 
 from ..configuration.configs import Ia3Config
 from ..datahandling.data import DNADataset
@@ -554,7 +554,10 @@ class DNATrainer:
             raise ValueError("Datasets are required for training")
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):
-            self.data_split = self.datasets.dataset.keys()
+            # datasets>=4 keys() yields NamedSplit (a str subclass); coerce to
+            # plain str so split-name comparisons and downstream str-keyed
+            # lookups stay type-honest on both datasets 3.x and 4.x.
+            self.data_split = [str(k) for k in self.datasets.dataset.keys()]
         else:
             self.data_split = []
         # Get datasets
@@ -627,7 +630,7 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import DataCollatorForLanguageModeling  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
@@ -637,10 +640,10 @@ class DNATrainer:
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import DataCollatorForLanguageModeling  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]
+                tokenizer=self.datasets.tokenizer,
                 mlm=False,
             )
         else:
@@ -716,7 +719,7 @@ class DNATrainer:
                 Returns:
         Callable: A function that computes metrics for the specific task type
         """
-        return compute_metrics(self.task_config)  # type: ignore[no-any-return]
+        return compute_metrics(self.task_config)
 
     def _create_hp_space_fn(self) -> Callable:
         """Create the hp_space function for Optuna hyperparameter search.

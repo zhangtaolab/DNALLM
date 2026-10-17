@@ -13,7 +13,7 @@ from glob import glob
 from typing import Any
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -54,18 +54,18 @@ class DNALLMforSequenceClassification(PreTrainedModel):
     MLP head for sequence classification or regression tasks.
     """
 
-    config_class = AutoConfig  # type: ignore[assignment]
+    config_class = AutoConfig
 
     def __init__(self, config, custom_model: Any = None):
         super().__init__(config)
-        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
             self.score = MegaDNAMultiScaleHead(**self.config.head_config)
         elif self.config.head_config.get("head", "").lower().startswith("evo"):
             self.backbone = custom_model
-            self.score = EVOForSeqClsHead(  # type: ignore[assignment]
+            self.score = EVOForSeqClsHead(
                 **self.config.head_config,
                 base_model=custom_model,
             )
@@ -112,7 +112,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -120,7 +120,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         load_kwargs = {"trust_remote_code": True}
         if quantization_config is not None:
             load_kwargs["quantization_config"] = quantization_config
-            load_kwargs["device_map"] = "auto"  # type: ignore[assignment]
+            load_kwargs["device_map"] = "auto"
         if module is not None:
             base_model = module.from_pretrained(model_name_or_path, **load_kwargs)
         else:
@@ -499,7 +499,7 @@ def _get_model_path_and_imports(
 
     # Import transformers modules for local and huggingface sources
     try:
-        from transformers import (  # type: ignore[attr-defined]
+        from transformers import (
             AutoConfig,  # ty: ignore[unresolved-import]  # lazy export, resolves live
             AutoModel,  # ty: ignore[unresolved-import]  # lazy export, resolves live
             AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
@@ -909,7 +909,7 @@ def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
             ) from e
     elif source.lower() in ("local", "huggingface"):
         try:
-            from transformers import (  # type: ignore[attr-defined]
+            from transformers import (
                 AutoConfig,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
                 AutoModel,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
                 AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
@@ -1378,7 +1378,7 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     replacement = nn.Linear(
                         in_features,
                         out_features,
-                        dtype=compute_dtype,  # type: ignore[assignment]
+                        dtype=compute_dtype,
                     ).to(device)
                     # Copy existing weight data if available
                     with torch.no_grad():
@@ -1495,7 +1495,7 @@ def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, An
         preset_models = []
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info["default"]  # type: ignore[index]  # ty: ignore[invalid-assignment]
+        model_name = model_info["default"]  # ty: ignore[invalid-assignment]
     elif model_name in preset_models:
         pass
     else:

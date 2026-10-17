@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedTokenizerBase  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
@@ -368,7 +368,7 @@ class DNADataset:
             ds = ds.rename_column(seq_col, "sequence")
         if label_col != "labels":
             ds = ds.rename_column(label_col, "labels")
-        cls.is_split: bool = isinstance(ds, DatasetDict)  # type: ignore[misc]
+        cls.is_split: bool = isinstance(ds, DatasetDict)
         return cls(cast(Dataset | DatasetDict, ds), tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
@@ -668,7 +668,7 @@ class DNADataset:
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
         if isinstance(example_tokens, str):
-            example_tokens = list(example_tokens)  # type: ignore[unreachable]
+            example_tokens = list(example_tokens)
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
                 example_tokens, example_ner_tags, pad_len, config
@@ -1263,7 +1263,7 @@ class DNADataset:
                 "instead."
             )
         else:
-            return self.dataset[idx]  # type: ignore[no-any-return]
+            return self.dataset[idx]
 
     def __data_type__(self) -> None:
         """Get the data type of the dataset (classification, regression, etc.).
@@ -1392,11 +1392,14 @@ class DNADataset:
         if isinstance(self.dataset, DatasetDict):
             self.stats_for_plot = {}
             for split_name, split_ds in self.dataset.items():
+                # datasets>=4 keys() yields NamedSplit (a str subclass); coerce
+                # so the str-keyed stats dicts stay type-honest on both libs.
+                split_key = str(split_name)
                 df = prepare_dataframe(split_ds)
                 data_type = self.data_type
                 basic = compute_basic_stats(df, seq_col)
-                stats[split_name] = {"data_type": data_type, **basic}
-                self.stats_for_plot[split_name] = df
+                stats[split_key] = {"data_type": data_type, **basic}
+                self.stats_for_plot[split_key] = df
         else:
             df = prepare_dataframe(self.dataset)
             data_type = self.data_type
@@ -1435,8 +1438,8 @@ class DNADataset:
             )
 
         task_type = self.data_type or "unknown"
-        if isinstance(self.stats_for_plot, dict):  # type: ignore[unreachable]
-            df_list = {}  # type: ignore[unreachable]
+        if isinstance(self.stats_for_plot, dict):
+            df_list = {}
             for split_name, df in self.stats_for_plot.items():
                 df_list[split_name] = df.copy()
             final = self._create_final_chart(df_list, task_type)

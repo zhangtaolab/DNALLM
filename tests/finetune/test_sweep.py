@@ -228,7 +228,7 @@ class TestRunSeeds:
 
     def test_run_seeds_none_out_root_rejected(self):
         with pytest.raises(ValueError, match=r"out_root must be a non-empty path"):
-            run_seeds(_stub_fn, [1], None, model_name="m", task_name="t")  # type: ignore[arg-type]
+            run_seeds(_stub_fn, [1], None, model_name="m", task_name="t")
 
     def test_run_seeds_empty_seeds_rejected(self, tmp_path):
         with pytest.raises(ValueError, match=r"at least one seed"):
