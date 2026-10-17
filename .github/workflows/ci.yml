@@ -133,11 +133,6 @@ jobs:
             rm tests/test_ci_exitcode_canary.py
           fi
 
-      - name: Run type checking
-        run: |
-          source .venv/bin/activate
-          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
-          
   test-windows:
     # Windows platform leg: the hosted matrix is linux-only today, yet the
     # package claims "Operating System :: OS Independent" and the primary dev
@@ -211,11 +206,6 @@ jobs:
             cat canary.log | tail -5
             rm tests/test_ci_exitcode_canary.py
           fi
-
-      - name: Run type checking
-        run: |
-          source .venv/Scripts/activate
-          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
 
   test-cuda:
     runs-on: ubuntu-latest
@@ -432,20 +422,19 @@ jobs:
           source .venv/bin/activate
           python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 
-      - name: "Run type checking (ty, advisory — D-08)"
-        # D-08: ty runs as an advisory standalone step (seconds-scale, same
-        # layer as the ruff statistics step) until the E-family triage quick
-        # task reaches zero diagnostics; failures here never red the gate
-        # prematurely. Exact-pinned invocation (never floating) — no
-        # pyproject dependency added.
-        # D-09: the ty hard flip and the mypy retirement land together in
-        # ONE later atomic change — this phase touches nothing mypy (the
-        # existing advisory mypy steps, pre-commit, check_code.py, and
-        # [tool.mypy] stay untouched).
+      - name: "Run type checking (ty, hard gate — D-09 flip)"
+        # D-08/D-09 (v1.1 Phase 9) discharged 2026-10-17 (Phase 21): the
+        # 232-diagnostic baseline cleared to zero (real fixes + line-level
+        # `# ty: ignore[code]` pragmas for library dynamics — no severity
+        # overrides, no new [tool.ty.src] excludes), so ty hardens here and
+        # mypy retires in the same atomic change (advisory mypy steps
+        # deleted from both test jobs, pre-commit hook, check_code.py, the
+        # dev-dep pin, and [tool.mypy]). Exact-pinned invocation (never
+        # floating) — no pyproject dependency added.
         # D-10: static checks never enter pytest (lint lane, not behavior).
         run: |
           source .venv/bin/activate
-          uvx ty@0.0.84 check dnallm/ || true
+          uvx ty@0.0.84 check dnallm/
 
   coverage-nightly:
     name: coverage-nightly (py3.12, full suite incl. slow)

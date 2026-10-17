@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Type gate: ty (astral, pinned `ty@0.0.84`) replaces mypy** in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9; Phase 21): the 232-diagnostic baseline cleared to zero via real fixes (annotations, `typing.cast` narrowing) plus line-level `# ty: ignore[code]` pragmas for verified library dynamics (altair 6.3 `@use_signature` TypeVar leak, evaluate 0.4.6 `MethodType` compute rebind, peft/torch stub pollution, vendored Enformer/MambaCache code) — no severity overrides, no new `[tool.ty.src]` excludes. The CI coverage-gate ty step hardens (`|| true` dropped), both test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the `mypy` dev-dep pin + `[tool.mypy]`/overrides + `.mypy_cache` ignores are removed. `# type: ignore` comments stay live (ty honors the bare form; coded mypy-specific ignores are inert under ty).
+
 ## [1.3.0] - 2026-10-16
 
 ### Overview

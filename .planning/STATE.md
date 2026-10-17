@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.3
 milestone_name: Platform Reach & Packaging Honesty
-status: Awaiting next milestone
-stopped_at: Phase 19 complete, ready to plan Phase 20
-last_updated: "2026-10-16T05:46:19.274Z"
-last_activity: 2026-10-16
-last_activity_desc: Milestone v1.3 completed and archived
-state_head: 3209cc8662d54a5389f5d144d517a9bb55078ee4
+status: Phase 21 in progress
+stopped_at: Phase 21 executing — ty diagnostics clearing, then atomic flip
+last_updated: "2026-10-17T00:00:00.000Z"
+last_activity: 2026-10-17
+last_activity_desc: v1.3 reopened for owner-directed Phase 21 (ty hard flip + mypy retirement)
+state_head: 0ffcd51f751f913b3c2d4a73f53d788b342c8f80
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 8
   total_plans: 22
   completed_plans: 22
-  percent: 100
-current_phase: 20
-current_phase_name: "Tech-debt closeout: CLI flag-only crash + residual docs mentions"
+  percent: 89
+current_phase: 21
+current_phase_name: "Type-checker atomic swap — ty hard flip + mypy retirement"
 ---
 
 # Project State
@@ -25,7 +25,7 @@ current_phase_name: "Tech-debt closeout: CLI flag-only crash + residual docs men
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Make platform coverage and the distribution chain honest end-to-end — Windows-native execution parity, accurate packaging/install guidance, a rust-proof publish chain, a docs surface that matches the code — with the suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 20 — Tech-debt closeout: CLI flag-only crash + residual docs mentions
+**Current focus:** Phase 21 — Type-checker atomic swap: clear the 232 ty diagnostics to zero, then flip CI/pre-commit/check_code to ty and retire mypy in one atomic change (D-09)
 
 ## Current Position
 

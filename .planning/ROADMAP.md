@@ -5,9 +5,13 @@
 - ✅ **v1 Test Suite Audit & Coverage Hardening** — Phases 1–4 (shipped 2026-10-01) — [archive](milestones/v1-ROADMAP.md)
 - ✅ **v1.1 Example Execution Testing & Repair** — Phases 5–9 (shipped 2026-10-07) — [archive](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Paper Revision Suite Support** — Phases 10–12 (shipped 2026-10-10) — [archive](milestones/v1.2-ROADMAP.md)
-- ✅ **v1.3 Platform Reach & Packaging Honesty** — Phases 13–20 (shipped 2026-10-16) — [archive](milestones/v1.3-ROADMAP.md)
+- ✅ **v1.3 Platform Reach & Packaging Honesty** — Phases 13–21 (shipped 2026-10-16; reopened 2026-10-17 for owner-directed Phase 21) — [archive](milestones/v1.3-ROADMAP.md)
 
 ## Phases
+
+- [ ] **Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09)** — in progress (owner-directed post-ship addition, 2026-10-17)
+
+**Goal:** ty (pinned `ty@0.0.84`) becomes the sole type gate and mypy retires in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9). The 232-diagnostic baseline clears to zero via real fixes plus line-level `# ty: ignore[code]` pragmas for library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. Same change: the coverage-gate advisory ty step hardens (`|| true` dropped), the two test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the mypy dev-dep + `[tool.mypy]`/overrides + `.mypy_cache` gitignore entry are removed. `# type: ignore` comments stay — ty honors them live.
 
 <details>
 <summary>✅ v1.3 Platform Reach & Packaging Honesty (Phases 13–20) — SHIPPED 2026-10-16</summary>
@@ -64,5 +68,5 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 </details>
 
 **Phase Numbering:**
-- The next milestone continues from Phase 21 (numbering never restarts)
+- The next milestone continues from Phase 22 (numbering never restarts; Phase 21 consumed by the v1.3 reopen)
 - Decimal phases (e.g. 21.1): urgent insertions (marked INSERTED)

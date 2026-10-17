@@ -133,7 +133,6 @@ example/marimo/*/__marimo__/
 site
 
 # MyPy cache
-.mypy_cache/
 
 results/
 
