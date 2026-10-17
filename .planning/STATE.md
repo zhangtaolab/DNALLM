@@ -1,21 +1,21 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.3
-milestone_name: Platform Reach & Packaging Honesty
 status: Phase 21 in progress
 stopped_at: Phase 21 executing — ty diagnostics clearing, then atomic flip
-last_updated: "2026-10-17T00:00:00.000Z"
+last_updated: "2026-10-17T03:08:45.478Z"
 last_activity: 2026-10-17
-last_activity_desc: v1.3 reopened for owner-directed Phase 21 (ty hard flip + mypy retirement)
-state_head: 0ffcd51f751f913b3c2d4a73f53d788b342c8f80
+last_activity_desc: quick 261017-414 complete — mypy residue sweep, D-09 flip CI-validated on ed1c2e8
+state_head: 1c52e46cc26ffada0d24b784d216feea047cb017
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 22
   completed_plans: 22
   percent: 89
+milestone_name: Platform Reach & Packaging Honesty
 current_phase: 21
-current_phase_name: "Type-checker atomic swap — ty hard flip + mypy retirement"
+current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
 ---
 
 # Project State
@@ -130,6 +130,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 261017-414 | scan all files for mypy remnants and systematically replace with ty (D-09 flip follow-up) | 2026-10-17 | 1c52e46 | [261017-414-scan-all-files-for-mypy-remnants-and-sys](./quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
