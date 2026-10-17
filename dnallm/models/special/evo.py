@@ -234,7 +234,7 @@ def _handle_evo2_models(
             # "Tried to access the schema for ..."). Importing flash_attn
             # BEFORE evo2/vortex avoids the clobbering.
             try:
-                import flash_attn  # ruff: ignore[unused-import]  # pyright: ignore[reportMissingImports]
+                import flash_attn  # ruff: ignore[unused-import]  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
             except ImportError:
                 pass
             try:
@@ -340,7 +340,7 @@ def _handle_evo2_models(
             # package directory, so an absolute filesystem path must be
             # staged into evo2/configs/ and passed as a package-relative
             # resource name (older evo2 accepted the absolute path directly).
-            import evo2 as _evo2_pkg
+            import evo2 as _evo2_pkg  # ty: ignore[unresolved-import]  # optional dep, guarded
 
             stage_dir = os.path.join(os.path.dirname(_evo2_pkg.__file__), "configs")
             os.makedirs(stage_dir, exist_ok=True)
@@ -450,8 +450,8 @@ def _handle_evo1_models(
                         config_path: str | None = None,
                         modules: dict | None = None,
                     ) -> StripedHyena:
-                        autoconfig = modules["AutoConfig"]  # type: ignore[index]
-                        automodelforcausallm = modules["AutoModelForCausalLM"]  # type: ignore[index]
+                        autoconfig = modules["AutoConfig"]  # type: ignore[index]  # ty: ignore[not-subscriptable]
+                        automodelforcausallm = modules["AutoModelForCausalLM"]  # type: ignore[index]  # ty: ignore[not-subscriptable]
                         # Load the model configuration and weights
                         model_config = autoconfig.from_pretrained(
                             model_name,

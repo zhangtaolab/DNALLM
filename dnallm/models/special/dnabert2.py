@@ -27,7 +27,7 @@ def _handle_dnabert2_models(model_path: str, load_args: list) -> tuple:
 
             a = tl.zeros((1, 1), dtype=tl.float32)
             b = tl.zeros((1, 1), dtype=tl.float32)
-            tl.dot(a, b, trans_b=True)
+            tl.dot(a, b, trans_b=True)  # ty: ignore[unknown-argument]  # capability probe: TypeError caught below
             return True
         except TypeError:
             return False

@@ -38,7 +38,7 @@ from __future__ import annotations
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:
     pass
@@ -82,6 +82,7 @@ class DNALLMMCPClient:
                 f'Invalid transport: {transport!r}. Must be "streamable-http", "sse", or "stdio".'
             )
         self.transport = transport
+        self.url: str | None
         if url is not None:
             # streamablehttp_client expects the full URL including the /mcp path.
             # The SDK does NOT automatically append /mcp -- the caller must provide it.
@@ -91,7 +92,7 @@ class DNALLMMCPClient:
         elif transport == "sse":
             self.url = "http://localhost:8000/sse"
         else:
-            self.url = None  # type: ignore[assignment]
+            self.url = None
         self.command = command or ("dnallm-mcp-server" if transport == "stdio" else None)
         self.args = args or []
         self.env = env or {}
@@ -136,7 +137,9 @@ class DNALLMMCPClient:
         if self.transport == "streamable-http":
             from mcp.client.streamable_http import streamable_http_client
 
-            async with streamable_http_client(self.url) as (
+            # __init__ fills a default URL for HTTP transports, so self.url
+            # is never None here.
+            async with streamable_http_client(cast(str, self.url)) as (
                 read_stream,
                 write_stream,
                 get_session_id,
@@ -155,7 +158,7 @@ class DNALLMMCPClient:
         elif self.transport == "sse":
             from mcp.client.sse import sse_client
 
-            async with sse_client(self.url) as (read_stream, write_stream):
+            async with sse_client(cast(str, self.url)) as (read_stream, write_stream):
                 from mcp import ClientSession
 
                 async with ClientSession(

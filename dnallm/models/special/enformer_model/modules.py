@@ -7,7 +7,7 @@ import torch.distributed as dist
 import pandas as pd
 from einops import rearrange
 from einops.layers.torch import Rearrange
-from torch.cuda.amp import custom_fwd
+from torch.cuda.amp import custom_fwd  # ty: ignore[deprecated]  # vendored torch API, functional across supported range
 
 
 # gamma positions from tensorflow
@@ -112,11 +112,11 @@ def get_positional_features_gamma(
     if not exists(start_mean):
         start_mean = seq_len / features
 
-    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)
+    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)  # ty: ignore[no-matching-overload]  # exists() default not visible to ty
 
     mean = mean[None, ...]
     concentration = (mean / stddev) ** 2
-    rate = mean / stddev**2
+    rate = mean / stddev**2  # ty: ignore[unsupported-operator]  # exists() default not visible to ty
 
     probabilities = gamma_pdf(positions.to(dtype).abs()[..., None], concentration, rate)
     probabilities = probabilities + eps
@@ -390,7 +390,7 @@ class Experts(nn.Module):
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
 
-    @custom_fwd(cast_inputs=torch.float16)
+    @custom_fwd(cast_inputs=torch.float16)  # ty: ignore[deprecated]
     def forward(self, inputs, expert_size):
         """
         inputs: [batch_size * length * k, dim]

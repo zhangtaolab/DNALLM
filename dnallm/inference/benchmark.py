@@ -10,7 +10,7 @@ import os
 import numpy as np
 from pathlib import Path
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import torch
 from torch.utils.data import DataLoader, Subset
@@ -88,9 +88,9 @@ class Benchmark:
         if config is not None:
             # Private writable copy: default sections (inference/task) are
             # backfilled below without mutating the caller's mapping.
-            self.config = dict(config)
+            self.config: dict[str, Any] = dict(config)
             if "benchmark" in config:
-                self.prepared = self.__load_from_config()
+                self.prepared: dict[str, Any] | None = self.__load_from_config()
             else:
                 self.prepared = None
         else:
@@ -471,9 +471,10 @@ class Benchmark:
         inference_engine = self.get_inference_engine(model, tokenizer)
         logits, _, _ = inference_engine.batch_infer(dataloader, do_pred=False)
 
-        # Extract labels based on the dataset structure
+        # Extract labels based on the dataset structure; the hasattr branches
+        # read duck-typed attributes whose concrete type varies by backend.
         if hasattr(dataset, "labels"):
-            labels = dataset.labels
+            labels = cast(Any, dataset.labels)
         elif hasattr(val_data, "labels"):
             labels = val_data.labels
         elif isinstance(val_data, Subset) and hasattr(val_data.dataset, "labels"):
@@ -548,7 +549,9 @@ class Benchmark:
                             else None
                         )
                         if y is not None:
-                            kfold_split = kfold.split(indices, y)
+                            # k_folds > 1 with stratified=True implies the
+                            # StratifiedKFold constructed above.
+                            kfold_split = cast(StratifiedKFold, kfold).split(indices, y)
                         else:
                             # No labels column: stratification is impossible.
                             # Degrade to a plain KFold split instead of raising
@@ -557,7 +560,9 @@ class Benchmark:
                             plain_kfold = KFold(n_splits=k_folds, shuffle=True, random_state=42)
                             kfold_split = plain_kfold.split(indices)
                     else:
-                        kfold_split = kfold.split(indices)
+                        # k_folds > 1 with stratified=False implies the plain
+                        # KFold constructed above.
+                        kfold_split = cast(KFold, kfold).split(indices)
                 else:
                     # Single fold over every row; wrap in numpy arrays so the
                     # shared .tolist() below works on this branch too.
@@ -603,7 +608,7 @@ class Benchmark:
         save_path: str | None = None,
         separate: bool = False,
         dataset: int | str = 0,
-    ) -> "tuple[alt.Chart | dict[str, alt.Chart], alt.Chart | dict[str, alt.Chart]]":
+    ) -> "tuple[alt.Chart | dict[str, alt.Chart], alt.Chart | dict[str, alt.Chart] | None] | None":
         """Plot the benchmark results.
 
         This method generates various types of plots based on the task type:
@@ -621,7 +626,9 @@ class Benchmark:
                 (if multiple datasets are provided)
 
         Returns:
-            None
+            Tuple of (bar chart, curve or scatter chart). The second chart
+                is None for token tasks; the whole return is None for
+                unhandled task types.
         """
         task_config = self.config["task"]
         task_type = task_config.task_type

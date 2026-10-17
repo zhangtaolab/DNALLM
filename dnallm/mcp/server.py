@@ -1673,7 +1673,11 @@ class DNALLMMCPServer:
             # of killing the server for every connected client.
             try:
                 guard_config = self.model_manager.config_manager.get_model_config(model_name)
-                architecture = str(guard_config.model.task_info.architecture or "")
+                architecture = (
+                    str(guard_config.model.task_info.architecture or "")
+                    if guard_config is not None
+                    else ""
+                )
             except Exception:
                 architecture = ""
             if "mamba" in architecture.lower():
@@ -1893,7 +1897,10 @@ class DNALLMMCPServer:
                     "isError": True,
                 }
             if sequences is None:
-                sequences = [sequence]
+                # Exactly one of sequence/sequences is set (guard above);
+                # the empty-list fallback keeps the unreachable None path on
+                # the same "non-empty list of strings" error below.
+                sequences = [sequence] if sequence is not None else []
             if not sequences or not all(isinstance(seq, str) and seq for seq in sequences):
                 return {
                     "error": "sequences must be a non-empty list of non-empty strings",
@@ -2882,7 +2889,7 @@ class DNALLMMCPServer:
         # correct path
         main_app = Starlette(
             routes=[
-                Mount(mount_path, sse_app),
+                Mount(str(mount_path), sse_app),
                 Mount("", sse_app),  # Also mount at root for /sse
             ],
             lifespan=self._create_server_lifespan(),

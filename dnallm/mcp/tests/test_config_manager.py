@@ -449,6 +449,7 @@ class TestMCPConfigManagerBranches:
         # runtime guard is exercised by injecting one post-parse.
         from ..config_validators import MultiModelConfig
 
+        assert manager.server_config is not None
         manager.server_config.multi_model["dangling"] = MultiModelConfig(
             name="dangling",
             description="references missing models",

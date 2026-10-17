@@ -693,14 +693,14 @@ class _MambaCache:
         self.ssm_states: list[torch.Tensor] = []
         for _ in range(config.num_hidden_layers):
             conv_state: torch.Tensor = torch.zeros(
-                self.max_batch_size,
+                self.max_batch_size,  # ty: ignore[invalid-argument-type]  # vendored upstream signature
                 self.intermediate_size,
                 self.conv_kernel_size,
                 device=self.device,
                 dtype=dtype,
             )
             ssm_state: torch.Tensor = torch.zeros(
-                self.max_batch_size,
+                self.max_batch_size,  # ty: ignore[invalid-argument-type]  # vendored upstream signature
                 self.intermediate_size,
                 self.ssm_state_size,
                 device=self.device,
@@ -1074,7 +1074,7 @@ def _bridge_legacy_tie_weights(model: object) -> None:
     """
     import inspect
 
-    bound = model.tie_weights  # type: ignore[attr-defined]
+    bound = model.tie_weights  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
     try:
         params = inspect.signature(bound).parameters
     except (TypeError, ValueError):
@@ -1090,7 +1090,7 @@ def _bridge_legacy_tie_weights(model: object) -> None:
         accepted = {k: v for k, v in kwargs.items() if k in params}
         return bound(*args, **accepted)
 
-    model.tie_weights = bridged  # type: ignore[method-assign]
+    model.tie_weights = bridged  # type: ignore[method-assign]  # ty: ignore[unresolved-attribute]
 
 
 def _patch_legacy_tie_weights_arity():
@@ -1210,8 +1210,8 @@ def _patch_numpy_fromstring():
     if getattr(numpy, "_dnallm_fromstring_patch", False):
         return
 
-    numpy.fromstring = _np_fromstring
-    numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]
+    numpy.fromstring = _np_fromstring  # ty: ignore[invalid-assignment]  # intentional monkeypatch
+    numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
 
 
 # transformers 5.19.0 (freshly resolved by the open >=4.49,<6 range on
@@ -1320,14 +1320,14 @@ def _patch_device_type_query():
                 return "cpu"
             raise
 
-    module.get_device_type = get_device_type
-    module._dnallm_device_type_patch = True  # type: ignore[attr-defined]
+    module.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # intentional monkeypatch
+    module._dnallm_device_type_patch = True  # type: ignore[attr-defined]  # ty: ignore[unresolved-attribute]
 
     # transformers.utils re-exports import_utils names; mirror the wrapper
     # there too, but only where the re-export still holds the exact original
     # object -- a divergent binding is never stamped over.
     if getattr(transformers.utils, "get_device_type", None) is original:
-        transformers.utils.get_device_type = get_device_type
+        transformers.utils.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # re-export mirror, intentional monkeypatch
 
 
 def apply_patches():

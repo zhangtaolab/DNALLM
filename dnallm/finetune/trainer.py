@@ -548,7 +548,7 @@ class DNATrainer:
 
         # Enable gradient checkpointing for QLoRA (required for memory efficiency)
         if self.train_config.use_qlora and hasattr(self.model, "gradient_checkpointing_enable"):
-            self.model.gradient_checkpointing_enable()
+            self.model.gradient_checkpointing_enable()  # ty: ignore[call-non-callable]
             print("[Info] Gradient checkpointing enabled for QLoRA.")
         if self.datasets is None:
             raise ValueError("Datasets are required for training")
@@ -619,7 +619,7 @@ class DNATrainer:
 
         # Set problem type specific settings
         if self.task_config.task_type == "regression":
-            self.model.config.problem_type = "regression"
+            self.model.config.problem_type = "regression"  # ty: ignore[invalid-assignment]
         # Get compute metrics
         if self.task_config.task_type in ["mask", "generation", "embedding"]:
             compute_metrics = None
@@ -787,16 +787,16 @@ class DNATrainer:
             print("[Info] Skipping the training loop: finetune.peft_dry_run=true.")
             return {}
         self.model.train()
-        train_result = self.trainer.train()
+        train_result = self.trainer.train()  # ty: ignore[unresolved-attribute]
         metrics: dict[str, float] = train_result.metrics
         # Save the model
-        self.trainer.save_model()
+        self.trainer.save_model()  # ty: ignore[unresolved-attribute]
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
                 if self._save_safetensors:
-                    self.model.save_pretrained(
+                    self.model.save_pretrained(  # ty: ignore[call-non-callable]
                         self.train_config.output_dir,
                     )
                 else:
@@ -804,7 +804,7 @@ class DNATrainer:
                         self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
                     )
             else:
-                self.model.save_pretrained(
+                self.model.save_pretrained(  # ty: ignore[call-non-callable]
                     self.train_config.output_dir,
                     safe_serialization=self._save_safetensors,
                 )
@@ -842,7 +842,7 @@ class DNATrainer:
 
         self.model.train()
 
-        best_run = self.trainer.hyperparameter_search(
+        best_run = self.trainer.hyperparameter_search(  # ty: ignore[unresolved-attribute]
             direction=search_config.direction,
             backend="optuna",
             n_trials=search_config.n_trials,
@@ -857,13 +857,13 @@ class DNATrainer:
         }
 
         # Save the best model
-        self.trainer.save_model()
+        self.trainer.save_model()  # ty: ignore[unresolved-attribute]
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
                 if self._save_safetensors:
-                    self.model.save_pretrained(
+                    self.model.save_pretrained(  # ty: ignore[call-non-callable]
                         self.train_config.output_dir,
                     )
                 else:
@@ -871,7 +871,7 @@ class DNATrainer:
                         self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
                     )
             else:
-                self.model.save_pretrained(
+                self.model.save_pretrained(  # ty: ignore[call-non-callable]
                     self.train_config.output_dir,
                     safe_serialization=self._save_safetensors,
                 )
@@ -937,7 +937,7 @@ class DNATrainer:
             if metric_key_prefix != "eval":
                 legacy_kwargs["metric_key_prefix"] = metric_key_prefix
             self.model.eval()
-            result: dict[str, float] = self.trainer.evaluate(**legacy_kwargs)
+            result: dict[str, float] = self.trainer.evaluate(**legacy_kwargs)  # ty: ignore[unresolved-attribute]
             return result
         if split not in self.data_split:
             raise ValueError(
@@ -951,7 +951,7 @@ class DNATrainer:
                 "deterministic home instead of the current working directory."
             )
         self.model.eval()
-        predict_result = self.trainer.predict(
+        predict_result = self.trainer.predict(  # ty: ignore[unresolved-attribute]
             self.datasets.dataset[split],  # type: ignore
             ignore_keys=ignore_keys,
         )
@@ -993,7 +993,7 @@ class DNATrainer:
         result = {}
         if "test" in self.data_split:
             test_dataset = self.datasets.dataset["test"]  # type: ignore
-            result = self.trainer.predict(test_dataset)
+            result = self.trainer.predict(test_dataset)  # ty: ignore[unresolved-attribute]
         return result
 
     def plot_history(
@@ -1025,7 +1025,7 @@ class DNATrainer:
         plot_path.mkdir(parents=True, exist_ok=True)
 
         results: dict[str, Path] = {}
-        log_history = self.trainer.state.log_history
+        log_history = self.trainer.state.log_history  # ty: ignore[unresolved-attribute]
 
         if plot_loss:
             loss_path = plot_path / "training_loss.png"

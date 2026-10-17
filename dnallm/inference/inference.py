@@ -518,7 +518,7 @@ class DNAInference:
             raise ValueError("No valid dataset could be created from the input.")
         # If labels are provided, keep labels
         if keep_seqs:
-            self.sequences = dataset.dataset["sequence"]
+            self.sequences = dataset.dataset["sequence"]  # ty: ignore[invalid-assignment]  # single-split Dataset path yields list[str]
         # Encode sequences
         if do_encode:
             task_type = self.task_config.task_type
@@ -529,11 +529,11 @@ class DNAInference:
                 uppercase=uppercase,
                 lowercase=lowercase,
             )
-            all_cols = dataset.dataset.features
+            all_cols = dataset.dataset.features  # ty: ignore[unresolved-attribute]  # DatasetDict lacks features; Dataset invariant here
             cols_drop = [c for c in all_cols if c not in self.accepted_args]
             dataset.dataset = dataset.dataset.remove_columns(cols_drop)
         else:
-            all_cols = dataset.dataset.features
+            all_cols = dataset.dataset.features  # ty: ignore[unresolved-attribute]  # DatasetDict lacks features; Dataset invariant here
             # check if dataset is already encoded
             if "sequence" in all_cols:
                 check_seq = dataset.dataset["sequence"][0]
@@ -542,10 +542,10 @@ class DNAInference:
                     if "input_ids" not in all_cols:
                         dataset.dataset = dataset.dataset.rename_column("sequence", "input_ids")
                     dataset.dataset.set_format(type="torch")
-                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]
+                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]  # ty: ignore[unresolved-attribute]
                     dataset.dataset = dataset.dataset.remove_columns(cols_drop)
                 else:
-                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]
+                    cols_drop = [c for c in dataset.dataset.features if c not in self.accepted_args]  # ty: ignore[unresolved-attribute]
         # Check for labels in dataset - handle both Dataset and
         # DatasetDict cases
         if isinstance(dataset.dataset, DatasetDict):
@@ -559,7 +559,7 @@ class DNAInference:
                 self.labels = dataset.dataset["labels"]
         # Create DataLoader
         dataloader: DataLoader = DataLoader(
-            dataset,  # type: ignore[arg-type]
+            dataset,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
             batch_size=batch_size,
             num_workers=self.pred_config.num_workers,
         )
@@ -710,11 +710,11 @@ class DNAInference:
             import inspect
 
             sig = inspect.signature(self.model.forward)
-            params = sig.parameters  # type: ignore[assignment]
+            params = sig.parameters  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
         embeddings = {"attentions": None}
 
-        if "output_attentions" in params:  # type: ignore[operator]
+        if "output_attentions" in params:  # type: ignore[operator]  # ty: ignore[unsupported-operator]
             try:
                 self.model.config.output_attentions = True
             except ValueError as e:
@@ -1207,7 +1207,7 @@ class DNAInference:
         # Get dataset and dataloader from file
         if isinstance(file_path, Dataset):
             dataloader = DataLoader(
-                file_path,
+                file_path,  # ty: ignore[invalid-argument-type]  # datasets.Dataset duck-types torch Dataset
                 batch_size=self.pred_config.batch_size,
                 num_workers=self.pred_config.num_workers,
             )
@@ -1386,7 +1386,7 @@ class DNAInference:
                 heatmap = None
             # Plot attention map
             attn_map = plot_attention_map(
-                attentions,
+                attentions,  # ty: ignore[invalid-argument-type]  # embeddings dict value typed Unknown | None
                 self.sequences,
                 self.tokenizer,
                 seq_idx=seq_idx,
@@ -1458,7 +1458,7 @@ class DNAInference:
             # Plot hidden states
             label_names = self.task_config.label_names
             embeddings_vis = plot_embeddings(
-                hidden_states,
+                hidden_states,  # ty: ignore[invalid-argument-type]  # embeddings dict value typed Unknown | None
                 attention_mask,
                 reducer=reducer,
                 quality=quality,
@@ -2090,7 +2090,7 @@ class DNAInference:
                     if layer not in layers:
                         layers.append(layer)
             # Get embeddings
-            all_embeddings = [[] for _ in layers]
+            all_embeddings: list[Any] = [[] for _ in layers]
             for sequence in tqdm(sequences):
                 input_ids = (
                     torch
@@ -2118,7 +2118,7 @@ class DNAInference:
         elif is_special == "MEGADNA":
             model = self.model
             tokenizer = self.tokenizer
-            all_embeddings = [None] * 3
+            all_embeddings: list[Any] = [None] * 3  # type: ignore[no-redef]
             out_embeddings = []
             for sequence in tqdm(sequences):
                 input_ids = tokenizer(sequence, return_tensors="pt").to(self.device)["input_ids"]

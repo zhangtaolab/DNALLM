@@ -56,7 +56,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
 
     config_class = AutoConfig  # type: ignore[assignment]
 
-    def __init__(self, config, custom_model=None):
+    def __init__(self, config, custom_model: Any = None):
         super().__init__(config)
         from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
 
@@ -204,7 +204,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             if hasattr(self.backbone.config, "pad_token_id"):
                 pad_token_id = self.backbone.config.pad_token_id
-                attention_mask = (input_ids != pad_token_id).long()
+                attention_mask = (input_ids != pad_token_id).long()  # ty: ignore[unresolved-attribute]
             else:
                 attention_mask = torch.ones_like(input_ids)  # type: ignore
         if self.config.head_config.get("head", "").lower() == "megadna":
@@ -893,7 +893,7 @@ def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
     """
     if source.lower() == "modelscope":
         try:
-            from modelscope import (  # ty: ignore[unresolved-import]  # optional at runtime, guarded
+            from modelscope import (  # optional at runtime, guarded
                 AutoConfig,
                 AutoModel,
                 AutoModelForMaskedLM,
@@ -1273,7 +1273,7 @@ def load_model_and_tokenizer(
 
     # Load model and tokenizer based on task type
     try:
-        load_args = [
+        load_args: list[Any] = [
             task_type,
             model_name,
             safe_num_labels,
@@ -1319,8 +1319,8 @@ def load_model_and_tokenizer(
         if "basenji2" in downloaded_model_path.lower():
             tokenizer = _handle_basenji2_tokenizer(tokenizer)
         # Set model path and source attributes
-        model._model_path = downloaded_model_path
-        model.source = source
+        model._model_path = downloaded_model_path  # ty: ignore[invalid-assignment]
+        model.source = source  # ty: ignore[invalid-assignment]
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}") from e
 
@@ -1328,7 +1328,7 @@ def load_model_and_tokenizer(
     _configure_model_padding(model, tokenizer)
     # Skip device placement for 4-bit models (device_map="auto" handles it)
     if bnb_config is None:
-        model = model.to(_get_device())
+        model = model.to(_get_device())  # ty: ignore[unresolved-attribute]
 
     # Fix improperly quantized layers (e.g., pooler.dense in BERT)
     # that were newly initialized and not properly packed by bitsandbytes
@@ -1495,7 +1495,7 @@ def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, An
         preset_models = []
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info["default"]  # type: ignore[index]
+        model_name = model_info["default"]  # type: ignore[index]  # ty: ignore[invalid-assignment]
     elif model_name in preset_models:
         pass
     else:

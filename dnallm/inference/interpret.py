@@ -122,8 +122,8 @@ class DNAInterpret:
         """
         self.model = model.eval()
         self.tokenizer = tokenizer
-        self.task_config = config["task"]  # type: ignore[index]
-        self.pred_config = config["inference"]  # type: ignore[index]
+        self.task_config = config["task"]  # type: ignore[index]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
+        self.pred_config = config["inference"]  # type: ignore[index]  # ty: ignore[not-subscriptable]  # config required; None fails fast at runtime
         self.device = self.pred_config.device
         self.embedding_layer = None
         self.model.to(self.device)

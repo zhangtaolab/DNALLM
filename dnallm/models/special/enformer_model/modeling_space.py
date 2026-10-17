@@ -105,7 +105,7 @@ class Space(PreTrainedModel):
         )
 
         # create final heads for human and mouse
-        self.heads = nn.ModuleDict({  # type: ignore[misc]
+        self.heads = nn.ModuleDict({  # type: ignore[misc]  # ty: ignore[invalid-assignment]  # nn.Module.__setattr__ stores into _modules
             key: nn.Sequential(
                 nn.Linear(self.dim * 2, features),
             )

@@ -103,7 +103,7 @@ def _build_crossdna_sequence_classification_class(
     if cached is not None:
         return cached
 
-    class CrossDNAForSequenceClassification(base_mlm_class):
+    class CrossDNAForSequenceClassification(base_mlm_class):  # ty: ignore[unsupported-base]  # remote-code base class, resolved at runtime
         """CrossDNA backbone with a sequence-level classification head.
 
         The class subclasses the *actual* upstream ``CrossDNAForMaskedLM`` class
@@ -406,7 +406,7 @@ def _build_crossdna_sequence_classification_class(
                 return ((loss,) + output) if loss is not None else output  # ruff: ignore[collection-literal-concatenation]
 
             return SequenceClassifierOutput(
-                loss=loss,  # type: ignore[arg-type]
+                loss=loss,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]  # stubs: FloatTensor vs Tensor
                 logits=logits,
                 hidden_states=hidden_output,
                 attentions=None,
