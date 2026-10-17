@@ -9,7 +9,7 @@
 
 ## Phases
 
-- [ ] **Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09)** — in progress (owner-directed post-ship addition, 2026-10-17)
+- [x] **Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09)** — completed 2026-10-17 (CI-validated on ed1c2e8/2041e00; full-tree residue sweep quick 261017-414)
 
 **Goal:** ty (pinned `ty@0.0.84`) becomes the sole type gate and mypy retires in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9). The 232-diagnostic baseline clears to zero via real fixes plus line-level `# ty: ignore[code]` pragmas for library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. Same change: the coverage-gate advisory ty step hardens (`|| true` dropped), the two test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the mypy dev-dep + `[tool.mypy]`/overrides + `.mypy_cache` gitignore entry are removed. `# type: ignore` comments stay — ty honors them live.
 

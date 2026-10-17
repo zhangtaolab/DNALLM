@@ -1,11 +1,11 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.3
-status: Phase 21 in progress
-stopped_at: Phase 21 executing — ty diagnostics clearing, then atomic flip
+status: Phase 21 complete
+stopped_at: Phase 21 complete (ty hard gate CI-green; awaiting owner calls on pinned-stub-env + nightly resume)
 last_updated: "2026-10-17T03:08:45.478Z"
 last_activity: 2026-10-17
-last_activity_desc: quick 261017-414 complete — mypy residue sweep, D-09 flip CI-validated on ed1c2e8
+last_activity_desc: Phase 21 complete — ty hard flip CI-validated, mypy retired tree-wide
 state_head: 1c52e46cc26ffada0d24b784d216feea047cb017
 progress:
   total_phases: 9
