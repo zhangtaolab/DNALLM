@@ -49,6 +49,7 @@ uv pip show --python .venv-kda\Scripts\python.exe triton-windows
 
 ```python
 """KDA chunk kernel compile+execute probe (WINDOWS #27, RTX 5080 sm_120)."""
+
 import torch
 from fla.ops.kda.chunk import chunk_kda
 
@@ -59,7 +60,7 @@ torch.manual_seed(0)
 q = torch.randn(B, T, H, D, device=dev, dtype=dtype)
 k = torch.randn(B, T, H, D, device=dev, dtype=dtype)
 v = torch.randn(B, T, H, D, device=dev, dtype=dtype)
-g = -torch.rand(B, T, H, device=dev, dtype=dtype) - 1e-3   # log decay, 负值
+g = -torch.rand(B, T, H, device=dev, dtype=dtype) - 1e-3  # log decay, 负值
 beta = torch.rand(B, T, H, device=dev, dtype=dtype).sigmoid()
 
 o, final_state = chunk_kda(q, k, v, g, beta, output_final_state=True)
