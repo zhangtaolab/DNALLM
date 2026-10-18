@@ -254,7 +254,7 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 > **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda130,mamba]`, see Scenario 6).
 
-> **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
+> **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
 
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|

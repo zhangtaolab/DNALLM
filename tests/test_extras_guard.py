@@ -227,8 +227,8 @@ class TestExtrasSurgeryResidueGates:
         (
             "README.md",
             "> **Deprecation note (v1.3):** the `base` extra was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort "
-            "+ types-transformers). The old `.[base]` spelling still resolves "
+            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
+            "The old `.[base]` spelling still resolves "
             "the full member set through a one-cycle alias and will be removed "
             "in v1.4 — after that removal pip/uv only print a warning that the "
             "extra does not exist and exit 0, leaving a core-only under-install "
@@ -237,8 +237,8 @@ class TestExtrasSurgeryResidueGates:
         (
             "docs/getting_started/installation.md",
             "> **Deprecation note (v1.3):** the `base` group was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort "
-            "+ types-transformers). The `.[base]` alias still installs the full "
+            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
+            "The `.[base]` alias still installs the full "
             "set and will be removed in v1.4 — after removal pip/uv only print "
             "a warning that the extra does not exist and exit 0, leaving a "
             "core-only under-install. Use `.[full]` in new environments.",
