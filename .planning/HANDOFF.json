@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-18T12:31:47.087Z",
+  "phase": "21",
+  "phase_name": "Type-checker atomic swap — ty hard flip + mypy retirement",
+  "phase_dir": "(owner-direct, no plan dir; quick task .planning/quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/)",
+  "plan": null,
+  "task": null,
+  "total_tasks": 0,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": 1, "name": "232-diagnostic ty baseline cleared (7 parallel agent groups)", "status": "done", "commit": "22d7d41"},
+    {"id": 2, "name": "D-09 atomic flip: ty hard gate + mypy retired everywhere", "status": "done", "commit": "288f81d"},
+    {"id": 3, "name": "Version-agnostic CI fixes + 145 dead coded-ignore sweep", "status": "done", "commit": "384ee34"},
+    {"id": 4, "name": "Resolution-drift wave cleared; venv orphan-stub root cause found", "status": "done", "commit": "ed1c2e8"},
+    {"id": 5, "name": "Full-tree mypy residue sweep (quick 261017-414, 11 more sites)", "status": "done", "commit": "1c52e46"},
+    {"id": 6, "name": "Pinned stub environment for the ty gate (drift root-cure)", "status": "done", "commit": "0e60dd5"},
+    {"id": 7, "name": "Nightly trio full certification on 0e60dd5 (2633P/96.46%, census 216/217)", "status": "done", "commit": "0e60dd5"},
+    {"id": 8, "name": "docs-update delta conformance (256 claims, 7 failures fixed)", "status": "done", "commit": "cbffecd"},
+    {"id": 9, "name": "18-01 sanctioned-list sync (guard-dog conscious update)", "status": "done", "commit": "79db322"},
+    {"id": 10, "name": "CHANGELOG 1.3.0 release-state fold (version already 1.3.0)", "status": "done", "commit": "3bdbdd0"}
+  ],
+  "remaining_tasks": [],
+  "blockers": [
+    {"description": "WINDOWS #25: PyPI trusted-publisher registration (owner human gate; five exact strings in 17-03-PLAN Task 2) — blocks the first real 1.3.0 release", "type": "human_action", "workaround": "register at pypi.org/manage/project/dnallm/publishing, then re-run /gsd-execute-phase 17 (17-03 completes in minutes)"},
+    {"description": "WINDOWS #27: Windows fla KDA smoke on RTX 5080 — owner scheduled it for 2026-10-19 (machine away today); memory card windows-kda-test-20261019 carries the six-step checklist", "type": "human_action", "workaround": "see 18-03-SUMMARY Task 1 Record; completes WPAR-07 + closes #18 + retires T-18-SC SUS"},
+    {"description": "main merge frozen by owner ('do not merge to main now, need fix all error first') — all errors are now fixed and certified; awaiting owner's release decision", "type": "human_action", "workaround": "propose PR when owner ready; main's scheduled nightlies still run on stale f7a7fcb until then"}
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Windows KDA test (WINDOWS #27 / WPAR-07)", "context": "scheduled 2026-10-19; memory windows-kda-test-20261019 has the turnkey checklist", "blocking": false},
+    {"action": "PyPI trusted-publisher registration (WINDOWS #25 / PUBS-04)", "context": "required before the first 1.3.0 release can publish via OIDC", "blocking": false},
+    {"action": "main merge decision", "context": "v1.3 branch tip 3bdbdd0 is fully certified (9/9 test jobs green incl. nightly trio); merge frozen awaiting owner", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "ty gate runs against a pinned stub environment (ty-stub-constraints.txt, 12 exact pins)", "rationale": "CI re-resolves fresh every run; three red waves on flip day proved upstream releases flap an unpinned type gate", "phase": "21"},
+    {"decision": "7 deep-history Co-Authored-By trailers left in place (owner: 根据建议来)", "rationale": "history-rewrite cost >> metadata harm; squash-merge to main would erase them anyway", "phase": "21"},
+    {"decision": "docs-update scoped to only-update-existing; README/CONTRIBUTING supplemented surgically", "rationale": "Phase 19 verified the curated mkdocs surface; new canonical files would duplicate and risk mkdocs --strict nav breakage", "phase": "21"},
+    {"decision": "CHANGELOG Unreleased folded into [1.3.0] re-dated 2026-10-18", "rationale": "1.3.0 never published (PyPI registration deferred), so post-ship additions belong to the unreleased 1.3.0", "phase": "21"},
+    {"decision": "Local .venv aligned to CI resolution (datasets 4.8.4, modelscope 1.40.2); torch 2.11.0+cu130 and numpy 2.5.3 deliberately kept", "rationale": "GB10 GPU needs cu130; numpy 2.5.3 is the PUBS-05 documented local pin", "phase": "21"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Check WINDOWS ledger owner gates: tomorrow (2026-10-19) the owner runs the Windows KDA test — assist with the six-step checklist from memory windows-kda-test-20261019, then /gsd-execute-phase 18 closeout. Otherwise await owner direction on the main merge / v1.4 kickoff.",
+  "context_notes": "v1.3 reopened for Phase 21 and closed it completely: ty is the sole type gate (CI hard, pinned env), mypy is tree-wide retired, the full nightly trio re-certified the tip, docs are delta-conformed and verifier-checked. Everything pushed and green through 3bdbdd0. The runner on this box is healthy (restarted once after a ghost-hang; procedure in memory phase13-uat-nightly-recovery)."
+}
