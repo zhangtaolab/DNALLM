@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **Type gate: ty (astral, pinned `ty@0.0.84`) replaces mypy** in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9; Phase 21): the 232-diagnostic baseline cleared to zero via real fixes (annotations, `typing.cast` narrowing) plus line-level `# ty: ignore[code]` pragmas for verified library dynamics (altair 6.3 `@use_signature` TypeVar leak, evaluate 0.4.6 `MethodType` compute rebind, peft/torch stub pollution, vendored Enformer/MambaCache code) — no severity overrides, no new `[tool.ty.src]` excludes. The CI coverage-gate ty step hardens (`|| true` dropped), both test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the `mypy` dev-dep pin + `[tool.mypy]`/overrides + `.mypy_cache` ignores are removed. `# type: ignore` comments stay live (ty honors the bare form; coded mypy-specific ignores are inert under ty).
-
-## [1.3.0] - 2026-10-16
+## [1.3.0] - 2026-10-18
 
 ### Overview
 
@@ -19,6 +15,7 @@ Platform Reach & Packaging Honesty (milestone v1.3): Windows-native example exec
 
 ### Changed
 
+- **Type gate: ty (astral, exact-pinned `ty@0.0.84`) replaces mypy** in ONE atomic change (Phase 21, discharging the D-08/D-09 discipline set in v1.1 Phase 9): the 232-diagnostic baseline cleared to zero via real fixes (annotations, `typing.cast` narrowing) plus line-level `# ty: ignore[code]` pragmas with root-cause comments for verified library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. The CI coverage-gate ty step is a HARD gate running against a pinned stub environment (`ty-stub-constraints.txt`, 12 exact pins — upstream releases cannot flap the gate); both test-job advisory mypy steps, the pre-commit mypy hook, `check_code.py`'s mypy step, the `mypy` dev-dep pin, `[tool.mypy]`/overrides, and the mypy-only stub packages (`pandas-stubs`, `types-transformers`) are retired in the same change. `# type: ignore` bare comments stay live (ty honors them); coded mypy-syntax ignores are inert and were swept (145 removed).
 - **Breaking**: the `base` extra is renamed to `full`; `dnallm[base]` keeps resolving through a deprecated alias until v1.4
 - **Breaking**: the `cuda121` extra is retired (index frozen at torch 2.5.1) and `rocm` is removed (restore path documented in docs/getting_started/gpu_support.md)
 - `cuda130` is the recommended default GPU lane everywhere (install docs, examples, CI; test-cuda leg re-pointed to 13.0)
