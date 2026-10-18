@@ -20,7 +20,7 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 130+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
@@ -49,7 +49,7 @@ all other generic `Auto*` families are always allowed).
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
-- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, CrossDNA
+- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, FungiHelixSeek, PlantBiMoE, CrossDNA
 
 ### Causal Language Models (CLM)
 - **EVO Series**: EVO-1, EVO-2
@@ -175,7 +175,7 @@ uv pip install -e '.[all,cuda128]'
 
 > **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
 
-> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
+> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
 
 > Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the deprecated `base` alias rows.
 
@@ -185,7 +185,7 @@ uv pip install -e '.[all,cuda128]'
 |-------|---------|----------|
 | `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
 | `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
-| `dev` | Development | `test` + `notebook` + linting/typing tools |
+| `dev` | Development | `test` + `notebook` + linting tools |
 | `test` | Testing only | pytest and plugins |
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
 | `docs` | Build documentation | mkdocs and plugins |
@@ -266,6 +266,7 @@ These models are listed below:
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
 | PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
+| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention)) |
 | GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
@@ -576,7 +577,7 @@ uv run pytest tests/tasks/ -v
 uv run pytest --cov=dnallm --cov-report=html
 ```
 
-CI runs the fast lane (2,556 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
+CI runs the fast lane (2,522 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 

@@ -47,7 +47,7 @@ The following table shows all currently supported models and their fine-tuning/i
 | PlantHelixSeek | MaskedLM | HelixSeek | ✅ | zhangtaolab | 470M (240M) | 1 | [GitHub](https://github.com/zhangtaolab/PlantHelixSeek) |
 | FungiHelixSeek | MaskedLM | HelixSeek | ✅ | zhangtaolab | 263M (112M active) | 15 | [GitHub](https://github.com/zhangtaolab/FungiHelixSeek) |
 | PlantBiMoE | MaskedLM | plantbimoe | ✅ | lgq12697 | 87M (64M active) | 1 | [arXiv](https://doi.org/10.48550/arXiv.2512.07113) |
-| CrossDNA | MaskedLM | Comba | ✅ | chengCCC | 8.1M | 1 | [Nature Machine Intelligence](https://doi.org/10.1038/s42256-026-01249-1) |
+| CrossDNA | MaskedLM | crossdna | ✅ | chengCCC | 8.1M | 1 | [Nature Machine Intelligence](https://doi.org/10.1038/s42256-026-01249-1) |
 
 ## Model Categories
 

@@ -79,7 +79,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
 4. **UV Installation**: Installs the UV package manager
-5. **Mamba Dependency Installation**: Installs `.[full]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport) — plus `.[mamba]` (kernel source build)
+5. **Mamba Dependency Installation**: Installs `.[full,fla]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport), plus the `fla` extra (WR-01: so the not-slow chunk_kda import guard exercises the import instead of skipping typed) — plus `.[mamba]` (kernel source build)
 6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
@@ -96,7 +96,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 5. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
 6. **Gated Fast Census**: Runs the fast census with coverage; a total below the 90 floor fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the gate junit — unexpected skips fail the job
-8. **Type Checking (ty, hard gate)**: `uvx ty@0.0.84 check dnallm/` — an exact-pinned step that fails the job. Flipped hard and mypy retired in one atomic change on 2026-10-17 (Phase 21, discharging D-08/D-09 from v1.1 Phase 9); the former advisory mypy steps on the test legs are deleted
+8. **Type Checking (ty, hard gate)**: builds a pinned stub environment (`uv venv /tmp/ty-stub-env --python 3.12`, then `uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" -c .github/workflows/ty-stub-constraints.txt`) and runs `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env` — an exact-pinned step that fails the job. Flipped hard and mypy retired in one atomic change on 2026-10-17 (Phase 21, discharging D-08/D-09 from v1.1 Phase 9); the former advisory mypy steps on the test legs are deleted
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
@@ -139,7 +139,7 @@ No type-check step runs on this leg — type checking lives only on the `coverag
 
 **Complete failure scene** (D-14): the `if: always()` artifact upload carries everything needed to diagnose a red (or green) run — every junit xml, every per-stage tee'd log (`stage*.log`), the D-03 census capture (`census-collect.txt`), the stage-results ledger, and the MCP server logs (`mcp-server-*.log`). A red run never loses its own evidence.
 
-**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus the hard ty gate `uvx ty@0.0.84 check dnallm/` (hard since the 2026-10-17 D-09 flip; mypy is retired — no mypy step runs anywhere).
+**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus the hard ty gate `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env`, run against a pinned stub environment built under `.github/workflows/ty-stub-constraints.txt` (hard since the 2026-10-17 D-09 flip; mypy is retired — no mypy step runs anywhere).
 
 **Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
 
@@ -196,7 +196,7 @@ The project uses pytest markers to categorize tests:
 
 - **Code Formatting**: Must pass `ruff format --check .` (ruff's Black-compatible formatter)
 - **Linting**: Must pass `ruff check .` (rule set configured in `pyproject.toml [tool.ruff.lint]`)
-- **Type Safety**: Must pass `uvx ty@0.0.84 check dnallm/` — the exact-pinned ty hard gate on the `coverage-gate` job (mypy retired 2026-10-17); it fails the job
+- **Type Safety**: Must pass `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env` — the exact-pinned ty hard gate on the `coverage-gate` job, run against a pinned stub environment (`.github/workflows/ty-stub-constraints.txt`; mypy retired 2026-10-17); it fails the job
 
 Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy `.flake8` config.
 
@@ -253,10 +253,13 @@ Before pushing code, run these commands locally:
 # Install development dependencies
 uv pip install -e ".[test,dev]"
 
-# Run quality checks (what CI runs)
+# Run quality checks (what CI runs; the ty gate checks against a pinned
+# stub env so upstream releases cannot drift the diagnostic set)
 ruff format --check .
 ruff check .
-uvx ty@0.0.84 check dnallm/
+uv venv /tmp/ty-stub-env --python 3.12
+uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" -c .github/workflows/ty-stub-constraints.txt
+uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env
 
 # Run tests
 pytest --cov

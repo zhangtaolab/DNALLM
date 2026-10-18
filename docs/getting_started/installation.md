@@ -120,7 +120,7 @@ source .venv/bin/activate  # Linux/MacOS
 uv pip install -e '.[cuda130]'
 
 # Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the GPU Support Matrix above
-# Other supported versions: cpu, cuda126, cuda128
+# Other supported versions: cpu, cuda124, cuda126, cuda128
 ```
 
 ### GPU Support with plain pip
