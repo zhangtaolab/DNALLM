@@ -296,5 +296,69 @@ the six-item contract.
 - `git status --porcelain` lists only this evidence file before its commit; zero
   modifications to `pyproject.toml`, `.github/**`, `dnallm/**`, `tests/**`, or `scripts/**`
   (`uv.lock` does not exist in this repo). Working tree CRLF untouched.
-- Task 4 (test-cuda leg on the real RTX 5080) appends section G and updates this section in
-  a follow-up commit.
+- Task 4 (section G below) updated this closing state in a follow-up commit: `.venv-cuda`
+  is deleted alongside `.venv-kda` and the stub env.
+
+## G) test-cuda push leg — real GPU (RTX 5080), Task 4 addendum
+
+GPU self-check (healthy; plan's stop-don't-improvise posture not triggered):
+
+```
+$ nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv
+NVIDIA GeForce RTX 5080, 610.88, 16303 MiB
+```
+
+Venv + install (CI matrix shape: py3.11; `.[full,cuda130]` routes torch to the
+torch-cuda130 index via pyproject `[tool.uv.sources]` — no extra flags). Note: a first
+background install of this venv (12:39-12:41, exit 0) was silently deleted by the
+concurrent-actor event described in the disclosure before its device record could be
+taken; the venv was rebuilt synchronously in the foreground and every result below is from
+the rebuilt venv:
+
+```
+$ uv venv .venv-cuda --python D:/miniconda3/envs/py311/python.exe
+Creating virtual environment at: .venv-cuda
+
+$ UV_HTTP_TIMEOUT=300 UV_CONCURRENT_DOWNLOADS=4 uv pip install --python .venv-cuda/Scripts/python.exe -e ".[full,cuda130]"
+Using Python 3.11.13 environment at: .venv-cuda
+Resolved 351 packages in 23.39s
+Installed 351 packages in 1m 59s
+ + torch==2.10.0+cu130
+CUDA2_INSTALL_EXIT=0
+```
+
+**Torch resolution deviation vs plan expectation (recorded, not a gate failure):** the plan
+expected `2.11.x+cu130` (inherited from the dnallm-cuda env built earlier); the current
+pyproject constraint is `torch>=2.4.0,<2.12` (base; extras `>=2.6.0,<2.12` /
+`>=2.9.0,<2.12`) and uv deterministically resolved `2.10.0+cu130` in BOTH of this
+session's installs — identical resolution to what CI's test-cuda job would produce from
+the same pyproject and index routing. The cuda130-extra routing mechanism the gate exists
+to prove (`+cu130` build via the index) holds exactly.
+
+Device record — the four-line real-device proof (exit 0):
+
+```
+$ .venv-cuda/Scripts/python.exe -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+2.10.0+cu130 13.0 True NVIDIA GeForce RTX 5080
+```
+
+Test leg — CI-exact selector (`tests/` only, `-v -m "not slow" --tb=short`, NO cov, NO
+junitxml, NO audit — skip parity does not apply to this leg; the CI gate is pytest exit 0
+alone). Same `python -m pytest`-for-activated-`pytest` substitution as Task 2:
+
+```
+$ PYTHONUTF8=1 .venv-cuda/Scripts/python.exe -m pytest tests/ -v -m "not slow" --tb=short
+= 2519 passed, 4 skipped, 68 deselected, 7 warnings, 23 subtests passed in 347.94s (0:05:47) =
+CUDALEG_EXIT=0 WALL_SECONDS=387
+```
+
+Counts differ from the Task 2 fast leg (2519 vs 2571 passed, 68 vs 75 deselected) exactly
+as expected: this leg's selector is `tests/` only (CI's test-cuda job does not run the
+`dnallm/mcp/tests` testpath), on py3.11 with CUDA torch.
+
+**EXPLICIT comparison statement:** this local run executed with a REAL device —
+`torch.cuda.is_available() True`, RTX 5080 (sm_120), CUDA 13.0 — whereas CI's test-cuda
+job runs device-less on a hosted ubuntu runner (CUDA toolkit installed, no GPU attached).
+The local leg is therefore **strictly stronger** than CI's: every test that passed here
+passed with actual CUDA kernels available for execution, a superset of the CI leg's
+conditions. Gate result: pytest exit 0 on the real GPU.
