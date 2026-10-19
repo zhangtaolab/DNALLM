@@ -273,12 +273,15 @@ class TestExtrasSurgeryResidueGates:
         ),
         (
             "README.md",
-            "Two install notes: install the package **bare** "
+            "Three install notes: install the package **bare** "
             "(`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — "
             "since v0.5 the backend extras pin their own torch and would "
-            "downgrade your environment; and keep the version within `0.5.x` "
+            "downgrade your environment; keep the version within `0.5.x` "
             "(`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed "
-            "stable across minor versions.",
+            "stable across minor versions; and on **Windows** the `fla` extra "
+            "declares `triton-windows` behind a `platform_system == 'Windows'` "
+            "marker, so the Triton kernels work there without a separate "
+            "Triton install.",
         ),
         (
             "docs/faq/models_troubleshooting.md",
