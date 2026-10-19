@@ -686,13 +686,13 @@ def _load_model_by_task_type(
     # Custom model with specific head
     if head_config is not None:
         # DNALLM_PROBE_CONFIG_SYNC_V2: dataset task wins over YAML defaults.
-        dump_fn = getattr(head_config, "model_dump", None)
-        if callable(dump_fn):
-            head_config = dump_fn()
-        elif isinstance(head_config, dict):
+        # getattr keeps ty's static narrowing happy (hasattr does not narrow
+        # the call target for the call-non-callable rule).
+        if isinstance(head_config, dict):
             head_config = dict(head_config)
         else:
-            head_config = dict(vars(head_config))
+            model_dump = getattr(head_config, "model_dump", None)
+            head_config = model_dump() if model_dump is not None else dict(vars(head_config))
         head_config["task_type"] = task_type
         head_config["num_classes"] = num_labels
         base_config = modules["AutoConfig"].from_pretrained(model_name, trust_remote_code=True)

@@ -131,9 +131,8 @@ MCP enables AI assistants to:
                        │                  │
                        │ - mcp_server_    │
                        │   config.yaml    │
-                       │ - inference_     │
-                       │   model_config.  │
-                       │   yaml           │
+                       │ - *_inference_   │
+                       │   config.yaml    │
                        └──────────────────┘
 ```
 

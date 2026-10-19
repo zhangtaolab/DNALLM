@@ -190,7 +190,7 @@ uv pip install -e '.[all,cuda128]'
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
-| `mcp` | MCP server | (included in core) |
+| `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
 | `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
@@ -253,7 +253,7 @@ uv pip install -e '.[fla]'
 
 > **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
 
-Two install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; and keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions.
+Three install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
 
 ### Install Dependencies for Special Models
 

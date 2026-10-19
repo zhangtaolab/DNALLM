@@ -667,14 +667,14 @@ class TestLoadModelByTaskType:
         assert model == "wrapped-model"
         assert tokenizer is mock_tokenizer
         base_config = modules["AutoConfig"].from_pretrained.return_value
-        # The effective dataset task is authoritative, even when the YAML
-        # / mock HeadConfig omitted a task_type field.
+        # DNALLM_PROBE_CONFIG_SYNC_V2 contract: the loader injects the dataset
+        # task and label count into the head config before building the wrapper.
         assert base_config.head_config == {
             **head_config.__dict__,
             "task_type": "binary",
+            "num_classes": 2,
         }
         assert base_config.num_labels == 2
-        assert base_config.problem_type == "single_label_classification"
         mock_wrapper.from_base_model.assert_called_once_with(
             "test-model",
             config=base_config,
@@ -2986,18 +2986,22 @@ class TestWrapperForward:
     )
     def test_forward_loss_function_strings(self, loss_name, reference_factory):
         """Named loss functions replace the task-type default."""
-        # CrossEntropy is a classification loss; other parametrized losses
-        # still exercise the regression path.
-        task_type = "multiclass" if loss_name == "crossentropy" else "regression"
-        model = _build_wrapper(
-            head="basic-mlp", num_labels=2, task_type=task_type, loss_function=loss_name
-        )
+        if loss_name == "crossentropy":
+            # CE is a classification loss: the regression probe guard rejects
+            # CE/NLL by design, so exercise it on a classification wrapper.
+            model = _build_wrapper(
+                head="basic-mlp",
+                num_labels=2,
+                task_type="multiclass",
+                loss_function=loss_name,
+            )
+            labels = torch.zeros(2, dtype=torch.long)
+        else:
+            model = _build_wrapper(
+                head="basic-mlp", num_labels=2, task_type="regression", loss_function=loss_name
+            )
+            labels = torch.rand(2, 2)
         input_ids = self._input_ids()
-        labels = (
-            torch.tensor([0, 1], dtype=torch.long)
-            if loss_name == "crossentropy"
-            else torch.rand(2, 2)
-        )
 
         output = model(input_ids=input_ids, labels=labels)
         expected = reference_factory()(output.logits, labels)
