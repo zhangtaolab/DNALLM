@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-10-20
+
+### Overview
+
+Patch release on the v1.3 line: PEFT robustness (PEFT 0.21.2 compat, first GENERanno support), a metrics edge-case fix, docs nav wiring, bandwidth-saving test tooling, and a version-source contract gate. No public API breaks against 1.3.2.
+
+### Added
+
+- **GENERanno model family** — LoRA/IA3 preset row (Llama-layout targets from the remote `modeling_generanno.py`), `PRETRAIN_MODEL_MAPS` family entry (GenerTeam, Masked Language Model per the HF model cards — `Fill-Mask` / `AutoModelForMaskedLM`), and MODEL_INFO catalog entry defaulting to the ModelScope mirror
+- `DNALLM_TEST_HF_OFFLINE=1` opt-in (root `conftest.py`): local full-suite runs load cached HF fixtures offline — no online etag round-trips that can stall a run for hours on a flaky link; CI unaffected (documents the owner's ModelScope-first / no-redundant-download traffic rules)
+- `tests/test_version_contract.py`: fails the suite whenever `dnallm.__version__` (dnallm/version.py) drifts from `pyproject.toml` — the version string lives in three places and the v1.3.1/v1.3.2 bumps missed one
+
+### Fixed
+
+- **PEFT 0.21.2 `modules_to_save` double-wrap**: keep only the outermost saved head — a nested `score.classifier` wrapper made `load_best_model_at_end` die with `KeyError` after training
+- **Collapsed binary confusion matrix**: pin `labels=[0, 1]` in `classification_metrics` so an all-one-class predictor no longer raises "not enough values to unpack" on the 4-way ravel
+- `dnallm/version.py` was still 1.3.0 while the package shipped 1.3.2 (`dnallm.__version__` lied); now synced and gated
+- The five GSD canonical docs (added in 1.3.2) are wired into the `mkdocs.yml` nav — `mkdocs build --strict` passes with zero warnings
+
+### Compatibility Notes
+
+- The full nightly lanes (coverage incl. slow, example census with MCP live-server probes, mamba) ran green on this line before release
+
 ## [1.3.2] - 2026-10-19
 
 ### Overview
