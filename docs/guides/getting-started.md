@@ -159,4 +159,4 @@ Full troubleshooting list: [Installation — Troubleshooting](../getting_started
 - [Architecture Overview](../architecture/overview.md) — how a config flows through model loading, training, and inference
 - Task guides: [Fine-tuning](../user_guide/fine_tuning/getting_started.md) · [Inference](../user_guide/inference/getting_started.md) · [CLI](../user_guide/cli/usage.md)
 - Serve predictions to AI assistants: `dnallm-mcp-server --transport streamable-http` — [MCP Server Guide](../user_guide/mcp/startserver.md)
-- Contributing code: [CONTRIBUTING.md](../../CONTRIBUTING.md) · Full docs site: https://zhangtaolab.github.io/DNALLM/
+- Contributing code: [CONTRIBUTING.md](https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md) · Full docs site: https://zhangtaolab.github.io/DNALLM/
