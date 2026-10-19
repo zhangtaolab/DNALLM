@@ -190,7 +190,7 @@ uv pip install -e '.[all,cuda128]'
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
-| `mcp` | MCP server | (included in core) |
+| `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
 | `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**

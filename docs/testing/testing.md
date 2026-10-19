@@ -75,7 +75,7 @@ Marker selection uses standard pytest syntax (`-m "data and not slow"`, `-m pdf`
 
 Two lane-specific behaviors worth knowing:
 
-- The MCP live-server probes (`dnallm/mcp/tests/test_sse_client.py`, `test_streamable_http_client.py`) target a `dnallm-mcp-server` on `localhost:8000`. No CI job starts one there, so they skip deterministically with the typed `network-unavailable:` reason; they are local-only.
+- The MCP live-server probes (`dnallm/mcp/tests/test_sse_client.py`, `test_streamable_http_client.py`) target a `dnallm-mcp-server` on `localhost:8000`. No PR/push CI job starts one there, so they skip deterministically with the typed `network-unavailable:` reason in every gating lane; the `example-nightly` lane's Stage 2 does start the server (streamable-http, then a restart in SSE mode) and runs all six probes for real.
 - Giant-model (evo-class) tests carry the `giants` marker, which the example nightly deselects by owner policy; run them explicitly with `pytest -m giants`.
 
 ## Writing new tests
