@@ -43,35 +43,77 @@ uv pip show --python .venv-kda\Scripts\python.exe triton-windows
 # 期望:import OK: True
 ```
 
-**Step 5 — 编译并执行一个 KDA chunk 内核(真编译,不是 import)**
+**Step 5 — 编译并执行一个 KDA chunk 内核(真编译,不是 import;并与独立 fp32 参考对数)**
 
 把下面存为 `kda_probe.py` 后运行 `.venv-kda\Scripts\python.exe kda_probe.py`:
 
 ```python
-"""KDA chunk kernel compile+execute probe (WINDOWS #27, RTX 5080 sm_120)."""
+"""KDA chunk kernel compile+execute+correctness probe (WINDOWS #27, RTX 5080 sm_120).
+
+Calls chunk_kda exactly the way fla.layers.kda does (fused gate). fla 0.5.2's raw
+pre-computed-g path (use_gate_in_kernel=False) is defective — do not use it here.
+"""
 
 import torch
+import torch.nn.functional as F
 from fla.ops.kda.chunk import chunk_kda
 
 assert torch.cuda.is_available(), "CUDA unavailable"
 dev, dtype = "cuda", torch.bfloat16
-B, T, H, D = 2, 256, 4, 64
+B, T, H, K, V = 2, 256, 4, 64, 64
 torch.manual_seed(0)
-q = torch.randn(B, T, H, D, device=dev, dtype=dtype)
-k = torch.randn(B, T, H, D, device=dev, dtype=dtype)
-v = torch.randn(B, T, H, D, device=dev, dtype=dtype)
-g = -torch.rand(B, T, H, device=dev, dtype=dtype) - 1e-3  # log decay, 负值
-beta = torch.rand(B, T, H, device=dev, dtype=dtype).sigmoid()
+q = torch.randn(B, T, H, K, device=dev, dtype=dtype)
+k = torch.randn(B, T, H, K, device=dev, dtype=dtype)
+v = torch.randn(B, T, H, V, device=dev, dtype=dtype)
+g_raw = torch.randn(B, T, H, K, device=dev, dtype=dtype)  # f_proj(x), pre-gate
+beta_raw = torch.randn(B, T, H, device=dev, dtype=dtype)  # b_proj(x), pre-sigmoid
+A_log = torch.log(torch.empty(H, device=dev, dtype=torch.float32).uniform_(1, 16))
+dt_bias = torch.log(
+    torch.expm1(torch.empty(H * K, device=dev, dtype=torch.float32).uniform_(0.1, 1.0))
+)
 
-o, final_state = chunk_kda(q, k, v, g, beta, output_final_state=True)
+o, final_state = chunk_kda(
+    q,
+    k,
+    v,
+    g_raw,
+    beta_raw,
+    A_log=A_log,
+    dt_bias=dt_bias,
+    use_qk_l2norm_in_kernel=True,
+    use_gate_in_kernel=True,
+    use_beta_sigmoid_in_kernel=True,
+    output_final_state=True,
+)
 torch.cuda.synchronize()
-assert o.shape == (B, T, H, D), o.shape
+assert o.shape == (B, T, H, V), o.shape
 assert torch.isfinite(o).all(), "non-finite kernel output"
+assert torch.isfinite(final_state).all(), "non-finite final state"
+
+# independent fp32 sequential reference (same semantics as fla.layers.kda)
+qf = F.normalize(q.float(), dim=-1)
+kf = F.normalize(k.float(), dim=-1)
+g_eff = -A_log.view(1, 1, H, 1).exp() * F.softplus(g_raw.float() + dt_bias.view(1, 1, H, K))
+b_eff = beta_raw.float().sigmoid()
+S = torch.zeros(B, H, K, V, device=dev)
+outs = []
+for t in range(T):
+    Sd = S * torch.exp(g_eff[:, t]).unsqueeze(-1)
+    u = b_eff[:, t, :, None] * (v[:, t].float() - torch.einsum("bhkv,bhk->bhv", Sd, kf[:, t]))
+    S = Sd + torch.einsum("bhk,bhv->bhkv", kf[:, t], u)
+    outs.append(torch.einsum("bhkv,bhk->bhv", S, qf[:, t]))
+r = torch.stack(outs, dim=1) * (K**-0.5)
+maxdiff = (o.float() - r).abs().max().item()
+assert maxdiff < 0.01, f"kernel disagrees with reference: maxdiff={maxdiff}"
 print("KDA kernel OK:", tuple(o.shape), o.dtype, "| final_state:", tuple(final_state.shape))
+print(f"maxdiff vs fp32 reference: {maxdiff:.6f}")
 print("device:", torch.cuda.get_device_name(0), torch.cuda.get_device_capability(0))
 ```
 
-(若该参数组合与安装的 fla 版本签名不符,以 `python -c "import inspect, fla.ops.kda.chunk as m; print(inspect.signature(m.chunk_kda))"` 的输出为准做最小适配——5 个位置参数 q/k/v/g/beta 是稳定契约。)
+(2026-10-19 修订:探针改为与 `fla.layers.kda` 完全等价的 fused-gate 调用——fla 0.5.2 的
+裸 g 路径(`use_gate_in_kernel=False`,直接传预算 decay)有缺陷,见失败分诊;且该版本
+`g` 形状契约为 `[B, T, HV, K]`。真实模型层从不走裸 g 路径,故本探针才是对 WPAR-07
+「KDA chunk 内核可用」的忠实检验。真机复验:RTX 5080,maxdiff 0.000788。)
 
 **Step 6 — 汇总证据**(六样,缺一不可):
 
@@ -84,6 +126,7 @@ print("device:", torch.cuda.get_device_name(0), torch.cuda.get_device_capability
 
 ## 失败分诊
 
+- **不要把探针改回裸 g 路径**(`use_gate_in_kernel=False`,直接传预算 decay)→ fla 0.5.2 该路径有缺陷(2026-10-19 RTX 5080 实测:负 g 首个 chunk 输出即 ~1e26、后续 inf/NaN;正 g 全 NaN)。真实调用方 `fla.layers.kda` 恒走 fused-gate 路径;同栈 `chunk_gla` 正常,缺陷仅限 KDA 裸 g 路径(值得报 fla 上游)。若探针的 fused-gate 调用与未来 fla 版本签名不符,以 `python -c "import inspect, fla.ops.kda.chunk as m; print(inspect.signature(m.chunk_kda))"` 输出为准做最小适配,并保持 fused-gate 形态。
 - **Step 1 后 Step 2 查无 triton-windows** → 平台标记未生效,是回归:记录 `uv pip install` 的完整输出与 `pyproject.toml` 中 fla extra 段原文,回报主仓。
 - **Step 5 编译报错** → 逐字捕获报错栈(NVCC/ptas 报错尤其要全),回报主仓;不要自行降级 torch 或手装别的 triton。
 - **CUDA 不可用 / 驱动问题** → 先 `nvidia-smi` 自检,非本验证范围。
@@ -96,3 +139,4 @@ print("device:", torch.cuda.get_device_name(0), torch.cuda.get_device_capability
 ---
 
 *Runbook 落盘于 2026-10-18,基线 commit `bf3b441`(分支 v1.3);适用于任何 ≥`399f9f1` 的后续 tip。*
+*Step 5 修订于 2026-10-19:探针改为 `fla.layers.kda` 等价的 fused-gate 调用并加 fp32 参考对数(裸 g 路径在 fla 0.5.2 有缺陷,详见失败分诊);RTX 5080 真机复验通过,maxdiff 0.000788。*
