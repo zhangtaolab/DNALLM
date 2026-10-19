@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-19
+
+### Overview
+
+Patch release on the v1.3 line: dependency-surface refresh (dependabot #55/#56 validated locally on v1.3 before merge) plus the Windows KDA verification runbook. No source-code changes against 1.3.0.
+
+### Changed
+
+- `starlette` upper bound widened `<1.8.0` → `<1.9.0`, admitting the 1.8.x line (dependabot #56; CI green across py3.11–3.13, windows, cuda 12.1/12.4; local `tests/mcp/` 307 passed on starlette 1.8.0)
+- dev pin `ruff` `0.16.10` → `0.17.1` (dependabot #55; `ruff format --check .` + `ruff check .` clean over all 312 files, markdown fences included)
+
+### Added
+
+- `WINDOWS-KDA-VERIFY.md` — self-contained six-step runbook for WINDOWS #27 KDA real-machine verification (runbook ruff-formatted; Step 5 probe fixed to fused-gate call + fp32 reference)
+
 ## [1.3.0] - 2026-10-18
 
 ### Overview
