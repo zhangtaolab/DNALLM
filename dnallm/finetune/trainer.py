@@ -295,6 +295,47 @@ def _guard_trainable_ratio(
     return trainable, total, ratio
 
 
+class _OutermostModulesToSave(list):
+    """A modules_to_save list whose extend() is a no-op.
+
+    PeftModelForSequenceClassification.__init__ unconditionally extends the
+    config's modules_to_save with ["classifier", "score"] (peft_model.py
+    "classifier_module_names"). For a nested head like evo2's
+    score.classifier that wraps BOTH the parent and its child, and PEFT
+    0.21.2 then saves the child wrapper's keys without the ".default."
+    segment while its loader expects it — every load_best_model_at_end
+    reload dies with KeyError('...score.classifier.modules_to_save.default
+    .weight') after training. Suppressing the extend keeps only the
+    outermost head module, which round-trips cleanly (verified on PEFT
+    0.21.2 / transformers 5.17.0, 2026-10-19).
+    """
+
+    def extend(self, other: Any) -> None:
+        return None
+
+
+def _outermost_modules_to_save(model: Any, requested: list[str] | None) -> list[str] | None:
+    """Drop modules_to_save names nested under another requested name."""
+    names = list(requested) if requested else ["classifier", "score"]
+    paths: dict[str, list[str]] = {}
+    for name in names:
+        paths[name] = [
+            path for path, _ in model.named_modules() if path == name or path.endswith("." + name)
+        ]
+    kept = [
+        name
+        for name in names
+        if not any(
+            other != name
+            and any(path.startswith(outer + ".") for path in paths[name] for outer in paths[other])
+            for other in names
+        )
+    ]
+    if len(kept) == len(names):
+        return requested
+    return _OutermostModulesToSave(kept)
+
+
 # Pure-timing keys trainer.predict reports alongside metrics; evaluate(split=...)
 # separates them into the JSON "runtime" block instead of the canonical
 # metric-names dict (they are not metric-registry names).
@@ -483,6 +524,9 @@ class DNATrainer:
             # WR-02: consume the ctor-resolved copy (carries preset-injected
             # targets), never the caller's config object.
             lora_config = LoraConfig(**peft_section.dict())
+            lora_config.modules_to_save = _outermost_modules_to_save(
+                model, lora_config.modules_to_save
+            )
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
             self.model.print_trainable_parameters()
