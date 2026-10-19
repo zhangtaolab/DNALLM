@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-10-19
+
+### Overview
+
+Patch release on the v1.3 line: the custom-ESM checkpoint probe loading path (re-landed from an owner branch with green gates), five new GSD canonical docs, and a documentation-accuracy pass (152-doc full audit; 9 stale claims fixed). No public API breaks against 1.3.1.
+
+### Added
+
+- **Custom ESM checkpoint probe loading** — checkpoints whose `auto_map` registers `AutoModelForSequenceClassification` but no `AutoModel` now load through a dedicated path (`from_base_model` extracts the pretrained backbone instead of building a native `EsmModel` that needs `config.rope_theta`); probe wiring honors a caller-supplied custom backbone, syncs `num_labels` from `head_config.num_classes` (checkpoint/config mismatch warns and the task head wins), keeps custom-ESM pretrained weights by skipping `post_init`, and freezes the backbone in eval mode for probe use
+- Five canonical docs: `docs/architecture/overview.md`, `docs/configuration/configuration.md`, `docs/guides/getting-started.md`, `docs/guides/development.md`, `docs/testing/testing.md` (all verifier-green, cross-referenced against the existing mkdocs tree; not yet in `mkdocs.yml` nav)
+
+### Changed
+
+- Probe forward guards: task-type mismatch and logits/num_labels dimension mismatch now fail loudly at `RuntimeError`; regression targets reject CE/NLL classification losses by `ValueError` (guard test included); classification requires integer labels (`TypeError` otherwise); regression loss computation moves to float32 with shape-compat validation
+- README `fla` install notes extend to Windows: the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker
+
+### Fixed
+
+- Documentation accuracy pass over all 152 existing docs (gsd-doc-verifier full audit, 1687 claims): `docs/concepts/mcp.md` architecture-diagram config filename now the real `*_inference_config.yaml` pattern; `install_honesty.md` full-extra row drops `types-transformers` (retired with the mypy→ty flip); `config_generator.md` documents `--non-interactive` as not-yet-implemented (matches the code's fallback notice); `mutagenesis_analysis.md` points all four example configs at files that exist; README `mcp` extras row no longer claims "(included in core)"; the testing guide's MCP live-probe skip claim is now scoped to PR/push lanes (example-nightly Stage 2 does start the server)
+- 18-01 cuda121/rocm residue-gate sanctioned list synced with the extended README fla line (verbatim-line matching)
+
+### Compatibility Notes
+
+- Windows example execution hardening from the 1.3.1 runbook landed: CRE zoom rendering cell platform guard and a Windows-GPU typed skip for the >16GB mambapy pscan task (WINDOWS #28)
+
 ## [1.3.1] - 2026-10-19
 
 ### Overview
