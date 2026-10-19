@@ -10,7 +10,7 @@ pins live in `[tool.uv.sources]`, which only uv respects (see the
 
 | Command | uv (`uv pip install`) | plain `pip` | Provenance |
 |---|---|---|---|
-| `dnallm[full]` | the full dev aggregate: `dev` + `test` + `notebook` + `mcp` + isort + types-transformers | identical set — no index machinery involved | live probe 2026-10-14 |
+| `dnallm[full]` | the full dev aggregate: `dev` + `test` + `notebook` + `mcp` + isort | identical set — no index machinery involved | live probe 2026-10-14 |
 | `dnallm[base]` — during the v1.3 alias cycle | resolves the alias → the **full member set**, exit 0, **no warning** | identical — full set, exit 0, **no warning** | live probe 2026-10-14 |
 | `dnallm[base]` — after the v1.4 alias removal | `warning: The package ... does not have an extra named 'base'`; installs **core only**; exit 0 | `WARNING: dnallm X.Y.Z does not provide the extra 'base'`; installs **core only**; exit 0 | live probe 2026-10-14 (missing-extra case) |
 | `dnallm[cuda130]` | torch from the pinned `torch-cuda130` index (`[tool.uv.sources]` respected) | torch from default PyPI — Linux: the cu130-bundled default build; Windows: **CPU-only** | uv docs (sources are uv-only); v1.3 stack research |
