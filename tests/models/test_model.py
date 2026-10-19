@@ -3008,6 +3008,17 @@ class TestWrapperForward:
 
         assert torch.allclose(output.loss, expected)
 
+    def test_regression_rejects_crossentropy_loss(self):
+        """Regression must never dispatch continuous targets to CE/NLL loss."""
+        model = _build_wrapper(
+            head="basic-mlp",
+            num_labels=2,
+            task_type="regression",
+            loss_function="crossentropy",
+        )
+        with pytest.raises(ValueError, match="Regression is configured with CE/NLL"):
+            model(input_ids=self._input_ids(), labels=torch.rand(2, 2))
+
     def test_forward_loss_function_bce_on_squashed_logits(self):
         """'bce' applies BCELoss to the (sigmoid-squashed) logits."""
         model = _build_wrapper(
