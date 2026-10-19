@@ -25,7 +25,7 @@ PRETRAIN_MODEL_MAPS = OrderedDict([
     ("GENA-LM", ["AIRI-Institute", "Masked Language Model"]),
     ("GENA-LM-BigBird", ["AIRI-Institute", "Masked Language Model"]),
     ("GENERator", ["GenerTeam", "Causal Language Model"]),
-    ("GENERanno", ["GenerTeam", "Causal Language Model"]),
+    ("GENERanno", ["GenerTeam", "Masked Language Model"]),
     ("GenomeOcean", ["pGenomeOcean", "Causal Language Model"]),
     ("GPN", ["Songlab", "Masked Language Model"]),
     ("GROVER", ["PoetschLab", "Masked Language Model"]),
