@@ -3,19 +3,19 @@ gsd_state_version: "1.0"
 milestone: v1.3
 status: Phase 21 complete
 stopped_at: Phase 21 complete (ty hard gate CI-green; awaiting owner calls on pinned-stub-env + nightly resume)
-last_updated: "2026-10-17T03:08:45.478Z"
+last_updated: "2026-10-19T07:16:54.162Z"
 last_activity: 2026-10-17
 last_activity_desc: Phase 21 complete — ty hard flip CI-validated, mypy retired tree-wide
-state_head: 1c52e46cc26ffada0d24b784d216feea047cb017
+state_head: 6d14d9d104e8caf34480a7e6de9785a030b65909
+milestone_name: Platform Reach & Packaging Honesty
+current_phase: 21
+current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
 progress:
   total_phases: 9
   completed_phases: 8
   total_plans: 22
   completed_plans: 22
   percent: 89
-milestone_name: Platform Reach & Packaging Honesty
-current_phase: 21
-current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
 ---
 
 # Project State
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 Phase: Milestone v1.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-16 — Milestone v1.3 completed and archived
+Last activity: 2026-10-19 — Completed quick task 261019-cr6: Windows local CI replication (4/5 gates green on the real machine; ty = platform-divergent RED, root-caused) + WINDOWS #27 KDA fresh-venv declaration proven (evidence 00c6128/6d14d9d)
 
 ## Performance Metrics
 
@@ -131,6 +131,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 261017-414 | scan all files for mypy remnants and systematically replace with ty (D-09 flip follow-up) | 2026-10-17 | 1c52e46 | [261017-414-scan-all-files-for-mypy-remnants-and-sys](./quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/) |
+| 261019-cr6 | Windows local CI replication + KDA declaration proof | 2026-10-19 | 6d14d9d | [261019-cr6-windows-local-ci-replication-kda-declara](./quick/261019-cr6-windows-local-ci-replication-kda-declara/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
