@@ -379,6 +379,22 @@ families:
       MLP projection names. The llama model_type fallback is shared with
       OmniNA (identical module lists).
 
+  GENERanno:
+    match_names: [generanno]
+    model_types: [generanno]
+    lora_target_modules: [q_proj, v_proj]
+    ia3_target_modules: [k_proj, v_proj, up_proj, gate_proj]
+    feedforward_modules: [up_proj, gate_proj]
+    lora_r: 8
+    ia3_ratio_band: [5.0e-5, 5.0e-3]
+    lora_ratio_band: [2.0e-4, 3.0e-2]
+    derivation: >-
+      cached-remote: GENERanno-eukaryote-0.5b-base modeling_generanno.py
+      (Llama-lineage: GQA q_proj/k_proj/v_proj/o_proj, SwiGLU gate_proj/
+      up_proj/down_proj, model_type=generanno). LoRA [q_proj, v_proj] and
+      IA3 [k_proj, v_proj, up_proj, gate_proj] follow the GENERator row;
+      measured LoRA ratio at r=8 is 9.3e5/4.93e8=1.9e-3.
+
   GenomeOcean:
     match_names: [genomeocean]
     model_types: [mistral]
