@@ -171,13 +171,9 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             prefix = pretrained.base_model_prefix
             backbone = getattr(pretrained, prefix, None)
             if backbone is None or backbone is pretrained:
-                raise RuntimeError(
-                    f"Cannot extract pretrained ESM backbone '{prefix}'."
-                )
+                raise RuntimeError(f"Cannot extract pretrained ESM backbone '{prefix}'.")
             model = cls(config, custom_model=backbone)
-            logger.info(
-                f"Loaded custom ESM backbone: {type(model.backbone).__name__}"
-            )
+            logger.info(f"Loaded custom ESM backbone: {type(model.backbone).__name__}")
             return model
 
         # 1. Use config to create an instance of our custom class.
@@ -314,8 +310,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         actual_task_type = getattr(self.score, "task_type", None)
         if task_type != actual_task_type:
             raise RuntimeError(
-                f"Probe task mismatch: config={task_type!r}, "
-                f"head={actual_task_type!r}."
+                f"Probe task mismatch: config={task_type!r}, head={actual_task_type!r}."
             )
         if logits.size(-1) != self.num_labels:
             raise RuntimeError(
@@ -376,9 +371,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                         "Check dataset task type and probe head configuration."
                     )
                 loss_fct = nn.CrossEntropyLoss() if loss_fct is None else loss_fct
-                loss = loss_fct(
-                    logits.reshape(-1, self.num_labels), labels.long().reshape(-1)
-                )
+                loss = loss_fct(logits.reshape(-1, self.num_labels), labels.long().reshape(-1))
             elif task_type == "multilabel":
                 loss_fct = nn.BCEWithLogitsLoss() if loss_fct is None else loss_fct
                 loss = loss_fct(logits, labels)
@@ -693,12 +686,13 @@ def _load_model_by_task_type(
     # Custom model with specific head
     if head_config is not None:
         # DNALLM_PROBE_CONFIG_SYNC_V2: dataset task wins over YAML defaults.
-        if hasattr(head_config, "model_dump"):
-            head_config = head_config.model_dump()
-        elif isinstance(head_config, dict):
+        # getattr keeps ty's static narrowing happy (hasattr does not narrow
+        # the call target for the call-non-callable rule).
+        if isinstance(head_config, dict):
             head_config = dict(head_config)
         else:
-            head_config = dict(vars(head_config))
+            model_dump = getattr(head_config, "model_dump", None)
+            head_config = model_dump() if model_dump is not None else dict(vars(head_config))
         head_config["task_type"] = task_type
         head_config["num_classes"] = num_labels
         base_config = modules["AutoConfig"].from_pretrained(model_name, trust_remote_code=True)
