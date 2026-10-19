@@ -150,9 +150,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-15T23:43:19.812Z
-Stopped at: Phase 19 complete, ready to plan Phase 20
-Resume file: .planning/phases/20-tech-debt-closeout-cli-flag-only-crash-residual-docs-mention/20-CONTEXT.md
+Last session: 2026-10-19 (resumed via /gsd-resume-work)
+Stopped at: Session resumed — v1.3 + Phase 21 fully closed, paused between milestones; owner gates only: WINDOWS #25 (PyPI trusted-publisher registration), #27 (Windows KDA smoke, scheduled 2026-10-19 — in-repo runbook WINDOWS-KDA-VERIFY.md), main-merge decision
+Resume file: .planning/HANDOFF.json (one-shot) + .planning/.continue-here.md (paused_between_milestones); branch tip fbf4b6f in sync with origin/v1.3
 
 ## Operator Next Steps
 
