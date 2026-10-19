@@ -667,7 +667,14 @@ class TestLoadModelByTaskType:
         assert model == "wrapped-model"
         assert tokenizer is mock_tokenizer
         base_config = modules["AutoConfig"].from_pretrained.return_value
-        assert base_config.head_config == head_config.__dict__
+        # The effective dataset task is authoritative, even when the YAML
+        # / mock HeadConfig omitted a task_type field.
+        assert base_config.head_config == {
+            **head_config.__dict__,
+            "task_type": "binary",
+        }
+        assert base_config.num_labels == 2
+        assert base_config.problem_type == "single_label_classification"
         mock_wrapper.from_base_model.assert_called_once_with(
             "test-model",
             config=base_config,
@@ -2979,16 +2986,34 @@ class TestWrapperForward:
     )
     def test_forward_loss_function_strings(self, loss_name, reference_factory):
         """Named loss functions replace the task-type default."""
+        # CrossEntropy is a classification loss; other parametrized losses
+        # still exercise the regression path.
+        task_type = "multiclass" if loss_name == "crossentropy" else "regression"
         model = _build_wrapper(
-            head="basic-mlp", num_labels=2, task_type="regression", loss_function=loss_name
+            head="basic-mlp", num_labels=2, task_type=task_type, loss_function=loss_name
         )
         input_ids = self._input_ids()
-        labels = torch.rand(2, 2)
+        labels = (
+            torch.tensor([0, 1], dtype=torch.long)
+            if loss_name == "crossentropy"
+            else torch.rand(2, 2)
+        )
 
         output = model(input_ids=input_ids, labels=labels)
         expected = reference_factory()(output.logits, labels)
 
         assert torch.allclose(output.loss, expected)
+
+    def test_regression_rejects_crossentropy_loss(self):
+        """Regression must never dispatch continuous targets to CE/NLL loss."""
+        model = _build_wrapper(
+            head="basic-mlp",
+            num_labels=2,
+            task_type="regression",
+            loss_function="crossentropy",
+        )
+        with pytest.raises(ValueError, match="Regression is configured with CE/NLL"):
+            model(input_ids=self._input_ids(), labels=torch.rand(2, 2))
 
     def test_forward_loss_function_bce_on_squashed_logits(self):
         """'bce' applies BCELoss to the (sigmoid-squashed) logits."""
