@@ -155,7 +155,12 @@ def classification_metrics(plot: bool = False):
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
         metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
         metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
-        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(labels, predictions).ravel()
+        # Pin the binary label set: a collapsed predictor (all one class)
+        # otherwise returns a 1-element confusion matrix and the 4-way
+        # unpack below raises "not enough values to unpack".
+        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(
+            labels, predictions, labels=[0, 1]
+        ).ravel()
         metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
         metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0
