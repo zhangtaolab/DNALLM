@@ -1,247 +1,342 @@
 pretrained:
   - name: "Plant DNABERT"
     model: "zhangtaolab/plant-dnabert-BPE"
+    tokenizer_type: "DebertaV2Tokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Plant DNAGemma"
     model: "zhangtaolab/plant-dnagemma-BPE"
+    tokenizer_type: "GemmaTokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant DNAGPT"
     model: "zhangtaolab/plant-dnagpt-BPE"
+    tokenizer_type: "GPT2Tokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant DNAMamba"
     model: "zhangtaolab/plant-dnamamba-BPE"
+    tokenizer_type: "GPTNeoXTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Plant NT"
     model: "zhangtaolab/plant-nucleotide-transformer-BPE"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Plant DNAModernBert"
     model: "zhangtaolab/plant-dnamodernbert-BPE"
+    tokenizer_type: "PreTrainedTokenizer"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Plant DNABERT 6mer"
     model: "zhangtaolab/plant-dnabert-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "mask"
   - name: "Plant DNABERT singlebase"
     model: "zhangtaolab/plant-dnabert-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
   - name: "Plant DNAGemma 6mer"
     model: "zhangtaolab/plant-dnagemma-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAGemma singlebase"
     model: "zhangtaolab/plant-dnagemma-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
   - name: "Plant DNAGPT 6mer"
     model: "zhangtaolab/plant-dnagpt-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAGPT singlebase"
     model: "zhangtaolab/plant-dnagpt-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
   - name: "Plant NT 6mer"
     model: "zhangtaolab/plant-nucleotide-transformer-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "mask"
   - name: "Plant NT singlebase"
     model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
   - name: "Plant DNAMamba 2mer"
     model: "zhangtaolab/plant-dnamamba-2mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 2mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAMamba 3mer"
     model: "zhangtaolab/plant-dnamamba-3mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 3mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAMamba 4mer"
     model: "zhangtaolab/plant-dnamamba-4mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 4mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAMamba 5mer"
     model: "zhangtaolab/plant-dnamamba-5mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 5mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAMamba 6mer"
     model: "zhangtaolab/plant-dnamamba-6mer"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
       task_type: "generation"
   - name: "Plant DNAMamba singlebase"
     model: "zhangtaolab/plant-dnamamba-singlebase"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "generation"
   - name: "Plant DNAModernBert singlebase"
     model: "zhangtaolab/plant-dnamodernbert-singlebase"
+    tokenizer_type: "PreTrainedTokenizer"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
       task_type: "mask"
   - name: "AgroNT"
     model: "InstaDeepAI/agro-nucleotide-transformer-1b"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 1026
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Caduceus-PH"
     model: "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+    tokenizer_type: "CaduceusTokenizer"
+    max_length: 131072
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Caduceus-PS"
     model: "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16"
+    tokenizer_type: "CaduceusTokenizer"
+    max_length: 131072
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantCaduceus"
     model: "kuleshov-group/PlantCaduceus_l32"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantCAD2"
     model: "kuleshov-group/PlantCAD2-Small-l24-d0768"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "DNABERT"
     model: "zhihan1996/DNA_bert_6"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "DNABERT-2"
     model: "zhihan1996/DNABERT-2-117M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENA-LM"
     model: "AIRI-Institute/gena-lm-bert-base"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENA-LM-BigBird"
     model: "AIRI-Institute/gena-lm-bigbird-base-sparse"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 4096
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GENERator"
     model: "GenerTeam/GENERator-eukaryote-1.2b-base"
+    tokenizer_type: "DNAKmerTokenizer"
+    max_length: 16384
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GENERanno"
     model: "GenerTeam/GENERanno-eukaryote-1.2b-base"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GenomeOcean"
     model: "pGenomeOcean/GenomeOcean-100M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 32768
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "GPN"
     model: "songlab/gpn-brassicales"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "GROVER"
     model: "PoetschLab/GROVER"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "HyenaDNA"
     model: "LongSafari/hyenadna-small-32k-seqlen-hf"
+    tokenizer_type: "HyenaDNATokenizer"
+    max_length: 32770
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "LucaOne"
     model: "LucaGroup/LucaOne-default-step36M"
+    tokenizer_type: "LucaGPLMTokenizer"
+    max_length: 4096
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Jamba-DNA"
     model: "RaphaelMourad/Jamba-DNA-v1-114M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 4096
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Mistral-DNA"
     model: "RaphaelMourad/Mistral-DNA-v1-138M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "ModernBERT-DNA"
     model: "RaphaelMourad/ModernBERT-DNA-v1-37M-hg38"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "MutBERT"
     model: "JadenLong/MutBERT-Human-Ref"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 512
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "Nucleotide Transformer"
     model: "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 2050
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "OmniNA"
     model: "XLS/OmniNA-66m"
+    max_length: 2048
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "Omni-DNA"
     model: "zehui127/Omni-DNA-116M"
+    tokenizer_type: "PreTrainedTokenizerFast"
+    max_length: 250
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "generation"
   - name: "ProkBERT"
     model: "neuralbioinfo/prokbert-mini"
+    tokenizer_type: "LCATokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "PlantHelixSeek"
     model: "zhangtaolab/PlantHelixSeek"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 8192
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
   - name: "FungiHelixSeek"
     model: "zhangtaolab/FungiHelixSeek"
+    tokenizer_type: "EsmTokenizer"
+    max_length: 8192
     task:
       describe: "Kingdom-scale fungal DNA foundation model (hybrid linear-attention/Transformer MoE, 263M total / ~112M active, singleBase tokenizer)."
       task_type: "mask"
   - name: "PlantBiMoE"
     model: "lgq12697/PlantBiMoE"
+    tokenizer_type: "PlantbimoeTokenizer"
+    max_length: 32768
     task:
       describe: "Plant genome foundation model (BiMamba + SparseMoE hybrid, 86.95M total / 63.93M active, single-base tokenizer, trained on 42 plant species)."
       task_type: "mask"
 
   - name: "CrossDNA"
     model: "chengCCC/CrossDNA_pretrain"
+    tokenizer_type: "CrossDNATokenizer"
+    max_length: 1024
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
@@ -1708,6 +1803,7 @@ finetuned:
   - name: "PlantCAD2 cell type specific acr medium"
     model: "plantcad/cell_type_specific_acr_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different cell types by using PlantCAD2 medium model."
       task_type: "multilabel"
@@ -1717,6 +1813,7 @@ finetuned:
   - name: "PlantCAD2 cell type specific acr large"
     model: "plantcad/cell_type_specific_acr_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different cell types by using PlantCAD2 large model."
       task_type: "multilabel"
@@ -1735,6 +1832,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on arabidopsis medium"
     model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
       task_type: "binary"
@@ -1744,6 +1842,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on arabidopsis large"
     model: "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 large model."
       task_type: "binary"
@@ -1762,6 +1861,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on nine species medium"
     model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 medium model."
       task_type: "binary"
@@ -1771,6 +1871,7 @@ finetuned:
   - name: "PlantCAD2 cross species acr train on nine species large"
     model: "plantcad/cross_species_acr_train_on_nine_species_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of ACRs in different species by using PlantCAD2 large model."
       task_type: "binary"
@@ -1788,6 +1889,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute expression medium"
     model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 medium model."
       task_type: "regression"
@@ -1796,6 +1898,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute expression large"
     model: "plantcad/cross_species_leaf_absolute_expression_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of absolute gene expression in different species leaf by using PlantCAD2 large model."
       task_type: "regression"
@@ -1812,6 +1915,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute translation medium"
     model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 medium model."
       task_type: "regression"
@@ -1820,6 +1924,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf absolute translation large"
     model: "plantcad/cross_species_leaf_absolute_translation_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of absolute mRNA translation in different species leaf by using PlantCAD2 large model."
       task_type: "regression"
@@ -1836,6 +1941,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf on off expression medium"
     model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of on/off expression in different species leaf by using PlantCAD2 medium model."
       task_type: "classification"
@@ -1844,6 +1950,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf on off expression large"
     model: "plantcad/cross_species_leaf_on_off_expression_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of on/off expression in different species leaf by using PlantCAD2 large model."
       task_type: "classification"
@@ -1860,6 +1967,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf on off translation medium"
     model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_medium"
     base_model: "kuleshov-group/PlantCAD2-Medium-l48-d1024"
+    max_length: 8192
     task:
       describe: "Predict of on/off translation in different species leaf by using PlantCAD2 medium model."
       task_type: "classification"
@@ -1868,6 +1976,7 @@ finetuned:
   - name: "PlantCAD2 cross species leaf on off translation large"
     model: "plantcad/cross_species_leaf_on_off_translation_plantcad2_large"
     base_model: "kuleshov-group/PlantCAD2-Large-l48-d1536"
+    max_length: 8192
     task:
       describe: "Predict of on/off translation in different species leaf by using PlantCAD2 large model."
       task_type: "classification"
@@ -1906,3 +2015,16 @@ finetuned:
       num_labels: 17
       label_names: ["O", "B-CDS", "I-CDS", "L-CDS", "U-CDS", "B-INTRON", "I-INTRON", "L-INTRON", "U-INTRON", "B-UTR5", "I-UTR5", "L-UTR5", "U-UTR5", "B-UTR3", "I-UTR3", "L-UTR3", "U-UTR3"]
       threshold: 0.5
+# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).
+# Method: one-time remote metadata probes — config.json / tokenizer_config.json only,
+#   ModelScope first with HuggingFace fallback, no weights downloaded (D-01
+#   probe-then-commit; re-probing reproduces these values remotely).
+# Coverage rule (D-03): all zhangtaolab/* entries enriched mandatorily; third-party
+#   entries best-effort — a gap is an absent key, never null/empty/zero.
+# max_length rule (D-02): every pretrained entry carries max_length; finetuned entries
+#   inherit via base_model resolved by the loader at query time — an explicit
+#   finetuned max_length exists only where the measured value differs from the
+#   base's, plus the 14 external-based plantcad repos whose bases sit outside
+#   this registry.
+# Probe and insertion tooling is intentionally uncommitted (gitignored .scratch/,
+#   owner convention 2026-10-20).

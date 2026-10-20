@@ -484,15 +484,22 @@ def test_effective_max_length_delegates_against_live_cache(monkeypatch) -> None:
     assert registry.effective_max_length(inherit) == 1000
 
 
-def test_effective_value_live_registry_pre_enrichment_is_none() -> None:
-    """Over the real packaged file (22-01, pre-enrichment) missing values are None.
+def test_effective_value_live_registry_post_enrichment_inherits_from_base() -> None:
+    """Over the real packaged file (22-02 enrichment) values inherit through the chain.
 
-    22-02 lands tokenizer_type/max_length enrichment; this pins the 22-01
-    None-surfacing contract over the live registry (no runtime probing).
+    Strengthened from the 22-01 pre-enrichment None-contract pin when the
+    enrichment landed: the promoter entry commits no enrichment fields of its
+    own (its measured values equal its base's, so D-02 forbids duplication),
+    and its effective values resolve live from the committed base entry.
     """
     entry = registry.resolve(PINNED_FINETUNED_NAME)
-    assert registry.effective_max_length(entry) is None
-    assert registry.effective_tokenizer_type(entry) is None
+    base = registry.resolve(PINNED_FINETUNED_BASE)
+    assert entry.max_length is None
+    assert entry.tokenizer_type is None
+    assert base.max_length == 512
+    assert base.tokenizer_type == "DebertaV2Tokenizer"
+    assert registry.effective_max_length(entry) == 512
+    assert registry.effective_tokenizer_type(entry) == "DebertaV2Tokenizer"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

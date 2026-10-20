@@ -192,3 +192,139 @@ def test_pretrained_entries_carry_no_base_model() -> None:
     """base_model is a finetuned-only field — no pretrained entry carries it."""
     offenders = [e["model"] for e in _pretrained() if "base_model" in e]
     assert offenders == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 22-02 enrichment integrity (REG-02/REG-03) — extension only; nothing above
+# this section is modified. The enrichment adds tokenizer_type / max_length
+# fields via scripted text insertion and an end-of-file provenance block.
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_FINETUNED_COUNT = 187
+
+# Provenance sentinels: the kwt freeze-provenance block (2026-10-03) plus the
+# 22-02 enrichment provenance block appended at end of file. Each sentinel
+# must appear exactly once, verbatim — the blocks are unrecoverable once lost
+# (Pitfall 3), so their presence is pinned here (REG-03).
+PROVENANCE_SENTINELS = (
+    "# PlantHelixSeek finetuned checkpoints (Phase 06-01 registry freeze, 2026-10-03).",
+    "# Checkpoint commit shas (trust_remote_code provenance):",
+    "#   PlantHelixSeek-CRE  7093de3baf64bf59ac147be3971482a13238aabd",
+    "#   PlantHelixSeek-Anno 6d39386ab562b2a9a3d3581ebe28e235383c8d3c",
+    "# Freeze tooling is intentionally uncommitted (owner constraint 2026-10-02): it ran",
+    "# Registry enrichment: tokenizer_type / max_length (Phase 22-02, 2026-10-20).",
+)
+
+# Spot pins (T-22-05 mitigation): load-bearing enrichment values measured by
+# the one-time remote probes (D-01; recorded in the gitignored
+# .scratch/enrichment_results.json). hyenadna is pinned to the MEASURED
+# config.json max_seq_len=32770 (32k context + 2 special tokens), not the
+# repo-name 32k figure; the nucleotide-transformer pin (2050) likewise holds
+# the measured 2048+2 value.
+SPOT_PINNED_MAX_LENGTHS = {
+    "LongSafari/hyenadna-small-32k-seqlen-hf": 32770,
+    "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16": 131072,
+    "kuleshov-group/caduceus-ps_seqlen-131k_d_model-256_n_layer-16": 131072,
+    "zhangtaolab/plant-dnabert-BPE": 512,
+    "zhangtaolab/plant-nucleotide-transformer-BPE": 2050,
+}
+
+SPOT_PINNED_TOKENIZER_TYPES = {
+    "zhangtaolab/plant-dnabert-BPE": "DebertaV2Tokenizer",
+    "zhangtaolab/plant-dnabert-6mer": "EsmTokenizer",
+    "zhangtaolab/plant-dnamamba-singlebase": "EsmTokenizer",
+}
+
+# Finetuned entries whose base_model is not a registry pretrained id — the 14
+# external-based plantcad adapters (bases: kuleshov-group/PlantCAD2-Medium /
+# -Large, per EXTERNAL_BASE_ALLOWLIST above). They cannot inherit, so D-02
+# requires an explicit committed max_length on every one of them.
+EXPECTED_EXTERNAL_BASED_COUNT = 14
+
+
+def _positive_int(value) -> bool:
+    """True for a strict positive int (bool excluded, None excluded)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def test_all_pretrained_entries_carry_positive_int_max_length() -> None:
+    """Every pretrained entry carries max_length as a positive int (D-02, 49/49)."""
+    offenders = [e["model"] for e in _pretrained() if not _positive_int(e.get("max_length"))]
+    assert offenders == []
+
+
+def test_lab_pretrained_entries_carry_tokenizer_type() -> None:
+    """All 23 zhangtaolab pretrained entries carry a non-empty str tokenizer_type (D-03)."""
+    lab_pre = [e for e in _pretrained() if e["model"].startswith("zhangtaolab/")]
+    assert len(lab_pre) == 23
+    offenders = [
+        e["model"]
+        for e in lab_pre
+        if not isinstance(e.get("tokenizer_type"), str) or not e["tokenizer_type"]
+    ]
+    assert offenders == []
+
+
+def test_third_party_enrichment_values_present_or_absent_never_degenerate() -> None:
+    """A present enrichment field is a non-empty str / positive int — never null, empty, or 0.
+
+    Third-party gaps surface as ABSENT keys (D-03): the ``in`` checks below skip
+    absent keys and catch exactly the degenerate forms a hand-edit could
+    introduce (``tokenizer_type: null``, ``max_length: 0``).
+    """
+    for entry in _pretrained() + _finetuned():
+        if "tokenizer_type" in entry:
+            value = entry["tokenizer_type"]
+            assert isinstance(value, str), entry["model"]
+            assert value, entry["model"]
+        if "max_length" in entry:
+            assert _positive_int(entry["max_length"]), entry["model"]
+
+
+def test_finetuned_max_length_only_as_explicit_override() -> None:
+    """Committed finetuned max_length differs from the base's, or the base is external (D-02).
+
+    Identical values are inherited at query time and must never be duplicated
+    into the YAML; explicit values exist only for measured differences and for
+    the 14 external-based plantcad repos, whose bases sit outside the registry.
+    """
+    pre_max_length = {e["model"]: e.get("max_length") for e in _pretrained()}
+    for entry in _finetuned():
+        own = entry.get("max_length")
+        if own is None:
+            continue
+        base = entry.get("base_model")
+        if base in pre_max_length:
+            assert own != pre_max_length[base], (
+                f"{entry['model']}: duplicates its base's committed max_length "
+                f"{own} (D-02 forbids inheritance duplication)"
+            )
+    external = [e for e in _finetuned() if e.get("base_model") not in pre_max_length]
+    assert len(external) == EXPECTED_EXTERNAL_BASED_COUNT
+    assert all(e["model"].startswith("plantcad/") for e in external)
+    offenders = [e["model"] for e in external if not _positive_int(e.get("max_length"))]
+    assert offenders == []
+
+
+def test_provenance_blocks_present_verbatim() -> None:
+    """Each provenance sentinel appears exactly once in the file text (REG-03)."""
+    text = REGISTRY_PATH.read_text(encoding="utf-8")
+    for sentinel in PROVENANCE_SENTINELS:
+        assert text.count(sentinel) == 1, sentinel
+
+
+def test_registry_section_counts_unchanged() -> None:
+    """The enrichment is field-level insertion: counts stay 49 pretrained / 187 finetuned."""
+    assert len(_pretrained()) == EXPECTED_PRETRAINED_COUNT
+    assert len(_finetuned()) == EXPECTED_FINETUNED_COUNT
+
+
+def test_spot_pinned_enrichment_values() -> None:
+    """Load-bearing enrichment values keep their probe-measured pins (T-22-05)."""
+    by_repo = {e["model"]: e for e in _pretrained()}
+    for repo, expected in SPOT_PINNED_MAX_LENGTHS.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo].get("max_length") == expected, repo
+    for repo, expected in SPOT_PINNED_TOKENIZER_TYPES.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo].get("tokenizer_type") == expected, repo
