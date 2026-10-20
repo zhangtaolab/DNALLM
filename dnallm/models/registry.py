@@ -35,7 +35,19 @@ from ..utils import get_logger
 
 logger = get_logger("dnallm.models.registry")
 
-__all__ = ["RegistryEntry", "reload", "resolve", "try_resolve"]
+__all__ = [
+    "RegistryEntry",
+    "all_entries",
+    "effective_max_length",
+    "effective_tokenizer_type",
+    "get_by_base_model",
+    "get_by_task_type",
+    "is_lab_model",
+    "reload",
+    "resolve",
+    "sort_key_lab_first",
+    "try_resolve",
+]
 
 
 class TaskInfo(BaseModel):
@@ -259,3 +271,136 @@ def reload() -> None:
     this function is not needed at runtime.
     """
     _load_registry.cache_clear()
+
+
+def get_by_task_type(task_type: str) -> list[RegistryEntry]:
+    """Return every entry whose task_type matches, in file order.
+
+    Queries span both packaged sections (pretrained and finetuned).
+
+    Args:
+        task_type: Task class such as ``mask``, ``generation``, or ``binary``
+            (exact match).
+
+    Returns:
+        All matching entries in file order; an empty list when nothing
+        matches (never an entry, never a KeyError).
+    """
+    return [e for e in _load_registry().entries if e.task.task_type == task_type]
+
+
+def get_by_base_model(repo_id: str) -> list[RegistryEntry]:
+    """Return every finetuned entry whose base_model equals the repo id.
+
+    The base<->finetuned axis Phase 23's intent routing consumes ("fine-tune"
+    lists bases, "predict now" lists task models).
+
+    Args:
+        repo_id: Repo id of the base model (exact match).
+
+    Returns:
+        All matching finetuned entries in file order; an empty list when
+        nothing matches.
+    """
+    return [e for e in _load_registry().entries if e.base_model == repo_id]
+
+
+def all_entries() -> list[RegistryEntry]:
+    """Return all registry entries in file order (pretrained section first).
+
+    Returns:
+        A fresh list of the 236 typed frozen entries.
+    """
+    return list(_load_registry().entries)
+
+
+def is_lab_model(entry: RegistryEntry) -> bool:
+    """Return whether the entry is a lab model (``zhangtaolab/`` repo prefix).
+
+    The PFC-07 contract anchor: lab models rank first in every listing the
+    product surfaces.
+
+    Args:
+        entry: The registry entry to classify.
+
+    Returns:
+        True iff the entry's repo id starts with ``zhangtaolab/``.
+    """
+    return entry.model.startswith("zhangtaolab/")
+
+
+def sort_key_lab_first(entry: RegistryEntry) -> tuple[int, str]:
+    """Lab-first sort key: lab models before third-party, name-stable within each.
+
+    Args:
+        entry: The registry entry to rank.
+
+    Returns:
+        A ``(partition, name)`` tuple such that ``sorted(entries,
+        key=sort_key_lab_first)`` lists ``zhangtaolab/*`` entries first with
+        ascending-name order inside each partition.
+    """
+    return (0 if is_lab_model(entry) else 1, entry.name)
+
+
+def _effective_value(entry: RegistryEntry, attr: str, data: _RegistryData):
+    """Resolve an entry's effective value along the base_model chain (D-02).
+
+    The entry's own value wins; otherwise the chain of base models is
+    followed (resolved by repo id against the given parse result) with a
+    visited-set cycle guard, returning the first ancestor carrying a value.
+
+    Args:
+        entry: The starting entry.
+        attr: Attribute name to resolve (``max_length`` or
+            ``tokenizer_type``).
+        data: The registry parse result to resolve base models against.
+
+    Returns:
+        The effective value, or None when neither the entry nor its chain
+        carries one (including unresolvable bases and cycles — never a loop).
+    """
+    visited: set[str] = set()
+    current: RegistryEntry | None = entry
+    while current is not None:
+        if current.model in visited:
+            return None
+        visited.add(current.model)
+        value = getattr(current, attr)
+        if value is not None:
+            return value
+        if current.base_model is None:
+            return None
+        current = data.by_repo.get(current.base_model)
+    return None
+
+
+def effective_max_length(entry: RegistryEntry) -> int | None:
+    """Return the entry's effective max context length in tokens (D-02).
+
+    The entry's own ``max_length`` when set, otherwise the first value found
+    along its ``base_model`` chain; None when the chain carries none. No
+    runtime probing — missing enrichment surfaces as None.
+
+    Args:
+        entry: The registry entry.
+
+    Returns:
+        The effective positive int, or None.
+    """
+    return _effective_value(entry, "max_length", _load_registry())
+
+
+def effective_tokenizer_type(entry: RegistryEntry) -> str | None:
+    """Return the entry's effective tokenizer flavor (D-02).
+
+    The entry's own ``tokenizer_type`` when set, otherwise the first value
+    found along its ``base_model`` chain; None when the chain carries none.
+
+    Args:
+        entry: The registry entry.
+
+    Returns:
+        The effective tokenizer type, or None.
+    """
+    return _effective_value(entry, "tokenizer_type", _load_registry())
