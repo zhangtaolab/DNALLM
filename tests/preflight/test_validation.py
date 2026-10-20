@@ -695,6 +695,43 @@ def test_validate_data_explicit_list_valued_label_column_stringified(tmp_path) -
     assert report.label_dtype == "str"
 
 
+def test_validate_data_reader_pins_utf8_under_ascii_locale(tmp_path) -> None:
+    """The fasta/txt/header readers pin encoding="utf-8" (IN-03).
+
+    A UTF-8 file whose structural label carries a non-ASCII byte validates
+    even when the reading process's preferred encoding is ASCII — the
+    three bare ``open()`` calls would otherwise decode per-locale.
+    """
+    import os
+    import subprocess  # ruff: ignore[suspicious-subprocess-import]
+    import sys
+
+    fasta = tmp_path / "accent.fa"
+    fasta.write_text(">seq1|échantillon\nACGTACGTACGTACGTACGT\n", encoding="utf-8")
+    code = (
+        "from dnallm.preflight import validate_data;"
+        f"report = validate_data({str(fasta)!r});"
+        "print('ROWCOUNT=' + str(report.splits[0].row_count))"
+    )
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("LANG", "LC_ALL", "PYTHONUTF8", "PYTHONIOENCODING")
+    }
+    # -X utf8=0 + the C locale (with PEP 538 coercion disabled) makes the
+    # preferred encoding genuinely ASCII, so the pin is actually exercised.
+    env["LC_ALL"] = "C"
+    env["PYTHONCOERCECLOCALE"] = "0"
+
+    result = subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv only
+        [sys.executable, "-X", "utf8=0", "-c", code], capture_output=True, text=True, env=env
+    )
+
+    assert result.returncode == 0, result.stderr
+    # The package logger also writes to stdout; match the marker line.
+    assert "ROWCOUNT=1" in result.stdout
+
+
 def test_read_local_values_guard_raises(tmp_path) -> None:
     """The parity seam's own guards: unsupported suffix, empty list, missing column, pkl."""
     import dnallm.preflight.validation as validation_module

@@ -402,7 +402,7 @@ def _check_header_and_type(
     nor the label column name is parsed by the txt rule instead.
     """
     if file_type in ("csv", "tsv", "txt") and not isinstance(original, (list, tuple)):
-        with open(paths[0]) as f:
+        with open(paths[0], encoding="utf-8") as f:
             header = f.readline().strip()
         if not header or (seq_col not in header and label_col not in header):
             return "txt"
@@ -437,7 +437,7 @@ def _load_fasta(path: str, fasta_sep: str) -> tuple[list[str], list[str]]:
     (data.py:259-279, replicated verbatim).
     """
     sequences, labels = [], []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         seq = ""
         lab = None
         for line in f:
@@ -464,7 +464,7 @@ def _load_txt(path: str, seq_col: str, label_col: str, sep: str | None):
     fields; lines with fewer than two fields are skipped (data.py:282-300).
     """
     sequences, labels = [], []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
             if i == 0 and seq_col in line and label_col in line:
                 frame = _load_table([path], "csv", sep if sep else ",")
