@@ -4,7 +4,7 @@ This module turns a :class:`~dnallm.preflight.report.DataReport` into
 per-model :class:`~dnallm.preflight.report.ModelVerdict` objects. The
 registry (``dnallm.models.registry``, Phase 22) is the sole metadata
 source: every verdict fact resolves through ``try_resolve`` /
-``effective_max_length`` — this module never opens ``model_info.yaml``
+``effective_max_length`` — this module never opens the packaged registry file
 itself and never touches the network.
 
 This tracer slice implements the length dimension only, at char-level 1:1

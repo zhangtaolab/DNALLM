@@ -9,7 +9,7 @@ files, or any cache:
    only; nothing is written, dropped, or rewritten.
 2. The registry is the sole model-metadata source (REG-01): every verdict
    fact flows through ``dnallm.models.registry`` — this package never
-   parses ``model_info.yaml`` and never probes the network on this path.
+   parses the packaged registry YAML and never probes the network on this path.
 3. Import-light: modules under ``dnallm/preflight/`` never import
    torch/transformers/datasets (source-level discipline, enforced by
    ``tests/preflight/test_structure.py``); hub clients are confined to
