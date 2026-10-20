@@ -599,3 +599,83 @@ def test_registry_entries_are_frozen() -> None:
     entry = registry.resolve(PINNED_FINETUNED_NAME)
     with pytest.raises(ValidationError):
         entry.name = "mutated"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 22-02 enrichment-era live-inheritance proofs (D-02 over the committed data)
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_TOTAL_2202 = 236
+EXPECTED_PRETRAINED_2202 = 49
+EXPECTED_FINETUNED_2202 = 187
+EXPECTED_EXTERNAL_BASED_2202 = 14
+
+
+def test_effective_max_length_resolved_for_every_finetuned_entry() -> None:
+    """Every one of the 187 finetuned entries resolves a positive effective max_length (D-02).
+
+    Inheritance is live on the committed data: own override, base_model chain,
+    or the explicit value on external-based entries — never runtime probing.
+    """
+    registry.reload()
+    finetuned = [e for e in registry.all_entries() if e.kind == "finetuned"]
+    assert len(finetuned) == EXPECTED_FINETUNED_2202
+    bad = [
+        e.model
+        for e in finetuned
+        if not isinstance(registry.effective_max_length(e), int)
+        or registry.effective_max_length(e) <= 0
+    ]
+    assert bad == [], f"finetuned entries without a positive effective max_length: {bad}"
+
+
+def test_pretrained_effective_max_length_is_own_value() -> None:
+    """Each pretrained entry's effective max_length is its own committed value."""
+    registry.reload()
+    pretrained = [e for e in registry.all_entries() if e.kind == "pretrained"]
+    assert len(pretrained) == EXPECTED_PRETRAINED_2202
+    for e in pretrained:
+        assert isinstance(e.max_length, int), e.model
+        assert e.max_length > 0, e.model
+        assert registry.effective_max_length(e) == e.max_length, e.model
+
+
+def test_effective_tokenizer_type_inherits_from_base() -> None:
+    """The promoter entry's effective tokenizer_type comes from its base through the real chain."""
+    registry.reload()
+    promoter = registry.resolve(PINNED_FINETUNED_REPO)
+    base = registry.resolve(PINNED_FINETUNED_BASE)
+    assert registry.effective_tokenizer_type(promoter) == base.tokenizer_type
+    assert registry.effective_tokenizer_type(promoter) == "DebertaV2Tokenizer"
+
+
+def test_loader_validates_every_committed_entry() -> None:
+    """all_entries() returns 236 validated entries with the 49/187 kind split."""
+    registry.reload()
+    entries = registry.all_entries()
+    assert len(entries) == EXPECTED_TOTAL_2202
+    kinds = {"pretrained": 0, "finetuned": 0}
+    for e in entries:
+        kinds[e.kind] += 1
+    assert kinds == {"pretrained": EXPECTED_PRETRAINED_2202, "finetuned": EXPECTED_FINETUNED_2202}
+
+
+def test_external_based_entries_carry_explicit_max_length() -> None:
+    """The 14 external-based plantcad entries fall back to their own explicit value.
+
+    Their base_model points outside the registry (the two kuleshov-group
+    PlantCAD2 upstream repos), so nothing can be inherited — the explicit
+    committed 8192 is the effective value.
+    """
+    registry.reload()
+    pretrained_ids = {e.model for e in registry.all_entries() if e.kind == "pretrained"}
+    external = [
+        e
+        for e in registry.all_entries()
+        if e.kind == "finetuned" and e.base_model not in pretrained_ids
+    ]
+    assert len(external) == EXPECTED_EXTERNAL_BASED_2202
+    assert all(e.model.startswith("plantcad/") for e in external)
+    for e in external:
+        assert e.max_length == 8192, e.model
+        assert registry.effective_max_length(e) == e.max_length, e.model
