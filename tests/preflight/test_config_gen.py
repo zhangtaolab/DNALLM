@@ -164,11 +164,12 @@ class TestGenerateConfigEmission:
         carries it into the validated inference section (registry-as-truth)."""
         from dnallm.models import registry
 
-        entry = registry.try_resolve("zhangtaolab/plant-dnagemma-BPE")
+        entry = registry.try_resolve("zhangtaolab/plant-dnagpt-BPE-promoter")
         eff = registry.effective_max_length(entry)
-        assert eff is not None and eff != 512
+        assert eff is not None
+        assert eff != 512
 
-        result = generate_config("zhangtaolab/plant-dnagemma-BPE")
+        result = generate_config("zhangtaolab/plant-dnagpt-BPE-promoter")
 
         assert result.errors == []
         assert result.config["inference"].max_length == eff
@@ -189,9 +190,7 @@ class TestGenerateConfigEmission:
         TASK_TYPE_REQUIRED field-level error, never a traceback."""
         result = generate_config(BASE_REPO)
 
-        assert any(
-            "TASK_TYPE_REQUIRED" in e.message and e.section == "task" for e in result.errors
-        )
+        assert any("TASK_TYPE_REQUIRED" in e.message and e.section == "task" for e in result.errors)
         assert "task" not in result.config
         # Collect-all: the other sections still validate and return.
         assert result.config["model"] == {"name": BASE_REPO}
@@ -217,18 +216,17 @@ class TestCollectAllValidation:
         the fixed section order (task before finetune)."""
         from dnallm.preflight.config_gen import _validate_collect_all
 
-        configs, errors = _validate_collect_all(
-            {
-                "task": {"task_type": "bogus"},
-                "finetune": {"max_grad_norm": -1.0},
-            }
-        )
+        configs, errors = _validate_collect_all({
+            "task": {"task_type": "bogus"},
+            "finetune": {"max_grad_norm": -1.0},
+        })
 
         assert [e.section for e in errors] == ["task", "finetune"]
         assert errors[0].field == "task.task_type"
         assert errors[1].field == "finetune.max_grad_norm"
         # Neither broken section constructed; nothing raised.
-        assert "task" not in configs and "finetune" not in configs
+        assert "task" not in configs
+        assert "finetune" not in configs
 
     def test_section_error_field_paths_joined(self):
         """Each ValidationError errors() entry becomes a SectionError with the
@@ -236,9 +234,9 @@ class TestCollectAllValidation:
         error is model-level, e.g. loc == ())."""
         from dnallm.preflight.config_gen import _validate_collect_all
 
-        configs, errors = _validate_collect_all(
-            {"task": {"task_type": "multiclass", "num_labels": -1}}
-        )
+        _configs, errors = _validate_collect_all({
+            "task": {"task_type": "multiclass", "num_labels": -1}
+        })
 
         assert len(errors) == 1
         assert errors[0].section == "task"
@@ -249,9 +247,7 @@ class TestCollectAllValidation:
         """One section's failure never stops another from constructing."""
         from dnallm.preflight.config_gen import _validate_collect_all
 
-        configs, errors = _validate_collect_all(
-            {"task": {"task_type": "bogus"}, "lora": {"r": 16}}
-        )
+        configs, errors = _validate_collect_all({"task": {"task_type": "bogus"}, "lora": {"r": 16}})
 
         assert [e.section for e in errors] == ["task"]
         assert configs["lora"].r == 16
