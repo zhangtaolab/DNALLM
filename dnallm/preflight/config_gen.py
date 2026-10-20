@@ -4,7 +4,10 @@
    :class:`~dnallm.preflight.report.GeneratedConfig` carrying field-level
    :class:`~dnallm.preflight.report.SectionError` records — an unknown
    model, a missing task type, an invalid section value, or an unknown
-   patch key is a record in ``errors``, never a raised exception.
+   patch key is a record in ``errors``, never a raised exception. The one
+   sanctioned exception: a nonexistent/unreadable ``existing`` path raises
+   a matchable ``ValueError`` (WR-01), mirroring ``validate_data``'s
+   not-found contract.
 2. Collect-all: multiple broken sections each contribute their own error
    records in the fixed section order (``_SECTION_ORDER``); one section's
    failure never hides another's. A fully valid mapping validates through
@@ -305,10 +308,18 @@ def _load_existing(existing: str | Path) -> dict:
         The parsed mapping (an empty dict for an empty document).
 
     Raises:
+        ValueError: If the path does not exist or cannot be opened — a
+            matchable message mirroring ``validate_data``'s not-found
+            contract (WR-01), never a raw ``OSError`` traceback.
         yaml.YAMLError: If the document is not safely constructible.
     """
-    with open(existing, encoding="utf-8") as f:
-        data = yaml.load(f, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # ruff: ignore[unsafe-yaml-load]
+    try:
+        with open(existing, encoding="utf-8") as f:
+            data = yaml.load(f, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # ruff: ignore[unsafe-yaml-load]
+    except FileNotFoundError as e:
+        raise ValueError(f"Existing config not found: {existing}.") from e
+    except OSError as e:
+        raise ValueError(f"Existing config not readable: {existing}: {e}") from e
     return data if isinstance(data, dict) else {}
 
 
@@ -391,6 +402,11 @@ def edit_config(
     Returns:
         The :class:`GeneratedConfig` with every successfully validated
         section and the ordered field-level error records.
+
+    Raises:
+        ValueError: If ``existing`` is a path that does not exist or
+            cannot be read — a matchable message consistent with
+            ``validate_data``'s not-found contract (WR-01).
     """
     if isinstance(existing, dict):
         # Deep copy: patching overwrites fields inside section dicts, and

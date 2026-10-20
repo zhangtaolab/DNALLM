@@ -476,6 +476,20 @@ class TestEditConfigRoundTrip:
         assert result.config["task"].task_type == "multiclass"
         assert result.config["task"].label_names == ["class_0", "class_1", "class_2"]
 
+    def test_nonexistent_existing_path_raises_matchable_value_error(self, tmp_path):
+        """A nonexistent existing path raises ValueError, never a raw
+        FileNotFoundError (WR-01) — the matchable contract validate_data
+        already follows for the same user mistake."""
+        missing = tmp_path / "no-such-config.yaml"
+
+        with pytest.raises(ValueError, match=r"Existing config not found"):
+            edit_config(missing, {})
+
+    def test_unreadable_existing_path_raises_matchable_value_error(self, tmp_path):
+        """A directory as the existing path raises ValueError too, not OSError."""
+        with pytest.raises(ValueError, match=r"Existing config not readable"):
+            edit_config(tmp_path, {})
+
 
 class TestYamlDumpContract:
     """Write only when output_path is given (D-15); never touch the input."""
