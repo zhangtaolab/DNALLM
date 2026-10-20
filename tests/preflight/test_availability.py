@@ -807,29 +807,35 @@ def test_timeout_injected_prober_returns_probe_timeout(monkeypatch) -> None:
 # Task 3c: real-network acceptance (slow lane, exactly one network test).
 # Deselected locally via -m "not slow"; exercised by CI's slow leg. The typed
 # skip prefix matches tests/expected_skips.yaml's existing network entry.
+# WR-04: the reachability check runs INSIDE the test body (lazy skip), never
+# at collection time, and uses only the stdlib — no undeclared httpx import.
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SLOW_LANE_MODEL = "zhangtaolab/plant-dnabert-BPE"  # dual-homed lab model
 
 
-def _any_model_hub_reachable() -> bool:
-    """True when at least one of the two probed hubs answers at all."""
-    import httpx
+def _any_model_hub_reachable(timeout: float = 5.0) -> bool:
+    """True when at least one of the two probed hubs answers at all.
+
+    stdlib ``urllib.request`` only (WR-04: httpx is not a declared test
+    dependency); any HTTP response at all — including a 4xx/5xx — proves
+    the host is reachable.
+    """
+    import urllib.error
+    import urllib.request
 
     for url in ("https://www.modelscope.cn", "https://huggingface.co"):
         try:
-            httpx.get(url, timeout=5.0)
+            urllib.request.urlopen(url, timeout=timeout)  # ruff: ignore[suspicious-url-open-usage]  # fixed https constants only
             return True
-        except httpx.TransportError:
+        except urllib.error.HTTPError:
+            return True  # an HTTP error response still proves reachability
+        except OSError:
             continue
     return False
 
 
 @pytest.mark.slow
-@pytest.mark.skipif(
-    not _any_model_hub_reachable(),
-    reason="network-unavailable: no model hub reachable (modelscope.cn / huggingface.co)",
-)
 def test_slow_real_network_dual_homed_lab_model() -> None:
     """Probe a real dual-homed lab model end-to-end; the report is well-formed.
 
@@ -838,6 +844,8 @@ def test_slow_real_network_dual_homed_lab_model() -> None:
     The only hard assertions: no exception, a three-value state, and a
     positive exact integer size whenever the probe confirms remotely.
     """
+    if not _any_model_hub_reachable():
+        pytest.skip("network-unavailable: no model hub reachable (modelscope.cn / huggingface.co)")
     report = probe_availability(_SLOW_LANE_MODEL, timeout=30.0)
 
     assert report.state in (CACHED, REMOTE_CONFIRMED, UNKNOWN)
