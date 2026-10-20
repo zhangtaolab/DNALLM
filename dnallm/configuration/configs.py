@@ -705,7 +705,7 @@ def validate_sections(config_dict: dict) -> DNALLMConfig:
     ``model`` section stays a plain dict (passthrough, never validated).
 
     Args:
-        config_dict (dict): The raw config mapping. ``load_config`` injects
+        config_dict: The raw config mapping. ``load_config`` injects
             the resolved ``config_path`` key into it before calling; the
             benchmark section consumes this FULL raw dict.
 
