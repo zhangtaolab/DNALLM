@@ -1,334 +1,310 @@
 # Architecture Research
 
-**Domain:** Integration of v1.3 "Platform Reach & Packaging Honesty" onto the existing DNALLM architecture — Windows platform parity (numpy genomic interval evaluators), packaging/extras honesty, publish-chain robustness, docs accuracy, ollama test-surface removal, GAP-1 transformers 5.x remote-code compat
-**Researched:** 2026-10-11 (milestone v1.3, branch `v1.3`)
-**Confidence:** HIGH for all codebase integration points — every claim verified against the working tree (pyproject.toml, ci.yml, publish.yml, `tests/examples/*`, `example/notebooks/finetune_NER_task/*`, `example/notebooks/plant_helixseek_cre/*.ipynb`, `dnallm/utils/genomic_coords.py`, `dnallm/utils/transformers_compat.py`, `.planning/WINDOWS.md` ledger #11–#20, spike summaries 261010-wx2 / 261011-0a3). MEDIUM only for the two externally-grounded publish-chain topics (web-sourced, cross-checked) and where a planning-time decision is deliberately open (flagged inline as **decision needed**).
+**Domain:** Pre-flight UX core + registry-as-truth-source integration into DNALLM (v1.4, Track A)
+**Researched:** 2026-10-20
+**Confidence:** HIGH (every integration point verified by direct file read in this checkout; hub APIs verified against installed versions)
 
----
+**Scope:** Only the NEW features' integration with the existing architecture. The existing seams are taken as given per the milestone context. Builds on `.planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md` Part 5 (§5.3 API-first rule, §5.5 Track A scope).
 
-## Standard Architecture
-
-### System Overview
-
-The v1.3 features decompose into **five integration shapes**, none of which restructures a layer:
-
-1. **New import-pure library module** — the numpy interval evaluators land as a sibling of `dnallm.utils.genomic_coords` (the sanctioned precedent for genomic helper modules at 100% statement coverage).
-2. **Runtime dispatch at example-code acquisition seams** — platform forks inside `example/` code and its `docs/example/` byte-identical mirrors; the library itself stays platform-uniform (dispatch lives in consumers, never in `dnallm/`).
-3. **Platform-aware test gates** — the three existing probe-gate sites flip from "skip when pybedtools/bedtools absent" to "pass via the numpy path on Windows"; the frozen truth chain (selection.md bands) stays single-sourced.
-4. **CI/publish workflow surgery** — a new publish-smoke dry-run job, test-windows promoted to the numpy-path executor, ollama stage-3 excision from example-nightly, extras re-scope in pyproject.
-5. **Compat-shim extension** — GAP-1 extends the existing absence-gated attach pattern in `dnallm/utils/transformers_compat.py` (or removes the affected surfaces).
+## System Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ CI / PUBLISH LAYER (workflow files)                                          │
-│  ci.yml:  test-windows → numpy-path executor (frozen-value fast tests)       │
-│           example-nightly: stage 3 + 2.5 excised (ollama directive),        │
-│           D-03 census triple re-pinned; test-cuda matrix updated on         │
-│           cuda121 retirement                                                 │
-│  publish.yml: NEW publish-smoke job (periodic workflow_dispatch dry-run;    │
-│           OIDC trusted-publishing migration lands here or is deferred)      │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ EXAMPLE LAYER (example/ + byte-identical docs/example/ mirrors)              │
-│  generate_bpe_dataset.py:7,249   ← platform fork (import + loj call)        │
-│  data_generation_and_inference.ipynb cells 0/2/8 ← same fork + install cell │
-│  plant_helixseek_cre.ipynb cell 11 ← jaccard subprocess fork                 │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ TEST-GATE LAYER (tests/examples/)                                            │
-│  test_script_execution.py:128  _gate_script_pybedtools → platform-aware      │
-│  test_notebook_execution.py:1397 _gate_pybedtools (via _ACTIVE_             │
-│    NOTEBOOK_GATES) → platform-aware;  ollama gates/entries removed          │
-│  test_plant_helixseek_showcase.py:523 which('bedtools') assert → fork       │
-│  NEW fast frozen-value tests (not slow-marked) → run on test-windows        │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ LIBRARY LAYER (dnallm/) — platform-uniform, no dispatch here                 │
-│  NEW dnallm/utils/genomic_intervals.py:  parse_bed(BED3+), jaccard(a,b),    │
-│    loj_intersect(a,b) + pinned null-fill; numpy-only, outside every         │
-│    coverage omit glob; re-exported from dnallm/utils/__init__.py            │
-│  dnallm/utils/transformers_compat.py: GAP-1 absence-gated attach of         │
-│    PretrainedConfig defaults (is_decoder/add_cross_attention) — or removal  │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ PACKAGING SURFACE (pyproject.toml)                                           │
-│  [project.optional-dependencies]: base re-scope, cuda121 retirement,        │
-│    rocm restore-or-remove, mypy cap in dev;  [tool.uv] indexes/sources/     │
-│    conflicts kept in sync;  platform_system != 'Windows' markers unchanged  │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│ SHELLS (presentation only — zero verdict logic)                          │
+│  ┌────────────────────┐  ┌──────────────┐  ┌──────────┐  ┌────────────┐ │
+│  │ dnallm/tui/        │  │ future MCP   │  │ CLI      │  │ notebooks  │ │
+│  │ screens (Textual,  │  │ preflight    │  │ dnallm   │  │            │ │
+│  │ thread workers)    │  │ tools        │  │ preflight│  │            │ │
+│  └─────────┬──────────┘  └──────┬───────┘  └────┬─────┘  └─────┬──────┘ │
+├────────────┴────────────────────┴───────────────┴───────────────┴────────┤
+│ PRE-FLIGHT CORE (NEW: dnallm/preflight/ — pure functions, sync, no I/O   │
+│ in verdict logic; I/O behind injectable seams)                           │
+│  validate_data()  check_compatibility()  generate_config()               │
+│  probe_availability() (injectable prober: HF HfApi / ModelScope HubApi)  │
+├─────────────────────────────────┬─────────────────────────────────────────┤
+│ REGISTRY RUNTIME LOADER (NEW)   │ EXISTING LAYERS (modified at seams      │
+│ dnallm/models/registry.py       │ only)                                   │
+│ single owner of model_info.yaml │  load_preset_model  (model.py:1567)     │
+│ 236 entries, cached, package-   │  MCPConfigManager   (config_manager.py) │
+│ data aware                      │  ModelManager/_get_all_available_models │
+│        ▲ consumed by ───────────┼─ DNADataset stats (data.py:1340)        │
+│        │                        │  load_config Pydantic sections          │
+│        │                        │  (configs.py:712-745)                   │
+└────────┴────────────────────────┴─────────────────────────────────────────┘
 ```
 
-### Component Responsibilities
+The core rule (survey §5.3): **the TUI is one consumer, not the owner of the logic**. Same for MCP tools and notebooks. The registry loader is the single parse owner; `model_info.yaml` is read exactly once per process.
 
-| Component | Responsibility | Integration for v1.3 |
-|-----------|----------------|---------------------|
-| `dnallm/utils/genomic_intervals.py` (NEW) | Pure-numpy BED interval arithmetic: `parse_bed` (BED3+, file order preserved, never sorted), `jaccard` (merge with bookend coalescing, exact-string chrom keys), `loj_intersect` (A-file-order join, B-file-order hits, oracle-pinned null fill). Port of the two VERDICT-PARITY spike cores (261010-wx2, 261011-0a3) from spike artifacts to library code | The dependency root of the whole Windows-parity feature |
-| `dnallm/utils/__init__.py` | Re-exports utils symbols | Add the new module's public names (genomic_coords precedent) |
-| `tests/utils/test_genomic_intervals.py` (NEW) | Unit + parity-fixture tests: committed `.bed` pairs with frozen oracle outputs; edge cases (boundary touching, chrom isolation, duplicates, empty B, null vector at NER 6-column shape); **no bedtools binary required** | Fast, non-slow-marked → runs on every leg including test-windows |
-| `tests/examples/_execution.py` | Private execution harness + typed-skip helpers + `NOTEBOOK_EXEC_SPECS` | Remove the two mcp_example spec entries + `LANGCHAIN_*` kernel constants (ollama directive); no dispatch logic added here |
-| `tests/examples/test_notebook_execution.py` | Notebook execution census + gates | Remove `_gate_ollama_stack`/`GATED_NOTEBOOKS` ollama entries/`_TIMEOUT_7200_GATED` ollama rows; make `_gate_pybedtools` platform-aware |
-| `tests/examples/test_script_execution.py` | Script lane | Make `_gate_script_pybedtools` platform-aware; GAP-1 disposition consumes/removes the `_NT_STRUCTURAL_MARKER` skip ladder |
-| `tests/examples/test_plant_helixseek_showcase.py` | Showcase band assertions (selection.md-parsed) | Line 523 `which('bedtools')` assert becomes platform-forked; band parsing untouched |
-| `.github/workflows/ci.yml` | Multi-job CI | test-windows gains the numpy-path execution surface; example-nightly stage 2.5/3 + `-k "not mcp_example"` selectors + D-03 triple re-pinned; test-cuda matrix legs updated for cuda121 retirement |
-| `.github/workflows/publish.yml` | Release chain | NEW publish-smoke job; OIDC migration decision point; mypy behavior surfaced here |
-| `pyproject.toml` | Package + extras + tooling config | Extras re-scope; mypy cap; coverage denominator untouched (new module counts — it must stay outside the 7-entry omit list) |
-| `tests/test_extras_guard.py`, `tests/test_runner_infra_contracts.py`, `tests/test_models_lock_contracts.py` | Contract tests pinning extras membership, runner unit file, models.lock rows | Ollama refs removed/skip-marked per item; extras-guard expectations updated to the re-scoped extras |
-| `example/` + `docs/example/` mirrors | Executable examples, byte-identical under `scripts/check_docs_sync.py` | Every platform-fork edit writes both copies in the same change |
+## Component Responsibilities
 
-## Recommended Project Structure
+### NEW components
 
-```
-dnallm/
-├── utils/
-│   ├── genomic_coords.py          # EXISTING precedent: import-pure, 100% cov,
-│   │                              #   validated-input, ValueError-loud helpers
-│   ├── genomic_intervals.py       # NEW: numpy jaccard + loj_intersect + parse_bed
-│   │                              #   (the spike cores, productionized)
-│   └── transformers_compat.py     # EXISTING absence-gated attach precedent;
-│                                  #   GAP-1 extends here (or removal is chosen)
-tests/
-├── utils/
-│   └── test_genomic_intervals.py  # NEW: mirror of test_genomic_coords.py shape;
-│                                  #   committed oracle fixtures, fast/non-slow
-├── examples/
-│   ├── _execution.py              # MODIFIED: ollama surface removal only
-│   ├── test_script_execution.py   # MODIFIED: platform-aware gate; GAP-1 ladder
-│   ├── test_notebook_execution.py # MODIFIED: ollama removal + platform-aware gate
-│   └── test_plant_helixseek_showcase.py  # MODIFIED: platform-forked bedtools assert
-example/notebooks/finetune_NER_task/
-│   ├── generate_bpe_dataset.py    # MODIFIED: platform fork at :7 (import) and
-│   │                              #   :249 (loj acquisition)
-│   └── data_generation_and_inference.ipynb  # MODIFIED: cells 0/2/8 fork
-example/notebooks/plant_helixseek_cre/
-│   └── plant_helixseek_cre.ipynb  # MODIFIED: cell 11 jaccard fork (md cells
-│                                  #   0/10/22 stay bedtools-worded — historical)
-docs/example/...                   # MODIFIED: byte-identical mirrors of the above
-.github/workflows/
-│   ├── ci.yml                     # MODIFIED: windows leg, ollama excision, matrix
-│   └── publish.yml                # MODIFIED: publish-smoke job (+ OIDC?)
-```
+| Component | Location | Responsibility | Consumes |
+|-----------|----------|----------------|----------|
+| Registry loader | `dnallm/models/registry.py` (new) | Parse + cache `model_info.yaml`; typed entries; lookups by name / repo id / task_type / base_model; resolve(name) → repo id + task metadata | package data only (no internal deps) |
+| Pre-flight core | `dnallm/preflight/` (new package: `validation.py`, `compatibility.py`, `config_gen.py`, `availability.py`, `report.py` for the result types) | Pure verdict functions + injectable probe seam; NO textual/torch-load imports beyond what stats need | registry loader, `DNADataset.load_local_data`/`statistics()`, `PRETRAIN_MODEL_MAPS`/`MODEL_INFO` family metadata, Pydantic config sections |
+| TUI shell | `dnallm/tui/` (new package behind `tui` extra) | Screens only: env → data → suitability → config panels; thread workers call core synchronously | preflight core, registry loader; textual>=8.2,<9 + platformdirs (mirror dnallmmark pin, survey §5.5) |
+| `dnallm preflight` CLI | new subcommand in `dnallm/cli/cli.py` | Headless entry: `--data`, `--model`, `--emit-config`; lazy-imports `dnallm.preflight` / `dnallm.tui` inside the command body (existing lazy-import convention) | preflight core |
 
-### Structure Rationale
+### MODIFIED components (existing files, explicit deltas)
 
-- **`dnallm/utils/genomic_intervals.py` (one module, not two):** jaccard and loj share `parse_bed` (BED3+ parsing with the loud-ValueError contract), the exact-string chromosome grouping, and the int64 half-open arithmetic; splitting them would duplicate the parser and the validation docstring discipline. `genomic_coords` is the naming/behavior precedent (silent-empty structurally impossible; every function validates). numpy is a core dependency (`numpy>=2.0.0` in base `[project.dependencies]`), so top-level `import numpy` is fine — unlike `genomic_coords`'s lazy `pyfastx` (a dev extra).
-- **Must stay OUTSIDE the coverage omit globs:** the 7-entry `[tool.coverage.run]` omit list excludes vendored/unimportable code. The new module must be provably outside `*/dnallm/tasks/metrics/*` and friends — same proof duty `metric_registry.py` discharged in v1.2 (AST-proven import-light, outside the glob). It counts toward the shared `fail_under=90` floor on every leg.
-- **Do NOT place it in `dnallm/tasks/` or `dnallm/inference/`:** it is not a task metric (not in the metric-registry emission chain) and not inference; it is a genomic utility consumed by example code and tests. Placement anywhere else would also entangle it with facades that stay byte-stable.
+| Component | File:line | Change |
+|-----------|-----------|--------|
+| `load_preset_model` | `dnallm/models/model.py:1567-1614` | Resolve registry entries (names like `"Plant DNABERT BPE promoter"`) via the registry loader — repo id + num_labels/label_names/threshold patched into the TaskConfig — before/instead of the family-dict path; keep the MODEL_INFO family-name path for names like `"Plant DNABERT"` |
+| `_get_all_available_models` | `dnallm/mcp/server.py:818-829` | Serve the registry (236 entries) with a configured/loaded overlay instead of configured-only; the in-source comment at `server.py:821` ("This would integrate with model_info.yaml") is the marked intent — fix the name/reality mismatch (known defect, PROJECT.md scope note) |
+| `MCPConfigManager` | `dnallm/mcp/config_manager.py:20`, extend `validate_model_references` (:232) | Startup consistency check of per-model inference YAMLs against registry entries (see MCP Consistency section) |
+| `pyproject.toml` | extras block (:81-159) | Add `tui = ["textual>=8.2,<9", "platformdirs>=..."]`; remove the `base` alias (scheduled for v1.4 removal at :150-156); add package-data if any new YAML ships outside existing globs (existing `"dnallm" = ["*.yaml", ...]` already covers `dnallm/models/model_info.yaml`) |
+| Coverage omit list | `[tool.coverage.run]` in pyproject.toml | **Do NOT add `dnallm/tui/`** — keep it in the denominator; cover screens via Textual's `run_test()` Pilot (pytest-asyncio auto mode already configured). Presentation-thin screens keep the burden small |
 
-## Architectural Patterns
+## Registry Runtime Loader (integration point 2 — build first)
 
-### Pattern 1: Acquisition-fork, consumption-uniform (platform dispatch in example code)
+**What exists today (verified):**
+- `dnallm/models/model_info.yaml`: two top-level keys — `pretrained` (49 entries; keys `name`, `model`, `task{describe, task_type}`) and `finetuned` (187 entries; adds `base_model`, `task.num_labels`, `task.label_names`, `task.threshold`). 236 total; 187 entries carry `base_model` lineage (post 261020-kwt backfill).
+- `model_info.yaml` is referenced at runtime **nowhere** — the only mention in `dnallm/` is a comment at `dnallm/mcp/server.py:821`. It is pure package data today.
+- `load_preset_model` (`model.py:1567`) imports `MODEL_INFO` from `modeling_auto.py` — the hand-maintained family dict (`title`/`reference`/`model_architecture`/`model_tags`/`huggingface[]`/`modelscope[]`/`default`).
 
-**What:** The platform fork happens ONLY where the bedtools/pybedtools API is acquired; everything downstream consumes a uniform row interface.
-**When to use:** `generate_bpe_dataset.py:7,249`, notebook cells 2/8, CRE cell 11.
-**Trade-offs:** One fork point per file instead of scatter; the `tokens_to_nerdata` traversal body stays byte-identical across platforms.
+**Latent defect found (verified by grep):** `MODEL_INFO[model].get("preset", [])` at `model.py:1598` — **no entry in `modeling_auto.py` has a `preset` key**, so `preset_models` is always `[]`. Today `load_preset_model` only works when `model_name` is an exact family key (e.g. `"Plant DNABERT"` → its `default` repo). None of the 236 registry names ever resolve through it. The registry loader replaces this dead path — this is not a behavior change to protect, it is a hole to fill (regression-test the family-name path; the registry-name path is net-new).
+
+**Design:**
 
 ```python
-# generate_bpe_dataset.py — fork at import (top)
-import platform
-_IS_WINDOWS = platform.system() == "Windows"
-if _IS_WINDOWS:
-    from dnallm.utils.genomic_intervals import loj_intersect
-else:
-    from pybedtools import BedTool          # line 7 today
+# dnallm/models/registry.py (sketch)
+@dataclass(frozen=True)
+class RegistryEntry:
+    name: str                 # "Plant DNABERT BPE promoter"
+    repo_id: str              # "zhangtaolab/plant-dnabert-BPE-promoter"
+    task_type: str            # binary | multiclass | regression | multilabel | mask | generation | token | classification
+    describe: str
+    kind: str                 # "pretrained" | "finetuned"
+    num_labels: int | None
+    label_names: tuple[str, ...] | None
+    threshold: float | None
+    base_model: str | None    # repo id of the pretrained backbone (187/187 finetuned)
 
-# fork at acquisition (line 249 today) — emit a uniform row object either way
-if _IS_WINDOWS:
-    rows = _adapt(loj_intersect(tokens_bed, annotation_bed))   # namedtuple rows
-else:
-    rows = BedTool(tokens_bed).intersect(annotation_bed, loj=True)
-# consumer loop (iv.chrom/iv.start/iv.end/iv.name/iv.fields[4]/iv.fields[9]/iv.fields[10])
-# is UNCHANGED below this line on both platforms
+@lru_cache(maxsize=1)
+def _load_registry() -> Registry: ...
+def get_entry(name: str) -> RegistryEntry | None        # by registry name
+def resolve(name: str) -> RegistryEntry | None           # name OR repo_id
+def by_task_type(t: str) -> list[RegistryEntry]
+def by_base_model(repo_id: str) -> list[RegistryEntry]   # base<->finetuned axis
+def all_entries() -> list[RegistryEntry]
+def reload() -> None                                     # test/consistency hook
 ```
 
-The adapter is the load-bearing piece: the numpy path must yield objects with `.chrom/.start/.end/.name/.fields` (a namedtuple with a `fields` tuple suffices) so the `name == "-1"` intergenic branch — which the 0a3 pin proved FIRES because bedtools emits `-1` in the B score slot at the 6-column shape — keeps firing on the exact same field. A port that returns bare lists would force forking the consumer too, which is exactly what to avoid.
+- **Package-data aware:** load via `importlib.resources.files("dnallm.models") / "model_info.yaml"` (or `dnallm` package root per the existing package-data glob) — never a `__file__`-relative open; works from wheel installs. PyYAML is already a core dependency (`load_config` uses it).
+- **Cached:** one parse per process (`lru_cache`); provide `reload()` for tests and the MCP `reload_configurations` path (`config_manager.py:225`).
+- **Single owner:** no other module may `yaml.safe_load` this file. Add a repo-wide grep guard test (pattern precedent: `tests/test_extras_guard.py`).
+- **zhangtaolab-first ordering** (PROJECT.md target): expose `is_lab_model` (repo_id prefix `zhangtaolab/`) or a sort key so the TUI and MCP listings can prioritize without re-filtering.
 
-**Spike-derived contracts the port MUST carry (from report.txt pins):**
-- Null-B fill per column count: chrom-col `.`, start/end `-1`, name `.`; score slot `-1` at B-count 6 (always), content-dependent at count 5, `.` at ≥7. Production port should assert the 6-column NER shape or port `_null_b_fields` whole.
-- Plain `-loj` emits A-file order, per-A B hits in B-file order, unsorted input accepted — never sort.
-- Join, not merge: duplicates multiply per copy; the consumer's `token_seen` dedup absorbs A-side duplication — do not dedup early.
-- jaccard: merge coalesces bookended adjacency; exact-string chrom keys (`Chr1 != chr1`); `n_intersections` is NOT portable (bedtools counts raw A rows = 51 vs merged = 45 on the frozen pair) — exclude that field from any production contract.
+## Pre-flight Core (integration point 1)
 
-### Pattern 2: Gate inversion on Windows (probe-then-execute → dispatch-then-execute)
+`dnallm/preflight/` — synchronous, pure where possible. Every function returns a report object; nothing raises on untrusted input shapes (dnallmmark `custom_validation` precedent: collect-all, never blow up).
 
-**What:** The three existing gates probe for a Linux-only dependency and skip when absent. On Windows the numpy path makes the dependency unnecessary, so the gate inverts: no probe needed (numpy + dnallm are always importable), the test executes for real.
-**When to use:** `_gate_script_pybedtools` (test_script_execution.py:128), `_gate_pybedtools` (test_notebook_execution.py:1397, wired through `_ACTIVE_NOTEBOOK_GATES`), the `which('bedtools')` assert (test_plant_helixseek_showcase.py:523).
-**Trade-offs:** Keeps the Linux lanes byte-identical in behavior (gate still probes and passes on Linux where the dev extra installs pybedtools); on Windows the gate function becomes a no-op or probes `dnallm.utils.genomic_intervals` importability instead.
+### `validate_data(source, seq_col, label_col, max_length, ...) -> DataReport`
 
-```python
-def _gate_script_pybedtools() -> None:
-    if platform.system() == "Windows":
-        return  # numpy path: no pybedtools/bedtools prerequisite exists
-    spec = importlib.util.find_spec("pybedtools")
-    ...  # unchanged Linux probe-then-skip
-```
+- **Reuses, does not replace:** `DNADataset.load_local_data` (`dnallm/datahandling/data.py:82`) for loading (csv/tsv/json/parquet/fasta/txt/pkl already supported) and `DNADataset.statistics()` (`data.py:1340`) for n/length-min-max-mean-median/label distribution/GC/composition.
+- **Report-only — critical distinction:** `DNADataset.validate_sequences` (`data.py:864`) is a DESTRUCTIVE filter (drops whole rows). Pre-flight must not mutate; it computes what *would* be dropped, per criterion (charset, length bounds), plus warnings the stats don't give (label-column cardinality vs task_type, multilabel separator consistency, empty/duplicate rows, file-format sniffing).
+- `DataReport`: `{n_samples, n_dropped_charset, n_dropped_length, length: {min,max,mean,median,p95}, alphabet_observed: set, label_distribution, file_format, warnings: list}`. Serializable (dict/JSON) for MCP/notebook shells.
 
-The showcase assert (line 523) is the fail-loud variant: on Windows it should still fail loud — asserting the numpy path prerequisites — rather than becoming silent. The Windows-first-exposure contract tests for these gates (the `TestScriptGateContracts` / `TestActiveNotebookGates` classes) get sibling cases for the Windows branch (monkeypatched `platform.system`), preserving the same-change-test discipline.
+### `check_compatibility(model, data_report, task_type, device, quantization=None) -> list[Verdict]`
 
-### Pattern 3: Single-sourced frozen truth with pinned tolerance (no truth-chain fork)
+Pure function. Inputs from three existing sources — this is where the scattered suitability facts (survey §5.2) get centralized:
 
-**What:** selection.md stays the ONLY source of bands/floors, parsed at test startup on every path (`_parse_floors`/`_parse_bands`, parse-guarded). The numpy path asserts against the SAME parsed bands — never literals, never a Windows-specific copy.
-**When to use:** the dual-path acceptance (`exon_f1=0.7522` in band on both paths; CRE jaccard band [0.3, 1.00] both paths).
-**Trade-offs:** the tolerance pin is comparison-layer only: numpy yields trailing float deltas (e.g. `0.3247270000001`), so exact-equality comparisons against frozen values get a pinned tolerance (round-to-6dp or `abs(diff) <= 1e-9` — the wx2 evidence: full-precision `0.32472687098490116` rounds to the recorded 6-dp anchor `0.324727`). The selection.md bands themselves are wide ([0.3, 1.00]) and need no change. Note honestly: `exon_f1` is currently evidence-only (no band) in the Anno notebook; pinning its Windows-path band/tolerance is part of v1.3's frozen-value pinning work.
+1. **Registry entry** (via the loader): task_type match, num_labels vs data label cardinality, threshold presence for binary.
+2. **Family metadata** (`modeling_auto.py` `MODEL_INFO`): `model_tags` (BPE/6mer/singlebase → tokenizer kind; k-mer tokenizers dilute effective context: a 6mer tokenizer turns 3072 tokens into ~18kb sequence max — compute length feasibility from `data_report.length`), `model_architecture`, family membership.
+3. **Special-handler constraints** (hardcoded facts, first-class here): mamba forces CUDA/CPU + fp32 (`dnallm/inference/inference.py:140-146`), evo-class size (~12.3 GB, survey §5.2) and FP8 capability gating (`dnallm/configuration/evo/*.yml` selection logic), strict-charset families (13 families reject non-`ACGTacgt` input — the cross-model comparability hazard documented in the `validate_sequences` docstring at `data.py:871-882`), device availability (CUDA → MPS → XPU → CPU order, `model.py:667`).
+4. **Availability probe result** (from `probe_availability`, passed in — keeps this function pure).
 
-### Pattern 4: Absence-gated attach (GAP-1 compat shim) — existing precedent
+`Verdict`: `{dimension: charset|length|task|head|device|size|availability, status: ok|warn|fail, message, evidence}`. Fail = do not proceed; warn = proceed with eyes open; the TUI renders these as panel rows (dnallmmark env_check eight-row table pattern).
 
-**What:** `transformers_compat.py` already vendors removed upstream helpers and re-attaches them "per name only where the module does not already expose it." GAP-1 extends the same pattern: 4.x-era remote `modeling_esm.py` reads `config.is_decoder` / `config.add_cross_attention` — defaults removed in transformers 5.x.
-**When to use:** if the shim disposition is chosen for windows #11/#12. The shim attaches the missing defaults onto `PretrainedConfig` (or a targeted subset) only when the attributes are absent, so transformers 4.49–5.x both work untouched.
-**Trade-offs:** shim keeps the benchmark third model (#11) and the script-lane pkl leg (#12) alive and unskips them (closing #15 "rides along if shimming succeeds" per PROJECT.md); removal is the lighter long-term surface but costs the benchmark notebook a registry model and leaves the script lane gated. **Decision needed at planning time** (the milestone scope says so); architecturally the shim is a small, precedent-shaped extension — the removal is a subtraction from example code + models.lock.
+### `generate_config(...) -> dict` (integration point 4)
 
-### Pattern 5: Dry-run publish smoke (release-chain canary)
+- Emits **plain section dicts** (`task` / `model` / `inference` / `finetune` / `lora`), then validates by constructing the SAME Pydantic sections `load_config` constructs (`dnallm/configuration/configs.py:712-745`: `TaskConfig`, `InferenceConfig`, `TrainingConfig`, `LoraConfig`, ...).
+- **Collect-all validation:** iterate `ValidationError.errors()` across all sections — every bad field at once (R4's panel needs this; Pydantic raises on the first section otherwise). Valid-by-construction output: serialize with `yaml.safe_dump` only after every section constructs clean.
+- **Recommended small refactor (within the "no refactors beyond need" constraint — this one IS the need):** factor a `validate_sections(config_dict) -> DNALLMConfig` helper out of `load_config` (configs.py:698-747) so file-loading and generation share one validation path. `load_config` becomes file-read + `validate_sections`; `generate_config` becomes build-dicts + `validate_sections`. No behavior change to `load_config`.
+- Registry-driven defaults: selected finetuned entry fills `task.num_labels/label_names/threshold` and `model.path`; pretrained entry fills `model.path` + `source: modelscope` (ModelScope-first, PROJECT.md target).
 
-**What:** a separate job in `publish.yml` (or a sibling workflow — see Integration Points) triggered by `workflow_dispatch` (+ optionally a weekly `schedule`) that runs everything the real release runs EXCEPT the production upload: `uv build` → `twine check --strict dist/*` → install-from-dist clean-venv import smoke → optionally a TestPyPI upload via trusted publishing.
-**When to use:** the two consecutive v1.2.1 release failures (uv implicit-system-env removal; `check_code.py --with-tests` flag removal) were exactly dry-run-detectable rot.
-**Trade-offs:** TestPyPI upload requires registering a second trusted publisher (test.pypi.org, workflow filename + environment must match claims) and tolerating version-already-exists noise (`--skip-existing` style handling); a no-upload dry-run is cheaper but cannot catch upload-path auth regressions — which is precisely where PYPI_API_TOKEN rot would hide, arguing for the OIDC migration to land WITH the smoke job (MEDIUM confidence, web-sourced: the periodic-cron canary is an uncommon-but-sound extension of the ecosystem's workflow_dispatch dry-run norm).
+### `probe_availability(name, source, timeout, prober=None) -> AvailabilityReport` (integration point 5)
+
+No weight downloads. Local-first, remote-second:
+
+1. **Local cache scan (pure, offline):** check `~/.cache/huggingface/hub/models--<org>--<name>` / `~/.cache/modelscope/hub/...` presence — the exact paths `clear_cache` walks at `model.py:1543-1545`.
+2. **Remote metadata probe (injectable):**
+   - HF: `HfApi().model_info(repo_id, revision=..., files_metadata=True)` — verified in installed huggingface_hub 1.33.0; `files_metadata` returns per-file sizes → total download estimate without fetching.
+   - ModelScope: `HubApi().get_model(model_id, revision='master')` (returns dict incl. metadata; `file_exists(repo_id, filename)` also available) — verified in installed modelscope 1.34.0.
+   - Prober injected as a callable so tests inject fakes (network tests stay out of the fast lane; matches the injected-`downloader` precedent in `download_model`, `model.py:411-415`).
+3. **Report:** `{source_resolved, exists_remote, revision, cached_locally, cache_path, size_bytes_estimate, error?}`. ModelScope-first ordering per PROJECT.md; HF fallback.
+4. Do NOT reuse `download_model` for probing — it downloads. But keep its reason-classification style (`connection` / `not found` / `404`, `model.py:460-478`) for probe error buckets.
+
+## TUI Shell Layer (integration point 3)
+
+**Pattern (verified in sibling repo `/home/forrest/Github/dnallmmark/tui/`): screens-over-services with thread workers.**
+
+- **Screens = presentation only.** Every screen in `dnallm/tui/screens/` renders report objects and collects input; it contains zero verdict logic. All logic lives in `dnallm/preflight/` — for DNALLM the "services" ARE the core package (no separate `tui/services/` logic layer for preflight; that layer exists in dnallmmark only because its services wrap *its* pipeline).
+- **Threading (the freeze-prevention rule):** sync core calls run in Textual thread workers — `@work(exclusive=True, thread=True, exit_on_error=False)` on screen methods, results posted back to the event loop by the worker framework (pattern at `dnallmmark:tui/screens/env_check.py:491`; also used in `app.py:893`). The core is sync PyTorch-adjacent (dataset loading touches pandas/HF datasets); never call it on the event-loop thread. `exclusive=True` cancels a stale in-flight call when the user re-triggers (retyping a path, changing model selection).
+- **Import lock:** ZERO textual imports outside `dnallm/tui/` — enforced by a test mirroring `dnallmmark:tests/tui/test_import_lock.py`. This keeps `dnallm.preflight` importable by MCP (which must not pull textual into the server process) and by every CI lane.
+- **Panel flow (survey §5.3):** env panel (merged Track B env-check later; v1.4 Track A can ship a minimal device/torch panel via `check_compatibility`'s device dimension) → data stats/validation → model suitability (zhangtaolab/* first, `Verdict` rows per model) → config edit+validate (absorbs R4: YAML pane + live collect-all error panel + green-light save) → select-to-download (ModelScope-first; reuses `download_model` with the real downloader when the user opts in — probe ≠ download).
+- **Extra:** `tui = ["textual>=8.2,<9", "platformdirs"]` in pyproject (pin rationale documented in dnallmmark's pyproject: majors are frequent and real; devtools `textual-dev` never committed). The CLI subcommand lazy-imports the app only when the extra is installed, raising the friendly `ImportError` pattern used for other optional deps (`trainer.py:46-49` precedent).
+- **Coverage:** `dnallm/tui/` stays inside the >90% denominator. Textual ships `App.run_test()` (async Pilot) for headless interaction tests; pytest-asyncio is already auto-mode. Keep screens thin so Pilot tests only assert rendering/wiring, not logic (logic tests hit the core directly, cheaply).
+
+## MCP Consistency Check (integration point 2b — last)
+
+**The duplication, exact (verified both sides):**
+
+| Field | Registry (`model_info.yaml` finetuned entry) | MCP per-model YAML (e.g. `dnallm/mcp/configs/promoter_inference_config.yaml`) |
+|---|---|---|
+| name | `name: "Plant DNABERT BPE promoter"` | `model.name` + server YAML `models.<key>.model_name` |
+| repo | `model: "zhangtaolab/plant-dnabert-BPE-promoter"` | `model.path` |
+| task | `task.task_type: binary` | `task.task_type` |
+| labels | `task.num_labels: 2`, `label_names: ["Not promoter", "Core promoter"]` | same fields in `task:` |
+| threshold | `task.threshold: 0.5` | `task.threshold` |
+
+Nothing enforces equality — the per-model YAMLs are hand-maintained and were backfilled to match (commit f0b8302); the check makes the registry the truth source so they cannot drift again.
+
+**Design:**
+- Extend `MCPConfigManager.validate_model_references` (`config_manager.py:232-260`) — it already returns `list[str]` error strings and already iterates `server_config.models`. Add: for each enabled model whose `model_name` resolves in the registry, compare `task_type`/`num_labels`/`label_names`/`threshold`/`path` and append mismatches.
+- **Warn-first, strict opt-in:** log mismatches as errors-by-list but do not refuse startup by default (existing deployments with unregistered custom models must keep booting — `model_name` not in registry = warning "not registry-managed", not a failure). A `strict_registry: true` server-config flag escalates to startup failure. This follows the existing MCP error-dict-not-raise boundary convention.
+- `_get_all_available_models` (`server.py:818`): switch `model_manager.get_all_models_info()` overlay to registry-served listing (all 236, lab-models first) with configured/loaded status as overlay fields. Keep the timeout wrapper (`server.py:430` `_with_timeout_wrapper`) and error-dict return shape.
+- **Dependency:** needs ONLY the registry loader — independent of the preflight core and the TUI. Parallelizable after Phase 1.
 
 ## Data Flow
 
-### Windows-parity flow (the core new data path)
+### Today (pre-v1.4)
 
 ```
-committed inputs (showcase loci ≤200kb / NER rice inputs)
-        ↓
-[Linux/macOS]                          [Windows]
-pybedtools.BedTool / bedtools CLI       dnallm.utils.genomic_intervals
-(subprocess or library)                 (pure numpy: parse_bed → jaccard /
-        ↓                                loj_intersect + pinned null fill)
-        └──────────┬───────────────────────────┘
-                   ↓  uniform row interface / float metric
-        example-code consumer (tokens_to_nerdata traversal,
-        CRE jaccard print) — byte-identical both paths
-                   ↓
-        selection.md bands/floors (parsed, single source)
-                   ↓
-  ┌────────────────────────────┬──────────────────────────────┐
-  │ example-nightly (Linux)    │ test-windows (hosted)         │
-  │ full notebook execution,   │ FAST non-slow frozen-value    │
-  │ bedtools path, band asserts│ tests: numpy evaluator over   │
-  │ (existing lanes unchanged) │ committed pairs vs frozen     │
-  │                            │ values, pinned tolerance      │
-  └────────────────────────────┴──────────────────────────────┘
+user hand-writes YAML → load_config (configs.py:698, Pydantic, first-error traceback)
+  → CLI → load_preset_model (model.py:1567) — family dict only; registry names NEVER resolve (dead preset path)
+  → load_model_and_tokenizer (model.py:1197, dispatch chain) → download_model (model.py:410)
+MCP: mcp_server_config.yaml → per-model YAML (hand-duplicated task metadata) → ModelManager → DNAInference
+model_info.yaml: parsed by NOBODY at runtime
 ```
 
-Key constraint: hosted Windows CI cannot run model inference (the CRE predicted-beds come from GPU inference), so the Windows leg executes the numpy evaluators over COMMITTED interval pairs (the frozen selection pair from wx2: intersection=15872, union=48878, jaccard=0.324727; NER-shaped loj fixtures from 0a3) and asserts against the frozen values with the pinned tolerance. Full dual-path notebook execution stays on the Linux nightly + owner dev boxes.
-
-### Publish-smoke flow
+### After v1.4 Track A
 
 ```
-weekly cron / workflow_dispatch
-   → checkout + uv (pinned action versions)
-   → uv pip install -e '.[<re-scoped extras>'   (exercises the SAME install lane as release)
-   → scripts/check_code.py                        (flags verified current)
-   → uv build
-   → twine check --strict dist/*
-   → clean venv: pip install dist/*.whl → import dnallm smoke
-   → [OIDC option] pypa/gh-action-pypi-publish → TestPyPI
-        (permissions: id-token: write at JOB level; no password: — a lingering
-         password silently disables OIDC; publisher registered for the exact
-         workflow FILENAME + environment; old PYPI_API_TOKEN revoked)
+user data file ──→ validate_data (preflight) ──→ DataReport
+                                                      │
+registry loader (model_info.yaml, cached, 1 parse) ───┤
+                                                      ├─→ check_compatibility ──→ Verdict[]
+probe_availability (cache scan → HfApi/HubApi metadata, no weights) ─┘        │
+                                                                              ▼
+                                            generate_config ──validate_sections──→ validated YAML
+                                                                              │
+              ┌───────────────────────────────────────────────────────────────┘
+              ▼
+load_config (unchanged consumer) → load_preset_model (NOW resolves registry names via loader)
+  → load_model_and_tokenizer (dispatch chain UNCHANGED) → download_model (ModelScope-first)
+
+MCP startup: MCPConfigManager + registry consistency check (warn-first) → serve
+get_all_available_models: registry listing + configured/loaded overlay
+TUI: screens call the same core via thread workers; emits the same validated YAML
 ```
 
-### Key Data Flows
+Key property: **`load_model_and_tokenizer`'s dispatch chain and the 12 special handlers are untouched.** Registry resolution happens BEFORE the chain (it produces a repo id + patched TaskConfig, exactly what the chain already accepts). Overwriting-handler-result bugs (the CrossDNA class, PROJECT.md v1 Phase 2) cannot regress because no handler order changes.
 
-1. **Ollama removal cascade:** deleting the mcp_example pytest surface flows through `tests/examples/test_notebook_execution.py` (gates, `GATED_NOTEBOOKS`, `_TIMEOUT_7200_GATED`, spec entries) → `tests/examples/_execution.py` (LANGCHAIN kernel constants, spec entries) → `tests/test_runner_infra_contracts.py` (unit-file pins, model-swap pins) → `tests/test_extras_guard.py` (langchain-ollama declaration — **decision needed**: the notebooks stay in-repo per WINDOWS #13, so the mcp extra's `langchain-ollama` and its guard test probably stay; remove only the pytest surface) → `tests/test_models_lock_contracts.py` (ollama models.lock rows) → `ci.yml` example-nightly stage 2.5/3 + stage-1 `-k "not mcp_example"` selector + **D-03 census triple re-pin** (208/217→new value; removals change collection, the deliberate bump-point).
-2. **Extras re-scope cascade:** pyproject extras → `[tool.uv]` indexes/sources/conflicts (cuda121 rows, rocm un-comment-or-delete) → ci.yml install lines on EVERY job (`.[base]` in test/test-windows/coverage-gate/coverage-nightly/example-nightly/publish) → `tests/test_extras_guard.py` expectations → docs `installation.md` + README install commands → publish-smoke install lane. The `base` rename/re-scope is the highest-fanout single decision in the milestone.
-3. **Coverage flow:** the new `genomic_intervals` module enters the `source_pkgs=["dnallm"]` denominator on every `--cov` leg; its tests must land in the same change (the metric_registry precedent: high per-module coverage proven in-phase).
+## Patterns to Follow
 
-## Scaling Considerations
+### Pattern 1: Facade pure functions, shells as consumers
+**What:** verdict logic in `dnallm/preflight/` as plain sync functions returning report objects; TUI/MCP/notebook/CLI only render or serialize. Report objects are plain dataclasses with `to_dict()`.
+**When:** always (survey §5.3 architecture rule).
+**Trade-off:** slightly more ceremony than doing checks inline in screens; buys one-core-many-shells + trivially high coverage.
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| Current (1 OS leg, 21 notebooks) | Patterns above suffice; no new infra |
-| +Windows fast executor | Frozen-value fast tests add seconds-scale cost to test-windows (60-min budget, currently mostly install); watch the leg's runtime as fixtures grow |
-| +Weekly publish smoke | One extra hosted job per week; negligible quota impact vs the 2700-min nightly |
-| Future (rurunes win_amd64 wheels) | Ledger #19 already records the revisit trigger: if pyranges' successor ships Windows wheels, re-evaluate; the numpy evaluators remain the lower-dependency path regardless |
+### Pattern 2: Injected I/O seams
+**What:** `probe_availability(..., prober=...)`, mirroring `download_model(..., downloader=...)` (`model.py:411-415`). Verdict functions accept probe RESULTS, never perform probes.
+**When:** any function whose inputs come from network/filesystem.
+**Trade-off:** one extra parameter; makes the fast lane network-free and the coverage gate cheap.
 
-### Scaling Priorities
+### Pattern 3: Thread workers over sync core
+**What:** `@work(exclusive=True, thread=True, exit_on_error=False)` screen methods; core stays sync.
+**When:** every TUI interaction that touches datasets, probes, or the registry-adjacent filesystem.
+**Trade-off:** results arrive asynchronously (screens must render a pending state); the alternative — async core — would infect the pure functions and MCP with event-loop coupling. dnallmmark's whole TUI validates this choice.
 
-1. **First bottleneck: the D-03 census triple + expected_skips.yaml churn.** Three features (ollama removal, GAP-1 unskip, Windows gates) all touch collection/skip surfaces in `tests/examples/`. Land them in separate phases with one deliberate re-pin each; do not interleave two collection-changing edits in one phase.
-2. **Second bottleneck: example-nightly stage budget.** Removing stage 3 shortens the pipeline; the Windows-path additions add nothing to the nightly (they live on the hosted leg). The stage-0.5 census assertion and stage-results ledger need their one-time updates.
+### Pattern 4: Cached single-parse registry with reload hook
+**What:** `lru_cache` + explicit `reload()`; grep guard test forbidding second parsers.
+**When:** any package-data registry.
+**Trade-off:** mutable global state (justified; precedent: import-time compat shims, `ModelManager` as intentional state holder per codebase map).
 
 ## Anti-Patterns
 
-### Anti-Pattern 1: Forking the consumer (per-platform traversal bodies)
+### Anti-Pattern 1: Verdict logic in screens
+**What people do:** compute charset/length checks inside Textual widgets because it's right there.
+**Why it's wrong:** kills one-core-many-shells; screens become untestable at the coverage gate; MCP/notebook shells re-implement drift.
+**Do this instead:** screen code = layout + input collection + rendering of `Verdict`/`DataReport`. If a screen needs a derived value, the core grows a function.
 
-**What people do:** wrap the whole `tokens_to_nerdata` in `if windows: ... else: ...`.
-**Why it's wrong:** doubles the surface that must reproduce exon_f1 in-band; the 0a3 pins (null encoding, ordering, multiplicity) would need re-proofing per branch; docs-mirror diffs explode.
-**Do this instead:** acquisition-fork + uniform row adapter (Pattern 1); one forked line per file, consumer byte-identical.
+### Anti-Pattern 2: Probing by downloading
+**What people do:** call `download_model` (or snapshot_download) to "check availability."
+**Why it's wrong:** evo-class ~12.3 GB downloads before an incompatibility surfaces (survey §5.2's exact waste case); CI cost; slow TUI.
+**Do this instead:** cache-dir scan → `HfApi().model_info(files_metadata=True)` / `HubApi().get_model()`. Download is an explicit, separate user action.
 
-### Anti-Pattern 2: A second truth source for Windows bands
+### Anti-Pattern 3: Mutating validate
+**What people do:** reuse `DNADataset.validate_sequences` for pre-flight because it's named "validate."
+**Why it's wrong:** it DROPS rows (`data.py:864`) — pre-flight must report what would be dropped, silently different behavior otherwise.
+**Do this instead:** preflight computes drop-counters read-only; `validate_sequences` remains the runtime filter.
 
-**What people do:** hard-code Windows-expected values (e.g. `0.3247270000001`) in the Windows tests.
-**Why it's wrong:** violates the D-05/D-06 decision (single source of truth: thresholds parsed from selection.md at test startup); any re-freeze would desynchronize the two truths the split explicitly exists to avoid.
-**Do this instead:** parse the same selection.md bands on both paths; put ONLY the comparison tolerance (a rounding/epsilon rule) in the test layer.
+### Anti-Pattern 4: Second parser of model_info.yaml
+**What people do:** a quick `yaml.safe_load` wherever registry data is needed (MCP server, TUI, config_manager each open it).
+**Why it's wrong:** three copies of entry-shape assumptions drift; the "registry-as-truth-source" goal dies.
+**Do this instead:** everyone imports `dnallm.models.registry`; grep-guard test.
 
-### Anti-Pattern 3: Sorting inputs in the numpy loj port
+### Anti-Pattern 5: Hard-fail MCP consistency check
+**What people do:** raise at startup on any mismatch.
+**Why it's wrong:** breaks existing deployments with custom/unregistered models; the MCP boundary convention is error dicts, not raises (`server.py` tools never raise across the protocol).
+**Do this instead:** warn-first list + `strict_registry` opt-in escalation.
 
-**What people do:** sort A/B by coordinate "for safety" before joining.
-**Why it's wrong:** the pinned order rule says plain `-loj` emits A-file order (B hits in B-file order) and the consumer's ascending traversal works only because tokens_bed is near-sorted in practice — sorting changes emission order and can silently reorder the NER label stream.
-**Do this instead:** never sort; preserve file order exactly (both spikes pin this).
+### Anti-Pattern 6: Registry resolution inside the dispatch chain
+**What people do:** add registry lookup inside `load_model_and_tokenizer`'s handler sequence.
+**Why it's wrong:** the handler chain is the highest-bug-density seam in the codebase (CrossDNA overwrite bug class); registry names map to repo ids + config patches BEFORE the chain.
+**Do this instead:** resolve in `load_preset_model` (and preflight), feed the chain what it already eats.
 
-### Anti-Pattern 4: Extras re-scope without updating the guard tests / CI lanes in the same change
+### Anti-Pattern 7: sys.path-shimmed config generation
+**What people do:** grow `dnallm/cli/model_config_generator.py`, which `sys.path.insert`s to the root `cli/` (`model_config_generator.py` shim, verified).
+**Why it's wrong:** fragile path hacks; root `cli/` is legacy (codebase map flags it).
+**Do this instead:** `generate_config` lives in `dnallm/preflight/`; the TUI config panel and any CLI generator consume it.
 
-**What people do:** rename `base` in pyproject alone; fix CI next PR.
-**Why it's wrong:** every ci.yml job installs `.[base]`; `test_extras_guard.py` pins membership; publish.yml installs `.[base]`. A partial rename reds every lane at once and can fake a "broken package" signal.
-**Do this instead:** one atomic change: pyproject + guard-test expectations + ci.yml/publish.yml install lines + docs, validated by a publish-smoke dispatch (another reason the smoke job lands early).
+## Integration Points Summary
 
-### Anti-Pattern 5: Treating `n_intersections` as portable in the jaccard evaluator
+| # | Integration point | New file | Modified file:line | Depends on |
+|---|---|---|---|---|
+| 1 | Registry loader | `dnallm/models/registry.py` | — (reads packaged `dnallm/models/model_info.yaml`; package-data already declared) | nothing new |
+| 2 | `load_preset_model` rewire | — | `dnallm/models/model.py:1567-1614` (replaces dead `preset` path at :1595-1601) | registry loader |
+| 3 | Pre-flight core | `dnallm/preflight/{validation,compatibility,config_gen,availability,report}.py` | `dnallm/configuration/configs.py:698-747` (factor `validate_sections`) | registry loader; DNADataset stats; MODEL_INFO tags |
+| 4 | TUI shell | `dnallm/tui/` (+ `screens/`) | `dnallm/cli/cli.py` (new `preflight` subcommand, lazy import); `pyproject.toml` (`tui` extra; drop `base` alias :150-156) | pre-flight core; textual |
+| 5 | MCP consistency + honest listing | — | `dnallm/mcp/config_manager.py:232-260`; `dnallm/mcp/server.py:818-829` (+ `config_validators.py` for `strict_registry` flag) | registry loader only |
 
-**What people do:** port all four `bedtools jaccard` output fields.
-**Why it's wrong:** wx2 proved bedtools counts raw A rows (51) while the natural numpy analogue counts merged intervals (45) on the frozen pair — a permanent off-by-design divergence.
-**Do this instead:** the evaluator returns intersection/union/jaccard; `n_intersections` is excluded from the production contract (or ports raw-row semantics explicitly — planning-time choice, but exclusion is simpler and nothing downstream consumes it).
+## Suggested Build Order (dependency-driven)
 
-## Integration Points
+1. **Registry loader** (`dnallm/models/registry.py` + tests in `tests/models/`).
+   Everything else consumes it; it consumes nothing new. Includes the grep guard test and `reload()`. *Rationale: zero dependencies, unblocks 2-5 in parallel.*
+2. **Pre-flight core** (`dnallm/preflight/`, pure functions + probe seam + `validate_sections` factor-out).
+   Needs only the loader. Highest coverage-gate surface (pure functions → easy ≥96% per-module). *Rationale: TUI is blocked until this exists; MCP consistency is not.*
+3. **`load_preset_model` rewire** (registry names resolve; family path preserved + regression-tested).
+   Needs only the loader — can run in parallel with 2 (disjoint files: `model.py` vs new package).
+4. **TUI shell + panels** (`dnallm/tui/`, `tui` extra, CLI subcommand; config panel last within this phase since it needs `generate_config`).
+   Needs the core (2). Textual Pilot tests for screens.
+5. **MCP consistency check + honest `get_all_available_models`** (`config_manager.py`, `server.py`).
+   Needs only the loader (1) — independent of 3/4; scheduled last per the milestone's stated order (registry loader → core → TUI → MCP) but is a parallelization candidate if phases compress.
 
-### External Services
+**Ordering rationale:** 1 is the root dependency. 2 and 3 are file-disjoint and both depend only on 1 (wave-parallelizable under the single-tree pathspec-commit discipline, PROJECT.md v1.2 decision). 4 has the deepest dependency (core + registry). 5 is deliberately last so the registry format stabilizes through two consumers before the consistency check freezes its comparison semantics.
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| PyPI (production) | OIDC trusted publishing via `pypa/gh-action-pypi-publish` — `permissions: id-token: write` at JOB level, publisher registered for the exact workflow FILENAME + environment; OR keep `TWINE_USERNAME=__token__`/`PYPI_API_TOKEN` | **Gotchas (web-verified, MEDIUM):** a lingering `password:` silently disables OIDC; old token must be revoked after migration; repo renames break publisher registration. Default workflow `permissions: contents: read` already in ci.yml — publish.yml needs its own job-level override |
-| TestPyPI | Same action with `repository-url: https://test.pypi.org/legacy/` + separate publisher registration + `testpypi` environment | Needed only if the smoke job does a real upload; `--skip-existing`-style handling for version collisions |
-| rice.uga.edu (NER inputs) | Existing cache-first seeding (`_seed_rice_input`, WR-04 4xx-vs-5xx semantics) | Unchanged; Windows full-script execution stays dev-box/nightly-only (115MB flaky host, slow-marked) |
-| GitHub Actions windows hosted runner | test-windows leg, 60-min cap, `PYTHONUTF8=1`, git autocrlf disabled | Gains: numpy-path frozen-value tests (fast) — the hosted cap is why the Windows executor is fixture-based, not notebook-based |
+## Confidence Assessment
 
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `dnallm/utils/genomic_intervals.py` ↔ example code | Direct import inside the Windows branch only | Library stays platform-uniform; no `platform.system()` inside `dnallm/` — dispatch is a consumer concern (keeps the package testable on Linux for both paths: the numpy functions are directly unit-testable everywhere) |
-| numpy evaluators ↔ bedtools truth chain | One-directional parity evidence | Spikes (committed under `.planning/quick/`) are the parity record; the frozen values in selection.md/models stay bedtools-computed — no re-freeze (owner directive) |
-| test gates ↔ `tests/expected_skips.yaml` | Typed-prefix allowlist via `scripts/audit_skips.py` in 4 CI jobs | Windows gate inversion REMOVES potential skip sites (good — fewer skips); GAP-1 unskip removes the `environment-unavailable:` script-lane skip (ledger #12 closes); ollama removal removes `network-unavailable:` mcp-pair skips from the nightly — all shrink the skip surface, none add new prefixes |
-| `example/` ↔ `docs/example/` | Byte-identical mirrors enforced by `scripts/check_docs_sync.py` | Every platform-fork edit carries its mirror write-back in the same commit (the v1.1 repair-loop discipline) |
-| publish-smoke ↔ extras re-scope | Smoke job installs the re-scoped extras exactly as release does | Sequencing dependency: smoke job usable to validate each extras change via dispatch |
-
-## Suggested Build Order (dependency-respecting)
-
-Phase numbering continues from 13 (PROJECT.md). Rationale inline; file-disjointness noted for parallelization.
-
-1. **Phase A — Ollama pytest-surface removal** (first: pure subtraction, shrinks every later edit surface)
-   - `tests/examples/test_notebook_execution.py`, `_execution.py`, `test_runner_infra_contracts.py`, `test_extras_guard.py`, `test_models_lock_contracts.py`, `example/mcp_example` mirrors, `ci.yml` stage 2.5/3 + selectors + D-03 triple re-pin.
-   - Why first: it is the only feature that REMOVES tests; doing it first means the Windows-parity and GAP-1 phases edit smaller files and the census is re-pinned once here instead of being invalidated later. Independent of everything else (file-disjoint from GAP-1 and from the new utils module).
-2. **Phase B — GAP-1 disposition** (windows #11/#12; shim-vs-removal decided at plan time)
-   - `dnallm/utils/transformers_compat.py` + `tests/utils/test_transformers_compat*.py`, `example/notebooks/benchmark/benchmark.ipynb` (+ mirror), `tests/examples/test_script_execution.py` skip ladder.
-   - Why before Windows parity: both B and C edit `test_script_execution.py` (the `_NT_STRUCTURAL_MARKER` ladder vs the `_gate_script_pybedtools` platform fork) — sequencing avoids reworking the same test class twice. Note: unskipping changes skip counts, not collection, so no census re-pin conflict with Phase A.
-   - Can run in parallel with Phase A if plans stay file-disjoint (benchmark notebook + transformers_compat vs ollama files) — only `ci.yml` is shared, which suggests serial or carefully split ci.yml edits.
-3. **Phase C — Windows parity core: the numpy evaluators as library code**
-   - NEW `dnallm/utils/genomic_intervals.py` + `tests/utils/test_genomic_intervals.py` (committed oracle fixtures; port the spike cores + the three pinned contracts). Depends on nothing above; pure addition.
-4. **Phase D — Platform dispatch rollout** (depends on C)
-   - `generate_bpe_dataset.py` + NER notebook cells 0/2/8 + CRE cell 11 (+ all docs mirrors); the three test gates go platform-aware (+ Windows-branch contract tests); NEW fast frozen-value tests (selection.md-parsed bands + pinned tolerance) targeting the test-windows leg; `ci.yml` test-windows step set.
-5. **Phase E — Publish chain robustness** (independent of B/C/D; ideally before F so it can validate F)
-   - `publish.yml` publish-smoke job (+ OIDC decision — the deferred row says the implementation decision lands with this phase), mypy cap in pyproject dev extra, #20 local-venv `pytest --cov` crash fix.
-6. **Phase F — Extras re-scope + install honesty** (validated by E's smoke dispatches)
-   - pyproject extras (base re-scope, cuda121 retirement + uv index/sources/conflicts + test-cuda matrix, rocm decision), `test_extras_guard.py`, ci.yml/publish.yml install lines, `docs/getting_started/installation.md` uv-vs-pip lanes, cuda130 default recommendation, GPU support matrix page (pre-verified boundaries: Pascal cpu-only, 20xx→cu128, 30/40xx all extras, 50xx cu128+), #18 triton-windows declaration decision (same pyproject surface).
-7. **Phase G — Docs accuracy sweep** (last: after every code/extras surface is final)
-   - Per-file review of `docs/` + `example/` (accuracy vs code, post-numpy2/py311 staleness, install-command correctness) with same-pass fixes. Running G before F would leave the install docs immediately stale again; running it last means it verifies the final surface once.
-
-**Ordering answers to the specific questions asked:**
-- **GAP-1 before or after ollama removal:** either is defensible (file-disjoint), but ollama-first is cleaner because it is a pure subtraction that re-pins the census once; GAP-1 must precede the Windows platform-dispatch phase because both edit `test_script_execution.py`.
-- **Docs review before or after extras:** AFTER — install docs must describe the final extras surface; the docs sweep is the milestone's verification pass over a frozen surface.
-- **Publish-smoke before extras:** BEFORE (or with) — the smoke job exists to validate exactly the kind of install-lane changes the extras re-scope makes.
+| Area | Confidence | Notes |
+|------|-----------|-------|
+| Integration points / file anchors | HIGH | Every anchor read directly in this checkout (model.py:1567/410/1197, config_manager.py:232, server.py:818, configs.py:698, data.py:82/864/1340, modeling_auto.py) |
+| Registry schema | HIGH | Parsed the live YAML: 49 pretrained + 187 finetuned, key sets enumerated |
+| Dead preset path finding | HIGH | grep-verified: no `preset` key exists in `MODEL_INFO` |
+| Availability probe APIs | HIGH | `HfApi.model_info(files_metadata=True)` verified in installed huggingface_hub 1.33.0; `HubApi.get_model`/`file_exists` verified in installed modelscope 1.34.0 |
+| TUI worker pattern | HIGH | Pattern read directly in dnallmmark source (`@work(exclusive=True, thread=True)`); textual pin mirrors its pyproject |
+| Textual Pilot testability in CI | MEDIUM | `run_test()` is the documented approach but unproven in THIS repo's gate; flag for phase-level spike when the TUI phase starts |
+| `validate_sections` refactor size | MEDIUM | Load-config flow read; exact test churn unknown until phase planning |
 
 ## Sources
 
-- Codebase (HIGH, primary): `.planning/PROJECT.md` (v1.3 scope), `.planning/WINDOWS.md` ledger #11–#20 (esp. #19 change-surface inventory, #18 triton-windows, #20 cov crash), `.planning/STATE.md` deferred rows (extras hygiene, publish rot, mypy cap, OIDC), `pyproject.toml` (extras, uv indexes, coverage omit, pytest config), `.github/workflows/ci.yml` (job graph, stages, D-03 census gate), `.github/workflows/publish.yml`, `dnallm/utils/genomic_coords.py` (module precedent), `dnallm/utils/transformers_compat.py` (absence-gated attach precedent), `tests/examples/_execution.py`, `tests/examples/test_script_execution.py`, `tests/examples/test_notebook_execution.py`, `tests/examples/test_plant_helixseek_showcase.py`, `example/notebooks/finetune_NER_task/generate_bpe_dataset.py` + `data_generation_and_inference.ipynb`, `tests/expected_skips.yaml`
-- Spike evidence (HIGH, in-repo): `.planning/quick/261010-wx2-spike-numpy-interval-jaccard-parity-vs-b/` (VERDICT PARITY; frozen pair 15872/48878, jaccard delta 0.0; n_intersections non-portability), `.planning/quick/261011-0a3-spike-numpy-pandas-loj-intersect-parity-/` (VERDICT PARITY; the three empirical pins — null fill, output order, sorted requirement; NER port notes)
-- Web (MEDIUM, cross-checked via search): [PyPI — Publishing with a Trusted Publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/), [packaging.python.org — Publishing package distributions using GitHub Actions](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/), [PyPI blog — Introducing Trusted Publishers](https://blog.pypi.org/posts/2023-04-20-introducing-trusted-publishers/), plus community publish-runbook patterns for the dry-run shape ([cognirepo publish.yml](https://github.com/ashlesh-t/cognirepo/blob/main/.github/workflows/publish.yml), [local-sdlc-kit releasing](https://senssei.github.io/local-sdlc-kit/releasing/), [ATSW PUBLISHING.md rot record](https://raw.githubusercontent.com/davidesg/art-python/refs/heads/master/docs/PUBLISHING.md))
+- Direct reads (this checkout, 2026-10-20): `dnallm/models/model.py` (:410-484, :1197-1311, :1537-1614), `dnallm/models/modeling_auto.py` (:1-114), `dnallm/models/model_info.yaml` (parsed via project venv), `dnallm/mcp/config_manager.py`, `dnallm/mcp/config_validators.py` (surface), `dnallm/mcp/server.py` (:786-835), `dnallm/mcp/model_manager.py` (:341-395), `dnallm/mcp/configs/mcp_server_config.yaml`, `dnallm/mcp/configs/promoter_inference_config.yaml`, `dnallm/configuration/configs.py` (:698-747), `dnallm/datahandling/data.py` (:50-120, :864-900, :1340-1376), `dnallm/cli/cli.py` (surface), `dnallm/cli/model_config_generator.py`, `pyproject.toml` (extras, package-data)
+- Sibling repo reads: `/home/forrest/Github/dnallmmark/tui/` (app.py, screens/env_check.py worker usage, services/registries.py contract, pyproject textual pin)
+- In-session analysis: `.planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md` Part 5
+- Project context: `.planning/PROJECT.md` (v1.4 milestone, scope boundaries 2026-10-20)
 
 ---
-*Architecture research for: DNALLM v1.3 Platform Reach & Packaging Honesty*
-*Researched: 2026-10-11*
+*Architecture research for: DNALLM v1.4 pre-flight TUI + registry-as-truth-source (Track A)*
+*Researched: 2026-10-20*

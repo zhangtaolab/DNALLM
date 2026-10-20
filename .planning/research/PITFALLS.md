@@ -1,307 +1,221 @@
 # Pitfalls Research
 
-**Domain:** Adding platform-split genomic evaluators, packaging re-scopes, publish smokes, ollama-surface removals, and docs-accuracy sweeps to DNALLM — a mature, heavily-gated Python package (frozen truth chains, census-hard-gated nightly lane, byte-identical docs mirrors, >90% coverage hard gate, typed-skip allowlist discipline, shared self-hosted GPU runner).
-**Researched:** 2026-10-11
-**Confidence:** HIGH for repo-grounded facts (verified against source at branch `v1.3`); MEDIUM for external-tool behavior (pip/twine/uv/PyPI/triton-windows — cross-checked web sources, official docs where reachable); each pitfall notes its grounding.
+**Domain:** Adding a pre-flight Textual TUI + pure-function validation/suitability core + runtime registry consumption + ModelScope-first availability probing to DNALLM — a mature, heavily-gated sync PyTorch library (96%+ coverage hard gate `fail_under=90` on every `--cov` leg including Windows, CI matrix py3.11–3.13 / numpy 1.26.4 & 2.2.0 / windows-latest leg, typed-skip allowlist discipline, asyncio MCP layer, `model_info.yaml` registry with load-bearing provenance comments).
+**Researched:** 2026-10-20
+**Confidence:** HIGH for repo-grounded facts (verified against source at branch `v1.4`); MEDIUM for external behavior backed by official docs (Textual testing/workers guides, huggingface_hub env-vars + rate-limits docs, ruamel round-trip semantics, pytest-textual-snapshot); LOW for undocumented externals (ModelScope API rate limits — no official doc found). Each pitfall notes its grounding.
 
-**Grounding:** `pyproject.toml` (extras incl. self-referential `base`/`all`, uv sources/conflicts with commented rocm block, coverage `fail_under=90`, pytest `--strict-markers`, markers list), `.github/workflows/publish.yml` (whole file), `.github/workflows/ci.yml:130-210,440-600,845-935` (test-windows leg, coverage-nightly, example-nightly stage 0.5 census pin + stage 3), `scripts/audit_skips.py`, `scripts/check_docs_sync.py`, `tests/expected_skips.yaml`, `tests/test_extras_guard.py`, `tests/test_runner_infra_contracts.py` (ollama refs), `tests/examples/test_notebook_execution.py` (ollama/gate refs), `tests/examples/test_plant_helixseek_showcase.py:515-560` (bedtools fail-loud + `pytest.mark.slow`), `.planning/WINDOWS.md` (#11, #12, #13, #18, #19, #20), `.planning/STATE.md` (deferred rows 2026-10-11: extras hygiene, publish rust, mypy drift, OIDC, GPU matrix), spike summaries `261010-wx2` / `261011-0a3` (parity pins).
+**Grounding:** `pyproject.toml` (coverage `fail_under=90` + 7-entry omit list, pytest `--asyncio-mode=auto` / `--timeout=300` / `--strict-markers`, extras incl. `full` alias + `tui` not yet existing; installed env: pytest 9.1.1, pytest-asyncio 1.4.0, textual NOT installed), `.github/workflows/ci.yml` (all legs `uv pip install -e ".[full]"`-shaped; test-windows runs bare `--cov`; skip audit in 4 jobs), `dnallm/models/model_info.yaml` (49 pretrained + 187 finetuned entries; PlantHelixSeek provenance comment block at lines ~1876–1890), `dnallm/models/model.py` (runtime `HF_ENDPOINT` set/delete at ~494–498; hardcoded `~/.cache/modelscope/hub` at ~1545; `download_model` retry loop), `dnallm/mcp/configs/mcp_server_config.yaml` + `configs/*_inference_config.yaml` (duplicate name/path/source/task_type/label_names/threshold metadata), `tests/expected_skips.yaml` + `scripts/audit_skips.py`, `.planning/quick/261020-kwt-*` (registry data-layer fix: scripted text insertion, never a yaml.dump round-trip), `.planning/quick/261020-gk4-*` TUI-SURVEY Part 5 (owner directives; pre-flight cluster; merge-or-build verdicts), `.planning/PROJECT.md` v1.4 scope boundaries.
 
-**Phase labels:** roadmap not yet built; phase numbering continues from 13. Labels below are topic-keyed — **Phase O** (ollama surface removal), **Phase W** (Windows platform parity), **Phase G** (GAP-1 transformers 5.x shim), **Phase P** (packaging & install honesty), **Phase S** (publish smoke + OIDC + mypy cap), **Phase D** (docs accuracy sweep). Ordering recommendation in the Pitfall-to-Phase Mapping.
+**Phase labels:** roadmap not yet built. Labels are topic-keyed to the owner's build order: **Phase R** (registry runtime loader — `model_info.yaml` consumed at runtime, `load_preset_model` resolution), **Phase C** (pre-flight core — `validate_data` / `check_compatibility` / `generate_config` pure functions), **Phase T** (TUI panels — env → data → suitability → config edit+validate, select-to-download), **Phase M** (MCP config ↔ registry consistency check + one-core-many-shells wiring). Ordering: R → C → T → M (R first because C's suitability verdicts and M's consistency check both consume the registry loader; C before T because the TUI must be a thin consumer, never the owner of verdict logic — TUI-SURVEY §5.3 architecture rule).
 
 ---
 
 ## Critical Pitfalls
 
-### Pitfall 1 (W): The Windows numpy path silently becomes the Linux path too — breaking the bedtools-computed frozen truth chain the split was designed to protect
+### Pitfall 1 (T): Sync torch/dataset/network code runs on the Textual event loop — the whole UI freezes, tests hang, and pytest-timeout kills the leg
 
 **What goes wrong:**
-The owner directive is explicit (WINDOWS #19): Linux/macOS KEEP bedtools/pybedtools — "the frozen truth chain stays bedtools-computed, no re-freeze." The failure mode is dispatch leakage: the platform branch added to `generate_bpe_dataset.py` and `data_generation_and_inference.ipynb` (cell 2/cell 8, one shared code path) accidentally executes the numpy evaluator on Linux — via an inverted `sys.platform` check, a fallback "try pybedtools, except use numpy" that swallows a real pybedtools/bedtools breakage, or a test lane that exercises only the numpy path repo-wide. The committed jaccard=0.3247 / exon_f1=0.7522 values are then re-derived by a different engine, and either (a) they drift out of band (loud, nightly red) or (b) they hold (silent — the "no re-freeze" invariant is violated with no alarm). Worse: the Linux re-execution of the edited notebook can shift values for non-algorithmic reasons — dtype changes (int32 vs int64 accumulators), pre-sorting that plain `-loj` never did (spike 0a3 pin 3: plain `-loj` accepts unsorted input; sorting changes nothing semantically but any *filtering* or *dedup* bolted on "while we're in here" does), or a DataFrame reconstruction that reorders rows before the BILOU decode.
+The pre-flight pipeline's heaviest steps are all blocking-sync: `DNADataset` stats over a user FASTA (pandas/torch), charset/length scans, `check_compatibility` cache detection (filesystem walks over multi-GB model caches), ModelScope/HF existence probes (network RTT), and select-to-download (`download_model`, minutes to hours for evo-class ~12.3 GB). Textual is a single-threaded asyncio message pump: any of these called directly inside `on_mount`, a key handler, or a reactive watcher blocks processing of ALL messages — no repaint, no key input, no cancel. In the test suite the same call under `run_test()` hangs the Pilot and `--timeout=300` fires, turning a UX bug into a red CI leg.
 
 **Why it happens:**
-The two paths live in the same cells/script; the natural test refactor ("just always test the numpy path — it's parity-proven!") removes the only execution evidence that Linux still runs bedtools. Parity spikes make the numpy path *feel* safe enough to let leak.
+The core library is synchronous PyTorch end to end; the developer writes what reads naturally (`result = validate_data(path)` in the handler). Textual's `@work` decorator and `call_from_thread` are opt-in machinery nobody on this repo has used yet (textual is not even installed in the dev venv). The failure is also load-dependent: a toy CSV in dev validates in 50 ms and hides the freeze until a real 2 GB FASTA meets a user.
 
 **How to avoid:**
-- Dispatch must be fail-loud, not try/except: `if sys.platform == "win32": numpy_path() else: pybedtools_path()` with no except-fallback. A missing bedtools on Linux must keep hitting the existing fail-loud gate (`test_plant_helixseek_showcase.py:523` asserts `shutil.which("bedtools")`), never fall through to numpy.
-- Add a same-change structure test asserting the dispatch direction: on non-Windows, the example code's pybedtools import/call is reachable and the numpy branch is not (and vice versa) — static asserts on cell/script source, precedent: the genome-wide denylist structure test (Phase 7) and the qwen-swap contract tests that assert notebook *source* content.
-- The Linux nightly lane must re-execute the edited notebook/script and hold the parsed `selection.md` bands (existing D-05/D-06 machinery) — the re-execution after the edit IS the proof the Linux chain survived the surgery.
-- Keep `.scratch/select_loci.py` and `selection.md:35` (historical methodology prose) untouched — the change-surface inventory in WINDOWS #19 already scopes them out.
+- Design rule (borrow the sibling's proven shape, per the milestone priors): every call from a widget into I/O-land goes through a thread worker — `@work(thread=True, exclusive=True)` — with results delivered via `post_message` (thread-safe) or `call_from_thread`, never direct reactive writes from the worker. dnallmmark's deliberate pattern (all service I/O in `@work(exclusive=True, thread=True)` workers, run-id-tagged messages so a stale run can't overwrite a fresh one) is the exact template; the stale-overwrite race is what `exclusive=True` cancels.
+- Threads cannot be cancelled: the download path needs cooperative cancellation (check `worker.is_cancelled` / a cancel Event inside `download_model`'s existing retry-loop seam — it already re-evaluates state per attempt), or accept cancel-means-abandon with the queue resuming later (dnallmmark's five-state persistent queue precedent).
+- Never `await worker.wait()` inside a message handler — that deadlocks the widget; drive UI off `Worker.StateChanged`.
+- Worker exceptions exit the app by default — set `exit_on_error=False` on pre-flight workers and render the error in the panel (the project's collect-all error convention).
+- Test pattern: TUI tests inject a deliberately slow fake service (e.g. `time.sleep`-stubbed) and assert the UI keeps processing input mid-flight (`await pilot.press(...)` while the worker runs), plus assert the run-id/stale-guard (start probe A, immediately probe B, assert A's late result never lands).
+- Keep the sync core sync: do NOT make `validate_data`/`check_compatibility` async "for the TUI" — the MCP layer and notebooks consume them synchronously; the TUI bridges via workers (same bridge `ModelManager._load_model_sync` already uses for the MCP asyncio layer).
 
 **Warning signs:**
-- A diff where the pybedtools branch lost lines (not just gained a sibling); any `except ImportError` around the platform dispatch.
-- Nightly example census green but the committed notebook outputs show a regenerated jaccard/exon_f1 from a numpy-formatted print (different formatting = different engine).
-- `git diff` touching `example/notebooks/plant_helixseek_shared/.scratch/{pred,truth}.bed` — the frozen BEDs are read-only, never written or moved (wx2 `requires` block).
+- A widget method calling `dnallm.` I/O functions (`load_config`, dataset loaders, `download_model`, probe functions) without a worker decorator.
+- `await` on a worker inside `on_*` handlers; `time.sleep` in any `async def`; reactives written from a thread context.
+- TUI tests that only use tiny fixture files (freeze never reproduces locally).
 
-**Phase to address:** Phase W — the dispatch structure test and the Linux re-execution must land in the same change as the platform split, not a follow-up.
+**Phase to address:** Phase T — the worker seam is the first thing built, before any panel logic (it is to the TUI what the pure-function core is to Phase C).
 
 ---
 
-### Pitfall 2 (W): Spike-to-port semantic drift — the production evaluator drops one of the oracle-pinned contracts the PARITY verdict was conditioned on
+### Pitfall 2 (T/C): Coverage-gate erosion — new `dnallm/tui/` code lands in the denominator on every `--cov` leg, while no CI leg installs the `tui` extra
 
 **What goes wrong:**
-Both spikes are "task artifacts — never library code" (their own frontmatter). The v1.3 port re-implements their algorithms in `dnallm/` (precedent: `dnallm/utils/genomic_coords.py`), and the re-implementation "cleans up" away a load-bearing detail. The pins that must survive verbatim into the port:
-1. **Null-B fill (loj):** a no-hit A row against the 6-column NER annotation B carries `.` `-1` `-1` `.` `-1` `.` — the B-column-5 `-1` is what makes the consumer's `name == "-1"` intergenic branch fire (0a3 Pin 1). A port that guesses all-`.` still labels intergenic — via the accidental `zero_map` fallback — so the exon_f1 band can hold while the semantics are wrong. The null vector is content/shape-dependent at other column counts (count-5 score slot is `-1` iff int-parseable; ≥7 always `.`).
-2. **Emission order (loj):** plain `-loj` emits in A-file order with per-A B hits in B-file order, accepting unsorted A and B (0a3 Pin 2/3). The consumer's ascending traversal works because `tokens_bed` is *near-sorted in practice*, not because anything sorts. A port that sorts "for safety" changes row order downstream; a port that assumes hits arrive coordinate-sorted breaks when B's file order differs from start order.
-3. **Join, not merge (loj):** one output line per A×B overlap pair; duplicates multiply per copy (0a3 multiplicity pin). The consumer's `token_seen[gene]` dedup absorbs A-side duplication — the port must keep emitting duplicates, never dedup early.
-4. **Merge semantics (jaccard):** coalesce while `next start <= current end` — overlaps AND bookended adjacency (wx2). Chromosomes group by exact string key (`Chr1` ≠ `chr1`).
-5. **n_intersections is NOT portable:** bedtools counts raw A rows (51) while the numpy analogue counts merged-A intervals (45) on the frozen pair (wx2 port note 2). Any production contract must either port raw-row semantics or exclude the field — gating on it would false-fail.
+Two coupled traps, both verified against the current CI shape:
+1. **Import availability:** every CI leg installs `.[full]`-shaped extras (ci.yml lines 92/172/261/341/408/543/758). A new `tui` extra that is not a member of whatever those legs resolve will not exist there — TUI test files importing textual at module level then ERROR at collection (a census-breaking, suite-red failure), or get skip-guarded into never running.
+2. **Denominator math:** `[tool.coverage.run] source_pkgs=["dnallm"]` includes `dnallm/tui/` on EVERY leg the moment it exists, including test-windows (bare `--cov` → `fail_under=90` fires there too). The suite sits at 96.7%+ with a hard-won 7-entry omit list; a few hundred lines of half-driven widget code drag the number, and the tempting "fixes" are exactly the erosion the gate exists to prevent: new omit entries for `dnallm/tui/*`, blanket `# pragma: no cover` on widget bodies, or ever-green `optional-dep:` skips on legs that could simply install the extra (the dishonesty class the project explicitly bans).
+Bonus coupling: v1.4 is also the milestone where the `full` alias is removed (PROJECT.md Current State). The `tui`-extra membership decision made against `full` today silently changes when the alias dies — the pip warn-and-continue class from the v1.3 research (unknown extra warns and exits 0, under-installing).
 
 **Why it happens:**
-The pins live in spike SUMMARY prose in `.planning/quick/`, which the porting agent may never re-read; each detail looks like an implementation choice, not a parity precondition. The null-fill bug is *invisible in the metric* (exon_f1 unchanged) — precisely the class of drift the frozen chain cannot catch.
+The gate measures the package, not the test plan; TUI code is the classic "awkward to drive" module class (real projects either reach ~90% via `run_test`+Pilot or exclude their view/modal files — the exclusion route is well-trodden and wrong for this repo).
 
 **How to avoid:**
-- Port the spike corpora, not just the algorithm: re-run the seeded randomized property cases (seeds 20261010 / 20261011) plus the handcrafted edge cases as pytest unit tests against the production evaluator, with the oracle expectations *baked as literals* where bedtools is unavailable (Windows) and against a live bedtools where available (Linux nightly, via the existing rootless micromamba cache). The spikes already proved determinism (byte-identical re-runs).
-- One explicit regression test per pin: null-vector exact-string assertion at the 6-column shape (and the count-5 content dependence), order-preservation on shuffled A/B, duplicate-multiplication arithmetic, bookended-adjacency merge, `Chr1`≠`chr1` no-join.
-- Assert-or-port `_null_b_fields` whole: the port must reject (loud `ValueError`) any annotation B that is not 6-column, rather than silently switching null encoding.
-- Port the loud parse guard philosophy (`parse_bed3`'s file+line `ValueError`) — the `genomic_coords.py` silent-empty guard precedent.
+- Good news first (verified, official docs): `App.run_test()` runs the app IN-PROCESS via a headless driver — the message loop is a background task in the test process, so pytest-cov measures TUI code like any unit test. No snapshot infrastructure and no subprocess-coverage tricks are needed for line coverage.
+- CI guard, atomic: the same change that adds the `tui` extra adds it to the install lines of at least `coverage-gate` and `test-windows` (textual is pure-Python; windows-latest is fine), so the TUI tests RUN and COUNT everywhere the denominator lives. Record the decision against the `full`-alias removal plan so the two extras changes don't strand each other.
+- Architecture guard (already the owner's plan — hold to it): verdict/suitability/validation logic lives ONLY in the Phase-C pure functions; widgets are presentation. Concretely enforce with a structure test: `dnallm/tui/**` must not import torch/transformers/datasets directly (services own I/O; dnallmmark's "screens are presentation-only over services" docstring convention, made executable).
+- Per-module ≥96% standard applies to `dnallm/tui/*` like any Phase-C module; no new omit entries; pragma budget stays at ~3 (v1 precedent).
+- TUI tests live in `tests/tui/` (mirroring package layout) with real `run_test` driving — not `optional-dep:` skips.
 
 **Warning signs:**
-- Production evaluator code with `sorted(` near the loj path; a `set()` or dict-dedup between join and emission; `'.'` in every null slot of a B6 row; `n_intersections` appearing in any gated assertion.
-- Unit tests that only cover the frozen pair (one case) and none of the 8/11 handcrafted edge shapes.
+- A pyproject diff adding `tui = [...]` with no ci.yml install-line diff in the same commit.
+- Coverage-gate or test-windows reporting `dnallm/tui/` modules at low coverage while the aggregate still passes (the buffer is being eaten).
+- Any `optional-dep:` skip whose leg could have installed textual; any `[tool.coverage.run] omit` addition mentioning tui.
+- `pip does not provide the extra 'tui'` (or the post-`full`-removal equivalent) in CI logs — treat as a broken leg even when green.
 
-**Phase to address:** Phase W — pins and corpora tests ship same-change with the evaluator (owner rule: lib changes carry same-change pytest coverage; per-module ≥96% standard).
+**Phase to address:** Phase T first act (extra + CI install wiring + structure test before the first panel lands); Phase M re-checks when the `full` alias removal touches the same install lines.
 
 ---
 
-### Pitfall 3 (S): The publish smoke actually publishes — `workflow_dispatch` on `publish.yml` today runs the real `twine upload`
+### Pitfall 3 (R): A registry round-trip dump destroys the provenance comments — the exact defect this repo already dodged once
 
 **What goes wrong:**
-Verified in `.github/workflows/publish.yml`: the workflow triggers on BOTH `release: [published]` AND `workflow_dispatch`, and the `Publish to PyPI` step (`twine upload dist/*` with `PYPI_API_TOKEN`) has **no event guard**. The naive "add a weekly workflow_dispatch dry-run" is a real publish of the current version: PyPI filenames are immutable (re-upload → 400 "File already exists"), so a smoke that uploads either consumes the version number permanently or fails confusingly on the duplicate. Two aggravating details in the current file:
-- The `Verify installation` step runs `pip install dnallm` — from PyPI, unpinned, NOT from `dist/`. On any run that didn't (or failed to) publish, this verifies the OLD release: a false-green that would make a smoke look meaningful while proving nothing about the built artifact.
-- The smoke's job is to catch exactly the rust classes that already happened (STATE 2026-10-11: uv implicit-system-env removal, `check_code.py --with-tests` flag removal — two consecutive v1.2.1 release failures). A smoke that skips the install-from-dist step catches neither.
+`model_info.yaml` is not just data: it carries the PlantHelixSeek freeze provenance block (label-order source citations, checkpoint commit shas, the REG-02 reasoning — lines ~1876–1890) and a curated section structure. PyYAML discards comments AT PARSE TIME by design; any code path that does `yaml.safe_load` → mutate → `yaml.dump` emits a comment-free, re-quoted, re-flowed file in one commit. The registry-as-truth-source milestone multiplies the tempted paths: a runtime loader that "normalizes" what it reads, a TUI add-entry feature, an MCP consistency checker that "helpfully" rewrites the registry to match configs, or a maintenance script. ruamel round-trip mode is better but not safe either: deleting keys/list entries can destroy adjacent comments, `dict.update()` wipes comment metadata, and it is not byte-stable (trailing whitespace, quoting).
 
 **Why it happens:**
-`workflow_dispatch` looks like a "safe manual trigger"; people forget the release trigger shares the same job steps. Twine has no true `--dry-run` upload mode, so "dry-run" must be constructed by gating steps, and each gate is a place to be wrong. `--skip-existing` is a trap door: it substring-matches generic 400s and can mask genuine failures (invalid metadata, quota) — twine 6.2.0 removed it for non-PyPI targets for exactly this reason.
+Round-tripping feels like the clean, schema-guaranteed way to edit YAML; the comment loss is invisible to every functional test (the parsed data is identical), so nothing red fires — the provenance record just silently disappears from HEAD. The repo's own 261020-kwt fix proved the correct alternative: scripted text insertion keyed on unique `model: "<repo>"` lines (164 added / 0 modified-deleted lines; provenance block byte-unchanged).
 
 **How to avoid:**
-- Gate every mutating step: `if: github.event_name == 'release'` on the upload step (or split into `publish.yml` (release-only) + `publish-smoke.yml` (schedule/workflow_dispatch, never uploads)). A separate workflow is easier to prove safe by inspection.
-- Smoke body (never-publish, catches the real rust classes): `uv build` → `twine check --strict dist/*` → create fresh venv → `uv pip install --find-links dist dnallm` (or `pip install dist/*.whl`) → `python -c "import dnallm"` + `dnallm --help`-class CLI probe → optionally `uv publish --dry-run` (validates against PyPI's `/validate` endpoint without uploading contents). Fix or delete the current `pip install dnallm` verify step — it must install the built wheel.
-- Never use `--skip-existing` to make smoke re-runs idempotent; a re-run failing on "file exists" is the correct loud signal.
-- If the smoke also covers the OIDC migration: `uv publish --dry-run` exercises credential/audience paths but the trusted-publishing handshake is only fully proven by a real publish — plan the migration so the next real release is explicitly observed (see Pitfall 10).
+- Design rule: the registry is READ-ONLY at runtime. The Phase-R loader parses and never writes; there is no sanctioned runtime mutation path. Any registry maintenance (adding entries, editing metadata) is scripted text manipulation or manual edit, with the kwt-style keying discipline.
+- Registry-integrity guard, extend the existing `tests/models/test_model_info_registry.py` (9 no-network tests from 261020-kwt) with: (a) a provenance-block presence test (the PlantHelixSeek comment block's sentinel lines must appear verbatim); (b) a no-round-trip regression test over the real file — assert that loading via the Phase-R loader produces a parsed model with NO write API surface (loader returns frozen/typed objects, no `save_registry`-style function exists in the module — assert via structure test or simply never build one).
+- If a future TUI/MCP feature genuinely needs registry writes: it goes through a dedicated writer module with a byte-stability test (write-back of an unmodified parse must be a no-op diff) — until that exists, grep gate `yaml.dump|safe_dump` over `dnallm/models/` stays at zero sanctioned hits.
+- User-facing YAML (`generate_config` output) is NOT registry YAML — no provenance to lose there; that path may dump freely into fresh files.
 
 **Warning signs:**
-- Any step in a dispatch-reachable workflow containing `twine upload`, `uv publish` (without `--dry-run`), or `--skip-existing`.
-- A smoke whose verify step installs from the index rather than `dist/`.
-- Smoke logs showing an upload HTTP request at all.
+- Any diff on `dnallm/models/model_info.yaml` where the added/removed line counts are near-equal (a rewrite, not an insertion).
+- `git diff` on the registry touching the PlantHelixSeek comment lines or re-quoting keys repo-wide.
+- A loader exposing dicts that callers mutate then persist; any function in `dnallm/models/` importing `yaml.safe_dump`/`dump`.
 
-**Phase to address:** Phase S, and it is the FIRST change of that phase — the guard precedes any scheduled trigger existing (a cron on an unguarded workflow is a time bomb).
+**Phase to address:** Phase R — the loader is born read-only, the integrity tests extend in the same change (owner rule: lib changes ship same-change pytest).
 
 ---
 
-### Pitfall 4 (P): The `base` extras rename breaks downstream users silently and the in-repo install surface non-atomically
+### Pitfall 4 (M): The MCP ↔ registry consistency check joins on the wrong key, compares only shallow fields, or auto-writes fixes — manufacturing silent prediction corruption
 
 **What goes wrong:**
-Two halves:
-1. **Downstream (verified external behavior):** when an extra no longer exists, `pip install dnallm[base]` prints `WARNING: dnallm does not provide the extra 'base'` and **exits 0 with the extra's dependencies silently uninstalled** (pip ≥23.3, confirmed through pip 25.3; PEP 685 normalization applies). Every existing user of the kitchen-sink `base` extra gets a quiet, broken environment on the next install — no error to report, nothing to search for. uv behaves equivalently for unknown extras.
-2. **In-repo lockstep:** `base` is referenced by the self-referential `all` extra (`dnallm[base,...]`), four CI install sites (`ci.yml:84,169,410`, `publish.yml:39`), `feasibility.yml:67`, README (2 commented mentions), and ~10 docs pages (`installation.md` alone has 8+ `.[base]` occurrences including the extras table at line 201 and the `--resolution=lowest` lane at 591). If `base` is re-scoped to be *minimal* (matching its name) rather than renamed, every CI leg installing `.[base]` for testing silently loses the transitive closure (dev/test/notebook/mcp) — the legs go red across the board, or worse, run with less and pass for the wrong reason.
+The dual-metadata surface is verified real: `mcp_server_config.yaml` maps service names → `model_name` (a registry display title) → a per-model inference YAML that re-states `task.task_type`, `num_labels`, `label_names`, `threshold`, `model.path`, `model.source` — all fields the registry now owns. Three design mistakes, each with a distinct blast radius:
+1. **Joining on display titles.** `model_name: "Plant DNABERT BPE promoter"` is a mutable human title — 261020-kwt corrected 2 tRNA title typos and 3 task-class strings in exactly these name fields. A checker keyed on titles either false-alarms on every cosmetic rename or (worse) "resolves" fuzzy matches. Join on `model.path` (repo id) — stable, unique per registry entry, and already the lineage anchor (`base_model` backfill keyed on repo ids).
+2. **Comparing only names/presence.** The drift that matters semantically is `label_names` order (frozen label order is a registry contract — the PlantHelixSeek freeze exists because configs carry no label semantics), `num_labels`, `task_type`, `threshold`, `source` (hf vs modelscope changes the entire download/cache path). A name-only checker passes while every prediction is wrong.
+3. **Auto-sync fixers.** A checker that rewrites the MCP config (or registry) to "repair" drift writes user-owned config files from inside a server startup path, with the same round-trip hazards as Pitfall 3 and no audit trail. Consistency checking is diagnosis; repair is a human act.
 
 **Why it happens:**
-Extras renames look like metadata-only edits; pip's warn-and-continue makes the downstream half invisible to the maintainer's own testing (the maintainer installs from source with the new names). The self-referential aliasing (`all` → `base` → `dev,test,notebook,mcp`) means one rename has a two-level blast radius.
+Consistency checks get specified as "make sure the configs agree" — which reads as "make them agree." And the title join is the path of least resistance because `model_name` is literally the field labeled like a foreign key.
 
 **How to avoid:**
-- Decide rename-vs-rename+alias: keep a deprecated `base` alias extra that still resolves (e.g. `base = ["dnallm[<new-name>]"]`) for at least one version cycle, with a README/docs migration note — the only way `pip install dnallm[base]` keeps working for existing users. If the owner chooses a hard break, the version must be a minor bump with the change flagged at the top of the changelog.
-- Same-change sweep, mechanical: `grep -rn "\[base\]" README.md docs/ .github/ scripts/` must return zero stale hits (or only the sanctioned alias definition); update `all`'s member list; add an `EXPECTED_*_MEMBERS` bracket test mirroring `tests/test_extras_guard.py` for the renamed extra so a future edit can't silently drop members.
-- Update all four CI install sites + publish.yml + feasibility.yml in the same commit as the pyproject edit — CI red on a missing extra is actually the *loud* failure; the danger is legs that still resolve but under-install.
-- Ordering: this must land BEFORE the docs accuracy sweep (Pitfall 9) and ideally in the same phase as the cuda130-default/GPU-matrix docs decisions, so docs are written once against the final extras state.
+- Phase-M deliverable is a PURE function: `check_config_registry_consistency(mcp_config, registry) -> list[Finding]` — collect-all, never raises, never writes (mirror the Phase-C core contract). Findings carry field, both values, file+line where derivable.
+- Key on repo id (`model.path` ↔ registry `model:`); treat title mismatch as at most an INFO-level finding.
+- Compare the full semantic set (task_type, num_labels, label_names ORDER, threshold, source, and registry head-metadata like `base_model` resolvability for finetuned entries — the kwt integrity tests already prove every finetuned entry has `base_model`; the MCP check inherits that invariant).
+- Test pattern: a fixture pair matrix — one clean pair plus one fixture per drift class (label order swapped, num_labels off by one, source hf-vs-ms, threshold drift, orphaned MCP entry, registry entry absent) — asserting the exact finding emitted per class. Plus a committed-configs test that runs the checker over the real `dnallm/mcp/configs/` (no-network) so drift in the repo itself fails CI.
+- MCP wiring (per PROJECT.md active requirement): the checker surfaces as tool/startup warnings; the fix is a human edits the YAML.
 
 **Warning signs:**
-- A pyproject diff renaming an extra with no docs/CI diff in the same commit.
-- CI logs containing `does not provide the extra` (pip) or uv's equivalent warning — treat any occurrence as a broken leg even when green.
-- `pip install dnallm[base]` in a fresh venv resolving to fewer packages than before (diff the pip freeze).
+- A checker whose signature returns a bool or `dict` without file/line provenance; any `open(..., "w")` reachable from the consistency path.
+- Fuzzy matching (`difflib`, `fuzz`) anywhere in the join.
+- Findings that mention titles but never label order / threshold / source.
 
-**Phase to address:** Phase P, first plan of the phase; alias decision is an owner call at planning time (like the triton #18 decision).
+**Phase to address:** Phase M — but the fixture-matrix shape is decided at plan time; the pure-function seam means Phase C's contract conventions apply from the first commit.
 
 ---
 
-### Pitfall 5 (O): Ollama-surface removal deletes tests that guard NON-ollama contracts
+### Pitfall 5 (C/T): Availability probing — network calls leaking into unit tests, HF/ModelScope rate limits, env vars read at import time, and cache layouts that lie
 
 **What goes wrong:**
-The directive says "~59 refs across 5 test files + 2 notebooks; remove-vs-skip per item." The refs are not equivalent. Verified by reading the files:
-- `tests/test_extras_guard.py` (5 refs): these are the **extras-bracket guards** — `langchain-ollama>=1.1.0` declared in the `mcp` extra (REPAIR-04), the five pre-existing mcp members, the `ipython<9` kernel-plot pin, AND `TestNotebookKernelPlotCompat` (the installed IPython/matplotlib pair that kills `plt.subplots` in every notebook kernel). Removing these as "ollama-related" deletes the guard against the exact matplotlib/IPython regression that broke the example lane once already, and un-guards the pydantic-ai cap rationale (PRs #47/#48 pending on exactly these guards).
-- `tests/test_runner_infra_contracts.py` (15 refs): pins the in-repo `scripts/runner/ollama.service` systemd unit's Environment lines (D-06/D-12), the README re-apply op, and **docs-mirror content contracts** (`"ollama:qwen3.5:4b"` must appear in the langchain notebook AND its `docs/example` mirror .md). These guard the runner box and mirror honesty, not ollama execution.
-- `tests/test_models_lock_contracts.py` (1 ref): a docstring mention ("ollama models only") inside a models.lock contract test — zero ollama behavior.
-- `tests/examples/test_notebook_execution.py` (33 refs): a mix of true ollama-execution surface (`_gate_ollama_stack`, stage-3 batch inventory) and the shared gating machinery (`_probe_http_with_retry` semantics tests) that also serves MCP-server probing.
+The availability dimension (`check_compatibility`'s source/size/cache/revision probing) is the most trap-dense feature in the milestone:
+1. **Network in unit tests.** Any probe that touches `HfApi`/ModelScope by default drags network into the fast leg — the suite's network-free fast lane breaks (flaky, IP-banned, or CI-runner-dependent), or gets skip-guarded into dishonesty.
+2. **Rate limits are real and shared.** Official HF limits: 5-minute windows, anonymous per-IP 500 requests/5min (authenticated 1,000+); `model_info` sits in the API bucket; transformers ≥5 can burst `model_info` calls into 429 (LlamaFactory PR #10155 — and this repo rides transformers 5.17). The nightly box and CI runners share egress IPs; a "probe all 236 registry entries" loop is 236 API calls in seconds — a 429 storm, and 429s mis-read as "model unavailable" turn rate-limiting into false negative verdicts. ModelScope limits: officially undocumented (LOW confidence — treat as unknown, design for HTTP-429-class resilience regardless).
+3. **Env vars are read at IMPORT time by huggingface_hub** (official docs): `HF_HOME`, `HF_HUB_CACHE`, `HF_ENDPOINT` are baked at import. Two live consequences: (a) `dnallm/models/model.py` already toggles `os.environ["HF_ENDPOINT"]` at RUNTIME (~line 494) — after huggingface_hub import that toggle may be inert, so the pre-flight env panel must report the EFFECTIVE endpoint (read the library's resolved constants, not `os.environ`), and any in-TUI endpoint toggle needs the subprocess boundary to actually take effect; (b) `HUGGINGFACE_HUB_CACHE` is deprecated in favor of `HF_HUB_CACHE`, with `HF_HOME`/`XDG_CACHE_HOME` precedence — cache detection reading only `~/.cache/huggingface` mis-reports every custom-layout machine as "not cached".
+4. **Cache-layout variance.** HF: blobs/snapshots/refs layout resolvable via `try_to_load_from_cache` / `snapshot_download(local_files_only=True)` — use those, not path spelunking. ModelScope: TWO layouts in the wild (pre-1.23.0 `hub/<org>/<model>` vs post-1.23.0 `hub/models/--<org>/<model>`, auto-migration, `MODELSCOPE_CACHE` historically inconsistent about appending `hub/` — issue #845) — and `dnallm/models/model.py:1545` HARDCODES `~/.cache/modelscope/hub`. A cache detector supporting one layout reports false "not downloaded" and the user re-pulls 12 GB.
+5. **`HF_HUB_OFFLINE=1` makes every HfApi call RAISE `OfflineModeIsEnabled`** — an offline user's "probe remote availability" must degrade to cache-only verdicts, not crash.
 
 **Why it happens:**
-Grep-by-keyword classification. "5 files contain ollama" reads like "5 files are ollama tests." The kernel-plot compat test shares a file with an ollama-named declaration; the runner contracts share the noun.
+"Is the model available?" reads like one boolean; it is actually a three-valued, cache-aware, rate-limited, environment-sensitive question. Each sub-trap is invisible in a dev session (cached models, warm IP, default env).
 
 **How to avoid:**
-- Classify per-assertion, not per-file, at planning time (the directive already says "per item" — hold to it): (a) tests that EXECUTE ollama or gate on the ollama endpoint → remove or skip per owner; (b) tests that mention ollama while guarding extras/mirrors/runner-infra/kernel-plot → KEEP, possibly with renamed fixtures; (c) the two notebooks → if removed, the docs-mirror and mkdocs-nav consequences (Pitfall 7) ride along; if kept-unexecuted, say so in prose (honesty convention).
-- After the sweep, `grep -rn ollama tests/` should return exactly the sanctioned residue list, recorded in the phase plan — a second grep gate so later phases can't accidentally re-widen.
-- If `langchain-ollama` leaves the `mcp` extra when the notebooks' status changes, update `EXPECTED_MCP_MEMBERS` same-change — the bracket test will fail loudly otherwise (that is it working).
+- Probe interface is injectable and network-free by default in unit tests: the pure core takes a `remote_probe` callable (or pre-fetched facts); tests inject fakes. Real-network probing tests live behind the existing `slow` marker + typed `network-unavailable:` skip prefix with probe evidence in the message (existing D-08 convention).
+- Availability is a three-state verdict per source: `cached` (local detection, offline-safe) / `remote-confirmed` / `unknown` (rate-limited, offline, or error — NEVER mapped to "unavailable"). A 429 or timeout yields `unknown` with the reason; the TUI renders it as such.
+- Never probe the full registry: the suitability panel probes the user's candidate shortlist (ModelScope-first, `zhangtaolab/*` prioritized). If a bulk check ever exists, it is sequential with backoff honoring `RateLimit`-style headers, and its results cached (dnallmmark env-check same-day cache precedent).
+- Cache detection: HF via `huggingface_hub` APIs (`try_to_load_from_cache`, honoring resolved constants rather than re-reading env); ModelScope via a layout-aware resolver covering BOTH layouts + `MODELSCOPE_CACHE` (and fix or wrap the hardcoded path in model.py — scope-permitting; otherwise the detector documents the hardcode).
+- Env panel reads effective values through library constants (e.g. huggingface_hub's resolved endpoint constant), and its "toggle endpoint" action spawns the affected work in a subprocess (or documents restart-required) rather than promising an in-process switch.
 
 **Warning signs:**
-- A removal diff touching `TestNotebookKernelPlotCompat`, `EXPECTED_MCP_MEMBERS`, or the systemd Environment-line pins.
-- Coverage or CI green with the ipython<9 pin no longer asserted anywhere.
-- The remove-vs-skip ledger in the plan listing file names without assertion names.
+- `check_compatibility` unit tests that pass offline only because the dev machine is offline; probe calls not behind an injected seam.
+- Probe code mapping every exception to `available=False`.
+- Cache detection built from hardcoded paths (`~/.cache/...` literals) or single-layout assumptions.
+- CI logs showing 429s from HF/ModelScope; nightly runs newly slow from re-downloads the cache detector missed.
 
-**Phase to address:** Phase O, at plan time (the classification IS the plan); execution is then mechanical.
+**Phase to address:** Phase C (the pure core owns the three-state verdict + injectable probe seam + cache resolvers); Phase T consumes verdicts and adds the subprocess boundary for env toggles; real-network acceptance rides the nightly lane only.
 
 ---
 
-### Pitfall 6 (O/W): Census-triple and skip-allowlist collisions — the nightly hard gates trip on count drift the change never anticipated
+### Pitfall 6 (T): Terminal-environment variance and the snapshot-infra temptation — conhost degradation, MSYS2/SSH edge cases, and SVG goldens that differ per OS
 
 **What goes wrong:**
-Three pinned gates interact with any test-set change:
-1. **D-03 census triple** (example-nightly stage 0.5, ci.yml ~line 853): hard-asserts `208/217 tests collected (9 deselected)` with the exact stage-1 selector flags. REMOVING tests (ollama) or the mcp_example pair changes collected/deselected counts → nightly goes red at stage 0.5 before anything runs. SKIP-marking does NOT change collection counts — a skip still collects.
-2. **`expected_skips.yaml` + audit_skips in 4 CI jobs:** every NEW skip message must match an allowlist entry or the job fails. Skip-marking the ollama surface with a fresh reason string ("removed-surface:" etc.) without a same-change allowlist entry → all four legs red. Conversely, removals orphan allowlist entries (harmless to the gate, but review debt — clean them same-change per the file's own "reviewable suppression record" charter).
-3. **Stage-3 OLLAMA BATCH orphan:** example-nightly stage 3 re-runs "just the two gated mcp tests" when ollama is up. If those tests are REMOVED but the stage remains, pytest selects nothing → exit code 5 (no tests collected) → recorded as a failure in the stage-4 summary → nightly red even though nothing is wrong. The stage must be deleted/rewritten in the same change as the removal.
-
-Platform-split adds a fourth: new platform-keyed skips fire on the **test-windows** junit (which also runs audit_skips, ci.yml line 187) with messages that may differ from Linux (precedent: `fd accounting needs /proc` entry exists precisely for the Windows leg).
+Two failure families:
+1. **Terminal variance in the field:** Textual on Windows enables VT processing via the Win32 Console API; legacy conhost degrades rendering (symbols/glyphs — textual#4974; IME text loss — textual#5456; no truecolor/emoji/OSC 52), MSYS2/mintty mouse input is broken (msys2#22188), and `WT_SESSION`-style terminal detection is unreliable (rich#140). SSH sessions add another variance axis (TERM, terminfo, latency). The dev machine (Linux + a modern terminal) shows none of this; the primary dev machine per CI comments is Windows 11 — users will hit conhost first.
+2. **Snapshot testing adopted as the default TUI test style:** `pytest-textual-snapshot` compares SVG screenshots; first run ALWAYS fails (no baseline — must `--snapshot-update` after eyeballing), and SVG output embeds OS-specific glyphs/font references — third-party practice is to pin one OS for golden generation, pin terminal size, freeze clocks, and settle animations, because cross-OS font/glyph differences produce false diffs. The docs' "works well in CI on all supported operating systems" is about running, not about goldens being byte-portable. Worst case for this repo: snapshots generated on Linux, test-windows leg red on every run, someone "fixes" it by regenerating goldens on Windows — now both legs red against each other's baselines.
 
 **Why it happens:**
-The gates are deliberately pin-happy (the bump-point comments say so); every count change is intentional friction. A planner thinking "this is just a test removal" misses that three separate pinned integers move.
+Snapshot tests look like the fastest way to "test" a UI; headless `run_test` feels like it tests less because it asserts behavior, not pixels. And nobody on the repo has shipped a TUI before, so conhost/MSYS2 realities are folklore until a bug report arrives.
 
 **How to avoid:**
-- Any Phase O / Phase W plan lists an explicit "pinned-gate re-pin" task: new census triple measured from a real collection run (exact selector flags), `expected_skips.yaml` delta, and ci.yml stage-3 disposition — each in the same commit as the test change.
-- Prefer the typed-skip-prefix convention for anything kept; reuse existing prefixes (`environment-unavailable:`, `network-unavailable:`) where truthful rather than inventing near-duplicates.
-- For the Windows numpy path: new markers (if used to select the numpy-path execution lane) must be registered in `pyproject.toml [tool.pytest.ini_options] markers` — `--strict-markers` fails collection otherwise, which itself would trip the census gate confusingly.
+- Default test style = functional Pilot tests through `run_test()` (in-process, headless, no TTY needed — CI's no-TTY is a non-issue for these; they double as the coverage engine per Pitfall 2). Assert on widget state and messages, not rendered text grids where avoidable; where layout matters, assert on the widget tree / line contents (Textual export APIs), not SVG.
+- Snapshot infra is NOT adopted in v1.4 (it would be a new dev-dependency and a new flakiness class). If ever adopted later: goldens generated on exactly ONE CI OS, terminal size pinned via `run_test(size=...)`, clocks/animations settled, and the snapshot suite deselected (not skipped-loose) on other OSes.
+- Windows exposure is real but test-windows only proves the headless path — keep textual installed there (Pitfall 2) so import/mount logic is at least executed on Windows each push.
+- TUI feature scope defends against variance: avoid mouse-dependent interactions for core flow (keyboard-first, dnallmmark's digit-prefixed nav precedent), avoid truecolor/emoji in verdict glyphs, degrade gracefully on narrow terminals (SSH default 80 cols).
+- Document supported terminals honestly in the TUI docs (Windows Terminal recommended over conhost) — the project's docs-honesty convention.
 
 **Warning signs:**
-- Nightly failing at stage 0.5 with "census collection mismatch" after a test-count change (this is the guard working — re-pin deliberately, never widen the grep).
-- `UNEXPECTED SKIPS` in any audit_skips job output.
-- pytest exit 5 in any nightly stage log.
+- `pytest-textual-snapshot` or SVG files appearing in the repo/tests; `--snapshot-update` in any CI script.
+- Tests asserting exact full-screen renders; mouse-only paths to core functionality.
+- Bug reports mentioning cmd.exe/PowerShell-conhost rendering or mintty input.
 
-**Phase to address:** Phases O and W — each phase's verification includes a dispatched (or owner-watched) nightly run before close, given the nightly lane is the only place these gates fire.
+**Phase to address:** Phase T (test-style decision at plan time: Pilot-functional, no snapshot infra); the terminal-support documentation rides the milestone's docs pass.
 
 ---
 
-### Pitfall 7 (O/D): Notebook removal collides with the byte-identical mirror gate and mkdocs nav
+### Pitfall 7 (C/T/M): Event-loop flakiness in the TUI test batch — pass-alone-fail-together teardown, and the anyio/pytest-asyncio seam under an MCP client
 
 **What goes wrong:**
-If the two `example/mcp_example/*.ipynb` notebooks are REMOVED (rather than kept-unexecuted): `check_docs_sync.py` requires the mirror copies under `docs/example/mcp_example/` to be removed too — an `.ipynb` exists on BOTH sides, so leaving the mirror copy produces `ONLY in docs/example/` (the `.md` wrapper exemption covers only docs-side `.md` files). But the `.md` wrappers (docs-only by design) then reference notebooks that no longer exist, and `mkdocs.yml` nav entries pointing at removed/emptied pages break `mkdocs build --strict` (which already carries 15 pre-existing warnings — new broken-link warnings there are easy to misattribute to the pre-existing pile). The nightly docs-validation and mirror checks then fail on a change that was conceptually "just delete two notebooks."
+The suite already runs `--asyncio-mode=auto` (pytest-asyncio 1.4.0 / pytest 9.1.1) for the MCP layer. Adding a TUI test batch introduces two known integration hazards:
+1. **Loop-teardown order sensitivity:** the pytest-asyncio ≥0.25 era broke Textual's own suite with `RuntimeError: There is no current event loop in thread 'MainThread'` — tests passing individually, failing when run together. Modern versions are fixed, but the failure CLASS (per-test app instances leaving timers/workers/drivers alive into the next test) is exactly what a batch of `run_test` apps with pending thread workers produces: a test that exits `run_test()` while its download worker still sleeps holds a reference to a dead app; the next test's assertions see stale messages or the worker's late `post_message` raises into the wrong loop.
+2. **anyio vs pytest-asyncio dual-auto conflict:** the MCP SDK (FastMCP) is anyio-based; anyio's pytest plugin in auto mode officially conflicts with pytest-asyncio auto mode. Today the repo's MCP tests run under pytest-asyncio only — but a Phase-M/T test that starts an MCP client (or imports something registering the anyio plugin) inside the same suite can flip the whole async test population's behavior.
 
 **Why it happens:**
-The mirror is enforced byte-identical in both directions, but the docs AROUND the mirror (wrappers, nav, showcase pages) are a separate consistency surface with no automated cross-check to notebook existence.
+Both are invisible at single-test scale and surface as "flaky CI" — which on this repo triggers the worst possible response: someone marks the test flaky/skipped rather than fixing teardown (the ever-green-skip dishonesty again).
 
 **How to avoid:**
-- If removal: same-change — delete both sides' `.ipynb`, decide wrapper disposition (delete wrappers + nav entries together; a wrapper without its notebook is dead prose), run `mkdocs build --strict` locally and account for the delta vs the 15 known warnings.
-- If keep-unexecuted (recommended: consistent with the owner's "window stays open in the ledger" stance on #13): the notebooks stay, their execution tests skip/remove, and a short prose note in the wrapper states they are not executed by CI (the project's honesty convention — same class as the IA³ forward-pointer handled in v1.2).
-- Any Phase D sweep touching example notebooks at all (even a markdown-cell typo) must regenerate the mirror same-change via `scripts/generate_md_from_notebook.py` / `generate_md_from_marimo.py` — the byte-identical gate (`cmpfiles(..., shallow=False)`) reads bytes; "looks the same" is not a defense.
+- Every TUI test's `run_test()` context manager body awaits worker quiescence before exit: `await pilot.pause()` after actions, and for worker-driving tests, await the specific terminal message/state (never exit on a wall-clock sleep); where a long-lived worker is deliberate, cancel it and await cancellation inside the test.
+- Structure tests so each test builds its own App instance (no module-level app); no cross-test app state.
+- Keep TUI tests plain pytest-asyncio (auto mode as-is); never add anyio marks; if a test genuinely needs an MCP client session, prefer the existing MCP test patterns (their own client/transport harness) over embedding a live client inside `run_test` — or drive it via the pure core seam instead.
+- Guard the guard: the typed-skip system means a "flaky TUI test" skip needs an allowlist entry — which forces the conversation to stay honest. Budget for making tests deterministic instead (deterministic fakes, no real timers — inject clocks where the core exposes timeouts).
 
 **Warning signs:**
-- `SYNC ERRORS:` from check_docs_sync in docs-validation.
-- mkdocs --strict warning count > 15 after a notebook/docs edit.
-- A diff editing `example/**` with no corresponding `docs/example/**` diff (and vice versa).
+- TUI tests that pass with `-p no:randomly`-style single runs but fail in batch; "no current event loop" in CI logs.
+- `asyncio.sleep(...)` used as a synchronization primitive in tests (race by construction).
+- Import of `anyio` pytest plugin or `@pytest.mark.anyio` anywhere under `tests/`.
 
-**Phase to address:** Phase O (removal decision) and every phase touching example/ — the mirror-regen rule is a standing verification step for W and D too.
+**Phase to address:** Phase T (teardown discipline from the first TUI test file — retrofitting determinism into a flaky batch is far more expensive).
 
 ---
 
-### Pitfall 8 (W): The Windows leg goes skip-green instead of becoming the numpy-path executor — and the coverage gate quietly reprices platform-split code
+### Pitfall 8 (T, roadmap-level): Wizard scope creep — the pre-flight TUI absorbing post-flight surfaces and config-editor ambitions
 
 **What goes wrong:**
-Two entangled failure modes:
-1. **The dishonesty class the project explicitly rejects** (v1 Phase-5 decision: "an ever-green skip is the same dishonesty class as the false-green CI gates"): the easy way to make test-windows pass the bedtools-gated tests is `skipif(sys.platform == "win32")` on the EXISTING tests — Windows then never executes the numpy evaluator, and "Windows platform parity" ships as a skip. The owner directive is the opposite: test-windows becomes the numpy-path EXECUTOR.
-2. **Coverage-gate math:** the numpy evaluators will live under `dnallm/` (in the coverage denominator on EVERY leg; the example code that calls them is NOT in the denominator). test-windows runs `pytest -m "not slow" --cov` (ci.yml line 182) — bare `--cov` activates `fail_under=90` there too. If the evaluator's unit tests are written skipif-guarded or only meaningful on Windows, the Linux coverage legs (fast gate + nightly census) lose their only coverage of the new modules → the 90 floor can breach (the floor is 90; the suite sits at 96.72 — headroom is real but not infinite for two new modules).
+The owner already scoped this once (PROJECT.md: Track B substrate merge and Track C R2/R3/R5/R6 are NOT v1.4), and the survey's §5.3 pins the wizard to four capabilities. The creep vectors are attractive and adjacent: the suitability panel drifting into R1's loaded-model exploration REPL; the config panel drifting from "edit + validate + emit" into authoring arbitrary new configs with model discovery; select-to-download drifting into a full download-manager UI (dnallmmark's data_manager territory); the data panel drifting into benchmark-dataset management (explicitly SPLIT-MERGE downstream). Every absorbed capability adds widget surface that is (a) hard to drive under `run_test` (Pitfall 2/6 pressure), (b) tempting to give its own logic instead of routing through the Phase-C core, and (c) re-doing something the sibling already owns — violating the owner's "no duplicate development" directive.
 
 **Why it happens:**
-Un-slowing the showcase/NER execution tests for Windows floods the hosted leg with heavy notebook execution (models, HF downloads, the 60-minute timeout, cold pulls — the owner already dropped models-cache as quota-hostile), so the tempting shortcut is skips on one side and execution on neither.
+A wizard that validates data naturally sits next to "and then just run it" — each increment looks like UX polish. The TUI-SURVEY Part 4 record shows this milestone's planning already fought this battle once (the original seven exclusions).
 
 **How to avoid:**
-- Two-layer test design, both layers platform-neutral where possible: (a) **unit layer** — evaluator correctness tests on synthetic BEDs (spike corpora, baked oracle literals) run on ALL legs including Linux: this is what keeps coverage and parity proven everywhere; (b) **execution layer** — the notebook/script execution tests get platform-AWARE dispatch (Linux: bedtools/pybedtools path on the nightly box; Windows: numpy path), selected by the existing gates (`_gate_script_pybedtools`, `_gate_pybedtools`, the `which('bedtools')` assert → numpy-path pass) rather than by a blanket marker flip. The three gate sites are inventoried in WINDOWS #19: `test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`.
-- Scope what test-windows actually executes: the parity-relevant execution subset, not the whole slow lane; a hosted-leg time budget must be measured in the first Windows-path PR (precedent: D-12 measured budgets citing run ids).
-- Keep the Windows numpy-path execution failure LOUD: if the numpy path is what Windows runs, a missing-model/env failure on Windows must surface as the typed skip classes already exist (probe-then-execute), never as a silent pass.
+- Anti-feature list pinned in the roadmap (from PROJECT.md + survey §5.4/§5.5): no loaded-model exploration (R1 core), no training dashboard (R2), no MCP control room (R3), no VEP runner (R5), no interpretation triage (R6), no benchmark-dataset download management, no custom-entry gauntlet wizard (Track B merge candidates, later).
+- Hard architecture rule made testable: every panel's every action maps 1:1 onto a Phase-C core function call (validate_data / check_compatibility / generate_config / registry queries / download via the ModelScope-first path). A panel action with no core function beneath it is scope creep by definition — the Phase T plan lists the panel→function table explicitly.
+- The config edit+validate panel ABSORBS R4 but only as stated: edit existing configs + live collect-all validation + validated emit — not a general YAML editor, not a new-config authoring wizard (the click generator remains the authoring tool).
+- `zhangtaolab/*`-first ordering is UX prioritization inside the suitability panel, not a filtering feature that hides non-lab models.
 
 **Warning signs:**
-- `skipif(sys.platform == "win32")` on any bedtools/pybedtools-gated test that has no Windows-executing sibling.
-- test-windows junit where the numpy evaluator never appears in any stack trace.
-- Linux coverage report showing the new evaluator modules below the per-module ≥96% standard.
+- TUI modules importing inference/training entry points (only registry queries, core functions, and download belong in scope).
+- Panel→function table rows with no core function name; widgets containing verdict logic inline.
+- Roadmap items phrased "and while we're in the TUI, also…"
 
-**Phase to address:** Phase W — test architecture is decided at plan time, before the first evaluator commit.
-
----
-
-### Pitfall 9 (D/P): The docs accuracy sweep lands before the packaging decisions and is stale on arrival
-
-**What goes wrong:**
-The sweep reviews `docs/` + `example/` per-file for accuracy vs code. If it runs BEFORE the extras rename, cuda130-default change, cuda121 retirement, GPU-matrix documentation, or the Windows platform-split example edits, every reviewed page is invalidated by the very next phase — the milestone ends with a "docs accuracy review" whose pages describe a package that no longer exists. The specific high-churn surfaces: `installation.md` (extras table line 201, `.[base]` ×8, `.[cuda121]` line 517, `.[base,cuda124]` line 442), `example/notebooks/overview.md` (3 mentions of `.[base,notebook,cuda124]` as the DEFAULT install — owner directive 2026-10-11 already retargets this to cuda130), README install block, and every page whose snippets embed example code (checked by `check_docs_code.py` / `validate_docs_snippets.py`).
-
-**Why it happens:**
-Docs feel like a safe parallel workstream, so they get scheduled first or in parallel. But this sweep's deliverable is *accuracy*, which is a function of the final code state — it is the one phase with a hard ordering dependency on nearly every other phase.
-
-**How to avoid:**
-- Order: O/G → W/P → S → D, with Phase D last as the honesty backstop absorbing all downstream doc consequences (the GPU support matrix row in STATE has the full pre-verified boundary table ready to paste: Pascal cpu-only, Turing = cuda121–128 ceiling, Ampere+ = cuda130 default, 50xx cuda128+; verify-against-local-torch evidence 2026-10-11).
-- The sweep must be uv-vs-pip lane-split (STATE extras-hygiene item d): plain `pip install dnallm[cuda130]` silently ignores the uv-only `[tool.uv.sources]` index pin leaving users on default torch — every install command in docs needs its lane labeled, and the pip lane needs the explicit `--index-url https://download.pytorch.org/whl/cu130` guidance or an honest "uv-only convenience" note.
-- Same-pass fix discipline (owner directive): findings are fixed in the same sweep, not parked — but fixes to MIRRORED content must follow Pitfall 7's regen rule, and fixes to notebook code cells require re-execution evidence (nightly) before the committed outputs change.
-
-**Warning signs:**
-- A roadmap where Phase D precedes P or W.
-- Docs review notes that say "accurate as of commit X" where X precedes the pyproject rename commit.
-- `grep -rn "cuda121\|\[base\]" docs/` returning hits after both packaging phases merged.
-
-**Phase to address:** Phase D ordering decision — roadmap-creation time, before any phase executes.
-
----
-
-### Pitfall 10 (S): The OIDC Trusted Publishing migration fails on claim-matching details a dry-run cannot prove — and the old token's removal races the new chain's first use
-
-**What goes wrong:**
-Verified external behavior (MEDIUM confidence, cross-checked): PyPI matches the OIDC token against the registered publisher on **owner + repository + workflow FILENAME (not the workflow's `name:`) + environment name**, exactly. The failure modes that recur in the wild: `environment:` on the job missing or differing from the PyPI-side registration (`invalid-publisher` / `invalid-pending-publisher`); a workflow rename (e.g. splitting `publish.yml` into `publish.yml` + `publish-smoke.yml` per Pitfall 3) that makes the SMOKE workflow an unregistered publisher while the release workflow stays registered — or vice versa; `permissions: id-token: write` missing at the job/workflow level; forks receiving `id-token: write` but failing at upload (expected; PR-authored code must never reach publishing anyway — matches the repo's self-hosted policy stance); reusable workflows NOT supported as publisher (warehouse#11096) — relevant if the smoke is factored into a reusable workflow to share steps with the release job, which is precisely the refactor a tidy implementer would do. Tooling: plain `twine upload` does NOT perform the OIDC exchange itself — the migration means either `pypa/gh-action-pypi-publish` (which exchanges the token then uploads via twine internally) or `uv publish --trusted-publishing` (the repo already uses uv everywhere else; `--check-url` gives the skip-existing-equivalent semantics safely). Finally: deleting `PYPI_API_TOKEN` before the first successful OIDC publish leaves the chain unable to fall back; keeping it forever defeats the migration's purpose.
-
-**Why it happens:**
-Every requirement is invisible until the first real release; a dry-run (`uv publish --dry-run`) validates metadata and the `/validate` endpoint but does not complete a trusted-publishing mint-and-upload, so the migration can be "done" and still fail only when a release is cut. The STATE row already flags the decision as riding the publish-smoke phase — the pitfall is treating the smoke as sufficient proof.
-
-**How to avoid:**
-- Register the publisher with the FINAL workflow filename(s) after the Pitfall-3 split, with a named GitHub `environment:` (e.g. `pypi`) used identically on both sides; add `permissions: id-token: write` (and `contents: read`) to the publishing job only, never workflow-wide.
-- Migrate to `uv publish --trusted-publishing always` (explicit; `automatic` can silently fall back to token auth if the secret still exists — a false sense of migration) or the SHA-pinned `pypa/gh-action-pypi-publish`.
-- Keep the token through the first observed real release, then delete the secret and re-run the smoke to prove it no longer depends on it. Record the observed release run id in the phase verification (the project's evidence convention).
-- Do not factor the publish steps into a reusable workflow (unsupported as publisher).
-
-**Warning signs:**
-- `invalid-publisher` / `invalid-pending-publisher` in a publish attempt (claim mismatch — check environment + filename first).
-- A migrated workflow still carrying `TWINE_PASSWORD`/`PYPI_API_TOKEN` refs after the first successful OIDC release.
-- Smoke green while no real release has yet exercised the mint.
-
-**Phase to address:** Phase S, sequenced after the Pitfall-3 workflow split; closure criterion includes one observed real release.
-
----
-
-### Pitfall 11 (W/G): GAP-1 un-skips surface before the environment truly supports them — and the compat shim's blast radius crosses all 35 model families
-
-**What goes wrong:**
-WINDOWS #11/#12 are both the same class: the NT promoter checkpoint's remote code needs removed transformers-4.x `PretrainedConfig` defaults (`is_decoder`/`add_cross_attention`) under 5.x. The v1.3 disposition is "compat-shim vs removal at planning time." Two ways it goes wrong:
-1. **Shim blast radius:** the natural home (`dnallm/utils/transformers_compat.py`, already spanning 4.49–5.x) patches config defaults GLOBALLY — every model family loads through the patched path, so a too-broad patch (re-adding defaults unconditionally, mutating `PretrainedConfig.__init__` for all models) can change behavior for models that never needed it. The shim must also fire BEFORE the remote module instantiates its config (import-order sensitivity), and remote-code execution is `trust_remote_code` territory — keep the shim declarative and version-keyed, and prove no-diff on a non-NT family.
-2. **Premature un-skip:** #12's typed skip is self-healing by design (fires only while the env can't). If the shim works locally but the checkpoint still fails on CI (HF endpoint/mirror variance, runner cache state), un-skipping turns the leg red — and if someone then "fixes" the redness by loosening the probe, the probe-then-execute discipline (live evidence carried in skip messages, both directions proven — a Key Decision) erodes. Closure of #15 riding along has the same shape: those optional-dep gates prove *environment* availability, not code correctness.
-
-**Why it happens:**
-A local green is a powerful but partial proof; the gap between "loads on the dev box" and "loads in every CI lane" is exactly the network/cache variance the typed-skip system was built to absorb.
-
-**How to avoid:**
-- Decide shim-vs-removal in the plan with a blast-radius estimate: shim = version-keyed, minimal-attribute, guarded (matchable loud error if the remote code's expectations drift again), plus a regression test pinning a non-NT family's config behavior unchanged; removal = benchmark notebook loses its third model — an honest surface narrowing that must be documented, not slipped in.
-- Un-skip only with the skip's own probe proven green in the target lane; keep the probe machinery intact so a future regression re-skips loudly rather than failing opaquely.
-- If #15 closes on shim success, close it with per-item probe evidence (the ledger entry lists the specific gates: evo/megaDNA optional-dep, megaDNA demo cell, PlantCAD lora pair) — not a blanket un-skip.
-
-**Warning signs:**
-- A compat shim without a version guard or without a non-target-family regression test.
-- Un-skipped tests whose probe helpers were deleted in the same diff.
-- Benchmark docs still listing three models after a removal disposition.
-
-**Phase to address:** Phase G (decision at plan time); interacts with Phase W — the Windows NER execution path needs the NT BPE checkpoint loadable, so G precedes or rides the front of W.
-
----
-
-### Pitfall 12 (P/S): cuda121 retirement and the rocm pin leave stale references in CI, uv config, and docs — and the triton-windows declaration imports a community fork into the published surface
-
-**What goes wrong:**
-Three packaging half-changes:
-1. **cuda121 retirement:** `pyproject.toml` keeps a `cuda121` extra, a `torch-cuda121` uv index, sources entries, and conflicts pairs; `ci.yml`'s `test-cuda` matrix still lists `'12.1'` (line 218 area); `docs/getting_started/installation.md:517` shows `.[cuda121]` as the chooser example. Retiring the extra without all three (extra+index+sources+conflicts, matrix leg, docs) leaves a CI leg installing a dead extra (pip warn-and-continue per Pitfall 4 — silent under-install on a GPU lane) and docs pointing users at a retired lane.
-2. **rocm restore-or-remove:** the `[tool.uv.sources]`/conflicts rocm block is commented out, so `.[rocm]` installs default-index torch — README's ROCm claim is inert TODAY. Restoring means uncommenting an index pinned to `rocm6.2` — stale against the torch 2.11/<2.12 the package now rides (torch-ROCm wheel lanes move per release; a stale index either resolves old torch or fails loudly). Removing means the README claim and docs must stop promising ROCm (a docs-honesty item, not just pyproject hygiene).
-3. **triton-windows (#18, MEDIUM confidence external):** the fork has moved under the `triton-lang` org with multi-vendor contributors and reproducible+attested builds since 3.7.1.post27, but remains a community package separate from upstream, version-coupled to torch (3.6↔2.10, 3.8↔2.14/2.15) with DLL/vcredist failure modes on user machines. Declaring it behind a Windows marker in the `fla` extra makes every Windows fla user ride community release cadence and the torch-pairing being right; NOT declaring it keeps the current manual-step documentation (the local remedy: triton-windows==3.7.1.post27) — the honest middle is documenting the exact version pairing and keeping `test_chunk_kda_importable_when_fla_installed`'s skip behavior truthful on Windows.
-
-**Why it happens:**
-Each is "just pyproject hygiene" — but every extra is a public API (Pitfall 4), every uv index a resolution path, and every README claim a contract.
-
-**How to avoid:**
-- Treat extras changes as atomic units: extra + uv index + sources + conflicts + CI matrix + docs + README in one change, verified by a fresh-venv resolve per affected extra (the `--resolution=lowest` lane in installation.md:591 is the existing precedent for resolve-verification).
-- For rocm: verify the restored index actually carries torch matching the `<2.12` cap before committing; if not, the honest move is removal + docs, not a stale restore.
-- For triton-windows: default to documentation-of-manual-step (current state, already proven on RTX 5080) unless the owner accepts the third-party dependency; if declared, pin `<` the next major and add a bracket guard so dependabot-style bumps can't silently decouple it from torch.
-
-**Warning signs:**
-- `grep -n "cuda121\|rocm" pyproject.toml .github/workflows/ci.yml README.md docs/ -r` returning inconsistent subsets after any packaging PR.
-- A GPU CI leg green in less time than usual (under-installed via a warn-and-continue extra).
-- README promising an install path that resolves a different torch than documented.
-
-**Phase to address:** Phase P (all three), with the triton-windows decision recorded owner-side at plan time like the other owner calls.
+**Phase to address:** Roadmap-creation time (the anti-feature list goes into the v1.4 roadmap's scope boundaries); enforced per-phase via the panel→function structure test in Phase T.
 
 ---
 
@@ -309,112 +223,121 @@ Each is "just pyproject hygiene" — but every extra is a public API (Pitfall 4)
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| `skipif(win32)` on bedtools-gated tests instead of a real Windows numpy-path lane | test-windows green fast | "Parity" ships unexecuted on Windows — the exact ever-green-skip dishonesty class the project bans | Never for the parity claim itself; acceptable only for genuinely Linux-only tools (fd accounting precedent) |
-| Re-running spike scripts as the production evaluator (import from `.planning/quick/`) | Zero porting work | Planning artifacts become runtime dependencies; pins untested against library context | Never — port + unit-test (Pitfall 2) |
-| Leaving `PYPI_API_TOKEN` after OIDC migration | Fallback safety | `--trusted-publishing automatic` silently uses it; migration is theater | Only until first observed real release, then delete (Pitfall 10) |
-| Keeping a deprecated `base` alias extra forever | No downstream break | Misleading name persists (the original complaint) | One version cycle, with migration note |
-| Orphaned `expected_skips.yaml` entries after removals | Zero gate friction | The allowlist drifts from reality, eroding its value as a reviewable record | One phase — clean same-change when the sweep lands |
-| `|| true` on mypy in CI legs (current state) | No gate on a known-noisy check | Version drift accumulates invisibly (136 errors already seen on fresh runners) | Until the cap lands in Phase S; not after |
+| Calling sync core functions directly in TUI handlers (no workers) for "fast" ops | Less machinery; works on toy data | Event-loop freezes on real data; hangs under pytest-timeout | Never — the worker seam is load-bearing from day one |
+| `optional-dep:` skips for TUI tests on legs that could install `.[tui]` | Green CI without touching install lines | TUI code unexecuted + uncovered; the ever-green-skip dishonesty class | Only on legs that genuinely cannot install it (none known — textual is pure-Python) |
+| Omitting `dnallm/tui/*` from coverage "because UI" | Gate stays green while TUI ships untested | The 7-entry omit list discipline breaks; every future UI module cites the precedent | Never |
+| Registry "normalizing" write-back on load (round-trip) | Clean typed API over the YAML | Provenance comments destroyed silently (the defect kwt dodged) | Never — loader is read-only; maintenance is scripted text edits |
+| Boolean availability (`exists=True/False`) instead of three-state | Simpler verdict type | Rate-limited/offline states masquerade as "unavailable"; users re-download 12 GB | Never for remote probes; two-state acceptable for pure-local facts |
+| Title-keyed MCP↔registry join | Works today with matching titles | Every cosmetic rename breaks resolution; fuzzy-match "fixes" corrupt joins | Never — repo id is the key |
+| Auto-sync fixer in the consistency check | One-click remediation UX | Silent writes to user configs; round-trip hazards; no audit trail | Never in v1.4; a future explicit `--fix` CLI is the sanctioned shape if demanded |
+| Snapshot goldens as primary TUI tests | Fast visual coverage feeling | Cross-OS font/glyph false diffs; `--snapshot-update` becomes routine (gate theater) | Not in v1.4; revisit only with single-OS golden discipline |
+| `asyncio.sleep` synchronization in TUI tests | Tests pass most runs | Batch-order flakiness; skip-creep pressure | Never — await terminal messages/states |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| PyPI upload | Smoke/dispatch run reaching `twine upload`; trusting `--skip-existing` | Event-gate upload steps; build + `twine check --strict` + install-from-dist; filenames are immutable (Pitfall 3) |
-| PyPI Trusted Publishing | Registering with workflow `name:` instead of filename; no `environment:`; reusable workflow; plain twine expected to do OIDC | Match owner/repo/filename/environment exactly; `uv publish --trusted-publishing always` or gh-action; prove on first real release (Pitfall 10) |
-| pip extras | Assuming a bad extra errors | It warns and exits 0 — grep CI logs for `does not provide the extra` as a health check (Pitfall 4) |
-| uv indexes | Documenting `pip install dnallm[cuda130]` as equivalent | `[tool.uv.sources]` is uv-only; pip lane needs explicit `--index-url` or honest labeling (Pitfall 9) |
-| bedtools oracle | Re-freezing truth against a different bedtools version than v2.31.1 | The spikes' oracle is PATH-resolved v2.31.1; Linux keeps that binary (rootless micromamba cache keyed on it) — `--bedtools`-style override + version echo in any re-verification |
-| GitHub self-hosted runner | Letting PR-authored CI reach the nightly box during new Windows-lane work | Keep push/PR guards off self-hosted labels; new legs hosted-only until proven (existing GATE-02 policy) |
-| HF endpoints | Un-skipping model-download tests assuming reachability | Keep probe-then-execute with live evidence in messages (existing D-08 contract) |
+| huggingface_hub env vars (`HF_HOME`/`HF_HUB_CACHE`/`HF_ENDPOINT`) | Reading/writing `os.environ` at runtime and assuming effect | Vars are read at IMPORT time (official docs): report effective values from library constants; endpoint toggles need a subprocess boundary or restart; honor deprecated `HUGGINGFACE_HUB_CACHE` |
+| HF Hub API (model_info) | Bulk-probing the registry; treating 429/timeout as "unavailable" | Probe shortlists only; anonymous per-IP 500 req/5min; 429 → `unknown` verdict with reason; transformers≥5 can burst model_info (LlamaFactory #10155) |
+| HF cache detection | Path-spelunking `~/.cache/huggingface` | `try_to_load_from_cache` / `snapshot_download(local_files_only=True)`; respect `HF_HUB_OFFLINE` (raises `OfflineModelIsEnabled`) and Windows symlink degradation (`HF_HUB_DISABLE_SYMLINKS`) |
+| ModelScope hub | Assuming one cache layout; trusting the hardcoded `~/.cache/modelscope/hub` | Both layouts (pre/post v1.23.0 `hub/models/--org/model`), `MODELSCOPE_CACHE` quirks (#845); existence via `HubApi().get_model` try/except or `repo_exists`; rate limits unknown — resilient to 429-class responses |
+| ModelScope-first download path | Reusing HF retry semantics verbatim | `download_model`'s retry loop is HF-shaped; MS failures classify differently (kwt-era evidence: ms pins via `git ls-remote`); keep the existing source-dispatch, add MS-aware reason classes |
+| Windows consoles | Assuming VT everywhere; mouse-first interactions | Recommend Windows Terminal in docs; keyboard-first core flow; conhost degrades glyphs/IME (textual#4974/#5456); test-windows proves headless import/mount only |
+| CI runners (no TTY) | Assuming TUI code can't be tested in CI | `run_test()` is headless and in-process — no TTY needed, coverage measured; install `.[tui]` on the legs that run it |
+| pytest-asyncio + MCP SDK (anyio) | Mixing anyio plugin auto mode with pytest-asyncio auto mode | Stay plain pytest-asyncio auto (current setup); no anyio marks; MCP-client scenarios reuse existing MCP test harness patterns |
+| Existing gates (census/skips) | New TUI test files without re-pinning | Any test-set change re-measures the census triple + `expected_skips.yaml` delta same-change (v1.3 Pitfall 6 discipline still applies); register any new marker in pyproject (`--strict-markers`) |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Un-slowing the showcase/NER execution tests for the Windows numpy lane | test-windows (60-min timeout) blows budget on hosted runners; fast PR legs everywhere slow down | Platform-aware dispatch on the execution layer only; scoped parity subset; measured budget in the first PR (D-12 precedent) | First push after the marker flip |
-| Cold model pulls on windows-latest | Multi-minute HF downloads per run, no cache quota | Scope the Windows execution subset to small checkpoints; accept and budget, or pin a targeted cache | Immediately, every run |
-| example-nightly schedule collisions on the shared GB10 box | OOM/VRAM exhaustion; memory floor trips | Keep the staged-serial D-07 layout; any new Windows-only work stays OFF the nightly box | When a new stage is inserted without the ≥35Gi floor assert between server-binding stages |
-| Property-corpus tests at spike scale in the fast lane | 3,000 subprocess oracle invocations (5s on Linux with bedtools; minutes without) | Bake oracle literals for the Windows/no-bedtools legs; run the live-oracle variant only where bedtools exists (nightly) | First Windows run of the corpus test |
+| Probing all 236 registry entries on panel open | Seconds-to-minutes stall; 429 storm; nightly box IP flagged | Probe the candidate shortlist on demand; cache verdicts (same-day cache precedent); ModelScope-first single-source probe per model | First real user session / first nightly with the TUI tests |
+| Re-running `validate_data` stats on every keystroke/config edit | UI jank on large files; duplicate full-file scans | Stats computed once per loaded dataset, keyed by path+mtime; validation re-runs on the cached stats | Files >100 MB |
+| Cache detection walking the whole HF/MS cache tree per check | Multi-second per-model latency, disk thrash on the nightly box's giants tier | Directory-existence + `refs` lookup per repo (O(1) per model), never tree walks; resolve root once per session | GB-scale caches (nightly box) |
+| Per-request remote checks with no concurrency bound in the TUI | Worker thread explosion when the user arrow-keys through the model list | `exclusive=True` worker groups per panel (cancels superseded probes); debounce selection changes | Fast keyboard navigation |
+| TUI test batch wall-time growth (each test boots an app) | Fast leg budget creep (coverage-gate 90-min cap) | Lean app fixtures (mount one screen per test, not the full wizard); shared no-network fakes; measure the batch in the first Phase-T PR (D-12 budget precedent) | ~50+ TUI tests |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| workflow-wide `permissions: id-token: write` (instead of job-scoped) during OIDC migration | Every job in the workflow can mint PyPI tokens | Job-level permissions on the publish job only; `contents: read` elsewhere |
-| Keeping `PYPI_API_TOKEN` in secrets post-migration "just in case" | Long-lived credential outlives its purpose; automatic trusted-publishing silently prefers it | Delete after first observed OIDC release; re-run smoke to prove independence (Pitfall 10) |
-| Declaring triton-windows (community fork) without version ceiling | Supply-chain + silent torch decoupling for every Windows fla user | Prefer documented manual step; if declared: pin, bracket-guard, attested-builds series only (≥3.7.1.post27) |
-| GAP-1 shim broadening remote-code config defaults globally | Behavior change across 35 model families; unpredictable interaction with future remote code | Version-keyed minimal shim + non-target-family regression test (Pitfall 11) |
-| `continue-on-error` anywhere in the publish chain | Releases "succeed" unpublished (documented real-world TP failure mode) | Hard-fail every publish step; the smoke exists precisely to make failures loud |
+| Validators raising on hostile data shapes (user CSV/FASTA/YAML) | Pre-flight crashes on malformed input — the panel exists precisely to surface these; a raise is a DoS of the feature | Collect-all validators never raise on untrusted shapes (dnallmmark `custom_validation` precedent); every problem becomes an ordered finding |
+| Unvalidated model names from user config reaching download/probe URLs | Path/repo-id injection into hub APIs or filesystem paths | Repo ids validated against registry-resolved values or strict `org/name` pattern before any probe/download; local paths only via explicit opt-in |
+| Registry or MCP config writes driven by remotely-fetched metadata | A hostile/renamed hub repo rewriting local config through the consistency path | Consistency check never writes (Pitfall 4); registry read-only (Pitfall 3); repairs are human edits |
+| Downloaded model content treated as trusted code (`trust_remote_code=True` heritage) | Remote-code execution class inherent to the loading chain — pre-flight only SELECTS, must not LOAD | Pre-flight never instantiates models (no `from_pretrained` in Phase C/T code paths); keep selection and loading separated until the user explicitly proceeds |
+| Probe results cached to a shared world-readable location | Registry/machine fingerprint leak on multi-user boxes | Any probe cache under the user's own cache root with default perms; no tokens in verdict payloads |
 
-## UX Pitfalls (installer/docs UX — this milestone's user-facing surface)
+## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|------------------|
-| Extras rename without an alias or migration note | `pip install dnallm[base]` quietly installs a fraction of the intended environment | Deprecated alias extra for a cycle + changelog/docs migration note (Pitfall 4) |
-| GPU support matrix implying Pascal/Turing work on cuda130 | Users burn hours on `sm_75`/`sm_61` missing-kernel errors | Paste the pre-verified boundary table verbatim (Pascal cpu-only; Turing ceiling cu128; Ampere+ cu130; 50xx cu128+) with the minimum-GPU-line stated |
-| Install docs silent on uv-vs-pip lane difference | pip users get default torch and blame the package | Lane-split every install command; explicit `--index-url` for pip (Pitfall 9) |
-| Removed ollama notebooks leaving dead wrappers/nav | Docs readers hit broken pages | Wrapper + nav disposition decided with the removal (Pitfall 7) |
-| Windows numpy-path failure modes phrased as internal errors | Windows users can't self-diagnose missing prerequisites | Loud, named-cause errors (the D-08 convention) in the platform dispatch |
+| Raw Pydantic `ValidationError` shown in the TUI (today's CLI behavior imported unchanged) | Validator-internals tracebacks — the #1 complaint the pre-flight cluster exists to kill | Collect-all panel: every bad field at once, mapped to section/field, with the fix hint; the core returns findings, the TUI renders them |
+| Boolean availability rendered as ✓/✗ | "Unavailable" for rate-limited/offline states; user abandons a perfectly cached model | Three-state glyphs with reason lines (`cached`, `remote-confirmed`, `unknown: rate-limited`) |
+| Silent charset/tokenizer mismatch surfacing post-download (or never) | Wasted 12 GB download; silently wrong results — the worst failure mode in the product (survey §5.2) | Charset/alphabet/length checks are the FIRST validation findings, before any download is offered |
+| Probe verdicts presented as timeless | User acts on a stale "not cached" from yesterday | Verdicts carry a timestamp + invalidation on source/env change; panel re-probes on focus if stale |
+| Wizard that only authors NEW configs | The common case (tweak last run's YAML) unsupported | Edit-existing is the primary flow (R4 absorbed as stated); authoring stays with the click generator |
+| Download with no cancel/resume story | Hours stuck on a 12 GB pull inside a TUI | Cooperative cancel; queue state survives exit (dnallmmark five-state queue precedent); resumable snapshot downloads |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Windows parity:** numpy evaluator has NO unit test on Linux asserting the oracle pins (null-fill, order, multiplicity) — parity is only "proven" by the spike prose, not the suite.
-- [ ] **Windows parity:** Linux still executes bedtools after the split — verify a structure test asserts dispatch direction AND the nightly re-executed the edited notebook (Pitfall 1).
-- [ ] **Windows parity:** frozen-value comparisons use the pinned tolerance, not `==` (trailing deltas: numpy full-precision 0.32472687098490116 vs the 6-dp anchor 0.324727, delta ~1.3e-7); `selection.md` bands themselves untouched.
-- [ ] **Ollama removal:** `test_extras_guard.py` / `test_runner_infra_contracts.py` non-ollama contracts survive — grep for `EXPECTED_MCP_MEMBERS`, the systemd Environment pins, `TestNotebookKernelPlotCompat` after the sweep.
-- [ ] **Ollama removal:** census triple re-pinned with the exact stage-1 selector flags; `expected_skips.yaml` delta present; ci.yml stage 3 dispositioned.
-- [ ] **Packaging:** `grep -rn "\[base\]"` across README/docs/workflows/scripts returns only sanctioned occurrences; `all` extra updated; a fresh-venv `pip install dnallm[<new-extra>]` resolve-verified.
-- [ ] **Packaging:** cuda121 gone from extra+index+sources+conflicts+matrix+docs consistently; rocm either verified-restored or honestly removed.
-- [ ] **Publish smoke:** no dispatch-reachable step can upload; the verify step installs from `dist/`, not the index; smoke catches the two historical rust classes (uv system-env, check_code.py flags) by construction.
-- [ ] **OIDC:** first real release observed and recorded; token secret deleted; smoke re-run green post-deletion.
-- [ ] **Docs sweep:** runs LAST; every example/ edit carries its regenerated mirror; mkdocs --strict delta accounted vs the 15 known warnings; install commands lane-labeled.
-- [ ] **GAP-1:** non-NT-family regression test present if shimmed; un-skipped tests retain their probe machinery.
+- [ ] **Event-loop safety:** every I/O path from widgets goes through `@work(thread=True, exclusive=True)` — verify a test injects a slow fake and proves input processing mid-flight (Pitfall 1).
+- [ ] **Coverage wiring:** `.[tui]` installed on coverage-gate AND test-windows; `dnallm/tui/` modules at ≥96% with NO new omit entries; no `optional-dep:` TUI skips on legs that installed the extra (Pitfall 2).
+- [ ] **Structure rule:** `dnallm/tui/**` imports no torch/transformers/datasets; every panel action maps to a core function (Pitfall 8's table exists as a test).
+- [ ] **Registry integrity:** provenance-block presence test passes; loader exposes no write path; `git diff` on model_info.yaml after any Phase-R change is insertion-shaped only (Pitfall 3).
+- [ ] **Consistency check:** fixture matrix covers every drift class (label ORDER, num_labels, task_type, threshold, source, orphan, missing); keyed on repo id; committed `dnallm/mcp/configs/` checked in CI; checker provably writes nothing (Pitfall 4).
+- [ ] **Probing:** unit tests pass with network blocked; 429 fixture → `unknown` (not unavailable); HF offline env → cache-only verdicts, no raise; ModelScope both cache layouts detected in tests with synthetic trees (Pitfall 5).
+- [ ] **Env panel:** reports EFFECTIVE endpoint/cache dirs from library constants (import-time semantics respected); MS layout reported correctly on a machine using `MODELSCOPE_CACHE` (Pitfall 5).
+- [ ] **Async hygiene:** TUI test batch green in random order / repeated runs; no `asyncio.sleep` synchronization; no anyio marks (Pitfall 7).
+- [ ] **Gate honesty:** census triple re-pinned and `expected_skips.yaml` delta present in the same commit as any TUI test-set change; new markers registered (existing discipline).
+- [ ] **Docs:** supported-terminals note (Windows Terminal over conhost); the `tui` extra documented with its install lane; no docs mention of snapshot testing as the test approach.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Dispatch leakage — Linux truth re-derived by numpy, values drifted out of band | MEDIUM | Revert dispatch to fail-loud; re-execute nightly; re-verify bands from committed outputs; add the missing structure test |
-| Dispatch leakage — values held silently (invariant violated, no alarm) | HIGH (trust repair) | Re-freeze decision back to owner: prove bedtools path re-executed, re-pin committed outputs, add the dispatch-direction test that was missing |
-| Smoke published a real version | HIGH (irreversible artifact) | Version is consumed permanently; yank from PyPI if wrong, cut a patch release, then install the event guards that should have existed |
-| Extras rename broke downstream | MEDIUM | Ship a compat alias extra in a patch release; changelog migration note; no way to reach already-broken envs except docs |
-| Ollama sweep deleted non-ollama guards | LOW | Restore from git history (tests are self-contained); the census/gates surface the loss within one nightly cycle |
-| Census gate red after count change | LOW | Measure the new triple with exact selector flags, re-pin deliberately (the designed bump-point — never widen the grep) |
-| OIDC first-release failure (claim mismatch) | LOW | Fix environment/filename registration; release re-runs; token still present as fallback if not yet deleted |
-| GAP-1 shim regressed another family | MEDIUM | Narrow the shim's version/attribute guard; restore pinned behavior via the regression test; fallback disposition = removal + docs |
+| Event-loop blocking shipped (UI freezes on real data) | MEDIUM | Move the offending calls into workers (mechanical if the panel→function table held); add the slow-fake responsiveness test; no data-model change needed |
+| Coverage gate breached by TUI modules | MEDIUM | Stop-gap: none honest — write the missing Pilot tests (run_test drives everything in-process); if a leg lacks the extra, fix the install line, never the omit list |
+| Registry provenance comments destroyed by a round-trip commit | HIGH | Restore the file from git history (comments are unrecoverable from the data alone); add the provenance-presence test that should have existed; audit the writer for other files touched |
+| Consistency checker joined on titles / auto-wrote configs | MEDIUM | Re-key on repo id; strip write paths; re-run fixture matrix; audit any config files the fixer touched (git diff on dnallm/mcp/configs/) |
+| False "unavailable" verdicts from rate limits | LOW | Map 429/timeout to `unknown` with reason; add the 429 fixture; re-probe on demand |
+| Cache detector misses ModelScope new layout | LOW | Add the layout resolver + synthetic-tree test; users recover by re-probing (the damage is a wasted download, not corruption) |
+| TUI test batch flaky in CI | MEDIUM | Fix teardown (await terminal messages; cancel workers); if a test resists determinism, isolate its app lifecycle — do NOT reach for the skip allowlist |
+| Snapshot goldens adopted then cross-OS red | HIGH (if kept) | Deselect snapshots on non-golden OSes or drop the infra entirely for Pilot-functional tests; regenerate goldens on exactly one OS |
+| Scope creep discovered mid-phase | LOW-MEDIUM | Cut to the panel→function table (creep has no core function beneath it); move cut items to Track B/C backlog — the owner already assigned their home |
 
 ## Pitfall-to-Phase Mapping
 
-Suggested ordering (phases numbered from 13 by the roadmap author):
+Build order: **R → C → T → M** (R first: both C and M consume the runtime registry loader; C before T: the TUI is a thin consumer by architecture rule; M last: consistency checking needs both the loader and the core's finding-type conventions; MCP tool exposure of core functions rides M's wiring).
 
 | Phase (topic) | Order | Pitfalls Prevented | Verification That Prevention Worked |
 |---------------|-------|--------------------|-------------------------------------|
-| Phase O — ollama surface removal | 1st | 5, 6, 7 | Per-assertion remove-vs-skip ledger; post-sweep `grep ollama tests/` = sanctioned residue; census triple re-pinned; nightly dispatched green; non-ollama guards still present |
-| Phase G — GAP-1 disposition | 2nd (may fold into W's front) | 11 | Shim blast-radius test or documented removal; probes intact on any un-skipped test |
-| Phase W — Windows platform parity | 3rd | 1, 2, 6, 8 (+ tolerance pins) | Spike-corpus unit tests green on Linux AND Windows; dispatch structure test; nightly Linux re-execution in band; test-windows executes the numpy path (evidence in junit); coverage ≥96% per-module on the new evaluators |
-| Phase P — packaging & install honesty | 4th | 4, 9 (precondition), 12 | Fresh-venv resolves per changed extra; zero stale `.[base]`/cuda121 refs; GPU matrix page matches the pre-verified boundary table; extras bracket tests added |
-| Phase S — publish smoke + OIDC + mypy cap | 5th (smoke guard can land earlier if split out) | 3, 10 | Smoke run green without any upload HTTP traffic; first real release observed via OIDC; token deleted; mypy cap matches CI-validated version |
-| Phase D — docs accuracy sweep | LAST | 7, 9 (+ absorbs all downstream doc drift) | Per-file review record; mirrors byte-identical after every fix; mkdocs --strict delta accounted; install commands lane-labeled; cuda130 default consistent repo-wide |
+| Phase R — registry runtime loader (`load_preset_model`, finetuned-entry resolution with heads/labels/threshold, base↔finetuned axis) | 1st | 3 (+ keying groundwork for 4) | Loader read-only (no write API; structure test); provenance-block integrity tests extended; kwt's 9 registry tests still green unchanged; registry diff insertion-shaped after any data change |
+| Phase C — pre-flight core (`validate_data` / `check_compatibility` / `generate_config` pure functions; availability dimension) | 2nd | 5, 4's contract shape (pure-finding seam), 1's sync-core boundary | Core is sync + network-free under injected probes; three-state availability with 429/offline fixtures; cache resolvers tested against synthetic HF+MS (both layouts) trees; collect-all validators never raise on hostile fixtures; ≥96% per module, no new deps beyond the existing footprint |
+| Phase T — TUI panels + `tui` extra + CI wiring | 3rd | 1, 2, 6, 7, 8 | Worker-seam responsiveness test green; `.[tui]` on coverage-gate + test-windows install lines; `dnallm/tui/**` ≥96% with no omit additions; panel→function structure test; test batch green in random order; no snapshot infra; census triple + skips re-pinned same-change |
+| Phase M — MCP consistency check + one-core-many-shells | 4th | 4 (+ re-check 2's extras wiring after `full`-alias removal touches install lines) | Fixture-matrix green per drift class; committed-configs check green in CI; checker writes nothing (fixture asserts FS untouched); MCP tools calling core functions reuse the same verdict types; `pip does not provide the extra` absent from all CI logs |
 
-**Ordering rationale:** O first because it *shrinks* the surface every later phase touches (one census re-pin, one allowlist delta, instead of repeated collisions). G before W because the Windows NER execution path needs the NT checkpoint loadable. P before D because docs must describe the final extras state. S is position-flexible except that its first act (the upload guard) should precede any scheduled trigger existing. W is the long pole and benefits from the reduced surface.
+**Ordering rationale:** R before everything because the registry loader is the data contract both later phases consume — and Pitfall 3 (read-only loader) is only cheap on day one. C before T so the TUI never owns verdict logic (Pitfalls 1/8's architecture half). T's first act is the CI/extra wiring (Pitfall 2), not panels. M last because its fixture matrix wants the loader's keying and the core's finding types to already exist.
 
 **Research flags for phases (for the roadmap author):**
-- Phase W: needs plan-time spikes/decisions — test-windows execution subset scope + time budget; tolerance-pin values (full-precision vs 6-dp anchor); marker registration for any new selector.
-- Phase S: needs plan-time verification of current uv publish `--dry-run` behavior in the repo's uv version, and the owner decision on subsuming OIDC.
-- Phase P: owner decisions at plan time — base rename target + alias-or-break; rocm restore-or-remove; triton-windows declare-or-document.
+- Phase T: needs plan-time decisions — worker-seam shape (message types vs call_from_thread), download cancel semantics (cooperative vs abandon+resume), and the `tui`-extra membership vs the `full`-alias removal ordering (same-commit atomicity).
+- Phase C: needs plan-time spikes — effective-endpoint reporting through huggingface_hub resolved constants (verify the runtime `HF_ENDPOINT` toggle's actual effect in-process at the installed versions), and the ModelScope cache-layout resolver against the installed modelscope version.
+- Phase M: needs an owner call — whether the consistency check also covers `configs/*.yaml` user-facing examples or only `dnallm/mcp/configs/`.
+- Unknown/LOW-confidence external: ModelScope API rate limits (no official doc found — design for resilience, don't encode assumptions); cross-OS SVG snapshot portability (moot if snapshot infra stays out).
 
 ## Sources
 
-- Repository (HIGH confidence, primary): `pyproject.toml`; `.github/workflows/publish.yml`; `.github/workflows/ci.yml` (test-windows leg, census stage 0.5, stage 3, bedtools provisioning); `scripts/audit_skips.py`; `scripts/check_docs_sync.py`; `tests/expected_skips.yaml`; `tests/test_extras_guard.py`; `tests/test_runner_infra_contracts.py`; `tests/examples/test_plant_helixseek_showcase.py`; `.planning/WINDOWS.md` (#11/#12/#13/#18/#19/#20 with owner directives and the 2026-10-10/11 change-surface inventory); `.planning/STATE.md` deferred rows 2026-10-11; spike summaries `261010-wx2` / `261011-0a3` (pins, portability notes, determinism evidence).
-- PyPI Trusted Publishing troubleshooting + internals (official docs; MEDIUM): https://docs.pypi.org/trusted-publishers/troubleshooting/ — claim matching, rate limits, rename breakage, reusable-workflow limitation (warehouse#11096).
-- Trusted Publishing adoption/pitfalls guides (MEDIUM, cross-checked): https://safeguard.sh/resources/blog/pypi-trusted-publishing-adoption-guide and .../pypi-trusted-publishing-common-pitfalls — environment mismatch, continue-on-error masking, fork behavior.
-- `uv publish --dry-run` (MEDIUM): https://github.com/astral-sh/uv/pull/15638 and https://github.com/astral-sh/uv/pull/21439 — `/validate` endpoint behavior, metadata/attestation preparation.
-- pip nonexistent-extra behavior (MEDIUM, multi-source): https://github.com/peteromallet/desloppify/issues/149 (pip 25.3 warn + exit 0), https://github.com/pypa/pip/issues/12376, https://stackoverflow.com/questions/78082481/ (PEP 685 normalization, pip ≥23.3).
-- PyPI filename immutability + `--skip-existing` fragility (MEDIUM): https://twine.readthedocs.io/en/latest/_modules/twine/commands/upload.html (400+"already exist" substring logic), https://discuss.python.org/t/announcement-twine-6-2-0/103548/1 (removed for non-PyPI targets), https://github.com/pypa/twine/issues/1265, https://github.com/sonatype/nexus-public/issues/696, https://github.com/anthropics/claude-agent-sdk-python/commit/117cffacae4a1a06f911b3b2d695e33e57c86ec3 (partial-upload/quota masking example).
-- triton-windows status (MEDIUM): https://github.com/pytorch/pytorch/issues/178368 (fork → triton-lang org, separate-package stance), https://github.com/triton-lang/triton-windows/releases (version cadence, attested builds), compatibility table and vcredist caveats via project README/discussions.
-- LOW confidence, deliberately not relied upon: any default-branch workflow-file requirement for Trusted Publishing (underdocumented — flagged as unverified in the digest; the migration plan should not depend on it).
+- Repository (HIGH confidence, primary; verified at branch `v1.4`): `pyproject.toml` (coverage/omit/fail_under, pytest ini, extras); `.github/workflows/ci.yml` (install lines 92/172/261/341/408/543/758; test-windows bare `--cov` line 185; skip-audit in 4 jobs); `dnallm/models/model_info.yaml` (provenance block ~1876–1890; 49+187 entries); `dnallm/models/model.py` (HF_ENDPOINT runtime toggle ~494–498; hardcoded MS cache ~1545; download retry loop); `dnallm/mcp/configs/mcp_server_config.yaml` + `promoter_inference_config.yaml` (dual metadata fields); `dnallm/mcp/config_manager.py`; `tests/expected_skips.yaml`; `.planning/quick/261020-kwt-*` (round-trip dodge, scripted insertion, registry integrity tests); `.planning/quick/261020-gk4-*` TUI-SURVEY Part 5 (owner directives, pre-flight cluster, merge verdicts); `.planning/PROJECT.md` (v1.4 scope boundaries, Track A/B/C).
+- Textual official docs (MEDIUM-HIGH; primary for framework behavior): testing guide — https://textual.textualize.io/guide/testing/ (run_test/Pilot headless, asyncio auto mode documented, snapshot first-run failure, CI claim); workers guide — https://textual.textualize.io/guide/workers/ (thread=True/exclusive=True, call_from_thread/post_message, wait() deadlock, exit_on_error).
+- huggingface_hub official docs (MEDIUM-HIGH): environment variables — https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables (import-time reading of HF_HOME/HF_HUB_CACHE/HF_ENDPOINT; HUGGINGFACE_HUB_CACHE deprecated; HF_HUB_OFFLINE raise; symlink degradation); Hub rate limits — https://huggingface.co/docs/hub/rate-limits (5-min windows; anonymous 500/5min per IP; 429 + RateLimit headers).
+- pytest-asyncio/anyio/Textual interplay (MEDIUM, cross-checked): anyio testing docs auto-mode conflict — https://anyio.readthedocs.io/en/latest/testing.html; pytest-asyncio ≥0.25 Textual suite breakage + Ubuntu textual 2.1.1 patch — https://lists.ubuntu.com/archives/plucky-changes/2025-March/012326.html and https://blog.gitcode.com/c7cd6ec8f8a51f698d5cd4e7c797875f.html.
+- pytest-textual-snapshot + SVG determinism (MEDIUM): https://github.com/Textualize/pytest-textual-snapshot (SVG comparison, --snapshot-update, HTML report); third-party determinism guidance (pin OS for goldens, pin size, freeze clocks) — https://www.claudepluginhub.com/skills/testland-qa-cli-tools-plugins-qa-cli-tools/tui-snapshot-tester and https://raw.githubusercontent.com/sipyourdrink-ltd/bernstein/refs/heads/main/docs/contributing/render-freshness.md; cell-grid alternative — https://pandelisz.github.io/tuiwright/snapshots/cell-grid/.
+- Coverage of Textual code via run_test (MEDIUM, multi-source): DeepWiki Textual testing pages (in-process HeadlessDriver); https://github.com/curdriceaurora/Local-File-Organizer/issues/573 (~44%→90% via run_test); VMx notes_showcase pyproject (modal/view coverage exclusion as the anti-pattern).
+- YAML comment preservation (MEDIUM, multi-source incl. official): PyYAML drops comments by design — https://docs.spec-kitty.ai/configuration/yaml-libraries.html, https://stackoverflow.com/q/60891175; ruamel round-trip semantics + caveats (key deletion vs comments, dict.update, C parser) — https://yaml.dev/doc/ruamel.yaml/api/, https://stackoverflow.com/q/72732098, https://deepwiki.com/commx/ruamel-yaml/3.1-round-trip-processing.
+- ModelScope (LOW-MEDIUM; SDK internals + issue tracker, no official rate-limit doc): cache-layout change v1.23.0 + MODELSCOPE_CACHE inconsistency — https://github.com/modelscope/modelscope/issues/845 and changelog; existence-check patterns (`HubApi().get_model` try/except, `check_model_is_id`) — https://gitcode.com/GitHub_Trending/mo/modelscope/blob/f9dd6794c40ae9062b5c3f9f9463b0675ce1ce19/modelscope/hub/check_model.py; `repo_exists` in newer modelscope-hub — https://pypi.org/project/modelscope-hub/0.1.8/.
+- HF model_info 429 burst under transformers≥5 (MEDIUM): https://github.com/hiyouga/LlamaFactory/pull/10155.
+- Windows terminal issues (MEDIUM): textual#4974 (conhost symbols), textual#5456 (conhost IME), msys2/MINGW-packages#22188 (mintty mouse), Textualize/rich#140 (WT_SESSION detection) — all via GitHub.
+- LOW confidence, deliberately not relied upon: ModelScope API rate-limit numbers (undocumented); HF_ENDPOINT runtime-toggle inertness in the installed huggingface_hub version (import-time reading is documented; the specific in-process effect at this repo's pinned versions needs the Phase-C spike).
 
 ---
-*Pitfalls research for: DNALLM v1.3 — Platform Reach & Packaging Honesty*
-*Researched: 2026-10-11*
+*Pitfalls research for: DNALLM v1.4 — Pre-flight UX & Registry-as-Truth-Source*
+*Researched: 2026-10-20*
