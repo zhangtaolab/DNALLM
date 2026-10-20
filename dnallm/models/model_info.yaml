@@ -29,6 +29,81 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
+  - name: "Plant DNABERT 6mer"
+    model: "zhangtaolab/plant-dnabert-6mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "mask"
+  - name: "Plant DNABERT singlebase"
+    model: "zhangtaolab/plant-dnabert-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
+  - name: "Plant DNAGemma 6mer"
+    model: "zhangtaolab/plant-dnagemma-6mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGemma singlebase"
+    model: "zhangtaolab/plant-dnagemma-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGPT 6mer"
+    model: "zhangtaolab/plant-dnagpt-6mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAGPT singlebase"
+    model: "zhangtaolab/plant-dnagpt-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant NT 6mer"
+    model: "zhangtaolab/plant-nucleotide-transformer-6mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "mask"
+  - name: "Plant NT singlebase"
+    model: "zhangtaolab/plant-nucleotide-transformer-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
+  - name: "Plant DNAMamba 2mer"
+    model: "zhangtaolab/plant-dnamamba-2mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 2mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 3mer"
+    model: "zhangtaolab/plant-dnamamba-3mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 3mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 4mer"
+    model: "zhangtaolab/plant-dnamamba-4mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 4mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 5mer"
+    model: "zhangtaolab/plant-dnamamba-5mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 5mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba 6mer"
+    model: "zhangtaolab/plant-dnamamba-6mer"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with 6mer tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAMamba singlebase"
+    model: "zhangtaolab/plant-dnamamba-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "generation"
+  - name: "Plant DNAModernBert singlebase"
+    model: "zhangtaolab/plant-dnamodernbert-singlebase"
+    task:
+      describe: "Pretrained model for DNA sequence understanding with singlebase tokenizer."
+      task_type: "mask"
   - name: "AgroNT"
     model: "InstaDeepAI/agro-nucleotide-transformer-1b"
     task:

@@ -4,7 +4,7 @@ from collections import OrderedDict
 PRETRAIN_MODEL_MAPS = OrderedDict([
     ("Plant DNABERT", ["Zhangtaolab", "Masked Language Model"]),
     ("Plant DNAGemma", ["Zhangtaolab", "Causal Language Model"]),
-    ("Plant DNAGPT", ["Zhangtaolab", "Masked Language Model"]),
+    ("Plant DNAGPT", ["Zhangtaolab", "Causal Language Model"]),
     ("Plant DNAMamba", ["Zhangtaolab", "Causal Language Model"]),
     ("Plant NT", ["Zhangtaolab", "Masked Language Model"]),
     ("Plant DNAModernBert", ["Zhangtaolab", "Masked Language Model"]),
@@ -20,8 +20,8 @@ PRETRAIN_MODEL_MAPS = OrderedDict([
     ("DNABERT", ["Zhihan1996", "Masked Language Model"]),
     ("DNABERT-2", ["Zhihan1996", "Masked Language Model"]),
     ("DNABERT-S", ["Zhihan1996", "Masked Language Model"]),
-    ("EVO-1", ["togethercomputer", "Casual Language Model"]),
-    ("EVO-2", ["arcinstitute", "Casual Language Model"]),
+    ("EVO-1", ["togethercomputer", "Causal Language Model"]),
+    ("EVO-2", ["arcinstitute", "Causal Language Model"]),
     ("GENA-LM", ["AIRI-Institute", "Masked Language Model"]),
     ("GENA-LM-BigBird", ["AIRI-Institute", "Masked Language Model"]),
     ("GENERator", ["GenerTeam", "Causal Language Model"]),
@@ -163,7 +163,7 @@ MODEL_INFO = {
         "default": "zhangtaolab/plant-dnamodernbert-BPE",
     },
     "tRNADetector": {
-        "title": "Model for predicting whether aDNA sequence is a tRNA in plants",
+        "title": "Model for predicting whether a DNA sequence is a tRNA in plants",
         "reference": None,
         "model_architecture": "MambaForCausalLM",
         "model_tags": ["singlebase"],
@@ -176,7 +176,7 @@ MODEL_INFO = {
         "default": "zhangtaolab/tRNADetector",
     },
     "tRNAPointer": {
-        "title": "Model for predicting whether aDNA sequence is a tRNA in plants",
+        "title": "Model for predicting whether a DNA sequence is a tRNA in plants",
         "reference": None,
         "model_architecture": "EsmForMaskedLM",
         "model_tags": ["singlebase"],
