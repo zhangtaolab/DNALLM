@@ -12,20 +12,28 @@ resolves to repo id ``zhangtaolab/plant-dnabert-BPE``.
 """
 
 import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import huggingface_hub
+import modelscope.hub.api
 import pytest
 
 import dnallm.preflight.availability as availability
 from dnallm.preflight.availability import (
+    DEFAULT_PROBE_TIMEOUT,
     clear_probe_memo,
     effective_endpoints,
     modelscope_cache_candidates,
     probe_availability,
 )
-from dnallm.preflight.report import AvailabilityReport, AvailabilityState, Hub
+from dnallm.preflight.report import (
+    AvailabilityReasonCode,
+    AvailabilityReport,
+    AvailabilityState,
+    Hub,
+)
 
 # Live-registry fixtures (Phase 22 lane): the pretrained BPE base entry and
 # its human-readable registry name resolve to the same repo id.
@@ -37,6 +45,7 @@ UNREGISTERED_HF_REPO = "preflight-hf-test/definitely-not-registered"
 UNREGISTERED_MS_REPO = "org/definitely-not-registered"
 
 CACHED = AvailabilityState.CACHED
+REMOTE_CONFIRMED = AvailabilityState.REMOTE_CONFIRMED
 UNKNOWN = AvailabilityState.UNKNOWN
 
 
@@ -51,6 +60,23 @@ def _isolated_probe_memo():
 def _sentinel_report(reason: str = "sentinel") -> AvailabilityReport:
     """A report whose only job is identity: proves which path produced it."""
     return AvailabilityReport(state=UNKNOWN, reason=reason)
+
+
+def _confirmed_report(hub: Hub, size: int = 100, revision: str = "rev-1") -> AvailabilityReport:
+    """A canned remote-confirmation report for one hub."""
+    return AvailabilityReport(
+        state=REMOTE_CONFIRMED, size_bytes=size, revision=revision, source_hub=hub
+    )
+
+
+def _hf_error(exc_cls, status_code: int | None, message: str):
+    """Construct a real huggingface_hub error carrying a fake response."""
+    response = (
+        None
+        if status_code is None
+        else SimpleNamespace(status_code=status_code, headers={}, request=None)
+    )
+    return exc_cls(message, response=response)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -300,3 +326,308 @@ def test_effective_endpoints_reports_library_constants(monkeypatch) -> None:
     assert endpoints["huggingface"] == hf_constants.ENDPOINT
     assert "modelscope_cache" in endpoints
     assert endpoints["modelscope_cache"] == get_modelscope_cache_dir()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 2a: remote fallback chain — ModelScope first, HF fallback (D-11)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_remote_ms_confirms_and_hf_is_never_called(monkeypatch) -> None:
+    """MS confirms existence; the HF adapter is never invoked (D-11 order)."""
+    order: list[str] = []
+    ms = Mock(side_effect=lambda rid: (order.append("ms"), _confirmed_report(Hub.MODELSCOPE))[1])
+    hf = Mock(side_effect=lambda rid: (order.append("hf"), None)[1])
+    monkeypatch.setattr(availability, "_ms_adapter", ms)
+    monkeypatch.setattr(availability, "_hf_adapter", hf)
+
+    report = probe_availability("order-ms-first/org")
+
+    assert order == ["ms"]
+    assert hf.call_count == 0
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.MODELSCOPE
+
+
+def test_remote_ms_clean_miss_falls_back_to_hf(monkeypatch) -> None:
+    """A clean MS miss (falsy repo_exists) probes HF next and confirms there."""
+    order: list[str] = []
+    ms = Mock(side_effect=lambda rid: (order.append("ms"), None)[1])
+    hf = Mock(side_effect=lambda rid: (order.append("hf"), _confirmed_report(Hub.HUGGINGFACE))[1])
+    monkeypatch.setattr(availability, "_ms_adapter", ms)
+    monkeypatch.setattr(availability, "_hf_adapter", hf)
+
+    report = probe_availability("order-fallback/org")
+
+    assert order == ["ms", "hf"]
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.HUGGINGFACE
+
+
+def test_remote_ms_adapter_body_exact_size_and_revision(monkeypatch) -> None:
+    """The MS adapter sums the listing's Size fields exactly and reads Revision."""
+
+    class FakeHubApi:
+        def repo_exists(self, repo_id, **kwargs):
+            return True
+
+        def get_model_files(self, repo_id, **kwargs):
+            return [
+                {"Name": "weights.bin", "Size": 100, "Revision": "v1.2.0"},
+                {"Name": "config.json", "Size": 23, "Revision": "v1.2.0"},
+            ]
+
+    monkeypatch.setattr(modelscope.hub.api, "HubApi", FakeHubApi)
+
+    report = probe_availability("ms-adapter-body/org")
+
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.MODELSCOPE
+    assert report.size_bytes == 123  # exact integer sum, no rounding
+    assert report.revision == "v1.2.0"
+    assert report.reason is None
+
+
+def test_remote_hf_adapter_body_exact_size_and_revision(monkeypatch) -> None:
+    """The HF adapter sums sibling sizes exactly and reports info.sha."""
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+
+    class FakeHfApi:
+        def __init__(self, endpoint=None):
+            self.endpoint = endpoint
+
+        def model_info(self, repo_id, files_metadata=True):
+            return SimpleNamespace(
+                sha="rev-abc",
+                siblings=[
+                    SimpleNamespace(rfilename="weights.bin", size=100),
+                    SimpleNamespace(rfilename="config.json", size=23),
+                    SimpleNamespace(rfilename="unknown-size.bin", size=None),
+                ],
+            )
+
+    monkeypatch.setattr(huggingface_hub, "HfApi", FakeHfApi)
+
+    report = probe_availability("hf-adapter-body/org")
+
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.HUGGINGFACE
+    assert report.size_bytes == 123  # exact integer sum; None sizes skipped
+    assert report.revision == "rev-abc"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 2b: failure taxonomy — every failure degrades to unknown + reason
+# (PFC-03/PFC-06: a transient failure can never masquerade as unavailable)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_remote_both_hubs_clean_miss_is_not_found_on_either(monkeypatch) -> None:
+    """Clean misses on both hubs conclude NOT_FOUND_ON_EITHER_HUB (unknown)."""
+    from huggingface_hub.errors import RepositoryNotFoundError
+
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability, "_hf_adapter", Mock(side_effect=_hf_error(RepositoryNotFoundError, 404, "no"))
+    )
+
+    report = probe_availability("taxonomy/both-miss")
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.NOT_FOUND_ON_EITHER_HUB.value
+
+
+def test_remote_gated_repo_is_a_clean_miss_not_unknown(monkeypatch) -> None:
+    """GatedRepoError on one hub means 'try the other hub', never an error."""
+    from huggingface_hub.errors import GatedRepoError
+
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability, "_hf_adapter", Mock(side_effect=_hf_error(GatedRepoError, 403, "gated"))
+    )
+
+    report = probe_availability("taxonomy/gated")
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.NOT_FOUND_ON_EITHER_HUB.value
+
+
+def test_remote_hf_rate_limited_maps_to_unknown_rate_limited(monkeypatch) -> None:
+    """A 429 HfHubHTTPError degrades to unknown/RATE_LIMITED — never unavailable."""
+    from huggingface_hub.errors import HfHubHTTPError
+
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability,
+        "_hf_adapter",
+        Mock(side_effect=_hf_error(HfHubHTTPError, 429, "too many requests")),
+    )
+
+    report = probe_availability("taxonomy/rate-limited")
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.RATE_LIMITED.value
+
+
+def test_remote_hf_http_error_other_status_is_probe_error(monkeypatch) -> None:
+    """Non-429 HTTP errors carry the exception class name under PROBE_ERROR."""
+    from huggingface_hub.errors import HfHubHTTPError
+
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability,
+        "_hf_adapter",
+        Mock(side_effect=_hf_error(HfHubHTTPError, 503, "server error")),
+    )
+
+    report = probe_availability("taxonomy/http-503")
+
+    assert report.state == UNKNOWN
+    assert report.reason == f"{AvailabilityReasonCode.PROBE_ERROR.value}: HfHubHTTPError"
+
+
+def test_remote_offline_mode_maps_to_unknown_offline(monkeypatch) -> None:
+    """OfflineModeIsEnabled degrades to unknown/OFFLINE."""
+    from huggingface_hub.errors import OfflineModeIsEnabled
+
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability, "_hf_adapter", Mock(side_effect=OfflineModeIsEnabled("offline mode"))
+    )
+
+    report = probe_availability("taxonomy/offline")
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.OFFLINE.value
+
+
+def test_remote_connection_error_carries_class_name(monkeypatch) -> None:
+    """A plain ConnectionError degrades to unknown with the class name in reason."""
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+    monkeypatch.setattr(availability, "_hf_adapter", Mock(side_effect=ConnectionError("dns broke")))
+
+    report = probe_availability("taxonomy/connection")
+
+    assert report.state == UNKNOWN
+    assert report.reason == (f"{AvailabilityReasonCode.PROBE_ERROR.value}: ConnectionError")
+
+
+def test_remote_ms_error_falls_through_to_hf(monkeypatch) -> None:
+    """A raising MS hub never short-circuits the probe: HF fallback runs."""
+    order: list[str] = []
+
+    def raising_ms(rid):
+        order.append("ms")
+        raise RuntimeError("modelscope exploded")
+
+    def confirming_hf(rid):
+        order.append("hf")
+        return _confirmed_report(Hub.HUGGINGFACE)
+
+    monkeypatch.setattr(availability, "_ms_adapter", raising_ms)
+    monkeypatch.setattr(availability, "_hf_adapter", confirming_hf)
+
+    report = probe_availability("taxonomy/ms-error")
+
+    assert order == ["ms", "hf"]
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.HUGGINGFACE
+
+
+def test_remote_ms_error_and_hf_miss_reports_ms_error_class(monkeypatch) -> None:
+    """When HF also misses cleanly, the remembered MS error names the reason."""
+    from huggingface_hub.errors import RepositoryNotFoundError
+
+    monkeypatch.setattr(
+        availability, "_ms_adapter", Mock(side_effect=RuntimeError("modelscope exploded"))
+    )
+    monkeypatch.setattr(
+        availability,
+        "_hf_adapter",
+        Mock(side_effect=_hf_error(RepositoryNotFoundError, 404, "no")),
+    )
+
+    report = probe_availability("taxonomy/ms-error-hf-miss")
+
+    assert report.state == UNKNOWN
+    assert report.reason == f"{AvailabilityReasonCode.PROBE_ERROR.value}: RuntimeError"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 2c: bounded wait + the injectable prober seam (PFC-03)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_remote_timeout_returns_probe_timeout_within_bound(monkeypatch) -> None:
+    """A call at or beyond the bounded wait degrades to unknown/PROBE_TIMEOUT."""
+    monkeypatch.setattr(
+        availability, "_hf_adapter", Mock(return_value=_confirmed_report(Hub.HUGGINGFACE))
+    )
+
+    def slow_ms(rid):
+        time.sleep(0.4)
+        return None
+
+    monkeypatch.setattr(availability, "_ms_adapter", slow_ms)
+
+    started = time.monotonic()
+    report = probe_availability("timeout/org", timeout=0.1)
+    elapsed = time.monotonic() - started
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.PROBE_TIMEOUT.value
+    assert elapsed < 0.35  # the guard fired at the bound, not after the sleep
+
+
+def test_remote_timeout_hf_branch_returns_probe_timeout(monkeypatch) -> None:
+    """The HF-side bounded wait fires the same PROBE_TIMEOUT degradation."""
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(return_value=None))
+
+    def slow_hf(rid):
+        time.sleep(0.4)
+        raise ConnectionError("never reached in time")
+
+    monkeypatch.setattr(availability, "_hf_adapter", slow_hf)
+
+    report = probe_availability("timeout-hf/org", timeout=0.1)
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.PROBE_TIMEOUT.value
+
+
+def test_remote_injected_prober_bypasses_adapters(monkeypatch) -> None:
+    """The injected prober's report is returned verbatim; adapters never run."""
+    verbatim = _confirmed_report(Hub.MODELSCOPE, size=10, revision="x")
+    ms = Mock(return_value=_confirmed_report(Hub.MODELSCOPE))
+    hf = Mock(return_value=_confirmed_report(Hub.HUGGINGFACE))
+    monkeypatch.setattr(availability, "_ms_adapter", ms)
+    monkeypatch.setattr(availability, "_hf_adapter", hf)
+    seen: list[str] = []
+
+    def prober(repo_id):
+        seen.append(repo_id)
+        return verbatim
+
+    report = probe_availability("seam/org", prober=prober, timeout=1.0)
+
+    assert report is verbatim
+    assert ms.call_count == 0
+    assert hf.call_count == 0
+    assert seen == ["seam/org"]
+
+
+def test_remote_injected_prober_raising_degrades_to_unknown(monkeypatch) -> None:
+    """A raising injected prober still never escapes (PFC-06 never-raise)."""
+
+    def bad_prober(repo_id):
+        raise ValueError("bad fake")
+
+    report = probe_availability("seam-raising/org", prober=bad_prober, timeout=1.0)
+
+    assert report.state == UNKNOWN
+    assert report.reason == f"{AvailabilityReasonCode.PROBE_ERROR.value}: ValueError"
+
+
+def test_default_probe_timeout_is_five_seconds() -> None:
+    """The configurable default bound is 5.0 s (D-12)."""
+    assert DEFAULT_PROBE_TIMEOUT == 5.0
