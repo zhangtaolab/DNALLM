@@ -294,6 +294,27 @@ class ModelVerdict(BaseModel):
     overall: VerdictStatus
 
 
+class AvailabilityReport(BaseModel):
+    """Availability metadata for one model (PFC-03, produced by 23-03).
+
+    Attributes:
+        state: cached / remote_confirmed / unknown — never "unavailable".
+        size_bytes: Total repo size in bytes, when known.
+        revision: Commit revision, when known.
+        source_hub: The hub the model was confirmed on (ModelScope reported
+            first when both hubs carry it, D-11).
+        reason: Degradation reason when state is unknown.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    state: AvailabilityState
+    size_bytes: int | None = Field(default=None, ge=0)
+    revision: str | None = None
+    source_hub: Hub | None = None
+    reason: str | None = None
+
+
 class ListingEntry(BaseModel):
     """One row of an intent-routed model listing (PFC-05/PFC-07, 23-02).
 
@@ -316,7 +337,7 @@ class ListingEntry(BaseModel):
     task_type: str | None = None
     num_labels: int | None = Field(default=None, gt=0)
     label_names: list[str] | None = None
-    availability: object | None = None
+    availability: AvailabilityReport | None = None
 
 
 class CompatibilityReport(BaseModel):
@@ -333,27 +354,6 @@ class CompatibilityReport(BaseModel):
 
     verdicts: list[ModelVerdict] = Field(default_factory=list)
     listing: list[ListingEntry] = Field(default_factory=list)
-
-
-class AvailabilityReport(BaseModel):
-    """Availability metadata for one model (PFC-03, produced by 23-03).
-
-    Attributes:
-        state: cached / remote_confirmed / unknown — never "unavailable".
-        size_bytes: Total repo size in bytes, when known.
-        revision: Commit revision, when known.
-        source_hub: The hub the model was confirmed on (ModelScope reported
-            first when both hubs carry it, D-11).
-        reason: Degradation reason when state is unknown.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    state: AvailabilityState
-    size_bytes: int | None = Field(default=None, ge=0)
-    revision: str | None = None
-    source_hub: Hub | None = None
-    reason: str | None = None
 
 
 class SectionError(BaseModel):

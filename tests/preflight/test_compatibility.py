@@ -475,6 +475,35 @@ def test_without_prober_no_calls_and_availability_none() -> None:
     assert all(e.availability is None for e in result.listing)
 
 
+def test_listing_entry_availability_field_is_typed() -> None:
+    """ListingEntry.availability is AvailabilityReport | None, not object (WR-05).
+
+    Pydantic validates the field now: a junk non-report payload is rejected
+    at construction instead of being accepted silently; a real report (and
+    None) still round-trip.
+    """
+    from pydantic import ValidationError
+
+    from dnallm.preflight.report import ListingEntry
+
+    good = ListingEntry(
+        model="org/name",
+        entry_name="Some entry",
+        is_lab=True,
+        availability=AvailabilityReport(state=AvailabilityState.CACHED),
+    )
+    assert isinstance(good.availability, AvailabilityReport)
+    default = ListingEntry(model="org/name", entry_name="Some entry", is_lab=True)
+    assert default.availability is None
+    with pytest.raises(ValidationError):
+        ListingEntry(
+            model="org/name",
+            entry_name="Some entry",
+            is_lab=True,
+            availability="garbage",  # type: ignore[arg-type]
+        )
+
+
 def test_probe_shortlist_larger_than_listing_caps_at_listing_length() -> None:
     """probe_shortlist=10 on a 3-entry listing probes only 3 times."""
     prober = _mock_prober()
