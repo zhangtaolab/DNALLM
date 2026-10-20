@@ -6,7 +6,7 @@
     {
       "number": "22",
       "name": "Registry Foundation",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "23",
@@ -31,8 +31,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 1 of 5 · 0% · ready to verify"
+    "label": "Advance to the next step (plan phase 23)",
+    "reason": "Phase 2 of 5 — needs a plan"
   },
-  "updated_at": "2026-10-20T12:06:40.298Z"
+  "updated_at": "2026-10-20T13:41:02.840Z"
 }

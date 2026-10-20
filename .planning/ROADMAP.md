@@ -77,7 +77,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - Integer phases (22–26): planned v1.4 milestone work (continues v1.3's Phase 21 — numbering never restarts)
 - Decimal phases (22.1, 22.2): urgent insertions (marked INSERTED)
 
-- [ ] **Phase 22: Registry Foundation — Runtime Loader & Enrichment** - Cached read-only single-parse loader for `model_info.yaml` (typed lookups by name/repo_id/task_type/base_model) + `tokenizer_type`/`max_length` enrichment and extended integrity tests
+- [x] **Phase 22: Registry Foundation — Runtime Loader & Enrichment** - Cached read-only single-parse loader for `model_info.yaml` (typed lookups by name/repo_id/task_type/base_model) + `tokenizer_type`/`max_length` enrichment and extended integrity tests (completed 2026-10-20)
 - [ ] **Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API** - `validate_data` / `check_compatibility` / `generate_config` plus a ModelScope-first availability probe as pure, pytest-covered, offline-safe functions; lab-first listings; shared `validate_sections` path
 - [ ] **Phase 24: Preset Loading — `load_preset_model` Registry Rewire** - Registry entry names resolve with `num_labels`/`label_names`/`threshold` patched into TaskConfig; the existing family-name path is preserved and regression-tested
 - [ ] **Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra** - `dnallm preflight` Textual wizard over the core (env → data → suitability → config panels, select-to-download); extra + CI wiring + worker seam land before any panel; `full`-alias removal rides the same change
@@ -97,7 +97,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   2. Registry entries expose structured `tokenizer_type` and `max_length` — enrichment landed as scripted text insertion with provenance comments preserved — with enrichment-schema invariants tested across all 236 entries
   3. The extended 261020-kwt integrity suite proves the loader is born — and stays — read-only: no write or YAML round-trip API exists on it, and every provenance block (including the PlantHelixSeek label-order freeze) remains present and intact
 
-**Plans**: 2/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -172,7 +172,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. Registry Foundation | 2/2 | In Progress | - |
+| 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
 | 23. Pre-flight Core | 0/TBD | Not started | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
