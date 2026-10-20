@@ -5,16 +5,16 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 23
 current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
 status: executing
-stopped_at: Completed 23-02-PLAN.md
-last_updated: "2026-10-20T16:34:43.548Z"
+stopped_at: Completed 23-03-PLAN.md
+last_updated: "2026-10-20T17:04:24.004Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 8704ecca56e432122d66d14587c646294982fa9d
+state_head: c9bc111dfb1cfaac94598473bb9a8add4acc9b61
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 4
+  completed_plans: 5
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 23 execution started
 
@@ -51,6 +51,7 @@ Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 | Phase 22 P22-02 | 54 min | 3 tasks | 3 files |
 | Phase 23 P01 | 34 min | 3 tasks | 7 files |
 | Phase 23 P02 | 11 min | 3 tasks | 3 files |
+| Phase 23 P03 | 18 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 23]: 23-02: ListingEntry carries no per-dimension verdicts (frozen 23-01 type has no field; report.py locked) — dimension functions applied via the finetune listing's warn-or-ok task filter instead
 - [Phase 23]: 23-02: unknown tokenizer kind never fails charset — a gap cannot prove hard incompatibility (D-05); rejected chars warn CHARSET_NONSTANDARD_CHARS on unknown stances like BPE classes
 - [Phase 23]: 23-02: default intent is finetune when only task_type is given; predict without a task degrades to an empty listing, never an error; k-mer budgets classify from entry names first (6mer 517, BPE x3 1536)
+- [Phase 23]: 23-03: D-11 source-first hub order implemented via the is_lab_model() proxy (RegistryEntry has no source field) — ModelScope probed first for every entry; source_hub reports modelscope when both hubs carry the repo (Phase 26 review flag)
+- [Phase 23]: 23-03: timeouts terminal (unknown/PROBE_TIMEOUT immediately); raising adapters fall through to the other hub; HF cache lookup failures are best-effort misses (HFValidationError on path-like ids), never probe failures
 
 ### Pending Todos
 
@@ -118,8 +121,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:34:43.523Z
-Stopped at: Completed 23-02-PLAN.md
+Last session: 2026-10-20T17:04:23.980Z
+Stopped at: Completed 23-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
