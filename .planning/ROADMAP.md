@@ -120,11 +120,11 @@ Plans:
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
 
-**Plans**: 5/5 plans
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 23-01-PLAN.md — Tracer (list[str] → `validate_data` → `check_compatibility` verdict) + full PFC-01: report-type inventory (interface-first), standalone reader with DNADataset parity, census, import-discipline structure tests
+- [x] 23-01-PLAN.md — Tracer (list[str] → `validate_data` → `check_compatibility` verdict) + full PFC-01: report-type inventory (interface-first), standalone reader with DNADataset parity, census, import-discipline structure tests
 
 **Wave 2** *(blocked on Wave 1; three file-disjoint plans, parallelizable)*
 - [ ] 23-02-PLAN.md — `check_compatibility` complete: three-dimension verdicts (task × length × charset), k-mer/BPE budget classifier, intent-routed lab-first listings, prober shortlist seam (PFC-02/05/07)
@@ -186,7 +186,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
-| 23. Pre-flight Core | 0/5 | Planned | - |
+| 23. Pre-flight Core | 1/5 | In Progress | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |

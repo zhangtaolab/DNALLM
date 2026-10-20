@@ -5,16 +5,16 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 23
 current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
 status: executing
-stopped_at: Phase 23 context gathered
-last_updated: "2026-10-20T15:28:47.450Z"
+stopped_at: Completed 23-01-PLAN.md
+last_updated: "2026-10-20T16:12:44.417Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 22 complete, transitioned to Phase 23
-state_head: f16187f93aeaa04a36fc69b6f69ca2a07d29c455
+last_activity_desc: Phase 23 execution started
+state_head: 0dce3824777f551f986fcbbf4c3cd94cb5ca8ba6
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 2
+  completed_plans: 3
   percent: 20
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 ## Current Position
 
-Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — READY TO EXECUTE
-Plan: Not started
+Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-20 — Phase 22 complete, transitioned to Phase 23
+Last activity: 2026-10-20 — Phase 23 execution started
 
 Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 
@@ -49,6 +49,7 @@ Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 |------|----------|-------|-------|
 | Phase 22 P22-01 | 26 min | 3 tasks | 3 files |
 | Phase 22 P22-02 | 54 min | 3 tasks | 3 files |
+| Phase 23 P01 | 34 min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,10 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 22]: 22-01: local coverage measured via plain coverage run + filtered report — pytest-cov broken in dev venv by numpy 2.5.3/py3.13 (known deferred item); CI matrix unaffected
 - [Phase 22]: 22-02: enrichment committed from measured artifacts only — hyenadna pinned at measured 32770 (not the 32768 repo-name figure), tokenizer model_max_length accepted as a measured source where configs carry no key, GPTNeoX class-default 1024 rejected as a plausible default
 - [Phase 22]: 22-02: three unmeasurable pretrained repos resolved via documented constants (PlantCAD2 8192 / PlantCaduceus 512 / GPN 512 from the PlantCAD2 paper bioRxiv 10.1101/2025.08.27.672609; mamba-BPE 512 from the PDLLMs training script; GENERanno 8192 from the surviving 0.5b sibling) — 14 external-based plantcad entries explicit at 8192, zero registry-based overrides (all measured finetuned values equal their bases')
+- [Phase 23]: 23-01: report inventory born with three discretionary metadata fields (SplitReport.length_counts exact-truncation channel; DataReport.label_dtype / multilabel_sep) — CONTEXT delegates field tables to implementer discretion
+- [Phase 23]: 23-01: list[str] disambiguation — a list whose every element carries a supported data suffix is a file list, otherwise raw sequences; dict-of-splits values follow the same rule
+- [Phase 23]: 23-01: label inference = candidate-name match (label/labels/y/target/class/category) then two-column fallback; fasta/txt carry canonical sequence/label names with no guess finding
+- [Phase 23]: 23-01: preflight docstrings never name the registry YAML by filename — the Phase-22 sole-mentioner grep guard is substring-based and fails CI on documentation mentions too
 
 ### Pending Todos
 
@@ -109,9 +114,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T14:18:29.495Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-pre-flight-core-pure-validation-suitability-config-api/23-CONTEXT.md
+Last session: 2026-10-20T16:12:44.393Z
+Stopped at: Completed 23-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
