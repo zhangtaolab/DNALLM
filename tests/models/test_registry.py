@@ -177,6 +177,37 @@ def test_malformed_entry_fails_loudly_naming_offender() -> None:
         registry._build_registry(bad)
 
 
+def test_max_length_accepts_one_and_rejects_nonpositive() -> None:
+    """max_length takes any positive int: 1 is valid; 0 and negatives are rejected (gt=0)."""
+    minimal = {
+        "pretrained": [
+            {
+                "name": "Boundary",
+                "model": "org/boundary",
+                "task": {"describe": "d", "task_type": "mask"},
+                "max_length": 1,
+            }
+        ],
+        "finetuned": VALID_FINETUNED,
+    }
+    built = registry._build_registry(minimal)
+    assert built.by_repo["org/boundary"].max_length == 1
+
+    for nonpositive in (0, -5):
+        with pytest.raises(ValueError, match=r"org/boundary"):
+            registry._build_registry({
+                "pretrained": [
+                    {
+                        "name": "Boundary",
+                        "model": "org/boundary",
+                        "task": {"describe": "d", "task_type": "mask"},
+                        "max_length": nonpositive,
+                    }
+                ],
+                "finetuned": VALID_FINETUNED,
+            })
+
+
 def test_missing_sections_rejected() -> None:
     """A missing, empty, or non-list section raises ValueError naming the section."""
     with pytest.raises(ValueError, match=r"'pretrained'"):
