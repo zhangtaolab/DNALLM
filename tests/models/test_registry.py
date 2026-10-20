@@ -3,15 +3,22 @@
 Fast-leg, no network: these tests exercise ``dnallm.models.registry`` — the
 sole runtime parser of the packaged ``model_info.yaml`` — end to end. Task 1
 covers the single cached parse path (typed frozen entries, exact lookups,
-loud validation, ``reload()`` semantics). Later sections extend this file with
-the query surface, inheritance resolution, and the REG-03 read-only guards.
+loud validation, ``reload()`` semantics). Task 2 extends with the query
+surface, inheritance resolution, and the facade. Task 3 enforces the three
+REG-03 read-only guarantees permanently: the loader is the SOLE parser of
+``model_info.yaml`` (mentioner allowlist), it exposes NO write/serialize
+API of any kind (verb + emitter-token scans), and entries stay FROZEN.
 """
 
+import ast
 import io
+import re
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
+import dnallm
 from dnallm.models import registry
 
 # Pinned end-to-end fixture: the first finetuned entry in the packaged file.
@@ -455,3 +462,102 @@ def test_effective_value_live_registry_pre_enrichment_is_none() -> None:
     entry = registry.resolve(PINNED_FINETUNED_NAME)
     assert registry.effective_max_length(entry) is None
     assert registry.effective_tokenizer_type(entry) is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REG-03 read-only integrity guards (sole parser, no write API, frozen)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The only dnallm/**/*.py files allowed to contain the literal
+# "model_info.yaml". The server.py hit is the stale integration comment at
+# line ~821 ("# This would integrate with model_info.yaml") — the one
+# pre-existing mentioner outside the loader, allowlisted here and scheduled
+# for the Phase 26 MCP-consistency rewire. Any new mentioner in dnallm/ (a
+# second parser, a would-be writer) fails the guard below.
+EXPECTED_REGISTRY_MENTIONERS = {
+    "dnallm/models/registry.py",
+    "dnallm/mcp/server.py",
+}
+
+# REG-03: the loader is born read-only (Pitfall 3 — provenance destruction
+# via a YAML round-trip). None of these verb substrings may appear in any
+# public name of the module, so a write/serialize path can never grow
+# without turning this suite red.
+WRITE_API_VERB_SUBSTRINGS = (
+    "write",
+    "save",
+    "serial",
+    "dump",
+    "set_",
+    "update",
+    "delete",
+    "add_",
+)
+
+# File-open mode shape: one or more of r/w/x, optionally with b/t/+ (covers
+# "r", "rb", "r+", "w", "wb", "a+", "x", ...). The loader may only ever open
+# the packaged file in plain read mode.
+FILE_MODE_PATTERN = re.compile(r"^[rwx][rwx+bt]*$")
+
+
+def test_registry_module_is_sole_parser_of_model_info_yaml() -> None:
+    """REG-01/REG-03: exactly registry.py plus the allowlisted stale comment mention the file."""
+    package_root = Path(dnallm.__file__).parent
+    mentioners = {
+        # as_posix: forward-slash relative paths stay stable on Windows legs.
+        path.relative_to(package_root.parent).as_posix()
+        for path in package_root.rglob("*.py")
+        if "model_info.yaml" in path.read_text(encoding="utf-8")
+    }
+    assert mentioners == EXPECTED_REGISTRY_MENTIONERS, (
+        f"model_info.yaml mentioners drifted beyond the sole-parser allowlist "
+        f"{sorted(EXPECTED_REGISTRY_MENTIONERS)}: unexpected "
+        f"{sorted(mentioners - EXPECTED_REGISTRY_MENTIONERS)}, missing "
+        f"{sorted(EXPECTED_REGISTRY_MENTIONERS - mentioners)} — registry.py is "
+        f"the single parse owner; a second parser or writer belongs behind it, "
+        f"never beside it"
+    )
+
+
+def test_registry_module_exposes_no_write_api() -> None:
+    """REG-03 born-read-only: no public write/save/serialize/dump/update verb exists."""
+    public_names = [name for name in dir(registry) if not name.startswith("_")]
+    offenders = [
+        name
+        for name in public_names
+        if any(verb in name.lower() for verb in WRITE_API_VERB_SUBSTRINGS)
+    ]
+    assert offenders == [], (
+        f"dnallm.models.registry grew public names with write-side verbs "
+        f"{offenders} — the registry is read-only forever (Pitfall 3); "
+        f"registry maintenance is scripted text insertion, never a runtime "
+        f"mutation API"
+    )
+
+
+def test_registry_module_source_has_no_yaml_emitter() -> None:
+    """REG-03: the module source contains no pyyaml emitter token and opens only in read mode."""
+    source = Path(registry.__file__).read_text(encoding="utf-8")
+    lowered = source.lower()
+    for token in ("dump", "dumper", "representer"):
+        assert token not in lowered, (
+            f"registry.py contains pyyaml emitter token {token!r} — the loader "
+            f"can never emit YAML (Pitfall 3 round-trip destroys provenance)"
+        )
+    string_constants = {
+        node.value
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    }
+    mode_literals = {s for s in string_constants if FILE_MODE_PATTERN.match(s)}
+    assert mode_literals <= {"r"}, (
+        f"registry.py carries file-open mode literal(s) beyond read mode: "
+        f"{sorted(mode_literals)} — the packaged registry file is never written"
+    )
+
+
+def test_registry_entries_are_frozen() -> None:
+    """REG-03: entries are frozen — attribute assignment raises ValidationError."""
+    entry = registry.resolve(PINNED_FINETUNED_NAME)
+    with pytest.raises(ValidationError):
+        entry.name = "mutated"
