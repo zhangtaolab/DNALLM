@@ -1,4 +1,4 @@
----
+| IN-08 |  | fixed | 23-REVIEW-FIX.md || IN-04 |  | fixed | 23-REVIEW-FIX.md || IN-03 |  | fixed | 23-REVIEW-FIX.md || WR-05 |  | fixed | 23-REVIEW-FIX.md || WR-04 |  | fixed | 23-REVIEW-FIX.md || WR-03 |  | fixed | 23-REVIEW-FIX.md || WR-02 |  | fixed | 23-REVIEW-FIX.md || WR-01 |  | fixed | 23-REVIEW-FIX.md || CR-02 |  | fixed | 23-REVIEW-FIX.md || IN-07 |  | deferred | deferred — shared executor saturation PROBE_TIMEOUT nuance; bounded-wait semantics acceptable at current scale, revisit if TUI shows spurious timeouts. || IN-06 |  | deferred | deferred — isdir on raw alias is harmless in local-cache detection; defensive-only. || IN-05 |  | deferred | deferred — min_length<=0 ValidationError message improvement; cosmetic validation-message polish. || IN-02 |  | deferred | deferred — default label column name (label vs labels) is parity-locked by test_reader_parity; changing it alters documented behavior — owner call. || IN-01 |  | deferred | deferred — label_dtype documentation nuance; behavior change judgment call for owner (integer labels reported as float mirrors pandas dtype reality). || CR-01 |  | deferred | deferred — runtime import purity deferred to Phase 25 (owner call): 23-01 plan recorded the transitive-import discovered-constraint; AST/source-level enforcement is the planned scope. Docstring alignment applied in da4e44d; root-facade refactor unsanctioned this phase. |---
 phase: 23
 review: 23-REVIEW.md
 titles: json
@@ -65,7 +65,7 @@ findings:
     title: "New `validate_sections` docstring uses the legacy typed-param style"
 open: 15
 total: 15
-recorded: 2026-10-20T17:56:58.388Z
+recorded: 2026-10-20T18:24:00.251Z
 ---
 
 # Phase 23: Code Review Disposition
