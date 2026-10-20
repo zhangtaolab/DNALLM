@@ -95,8 +95,13 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   1. Any consumer can look up registry entries by name, repo_id, task_type, or base_model through `dnallm/models/registry.py` and get typed entries from a single cached parse (CSafeLoader with SafeLoader fallback; `reload()` forces a refresh) — and a grep-guard test fails if any second parser of `model_info.yaml` appears in `dnallm/`
   2. Registry entries expose structured `tokenizer_type` and `max_length` — enrichment landed as scripted text insertion with provenance comments preserved — with enrichment-schema invariants tested across all 236 entries
   3. The extended 261020-kwt integrity suite proves the loader is born — and stays — read-only: no write or YAML round-trip API exists on it, and every provenance block (including the PlantHelixSeek label-order freeze) remains present and intact
-**Plans**: TBD
-**Note**: enrichment schema (`tokenizer_type`/`max_length` shape, insertion discipline) is finalized at phase planning (research flag within Phase R); the loader itself is a standard cached package-data pattern — no `--research-phase` needed
+**Plans**: 2 plans
+
+Plans:
+- [ ] 22-01-PLAN.md — Cached read-only typed loader (`dnallm/models/registry.py`, sole parser, grep-guarded, Pydantic-hard-validated, effective-value inheritance) + loader-side REG-03 guards
+- [ ] 22-02-PLAN.md — `tokenizer_type`/`max_length` enrichment (probe-then-commit, scripted insertion) + extended integrity suite + live-inheritance proofs
+
+**Note**: enrichment schema (`tokenizer_type`/`max_length` shape, insertion discipline) is finalized at phase planning (research flag within Phase R); the loader itself is a standard cached package-data pattern — no `--research-phase` needed. Schema finalized in 22-01/22-02 plans: optional top-level `tokenizer_type: str` / `max_length: int > 0` fields, loader-resolved `base_model` inheritance.
 
 ### Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API
 **Goal**: A pure, synchronous, pytest-covered pre-flight API — `validate_data`, `check_compatibility`, `generate_config`, and a ModelScope-first availability probe — that every future shell (TUI now, MCP tools and notebooks later) consumes without owning any verdict logic
@@ -154,7 +159,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. Registry Foundation | 0/TBD | Not started | - |
+| 22. Registry Foundation | 0/2 | Not started | - |
 | 23. Pre-flight Core | 0/TBD | Not started | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
