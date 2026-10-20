@@ -111,6 +111,19 @@ def test_frozen_entry_assignment_rejected() -> None:
         entry.task.threshold = 0.9
 
 
+def test_regression_bare_string_label_names_wrapped_to_list() -> None:
+    """Regression entries carry a bare-string label_names (target description).
+
+    The packaged file stores free text there on the promoter-strength
+    regression entries; the loader accepts it and wraps it into a
+    one-element list so every consumer sees ``list[str] | None`` (matching
+    the TaskConfig regression convention), without mutating the file.
+    """
+    entry = registry.resolve("zhangtaolab/plant-dnabert-BPE-promoter_strength_leaf")
+    assert entry.task.task_type == "regression"
+    assert entry.task.label_names == ["promoter strength in tobacco leaves"]
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Single cached parse / reload
 # ─────────────────────────────────────────────────────────────────────────────
