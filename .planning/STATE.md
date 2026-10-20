@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 22
 current_phase_name: Registry Foundation — Runtime Loader & Enrichment
-status: planning
-stopped_at: Phase 22 context gathered
-last_updated: "2026-10-20T09:25:10.622Z"
+status: executing
+stopped_at: Completed 22-01-PLAN.md
+last_updated: "2026-10-20T11:01:47.247Z"
 last_activity: 2026-10-20
-last_activity_desc: v1.4 roadmap created (5 phases, 22–26; 23/23 requirements mapped)
-state_head: 8f722b201aa1fd25ea6dcf436d854992e7e1098f
+last_activity_desc: Phase 22 execution started
+state_head: 431d1b7019be410bc9643674207676a039ac2a06
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 22 — Registry Foundation (runtime loader & enrichment); v1.4 roadmap created 2026-10-20
+**Current focus:** Phase 22 — Registry Foundation — Runtime Loader & Enrichment
 
 ## Current Position
 
-Phase: 22 (Registry Foundation — Runtime Loader & Enrichment) — READY TO EXECUTE
-Plan: — (not yet planned)
-Status: Ready to plan Phase 22
-Last activity: 2026-10-20 — v1.4 roadmap created (5 phases, 22–26; 23/23 requirements mapped)
+Phase: 22 (Registry Foundation — Runtime Loader & Enrichment) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-10-20 — Phase 22 execution started
 
 Progress: [░░░░░░░░░░] 0% (0 of 5 v1.4 phases)
 
@@ -43,6 +43,11 @@ Progress: [░░░░░░░░░░] 0% (0 of 5 v1.4 phases)
 - Recent trend: Stable
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 22 P22-01 | 26 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -61,6 +66,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - Research flags for plan time: Phase 23 and Phase 25 warrant `--research-phase` (P23: HF_ENDPOINT in-process effect spike + ModelScope cache-layout resolver; P25: worker-seam shape, cancel semantics, extra-vs-alias ordering, Pilot wall-time budget). Phase 22 enrichment schema is a plan-time schema decision; Phase 26 consistency scope is an owner call at planning
 - Owner constraints encoded roadmap-wide: main frozen (all v1.4 work on branch `v1.4`), ModelScope-first, lab-models-first (`zhangtaolab/*` ranks first in every listing), every `dnallm/` change ships with pytest in the same change, `fail_under=90` holds throughout with per-module ≥96% for new code and no omit entries
 - Commits carry no Co-Authored-By trailers (repo convention)
+- [Phase 22]: 22-01: TaskInfo.label_names accepts the packaged regression-entry bare-string form (36 entries) via field_validator wrap to a one-element list — published contract stays list[str] | None, matching TaskConfig's regression convention
+- [Phase 22]: 22-01: sole-mentioner allowlist pinned to {dnallm/models/registry.py, dnallm/mcp/server.py} (stale :821 integration comment; Phase 26 rewire target)
+- [Phase 22]: 22-01: local coverage measured via plain coverage run + filtered report — pytest-cov broken in dev venv by numpy 2.5.3/py3.13 (known deferred item); CI matrix unaffected
 
 ### Pending Todos
 
@@ -98,9 +106,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T08:47:24.161Z
-Stopped at: Phase 22 context gathered
-Resume file: .planning/phases/22-registry-foundation-runtime-loader-enrichment/22-CONTEXT.md
+Last session: 2026-10-20T11:01:47.231Z
+Stopped at: Completed 22-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

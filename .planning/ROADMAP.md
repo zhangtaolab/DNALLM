@@ -97,11 +97,11 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   2. Registry entries expose structured `tokenizer_type` and `max_length` — enrichment landed as scripted text insertion with provenance comments preserved — with enrichment-schema invariants tested across all 236 entries
   3. The extended 261020-kwt integrity suite proves the loader is born — and stays — read-only: no write or YAML round-trip API exists on it, and every provenance block (including the PlantHelixSeek label-order freeze) remains present and intact
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 22-01-PLAN.md — Cached read-only typed loader (`dnallm/models/registry.py`, sole parser, grep-guarded, Pydantic-hard-validated, effective-value inheritance) + loader-side REG-03 guards
+- [x] 22-01-PLAN.md — Cached read-only typed loader (`dnallm/models/registry.py`, sole parser, grep-guarded, Pydantic-hard-validated, effective-value inheritance) + loader-side REG-03 guards
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 22-02-PLAN.md — `tokenizer_type`/`max_length` enrichment (probe-then-commit, scripted insertion) + extended integrity suite + live-inheritance proofs
@@ -172,7 +172,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 22. Registry Foundation | 0/2 | Not started | - |
+| 22. Registry Foundation | 1/2 | In Progress | - |
 | 23. Pre-flight Core | 0/TBD | Not started | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |

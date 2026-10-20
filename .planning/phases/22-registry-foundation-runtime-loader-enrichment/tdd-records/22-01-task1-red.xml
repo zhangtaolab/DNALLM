@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="3.451" timestamp="2026-10-20T18:40:20.977420+08:00" hostname="edgexpert-296a"><testcase classname="" name="tests.models.test_registry" time="0.000"><error message="collection failure">ImportError while importing test module '/home/forrest/Github/DNALLM/tests/models/test_registry.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../miniconda3/envs/cuda130/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/models/test_registry.py:15: in &lt;module&gt;
+    from dnallm.models import registry
+E   ImportError: cannot import name 'registry' from 'dnallm.models' (/home/forrest/Github/DNALLM/dnallm/models/__init__.py)</error></testcase></testsuite></testsuites>

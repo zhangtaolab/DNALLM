@@ -19,7 +19,8 @@ DNALLM/
 │   ├── mcp/                    # server.py, model_manager.py, config_manager.py, config_validators.py, client.py,
 │   │                           #   configs/ (server + per-model YAMLs), tests/ (own pytest suite)
 │   ├── models/                 # model.py (loader), modeling_auto.py (registry), head.py, tokenizer.py, losses.py,
-│   │                           #   model_info.yaml (219-model registry), special/ (family handlers + enformer_model/ vendored)
+│   │                           #   registry.py (runtime loader, sole parser of model_info.yaml — 236-entry registry,
+│   │                           #   read-only/frozen, Phase 22-01), special/ (family handlers + enformer_model/ vendored)
 │   ├── tasks/                  # task.py (TaskType/TaskConfig/TaskHead), metrics.py (dispatcher), metrics/ (vendored HF evaluate)
 │   ├── utils/                  # logger.py, sequence.py, genomic_coords.py, cuda_compat.py, transformers_compat.py,
 │   │                           #   support.py (FA/FP8 capability), training_plots.py

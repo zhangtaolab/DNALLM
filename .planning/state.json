@@ -1,48 +1,38 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.3 — Platform Reach & Packaging Honesty",
+  "milestone": "v1.4 — Pre-flight UX & Registry-as-Truth-Source",
   "phases": [
     {
-      "number": "13",
-      "name": "Ollama Surface Disposition",
-      "status": "complete"
+      "number": "22",
+      "name": "Registry Foundation",
+      "status": "pending"
     },
     {
-      "number": "14",
-      "name": "GAP-1 Transformers 5.x Disposition",
-      "status": "complete"
+      "number": "23",
+      "name": "Pre-flight Core",
+      "status": "pending"
     },
     {
-      "number": "15",
-      "name": "Windows Parity Core — Numpy Interval Evaluators",
-      "status": "complete"
+      "number": "24",
+      "name": "Preset Loading",
+      "status": "pending"
     },
     {
-      "number": "16",
-      "name": "Windows Parity Rollout — Dispatch, Gates & Frozen-Value Parity",
-      "status": "complete"
+      "number": "25",
+      "name": "Terminal UI & tui Extra",
+      "status": "pending"
     },
     {
-      "number": "17",
-      "name": "Publish Chain Robustness",
-      "status": "complete"
-    },
-    {
-      "number": "18",
-      "name": "Packaging & Install Honesty — Atomic Extras Surgery",
-      "status": "complete"
-    },
-    {
-      "number": "19",
-      "name": "Docs Accuracy Sweep & Milestone Closeout",
-      "status": "complete"
+      "number": "26",
+      "name": "MCP Consistency",
+      "status": "pending"
     }
   ],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 1 of 5 · 0% · executing"
   },
-  "updated_at": "2026-10-16T05:46:19.282Z"
+  "updated_at": "2026-10-20T11:01:46.597Z"
 }

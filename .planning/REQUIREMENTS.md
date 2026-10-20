@@ -9,7 +9,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 ### Registry Foundation (Phase 22)
 
-- [ ] **REG-01**: A cached, read-only registry loader (`dnallm/models/registry.py`) is the single parse owner of `model_info.yaml` (typed entries; lookups by name/repo_id/task_type/base_model; `reload()` hook; CSafeLoader with fallback; grep-guard against second parsers)
+- [x] **REG-01**: A cached, read-only registry loader (`dnallm/models/registry.py`) is the single parse owner of `model_info.yaml` (typed entries; lookups by name/repo_id/task_type/base_model; `reload()` hook; CSafeLoader with fallback; grep-guard against second parsers)
 - [ ] **REG-02**: Registry entries carry structured `tokenizer_type` and `max_length` (enrichment via scripted text insertion — provenance comments preserved; schema finalized at phase planning)
 - [ ] **REG-03**: Registry integrity tests extended from 261020-kwt — provenance-block presence, no write/round-trip API on the loader, enrichment-schema invariants
 
@@ -79,7 +79,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 22 | Pending |
+| REG-01 | Phase 22 | Complete |
 | REG-02 | Phase 22 | Pending |
 | REG-03 | Phase 22 | Pending |
 | PFC-01 | Phase 23 | Pending |
