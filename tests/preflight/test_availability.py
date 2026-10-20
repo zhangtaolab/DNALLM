@@ -294,11 +294,18 @@ def test_memo_clear_forces_reprobe(monkeypatch) -> None:
 
 
 def test_memo_concurrent_probes_resolve_once(monkeypatch) -> None:
-    """8 concurrent probes of one uncached id resolve and probe at most once."""
+    """8 concurrent DEFAULT probes of one uncached id resolve and probe at most once.
+
+    Uses the default seam (patched _probe_remote), not the ``prober``
+    kwarg: injected-prober results never enter the memo (WR-03), so the
+    memo-based dedup contract is pinned on the default flow it serves.
+    """
     sentinel = _sentinel_report("concurrent")
     resolver = Mock(return_value=("concurrent/org", None))
+    remote = Mock(return_value=sentinel)
     monkeypatch.setattr(availability, "_resolve_model_ref", resolver)
-    prober = Mock(return_value=sentinel)
+    monkeypatch.setattr(availability, "_probe_cached_local", Mock(return_value=None))
+    monkeypatch.setattr(availability, "_probe_remote", remote)
 
     barrier = threading.Barrier(8)
     results: list[AvailabilityReport] = []
@@ -306,7 +313,7 @@ def test_memo_concurrent_probes_resolve_once(monkeypatch) -> None:
 
     def worker() -> None:
         barrier.wait()
-        report = probe_availability("concurrent/model", prober=prober)
+        report = probe_availability("concurrent/model")
         with results_lock:
             results.append(report)
 
@@ -319,7 +326,41 @@ def test_memo_concurrent_probes_resolve_once(monkeypatch) -> None:
     assert len(results) == 8
     assert all(report is sentinel for report in results)
     assert resolver.call_count == 1
-    assert prober.call_count == 1
+    assert remote.call_count == 1
+
+
+def test_injected_prober_result_never_poisons_default_probe(monkeypatch) -> None:
+    """A fake prober's report never enters the memo (WR-03).
+
+    A subsequent DEFAULT probe of the same model must run the default flow
+    and return its own report — not the injected fake.
+    """
+    monkeypatch.setattr(availability, "_probe_cached_local", Mock(return_value=None))
+    fake_report = _confirmed_report(Hub.MODELSCOPE, size=999, revision="fake")
+    default_report = _sentinel_report("default-ran")
+    remote = Mock(return_value=default_report)
+    monkeypatch.setattr(availability, "_probe_remote", remote)
+
+    injected = probe_availability("memo-poison/org", prober=Mock(return_value=fake_report))
+    default = probe_availability("memo-poison/org")
+
+    assert injected is fake_report
+    assert default is default_report  # not the memoized fake report
+    assert remote.call_count == 1
+
+
+def test_two_injected_probers_each_get_their_own_report(monkeypatch) -> None:
+    """Two different injected probers across calls each get their own report
+    back — the first call's result is not served to the second (WR-03)."""
+    monkeypatch.setattr(availability, "_probe_cached_local", Mock(return_value=None))
+    monkeypatch.setattr(
+        availability, "_probe_remote", Mock(return_value=_sentinel_report("default"))
+    )
+    first = _confirmed_report(Hub.MODELSCOPE, size=1)
+    second = _confirmed_report(Hub.HUGGINGFACE, size=2)
+
+    assert probe_availability("seam-a/org", prober=Mock(return_value=first)) is first
+    assert probe_availability("seam-a/org", prober=Mock(return_value=second)) is second
 
 
 # ─────────────────────────────────────────────────────────────────────────────

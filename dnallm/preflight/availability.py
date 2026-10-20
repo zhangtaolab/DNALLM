@@ -74,11 +74,13 @@ DEFAULT_PROBE_TIMEOUT = 5.0
 _HF_CACHE_PROBE_FILENAME = "config.json"
 
 # In-process memo (D-12): the same model is never re-probed within a
-# process. Keyed by resolved repo id AND by every raw input alias that
-# resolved to it; registry data is immutable, so no cross-process
-# persistence is needed. Guarded by _MEMO_LOCK; the probe itself runs
-# under the lock so concurrent probes of one id resolve and probe at most
-# once (lock-guarded double-check).
+# process, by DEFAULT probes only (WR-03: injected-prober results never
+# enter the memo — see probe_availability's prober arg). Keyed by resolved
+# repo id AND by every raw input alias that resolved to it; registry data
+# is immutable, so no cross-process persistence is needed. Guarded by
+# _MEMO_LOCK; the probe itself runs under the lock so concurrent default
+# probes of one id resolve and probe at most once (lock-guarded
+# double-check).
 _MEMO: dict[str, AvailabilityReport] = {}
 _MEMO_LOCK = threading.Lock()
 
@@ -110,7 +112,11 @@ def probe_availability(
             injectable seam the compatibility layer (23-02) wires in; the
             unit suite injects fakes so it never touches the network. A
             raising or over-slow injected prober degrades to unknown with
-            a reason, exactly like the default adapters (PFC-06).
+            a reason, exactly like the default adapters (PFC-06). Caching
+            (WR-03): injected-prober results are never memoized, and an
+            injected prober never reads the memo — the memo caches
+            default-probe results only, so one injected call cannot poison
+            later probes.
         timeout: Bounded wait in seconds for any one remote call
             (default :data:`DEFAULT_PROBE_TIMEOUT`).
 
@@ -122,14 +128,20 @@ def probe_availability(
         "unavailable" verdict.
     """
     with _MEMO_LOCK:
-        memoized = _MEMO.get(model)
-        if memoized is not None:
-            return memoized
+        # WR-03: the memo caches DEFAULT-probe results only. An injected
+        # prober never reads from and never writes to the memo — otherwise
+        # one fake report would be served to every later probe of the
+        # model (including default probes) for the rest of the process.
+        if prober is None:
+            memoized = _MEMO.get(model)
+            if memoized is not None:
+                return memoized
         repo_id, entry = _resolve_model_ref(model)
-        memoized = _MEMO.get(repo_id)
-        if memoized is not None:
-            _MEMO[model] = memoized
-            return memoized
+        if prober is None:
+            memoized = _MEMO.get(repo_id)
+            if memoized is not None:
+                _MEMO[model] = memoized
+                return memoized
         try:
             if prober is not None:
                 report = _bounded_wait(lambda: prober(repo_id), timeout)
@@ -143,9 +155,10 @@ def probe_availability(
             report = _unknown(
                 f"{AvailabilityReasonCode.PROBE_ERROR.value}: {exc.__class__.__name__}"
             )
-        _MEMO[repo_id] = report
-        if model != repo_id:
-            _MEMO[model] = report
+        if prober is None:
+            _MEMO[repo_id] = report
+            if model != repo_id:
+                _MEMO[model] = report
         return report
 
 
