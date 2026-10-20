@@ -124,6 +124,8 @@ Ranked by UX value (pain × frequency). R1 = highest.
 
 ## Part 4 — Excluded: overlaps dnallmmark's TUI
 
+> **SUPERSEDED 2026-10-20 by Part 5** — the owner's post-survey directives (upstream/downstream relationship; dnallmmark's TUI may be merged into DNALLM) replace these hard exclusions with per-capability merge-or-build verdicts (Part 5 §5.4). Kept verbatim as the record of the original premise.
+
 Candidates evaluated and killed because dnallmmark already delivers this UX (per the owner's "don't repeat what dnallmmark implemented" rule):
 
 - Model registry browser with download management — dnallmmark's selection screen already delivers exactly this table UX: filterable model list, compat verdict column, honest per-model download-state column, `d`-key download through a persistent queue (`dnallmmark:tui/screens/selection.py` + `dnallmmark:tui/services/download_queue.py`, whose model lane is explicitly "the dnallm authority"). Even though the underlying catalog differs (dnallmmark's benchmark registries vs. `dnallm/models/model_info.yaml`'s 221 entries), building a DNALLM-side browser would reproduce the same screen; model-discovery needs are absorbed by R1 (session-start model choice) and R4 (model-name suggestions in the config editor).
@@ -135,4 +137,57 @@ Candidates evaluated and killed because dnallmmark already delivers this UX (per
 - About / dependency info panel — covered by `dnallmmark:tui/screens/about.py` + `dnallmmark:tui/services/about.py`.
 
 Non-UX defect noticed during inventory (not a TUI item, recorded for v1.4 triage): the `dnallm mutagenesis` click subcommand is a stub that prints success without running anything (`dnallm/cli/cli.py`), while the real flow lives only under the `dnallm-mutagenesis` console script (`dnallm/cli/mutagenesis.py`) — the two entry points disagree.
+
+## Part 5 — Addendum (2026-10-20): pre-flight cluster & merge policy (owner directives, post-survey)
+
+### 5.1 Owner directives — recorded verbatim, supersede Part 4's premise
+
+1. 本项目与 dnallmmark 是上下游关系 — DNALLM is the upstream framework; dnallmmark is the downstream benchmark platform built on it.
+2. dnallmmark 的 TUI 可以合并到本项目中，只是不要重复开发 — the constraint is "no duplicate development", not exclusion. Capabilities dnallmmark already ships are merge-or-build decisions, not forbidden territory.
+
+Endgame implied by (1): the shared TUI substrate lives upstream in `dnallm/tui/` and dnallmmark consumes it — which is the direction the dependency already points (measured 2026-10-20: dnallmmark's `tui/` has exactly ONE cross-package import, `dnallm.models.model.download_model`; its only TUI deps are `textual>=8.2,<9` + `platformdirs`; screens are presentation-only over services per their own docstrings).
+
+### 5.2 Pre-flight cluster: why it outranks the post-flight items
+
+Failure-cost asymmetry and ordering: every user journey passes data → suitability → config BEFORE any model load, and today's failure modes at that stage are the worst in the product —
+
+- raw Pydantic `ValidationError` tracebacks out of `load_config` (`dnallm/configuration/configs.py`), naming validator internals instead of fields;
+- data problems surfacing as deep pandas/HF exceptions inside `DNADataset` (`dnallm/datahandling/data.py`), or worse as silently wrong results (tokenizer/charset mismatch — no pre-flight check exists);
+- wasted downloads: an evo-class model (~12.3 GB) can finish downloading before a task_type/length incompatibility surfaces;
+- suitability facts (context length, tokenizer type, device/quantization constraints, head availability) exist only as scattered code in `model_info.yaml`, `PRETRAIN_MODEL_MAPS`, and the 12 special handlers — "users must grep the YAML or read docs" (Part 2).
+
+R1–R6 mostly serve sessions that already launched; the pre-flight cluster serves every user on every first run, at minute zero.
+
+### 5.3 Four capabilities → ONE pre-flight pipeline (not four TUIs)
+
+| Capability | Current evidence | Disposition |
+|---|---|---|
+| 数据整理 data organization | `DNADataset` local loaders (fasta/csv/tsv/json/parquet/txt/pkl), stats, splitting, augmentation — no UX layer at all. dnallmmark's `data_manager` owns benchmark-dataset download queues only, not user's own training data | NEW pre-flight panel; scope pinned to "user's own training data" |
+| 数据规范 data validation | No surface; silent charset/tokenizer/length failures | NEW pre-flight panel |
+| 模型适配性检测 model-suitability check | Registry metadata (221 entries) + 37 families + special-handler constraints exist but no checking tool of any kind | NEW; absorbs R1's session-start model choice (R1's exploration loop remains post-flight) |
+| 配置文件生成校验 config generation & validation | = R4 verbatim (traceback UX; generator authors-new-only) | ABSORBS R4 |
+
+Design shape: one wizard-style TUI — load data → stats/validation panel → compatibility verdicts (driven by the loaded data's length distribution, alphabet, task type, device) → emit a VALIDATED config YAML. Reuses the merged wizard framework and env-check panel from Track B (§5.4/§5.5).
+
+Architecture rule (more important than the screens): build the core as a first-class API — pure functions `validate_data()` / `check_compatibility(model, data_stats, task, device)` / `generate_config()` in `dnallm/` (facade pattern) — with the TUI, future MCP tools (ties into R3), and notebooks all consuming the same verdict logic. The TUI is one consumer, not the owner of the logic.
+
+### 5.4 Merge-or-build verdicts for the seven Part 4 exclusions
+
+| Former exclusion | Verdict | Rationale |
+|---|---|---|
+| Registry browser + download management (`selection` + `download_queue`) | **MERGE** — highest value | the download queue's model lane is already "the dnallm authority" wrapping `dnallm.models.model.download_model`; merging gives every DNALLM user the 221-entry browser + queue + compat verdicts, and dnallmmark keeps its registry adapter |
+| Environment check (`env_check`/`env_gate`/`quick_check`) | **MERGE** | torch/CUDA/device checks are dnallm-domain; doubles as pre-flight's first panel |
+| Dataset download management (`data_manager` + `zenodo_bundle`) | **SPLIT-MERGE** | queue/presence machinery is generic → upstream; benchmark dataset registry + Zenodo content stay downstream |
+| Run monitoring (`monitor` + `sweep_monitor`/`sweep_launcher`) | **MECHANISM UPSTREAM, VIEWS SEPARATE** | log-tailing/scanner machinery is generic; R2's fine-tune dashboard builds on it; sweep views stay downstream |
+| Custom-entry wizard (`wizard` + `custom_entries`/`custom_validation`/`gauntlet`) | **MERGE FRAMEWORK** | the multi-step form + validation-loop machinery is exactly what pre-flight (§5.3) needs; benchmark-specific validators stay downstream |
+| Results matrix (`matrix`) | **KEEP DOWNSTREAM** | model×dataset coverage glyphs are a benchmark concept; DNALLM's counterpart is R6 triage — different artifact |
+| About / dependency panel | **MERGE** (trivial) | rebrand and go |
+
+### 5.5 Revised v1.4 structure (supersedes R1–R6 ordering as the planning frame)
+
+- **Track A — pre-flight TUI (fresh build):** §5.3 pipeline (data panels + suitability + config validation, R4 absorbed), API-first core. Nothing to merge here — dnallmmark has no user-data pre-flight.
+- **Track B — TUI substrate consolidation:** absorb MERGE/MERGE-FRAMEWORK items into `dnallm/tui/` behind a `tui` extra (`textual>=8.2,<9` + `platformdirs`, mirroring dnallmmark's pin); dnallmmark flips to consuming the upstream package.
+- **Track C — post-flight:** R2 fine-tune dashboard (built on Track B's merged monitor machinery) → R3 MCP control room → R5 VEP runner → R6 interpretation triage.
+
+Dependency note: `textual` is a new direct dependency for dnallm (isolated in an extra); the v1.2 zero-new-deps stance was milestone-local and was already amended once (scikit-allel≥1.3.13) — v1.4 gets to re-decide, and the merge case is the strongest possible justification: the dependency buys 30k LOC of battle-tested screens instead of new code.
 
