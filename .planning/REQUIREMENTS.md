@@ -15,13 +15,13 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 ### Pre-flight Core (Phase 23)
 
-- [ ] **PFC-01**: `validate_data()` produces a read-only collect-all report (stats, charset census, length distribution, severities + reason codes) and never drops or mutates rows
-- [ ] **PFC-02**: `check_compatibility()` returns three-state verdicts (OK/WARN/FAIL) over task × length (truncation vs max context) × tokenizer/charset; WARN never blocks
-- [ ] **PFC-03**: Availability probe is ModelScope-first and returns cached/remote-confirmed/unknown states with size and revision, without downloading weights; rate-limit responses map to unknown, never "unavailable"; probes are injectable so unit tests are network-free
-- [ ] **PFC-04**: `generate_config()` emits a validated config and supports load-existing → edit → revalidate round-trip (shared `validate_sections` path with `load_config`; collect-all field-level errors, not tracebacks)
-- [ ] **PFC-05**: Model listings route by user intent via the base↔finetuned axis (`base_model`): "fine-tune" lists bases, "predict now" lists task models with heads/labels (D-3)
-- [ ] **PFC-06**: Offline/degraded mode: any probe or network failure degrades to UNKNOWN and the flow continues — no hard errors from unavailability (D-7)
-- [ ] **PFC-07**: Lab models (`zhangtaolab/*`) rank first in every model listing the core produces (owner directive 2026-10-20)
+- [x] **PFC-01**: `validate_data()` produces a read-only collect-all report (stats, charset census, length distribution, severities + reason codes) and never drops or mutates rows
+- [x] **PFC-02**: `check_compatibility()` returns three-state verdicts (OK/WARN/FAIL) over task × length (truncation vs max context) × tokenizer/charset; WARN never blocks
+- [x] **PFC-03**: Availability probe is ModelScope-first and returns cached/remote-confirmed/unknown states with size and revision, without downloading weights; rate-limit responses map to unknown, never "unavailable"; probes are injectable so unit tests are network-free
+- [x] **PFC-04**: `generate_config()` emits a validated config and supports load-existing → edit → revalidate round-trip (shared `validate_sections` path with `load_config`; collect-all field-level errors, not tracebacks)
+- [x] **PFC-05**: Model listings route by user intent via the base↔finetuned axis (`base_model`): "fine-tune" lists bases, "predict now" lists task models with heads/labels (D-3)
+- [x] **PFC-06**: Offline/degraded mode: any probe or network failure degrades to UNKNOWN and the flow continues — no hard errors from unavailability (D-7)
+- [x] **PFC-07**: Lab models (`zhangtaolab/*`) rank first in every model listing the core produces (owner directive 2026-10-20)
 
 ### Preset Loading (Phase 24)
 
@@ -82,13 +82,13 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 | REG-01 | Phase 22 | Complete |
 | REG-02 | Phase 22 | Complete |
 | REG-03 | Phase 22 | Complete |
-| PFC-01 | Phase 23 | Pending |
-| PFC-02 | Phase 23 | Pending |
-| PFC-03 | Phase 23 | Pending |
-| PFC-04 | Phase 23 | Pending |
-| PFC-05 | Phase 23 | Pending |
-| PFC-06 | Phase 23 | Pending |
-| PFC-07 | Phase 23 | Pending |
+| PFC-01 | Phase 23 | Complete |
+| PFC-02 | Phase 23 | Complete |
+| PFC-03 | Phase 23 | Complete |
+| PFC-04 | Phase 23 | Complete |
+| PFC-05 | Phase 23 | Complete |
+| PFC-06 | Phase 23 | Complete |
+| PFC-07 | Phase 23 | Complete |
 | LOAD-01 | Phase 24 | Pending |
 | TUI-01 | Phase 25 | Pending |
 | TUI-02 | Phase 25 | Pending |

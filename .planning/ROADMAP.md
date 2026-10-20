@@ -120,7 +120,7 @@ Plans:
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -132,7 +132,7 @@ Plans:
 - [x] 23-04-PLAN.md — `validate_sections` factor-out (the one sanctioned refactor, zero behavior change) + `generate_config`/`edit_config` collect-all round-trip (PFC-04)
 
 **Wave 3** *(blocked on Waves 1–2)*
-- [ ] 23-05-PLAN.md — facade completion + cross-module user-story integration test (happy + severed-network paths) + phase closeout (per-module coverage ≥96%, structure re-proof, security spot checks)
+- [x] 23-05-PLAN.md — facade completion + cross-module user-story integration test (happy + severed-network paths) + phase closeout (per-module coverage ≥96%, structure re-proof, security spot checks)
 
 **Note**: both flagged research spikes were resolved empirically in 23-RESEARCH.md — (a) `HF_ENDPOINT` is read once at huggingface_hub import (in-process toggling is inert; probes report `huggingface_hub.constants.ENDPOINT`), (b) ModelScope resolves the cache root via `get_modelscope_cache_dir()` with a dual layout (`{root}/models/{org}/{name}` current, `{root}/{org}/{name}` legacy) and pure isdir checks avoid the `snapshot_download` `.mdl` litter.
 
@@ -186,7 +186,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
-| 23. Pre-flight Core | 4/5 | In Progress | - |
+| 23. Pre-flight Core | 5/5 | In Progress | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |

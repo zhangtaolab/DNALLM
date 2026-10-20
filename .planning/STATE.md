@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 23
 current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
-status: executing
-stopped_at: Completed 23-04-PLAN.md
-last_updated: "2026-10-20T17:25:30.491Z"
+status: verifying
+stopped_at: Completed 23-05-PLAN.md
+last_updated: "2026-10-20T17:38:06.658Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 8962b9f569e9296504ffdc73f996a3ed301344b6
+state_head: 5e92885d5477aa8fe73a92dc19c2fc020b4af943
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 20
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-20 — Phase 23 execution started
 
 Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
@@ -53,6 +53,7 @@ Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 | Phase 23 P02 | 11 min | 3 tasks | 3 files |
 | Phase 23 P03 | 18 min | 3 tasks | 2 files |
 | Phase 23 P04 | 12 min | 3 tasks | 3 files |
+| Phase 23 P05 | 6 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 23]: 23-04: registry-derived max_length lands in inference.max_length (validated + runtime-consumed) and the raw finetune section — TrainingConfig has no max_length field (extra=ignore), so the plan's finetune.max_length attribute premise was impossible
 - [Phase 23]: 23-04: _dump_yaml writes the raw assembled/patched dict, never normalized sections — zero data loss for the round-trip editor; write only when output_path is explicitly given
 - [Phase 23]: 23-04: collect-all fast path — fully valid mappings validate through validate_sections itself; the per-section collect-all (fixed section order, section.field paths) runs only on validation failure
+- [Phase 23]: edit_config round-trip input is the raw mapping derived from GeneratedConfig.config (section objects via model_dump) — the editor's documented input contract, verified live
+- [Phase 23]: facade completed as pure re-exports (probe_availability/effective_endpoints/clear_probe_memo/generate_config/edit_config); integration suite proves the user story facade-only on happy + severed-network paths
+- [Phase 23]: docstring-facade drift guard added — every public name documented in the package docstring must sit in __all__ (probe-verified red)
 
 ### Pending Todos
 
@@ -125,8 +129,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T17:25:30.467Z
-Stopped at: Completed 23-04-PLAN.md
+Last session: 2026-10-20T17:38:06.631Z
+Stopped at: Completed 23-05-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
