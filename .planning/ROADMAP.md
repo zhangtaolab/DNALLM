@@ -120,8 +120,21 @@ Plans:
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
 
-**Plans**: TBD
-**Note**: `--research-phase` suggested — two spikes: (a) effective-endpoint reporting through huggingface_hub resolved constants (in-process `HF_ENDPOINT` toggle effect at installed versions), (b) the ModelScope cache-layout resolver against installed modelscope (two layouts)
+**Plans**: 5/5 plans
+
+Plans:
+**Wave 1**
+- [ ] 23-01-PLAN.md — Tracer (list[str] → `validate_data` → `check_compatibility` verdict) + full PFC-01: report-type inventory (interface-first), standalone reader with DNADataset parity, census, import-discipline structure tests
+
+**Wave 2** *(blocked on Wave 1; three file-disjoint plans, parallelizable)*
+- [ ] 23-02-PLAN.md — `check_compatibility` complete: three-dimension verdicts (task × length × charset), k-mer/BPE budget classifier, intent-routed lab-first listings, prober shortlist seam (PFC-02/05/07)
+- [ ] 23-03-PLAN.md — `probe_availability`: ModelScope-first cached/remote-confirmed/unknown with size/revision, three-way local cache detection, failure→UNKNOWN taxonomy, memo, degraded mode (PFC-03/06)
+- [ ] 23-04-PLAN.md — `validate_sections` factor-out (the one sanctioned refactor, zero behavior change) + `generate_config`/`edit_config` collect-all round-trip (PFC-04)
+
+**Wave 3** *(blocked on Waves 1–2)*
+- [ ] 23-05-PLAN.md — facade completion + cross-module user-story integration test (happy + severed-network paths) + phase closeout (per-module coverage ≥96%, structure re-proof, security spot checks)
+
+**Note**: both flagged research spikes were resolved empirically in 23-RESEARCH.md — (a) `HF_ENDPOINT` is read once at huggingface_hub import (in-process toggling is inert; probes report `huggingface_hub.constants.ENDPOINT`), (b) ModelScope resolves the cache root via `get_modelscope_cache_dir()` with a dual layout (`{root}/models/{org}/{name}` current, `{root}/{org}/{name}` legacy) and pure isdir checks avoid the `snapshot_download` `.mdl` litter.
 
 ### Phase 24: Preset Loading — `load_preset_model` Registry Rewire
 
@@ -173,7 +186,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
-| 23. Pre-flight Core | 0/TBD | Not started | - |
+| 23. Pre-flight Core | 0/5 | Planned | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
