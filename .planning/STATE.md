@@ -1,21 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.3
-status: Phase 21 complete
-stopped_at: Phase 21 complete (ty hard gate CI-green; awaiting owner calls on pinned-stub-env + nightly resume)
-last_updated: "2026-10-20T07:25:03.295Z"
+milestone: v1.4
+milestone_name: Pre-flight UX & Registry-as-Truth-Source
+status: planning
+last_updated: "2026-10-20T07:39:28.368Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 21 complete — ty hard flip CI-validated, mypy retired tree-wide
-state_head: f0b8302e371c0820e8aaf26d0674f053682e2ebb
-milestone_name: Platform Reach & Packaging Honesty
-current_phase: 21
-current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
 progress:
-  total_phases: 9
-  completed_phases: 8
-  total_plans: 22
-  completed_plans: 22
-  percent: 89
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -29,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 
 ## Current Position
 
-Phase: Milestone v1.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-20 — Completed quick task 261020-gk4: TUI opportunity survey for v1.4 (6 ranked / 7 excluded vs dnallmmark; report .planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md, commit 3028f0c)
+Status: Defining requirements
+Last activity: 2026-10-20 — Milestone v1.4 started
 
 ## Performance Metrics
 

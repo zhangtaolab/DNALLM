@@ -8,9 +8,17 @@ DNALLM (`dnallm` v0.8.0) is a Python toolkit for fine-tuning, inference, and ben
 
 A fully passing pytest suite with >90% line coverage across `dnallm/` (excluding vendored code), enforced by a CI hard gate so coverage cannot regress.
 
-## Current Milestone: none (v1.3 shipped 2026-10-16)
+## Current Milestone: v1.4 Pre-flight UX & Registry-as-Truth-Source
 
-v1.3 Platform Reach & Packaging Honesty shipped 2026-10-16: 8 phases (13–20), 22 plans, 54 tasks; audit tech_debt cleared by the Phase-20 closeout; 27/29 requirements satisfied (PUBS-04/WPAR-07 acceptance halves owner-deferred as WINDOWS #25/#27). Start the next milestone with `/gsd-new-milestone` (phase numbering continues from 21).
+**Goal:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first).
+
+**Target features:**
+- Pre-flight API core: `validate_data` / `check_compatibility` (availability: source/size/cache/revision, ModelScope-first) / `generate_config` — pure functions, pytest-covered
+- Pre-flight TUI: env panel → data stats/validation → model suitability (`zhangtaolab/*` first) → config edit+validate (absorbs R4) → emits validated YAML; select-to-download via ModelScope-first path
+- Registry-as-truth-source: `model_info.yaml` consumed at runtime (`load_preset_model` resolves finetuned entries with heads/labels/threshold; base↔finetuned axis via `base_model`, 187/187 after 261020-kwt)
+- One-core-many-shells: the same core consumable by future MCP tools and notebooks
+
+**Scope boundaries (owner, 2026-10-20):** Track B (dnallmmark TUI substrate merge) and Track C (R2 training dashboard, R3 MCP control room, R5 VEP runner, R6 interpretation triage) → future requirements, not v1.4. Known defects (mutagenesis click stub, MCP load/unload not registered as tools, `get_all_available_models` name/reality mismatch) → GitHub issues, fixed outside v1.4. main is frozen; all v1.4 development on branch `v1.4`.
 
 ## Current State
 
@@ -47,10 +55,10 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 ### Active
 
-- [ ] Windows platform parity — #19 platform-split landing + #18 triton-windows declaration decision (v1.3)
-- [ ] Packaging & install honesty — extras hygiene, cuda130 default recommendation, GPU support matrix docs (v1.3)
-- [ ] Publish chain robustness — publish smoke (+ OIDC migration decision), #20 cov crash fix, mypy cap (v1.3)
-- [ ] Docs accuracy review — per-file docs/ + example/ sweep with same-pass fixes (v1.3)
+- [ ] Pre-flight validation & suitability API — `validate_data` / `check_compatibility` / `generate_config` pure functions with availability dimension (v1.4)
+- [ ] Pre-flight TUI — env/data/suitability/config panels over the API core, Textual behind a `tui` extra (v1.4)
+- [ ] Registry-as-truth-source — `model_info.yaml` consumed at runtime by the loading chain; MCP per-model config consistency-checked against it (v1.4)
+- [ ] ModelScope-first downloads on the pre-flight critical path, lab models (`zhangtaolab/*`) prioritized in the UX (v1.4)
 
 ### Validated — v1.3 (Platform Reach & Packaging Honesty, shipped 2026-10-16)
 
@@ -231,4 +239,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-16 after v1.3 milestone (Platform Reach & Packaging Honesty shipped; next milestone not yet defined)*
+*Last updated: 2026-10-20 after v1.4 milestone start (Pre-flight UX & Registry-as-Truth-Source; Track A first, per owner scoping 2026-10-20)*
