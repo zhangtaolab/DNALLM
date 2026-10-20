@@ -68,6 +68,16 @@ Shipped in Phase 22 (Registry Foundation — Runtime Loader & Enrichment, 2026-1
 - ✓ REG-02 — registry enrichment: `tokenizer_type`/`max_length` on all 49 pretrained + 14 external-base finetuned entries (109 committed fields), every value measured from hub metadata or carrying a cited derivation; plausible defaults rejected (GPTNeoX class-default 1024 → upstream-script 512; repo-name 32768 → measured 32770); provenance re-verified live at UAT (2026-10-20, 10-repo remote re-fetch, 0 mismatches)
 - ✓ REG-03 — extended integrity tests: section counts pinned 49/187, field-level insertion-only check, spot-pinned load-bearing values (hyenadna 32770, DebertaV2Tokenizer), no-write-API verb/emitter scans, frozen-entry guards, sole-mentioner allowlist
 
+Shipped in Phase 23 (Pre-flight Core — Pure Validation / Suitability / Config API, 2026-10-21):
+
+- ✓ PFC-01 — `dnallm/preflight/` `validate_data()`: read-only collect-all report (stats, charset census, length distribution, severities + reason codes), standalone reader parity-locked against `DNADataset`, 7 formats + jsonl, pkl refused and never unpickled, no row ever dropped or mutated
+- ✓ PFC-02 — `check_compatibility()`: three-state verdicts (OK/WARN/FAIL) over task × length × tokenizer/charset; WARN never blocks; k-mer/BPE budget classifier (k from name regex, budget = effective_max_length + k − 1) neutralizes the 140-entry EsmTokenizer k-mer trap
+- ✓ PFC-03 — `probe_availability()`: ModelScope-first, no weights ever (cache detection is pure path checks + `try_to_load_from_cache`/`scan_cache_dir`), cached/remote-confirmed/unknown with exact-int size + revision; injectable seam keeps the unit suite network-free
+- ✓ PFC-04 — `validate_sections` factored verbatim out of `load_config` (the one sanctioned refactor, equivalence-pinned) + `generate_config`/`edit_config` round-trip with collect-all field-level errors in fixed section order
+- ✓ PFC-05 — intent-routed listings over the base↔finetuned axis ("fine-tune" lists bases, "predict now" lists task models with heads/labels)
+- ✓ PFC-06 — degraded mode: every probe/network failure maps to UNKNOWN with a reason (RATE_LIMITED/OFFLINE/PROBE_TIMEOUT/NOT_FOUND_ON_EITHER_HUB/PROBE_ERROR); no core function ever raises from unavailability
+- ✓ PFC-07 — `zhangtaolab/*` ranks first in every listing the core produces (owner directive 2026-10-20)
+
 ### Validated — v1.3 (Platform Reach & Packaging Honesty, shipped 2026-10-16)
 
 - ✓ Ollama surface dispositioned per directive — OLLM-01..03 (census 216/217 re-pinned, sanctioned-residue oracle, nightly stage-3 deleted)
@@ -230,6 +240,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | One census-moving edit per phase (D-03 discipline, held all milestone) | The 216/217 triple is the suite's integrity anchor; every test-set change re-pins triple + skips + stages same-change | ✓ Triple byte-stable through 8 phases incl. the phase-20 test additions (measured hold, no blind re-pin) |
 | Registry loader born read-only, forever (v1.4 Phase 22) | A parse owner with write power becomes a second mutation surface; registry maintenance = scripted text insertion, never a YAML round-trip | ✓ REG-03 structure guards CI-red on any write API, second parser, or unfrozen entry |
 | Enrichment provenance: measured values or cited derivations only — plausible defaults rejected (v1.4 Phase 22) | A plausible default is indistinguishable from a measurement in review but wrong in production (GPTNeoX class-default 1024 vs upstream-script 512; repo-name 32768 vs measured 32770) | ✓ 109 committed fields cross-checked against derivation records; 10-repo live remote re-verification at UAT 2026-10-20, 0 mismatches |
+| Preflight import discipline is SOURCE-level (AST), not runtime — sys.modules purity deferred to Phase 25 owner call (v1.4 Phase 23, CR-01 deferral) | `import dnallm.preflight` transitively pulls torch/transformers/datasets via `dnallm.utils`/`dnallm.models` package inits; fixing that means an unsanctioned root-facade refactor | ✓ AST structure test green; docstrings state the truth; TUI fast-start (Phase 25) owns the runtime-purity decision |
+| One `validate_sections` path shared by `load_config` and `generate_config`/`edit_config` (v1.4 Phase 23, the one sanctioned refactor) | Two validators drift; the round-trip editor must revalidate through the exact path production loads with | ✓ Verbatim factor-out, equivalence-pinned; load_config raise-first contract unchanged |
+| Probes never raise — every failure degrades to UNKNOWN with a machine-readable reason (v1.4 Phase 23) | A 429 masquerading as "unavailable" would wrongly steer model choice; unavailability is a state, not an exception | ✓ Pinned taxonomy tests (RATE_LIMITED/OFFLINE/PROBE_TIMEOUT/NOT_FOUND_ON_EITHER_HUB/PROBE_ERROR); severed-network integration test green |
 
 ## Evolution
 
@@ -249,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-20 after Phase 22 (Registry Foundation shipped — REG-01/02/03 validated)*
+*Last updated: 2026-10-21 after Phase 23 (Pre-flight Core shipped — PFC-01..07 validated)*
