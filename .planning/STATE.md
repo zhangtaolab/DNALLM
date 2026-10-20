@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.3
 status: Phase 21 complete
 stopped_at: Phase 21 complete (ty hard gate CI-green; awaiting owner calls on pinned-stub-env + nightly resume)
-last_updated: "2026-10-19T07:16:54.162Z"
-last_activity: 2026-10-17
+last_updated: "2026-10-20T06:35:32.924Z"
+last_activity: 2026-10-20
 last_activity_desc: Phase 21 complete — ty hard flip CI-validated, mypy retired tree-wide
-state_head: 6d14d9d104e8caf34480a7e6de9785a030b65909
+state_head: e60303f1c5073aed15e90c70cbfbe0666b5efcee
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 21
 current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
@@ -133,6 +133,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 | 261017-414 | scan all files for mypy remnants and systematically replace with ty (D-09 flip follow-up) | 2026-10-17 | 1c52e46 | [261017-414-scan-all-files-for-mypy-remnants-and-sys](./quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/) |
 | 261019-cr6 | Windows local CI replication + KDA declaration proof | 2026-10-19 | 6d14d9d | [261019-cr6-windows-local-ci-replication-kda-declara](./quick/261019-cr6-windows-local-ci-replication-kda-declara/) |
 | 261020-gk4 | TUI opportunity survey for v1.4 planning (6 ranked / 7 excluded vs dnallmmark; analysis-only) | 2026-10-20 | 3028f0c | [261020-gk4-tui-dnallmmark-home-forrest-github-dnall](./quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/) |
+| 4 | Append Part 5 addendum to 261020-gk4 TUI survey (pre-flight cluster + merge-or-build verdicts per owner directives 2026-10-20) | 2026-10-20 | e60303f | — |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
