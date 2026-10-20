@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.3
 status: Phase 21 complete
 stopped_at: Phase 21 complete (ty hard gate CI-green; awaiting owner calls on pinned-stub-env + nightly resume)
-last_updated: "2026-10-20T06:35:32.924Z"
+last_updated: "2026-10-20T07:25:03.295Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 21 complete — ty hard flip CI-validated, mypy retired tree-wide
-state_head: e60303f1c5073aed15e90c70cbfbe0666b5efcee
+state_head: f0b8302e371c0820e8aaf26d0674f053682e2ebb
 milestone_name: Platform Reach & Packaging Honesty
 current_phase: 21
 current_phase_name: Type-checker atomic swap — ty hard flip + mypy retirement
@@ -134,6 +134,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 | 261019-cr6 | Windows local CI replication + KDA declaration proof | 2026-10-19 | 6d14d9d | [261019-cr6-windows-local-ci-replication-kda-declara](./quick/261019-cr6-windows-local-ci-replication-kda-declara/) |
 | 261020-gk4 | TUI opportunity survey for v1.4 planning (6 ranked / 7 excluded vs dnallmmark; analysis-only) | 2026-10-20 | 3028f0c | [261020-gk4-tui-dnallmmark-home-forrest-github-dnall](./quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/) |
 | 4 | Append Part 5 addendum to 261020-gk4 TUI survey (pre-flight cluster + merge-or-build verdicts per owner directives 2026-10-20) | 2026-10-20 | e60303f | — |
+| 261020-kwt | Registry data-layer fix: +15 pretrained variants, DNAGPT/EVO task-class fixes, base_model 187/187, aDNA typo (12 tests) | 2026-10-20 | f0b8302 | [261020-kwt-registry-data-layer-fix-add-15-missing-p](./quick/261020-kwt-registry-data-layer-fix-add-15-missing-p/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
@@ -153,9 +154,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20 (quick task 261020-gk4 via /gsd-quick)
-Stopped at: Completed quick task 261020-gk4 — TUI opportunity survey (report: .planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md, commit 3028f0c); v1.4 TUI phases can be scoped from Part 3
-Resume file: .planning/HANDOFF.json (one-shot) + .planning/.continue-here.md (paused_between_milestones); branch v1.4 tip 3028f0c
+Last session: 2026-10-20 (quick tasks 261020-gk4 TUI survey + 261020-kwt registry fix via /gsd-quick)
+Stopped at: 261020-kwt landed (registry: +15 pretrained variants 34→49, Plant DNAGPT→Causal, EVO typos, base_model 187/187, 12 tests green, commits 4c3393c/f0b8302). Owner directives 2026-10-20 recorded: DNALLM↔dnallmmark upstream/downstream, dnallmmark TUI mergeable (no duplicate dev), ModelScope-first downloads, lab-models-first, **main frozen — v1.4 cycle develops on branch v1.4 only** (main-merge decision from v1.3 close: deferred by owner). v1.4 scope converged in 261020-gk4-TUI-SURVEY.md Part 5 (three tracks: pre-flight TUI / dnallm/tui/ substrate merge / post-flight R2-R6).
+Resume file: .planning/HANDOFF.json (one-shot) + .planning/.continue-here.md (paused_between_milestones); branch v1.4 tip f0b8302
 
 ## Operator Next Steps
 
