@@ -94,9 +94,7 @@ def test_local_nonexistent_path_falls_through_to_remote(monkeypatch, tmp_path) -
 def test_local_hf_cache_snapshot_yields_cached_huggingface(monkeypatch) -> None:
     """A cached HF snapshot is detected via the hub's own cache helpers."""
     snapshot_path = "/hf-root/hub/models--org--name/snapshots/deadbeef/config.json"
-    monkeypatch.setattr(
-        huggingface_hub, "try_to_load_from_cache", Mock(return_value=snapshot_path)
-    )
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", Mock(return_value=snapshot_path))
     scan = Mock(
         return_value=SimpleNamespace(
             repos=[SimpleNamespace(repo_id=UNREGISTERED_HF_REPO, size_on_disk=1234)]
@@ -136,9 +134,7 @@ def test_local_hf_cache_miss_and_sentinel_fall_through(monkeypatch) -> None:
 def test_local_hf_scan_failure_degrades_to_size_none(monkeypatch) -> None:
     """A raising scan_cache_dir only costs the size field, never the verdict."""
     snapshot_path = "/hf-root/hub/models--org--name/snapshots/feedface/config.json"
-    monkeypatch.setattr(
-        huggingface_hub, "try_to_load_from_cache", Mock(return_value=snapshot_path)
-    )
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", Mock(return_value=snapshot_path))
     monkeypatch.setattr(
         huggingface_hub, "scan_cache_dir", Mock(side_effect=RuntimeError("scan broke"))
     )
@@ -181,7 +177,7 @@ def test_local_modelscope_cache_dir_yields_cached_modelscope(monkeypatch, tmp_pa
     remote = Mock(return_value=_sentinel_report("remote"))
     monkeypatch.setattr(availability, "_probe_remote", remote)
 
-    report = probe_availability(UNREGISTERED_MS_REPO)
+    report = probe_availability("org/name.with.dots")
 
     assert report.state == CACHED
     assert report.source_hub == Hub.MODELSCOPE
@@ -200,7 +196,7 @@ def test_local_modelscope_cache_legacy_layout_also_hits(monkeypatch, tmp_path) -
         availability, "_probe_remote", Mock(return_value=_sentinel_report("remote"))
     )
 
-    report = probe_availability(UNREGISTERED_MS_REPO)
+    report = probe_availability("org/name")
 
     assert report.state == CACHED
     assert report.source_hub == Hub.MODELSCOPE
@@ -231,6 +227,9 @@ def test_memo_second_probe_skips_resolver_and_remote(monkeypatch) -> None:
 
 def test_memo_aliases_registry_name_and_repo_id_share_one_probe(monkeypatch) -> None:
     """A registry name and its repo id dedupe onto one remote probe."""
+    # Local detection is isolated to keep the test environment-independent
+    # (this box carries real hub caches; CI does not).
+    monkeypatch.setattr(availability, "_probe_cached_local", Mock(return_value=None))
     sentinel = _sentinel_report("memoized")
     remote = Mock(return_value=sentinel)
     monkeypatch.setattr(availability, "_probe_remote", remote)
