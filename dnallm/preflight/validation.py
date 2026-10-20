@@ -488,9 +488,25 @@ def _frame_columns(frame, seq_col: str | None, label_col: str | None):
     return sequences, labels
 
 
+def _cell_is_null(value) -> bool:
+    """Scalar-safe null check: None/NaN/NA scalars are null; never a crash.
+
+    ``bool(pd.isna(v))`` raises ValueError on non-scalar cells (list/dict
+    values — routine in JSON columns, legal in parquet) because ``pd.isna``
+    returns an array. Such cells are not null: callers stringify them
+    instead of crashing (CR-02).
+    """
+    if value is None:
+        return True
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
 def _cell_str(value) -> str:
     """Stringify a cell; null cells (NaN/NA/None) become empty strings."""
-    if value is None or bool(pd.isna(value)):
+    if _cell_is_null(value):
         return ""
     return str(value)
 
@@ -572,7 +588,7 @@ def _dna_column_score(series) -> tuple[float, float]:
     the fraction of its uppercased characters inside the IUPAC DNA alphabet
     (empty cells score 0.0).
     """
-    cells = [v for v in series.tolist() if not bool(pd.isna(v))][:_AUTODETECT_CELL_LIMIT]
+    cells = [v for v in series.tolist() if not _cell_is_null(v)][:_AUTODETECT_CELL_LIMIT]
     if not cells:
         return (0.0, 0.0)
     scores = []

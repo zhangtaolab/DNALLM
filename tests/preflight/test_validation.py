@@ -655,6 +655,46 @@ def test_validate_data_json_empty_string_cell_scores_zero(tmp_path) -> None:
     assert report.splits[0].row_count == 2
 
 
+def test_validate_data_json_list_valued_column_returns_report(tmp_path) -> None:
+    """A JSON column of list cells (non-scalar) never crashes validation (CR-02).
+
+    The autodetect scores every column; ``bool(pd.isna(v))`` on a list cell
+    raises a raw pandas ValueError. The collect-all contract requires a
+    report anyway: the sequence column is detected among the nested columns.
+    """
+    import json as jsonlib
+
+    path = tmp_path / "nested.json"
+    path.write_text(
+        jsonlib.dumps([
+            {"sequence": "ACGT" * 10, "label": 1, "tags": ["a", "b"]},
+            {"sequence": "TTTT" * 10, "label": 0},
+        ]),
+        encoding="utf-8",
+    )
+    report = validate_data(str(path))
+    assert report.seq_col == "sequence"
+    assert report.splits[0].row_count == 2
+    assert _finding(report, DataReasonCode.SEQUENCE_COLUMN_NOT_FOUND) is None
+
+
+def test_validate_data_explicit_list_valued_label_column_stringified(tmp_path) -> None:
+    """An explicit label column holding list cells is stringified, never a crash."""
+    import json as jsonlib
+
+    path = tmp_path / "listlabel.json"
+    path.write_text(
+        jsonlib.dumps([
+            {"sequence": "ACGT" * 10, "tags": ["a", "b"]},
+            {"sequence": "TTTT" * 10, "tags": ["c"]},
+        ]),
+        encoding="utf-8",
+    )
+    report = validate_data(str(path), label_col="tags")
+    assert report.splits[0].row_count == 2
+    assert report.label_dtype == "str"
+
+
 def test_read_local_values_guard_raises(tmp_path) -> None:
     """The parity seam's own guards: unsupported suffix, empty list, missing column, pkl."""
     import dnallm.preflight.validation as validation_module
