@@ -60,6 +60,14 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 - [ ] Registry-as-truth-source — `model_info.yaml` consumed at runtime by the loading chain; MCP per-model config consistency-checked against it (v1.4)
 - [ ] ModelScope-first downloads on the pre-flight critical path, lab models (`zhangtaolab/*`) prioritized in the UX (v1.4)
 
+### Validated — v1.4 partial
+
+Shipped in Phase 22 (Registry Foundation — Runtime Loader & Enrichment, 2026-10-20):
+
+- ✓ REG-01 — `dnallm/models/registry.py`: cached single-parse read-only loader, sole parser of `model_info.yaml` (typed frozen entries; `resolve`/`try_resolve`/`get_by_task_type`/`get_by_base_model`; `reload()` hook; CSafeLoader with fallback; grep-guard against second parsers)
+- ✓ REG-02 — registry enrichment: `tokenizer_type`/`max_length` on all 49 pretrained + 14 external-base finetuned entries (109 committed fields), every value measured from hub metadata or carrying a cited derivation; plausible defaults rejected (GPTNeoX class-default 1024 → upstream-script 512; repo-name 32768 → measured 32770); provenance re-verified live at UAT (2026-10-20, 10-repo remote re-fetch, 0 mismatches)
+- ✓ REG-03 — extended integrity tests: section counts pinned 49/187, field-level insertion-only check, spot-pinned load-bearing values (hyenadna 32770, DebertaV2Tokenizer), no-write-API verb/emitter scans, frozen-entry guards, sole-mentioner allowlist
+
 ### Validated — v1.3 (Platform Reach & Packaging Honesty, shipped 2026-10-16)
 
 - ✓ Ollama surface dispositioned per directive — OLLM-01..03 (census 216/217 re-pinned, sanctioned-residue oracle, nightly stage-3 deleted)
@@ -220,6 +228,8 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 | Publish upload guard lands before any trigger exists (v1.3 phase 17 first act) | PyPI filenames are immutable — an unguarded dispatch→upload path is un-recoverable | ✓ Event gate live-proven ×3 (publish always skipped off-release) |
 | Owner human-gates halt plans, never improvise past them (17-03/18-03 pattern) | Supply-chain registration and real-hardware acceptance are owner-only acts; the ledger carries the resume checklist | ✓ Both carried as WINDOWS #25/#27 with minute-level resume paths |
 | One census-moving edit per phase (D-03 discipline, held all milestone) | The 216/217 triple is the suite's integrity anchor; every test-set change re-pins triple + skips + stages same-change | ✓ Triple byte-stable through 8 phases incl. the phase-20 test additions (measured hold, no blind re-pin) |
+| Registry loader born read-only, forever (v1.4 Phase 22) | A parse owner with write power becomes a second mutation surface; registry maintenance = scripted text insertion, never a YAML round-trip | ✓ REG-03 structure guards CI-red on any write API, second parser, or unfrozen entry |
+| Enrichment provenance: measured values or cited derivations only — plausible defaults rejected (v1.4 Phase 22) | A plausible default is indistinguishable from a measurement in review but wrong in production (GPTNeoX class-default 1024 vs upstream-script 512; repo-name 32768 vs measured 32770) | ✓ 109 committed fields cross-checked against derivation records; 10-repo live remote re-verification at UAT 2026-10-20, 0 mismatches |
 
 ## Evolution
 
@@ -239,4 +249,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-20 after v1.4 milestone start (Pre-flight UX & Registry-as-Truth-Source; Track A first, per owner scoping 2026-10-20)*
+*Last updated: 2026-10-20 after Phase 22 (Registry Foundation shipped — REG-01/02/03 validated)*

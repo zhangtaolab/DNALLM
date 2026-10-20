@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 22
-current_phase_name: Registry Foundation — Runtime Loader & Enrichment
-status: verifying
-stopped_at: Completed 22-02-PLAN.md
-last_updated: "2026-10-20T12:08:25.001Z"
+current_phase: 23
+current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
+status: planning
+stopped_at: Phase 22 complete, ready to plan Phase 23
+last_updated: "2026-10-20T13:41:02.833Z"
 last_activity: 2026-10-20
-last_activity_desc: Phase 22 execution started
-state_head: 7a3331efec07507638a3b2525d11d1684bc52c52
+last_activity_desc: Phase 22 complete, transitioned to Phase 23
+state_head: 3de5405510d810ab7271b88aa452004740e2bf8d
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 0
+  percent: 20
 ---
 
 # Project State
@@ -25,16 +25,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-20)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 22 — Registry Foundation — Runtime Loader & Enrichment
+**Current focus:** Phase 23 — Pre-flight Core — Pure Validation / Suitability / Config API
 
 ## Current Position
 
-Phase: 22 (Registry Foundation — Runtime Loader & Enrichment) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-10-20 — Phase 22 execution started
+Phase: 23 — Pre-flight Core — Pure Validation / Suitability / Config API
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-20 — Phase 22 complete, transitioned to Phase 23
 
-Progress: [░░░░░░░░░░] 0% (0 of 5 v1.4 phases)
+Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -109,10 +109,11 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T12:08:24.984Z
-Stopped at: Completed 22-02-PLAN.md
+Last session: 2026-10-20T13:45:00Z
+Stopped at: Phase 22 complete, ready to plan Phase 23
 Resume file: None
 
 ## Operator Next Steps
 
-- `/gsd-discuss-phase 22` or `/gsd-plan-phase 22` — the registry loader is the root dependency and a standard pattern (no `--research-phase`)
+- `/clear` then `/gsd-discuss-phase 23` — Pre-flight Core (no CONTEXT.md yet; discussion first)
+- Roadmap research flag: Phase 23 warrants `--research-phase` at planning (HF_ENDPOINT in-process effect spike + ModelScope cache-layout resolver)
