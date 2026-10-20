@@ -72,7 +72,7 @@ def test_validate_data_charset_census_counts_and_sorts() -> None:
     census = report.splits[0].charset_census
     counts = {entry.char: entry.count for entry in census}
     assert counts["N"] == 8
-    assert counts["A"] == 22
+    assert counts["A"] == 23  # 10 + 8 + 5 (the 18-char seq ends ..AC)
     assert [entry.char for entry in census] == sorted(counts)  # alphabetical order
 
 
@@ -81,7 +81,7 @@ def test_validate_data_too_short_finding_but_never_drops_rows() -> None:
     report = validate_data(TRACER_SEQUENCES)
     too_short = _finding(report, DataReasonCode.TOO_SHORT)
     assert too_short is not None
-    assert too_short.severity == Severity.error
+    assert too_short.severity == Severity.ERROR
     assert too_short.count == 1
     assert report.splits[0].row_count == 3
 
@@ -97,7 +97,7 @@ def test_validate_data_all_n_sequence_warns() -> None:
     report = validate_data(["N" * 30, "ACGT" * 10])
     all_n = _finding(report, DataReasonCode.ALL_N)
     assert all_n is not None
-    assert all_n.severity == Severity.warn
+    assert all_n.severity == Severity.WARN
     assert all_n.count == 1
     assert report.splits[0].row_count == 2
 
@@ -107,7 +107,7 @@ def test_validate_data_empty_sequence_error_finding() -> None:
     report = validate_data(["ACGT" * 10, ""])
     empty = _finding(report, DataReasonCode.EMPTY_SEQUENCE)
     assert empty is not None
-    assert empty.severity == Severity.error
+    assert empty.severity == Severity.ERROR
     assert empty.count == 1
 
 
@@ -116,7 +116,7 @@ def test_validate_data_exact_duplicates_counted_info_level() -> None:
     report = validate_data(["ACGT" * 5, "ACGT" * 5, "AAAA" * 5])
     dup = _finding(report, DataReasonCode.DUPLICATE_SEQUENCES)
     assert dup is not None
-    assert dup.severity == Severity.info
+    assert dup.severity == Severity.INFO
     assert dup.count == 1  # 3 occurrences - 2 distinct
     assert report.splits[0].row_count == 3
 
@@ -129,7 +129,8 @@ def test_validate_data_length_stats_quantiles_and_bounds() -> None:
     assert stats.n == 3
     assert stats.min == 18
     assert stats.max == 40
-    assert isinstance(stats.min, int) and isinstance(stats.max, int)
+    assert isinstance(stats.min, int)
+    assert isinstance(stats.max, int)
     # sorted lengths [18, 40, 40]; numpy linear interpolation: p50 == p95 == p99 == 40.0
     assert stats.p50 == pytest.approx(40.0)
     assert stats.p95 == pytest.approx(40.0)
@@ -153,7 +154,7 @@ def test_validate_data_empty_list_yields_empty_dataset_info() -> None:
     assert split.charset_census == []
     empty = _finding(report, DataReasonCode.EMPTY_DATASET)
     assert empty is not None
-    assert empty.severity == Severity.info
+    assert empty.severity == Severity.INFO
 
 
 def test_validate_data_none_source_raises_matchable_value_error() -> None:
@@ -190,13 +191,13 @@ def test_check_compatibility_real_model_length_ok() -> None:
     assert isinstance(verdict, ModelVerdict)
     assert verdict.model == PROMOTER_REPO
     assert verdict.overall in (
-        VerdictStatus.ok,
-        VerdictStatus.warn,
-        VerdictStatus.fail,
-        VerdictStatus.unknown,
+        VerdictStatus.OK,
+        VerdictStatus.WARN,
+        VerdictStatus.FAIL,
+        VerdictStatus.UNKNOWN,
     )
     length = _length_dimension(verdict)
-    assert length.status == VerdictStatus.ok
+    assert length.status == VerdictStatus.OK
     assert length.reason_code is None
     assert length.details["budget_chars"] == PROMOTER_BUDGET
     assert length.details["truncated_row_count"] == 0
@@ -208,12 +209,12 @@ def test_check_compatibility_truncation_warns_with_exact_counts() -> None:
     report = validate_data(["A" * 600, "C" * 100])
     result = check_compatibility(report, models=[PROMOTER_REPO])
     length = _length_dimension(result.verdicts[0])
-    assert length.status == VerdictStatus.warn
+    assert length.status == VerdictStatus.WARN
     assert length.reason_code == CompatReasonCode.TRUNCATION_ABOVE_THRESHOLD
     assert length.details["budget_chars"] == PROMOTER_BUDGET
     assert length.details["truncated_row_count"] == 1  # exact integer, never rounded
     assert length.details["truncated_fraction"] == pytest.approx(0.5)
-    assert result.verdicts[0].overall == VerdictStatus.warn
+    assert result.verdicts[0].overall == VerdictStatus.WARN
 
 
 def test_check_compatibility_unknown_model_fails_isolated() -> None:
@@ -225,7 +226,7 @@ def test_check_compatibility_unknown_model_fails_isolated() -> None:
     assert miss.model == "no-such-model/repo"
     assert miss.entry_name is None
     assert miss.is_lab is False
-    assert miss.overall == VerdictStatus.fail
+    assert miss.overall == VerdictStatus.FAIL
     assert miss.dimensions[0].reason_code == CompatReasonCode.MODEL_NOT_IN_REGISTRY
     assert result.verdicts[1].model == PROMOTER_REPO
 
@@ -234,9 +235,9 @@ def test_check_compatibility_no_data_length_unknown() -> None:
     """Without a DataReport the length dimension is unknown with reason NO_DATA."""
     result = check_compatibility(None, models=[PROMOTER_REPO], task_type="binary")
     length = _length_dimension(result.verdicts[0])
-    assert length.status == VerdictStatus.unknown
+    assert length.status == VerdictStatus.UNKNOWN
     assert length.reason_code == CompatReasonCode.NO_DATA
-    assert result.verdicts[0].overall == VerdictStatus.unknown
+    assert result.verdicts[0].overall == VerdictStatus.UNKNOWN
 
 
 def test_check_compatibility_empty_dataset_length_unknown() -> None:
@@ -244,7 +245,7 @@ def test_check_compatibility_empty_dataset_length_unknown() -> None:
     report = validate_data([])
     result = check_compatibility(report, models=[PROMOTER_REPO])
     length = _length_dimension(result.verdicts[0])
-    assert length.status == VerdictStatus.unknown
+    assert length.status == VerdictStatus.UNKNOWN
     assert length.reason_code == CompatReasonCode.EMPTY_DATASET_DIM
 
 
@@ -279,7 +280,7 @@ def test_end_to_end_tracer_flow_over_real_registry_entry() -> None:
     result = check_compatibility(report, models=[PROMOTER_REPO], task_type="Binary ")
     verdict = result.verdicts[0]
     assert verdict.model == PROMOTER_REPO
-    assert verdict.overall == VerdictStatus.ok  # all lengths <= 512-char budget
+    assert verdict.overall == VerdictStatus.OK  # all lengths <= 512-char budget
     length = _length_dimension(verdict)
     assert length.details["budget_chars"] == PROMOTER_BUDGET
     assert length.details["truncated_row_count"] == 0
