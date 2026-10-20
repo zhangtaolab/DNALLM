@@ -16,6 +16,10 @@
    be excluded from the coverage floor.
 5. Facade completeness: every name in ``dnallm.preflight.__all__`` is
    importable.
+6. Docstring-facade drift guard (23-05): every PUBLIC name documented in
+   the package docstring appears in ``__all__`` — future shells read the
+   docstring as the API contract, so a documented-but-unexported name is
+   a broken facade.
 
 Each guard was probe-verified red under a local deliberate violation before
 this suite was committed green (Phase 22 discipline,
@@ -24,6 +28,7 @@ this suite was committed green (Phase 22 discipline,
 
 import ast
 import importlib
+import re
 import tomllib
 from pathlib import Path
 
@@ -120,3 +125,31 @@ def test_facade_all_names_are_importable() -> None:
     assert exported, "dnallm.preflight must declare a non-empty __all__"
     missing = [name for name in exported if not hasattr(module, name)]
     assert missing == [], f"__all__ names missing from dnallm.preflight: {missing}"
+
+
+def test_docstring_documented_names_are_exported() -> None:
+    """Drift guard: public names documented in the package docstring are in __all__.
+
+    A backtick-quoted bare identifier in the ``dnallm.preflight`` docstring
+    that resolves as a public module attribute is part of the documented
+    API surface — future shells (TUI/MCP/notebooks) read the docstring as
+    the facade contract, so a documented-but-unexported name means the
+    facade and its documentation have drifted apart.
+    """
+    module = importlib.import_module("dnallm.preflight")
+    doc = module.__doc__ or ""
+    documented = {
+        token
+        for token in re.findall(r"`([^`]+)`", doc)
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token.strip())
+        and not token.startswith("_")
+        and hasattr(module, token)
+    }
+    assert documented, (
+        "package docstring documents no facade names — the drift guard lost its teeth"
+    )
+    missing = sorted(documented - set(module.__all__))
+    assert missing == [], (
+        f"names documented in the dnallm.preflight docstring but missing from "
+        f"__all__: {missing} — export them or fix the docstring"
+    )
