@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 Phase: Milestone v1.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-10-19 — Completed quick task 261019-cr6: Windows local CI replication (4/5 gates green on the real machine; ty = platform-divergent RED, root-caused) + WINDOWS #27 KDA fresh-venv declaration proven (evidence 00c6128/6d14d9d)
+Last activity: 2026-10-20 — Completed quick task 261020-gk4: TUI opportunity survey for v1.4 (6 ranked / 7 excluded vs dnallmmark; report .planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md, commit 3028f0c)
 
 ## Performance Metrics
 
@@ -132,6 +132,7 @@ Carried runner-box ops items (cache-quota, `$HOME` cleanup; ollama loopback cade
 |---|-------------|------|--------|-----------|
 | 261017-414 | scan all files for mypy remnants and systematically replace with ty (D-09 flip follow-up) | 2026-10-17 | 1c52e46 | [261017-414-scan-all-files-for-mypy-remnants-and-sys](./quick/261017-414-scan-all-files-for-mypy-remnants-and-sys/) |
 | 261019-cr6 | Windows local CI replication + KDA declaration proof | 2026-10-19 | 6d14d9d | [261019-cr6-windows-local-ci-replication-kda-declara](./quick/261019-cr6-windows-local-ci-replication-kda-declara/) |
+| 261020-gk4 | TUI opportunity survey for v1.4 planning (6 ranked / 7 excluded vs dnallmmark; analysis-only) | 2026-10-20 | 3028f0c | [261020-gk4-tui-dnallmmark-home-forrest-github-dnall](./quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/) |
 *Rows archived 2026-10-16: 6 late v1.2 tasks -> milestones/v1.2-quick/ (README-v1.2-late-additions.md); 2 v1.3 spikes -> milestones/v1.3-quick/ (README.md)*
 
 ## Deferred Items
@@ -151,9 +152,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-19 (resumed via /gsd-resume-work)
-Stopped at: Session resumed — v1.3 + Phase 21 fully closed, paused between milestones; owner gates only: WINDOWS #25 (PyPI trusted-publisher registration), #27 (Windows KDA smoke, scheduled 2026-10-19 — in-repo runbook WINDOWS-KDA-VERIFY.md), main-merge decision
-Resume file: .planning/HANDOFF.json (one-shot) + .planning/.continue-here.md (paused_between_milestones); branch tip fbf4b6f in sync with origin/v1.3
+Last session: 2026-10-20 (quick task 261020-gk4 via /gsd-quick)
+Stopped at: Completed quick task 261020-gk4 — TUI opportunity survey (report: .planning/quick/261020-gk4-tui-dnallmmark-home-forrest-github-dnall/261020-gk4-TUI-SURVEY.md, commit 3028f0c); v1.4 TUI phases can be scoped from Part 3
+Resume file: .planning/HANDOFF.json (one-shot) + .planning/.continue-here.md (paused_between_milestones); branch v1.4 tip 3028f0c
 
 ## Operator Next Steps
 
