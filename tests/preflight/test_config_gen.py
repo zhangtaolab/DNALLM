@@ -16,6 +16,7 @@ Covers plan 23-04 (PFC-04):
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -207,6 +208,15 @@ class TestGenerateConfigEmission:
         assert "no-such/model" in result.errors[0].message
         assert result.config == {}
 
+    def test_missing_effective_length_omits_max_length_keys(self):
+        """When the registry carries no effective length, the max_length keys
+        are omitted and the Pydantic defaults apply (inference 512)."""
+        with patch("dnallm.preflight.config_gen.registry.effective_max_length", return_value=None):
+            result = generate_config(BASE_REPO, task_type="binary")
+
+        assert result.errors == []
+        assert result.config["inference"].max_length == 512
+
 
 class TestCollectAllValidation:
     """The collect-all wrapper reports every broken section in one report."""
@@ -251,6 +261,45 @@ class TestCollectAllValidation:
 
         assert [e.section for e in errors] == ["task"]
         assert configs["lora"].r == 16
+
+    def test_model_section_passthrough_in_collect_all(self):
+        """In the per-section path the model dict passes through unvalidated."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all({
+            "task": {"task_type": "bogus"},
+            "model": {"name": "x", "anything": 1},
+        })
+
+        assert [e.section for e in errors] == ["task"]
+        assert configs["model"] == {"name": "x", "anything": 1}
+
+    def test_broken_benchmark_section_reports_field_errors(self):
+        """A malformed benchmark section contributes its own field-level
+        errors (full-raw-dict construction attempt) without stopping others."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all({
+            "task": {"task_type": "bogus"},
+            "benchmark": {"models": []},
+        })
+
+        sections = [e.section for e in errors]
+        assert sections[0] == "task"
+        assert "benchmark" in sections
+        assert "benchmark" not in configs
+
+    def test_non_mapping_section_is_field_level_error(self):
+        """A section holding a scalar yields a field-level error, not a
+        traceback; sibling sections still construct."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all({"task": "binary", "finetune": {}})
+
+        assert [e.section for e in errors] == ["task"]
+        assert errors[0].field == "task"
+        assert "must be a mapping" in errors[0].message
+        assert isinstance(configs["finetune"], TrainingConfig)
 
     def test_section_order_constant_is_canonical(self):
         """_SECTION_ORDER is the fixed deterministic error-ordering contract."""
@@ -397,6 +446,35 @@ class TestEditConfigRoundTrip:
 
         assert raw == snapshot
         assert result.config["task"].num_labels == 4
+
+    def test_patch_replaces_model_section_wholesale(self, tmp_path):
+        """The model section is the passthrough: any patch value replaces it."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(cfg_path, {"model": {"name": "x", "path": "org/repo"}})
+
+        assert result.errors == []
+        assert result.config["model"] == {"name": "x", "path": "org/repo"}
+
+    def test_patch_non_mapping_value_for_known_section_is_error(self, tmp_path):
+        """A scalar patch value for a validated section is a field-level
+        error; the section keeps its loaded value."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(cfg_path, {"task": "binary"})
+
+        assert any("must be a mapping" in e.message for e in result.errors)
+        assert isinstance(result.config["task"], TaskConfig)
+
+    def test_patch_creates_missing_section_dict(self, tmp_path):
+        """Patching into an absent (null) section creates its dict fresh."""
+        raw = {"task": None, "finetune": {"learning_rate": 2.0e-05}}
+
+        result = edit_config(raw, {"task": {"task_type": "multiclass", "num_labels": 3}})
+
+        assert result.errors == []
+        assert result.config["task"].task_type == "multiclass"
+        assert result.config["task"].label_names == ["class_0", "class_1", "class_2"]
 
 
 class TestYamlDumpContract:

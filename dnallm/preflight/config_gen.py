@@ -30,6 +30,7 @@ consumes it) and the raw ``finetune`` section (matching the packaged
 example-config shape).
 """
 
+import copy
 import os
 from pathlib import Path
 
@@ -53,6 +54,8 @@ from ..utils import get_logger
 from .report import GeneratedConfig, SectionError
 
 logger = get_logger("dnallm.preflight.config_gen")
+
+__all__ = ["edit_config", "generate_config"]
 
 # The fixed, deterministic error-ordering contract: error records are
 # ordered by this section order, then by each section's own field order.
@@ -285,3 +288,124 @@ def generate_config(
         f"{len(errors) + len(validation_errors)} errors."
     )
     return GeneratedConfig(config=configs, errors=errors + validation_errors)
+
+
+def _load_existing(existing: str | Path) -> dict:
+    """Load the round-trip input mapping from a YAML path.
+
+    Uses the safe-loader family only (CSafeLoader with a SafeLoader
+    fallback — both are safe loaders), so a document carrying a
+    ``python/object``-style tag is refused with a ``yaml.YAMLError``
+    instead of constructing arbitrary objects (T-23-08).
+
+    Args:
+        existing: Path to the YAML file.
+
+    Returns:
+        The parsed mapping (an empty dict for an empty document).
+
+    Raises:
+        yaml.YAMLError: If the document is not safely constructible.
+    """
+    with open(existing, encoding="utf-8") as f:
+        data = yaml.load(f, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # ruff: ignore[unsafe-yaml-load]
+    return data if isinstance(data, dict) else {}
+
+
+def _apply_patch(config_dict: dict, patch: dict) -> list[SectionError]:
+    """Apply a patch dict per-field at section level (no recursive merge).
+
+    Each patch key naming a known section overwrites exactly the named
+    fields inside that section's dict (a missing or non-mapping section
+    dict is created fresh). The ``model`` section is the one passthrough:
+    any non-mapping patch value replaces it wholesale. A patch key outside
+    ``_SECTION_ORDER`` yields an ``UNKNOWN_SECTION`` field-level error and
+    never enters the config.
+
+    Args:
+        config_dict: The config mapping to patch (mutated in place).
+        patch: The patch mapping (section -> field overrides).
+
+    Returns:
+        The patch-application errors (empty on a fully applicable patch).
+    """
+    errors: list[SectionError] = []
+    for key, value in patch.items():
+        if key not in _SECTION_ORDER:
+            errors.append(
+                SectionError(
+                    section=key,
+                    field=key,
+                    message=f"UNKNOWN_SECTION: {key!r} is not a recognized config section",
+                )
+            )
+            continue
+        if key == "model":
+            # Passthrough section: full replacement with any value shape.
+            config_dict["model"] = value
+            continue
+        if not isinstance(value, dict):
+            errors.append(
+                SectionError(
+                    section=key,
+                    field=key,
+                    message=f"section '{key}' patch must be a mapping, got {type(value).__name__}",
+                )
+            )
+            continue
+        base = config_dict.get(key)
+        if not isinstance(base, dict):
+            base = {}
+        base.update(value)
+        config_dict[key] = base
+    return errors
+
+
+def edit_config(
+    existing: str | Path | dict,
+    patch: dict | None = None,
+    *,
+    output_path: str | Path | None = None,
+) -> GeneratedConfig:
+    """Load an existing config, apply a patch, and revalidate (D-14).
+
+    The input is a YAML path (loaded with the safe-loader family) or an
+    already-parsed mapping; the patch overwrites fields per section (no
+    recursive merge) and the patched mapping revalidates through the
+    shared validation path with collect-all field-level errors — an
+    unknown patch section, an invalid value, or a document with no
+    recognized sections is a record in ``errors``, never a traceback.
+
+    Nothing is written unless ``output_path`` is explicitly given, in
+    which case the patched mapping is dumped (``yaml.safe_dump``) to
+    exactly that path; the input file is never modified and the caller's
+    dict is never mutated.
+
+    Args:
+        existing: YAML path or parsed config mapping to start from.
+        patch: Field overrides per section (``{}`` / None revalidates the
+            input unchanged).
+        output_path: Exact destination path for the patched mapping;
+            omitted means nothing is written anywhere.
+
+    Returns:
+        The :class:`GeneratedConfig` with every successfully validated
+        section and the ordered field-level error records.
+    """
+    if isinstance(existing, dict):
+        # Deep copy: patching overwrites fields inside section dicts, and
+        # the caller's mapping (nested dicts included) must stay untouched.
+        config_dict: dict = copy.deepcopy(existing)
+    else:
+        config_dict = _load_existing(existing)
+
+    patch_errors = _apply_patch(config_dict, patch or {})
+    configs, validation_errors = _validate_collect_all(config_dict)
+
+    if output_path is not None:
+        _dump_yaml(config_dict, output_path)
+    logger.debug(
+        f"Edited config: {len(configs)} sections, "
+        f"{len(patch_errors) + len(validation_errors)} errors."
+    )
+    return GeneratedConfig(config=configs, errors=patch_errors + validation_errors)
