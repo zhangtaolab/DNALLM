@@ -21,11 +21,13 @@ from dnallm.models.registry import (
     RegistryEntry,
     TaskInfo,
     all_entries,
+    effective_tokenizer_type,
     sort_key_lab_first,
     try_resolve,
 )
 from dnallm.preflight import check_compatibility, validate_data
 from dnallm.preflight.report import (
+    AvailabilityReasonCode,
     AvailabilityReport,
     AvailabilityState,
     CompatReasonCode,
@@ -67,12 +69,18 @@ def _dim(verdict, name):
 
 def test_kmer_entry_budget_uses_sliding_window_inversion() -> None:
     """6-mer entry: char budget 517 = 512 tokens + k - 1 (the k-mer trap pinned)."""
+    from dnallm.preflight.compatibility import _budget_kind, _char_budget
+
     result = check_compatibility(validate_data(["ACGT" * 10]), models=[KMER6_REPO])
     length = _dim(result.verdicts[0], "length")
     assert length.details["budget_chars"] == 517
     assert length.details["kind"] == "kmer"
     assert length.details["k"] == 6
     assert length.status == OK
+    # The plan-named classifier helpers agree with the verdict payload.
+    entry = try_resolve(KMER6_REPO)
+    assert _budget_kind(entry) == "kmer"
+    assert _char_budget(entry) == 517
 
 
 def test_bpe_entry_budget_uses_conservative_ratio() -> None:
@@ -492,3 +500,99 @@ def test_models_argument_suppresses_listing() -> None:
     )
     assert result.listing == []
     assert len(result.verdicts) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 3: degradation, isolation, and normalization proofs + registry smoke
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_every_tokenizer_gap_entry_degrades_length_to_unknown() -> None:
+    """All entries with a tokenizer gap (17 today) get unknown TOKENIZER_UNKNOWN.
+
+    Asserts the behavior, not the count, so registry growth stays green.
+    """
+    gaps = [e for e in all_entries() if effective_tokenizer_type(e) is None]
+    assert gaps  # the census-verified gap population exists
+    report = validate_data(["ACGT" * 10])
+    for entry in gaps:
+        result = check_compatibility(report, models=[entry.model])
+        length = _dim(result.verdicts[0], "length")
+        assert length.status == UNKNOWN
+        assert length.reason_code == CompatReasonCode.TOKENIZER_UNKNOWN
+
+
+def test_registry_miss_fails_isolated_while_siblings_stay_normal() -> None:
+    """An unknown model fails MODEL_NOT_IN_REGISTRY; siblings keep verdicts."""
+    report = validate_data(["ACGT" * 10])
+    result = check_compatibility(
+        report, models=["definitely/not-in-registry", PROMOTER_REPO], task_type="binary"
+    )
+    miss, sibling = result.verdicts
+    assert miss.overall == FAIL
+    assert miss.dimensions[0].reason_code == CompatReasonCode.MODEL_NOT_IN_REGISTRY
+    assert miss.entry_name is None
+    assert sibling.overall == OK
+    assert set(_dims(sibling)) == {"task", "length", "charset"}
+
+
+def test_no_arguments_returns_empty_report() -> None:
+    """check_compatibility() with nothing requested: empty report, no error."""
+    result = check_compatibility()
+    assert result.verdicts == []
+    assert result.listing == []
+
+
+def test_worst_mitigable_case_never_reaches_fail() -> None:
+    """100% truncation + every ambiguity code + U on a BPE entry: warn only.
+
+    The WARN-never-blocks invariant (D-05/D-06): no dimension and no overall
+    may reach fail except from a hard-incompatibility reason.
+    """
+    worst_sequence = "NRYKMSWBDHV" + "U"  # all 11 ambiguity codes + U, no rejects
+    report = validate_data([worst_sequence * 200])  # 2400 chars > 1536 budget
+    result = check_compatibility(report, models=[PROMOTER_REPO], task_type="binary")
+    verdict = result.verdicts[0]
+    assert _dim(verdict, "length").status == WARN  # 100% truncated
+    assert _dim(verdict, "length").details["truncated_fraction"] == 1.0
+    assert _dim(verdict, "charset").status == WARN
+    assert _dim(verdict, "charset").details["u_count"] == 200
+    assert _dim(verdict, "task").status == OK
+    assert all(d.status != FAIL for d in verdict.dimensions)
+    assert verdict.overall == WARN
+
+
+def test_full_registry_smoke_one_verdict_per_entry_no_exceptions() -> None:
+    """Every registry entry flows through the engine: one verdict each, no crash."""
+    report = validate_data(["ACGT" * 10])
+    entries = all_entries()
+    result = check_compatibility(report, models=[e.model for e in entries])
+    assert len(result.verdicts) == len(entries)
+    vocabulary = {OK, WARN, FAIL, UNKNOWN}
+    for verdict in result.verdicts:
+        assert verdict.overall in vocabulary
+        assert verdict.entry_name is not None
+        assert set(_dims(verdict)) == {"task", "length", "charset"}
+
+
+def test_raising_prober_degrades_to_unknown_not_exception() -> None:
+    """A raising prober yields unknown availability (PROBE_ERROR) per entry."""
+    prober = Mock(side_effect=RuntimeError("network down"))
+    result = check_compatibility(
+        task_type="multilabel", intent="predict", prober=prober, probe_shortlist=2
+    )
+    assert prober.call_count == 2
+    for listing_entry in result.listing[:2]:
+        availability = listing_entry.availability
+        assert isinstance(availability, AvailabilityReport)
+        assert availability.state == AvailabilityState.UNKNOWN
+        assert availability.reason == AvailabilityReasonCode.PROBE_ERROR
+    # Beyond the shortlist: no probe attempt, availability stays None.
+    assert result.listing[2].availability is None
+
+
+def test_predict_intent_without_task_type_yields_empty_listing() -> None:
+    """predict needs a task type to route; without one the listing is empty."""
+    result = check_compatibility(intent="predict")
+    assert result.listing == []
+    assert result.verdicts == []
