@@ -265,12 +265,20 @@ def test_memo_aliases_registry_name_and_repo_id_share_one_probe(monkeypatch) -> 
     remote = Mock(return_value=sentinel)
     monkeypatch.setattr(availability, "_probe_remote", remote)
 
-    by_repo = probe_availability(BPE_BASE_REPO)
     by_name = probe_availability(BPE_BASE_NAME)
+    by_repo = probe_availability(BPE_BASE_REPO)
+    # Both memo key directions: the name probe stores the alias entry, the
+    # repo probe hits the raw fast path; a fresh repo-first probe then lets
+    # the name probe hit the resolved-repo-id memo entry.
+    clear_probe_memo()
+    by_repo_first = probe_availability(BPE_BASE_REPO)
+    by_name_again = probe_availability(BPE_BASE_NAME)
 
-    assert by_repo is sentinel
     assert by_name is sentinel
-    assert remote.call_count == 1
+    assert by_repo is sentinel
+    assert by_repo_first is sentinel
+    assert by_name_again is sentinel
+    assert remote.call_count == 2
 
 
 def test_memo_clear_forces_reprobe(monkeypatch) -> None:
@@ -636,3 +644,162 @@ def test_remote_injected_prober_raising_degrades_to_unknown(monkeypatch) -> None
 def test_default_probe_timeout_is_five_seconds() -> None:
     """The configurable default bound is 5.0 s (D-12)."""
     assert DEFAULT_PROBE_TIMEOUT == 5.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 3a: degraded-mode proofs (PFC-06 / ROADMAP SC-5) — network severed
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _neutralize_hub_caches(monkeypatch, tmp_path) -> None:
+    """Point both hub cache detectors at an empty world (hermetic probes)."""
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path))
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", Mock(return_value=None))
+
+
+def _raising_adapters(monkeypatch) -> None:
+    """Patch both remote adapters to raise — the network is severed."""
+    monkeypatch.setattr(availability, "_ms_adapter", Mock(side_effect=RuntimeError("network down")))
+    monkeypatch.setattr(availability, "_hf_adapter", Mock(side_effect=RuntimeError("network down")))
+
+
+def test_degraded_cached_local_id_with_raising_adapters(monkeypatch, tmp_path) -> None:
+    """With the network severed, a locally cached id still probes cached."""
+    _neutralize_hub_caches(monkeypatch, tmp_path)
+    _raising_adapters(monkeypatch)
+    model_dir = tmp_path / "offline-model"
+    model_dir.mkdir()
+
+    report = probe_availability(str(model_dir))
+
+    assert report.state == CACHED
+    assert report.source_hub == Hub.LOCAL
+
+
+def test_degraded_uncached_id_returns_unknown_with_reason(monkeypatch, tmp_path) -> None:
+    """With the network severed, an uncached id degrades to unknown, no raise."""
+    _neutralize_hub_caches(monkeypatch, tmp_path)
+    _raising_adapters(monkeypatch)
+
+    report = probe_availability("degraded/never-cached")
+
+    assert report.state == UNKNOWN
+    assert report.reason == f"{AvailabilityReasonCode.PROBE_ERROR.value}: RuntimeError"
+
+
+def test_degraded_registry_entry_name_resolves_and_degrades(monkeypatch, tmp_path) -> None:
+    """A registry entry name resolves through try_resolve, then degrades."""
+    _neutralize_hub_caches(monkeypatch, tmp_path)
+    _raising_adapters(monkeypatch)
+    real_try_resolve = availability.try_resolve
+    resolve_spy = Mock(side_effect=real_try_resolve)
+    monkeypatch.setattr(availability, "try_resolve", resolve_spy)
+
+    report = probe_availability(BPE_BASE_NAME)
+
+    resolve_spy.assert_called_once_with(BPE_BASE_NAME)
+    assert report.state == UNKNOWN
+    assert report.reason is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 3b: coverage completion — adapter-miss body, revision fallback,
+# injected-prober timeout
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_remote_ms_adapter_body_clean_miss_returns_none(monkeypatch) -> None:
+    """A falsy repo_exists is a clean miss: the chain proceeds to HF."""
+
+    class FakeHubApi:
+        def repo_exists(self, repo_id, **kwargs):
+            return False
+
+    monkeypatch.setattr(ms_hub_api, "HubApi", FakeHubApi)
+    monkeypatch.setattr(
+        availability, "_hf_adapter", Mock(return_value=_confirmed_report(Hub.HUGGINGFACE))
+    )
+
+    report = probe_availability("ms-clean-miss/org")
+
+    assert report.state == REMOTE_CONFIRMED
+    assert report.source_hub == Hub.HUGGINGFACE
+
+
+def test_local_hf_cache_non_snapshot_path_revision_none(monkeypatch) -> None:
+    """A cached path without a snapshots segment yields revision None."""
+    monkeypatch.setattr(
+        huggingface_hub,
+        "try_to_load_from_cache",
+        Mock(return_value="/hf-root/hub/models--org--name/config.json"),
+    )
+    monkeypatch.setattr(
+        huggingface_hub,
+        "scan_cache_dir",
+        Mock(side_effect=RuntimeError("scan unavailable")),
+    )
+
+    report = probe_availability(UNREGISTERED_HF_REPO)
+
+    assert report.state == CACHED
+    assert report.source_hub == Hub.HUGGINGFACE
+    assert report.revision is None
+
+
+def test_timeout_injected_prober_returns_probe_timeout(monkeypatch) -> None:
+    """An over-slow injected prober hits the same bound (the seam contract)."""
+
+    def slow_prober(repo_id):
+        time.sleep(0.4)
+        return _confirmed_report(Hub.MODELSCOPE)
+
+    started = time.monotonic()
+    report = probe_availability("seam-timeout/org", prober=slow_prober, timeout=0.1)
+    elapsed = time.monotonic() - started
+
+    assert report.state == UNKNOWN
+    assert report.reason == AvailabilityReasonCode.PROBE_TIMEOUT.value
+    assert elapsed < 0.35
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 3c: real-network acceptance (slow lane, exactly one network test).
+# Deselected locally via -m "not slow"; exercised by CI's slow leg. The typed
+# skip prefix matches tests/expected_skips.yaml's existing network entry.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SLOW_LANE_MODEL = "zhangtaolab/plant-dnabert-BPE"  # dual-homed lab model
+
+
+def _any_model_hub_reachable() -> bool:
+    """True when at least one of the two probed hubs answers at all."""
+    import httpx
+
+    for url in ("https://www.modelscope.cn", "https://huggingface.co"):
+        try:
+            httpx.get(url, timeout=5.0)
+            return True
+        except httpx.TransportError:
+            continue
+    return False
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not _any_model_hub_reachable(),
+    reason="network-unavailable: no model hub reachable (modelscope.cn / huggingface.co)",
+)
+def test_slow_real_network_dual_homed_lab_model() -> None:
+    """Probe a real dual-homed lab model end-to-end; the report is well-formed.
+
+    Local caches short-circuit when present (this box caches the lab
+    repos); otherwise the real adapters run under a generous 30 s bound.
+    The only hard assertions: no exception, a three-value state, and a
+    positive exact integer size whenever the probe confirms remotely.
+    """
+    report = probe_availability(_SLOW_LANE_MODEL, timeout=30.0)
+
+    assert report.state in (CACHED, REMOTE_CONFIRMED, UNKNOWN)
+    if report.state == REMOTE_CONFIRMED:
+        assert isinstance(report.size_bytes, int)
+        assert report.size_bytes > 0
