@@ -29,7 +29,7 @@ configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml"
 # 2. Load model and tokenizer
 model_name = "zhangtaolab/plant-dnabert-BPE"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # 3. Prepare dataset
@@ -69,7 +69,7 @@ from dnallm.inference import Mutagenesis
 configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_config.yaml")
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # 2. Initialize the mutagenesis analyzer

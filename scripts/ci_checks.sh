@@ -121,13 +121,13 @@ else
 fi
 print_status "SUCCESS" "Tests passed"
 
-# 5. MyPy type checking (informational, matches CI's `|| true`)
+# 5. ty type checking (the CI hard gate since the 2026-10-17 D-09 flip)
 echo ""
-print_status "INFO" "5/5: MyPy type checking (informational)..."
-if mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/; then
-    print_status "SUCCESS" "MyPy passed"
+print_status "INFO" "5/5: ty type checking..."
+if uvx ty@0.0.84 check dnallm/; then
+    print_status "SUCCESS" "ty passed"
 else
-    print_status "WARNING" "MyPy found issues (informational, does not block CI)"
+    print_status "ERROR" "ty found issues (this is a hard gate)"
 fi
 
 echo ""

@@ -10,10 +10,10 @@ import hashlib
 import os
 import time
 from glob import glob
-from typing import Any
+from typing import Any, cast
 import torch
 import torch.nn as nn
-from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel, PreTrainedTokenizer, AutoConfig, BitsAndBytesConfig
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 from ..configuration.configs import TaskConfig
@@ -54,18 +54,18 @@ class DNALLMforSequenceClassification(PreTrainedModel):
     MLP head for sequence classification or regression tasks.
     """
 
-    config_class = AutoConfig  # type: ignore[assignment]
+    config_class = AutoConfig
 
-    def __init__(self, config, custom_model=None):
+    def __init__(self, config, custom_model: Any = None):
         super().__init__(config)
-        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel
 
         if self.config.head_config.get("head", "").lower() == "megadna":
             self.backbone = custom_model
             self.score = MegaDNAMultiScaleHead(**self.config.head_config)
         elif self.config.head_config.get("head", "").lower().startswith("evo"):
             self.backbone = custom_model
-            self.score = EVOForSeqClsHead(  # type: ignore[assignment]
+            self.score = EVOForSeqClsHead(
                 **self.config.head_config,
                 base_model=custom_model,
             )
@@ -79,7 +79,11 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             import inspect
 
-            self.backbone = AutoModel.from_config(config, trust_remote_code=True)
+            # DNALLM_ESM_PROBE_FIX_V2: honor a checkpoint's custom backbone.
+            if custom_model is not None:
+                self.backbone = custom_model
+            else:
+                self.backbone = AutoModel.from_config(config, trust_remote_code=True)
             forward_signature = inspect.signature(self.backbone.forward)
             self._backbone_supported_args = set(forward_signature.parameters.keys())
             if hasattr(self.backbone.config, "hidden_size"):
@@ -93,7 +97,28 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                 )
             classifier = self._determine_classifier()
             self.score = classifier(input_dim=transformer_output_dim, **self.config.head_config)
-        self.num_labels = self.config.num_labels
+        # DNALLM_PROBE_NUM_LABELS_SYNC_V3:
+        # Pretrained checkpoints may have a different num_labels than the
+        # newly constructed custom head. The current task/head is authoritative.
+        head_num_labels = self.config.head_config.get("num_classes")
+        config_num_labels = getattr(self.config, "num_labels", None)
+        if head_num_labels is not None:
+            head_num_labels = int(head_num_labels)
+            if head_num_labels < 1:
+                raise ValueError(
+                    f"Invalid head_config.num_classes={head_num_labels}. "
+                    "Expected a positive integer."
+                )
+            if config_num_labels != head_num_labels:
+                logger.warning(
+                    f"num_labels mismatch: checkpoint/config={config_num_labels}, "
+                    f"head={head_num_labels}; synchronizing to the head."
+                )
+                self.config.num_labels = head_num_labels
+            self.num_labels = head_num_labels
+        else:
+            # Preserve compatibility with custom heads that omit num_classes.
+            self.num_labels = config_num_labels
         # determine pooling strategy if not set
         self.pooling_strategy = self._determine_pooling_strategy()
         logger.info(f"Using {self.pooling_strategy} pooling strategy.")
@@ -102,7 +127,16 @@ class DNALLMforSequenceClassification(PreTrainedModel):
             for param in self.backbone.parameters():
                 param.requires_grad = False
 
-        self.post_init()
+        # DNALLM_SKIP_ESM_POST_INIT_V2: preserve pretrained custom ESM weights.
+        if custom_model is None or getattr(self.config, "model_type", None) != "esm":
+            self.post_init()
+
+    # DNALLM_FROZEN_EVAL_FIX_V2: only the head enters train mode for probe.
+    def train(self, mode: bool = True):
+        super().train(mode)
+        if self.config.head_config.get("frozen", False):
+            self.backbone.eval()
+        return self
 
     @classmethod
     def from_base_model(
@@ -112,7 +146,35 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         Handles weights diffusion when loading a model from
         a pre-trained base model.
         """
-        from transformers import AutoModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import AutoModel
+
+        # DNALLM_CUSTOM_ESM_PROBE_FIX_V2:
+        # Some Plant NT checkpoints register custom sequence classifiers but
+        # no custom AutoModel. Native EsmModel would require config.rope_theta
+        # and potentially have incompatible weights/architecture.
+        auto_map = getattr(config, "auto_map", None) or {}
+        is_custom_esm = (
+            getattr(config, "model_type", None) == "esm"
+            and "AutoModel" not in auto_map
+            and "AutoModelForSequenceClassification" in auto_map
+        )
+        if is_custom_esm:
+            if quantization_config is not None:
+                raise NotImplementedError(
+                    "Quantized custom ESM probe loading is not supported yet."
+                )
+            from transformers import AutoModelForSequenceClassification
+
+            pretrained = AutoModelForSequenceClassification.from_pretrained(
+                model_name_or_path, trust_remote_code=True
+            )
+            prefix = pretrained.base_model_prefix
+            backbone = getattr(pretrained, prefix, None)
+            if backbone is None or backbone is pretrained:
+                raise RuntimeError(f"Cannot extract pretrained ESM backbone '{prefix}'.")
+            model = cls(config, custom_model=backbone)
+            logger.info(f"Loaded custom ESM backbone: {type(model.backbone).__name__}")
+            return model
 
         # 1. Use config to create an instance of our custom class.
         model = cls(config)
@@ -120,7 +182,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         load_kwargs = {"trust_remote_code": True}
         if quantization_config is not None:
             load_kwargs["quantization_config"] = quantization_config
-            load_kwargs["device_map"] = "auto"  # type: ignore[assignment]
+            load_kwargs["device_map"] = "auto"
         if module is not None:
             base_model = module.from_pretrained(model_name_or_path, **load_kwargs)
         else:
@@ -194,7 +256,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
     def forward(
         self,
         input_ids: torch.LongTensor | None = None,
-        labels: torch.LongTensor | None = None,
+        labels: torch.Tensor | None = None,
         output_attentions: bool = False,
         output_hidden_states: bool = False,
         **kwargs,
@@ -204,7 +266,7 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             if hasattr(self.backbone.config, "pad_token_id"):
                 pad_token_id = self.backbone.config.pad_token_id
-                attention_mask = (input_ids != pad_token_id).long()
+                attention_mask = (input_ids != pad_token_id).long()  # ty: ignore[unresolved-attribute]
             else:
                 attention_mask = torch.ones_like(input_ids)  # type: ignore
         if self.config.head_config.get("head", "").lower() == "megadna":
@@ -243,8 +305,18 @@ class DNALLMforSequenceClassification(PreTrainedModel):
         else:
             sentence_embedding = last_hidden_state
         logits = self.score(sentence_embedding)
-        if self.num_labels != logits.size(-1):
-            self.num_labels = self.config.head_config["num_classes"]
+        # DNALLM_PROBE_TASK_GUARD_V2: detect mismatched HeadConfig early.
+        task_type = self.config.head_config.get("task_type")
+        actual_task_type = getattr(self.score, "task_type", None)
+        if task_type != actual_task_type:
+            raise RuntimeError(
+                f"Probe task mismatch: config={task_type!r}, head={actual_task_type!r}."
+            )
+        if logits.size(-1) != self.num_labels:
+            raise RuntimeError(
+                f"Probe output dimension mismatch: logits={tuple(logits.shape)}, "
+                f"num_labels={self.num_labels}."
+            )
 
         loss = None
         if labels is not None:
@@ -276,16 +348,31 @@ class DNALLMforSequenceClassification(PreTrainedModel):
                     pass
                 else:
                     raise ValueError("Loss function must be a string or an nn.Module instance.")
-            if self.score.task_type == "regression":
+            # DNALLM_PROBE_REGRESSION_LOSS_FIX_V2:
+            if task_type == "regression":
+                if isinstance(loss_fct, (nn.CrossEntropyLoss, nn.NLLLoss)):
+                    raise ValueError(
+                        "Regression is configured with CE/NLL classification loss. "
+                        "Use MSE or another regression-compatible loss."
+                    )
                 loss_fct = nn.MSELoss() if loss_fct is None else loss_fct
-                if self.num_labels == 1:
-                    loss = loss_fct(logits.squeeze(), labels.squeeze())
-                else:
-                    loss = loss_fct(logits, labels)
-            elif self.score.task_type in ["binary", "multiclass"]:
+                predictions = logits.float()
+                targets = labels.to(device=logits.device, dtype=torch.float32)
+                if predictions.numel() != targets.numel():
+                    raise ValueError(
+                        "Regression predictions and targets have incompatible sizes: "
+                        f"logits={tuple(predictions.shape)}, labels={tuple(targets.shape)}"
+                    )
+                loss = loss_fct(predictions, targets.reshape_as(predictions))
+            elif task_type in ("binary", "multiclass"):
+                if labels.dtype not in (torch.int32, torch.int64):
+                    raise TypeError(
+                        f"Classification requires integer labels, got {labels.dtype}. "
+                        "Check dataset task type and probe head configuration."
+                    )
                 loss_fct = nn.CrossEntropyLoss() if loss_fct is None else loss_fct
-                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-            elif self.score.task_type == "multilabel":
+                loss = loss_fct(logits.reshape(-1, self.num_labels), labels.long().reshape(-1))
+            elif task_type == "multilabel":
                 loss_fct = nn.BCEWithLogitsLoss() if loss_fct is None else loss_fct
                 loss = loss_fct(logits, labels)
 
@@ -499,14 +586,14 @@ def _get_model_path_and_imports(
 
     # Import transformers modules for local and huggingface sources
     try:
-        from transformers import (  # type: ignore[attr-defined]
-            AutoConfig,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModel,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # lazy export, resolves live
-            AutoTokenizer,  # ty: ignore[unresolved-import]  # lazy export, resolves live
+        from transformers import (
+            AutoConfig,
+            AutoModel,
+            AutoModelForMaskedLM,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForTokenClassification,
+            AutoTokenizer,
         )
     except ImportError as e:
         raise ImportError(
@@ -598,9 +685,25 @@ def _load_model_by_task_type(
 
     # Custom model with specific head
     if head_config is not None:
-        head_config = head_config.__dict__
+        # DNALLM_PROBE_CONFIG_SYNC_V2: dataset task wins over YAML defaults.
+        # getattr keeps ty's static narrowing happy (hasattr does not narrow
+        # the call target for the call-non-callable rule).
+        if isinstance(head_config, dict):
+            head_config = dict(head_config)
+        else:
+            model_dump = getattr(head_config, "model_dump", None)
+            head_config = model_dump() if model_dump is not None else dict(vars(head_config))
+        head_config["task_type"] = task_type
+        head_config["num_classes"] = num_labels
         base_config = modules["AutoConfig"].from_pretrained(model_name, trust_remote_code=True)
         model_config = base_config
+        model_config.num_labels = num_labels
+        if task_type == "regression":
+            model_config.problem_type = "regression"
+        elif task_type == "multilabel":
+            model_config.problem_type = "multi_label_classification"
+        elif task_type in ("binary", "multiclass"):
+            model_config.problem_type = "single_label_classification"
         model_config.head_config = head_config
         if hasattr(tokenizer, "cls_token_id"):
             model_config.cls_token_id = tokenizer.cls_token_id
@@ -893,7 +996,7 @@ def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
     """
     if source.lower() == "modelscope":
         try:
-            from modelscope import (  # ty: ignore[unresolved-import]  # optional at runtime, guarded
+            from modelscope import (  # optional at runtime, guarded
                 AutoConfig,
                 AutoModel,
                 AutoModelForMaskedLM,
@@ -909,14 +1012,14 @@ def _get_auto_modules_for_source(source: str) -> dict[str, Any]:
             ) from e
     elif source.lower() in ("local", "huggingface"):
         try:
-            from transformers import (  # type: ignore[attr-defined]
-                AutoConfig,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModel,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForMaskedLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForCausalLM,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForSequenceClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoModelForTokenClassification,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
-                AutoTokenizer,  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import (
+                AutoConfig,
+                AutoModel,
+                AutoModelForMaskedLM,
+                AutoModelForCausalLM,
+                AutoModelForSequenceClassification,
+                AutoModelForTokenClassification,
+                AutoTokenizer,
             )
         except ImportError as e:
             raise ImportError(
@@ -1273,7 +1376,7 @@ def load_model_and_tokenizer(
 
     # Load model and tokenizer based on task type
     try:
-        load_args = [
+        load_args: list[Any] = [
             task_type,
             model_name,
             safe_num_labels,
@@ -1319,8 +1422,8 @@ def load_model_and_tokenizer(
         if "basenji2" in downloaded_model_path.lower():
             tokenizer = _handle_basenji2_tokenizer(tokenizer)
         # Set model path and source attributes
-        model._model_path = downloaded_model_path
-        model.source = source
+        model._model_path = downloaded_model_path  # ty: ignore[invalid-assignment]
+        model.source = source  # ty: ignore[invalid-assignment]
     except Exception as e:
         raise ValueError(f"Failed to load model: {e}") from e
 
@@ -1328,14 +1431,17 @@ def load_model_and_tokenizer(
     _configure_model_padding(model, tokenizer)
     # Skip device placement for 4-bit models (device_map="auto" handles it)
     if bnb_config is None:
-        model = model.to(_get_device())
+        model = model.to(_get_device())  # ty: ignore[unresolved-attribute]
 
     # Fix improperly quantized layers (e.g., pooler.dense in BERT)
     # that were newly initialized and not properly packed by bitsandbytes
     if bnb_config is not None:
         _fix_bnb_quantized_layers(model)
 
-    return model, tokenizer
+    # The dispatch chain above guarantees non-None halves here (a None model
+    # would already have raised at the attribute assignments); cast makes that
+    # invariant explicit for the declared tuple[PreTrainedModel, PreTrainedTokenizer].
+    return cast(PreTrainedModel, model), cast(PreTrainedTokenizer, tokenizer)
 
 
 def _fix_bnb_quantized_layers(model: Any) -> None:
@@ -1378,7 +1484,7 @@ def _fix_bnb_quantized_layers(model: Any) -> None:
                     replacement = nn.Linear(
                         in_features,
                         out_features,
-                        dtype=compute_dtype,  # type: ignore[assignment]
+                        dtype=compute_dtype,
                     ).to(device)
                     # Copy existing weight data if available
                     with torch.no_grad():
@@ -1495,7 +1601,7 @@ def load_preset_model(model_name: str, task_config: TaskConfig) -> tuple[Any, An
         preset_models = []
     if model_name in MODEL_INFO:
         model_info = MODEL_INFO[model_name]
-        model_name = model_info["default"]  # type: ignore[index]
+        model_name = model_info["default"]  # ty: ignore[invalid-assignment]
     elif model_name in preset_models:
         pass
     else:

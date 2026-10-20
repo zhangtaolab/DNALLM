@@ -5,12 +5,12 @@ Optimizing the performance of your deep learning pipeline is crucial for iterati
 ## 1. Hardware Acceleration
 
 ### Use a GPU
-This is the single most important factor. Training and inference for large models are orders of magnitude faster on a GPU than on a CPU. Ensure your environment is configured to use an available NVIDIA GPU (`device: cuda`) or Apple Silicon GPU (`device: mps`).
+This is the single most important factor. Training and inference for large models are orders of magnitude faster on a GPU than on a CPU. Inference and benchmark configurations expose a `device` field (`cuda`, `mps`, `cpu`, or `auto`); training uses whatever accelerator Hugging Face's Trainer detects on the machine.
 
 ### Mixed-Precision Training/Inference
 - **What it is**: By default, models use 32-bit floating-point numbers (FP32). Mixed precision uses a combination of 16-bit floats (FP16 or BF16) and FP32. This can provide significant speedups and reduce memory usage by nearly half.
 - **How it works**: Operations are performed in the faster, less precise FP16 format, while critical components like weight updates can be kept in FP32 to maintain stability.
-- **How to use in DNALLM**: In your configuration file, set `use_fp16: true` or `use_bf16: true`.
+- **How to use in DNALLM**: In your training configuration, set `fp16: true` or `bf16: true` (the inference and benchmark configurations spell these fields `use_fp16` / `use_bf16`).
     - `fp16`: Widely supported, great for speed.
     - `bf16`: More numerically stable than FP16, but requires newer GPUs (NVIDIA Ampere or later).
 
@@ -47,7 +47,7 @@ The process of loading and preparing data can become a bottleneck, leaving your 
 ## 5. Optimized Attention Mechanisms
 
 - **Flash Attention**: As detailed in the Attention Mechanisms guide, Flash Attention is a highly optimized implementation that provides significant speed and memory improvements.
-- **How to use**: DNALLM uses it automatically if it's installed and compatible. Ensure you have installed the extra dependencies for it. See the Installation Guide.
+- **Status in DNALLM**: enabled automatically only on the native Evo path (when the `flash-attn` package is installed and supported); generic model loads always use eager attention, so installing `flash-attn` changes nothing for other model families. See the [Performance Guide](../../user_guide/performance_guide.md) for the full honesty block.
 
 ## 6. Model Compilation
 

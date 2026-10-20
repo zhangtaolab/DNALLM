@@ -50,7 +50,7 @@ Getting DNALLM installed is the first step. We recommend using `uv`, a fast Pyth
     uv pip install -e '.[all]'
 
     # Or install only base development tools
-    # uv pip install -e '.[base]'
+    # uv pip install -e '.[full]'
     ```
 
 4.  **Verify the Installation**
@@ -63,8 +63,8 @@ Getting DNALLM installed is the first step. We recommend using `uv`, a fast Pyth
 For accelerated performance, you can install support for GPU and specialized model architectures like Mamba.
 
 ```bash
-# For GPU support with CUDA 12.4
-uv pip install -e '.[cuda124]'
+# For GPU support with CUDA 13.0 (older Turing 20xx GPUs: use the CUDA 12.4/12.8 lanes)
+uv pip install -e '.[cuda130]'
 
 # For native Mamba architecture support
 uv pip install -e '.[mamba]' --no-cache-dir --no-build-isolation

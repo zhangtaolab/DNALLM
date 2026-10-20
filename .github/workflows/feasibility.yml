@@ -59,12 +59,12 @@ jobs:
 
       - name: Create virtual environment and install dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        # .[base] resolves green on this exact box (coverage-nightly precedent);
+        # .[full] resolves green on this exact box (coverage-nightly precedent);
         # the spike-only packages stay OUT of this ephemeral job venv — their
         # absence is part of the evidence.
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          uv pip install -e ".[full]"
 
       - name: Record runner identity
         if: steps.gpu-check.outputs.has_gpu == 'true'

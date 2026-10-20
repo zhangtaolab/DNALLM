@@ -14,7 +14,7 @@ from .data import str_to_one_hot, seq_indices_to_one_hot
 
 from .configuration_enformer import EnformerConfig
 
-from transformers import PreTrainedModel  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedModel  # transformers lazy export, resolves live
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 # constants
@@ -121,11 +121,11 @@ def get_positional_features_gamma(
     if not exists(start_mean):
         start_mean = seq_len / features
 
-    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)
+    mean = torch.linspace(start_mean, seq_len, features, device=positions.device)  # ty: ignore[no-matching-overload]  # exists() default not visible to ty
 
     mean = mean[None, ...]
     concentration = (mean / stddev) ** 2
-    rate = mean / stddev**2
+    rate = mean / stddev**2  # ty: ignore[unsupported-operator]  # exists() default not visible to ty
 
     probabilities = gamma_pdf(positions.to(dtype).abs()[..., None], concentration, rate)
     probabilities = probabilities + eps
@@ -633,10 +633,10 @@ class EnformerForSequenceClassification(PreTrainedModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                loss_fct = nn.CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             elif self.config.problem_type == "multi_label_classification":
-                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
+                loss_fct = nn.BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
             else:
                 raise NotImplementedError(self.config.problem_type)

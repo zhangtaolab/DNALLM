@@ -16,6 +16,10 @@ DNALLM provides a comprehensive set of command-line interface tools for various 
 - **`dnallm mcp-server`** - Start MCP (Model Context Protocol) server
 - **`dnallm-mcp-server`** - Standalone MCP server script
 
+### Variant Effect Commands
+
+- **`dnallm-vep`** - Standalone zero-shot variant effect prediction CLI (scores a VCF against a reference genome with a CLM/MLM model)
+
 ### Configuration Tools
 
 - **`dnallm model-config-generator`** - Interactive configuration file generator
@@ -29,8 +33,8 @@ dnallm model-config-generator --output finetune_config.yaml
 # Train a model
 dnallm train --config finetune_config.yaml
 
-# Run inference
-dnallm inference --config inference_config.yaml --model ./models/trained_model
+# Run inference (the model is taken from the config file's task/model sections)
+dnallm inference --config inference_config.yaml
 
 # Benchmark models
 dnallm benchmark --config benchmark_config.yaml

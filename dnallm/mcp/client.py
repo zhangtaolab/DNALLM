@@ -38,7 +38,7 @@ from __future__ import annotations
 import asyncio
 import json
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 if TYPE_CHECKING:
     pass
@@ -82,6 +82,7 @@ class DNALLMMCPClient:
                 f'Invalid transport: {transport!r}. Must be "streamable-http", "sse", or "stdio".'
             )
         self.transport = transport
+        self.url: str | None
         if url is not None:
             # streamablehttp_client expects the full URL including the /mcp path.
             # The SDK does NOT automatically append /mcp -- the caller must provide it.
@@ -91,7 +92,7 @@ class DNALLMMCPClient:
         elif transport == "sse":
             self.url = "http://localhost:8000/sse"
         else:
-            self.url = None  # type: ignore[assignment]
+            self.url = None
         self.command = command or ("dnallm-mcp-server" if transport == "stdio" else None)
         self.args = args or []
         self.env = env or {}
@@ -136,7 +137,9 @@ class DNALLMMCPClient:
         if self.transport == "streamable-http":
             from mcp.client.streamable_http import streamable_http_client
 
-            async with streamable_http_client(self.url) as (
+            # __init__ fills a default URL for HTTP transports, so self.url
+            # is never None here.
+            async with streamable_http_client(cast(str, self.url)) as (
                 read_stream,
                 write_stream,
                 get_session_id,
@@ -155,7 +158,7 @@ class DNALLMMCPClient:
         elif self.transport == "sse":
             from mcp.client.sse import sse_client
 
-            async with sse_client(self.url) as (read_stream, write_stream):
+            async with sse_client(cast(str, self.url)) as (read_stream, write_stream):
                 from mcp import ClientSession
 
                 async with ClientSession(
@@ -215,14 +218,14 @@ class DNALLMMCPClient:
         if result.isError:
             text = result.content[0].text if result.content else "Unknown error"
             try:
-                return json.loads(text)  # type: ignore[no-any-return]
+                return json.loads(text)
             except (json.JSONDecodeError, IndexError, AttributeError):
                 return {"error": text, "isError": True}
         if not result.content:
             return {}
         text = result.content[0].text
         try:
-            return json.loads(text)  # type: ignore[no-any-return]
+            return json.loads(text)
         except json.JSONDecodeError:
             return {"text": text}
 
@@ -259,7 +262,7 @@ class DNALLMMCPClient:
         Returns:
             Tool result as a dictionary.
         """
-        return await self._call_tool(tool_name, arguments)  # type: ignore[no-any-return]
+        return await self._call_tool(tool_name, arguments)
 
     # ------------------------------------------------------------------
     # Internal helper for sync/async bridging
@@ -299,7 +302,7 @@ class DNALLMMCPClient:
         return await self._call_tool(
             "dna_sequence_predict",
             {"sequence": sequence, "model_name": model_name},
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 2. dna_batch_predict
@@ -314,7 +317,7 @@ class DNALLMMCPClient:
         return await self._call_tool(
             "dna_batch_predict",
             {"sequences": sequences, "model_name": model_name},
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 3. dna_multi_model_predict
@@ -331,7 +334,7 @@ class DNALLMMCPClient:
         return await self._call_tool(
             "dna_multi_model_predict",
             {"sequence": sequence, "model_names": model_names},
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 4. dna_stream_predict
@@ -360,7 +363,7 @@ class DNALLMMCPClient:
                 "model_name": model_name,
                 "stream_progress": stream_progress,
             },
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 5. dna_stream_batch_predict
@@ -374,7 +377,7 @@ class DNALLMMCPClient:
     ) -> dict:
         """Stream batch DNA sequence prediction (sync)."""
         return self._run_async(
-            self.adna_stream_batch_predict(sequences, model_name, stream_progress)  # type: ignore[no-any-return]
+            self.adna_stream_batch_predict(sequences, model_name, stream_progress)
         )
 
     async def adna_stream_batch_predict(
@@ -391,7 +394,7 @@ class DNALLMMCPClient:
                 "model_name": model_name,
                 "stream_progress": stream_progress,
             },
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 6. dna_stream_multi_model_predict
@@ -405,7 +408,7 @@ class DNALLMMCPClient:
     ) -> dict:
         """Stream multi-model DNA sequence prediction (sync)."""
         return self._run_async(
-            self.adna_stream_multi_model_predict(sequence, model_names, stream_progress)  # type: ignore[no-any-return]
+            self.adna_stream_multi_model_predict(sequence, model_names, stream_progress)
         )
 
     async def adna_stream_multi_model_predict(
@@ -422,7 +425,7 @@ class DNALLMMCPClient:
                 "model_names": model_names,
                 "stream_progress": stream_progress,
             },
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 7. dna_mutagenesis
@@ -438,7 +441,7 @@ class DNALLMMCPClient:
     ) -> dict:
         """Perform in silico mutagenesis on DNA sequences (sync)."""
         return self._run_async(
-            self.adna_mutagenesis(sequence, sequences, mutation_type, positions, model_name)  # type: ignore[no-any-return]
+            self.adna_mutagenesis(sequence, sequences, mutation_type, positions, model_name)
         )
 
     async def adna_mutagenesis(
@@ -459,7 +462,7 @@ class DNALLMMCPClient:
                 "positions": positions,
                 "model_name": model_name,
             },
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 8. dna_interpret
@@ -475,7 +478,7 @@ class DNALLMMCPClient:
     ) -> dict:
         """Interpret model predictions using attribution methods (sync)."""
         return self._run_async(
-            self.adna_interpret(sequence, model_name, method, target_class, max_length)  # type: ignore[no-any-return]
+            self.adna_interpret(sequence, model_name, method, target_class, max_length)
         )
 
     async def adna_interpret(
@@ -496,7 +499,7 @@ class DNALLMMCPClient:
                 "target_class": target_class,
                 "max_length": max_length,
             },
-        )  # type: ignore[no-any-return]
+        )
 
     # ------------------------------------------------------------------
     # 9. list_loaded_models
@@ -508,7 +511,7 @@ class DNALLMMCPClient:
 
     async def alist_loaded_models(self) -> dict:
         """List all currently loaded models (async)."""
-        return await self._call_tool("list_loaded_models", {})  # type: ignore[no-any-return]
+        return await self._call_tool("list_loaded_models", {})
 
     # ------------------------------------------------------------------
     # 10. get_model_info
@@ -520,7 +523,7 @@ class DNALLMMCPClient:
 
     async def aget_model_info(self, model_name: str) -> dict:
         """Get detailed information about a specific model (async)."""
-        return await self._call_tool("get_model_info", {"model_name": model_name})  # type: ignore[no-any-return]
+        return await self._call_tool("get_model_info", {"model_name": model_name})
 
     # ------------------------------------------------------------------
     # 11. list_models_by_task_type
@@ -532,7 +535,7 @@ class DNALLMMCPClient:
 
     async def alist_models_by_task_type(self, task_type: str) -> dict:
         """List all available models filtered by task type (async)."""
-        return await self._call_tool("list_models_by_task_type", {"task_type": task_type})  # type: ignore[no-any-return]
+        return await self._call_tool("list_models_by_task_type", {"task_type": task_type})
 
     # ------------------------------------------------------------------
     # 12. get_all_available_models
@@ -544,7 +547,7 @@ class DNALLMMCPClient:
 
     async def aget_all_available_models(self) -> dict:
         """Get information about all available models (async)."""
-        return await self._call_tool("get_all_available_models", {})  # type: ignore[no-any-return]
+        return await self._call_tool("get_all_available_models", {})
 
     # ------------------------------------------------------------------
     # 13. health_check
@@ -556,4 +559,4 @@ class DNALLMMCPClient:
 
     async def ahealth_check(self) -> dict:
         """Perform health check on the MCP server (async)."""
-        return await self._call_tool("health_check", {})  # type: ignore[no-any-return]
+        return await self._call_tool("health_check", {})

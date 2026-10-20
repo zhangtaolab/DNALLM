@@ -2,13 +2,28 @@
 """Generate rice_gene_ner_BPE.pkl using the BPE tokenizer."""
 import gzip
 import random
+import sys
+
 import numpy as np
 from pyfastx import Fasta
-from pybedtools import BedTool
+
+# Platform dispatch at the acquisition seam (WPAR-03): Windows runs the
+# phase-15 numpy evaluator (dnallm.utils.loj_intersect) in-process -- no
+# bedtools binary, no pybedtools (which cannot install there); Linux/macOS
+# keep the bedtools/pybedtools truth chain byte-identical. No
+# except-ImportError fallback: a broken POSIX pybedtools must FAIL loudly,
+# never silently switch evaluator (WPAR-06). Windows full-run note: the
+# numpy loj is a broadcast join -- at the full sampling=2000-genes scale
+# the join is minutes-class on the numpy path (correctness over
+# asymptotics; CI exercises frozen pairs, not full runs).
+if sys.platform == "win32":
+    from dnallm.utils import loj_intersect
+else:
+    from pybedtools import BedTool
+
 from tqdm import tqdm
 from collections import defaultdict
 import pickle
-import sys
 
 # Add dnallm to path
 sys.path.insert(0, "/home/forrest/Github/DNALLM")
@@ -232,6 +247,41 @@ tokens_bed = "rice_genes_tokens_BPE.bed"
 token_pos = tokenization(genome, gene_anno, gene_info, tokenizer, tokens_bed, ext_list, sampling=2000)
 
 # Convert to NER data
+class LojRow:
+    """pybedtools-row emulation over one loj output line (12 tab columns).
+
+    Contract (pinned against pybedtools 0.12.1 + bedtools v2.31.1):
+    .chrom/.name are str, .start/.end are int, .fields is the full
+    tab-split list with EVERY column a string and the null-B literals
+    ('.', '-1', '-1', '.', '-1', '.') riding verbatim -- the consumer's
+    ``name == "-1"`` intergenic check keys on the count-6 null score
+    slot, so nulls are never re-encoded.
+    """
+
+    __slots__ = ("chrom", "start", "end", "name", "fields")
+
+    def __init__(self, line):
+        f = line.split("\t")
+        self.chrom = f[0]
+        self.start = int(f[1])
+        self.end = int(f[2])
+        self.name = f[3]
+        self.fields = f
+
+
+def _loj_rows(path_a, path_b):
+    """Platform-dispatched loj join returning pybedtools-row-like objects.
+
+    win32: the phase-15 numpy evaluator in-process (no bedtools binary);
+    POSIX: the unchanged BedTool loj (the bedtools truth chain). Rows on
+    both paths keep A-file order and join multiplicity -- never sorted,
+    never deduplicated (the consumer's gene flush depends on it).
+    """
+    if sys.platform == "win32":
+        return [LojRow(line) for line in loj_intersect(path_a, path_b)]
+    return BedTool(path_a).intersect(path_b, loj=True)
+
+
 def tokens_to_nerdata(tokens_bed, annotation_bed, outfile, named_entities, tags_id):
     ne = named_entities
     zero_map = {}
@@ -246,7 +296,7 @@ def tokens_to_nerdata(tokens_bed, annotation_bed, outfile, named_entities, tags_
         else:
             one_map[base_name] = ner_label
 
-    intersection = BedTool(tokens_bed).intersect(annotation_bed, loj=True)
+    intersection = _loj_rows(tokens_bed, annotation_bed)
     ner_info = {"id": [], "sequence": [], "labels": []}
     sizes_buffer = []
     token_seen = defaultdict(set)

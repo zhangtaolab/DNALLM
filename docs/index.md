@@ -15,7 +15,7 @@ DNALLM-Suite is a comprehensive, open-source toolkit designed for fine-tuning an
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
-- **🧪 Comprehensive Testing**: 200+ test cases covering all major functionality
+- **🧪 Comprehensive Testing**: 2,500+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
@@ -46,7 +46,6 @@ DNALLM-Suite has been tested on a wide range of platforms and devices:
 ### Device
 - **CPU**
 - **Nvidia GPU (CUDA)**
-- **AMD GPU (ROCm)**
 - **Apple Silicon (MPS)**
 - **Huawei Ascend NPU (CANN)**
 - **Intel Arc GPU (XPU)**
@@ -74,10 +73,10 @@ conda install uv -c conda-forge
 uv pip install -e '.[all]'
 
 # Or install only core + base development tools
-# uv pip install -e '.[base]'
+# uv pip install -e '.[full]'
 
-# Add GPU support (choose ONE: cpu, cuda121, cuda124, cuda126, cuda128, cuda130, rocm)
-# uv pip install -e '.[all,cuda124]'
+# Add GPU support (choose ONE: cpu, cuda124, cuda126, cuda128, cuda130)
+# uv pip install -e '.[all,cuda130]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -96,7 +95,7 @@ configs = load_config("./example/notebooks/inference/inference_config.yaml")
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # Initialize inference engine
@@ -131,7 +130,7 @@ from dnallm.datahandling import DNADataset
 from dnallm.finetune import DNATrainer
 
 # Prepare dataset
-dataset = DNADataset.from_huggingface(
+dataset = DNADataset.from_modelscope(
     "zhangtaolab/plant-multi-species-core-promoters",
     seq_col="sequence",
     label_col="label",
@@ -154,7 +153,7 @@ from dnallm.mcp import DNALLMMCPServer
 server = DNALLMMCPServer("dnallm/mcp/configs/mcp_server_config.yaml")
 await server.initialize()
 
-# Start server with SSE transport for real-time streaming
+# Start server with the streamable-http transport for real-time streaming
 server.start_server(host="0.0.0.0", port=8000, transport="streamable-http")
 ```
 
@@ -235,7 +234,7 @@ DNALLM/
 │   ├── tasks/               # Task definitions & metrics
 │   ├── utils/               # Utility functions
 │   └── mcp/                 # MCP server implementation
-├── cli/                     # Legacy CLI scripts (deprecated)
+├── cli/                     # Root CLI scripts (the config-generator implementation the package reuses)
 ├── example/                 # Examples & tutorials
 │   ├── marimo/              # Interactive Marimo apps
 │   └── notebooks/           # Jupyter notebooks
@@ -245,17 +244,17 @@ DNALLM/
 ├── scripts/                 # Development scripts
 ├── .github/                 # GitHub workflows
 ├── pyproject.toml           # Project configuration
-└── README.md                # This file
+└── README.md                # Project README
 ```
 
 ## 📖 Documentation
 
 For more details, please refer to the following guidelines.
 
-- **[Getting Started](docs/getting_started/)** - Installation and basic usage
-- **[API Reference](docs/api/)** - Detailed function documentation
-- **[Concepts](docs/concepts/)** - Core concepts and architecture
-- **[FAQ](docs/faq/)** - Common questions and solutions
+- **[Getting Started](getting_started/quick_start.md)** - Installation and basic usage
+- **[API Reference](api/index.md)** - Detailed function documentation
+- **[Concepts](concepts/biology/dna_sequences.md)** - Core concepts and architecture
+- **[FAQ](faq/index.md)** - Common questions and solutions
 
 - **[DeepWiki](https://deepwiki.com/zhangtaolab/DNALLM)** - A documentation that can ask
 
@@ -266,7 +265,6 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 - Code style and standards
 - Testing requirements
 - Pull request process
-- Development setup
 - Development setup
 
 ## 📄 License
@@ -280,7 +278,7 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-- **Documentation**: [docs/](docs/)
+- **Documentation**: [Documentation home](index.md)
 - **Issues**: [GitHub Issues](https://github.com/zhangtaolab/DNALLM/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/zhangtaolab/DNALLM/discussions)
 - **Examples**: Check the `example/` directory for working code

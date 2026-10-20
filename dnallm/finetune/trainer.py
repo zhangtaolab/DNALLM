@@ -44,15 +44,22 @@ Usage Example:
 
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 from collections.abc import Callable
 from dataclasses import fields as dataclass_fields
 from datetime import datetime, UTC
 import json
 import math
 import torch
-from datasets import DatasetDict
-from transformers import Trainer, TrainingArguments, EarlyStoppingCallback  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from datasets import Dataset, DatasetDict
+from transformers import (  # transformers lazy export, resolves live
+    EarlyStoppingCallback,
+    PreTrainedTokenizerBase,
+    Trainer,
+    TrainerCallback,
+    TrainingArguments,
+)
+from transformers.trainer_utils import BestRun, PredictionOutput
 import transformers
 from packaging.version import Version
 from peft import get_peft_model, LoraConfig, IA3Config
@@ -60,7 +67,7 @@ from peft import get_peft_model, LoraConfig, IA3Config
 try:
     import optuna
 except ImportError:
-    optuna = None  # type: ignore[assignment]
+    optuna = None
 
 from ..configuration.configs import Ia3Config
 from ..datahandling.data import DNADataset
@@ -288,6 +295,47 @@ def _guard_trainable_ratio(
     return trainable, total, ratio
 
 
+class _OutermostModulesToSave(list):
+    """A modules_to_save list whose extend() is a no-op.
+
+    PeftModelForSequenceClassification.__init__ unconditionally extends the
+    config's modules_to_save with ["classifier", "score"] (peft_model.py
+    "classifier_module_names"). For a nested head like evo2's
+    score.classifier that wraps BOTH the parent and its child, and PEFT
+    0.21.2 then saves the child wrapper's keys without the ".default."
+    segment while its loader expects it — every load_best_model_at_end
+    reload dies with KeyError('...score.classifier.modules_to_save.default
+    .weight') after training. Suppressing the extend keeps only the
+    outermost head module, which round-trips cleanly (verified on PEFT
+    0.21.2 / transformers 5.17.0, 2026-10-19).
+    """
+
+    def extend(self, other: Any) -> None:
+        return None
+
+
+def _outermost_modules_to_save(model: Any, requested: list[str] | None) -> list[str] | None:
+    """Drop modules_to_save names nested under another requested name."""
+    names = list(requested) if requested else ["classifier", "score"]
+    paths: dict[str, list[str]] = {}
+    for name in names:
+        paths[name] = [
+            path for path, _ in model.named_modules() if path == name or path.endswith("." + name)
+        ]
+    kept = [
+        name
+        for name in names
+        if not any(
+            other != name
+            and any(path.startswith(outer + ".") for path in paths[name] for outer in paths[other])
+            for other in names
+        )
+    ]
+    if len(kept) == len(names):
+        return requested
+    return _OutermostModulesToSave(kept)
+
+
 # Pure-timing keys trainer.predict reports alongside metrics; evaluate(split=...)
 # separates them into the JSON "runtime" block instead of the canonical
 # metric-names dict (they are not metric-registry names).
@@ -476,6 +524,9 @@ class DNATrainer:
             # WR-02: consume the ctor-resolved copy (carries preset-injected
             # targets), never the caller's config object.
             lora_config = LoraConfig(**peft_section.dict())
+            lora_config.modules_to_save = _outermost_modules_to_save(
+                model, lora_config.modules_to_save
+            )
             model = peft_forward_compatiable(model)
             self.model = get_peft_model(model, lora_config)
             self.model.print_trainable_parameters()
@@ -548,13 +599,16 @@ class DNATrainer:
 
         # Enable gradient checkpointing for QLoRA (required for memory efficiency)
         if self.train_config.use_qlora and hasattr(self.model, "gradient_checkpointing_enable"):
-            self.model.gradient_checkpointing_enable()
+            self.model.gradient_checkpointing_enable()  # ty: ignore[call-non-callable]
             print("[Info] Gradient checkpointing enabled for QLoRA.")
         if self.datasets is None:
             raise ValueError("Datasets are required for training")
         # Check if the dataset has been split
         if isinstance(self.datasets.dataset, DatasetDict):
-            self.data_split = self.datasets.dataset.keys()
+            # datasets>=4 keys() yields NamedSplit (a str subclass); coerce to
+            # plain str so split-name comparisons and downstream str-keyed
+            # lookups stay type-honest on both datasets 3.x and 4.x.
+            self.data_split = [str(k) for k in self.datasets.dataset.keys()]
         else:
             self.data_split = []
         # Get datasets
@@ -619,7 +673,7 @@ class DNATrainer:
 
         # Set problem type specific settings
         if self.task_config.task_type == "regression":
-            self.model.config.problem_type = "regression"
+            self.model.config.problem_type = "regression"  # ty: ignore[invalid-assignment]
         # Get compute metrics
         if self.task_config.task_type in ["mask", "generation", "embedding"]:
             compute_metrics = None
@@ -627,27 +681,36 @@ class DNATrainer:
             compute_metrics = self.compute_task_metrics()
         # Set data collator
         if self.task_config.task_type == "mask":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import (
+                DataCollatorForLanguageModeling,
+            )  # transformers lazy export, resolves live
 
             mlm_probability = self.task_config.mlm_probability
             mlm_probability = mlm_probability if mlm_probability else 0.15
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,
+                # encode_sequences guarantees a tokenizer is attached before
+                # the trainer is built; the cast only erases the Optional.
+                tokenizer=cast(PreTrainedTokenizerBase, self.datasets.tokenizer),
                 mlm=True,
                 mlm_probability=mlm_probability,
             )
         elif self.task_config.task_type == "generation":
-            from transformers import DataCollatorForLanguageModeling  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import (
+                DataCollatorForLanguageModeling,
+            )  # transformers lazy export, resolves live
 
             data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.datasets.tokenizer,  # type: ignore[arg-type]
+                # encode_sequences guarantees a tokenizer is attached before
+                # the trainer is built; the cast only erases the Optional.
+                tokenizer=cast(PreTrainedTokenizerBase, self.datasets.tokenizer),
                 mlm=False,
             )
         else:
             data_collator = None
 
-        # Assemble callbacks
-        callbacks = []
+        # Assemble callbacks (annotated as the base type: list invariance
+        # would otherwise reject the EarlyStoppingCallback subclass below)
+        callbacks: list[TrainerCallback] = []
         if (
             self.train_config.callbacks
             and self.train_config.callbacks.early_stopping
@@ -675,12 +738,15 @@ class DNATrainer:
                 )
                 self.training_args.load_best_model_at_end = True
 
-        # Initialize trainer
+        # Initialize trainer. The casts pin the datasets contract: split
+        # lookups yield datasets.Dataset (datasets annotates str-keyed
+        # __getitem__ as `list`), and the unsplit branch re-joins the
+        # Dataset | DatasetDict union after the isinstance check above.
         self.trainer = Trainer(
             model=self.model,
             args=self.training_args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
+            train_dataset=cast(Dataset, train_dataset),
+            eval_dataset=cast("Dataset | None", eval_dataset),
             compute_metrics=compute_metrics,
             data_collator=data_collator,
             preprocess_logits_for_metrics=preprocess_logits,
@@ -716,7 +782,7 @@ class DNATrainer:
                 Returns:
         Callable: A function that computes metrics for the specific task type
         """
-        return compute_metrics(self.task_config)  # type: ignore[no-any-return]
+        return compute_metrics(self.task_config)
 
     def _create_hp_space_fn(self) -> Callable:
         """Create the hp_space function for Optuna hyperparameter search.
@@ -787,16 +853,16 @@ class DNATrainer:
             print("[Info] Skipping the training loop: finetune.peft_dry_run=true.")
             return {}
         self.model.train()
-        train_result = self.trainer.train()
+        train_result = self.trainer.train()  # ty: ignore[unresolved-attribute]
         metrics: dict[str, float] = train_result.metrics
         # Save the model
-        self.trainer.save_model()
+        self.trainer.save_model()  # ty: ignore[unresolved-attribute]
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
                 if self._save_safetensors:
-                    self.model.save_pretrained(
+                    self.model.save_pretrained(  # ty: ignore[call-non-callable]
                         self.train_config.output_dir,
                     )
                 else:
@@ -804,7 +870,7 @@ class DNATrainer:
                         self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
                     )
             else:
-                self.model.save_pretrained(
+                self.model.save_pretrained(  # ty: ignore[call-non-callable]
                     self.train_config.output_dir,
                     safe_serialization=self._save_safetensors,
                 )
@@ -842,12 +908,18 @@ class DNATrainer:
 
         self.model.train()
 
-        best_run = self.trainer.hyperparameter_search(
-            direction=search_config.direction,
-            backend="optuna",
-            n_trials=search_config.n_trials,
-            hp_space=self._create_hp_space_fn(),
-            study_name=search_config.study_name,
+        # Single-objective searches (direction: str) return one BestRun; the
+        # list variant of the return union only arises for multi-objective
+        # directions, which the dnallm config schema does not expose.
+        best_run = cast(
+            BestRun,
+            self.trainer.hyperparameter_search(  # ty: ignore[unresolved-attribute]
+                direction=search_config.direction,
+                backend="optuna",
+                n_trials=search_config.n_trials,
+                hp_space=self._create_hp_space_fn(),
+                study_name=search_config.study_name,
+            ),
         )
 
         result = {
@@ -857,13 +929,13 @@ class DNATrainer:
         }
 
         # Save the best model
-        self.trainer.save_model()
+        self.trainer.save_model()  # ty: ignore[unresolved-attribute]
         # check if have save_pretrained method
         if hasattr(self.model, "save_pretrained"):
             # Transformers 5 enforces safetensors
             if transformers_version >= Version("5.0.0"):
                 if self._save_safetensors:
-                    self.model.save_pretrained(
+                    self.model.save_pretrained(  # ty: ignore[call-non-callable]
                         self.train_config.output_dir,
                     )
                 else:
@@ -871,7 +943,7 @@ class DNATrainer:
                         self.model.state_dict(), f"{self.train_config.output_dir}/pytorch_model.bin"
                     )
             else:
-                self.model.save_pretrained(
+                self.model.save_pretrained(  # ty: ignore[call-non-callable]
                     self.train_config.output_dir,
                     safe_serialization=self._save_safetensors,
                 )
@@ -937,7 +1009,7 @@ class DNATrainer:
             if metric_key_prefix != "eval":
                 legacy_kwargs["metric_key_prefix"] = metric_key_prefix
             self.model.eval()
-            result: dict[str, float] = self.trainer.evaluate(**legacy_kwargs)
+            result: dict[str, float] = self.trainer.evaluate(**legacy_kwargs)  # ty: ignore[unresolved-attribute]
             return result
         if split not in self.data_split:
             raise ValueError(
@@ -951,12 +1023,15 @@ class DNATrainer:
                 "deterministic home instead of the current working directory."
             )
         self.model.eval()
-        predict_result = self.trainer.predict(
+        predict_result = self.trainer.predict(  # ty: ignore[unresolved-attribute]
             self.datasets.dataset[split],  # type: ignore
             ignore_keys=ignore_keys,
         )
+        # Trainer.predict() always returns populated metrics; the Optional in
+        # transformers' PredictionOutput covers other evaluation-loop reuse.
         stripped: dict[str, float] = {
-            key.removeprefix("test_"): value for key, value in predict_result.metrics.items()
+            key.removeprefix("test_"): value
+            for key, value in cast("dict[str, float]", predict_result.metrics).items()
         }
         runtime: dict[str, float] = {
             key: stripped.pop(key) for key in PREDICT_RUNTIME_KEYS if key in stripped
@@ -977,7 +1052,7 @@ class DNATrainer:
             )
         return metrics
 
-    def infer(self) -> dict[str, float]:
+    def infer(self) -> dict[str, float] | PredictionOutput:
         """Generate inference results on the test dataset.
 
         This method generates inference results on the test dataset if
@@ -993,7 +1068,12 @@ class DNATrainer:
         result = {}
         if "test" in self.data_split:
             test_dataset = self.datasets.dataset["test"]  # type: ignore
-            result = self.trainer.predict(test_dataset)
+            # Suppression on the line below covers two rules:
+            # unresolved-attribute (trainer union from the dry-run None
+            # path) and invalid-argument-type (root cause: transformers 5.x
+            # annotates predict(torch Dataset) only, while datasets.Dataset
+            # is supported at runtime).
+            result = self.trainer.predict(test_dataset)  # ty: ignore[unresolved-attribute, invalid-argument-type]
         return result
 
     def plot_history(
@@ -1025,7 +1105,7 @@ class DNATrainer:
         plot_path.mkdir(parents=True, exist_ok=True)
 
         results: dict[str, Path] = {}
-        log_history = self.trainer.state.log_history
+        log_history = self.trainer.state.log_history  # ty: ignore[unresolved-attribute]
 
         if plot_loss:
             loss_path = plot_path / "training_loss.png"

@@ -19,7 +19,7 @@ DNALLM supports models that use various tokenization strategies. Here are the mo
     - **Highest Resolution**: Provides single-base-pair resolution, which is ideal for identifying SNPs or fine-grained motifs.
 - **Cons**:
     - **Longer Sequences**: Results in very long sequences of tokens, increasing computational cost.
-- **DNALLM Models**: Some `Plant DNAMamba` and `Plant DNAModernBert` models use this.
+- **DNALLM Models**: Some `Plant DNAMamba` models use this (the `-singlebase-` catalog variants).
 
 ### K-mer Tokenization
 - **How it works**: The sequence is broken down into overlapping chunks of a fixed length `k`.

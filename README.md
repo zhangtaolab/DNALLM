@@ -20,14 +20,14 @@ See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## 🚀 Key Features
 
-- **🔄 Model Management**: Load and switch between 200+ pre-trained DNA large language models from Hugging Face and ModelScope
+- **🔄 Model Management**: Load and switch between 130+ pre-trained DNA large language models from Hugging Face and ModelScope
 - **🎯 Multi-Task Support**: Binary/multi-class classification, regression, NER, MLM, and generation tasks
 - **📊 Benchmarking**: Multi-model performance comparison and evaluation metrics
 - **🔧 Fine-tuning**: Comprehensive training pipeline with configurable parameters
 - **📱 Interactive Interfaces**: Jupyter notebooks and Marimo-based interactive demos
 - **🌐 MCP Support**: Model Context Protocol for server/client deployment with real-time streaming
 - **🧬 Advanced Analysis**: In-silico mutagenesis, saturation mutation analysis, and mutation effect visualization
-- **🧪 Comprehensive Testing**: 1,900+ test cases covering all major functionality
+- **🧪 Comprehensive Testing**: 2,500+ test cases covering all major functionality
 
 ## 🧬 Supported Models
 
@@ -49,7 +49,7 @@ all other generic `Auto*` families are always allowed).
 ### Masked Language Models (MLM)
 - **DNABERT Series**: Plant DNABERT, DNABERT, DNABERT-2, DNABERT-S
 - **Caduceus Series**: Caduceus-Ph, Caduceus-PS, PlantCaduceus
-- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, CrossDNA
+- **Specialized Models**: AgroNT, GENA-LM, GPN, GROVER, MutBERT, ProkBERT, PlantHelixSeek, FungiHelixSeek, PlantBiMoE, CrossDNA
 
 ### Causal Language Models (CLM)
 - **EVO Series**: EVO-1, EVO-2
@@ -73,7 +73,6 @@ DNALLM-Suite has been tested on a wide range of platforms and devices:
 ### Device:
 - **CPU**
 - **Nvidia GPU (CUDA)**
-- **AMD GPU (ROCm)**
 - **Apple Silicon (MPS)**
 - **Huawei Ascend NPU (CANN)**
 - **Intel Arc GPU (XPU)**
@@ -118,8 +117,8 @@ pip install uv
 # Install DNALLM with all optional dependencies
 uv pip install -e '.[all]'
 
-# Or install only base development tools
-# uv pip install -e '.[base]'
+# Or install only the full development environment
+# uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -144,8 +143,8 @@ conda install uv -c conda-forge
 # Install DNALLM with all optional dependencies
 uv pip install -e '.[all]'
 
-# Or install only base development tools
-# uv pip install -e '.[base]'
+# Or install only the full development environment
+# uv pip install -e '.[full]'
 
 # Verify installation
 python -c "import dnallm; print('DNALLM installed successfully!')"
@@ -164,31 +163,34 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
-# CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[all,cuda124]'
+# CUDA 13.0 (recommended default — torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+uv pip install -e '.[all,cuda130]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128, cuda130
-# Nvidia 5090 Please use cuda128 & torch==2.7
+# Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the GPU Support Matrix below
+# Nvidia 5090 with driver < 580: use the cuda128 lane; with driver >= 580 the cuda130 lane works
 uv pip install -e '.[all,cuda128]'
 
-# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
-uv pip install -e '.[all,cuda130]'
+# Other supported versions: cpu, cuda126, cuda128, cuda130
 ```
 
-> **Warning:** Hardware groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver; `rocm` cannot share an environment with another hardware group (only one torch build installs), while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
+> **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
+
+> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
+
+> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the deprecated `base` alias rows.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `base` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
-| `base` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
-| `dev` | Development | `test` + `notebook` + linting/typing tools |
+| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
+| `dev` | Development | `test` + `notebook` + linting tools |
 | `test` | Testing only | pytest and plugins |
 | `notebook` | Interactive notebooks | Jupyter, Marimo |
 | `docs` | Build documentation | mkdocs and plugins |
 | `ui` | Gradio web interface | Gradio |
-| `mcp` | MCP server | (included in core) |
+| `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
 | `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
@@ -196,18 +198,18 @@ uv pip install -e '.[all,cuda130]'
 | Group | PyTorch | Use Case |
 |-------|---------|----------|
 | `cpu` | 2.4.0-2.11 | No GPU |
-| `cuda121` | 2.2.0-2.11 | Older NVIDIA GPUs |
-| `cuda124` | 2.4.0-2.11 | Most modern GPUs (recommended) |
+| `cuda124` | 2.4.0-2.11 | Most modern GPUs |
 | `cuda126` | 2.6.0-2.11 | Ada/Hopper with Flash Attention |
 | `cuda128` | 2.6.0-2.11 | RTX 5090 and latest hardware |
-| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) |
-| `rocm` | 2.5.0-2.11 | AMD GPUs |
+| `cuda130` | 2.9.0-2.11 | CUDA 13.0, Windows & Linux (driver >= 580) — recommended |
 | `mamba` | 2.6.0-2.11 | Native Mamba architecture (requires CUDA) |
+
+Retired in v1.3: the cu121 lane (index frozen at torch 2.5.1) and the ROCm extra (never execution-tested on AMD hardware — see the [Installation Guide](docs/getting_started/installation.md) for the manual AMD restore path).
 
 ```bash
 # Examples:
-uv pip install -e '.[all,cuda124]'    # Everything + CUDA 12.4
-uv pip install -e '.[base,mamba]'     # Dev tools + native Mamba
+uv pip install -e '.[all,cuda130]'    # Everything + CUDA 13.0
+uv pip install -e '.[full,mamba]'    # Dev tools + native Mamba
 uv pip install -e '.[test,cpu]'       # Testing only, no GPU (add ,mcp for the MCP example tests)
 ```
 
@@ -251,7 +253,7 @@ uv pip install -e '.[fla]'
 
 > **Warning:** without `flash-linear-attention` the remote code **silently falls back to a pure-PyTorch path that is not KDA math** (wrong gate formula, scalar decay, no delta-rule correction). Models still load and run, but produce positionally-uninformative outputs — e.g. measured p(CRE) 0.007 inside real DHS sites vs 0.009 outside (dead), versus 0.77 vs 0.22 with the kernels installed. Do not interpret PlantHelixSeek predictions without this package.
 
-Two install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; and keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions.
+Three install notes: install the package **bare** (`flash-linear-attention`, not its `[cuda]`/`[rocm]` extras) — since v0.5 the backend extras pin their own torch and would downgrade your environment; keep the version within `0.5.x` (`>=0.5.2,<0.6`) — `chunk_kda` semantics are not guaranteed stable across minor versions; and on **Windows** the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker, so the Triton kernels work there without a separate Triton install.
 
 ### Install Dependencies for Special Models
 
@@ -264,6 +266,7 @@ These models are listed below:
 | EVO-1    | CausalLM   | [Hugging Face](https://huggingface.co/collections/togethercomputer/stripedhyena-65d8e6e77540dd1da932dbe1) | [GitHub](https://github.com/evo-design/evo) |
 | EVO2     | CausalLM   | [Hugging Face](https://huggingface.co/collections/arcinstitute/evo-68e42c1bceeb21a456330fb4) | [GitHub](https://github.com/arcinstitute/evo2) |
 | PlantHelixSeek-CRE/-Anno | Token Classification / Binary | [ModelScope](https://modelscope.cn/zhangtaolab) / [Hugging Face](https://huggingface.co/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention), see warning below) |
+| FungiHelixSeek | MaskedLM | [Hugging Face](https://huggingface.co/zhangtaolab) / [ModelScope](https://modelscope.cn/zhangtaolab) | `fla` extra ([flash-linear-attention](https://github.com/fla-org/flash-linear-attention)) |
 | GPN      | MaskedLM   | [Hugging Face](https://huggingface.co/songlab) | [GitHub](https://github.com/songlab-cal/gpn) |
 | megaDNA  | CausalLM   | [Hugging Face](https://huggingface.co/lingxusb) | [GitHub](https://github.com/lingxusb/megaDNA) |
 | LucaOne  | CausalLM   | [Hugging Face](https://huggingface.co/collections/LucaGroup/lucaone-689c4c52fc6577441093f208) | [GitHub](https://github.com/LucaOne/LucaOne) |
@@ -552,7 +555,7 @@ Within-convention comparables from the literature (compare only within paradigm 
 
 ## 🧪 Testing
 
-DNALLM-Suite includes a comprehensive test suite with 1,900+ test cases:
+DNALLM-Suite includes a comprehensive test suite with 2,500+ test cases:
 
 ```bash
 # Install test dependencies first (the mcp extra provides the langchain/pydantic_ai
@@ -574,7 +577,7 @@ uv run pytest tests/tasks/ -v
 uv run pytest --cov=dnallm --cov-report=html
 ```
 
-CI runs the fast lane (~1,900 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
+CI runs the fast lane (2,522 tests) with a >=90% coverage gate on every push and pull request (Python 3.11/3.12/3.13 × numpy 2.2.0, plus a Windows leg). The slow, network-dependent suite (real-model downloads) and a nightly example-execution census that runs the `example/` notebooks and demo apps end-to-end execute on a self-hosted GPU runner (see `.github/workflows/ci.yml`).
 
 ## 📖 Documentation
 

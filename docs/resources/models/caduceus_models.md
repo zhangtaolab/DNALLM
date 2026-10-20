@@ -60,7 +60,7 @@ from dnallm.configuration.configs import TaskConfig
 from dnallm.models import load_model_and_tokenizer
 
 # 1. Load the pre-trained model and tokenizer
-model_name = "kuleshov-group/PlantCaduceus_l20"
+model_name = "kuleshov-group/PlantCaduceus_l32"
 task_config = TaskConfig(task_type="mask")
 model, tokenizer = load_model_and_tokenizer(model_name, task_config, source="huggingface")
 model.eval()

@@ -7,8 +7,8 @@ This guide will walk you through the basics of benchmarking DNA large language m
 Benchmarking in DNALLM allows you to:
 - Compare multiple DNA large language models on the same tasks
 - Evaluate performance across different datasets
-- Measure accuracy, speed, and resource usage
-- Generate comprehensive performance reports
+- Measure classification, regression, and ranking metrics
+- Save metrics and generate comparison plots
 
 ## Prerequisites
 
@@ -59,7 +59,7 @@ datasets:
     num_labels: 2
     label_names:
     - "negative"
-    - "postive"
+    - "positive"
     threshold: 0.5
 
 metrics:
@@ -111,14 +111,11 @@ DNALLM also provides a convenient command-line interface:
 # Basic benchmark run
 dnallm benchmark --config benchmark_config.yaml
 
-# Generate detailed report
-dnallm benchmark --config config.yaml --output report.html
-
 # Run without a config file (--model and --data are then required)
 dnallm benchmark --model zhangtaolab/plant-dnabert-BPE --data sequences.json --output results/
 ```
 
-Run parameters such as batch size and device are not CLI flags — they are configured in the benchmark YAML configuration file.
+The CLI accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o` only. Run parameters such as batch size and device are not CLI flags — they are configured in the benchmark YAML configuration file.
 
 ## Understanding Results
 
@@ -131,13 +128,17 @@ Run parameters such as batch size and device are not CLI flags — they are conf
 | **Precision** | True positives / (True positives + False positives) | 0.0 - 1.0 | 1.0 |
 | **Recall** | True positives / (True positives + False negatives) | 0.0 - 1.0 | 1.0 |
 
-### Performance Metrics
+### Additional Metrics
 
-| Metric | Description | Unit |
-|--------|-------------|------|
-| **Inference Time** | Time to process one batch | seconds |
-| **Memory Usage** | GPU/RAM memory consumption | MB/GB |
-| **Throughput** | Samples processed per second | samples/sec |
+Depending on the dataset task type, results can also include:
+
+| Metric | Description | Range |
+|--------|-------------|-------|
+| **MCC** | Matthews correlation coefficient | -1.0 - 1.0 |
+| **AUROC** | Area under the ROC curve | 0.0 - 1.0 |
+| **AUPRC** | Area under the precision-recall curve | 0.0 - 1.0 |
+
+(The benchmark itself does not profile inference time or memory — for that, see the DIY profiling recipes in [Advanced Techniques](advanced_techniques.md#performance-profiling).)
 
 ## Example: Complete Benchmark
 

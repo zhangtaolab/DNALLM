@@ -1,4 +1,4 @@
-from transformers import PreTrainedConfig  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedConfig  # transformers lazy export, resolves live
 
 
 class EnformerConfig(PreTrainedConfig):

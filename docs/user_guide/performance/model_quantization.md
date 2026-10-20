@@ -66,7 +66,7 @@ Half precision is not a loader parameter: enable `fp16` or `bf16` in the `finetu
 
 1. **Validate accuracy**: Always benchmark quantized models against the full-precision baseline on your specific task
 2. **Start with FP16**: It offers the best accuracy-to-speed trade-off for most DNA LM tasks
-3. **Use calibration data**: For INT8/INT4, provide representative sequences for calibration
+3. **No calibration step**: The bitsandbytes LLM.int8() and NF4 paths DNALLM exposes are calibration-free — there is no calibration dataset to prepare
 4. **Monitor perplexity**: Track sequence prediction quality as a proxy for model fidelity
 
 ## Troubleshooting
@@ -75,15 +75,14 @@ Half precision is not a loader parameter: enable `fp16` or `bf16` in the `finetu
 
 Quantization itself requires loading the full model first. If you run out of memory:
 
-- Use CPU offloading during quantization
-- Quantize layer-by-layer
-- Use smaller calibration batches
+- Drop from 8-bit to 4-bit (NF4) quantization
+- Let `device_map: "auto"` (applied automatically when `quantization_config` is set) offload layers to CPU
+- Use a smaller model or LoRA/QLoRA (`use_qlora: true`) instead of full fine-tuning
 
 ### Accuracy Degradation
 
 If quantized model performance drops significantly:
 
 - Try FP16 instead of INT8/INT4
-- Increase calibration dataset size
-- Use quantization-aware fine-tuning (QAT)
+- Prefer QLoRA fine-tuning (`use_qlora: true` with the 4-bit NF4 config) over pure zero-shot use of a quantized model
 - Keep critical layers (embeddings, attention) in higher precision

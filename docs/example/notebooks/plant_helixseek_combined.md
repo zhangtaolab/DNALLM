@@ -20,7 +20,7 @@ The committed notebook carries its executed outputs; the six-track combined figu
 Install DNALLM with the flash-linear-attention kernels PlantHelixSeek needs, plus the notebook extra (jupyter + pygenometracks):
 
 ```bash
-uv pip install -e '.[base,fla,notebook]'
+uv pip install -e '.[full,fla,notebook]'
 ```
 
 The scans run on a CUDA GPU through the eager-attention dnallm route.

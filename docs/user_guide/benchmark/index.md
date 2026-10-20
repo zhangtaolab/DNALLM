@@ -45,8 +45,8 @@ results = benchmark.run()
 
 - **Multi-Model Comparison**: Evaluate multiple models simultaneously
 - **Comprehensive Metrics**: Accuracy, F1, precision, recall, ROC-AUC, and more
-- **Performance Profiling**: Memory usage, inference time, and resource monitoring
-- **Flexible Output**: HTML reports, CSV exports, and interactive visualizations
+- **Per-Model Evaluation**: `evaluate_single_model` for folds and custom pipelines
+- **Flexible Output**: JSON metrics files and Altair charts (PDF/PNG/SVG/HTML), interactive by default
 - **Cross-Validation**: Robust evaluation with k-fold validation
 
 ## Next Steps

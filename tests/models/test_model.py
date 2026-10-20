@@ -667,7 +667,14 @@ class TestLoadModelByTaskType:
         assert model == "wrapped-model"
         assert tokenizer is mock_tokenizer
         base_config = modules["AutoConfig"].from_pretrained.return_value
-        assert base_config.head_config == head_config.__dict__
+        # DNALLM_PROBE_CONFIG_SYNC_V2 contract: the loader injects the dataset
+        # task and label count into the head config before building the wrapper.
+        assert base_config.head_config == {
+            **head_config.__dict__,
+            "task_type": "binary",
+            "num_classes": 2,
+        }
+        assert base_config.num_labels == 2
         mock_wrapper.from_base_model.assert_called_once_with(
             "test-model",
             config=base_config,
@@ -2979,16 +2986,38 @@ class TestWrapperForward:
     )
     def test_forward_loss_function_strings(self, loss_name, reference_factory):
         """Named loss functions replace the task-type default."""
-        model = _build_wrapper(
-            head="basic-mlp", num_labels=2, task_type="regression", loss_function=loss_name
-        )
+        if loss_name == "crossentropy":
+            # CE is a classification loss: the regression probe guard rejects
+            # CE/NLL by design, so exercise it on a classification wrapper.
+            model = _build_wrapper(
+                head="basic-mlp",
+                num_labels=2,
+                task_type="multiclass",
+                loss_function=loss_name,
+            )
+            labels = torch.zeros(2, dtype=torch.long)
+        else:
+            model = _build_wrapper(
+                head="basic-mlp", num_labels=2, task_type="regression", loss_function=loss_name
+            )
+            labels = torch.rand(2, 2)
         input_ids = self._input_ids()
-        labels = torch.rand(2, 2)
 
         output = model(input_ids=input_ids, labels=labels)
         expected = reference_factory()(output.logits, labels)
 
         assert torch.allclose(output.loss, expected)
+
+    def test_regression_rejects_crossentropy_loss(self):
+        """Regression must never dispatch continuous targets to CE/NLL loss."""
+        model = _build_wrapper(
+            head="basic-mlp",
+            num_labels=2,
+            task_type="regression",
+            loss_function="crossentropy",
+        )
+        with pytest.raises(ValueError, match="Regression is configured with CE/NLL"):
+            model(input_ids=self._input_ids(), labels=torch.rand(2, 2))
 
     def test_forward_loss_function_bce_on_squashed_logits(self):
         """'bce' applies BCELoss to the (sigmoid-squashed) logits."""

@@ -316,6 +316,9 @@ class TestActiveNotebookGates:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A resolved probe returns silently -- Linux lanes execute for real."""
+        # Pin POSIX: the win32 early-return (16-02) must not shadow the
+        # probe contract this test pins -- it runs on test-windows too.
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             sys.modules[__name__],
             "_probe_module",
@@ -329,6 +332,7 @@ class TestActiveNotebookGates:
         """An absent probe raises the optional-dep typed skip with evidence."""
         from _pytest.outcomes import Skipped
 
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             sys.modules[__name__],
             "_probe_module",
@@ -1215,21 +1219,21 @@ class TestEvoNotebookContentContracts:
 OLLAMA_URL = "http://127.0.0.1:11434/api/tags"
 MCP_ENDPOINT = "http://localhost:8000/mcp"
 
-# D-07 stage contract (08-08, MCP-02): within one example-nightly job the
-# three GPU/VRAM/port consumers run STAGED SERIAL, never concurrently --
-#   stage 1 TORCH-HEAVY: pytest tests/examples with the two mcp gated ids
-#     DESELECTED (Pitfall 7: `--deselect` both mcp_example entries, else the
-#     pair runs once as an honest skip here and once for real in stage 3,
-#     polluting the junit audit);
+# D-07 stage contract (08-08, MCP-02; Phase 13 D-04 revision 2026-10-11):
+# within one example-nightly job the GPU/VRAM/port consumers run STAGED
+# SERIAL, never concurrently --
+#   stage 1 TORCH-HEAVY: pytest tests/examples with NO deselect -- the two
+#     mcp gated ids stay collected in this batch and the D-13 probe gate
+#     below typed-skips them ("network-unavailable:" carrying both live
+#     probe results) when the model service and MCP server are down; they
+#     execute for real wherever both exist (self-healing);
 #   stage 2 MCP LIVE SERVER: start the dnallm MCP server on :8000 (yaml
-#     host/port -- the CLI flags are dead), run dnallm/mcp/tests, stop it;
-#   stage 3 OLLAMA BATCH: with ollama up (D-13 probe below), re-run just the
-#     two gated mcp tests (server up + ollama probed).
-# BETWEEN stages: explicit kernel pkill + VRAM settle (a few seconds' sleep
-# after torch-heavy work lets the allocator release before ollama loads the
-# ~3.3GB qwen3.5:4b weights -- owner swap 2026-10-06 15:27 CST). The ci.yml
-# wiring lands in 08-09; these module comments are the contract it
-# implements.
+#     host/port -- the CLI flags are dead), run dnallm/mcp/tests, stop it.
+# BETWEEN stages: explicit kernel pkill + settle discipline unchanged (a
+# few seconds' sleep after torch-heavy work lets the allocator release).
+# The stage-3 batch that once re-ran the gated pair with the model service
+# up is deleted (Phase 13 D-04, 2026-10-11); these module comments are the
+# contract ci.yml implements.
 
 
 def _probe_http(url: str, timeout_s: float = 2.0) -> tuple[bool, str]:
@@ -1397,13 +1401,20 @@ def _gate_mamba(nb_name: str) -> None:
 def _gate_pybedtools(nb_name: str) -> None:
     """Genome-interval prep imports pybedtools (Windows-excluded dev extra).
 
-    The rice data-generation notebook's first import cell pulls
-    ``pybedtools``, a dev-extra dependency deliberately excluded on
-    Windows (pyproject platform marker; bedtools/pysam have no Windows
-    story).  Probe-then-execute (D-05 pattern): present -> the notebook
-    executes for real unchanged (Linux lanes); absent -> the honest
-    optional-dep typed skip carrying the probe evidence.
+    The rice data-generation notebook's import cell pulls ``pybedtools``
+    through its platform-conditional seam, a dev-extra dependency
+    deliberately excluded on Windows (pyproject platform marker;
+    bedtools/pysam have no Windows story).  Probe-then-execute (D-05
+    pattern): present -> the notebook executes for real unchanged (Linux
+    lanes); absent -> the honest optional-dep typed skip carrying the
+    probe evidence.
+
+    Third outcome (16-02, WPAR-04): on win32 the probe never runs -- the
+    notebook executes for real through the numpy loj dispatch at its
+    cells-2/8 acquisition seam.  The Windows route contains no skip call.
     """
+    if sys.platform == "win32":
+        return  # numpy loj dispatch (16-02): Windows executes, probe skipped
     _gate_optional_deps(nb_name, ("pybedtools",))
 
 

@@ -109,7 +109,7 @@ class FastaInterval:
         if not fasta_file.exists():
             raise FileNotFoundError("path to fasta file must exist")
 
-        from pyfaidx import Fasta  # ty: ignore[unresolved-import]  # optional dep, raise-on-use
+        from pyfaidx import Fasta  # optional dep, raise-on-use
 
         self.seqs = Fasta(str(fasta_file))
         self.return_seq_indices = return_seq_indices
@@ -123,7 +123,7 @@ class FastaInterval:
         chromosome_length = len(chromosome)
 
         if exists(self.shift_augs):
-            min_shift, max_shift = self.shift_augs
+            min_shift, max_shift = self.shift_augs  # ty: ignore[not-iterable]  # exists() guard above
             max_shift += 1
 
             min_shift = max(start + min_shift, 0) - start
@@ -223,7 +223,7 @@ class GenomeIntervalDataset(Dataset):
     def __len__(self):
         return len(self.df)
 
-    def __getitem__(self, ind):
+    def __getitem__(self, ind):  # ty: ignore[invalid-method-override]  # vendored signature, subscript protocol only
         interval = self.df.row(ind)
         chr_name, start, end = (interval[0], interval[1], interval[2])
         chr_name = self.chr_bed_to_fasta_map.get(chr_name, chr_name)

@@ -23,11 +23,3 @@ repos:
         types: [python]
         pass_filenames: true
         require_serial: false
-
-      - id: mypy
-        name: mypy
-        entry: mypy dnallm/ --show-error-codes --pretty
-        language: system
-        types: [python]
-        pass_filenames: false
-        require_serial: true

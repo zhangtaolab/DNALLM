@@ -12,10 +12,10 @@ This interactive demo shows how to run inference with pre-trained DNA large lang
 
 ## Prerequisites
 
-Install DNALLM with the inference extras:
+Install DNALLM with the full extras:
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 Then launch the demo:
@@ -384,8 +384,8 @@ mo.vstack([chart], align='center', justify='center')
 
 ## See Also
 
-- [Basic Inference Notebook](example/notebooks/inference.md) — Static tutorial for model inference
-- [Benchmark Demo](example/marimo/benchmark/benchmark_demo.md) — Interactive multi-model benchmarking
-- [Inference User Guide](user_guide/inference/getting_started.md) — Comprehensive inference documentation
-- [DNAInference API](api/inference/inference.md) — API reference for the inference class
-- [Visualization API](api/inference/visualization.md) — API reference for attention plotting
+- [Basic Inference Notebook](../../notebooks/inference.md) — Static tutorial for model inference
+- [Benchmark Demo](../benchmark/benchmark_demo.md) — Interactive multi-model benchmarking
+- [Inference User Guide](../../../user_guide/inference/getting_started.md) — Comprehensive inference documentation
+- [DNAInference API](../../../api/inference/inference.md) — API reference for the inference class
+- [Visualization API](../../../user_guide/inference/visualization.md) — API reference for attention plotting

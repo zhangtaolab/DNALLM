@@ -14,7 +14,7 @@ This tutorial explains how to prepare input data for inference tasks with DNALLM
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 ## Supported Input Formats
@@ -42,7 +42,7 @@ configs = load_config("inference_config.yaml")
 model, tokenizer = load_model_and_tokenizer(
     model_name="zhangtaolab/plant-dnabert-BPE",
     task_config=configs['task'],
-    source="huggingface"
+    source="modelscope"
 )
 
 inferencer = DNAInference(

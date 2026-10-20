@@ -49,7 +49,9 @@ Set `task_type: "mask"` in your configuration.
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
 # Use a config with task_type: "mask"
-configs = load_config("config_mlm.yaml")
+configs = load_config(
+    "config_mlm.yaml"
+)  # illustrative name — no such file ships with the repo; supply your own config with task_type: "mask"
 
 model, tokenizer = load_model_and_tokenizer(
     "InstaDeepAI/nucleotide-transformer-500m-human-ref",
@@ -81,7 +83,7 @@ This score represents how likely the model thinks the sequence is, from start to
 Set `task_type: "generation"` in your configuration.
 ```python
 # Use a config with task_type: "generation"
-configs = load_config("config_clm.yaml")
+configs = load_config("./example/notebooks/generation/generation_config.yaml")
 
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnagpt-BPE-promoter", task_config=configs["task"], source="modelscope"
@@ -123,7 +125,7 @@ Let's analyze a model that predicts promoter strength (a regression task).
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
 # Config for a regression task
-configs = load_config("inference_config.yaml")
+configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_config.yaml")
 
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast",
@@ -152,11 +154,11 @@ The `Mutagenesis` class has built-in support for specialized generative models l
 from dnallm import load_config, load_model_and_tokenizer, Mutagenesis
 
 # Config for a generation task
-configs = load_config("inference_evo_config.yaml")
+configs = load_config("./example/notebooks/generation_evo_models/inference_evo_config.yaml")
 
 # Load an Evo model
 model, tokenizer = load_model_and_tokenizer(
-    "lgq12697/evo2_1b_base", task_config=configs["task"], source="modelscope"
+    "arcinstitute/evo2_1b_base", task_config=configs["task"], source="huggingface"
 )
 
 mut_analyzer = Mutagenesis(model=model, tokenizer=tokenizer, config=configs)

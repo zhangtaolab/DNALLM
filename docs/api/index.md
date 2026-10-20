@@ -9,7 +9,7 @@ This section provides auto-generated API documentation for all DNALLM modules.
   - [Automatic Loading](models/modeling_auto.md) - Auto model detection and loading
   - [Classification Heads](models/head.md) - Task-specific classification heads
   - [Tokenizers](models/tokenizer.md) - DNA tokenization utilities
-  - [Special Models](models/special/) - Specialized model implementations
+  - Special Models - Specialized model implementations (one page per family, below)
     - [Basenji2](models/special/basenji2.md) - Basenji-2 model support
     - [Borzoi](models/special/borzoi.md) - Borzoi model support
     - [DNABERT2](models/special/dnabert2.md) - DNABERT-2 model support

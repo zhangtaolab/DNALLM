@@ -18,7 +18,7 @@ This section provides a complete script for loading a generative model and perfo
 
 ### Setup
 
-First, ensure you have the necessary dependencies installed for the model you wish to use. For Evo models, this may include `evo-model` and `flash-attn`.
+First, ensure you have the necessary dependencies installed for the model you wish to use. For Evo models, this may include the model's own package (`evo2` for Evo-2, `evo-model` for Evo-1) and `flash-attn`.
 
 **`inference_evo_config.yaml`:**
 Create a configuration file that specifies the generation parameters.
@@ -49,11 +49,11 @@ configs = load_config("./inference_evo_config.yaml")
 
 # Specify the pre-trained generative model. Here, we use Evo-2.
 # You can replace this with other generative models like Mamba.
-model_name = "lgq12697/evo2_1b_base"
+model_name = "arcinstitute/evo2_1b_base"
 
 # Load the model and its corresponding tokenizer
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="modelscope"
+    model_name, task_config=configs["task"], source="huggingface"
 )
 
 # --- 2. Initialize Inference Engine ---

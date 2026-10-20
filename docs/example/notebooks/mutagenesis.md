@@ -14,7 +14,7 @@ This tutorial demonstrates saturation mutagenesis analysis: systematically mutat
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 ## Load Configuration and Model

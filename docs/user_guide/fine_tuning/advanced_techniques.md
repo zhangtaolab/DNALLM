@@ -143,16 +143,19 @@ class CustomTrainer:
         )
 
         self.scheduler = self._get_scheduler()
-        self.scaler = torch.cuda.amp.GradScaler() if config["finetune"].bf16 else None
+        # GradScaler is the fp16 companion (bf16 needs no loss scaling)
+        self.scaler = torch.cuda.amp.GradScaler() if config["finetune"].fp16 else None
 
     def _get_scheduler(self):
         """Get learning rate scheduler."""
+        from transformers import get_scheduler
+
         num_training_steps = (
             len(self.train_dataset) // self.config["finetune"].per_device_train_batch_size
         )
         num_warmup_steps = int(num_training_steps * self.config["finetune"].warmup_ratio)
 
-        return torch.optim.lr_scheduler.get_scheduler(
+        return get_scheduler(
             name=self.config["finetune"].lr_scheduler_type,
             optimizer=self.optimizer,
             num_warmup_steps=num_warmup_steps,
@@ -328,6 +331,7 @@ Implement gradient checkpointing to reduce memory usage.
 ```yaml
 # Enable gradient checkpointing in configuration
 finetune:
+  gradient_checkpointing: true
 ```
 
 ### Memory Efficient Attention

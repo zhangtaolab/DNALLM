@@ -58,7 +58,7 @@ def run_command(
         description: Human-readable description of the check.
         verbose: Whether to show full command output.
         check: If False, treat failures as warnings (do not set overall_success=False).
-               Used for informational checks like mypy that match CI's `|| true`.
+               Used for informational checks that match CI's advisory layers.
     """
     print_status("INFO", f"Running: {description}")
     if verbose:
@@ -133,7 +133,7 @@ def check_environment() -> bool:
                 return False
 
     # Check required tools
-    required_tools = ["ruff", "pytest", "mypy"]
+    required_tools = ["ruff", "pytest"]
     missing = []
     for tool in required_tools:
         try:
@@ -172,7 +172,7 @@ CI-Matching Checks:
   1. ruff format --check .
   2. ruff check . --statistics
   3. pytest tests/ -m "not slow" --cov=dnallm --cov-report=term-missing
-  4. mypy dnallm/ --show-error-codes --pretty (informational, non-blocking)
+  4. ty check dnallm/ via `uvx ty@0.0.84` (type gate; D-09 flip 2026-10-17)
         """,
     )
     parser.add_argument(
@@ -263,16 +263,9 @@ CI-Matching Checks:
 
     run_step(test_cmd, test_description)
 
-    # --- Step 4: MyPy (informational, matches CI's `|| true`) ---
-    mypy_cmd = [
-        "mypy",
-        "dnallm/",
-        "--show-error-codes",
-        "--pretty",
-        "--exclude=dnallm/tasks/metrics/",
-    ]
-    # Non-blocking: CI uses `|| true`, so we don't fail the script on mypy errors
-    run_step(mypy_cmd, "MyPy type checking (informational)", check=False)
+    # --- Step 4: ty (hard type gate — D-09 flip 2026-10-17; mypy retired) ---
+    ty_cmd = ["uvx", "ty@0.0.84", "check", "dnallm/"]
+    run_step(ty_cmd, "ty type checking (CI-matching hard gate)")
 
     # --- Step 5: Documentation Verification (optional) ---
     if args.docs:

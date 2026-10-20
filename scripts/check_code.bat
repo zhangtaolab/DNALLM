@@ -111,9 +111,9 @@ if !errorlevel! neq 0 (
 )
 echo.
 
-REM 4. Type Checking with MyPy
-echo [INFO] 4. Running type checking with MyPy...
-call mypy dnallm/ --ignore-missing-imports --no-strict-optional --disable-error-code=var-annotated --disable-error-code=assignment --disable-error-code=return-value --disable-error-code=arg-type --disable-error-code=index --disable-error-code=attr-defined --disable-error-code=operator --disable-error-code=call-overload --disable-error-code=valid-type --disable-error-code=no-redef --disable-error-code=dict-item --disable-error-code=return --disable-error-code=unreachable --disable-error-code=misc --disable-error-code=import-untyped
+REM 4. Type Checking with ty (D-09 flip 2026-10-17; mypy retired)
+echo [INFO] 4. Running type checking with ty...
+call uvx ty@0.0.84 check dnallm/
 if !errorlevel! neq 0 (
     echo [ERROR] Type checking failed
     set OVERALL_SUCCESS=false

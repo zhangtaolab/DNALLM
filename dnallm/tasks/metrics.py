@@ -155,7 +155,12 @@ def classification_metrics(plot: bool = False):
         metrics["mcc"] = matthews_corrcoef(labels, predictions)
         metrics["AUROC"] = roc_auc_score(labels, pred_probs[:, 1])
         metrics["AUPRC"] = average_precision_score(labels, pred_probs[:, 1])
-        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(labels, predictions).ravel()
+        # Pin the binary label set: a collapsed predictor (all one class)
+        # otherwise returns a 1-element confusion matrix and the 4-way
+        # unpack below raises "not enough values to unpack".
+        tn, fp, fn, tp = sklearn.metrics.confusion_matrix(
+            labels, predictions, labels=[0, 1]
+        ).ravel()
         metrics["TPR"] = tp / (tp + fn) if (tp + fn) > 0 else 0
         metrics["TNR"] = tn / (tn + fp) if (tn + fp) > 0 else 0
         metrics["FPR"] = fp / (fp + tn) if (fp + tn) > 0 else 0
@@ -200,7 +205,9 @@ def regression_metrics(plot: bool = False) -> Callable:
             yp = y_pred[:, k]
             if np.std(yt) == 0:
                 continue
-            r = pearson_metric.compute(predictions=yp.tolist(), references=yt.tolist())["pearsonr"]
+            r = cast(dict, pearson_metric.compute(predictions=yp.tolist(), references=yt.tolist()))[  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                "pearsonr"
+            ]
             rs.append(r)
         return np.mean(rs), rs
 
@@ -211,7 +218,9 @@ def regression_metrics(plot: bool = False) -> Callable:
             yp = y_pred[:, k]
             if np.std(yt) == 0:
                 continue
-            r = spm_metric.compute(predictions=yp.tolist(), references=yt.tolist())["spearmanr"]
+            r = cast(dict, spm_metric.compute(predictions=yp.tolist(), references=yt.tolist()))[  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                "spearmanr"
+            ]
             rs.append(r)
         return np.mean(rs), rs
 
@@ -234,11 +243,11 @@ def regression_metrics(plot: bool = False) -> Callable:
             }
         else:
             logits_flat = logits.flatten() if hasattr(logits, "flatten") else logits
-            mse = mse_metric.compute(references=labels, predictions=logits_flat)
-            mae = mae_metric.compute(references=labels, predictions=logits_flat)
-            r2 = r2_metric.compute(references=labels, predictions=logits_flat)
-            spearmanr = spm_metric.compute(references=labels, predictions=logits_flat)
-            metrics = {**mse, **mae, "r2": r2, **spearmanr}
+            mse = mse_metric.compute(references=labels, predictions=logits_flat)  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            mae = mae_metric.compute(references=labels, predictions=logits_flat)  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            r2 = r2_metric.compute(references=labels, predictions=logits_flat)  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            spearmanr = spm_metric.compute(references=labels, predictions=logits_flat)  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            metrics = {**cast(dict, mse), **cast(dict, mae), "r2": r2, **cast(dict, spearmanr)}
             if plot:
                 # Fix: logits is already a numpy array,
                 # no need to call .numpy()
@@ -540,7 +549,7 @@ def token_classification_metrics(
 
     def compute_metrics(pred: tuple) -> dict:
         predictions, labels = pred
-        predictions = np.argmax(predictions, axis=-1)
+        predictions = cast(np.ndarray, np.argmax(predictions, axis=-1))
 
         # 将id转换为原始的字符串类型的标签
         true_predictions = [
@@ -561,11 +570,14 @@ def token_classification_metrics(
             for prediction, label in zip(predictions, labels, strict=False)
         ]
 
-        result = seqeval.compute(
-            predictions=true_predictions,
-            references=true_labels,
-            mode="strict",
-            scheme=scheme,
+        result = cast(
+            dict,
+            seqeval.compute(  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                predictions=true_predictions,
+                references=true_labels,
+                mode="strict",
+                scheme=scheme,
+            ),
         )
 
         return _emit({
@@ -591,7 +603,7 @@ def preprocess_logits_for_metrics(logits: torch.Tensor, labels: torch.Tensor) ->
     Returns:
         Tuple of (processed_logits, labels)
     """
-    logits = logits[0] if isinstance(logits, tuple) else logits  # type: ignore[unreachable]
+    logits = logits[0] if isinstance(logits, tuple) else logits
 
     return logits
 
@@ -629,9 +641,9 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
     def compute_metrics(eval_pred: tuple) -> dict[str, Any]:
         logits, labels = eval_pred
         if task.lower() == "regression":
-            r2 = r2_metric.compute(references=labels, predictions=logits[0])
-            spearman = spm_metric.compute(references=labels, predictions=logits[0])
-            return _emit({"r2": r2, "spearmanr": spearman["spearmanr"]})
+            r2 = r2_metric.compute(references=labels, predictions=logits[0])  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            spearman = spm_metric.compute(references=labels, predictions=logits[0])  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+            return _emit({"r2": r2, "spearmanr": cast(dict, spearman)["spearmanr"]})
         else:
             if task.lower() == "classification":
                 predictions = torch.argmax(torch.from_numpy(logits[0]), dim=-1)
@@ -644,29 +656,29 @@ def metrics_for_dnabert2(task: str) -> tuple[Callable, Callable]:
             else:
                 pred_probs = softmax(logits[0], axis=1)
                 pred_list: list[int] = [x.tolist().index(max(x)) for x in pred_probs]
-                precision = metric1.compute(
+                precision = metric1.compute(  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
                     predictions=pred_list, references=labels, average="micro"
                 )
-                recall = metric2.compute(predictions=pred_list, references=labels, average="micro")
-                f1 = metric3.compute(predictions=pred_list, references=labels, average="micro")
-                mcc = metric4.compute(predictions=pred_list, references=labels)
-                roc_auc_ovr = roc_metric.compute(
+                recall = metric2.compute(predictions=pred_list, references=labels, average="micro")  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                f1 = metric3.compute(predictions=pred_list, references=labels, average="micro")  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                mcc = metric4.compute(predictions=pred_list, references=labels)  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
+                roc_auc_ovr = roc_metric.compute(  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
                     references=labels,
                     prediction_scores=pred_probs,
                     multi_class="ovr",
                 )
-                roc_auc_ovo = roc_metric.compute(
+                roc_auc_ovo = roc_metric.compute(  # ty: ignore[missing-argument]  # evaluate rebinds self.compute via types.MethodType in __init__
                     references=labels,
                     prediction_scores=pred_probs,
                     multi_class="ovo",
                 )
                 return _emit({
-                    **precision,
-                    **recall,
-                    **f1,
-                    **mcc,
-                    "AUROC_ovr": roc_auc_ovr["roc_auc"],
-                    "AUROC_ovo": roc_auc_ovo["roc_auc"],
+                    **cast(dict, precision),
+                    **cast(dict, recall),
+                    **cast(dict, f1),
+                    **cast(dict, mcc),
+                    "AUROC_ovr": cast(dict, roc_auc_ovr)["roc_auc"],
+                    "AUROC_ovo": cast(dict, roc_auc_ovo)["roc_auc"],
                 })
 
     preprocessing = preprocess_logits_for_metrics

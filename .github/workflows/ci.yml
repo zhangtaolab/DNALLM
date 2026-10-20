@@ -6,6 +6,7 @@ on:
       - main
       - master
       - dev
+      - v1.3
       # 2026-10-07 lesson: the matrix legs run on push/PR only, so a
       # long-lived working branch that never opens PRs reaches the merge
       # to dev with ZERO matrix exposure -- the v1.1 merge surfaced three
@@ -14,6 +15,13 @@ on:
       # only and the nightly legs stay dispatch/schedule-gated.
       # 2026-10-10: same reasoning for the v1.2 revision branch.
       # 2026-10-10: phs and revision both deleted; entries removed.
+      # 2026-10-15: temporary v1.3 milestone-closeout vehicle (the 2026-10-07
+      # lesson applied -- the matrix legs need push/PR exposure on the
+      # working branch for first-exposure-free merge evidence). Nightly legs
+      # stay cron/workflow_dispatch-gated (D-19) so these pushes never reach
+      # the self-hosted box; deploy stays main/master-only. Removal decision
+      # recorded at phase-19 closeout in 19-EVIDENCE.md -- the entry stays
+      # until the actual merge to main or explicit owner removal.
   pull_request:
     branches: [ main, master, dev ]
   workflow_dispatch:
@@ -81,7 +89,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          uv pip install -e ".[full]"
 
       - name: Install specific numpy version
         run: |
@@ -125,11 +133,6 @@ jobs:
             rm tests/test_ci_exitcode_canary.py
           fi
 
-      - name: Run type checking
-        run: |
-          source .venv/bin/activate
-          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
-          
   test-windows:
     # Windows platform leg: the hosted matrix is linux-only today, yet the
     # package claims "Operating System :: OS Independent" and the primary dev
@@ -166,7 +169,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          uv pip install -e ".[full]"
 
       - name: Run linting and code quality checks with Ruff
         run: |
@@ -204,18 +207,13 @@ jobs:
             rm tests/test_ci_exitcode_canary.py
           fi
 
-      - name: Run type checking
-        run: |
-          source .venv/Scripts/activate
-          mypy dnallm/ --show-error-codes --pretty --exclude=dnallm/tasks/metrics/ || true
-
   test-cuda:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'pull_request'
     strategy:
       matrix:
         python-version: ['3.11']
-        cuda-version: ['12.1', '12.4']
+        cuda-version: ['13.0']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -260,11 +258,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          if [ "${{ matrix.cuda-version }}" = "12.1" ]; then
-            uv pip install -e ".[base,cuda121]"
-          elif [ "${{ matrix.cuda-version }}" = "12.4" ]; then
-            uv pip install -e ".[base,cuda124]"
-          fi
+          uv pip install -e ".[full,cuda130]"
           
       - name: Run GPU-enabled tests
         run: |
@@ -287,7 +281,7 @@ jobs:
     # The recurring per-run CUDA kernel source build is the long pole
     # (--no-cache-dir plus a fresh uv venv per run bypass all wheel caching, so
     # the mamba-ssm/causal_conv1d compile repeats every run, not just the
-    # first). 180min covers a worst-case GB10 build plus the .[base]
+    # first). 180min covers a worst-case GB10 build plus the .[full]
     # install plus the `not slow` census with headroom. Self-hosted jobs have
     # no platform time cap, so this backstop is the only protection against a
     # hung build monopolizing the single runner that also serves
@@ -323,7 +317,7 @@ jobs:
 
       - name: Create virtual environment and install mamba dependencies
         if: steps.gpu-check.outputs.has_gpu == 'true'
-        # .[base] plus the fla extra, not .[test,dev]: the not-slow census
+        # .[full] plus the fla extra, not .[test,dev]: the not-slow census
         # imports mcp-extra deps (langchain / langchain_mcp_adapters /
         # pydantic-ai / nest-asyncio in the mcp_example notebooks, and the
         # exceptiongroup backport at tests/mcp/test_client_sdk.py, pulled in
@@ -334,13 +328,17 @@ jobs:
         # torch/triton (no backend extras). Same extras set coverage-nightly
         # installs; it proves they resolve green on this exact box.
         run: |
-          uv venv
+          # run 38678158479: unpinned `uv venv` prefers uv-managed
+          # interpreters, so the newest one installed on this persistent box
+          # silently replaced setup-python's 3.11. Pin to the exact
+          # toolcache interpreter the job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
           # 37184990854): see the example-nightly stage-0 comment — sysconfig
           # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
           # at the runner's real toolcache lib.
           export LDFLAGS="-L$(python -c 'import sys; print(sys.prefix)')/lib"
-          uv pip install -e ".[base,fla]"
+          uv pip install -e ".[full,fla]"
           uv pip install -e ".[mamba]" --no-cache-dir --no-build-isolation
 
       # No continue-on-error here: a failing mamba test must fail the job.
@@ -407,7 +405,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
           uv venv
-          uv pip install -e ".[base]"
+          uv pip install -e ".[full]"
 
       - name: Install specific numpy version
         run: |
@@ -424,20 +422,24 @@ jobs:
           source .venv/bin/activate
           python scripts/audit_skips.py pytest-junit-gate.xml tests/expected_skips.yaml
 
-      - name: "Run type checking (ty, advisory — D-08)"
-        # D-08: ty runs as an advisory standalone step (seconds-scale, same
-        # layer as the ruff statistics step) until the E-family triage quick
-        # task reaches zero diagnostics; failures here never red the gate
-        # prematurely. Exact-pinned invocation (never floating) — no
-        # pyproject dependency added.
-        # D-09: the ty hard flip and the mypy retirement land together in
-        # ONE later atomic change — this phase touches nothing mypy (the
-        # existing advisory mypy steps, pre-commit, check_code.py, and
-        # [tool.mypy] stay untouched).
+      - name: "Run type checking (ty, hard gate — pinned stub env)"
+        # D-08/D-09 (v1.1 Phase 9) discharged 2026-10-17 (Phase 21): the
+        # 232-diagnostic baseline cleared to zero (real fixes + line-level
+        # `# ty: ignore[code]` pragmas for library dynamics — no severity
+        # overrides, no new [tool.ty.src] excludes), so ty hardens here and
+        # mypy retires in the same atomic change. The gate runs against a
+        # PINNED stub environment (ty-stub-constraints.txt): CI re-resolves
+        # fresh every run, and unpinned typing-bearing packages drifted the
+        # diagnostic set three times on flip day — the pinned surface makes
+        # upstream releases unable to flap the gate (bump deliberately, per
+        # the constraints file header).
         # D-10: static checks never enter pytest (lint lane, not behavior).
         run: |
           source .venv/bin/activate
-          uvx ty@0.0.84 check dnallm/ || true
+          uv venv /tmp/ty-stub-env --python 3.12
+          uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" \
+            -c .github/workflows/ty-stub-constraints.txt
+          uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env
 
   coverage-nightly:
     name: coverage-nightly (py3.12, full suite incl. slow)
@@ -468,7 +470,7 @@ jobs:
     # ~3920 min over ALL marks — dominated by tests/examples execution
     # marks (13x7200s class + 8 gated 3600/7200s + 3x7200s marimo +
     # 4x3600s script + showcase 2400+5400+2400s) that typed-skip at gate
-    # time in this job's .[base,fla] venv (no megaDNA/mamba/giants prereqs
+    # time in this job's .[full,fla] venv (no megaDNA/mamba/giants prereqs
     # — example-nightly's lane); the bind-here set (real-model 5x1800s +
     # remote-code 1800s + PlantHelixSeek smokes 2x1800s + trainer
     # 2x7200s+3x3600s+7200s fn + inference 3600s + model 2x900s + mcp
@@ -525,7 +527,11 @@ jobs:
           UV_HTTP_TIMEOUT: 300
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
-          uv venv
+          # run 38678158479: unpinned `uv venv` prefers uv-managed
+          # interpreters, so the newest one installed on this persistent box
+          # silently replaced setup-python's 3.12. Pin to the exact
+          # toolcache interpreter the job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig sdist -lpython link fix (261004-dyw fallout, run
           # 37184990854): see the example-nightly stage-0 comment — sysconfig
           # bakes a nonexistent /opt/hostedtoolcache LIBDIR; point the linker
@@ -534,7 +540,7 @@ jobs:
           # fla included (WR-01): this is the only leg running the full suite
           # with the two slow PlantHelixSeek checkpoint smokes — without fla
           # those loads exercise the remote code's silent non-KDA fallback.
-          uv pip install -e ".[base,fla]"
+          uv pip install -e ".[full,fla]"
 
       - name: Install specific numpy version
         run: |
@@ -617,8 +623,11 @@ jobs:
     #              is pinned; any census drift fails the job before stage 1
     #   stage 1    torch-heavy example execution FIRST (ACTIVE notebooks +
     #              showcase + marimo + script lane + YAML leg; the two
-    #              mcp_example ids are deselected — they belong to stage 2 —
-    #              and the giants-marked evo execution test is deselected
+    #              mcp_example gated ids stay collected in this batch and
+    #              typed-skip via the in-gate D-13 probe when the model
+    #              service and MCP server are down — Phase 13 D-04,
+    #              2026-10-11, self-healing where both are up — and the
+    #              giants-marked evo execution test is deselected
     #              per D-01 owner policy; dispatch/manual lane runs it with
     #              -m giants)
     #   stage 1.5  hygiene step (D-13, hard gate): kernel pkill + >=35Gi
@@ -627,10 +636,9 @@ jobs:
     #              no memory through it)
     #   stage 2    MCP live-server probes on :8000 (wired in 08-09: 3
     #              streamable-http probes, sse restart, 3 sse probes)
-    #   stage 2.5  hygiene step (D-13, hard gate) before the ollama batch:
-    #              same kernel pkill + memory floor + value logging
-    #   stage 3    ollama batch LAST (wired in 08-09: fresh streamable-http
-    #              server + the two mcp_example ids; D-13 probe in-gate)
+    #   stage 2.5  hygiene step (D-13, hard gate) as end-of-run hygiene
+    #              before the stage-4 audits: same kernel pkill + memory
+    #              floor + value logging
     #   stage 4    junit skip audit + artifact upload + fail-soft summary
     # Stages run serially inside one job by design; a server-binding stage
     # may never start while the previous stage still holds GPU memory or
@@ -654,20 +662,19 @@ jobs:
     #     the FINAL run's cache HIT (build step 1s) — the wheels finally
     #     amortized, so steady state skips the source build
     #   stage 0.5 census assertion              4s (collect 1.28s)
-    #   stage 1 examples+YAML                   1:57-2:00 every run (192P/1S/9
-    #     deselected; D-05 epochs-cut measured: gated
-    #     finetune_custom_head 566s vs the ~31min 3-epoch dev-box figure)
+    #   stage 1 examples+YAML                   1:57-2:00 every run pre-
+    #     Phase-13 (192P/1S/9 deselected); post Phase-13 D-04 (2026-10-11)
+    #     the expected shape is +6 static passes re-admitted and +2 typed
+    #     skips (the D-13 retry window burns ~60s/test under refused-
+    #     connection conditions — measured 117s for the pair locally; do
+    #     NOT shrink the window, it is the D-13 contract distinguishing a
+    #     warming service from an absent one); D-05 epochs-cut measured:
+    #     gated finetune_custom_head 566s vs the ~31min 3-epoch dev-box
+    #     figure)
     #   stage 1.5/2.5 hygiene floors            5-6s each (~115Gi avail)
     #   stage 2 streamable + sse probes         ~40s each post-fix (the
     #     17:58 sse figure in run 37345067326 was the pre-fix always-fail
     #     probe, never server cost)
-    #   stage 3 mcp pair                        qwen3.8-era: 2P in 442-449s
-    #     with a >30-min latency tail that red run 37406829738 at the old
-    #     1800s cell line (owner decision B -> 3600s cell + 7200s outer);
-    #     after the qwen3.5:4b swap (owner 2026-10-06 15:27 CST): 2P in
-    #     87s (final run 37432001711) — D-06 num_ctx cut stays DEFERRED
-    #     (the 4.2B brain still defaults to a 262144 ctx); revisit with
-    #     these numbers
     #   stage 4 audits+upload+summary           seconds
     #   TOTAL measured pipeline                 2:43 incl. wheelhouse build
     #     (37377004230) / 2:09:55 with the cache hit (37432001711, the
@@ -724,7 +731,15 @@ jobs:
           UV_HTTP_TIMEOUT: 300
           UV_CONCURRENT_DOWNLOADS: 4
         run: |
-          uv venv
+          # run 38678158479 (repo-caused red, root cause): an unpinned
+          # `uv venv` prefers uv-managed interpreters, so the newest one
+          # installed on this persistent box (cpython-3.13.16, picked up
+          # 2026-10-14 mid-cycle) silently replaced setup-python's 3.12 —
+          # Stage 0 then restored the cp311 wheelhouse saved earlier by the
+          # py3.11-discovered venv (run 38400225941) and died in 15ms on the
+          # wheel-tag mismatch. Pin to the exact toolcache interpreter the
+          # job label claims.
+          uv venv --python "$pythonLocation/bin/python"
           # pyBigWig (pulled by pygenometracks in the notebook extra since
           # 261004-dyw) builds from sdist on aarch64 — no arm64 wheels —
           # and its extension links -lpython against the LIBDIR the
@@ -740,7 +755,7 @@ jobs:
           # the script lane), mcp (server stack for stage 2). System
           # binaries such as bedtools are handled by the rootless
           # install/fallback step below (08-09, D-10's job-step clause).
-          uv pip install -e ".[base,fla,dev,mcp]"
+          uv pip install -e ".[full,fla,dev,mcp]"
           : > stage-results.txt
 
       - name: Cache bedtools rootless prefix
@@ -781,9 +796,14 @@ jobs:
 
       - name: "Stage 0: capture wheel-cache key versions"
         id: wheelkeys
+        # The py tag is load-bearing (run 38678158479): the wheelhouse cache
+        # keyed only on arch+torch, so a wheelhouse built under one venv
+        # python restored into another and Stage 0 failed on the wheel-tag
+        # mismatch with nothing in the key explaining it.
         run: |
           {
             echo "torch=$(.venv/bin/python -c 'import torch; print(torch.__version__)')"
+            echo "py=$(.venv/bin/python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')"
           } >> "$GITHUB_OUTPUT"
 
       # D-04 (owner directive 2026-10-05): evo/giants exited the pytest
@@ -797,7 +817,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: wheelhouse-mamba
-          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-torch${{ steps.wheelkeys.outputs.torch }}
+          key: mamba-conv1d-1.7.0-ssm-2.3.2.post1-${{ runner.arch }}-${{ steps.wheelkeys.outputs.py }}-torch${{ steps.wheelkeys.outputs.torch }}
 
       - name: "Stage 0: build/install mamba kernels (cached wheelhouse, project venv)"
         # Cached-wheelhouse variant of the test-mamba install flags
@@ -860,11 +880,11 @@ jobs:
         # directly (stage-0-area contract: honest failure, no fail-soft).
         run: |
           .venv/bin/python -m pytest tests/examples --collect-only -q \
-            -m "not giants" -k "not mcp_example" 2>/dev/null | tee census-collect.txt | tail -1
+            -m "not giants" 2>/dev/null | tee census-collect.txt | tail -1
           MEASURED=$(tail -1 census-collect.txt | sed -E 's/^=+ *//; s/ *=+$//; s/ in [0-9.]+s?$//')
           echo "census collection measured: ${MEASURED}"
-          if ! tail -1 census-collect.txt | grep -qE '^=* *208/217 tests collected \(9 deselected\) in '; then
-            echo "FAIL: census collection mismatch (D-03) — expected triple: 208/217 tests collected (9 deselected); measured line: $(tail -1 census-collect.txt)"
+          if ! tail -1 census-collect.txt | grep -qE '^=* *216/217 tests collected \(1 deselected\) in '; then
+            echo "FAIL: census collection mismatch (D-03) — expected triple: 216/217 tests collected (1 deselected); measured line: $(tail -1 census-collect.txt)"
             cat census-collect.txt
             exit 1
           fi
@@ -877,11 +897,18 @@ jobs:
         # records pytest's exit code (pipefail, test-mamba precedent)
         # while the full text lands in the stage*.log files that the
         # always-upload carries.
+        # Phase 13 D-04 (2026-10-11): no deselect — the two mcp_example
+        # gated ids stay collected in this batch; the in-gate D-13 probe
+        # typed-skips them ("network-unavailable:" with live probe
+        # evidence, allowlisted in tests/expected_skips.yaml) when the
+        # model service and MCP server are down, and they execute for
+        # real wherever both are up (self-healing; the stage-3 batch that
+        # once brought the stack up is deleted — marker at its site).
         run: |
           set +e
           set -o pipefail
           .venv/bin/python -m pytest tests/examples -q --junitxml=pytest-junit-example-stage1.xml \
-            -k "not mcp_example" -m "not giants" 2>&1 | tee stage1-examples.log
+            -m "not giants" 2>&1 | tee stage1-examples.log
           rc=$?
           echo "stage1-examples=$rc" >> stage-results.txt
           .venv/bin/python -m pytest tests/configuration/test_yaml_load.py -q \
@@ -987,11 +1014,11 @@ jobs:
           kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
           exit 0
 
-      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-ollama)"
-        # Same named hygiene step (D-13) before the ollama batch: stray
-        # ipykernel children die, memory settles before qwen3.5:4b's ~3.3GB
-        # weights come under load in stage 3, and the free -g available
-        # floor is a HARD gate — nvidia-smi stays telemetry-only (GB10
+      - name: "Stage 2.5: hygiene — kernel cleanup + memory floor assertion (D-13, pre-audit)"
+        # Same named hygiene step (D-13) as end-of-run hygiene before the
+        # stage-4 audits: stray ipykernel children die after the stage-2
+        # server legs, memory settles, and the free -g available floor
+        # is a HARD gate — nvidia-smi stays telemetry-only (GB10
         # reports no memory through it).
         run: |
           echo "before: $(LC_ALL=C free -g | awk '/^Mem:/{print $7"Gi available"}')"
@@ -1009,51 +1036,29 @@ jobs:
           echo "after:  ${AVAIL_GI}Gi available"
           nvidia-smi --query-gpu=memory.used,memory.total --format=csv || echo "nvidia-smi MISSING (telemetry only on GB10)"
           if [ "${AVAIL_GI}" -lt 35 ]; then
-            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the ollama batch — 08-08/08-09 discipline)"
+            echo "FAIL: only ${AVAIL_GI}Gi available (floor 35Gi before the stage-4 audits — 08-08/08-09 discipline)"
             exit 1
           fi
 
-      # ── Stage 3: ollama batch ──────────────────────────────────────────
-      # D-07 ordering: ollama runs last so its daemon never coexists with
-      # the stage-1 GPU load. The D-13 readiness probe (~60s retry window
-      # over 127.0.0.1:11434/api/tags) lives INSIDE the gate
-      # (_gate_ollama_stack) — ollama itself is the owner-enabled systemd
-      # unit (scripts/runner/README.md); when it is down the pair degrades
-      # honestly to network-unavailable typed skips carrying both probe
-      # results. The MCP server must be UP here too (the notebooks' gate
-      # probes :8000/mcp), so stage 3 starts a fresh streamable-http
-      # instance — the D-07 architecture keeps exactly one :8000 server at
-      # a time and stops it after the pair.
-      - name: "Stage 3: mcp pair (ollama + MCP server up, D-13 probe in the tests)"
-        run: |
-          set +e
-          set -o pipefail
-          .venv/bin/dnallm-mcp-server --config dnallm/mcp/configs/mcp_server_config.yaml \
-            --transport streamable-http > mcp-server-stage3.log 2>&1 &
-          SERVER_PID=$!
-          for i in $(seq 1 90); do
-            curl -s -o /dev/null -m 2 http://localhost:8000/mcp && break
-            sleep 10
-          done
-          if curl -s -o /dev/null -m 2 http://localhost:8000/mcp; then
-            .venv/bin/python -m pytest tests/examples/test_notebook_execution.py -k "mcp_example" -q -rs \
-              --junitxml=pytest-junit-mcp-stage3.xml 2>&1 | tee stage3-mcp-pair.log
-            echo "stage3-mcp-pair=$?" >> stage-results.txt
-          else
-            echo "MCP server (stage 3) never became ready — see mcp-server-stage3.log"
-            echo "stage3-mcp-pair=1" >> stage-results.txt
-          fi
-          kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true
-          pkill -f ipykernel_launcher || true
-          exit 0
+      # ── Stage 3: DELETED ───────────────────────────────────────────────
+      # D-04 (2026-10-11, Phase 13): the stage-3 ollama batch step that
+      # stood here — fresh streamable-http MCP server + the two gated
+      # mcp_example ids re-run with the stack up — is deleted per the
+      # owner's ollama-surface directive. No stage starts the model
+      # service or an MCP server for the pair anymore: they stay
+      # collected in stage 1 and the self-healing D-13 gate typed-skips
+      # them ("network-unavailable:" with live probe evidence) when the
+      # stack is down, executing for real wherever it is up. Restore
+      # path: re-add a stage-3-shaped batch (fresh server + the gated
+      # pair) — the committed scripts/runner/ollama.service unit and the
+      # in-gate probe wiring stay in-repo and pinned green.
 
       - name: "Stage 4: junit skip audits (fail-soft)"
         if: always()
         run: |
           set +e
           for junit in pytest-junit-example-stage1.xml pytest-junit-yaml-stage1.xml \
-            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml \
-            pytest-junit-mcp-stage3.xml; do
+            pytest-junit-mcp-stage2-streamable.xml pytest-junit-mcp-stage2-sse.xml; do
             if [ -f "$junit" ]; then
               .venv/bin/python scripts/audit_skips.py "$junit" tests/expected_skips.yaml
               echo "stage4-audit-$junit=$?" >> stage-results.txt
@@ -1138,7 +1143,7 @@ jobs:
           UV_CONCURRENT_DOWNLOADS: 1
         run: |
           uv venv
-          uv pip install -e ".[base,docs]"
+          uv pip install -e ".[full,docs]"
           
       - name: Deploy documentation to GitHub Pages
         run: |

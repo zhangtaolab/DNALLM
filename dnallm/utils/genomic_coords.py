@@ -157,7 +157,7 @@ def fetch_sequence(fa, chrom: str, start: int, end: int, *, uppercase: bool = Tr
     from_path = isinstance(fa, (str, Path))
     created_index: Path | None = None
     if from_path:
-        import pyfastx
+        import pyfastx  # ty: ignore[unresolved-import]  # compiled .so ext, resolves at runtime
 
         # pyfastx builds (or reuses) a <fasta>.fxi index beside the file; one
         # that already exists belongs to the caller and is never removed.

@@ -165,10 +165,10 @@ for curve_type, chart in pline_dict.items():
 ### Problem: Plots are not displayed in my notebook.
 - **Solution**: Ensure you are in a Jupyter Notebook or JupyterLab environment. The Altair library requires a rich frontend to render charts. If you are in a different environment, you must use the `save_path` argument to save the plot to a file.
 
-### Problem: `ImportError: ... not installed` (e.g., `umap`, `sklearn`).
-- **Solution**: Some plotting features have optional dependencies. `plot_hidden_states` requires `scikit-learn` for PCA/t-SNE and `umap-learn` for UMAP. Install the required package:
+### Problem: `ImportError: ... not installed` (e.g., `pacmap`).
+- **Solution**: `scikit-learn` (PCA/t-SNE) and `umap-learn` (UMAP) install with dnallm as core dependencies; the one optional reducer dependency is `pacmap` (imported only when `reducer="PaCMAP"`):
   ```bash
-  pip install scikit-learn umap-learn
+  pip install pacmap
   ```
 
 ### Problem: Saved plots are too small or have overlapping text.

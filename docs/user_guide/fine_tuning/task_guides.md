@@ -62,7 +62,7 @@ config = load_config("binary_classification_config.yaml")
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load dataset
@@ -144,7 +144,7 @@ CGCGCGCGCGCG,3
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load multi-class dataset
@@ -219,7 +219,7 @@ TATATATATATA,"1,1,0,0,1"
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load multi-label dataset
@@ -293,7 +293,7 @@ TATATATATATA,0.67
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load regression dataset
@@ -366,7 +366,7 @@ TATATATATATA,TATATATATATA
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnagpt-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load generation dataset
@@ -442,7 +442,7 @@ TATATATATATA,TATATATATATA
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load MLM dataset
@@ -519,7 +519,7 @@ TATATATATATA,"O O O O O O O O O O O O"
 model, tokenizer = load_model_and_tokenizer(
     "zhangtaolab/plant-dnabert-BPE",
     task_config=config["task"],
-    source="huggingface",
+    source="modelscope",
 )
 
 # Load token classification dataset

@@ -1,368 +1,275 @@
 # Feature Research
 
-**Domain:** Paper-revision-driven capabilities for a DNA-language-model toolkit (eval hygiene, PEFT adapters, probing, zero-shot VEP, multi-seed protocol, motif scanning, MCP tools)
-**Researched:** 2026-10-09
-**Confidence:** HIGH for PEFT IA³ (official docs, fetched directly) and FIMO scanning semantics (official MEME docs); MEDIUM for everything else (cross-checked across ≥2 independent sources — papers, official library docs, GitHub issues); individually noted LOW where only single/indirect sources exist
+**Domain:** Platform parity, packaging honesty, publish-chain robustness, and docs accuracy for a distributed DNA-LM toolkit (dnallm v1.3 "Platform Reach & Packaging Honesty")
+**Researched:** 2026-10-11
+**Confidence:** HIGH for internal repo facts (pyproject extras inventory, publish.yml, WINDOWS ledger #11/#12/#18/#19/#20, parity-spike verdicts — read directly); MEDIUM for ecosystem claims cross-verified across ≥2 independent sources (official docs + secondary); individually noted LOW where only single/indirect sources exist
 
-"Features" here are the REV-01…REV-11 candidate requirements from `.planning/research/261009-paper-revision-suite-plan.md`. "Users" are (a) the dnallmmark benchmark pipeline re-running E1'–E8', (b) the paper revision itself (reply-letter evidence), and (c) ordinary dnallm library users. Every section answers: how do comparable bio-ML tools implement this behavior, what is table stakes vs differentiator vs anti-feature, how complex is it, and what existing dnallm machinery does it sit on — so REQUIREMENTS.md can scope each REV testable and atomic.
+"Features" here are the v1.3 target capabilities from PROJECT.md §Current Milestone. "Users" are (a) Windows-local researchers running the example tree natively, (b) pip/uv installers choosing an install lane, (c) PyPI consumers of the published wheel, (d) maintainers operating the release chain, and (e) the paper/benchmark pipeline needing the frozen metrics (jaccard=0.3247, exon_f1=0.7522) to keep meaning the same thing on every platform. Every section answers: how do comparable mature packages implement this behavior, what is table stakes vs differentiator vs anti-feature, how complex is it, and which existing dnallm machinery does it sit on — so REQUIREMENTS.md can scope each item testable and atomic.
 
 ---
 
-## REV-01 · Evaluation-semantics leak guard
+## 1 · Windows platform parity (numpy evaluators, platform dispatch, #18, GAP-1 #11/#12)
 
 ### How established tools do it
 
-The Hugging Face Trainer — which `DNATrainer` wraps — **never silently substitutes a dataset as the eval set**. Evaluation happens only on a dataset the caller explicitly passes as `eval_dataset`; requesting evaluation without one raises `Trainer: evaluation requires an eval_dataset` (raised from `get_eval_dataloader()`), and `load_best_model_at_end=True` combined with `eval_strategy="no"` raises `--load_best_model_at_end requires the save and eval strategy to match` (validated in `training_args.py`, with `metric_for_best_model` defaulting to `"loss"`). The HF philosophy is fail-loud on ambiguous eval semantics; there is no code path where a split the user did not designate becomes the eval set (verified: [Trainer docs](https://huggingface.co/docs/transformers/v4.38.2/ja/main_classes/trainer), [training_args.py source](https://github.com/huggingface/transformers/blob/v4.57.0/src/transformers/training_args.py), [SO 76310533](https://stackoverflow.com/questions/76310533/how-to-fix-trainer-evaluation-requires-an-eval-dataset-in-huggingface-transfo)). A documented counter-example exists in the ecosystem: TRL's `SFTConfig` with `load_best_model_at_end=True` but no eval dataset **silently loads the last checkpoint instead of the best** — exactly the class of silent semantics drift REV-01 exists to prevent ([The Neural Base, SFT course](https://theneuralbase.com/sft/learn/beginner/evaluation-during-training/)). Held-out evaluation is conventionally an explicit, gradient-free, checkpoint-selection-free call: `Trainer.predict()` in HF idiom, `score(X_test)` in scikit-learn idiom — dnallm's existing `infer()` (trainer.py:502) is already the correct shape. Leakage hygiene extends to preprocessing in comparable probing suites (scalers fit on train statistics only — see REV-07), reinforcing that "no test-derived state touches training" is the invariant, not just "don't call evaluate on test".
+**The pybedtools/bedtools ecosystem has no native Windows story at all.** Official pybedtools docs state plainly: "Windows: may work with conda compilers or Cygwin but this is untested. Windows is not supported" ([pybedtools installation docs](https://daler.github.io/pybedtools/main.html)); Bioconda has no Windows channel, so `conda install -c bioconda pybedtools` fails with `PackagesNotFoundError` on Windows ([Stack Overflow 48441023](https://stackoverflow.com/questions/48441023/unable-to-install-bioconda-packages-in-conda-environments)), and downstream packages simply inherit the gap ([GLUE issue #95](https://github.com/gao-lab/GLUE/issues/95)). The canonical ecosystem answers are WSL or Docker — i.e., "don't run natively." A genuine native-Windows execution path is therefore already above the bar pybedtools itself sets.
 
-**Expected behavior derived from ecosystem norms:** with no dev split, the default must be `eval_strategy="no"` **and** `load_best_model_at_end=False` (mirroring HF's incompatibility rule, since silently keeping best-model-loading on while disabling eval is the TRL failure mode). Any override must be explicit, logged at WARN, and the new `evaluate(split=...)` must go through the predict path with no influence on checkpoint selection.
+**The dominant precedent for pure-Python interval engines is bioframe** (open2c): interval operations implemented directly on numpy/pandas — chromosome `groupby`, `numpy.lexsort` sorting, `numpy.searchsorted` bisection for overlap detection — with no compiled extension and no subprocess ([bioframe paper, bioRxiv](https://www.biorxiv.org/content/10.1101/2022.02.16.480748v1.full.pdf), [PMC](https://pmc.ncbi.nlm.nih.gov/articles/PMC10903647/)). Crucially, bioframe treats bedtools equivalence as a *documented contract*, not an accident: the ["Bioframe for bedtools users" guide](https://bioframe.readthedocs.io/en/latest/guide-bedtools.html) maps each bedtools command to its bioframe call, including exactly the operation dnallm needs: `bedtools intersect -loj` → `bf.overlap(A, B, how='left')` (and `intersect -wa -wb` → `how='inner'`, `-c` → `count_overlaps`, `-v` → `setdiff`). dnallm's chosen direction — a numpy evaluator used where bedtools cannot install, with the loj join semantics given their own parity check — is the bioframe pattern applied narrowly (jaccard + loj-intersect only) instead of as a full engine. Note bioframe's trade data: it is ~2× pybedtools memory (64-bit coords) and roughly PyRanges-speed — irrelevant at showcase scale (≤200kb loci), so no performance concern gates this feature.
+
+**Parity verification as a continuous contract, not a one-time spike.** bioframe grounds equivalence in documented mappings + property tests; dnallm already went further with measured cross-implementation spikes (261010-wx2: numpy vs bedtools v2.31.1 jaccard on the frozen selection pair 0.324727 + randomized property cases — VERDICT PARITY; 261011-0a3: loj-intersect — VERDICT PARITY). The ecosystem norm for float-producing dual implementations is tolerance-bounded comparison (`pytest.approx` / `math.isclose` with documented absolute tolerance), never exact equality across arithmetic orders — exactly the trailing-delta class dnallm observed (0.3247270000001). Platform detection idioms are settled: `platform.system()` / `sys.platform` at runtime in example code, `platform_system != "Windows"` environment markers in packaging (dnallm already uses these for pybedtools and pygenometracks), `pytest.mark.skipif` in gates.
+
+**GAP-1 (#11/#12) is a known, named ecosystem failure class.** transformers v5 refactored config classes to dataclasses (v5.3→v5.4: keyword-only, re-based on a huggingface_hub validated dataclass) and undeclared kwargs now raise `TypeError: ...__post_init__() got an unexpected keyword argument ...` in old remote code — the [OpenELM discussion](https://huggingface.co/apple/OpenELM-1_1B-Instruct/discussions/8) is the canonical instance: works on transformers 4.57.1, fails on 5.x; `from_legacy_cache`/`to_legacy_cache`/`seen_tokens` also removed ([MIGRATION_GUIDE_V5.md](https://raw.githubusercontent.com/huggingface/transformers/c472755e79aac54d675845bff5e5c821c21260af/MIGRATION_GUIDE_V5.md)). The NT-promoter and plant-Nucleotide-Transformer-BPE checkpoints are this exact class. Resolution paths observed in the wild: (a) pin a transformers 4.x ceiling (contradicts dnallm's 4.49–5.x span invariant), (b) wait for/patch upstream remote code, (c) drop the checkpoint, or (d) shim the removed defaults — dnallm already owns the shim precedent in `dnallm/utils/transformers_compat.py` (spanning 4.49–5.x).
+
+**#18 triton-windows.** Upstream triton ships no win_amd64 wheels. The community fork `triton-windows` (woct0rdho; development now hosted under the [triton-lang/triton-windows](https://github.com/triton-lang/triton-windows) org) provides prebuilt wheels; Blackwell sm_120 needs triton≥3.3 + torch≥2.7 + CUDA 12.8, and wheels bundle a minimal CUDA toolchain since 3.2.0.post11 ([README](https://raw.githubusercontent.com/woct0rdho/triton-windows/master/README.md)). unsloth's official install scripts recommend the fork ([unsloth README](https://raw.githubusercontent.com/unslothai/unsloth/refs/tags/September-2025-v3/README.md)) — but as a documented install step, not a declared package dependency. Declaring a third-party compiler fork in package metadata is a trust decision each project makes individually; the mainstream pattern is documentation + optional marker-gated extra.
 
 ### Categories
 
 | Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
 |------|---------|-----------|------------|---------------------|
-| Table stakes | Default `eval_strategy="no"` + `load_best_model_at_end=False` when dev absent but test present (no auto-promotion of test to eval) | HF never substitutes; dnallm's current trainer.py:234-241 does — the bug | LOW-MED | `DNATrainer.__init__` (trainer.py:133-241) |
-| Table stakes | Explicit `evaluate(split="test"\|"dev"\|...)` entry point via predict path, no checkpoint interaction | `Trainer.predict` idiom; `infer()` (trainer.py:502) already correct | LOW | `infer()` exists |
-| Table stakes | `allow_test_as_eval=True` explicit override emitting WARN | TRL silent-last-checkpoint lesson: overrides must be loud | LOW | logging util |
-| Table stakes | Tests over 3 split combinations (dev+test / test-only / train-only) × default/override | intake acceptance | LOW | existing pytest suite |
-| Differentiator | Docstring + docs section on held-out semantics ("which split is eval, when is best-model loaded") | rarely documented in wrappers; reviewer-facing | LOW | docs pipeline (docs-validation gate exists) |
-| Anti-feature | Auto-creating a dev split from test/train when dev is missing | silent data reshuffling breaks benchmark comparability (F2 layouts) | — | — |
-| Anti-feature | Changing split-selection heuristics without an escape hatch | would invalidate the dnallmmark re-run baseline | — | — |
+| Table stakes | Runtime platform dispatch in `generate_bpe_dataset.py` + `data_generation_and_inference.ipynb` (Linux keeps `pybedtools.BedTool.intersect(loj=True)`, Windows dispatches to numpy equivalent; install cell skips pybedtools on Windows) | owner directive 2026-10-10; #19 change-surface inventory is exhaustive (2 files, one code path + cell 0 install) | LOW-MED | spike 261011-0a3 numpy loj code; `dnallm.utils.genomic_coords` precedent |
+| Table stakes | numpy jaccard evaluator behind the CRE notebook's bedtools call on Windows | spike 261010-wx2 | LOW | spike code; `tests/examples/test_plant_helixseek_showcase.py` band harness |
+| Table stakes | Continuous parity tests (numpy vs bedtools/pybedtools) executed on **Linux** CI where the reference binary exists — parity is re-proven every run, not asserted from the spike | bioframe documented-equivalence norm; owner precondition "ships only under parity" | MED | bedtools on Linux runners; property-case generators from spikes |
+| Table stakes | Frozen-value tolerance pins: band assertions compare with documented absolute tolerance (trailing-delta class), bands parsed from selection.md unchanged | numeric-testing norm (`pytest.approx`); D-05/D-06 single-source-of-truth rule | LOW | existing `_parse_floors`/`_parse_bands` |
+| Table stakes | Platform-aware test gates: the three fail-loud gates (`test_script_execution.py:128`, `test_notebook_execution.py:1397`, `test_plant_helixseek_showcase.py:523`) become platform-conditional — pass via numpy path on Windows, bedtools path on Linux | skipif/platform-conditional idiom; #19 inventory | LOW-MED | typed-skip machinery unchanged (these are gates, not skips) |
+| Table stakes | test-windows CI leg executes the numpy path end-to-end and asserts exon_f1=0.7522 in band on both paths | owner directive; Windows leg already exists in matrix | MED | test-windows leg; example-nightly census discipline (re-pin counts) |
+| Table stakes | Docs mirrors byte-synced with the platform-split example code | check_docs_sync.py invariant | LOW | existing byte-identity gate |
+| Table stakes | GAP-1 disposition decided and executed: compat-shim (confined to `transformers_compat.py`, regression-tested, revives #11+#12) **or** removal of the NT checkpoint/script leg with typed-skip retired | OpenELM-class ecosystem norm: decide, don't leave owner-pending forever | MED (shim) / LOW (removal) | `transformers_compat.py`; `example/notebooks/benchmark/benchmark.ipynb` third model; `tests/examples/test_script_execution.py` |
+| Table stakes | #18 decided: either declare `triton-windows; sys_platform == 'win32'` in the fla extra (owner approves third-party fork) **or** document the manual step and make the fla test typed-skip honest on Windows | unsloth documents rather than declares; current state (silent breakage) is the only unacceptable option | LOW either way | pyproject fla extra; fla import test |
+| Differentiator | Dual-engine evaluators with the frozen truth chain staying bedtools-computed (no re-freeze) — provenance preserved while adding reach | bioframe has equivalence docs but no frozen-value contracts | — | selection.md frozen contract |
+| Differentiator | Native-Windows bio-ML example execution where the pybedtools ecosystem's official answer is "use WSL" | pybedtools docs | — | whole v1.1 example-nightly investment |
+| Anti-feature | Replacing bedtools/pybedtools on Linux/macOS (re-freezing the truth chain on numpy) | destroys frozen-metric provenance; owner explicitly rejected | — | — |
+| Anti-feature | Platform-split logic inside library `dnallm/` evaluator code | the bedtools dependence lives in example code; the library is already platform-neutral (scikit-allel Windows-verified); moving logic in widens the audited surface for zero user gain | — | — |
+| Anti-feature | Third interval engine (pyranges/ruranges) | rejected 2026-10-10: no win_amd64 wheels, py≥3.12, zero Windows gain | — | — |
+| Anti-feature | Exact float equality across evaluator paths | trailing-delta class makes it permanently flaky; tolerance is the norm | — | — |
+| Anti-feature | Global monkeypatch of `PretrainedConfig.__init__` for GAP-1 (shim applied at package import to all models) | OpenELM-class shims must be scoped to the affected remote-code load path only; a global patch perturbs every unrelated model load and contradicts the facade-stability discipline | — | — |
+| Anti-feature | Pinning the whole project to transformers<5 for GAP-1 | contradicts the 4.49–5.x compat span; strands the suite on an aging major | — | — |
 
-**Sources:** HF Trainer docs + training_args.py (HIGH legitimacy, fetched via search snippets — MEDIUM overall); TRL caveat (MEDIUM); SO/Geneformer threads corroborate error behavior (MEDIUM).
+**#18 decision input (owner):** declaring the fork makes `pip install dnallm[fla]` self-healing on Windows at the cost of a third-party compiler fork in declared metadata and a maintenance exposure if the fork stalls; documenting keeps metadata clean but leaves the silent-breakage failure mode one forgotten README away. Ecosystem weight (unsloth, Wan2GP guides) treats the fork as the de-facto standard — the trust question is real but the fork is now under the triton-lang org umbrella.
 
 ---
 
-## REV-02 · Metric registry contract
+## 2 · Packaging & install honesty (extras hygiene, install lanes, GPU matrix)
 
 ### How established tools do it
 
-HF `evaluate` resolves names three ways: canonical Hub name via `evaluate.load("accuracy")`, a local script path, or a local directory whose script matches the directory name; canonical names are enumerable with `evaluate.list_evaluation_modules(module_type="metric")` ([loading methods docs](https://huggingface.co/docs/evaluate/package_reference/loading_methods)). **There is no centralized canonical→alias mapping table in `evaluate` itself** — aliasing exists only at the task level (`text-classification` ≡ `sentiment-analysis` in the Evaluator classes). Torchmetrics registers metrics as classes keyed by snake_case names; Lightning prefixes keys (`eval_/test_`) mechanically. The lesson for dnallm: canonical-name registries are standard, but the **alias layer is something benchmark authors add themselves** — which is precisely where the historical drift (`eval_auroc`/`eval_spearman_r` → `eval_AUROC`/`eval_spearmanr`) happened. A `{canonical_name: (fn, aliases)}` registry with `resolve()` that anchors current pipeline spellings and recognizes historical ones for identification-only is the ecosystem-consistent fix. The registry must import cleanly without torch/sklearn at module level so dnallmmark (F3) can import it in CI cheaply.
+**The uv/pip lane asymmetry is the load-bearing fact.** `[tool.uv.sources]` and `[tool.uv] conflicts` are project metadata applied only by uv when resolving from source — they are **not part of the published wheel metadata, so pip ignores them entirely** ([dataeval-flow docs](https://pypi.org/project/dataeval-flow/0.2.3/#2) document exactly this pattern and its fix). Consequence for dnallm today: `pip install dnallm[cuda128]` does not route to the cu128 index — it installs whatever torch PyPI serves by default (Linux: bundled-CUDA default; Windows: CPU-only). The cudaXXX extras are honest only under uv-from-source. This is precisely why "uv-vs-pip lane docs" is table stakes and not polish. uv's own answer for pip-style installs is `--torch-backend=auto` (infers the PyTorch index from the GPU/driver; `uv pip` CLI only, ignored by `uv add`/`uv sync`) — adopted in install docs by [vLLM](https://app.semanticdiff.com/gh/vllm-project/vllm/pull/39511/overview) and unsloth; known pitfalls: multi-GPU driver parse failures, WSL lacking `/sys/module/nvidia/version`, and PEP 440 ignoring `+cpu`/`+cuXXX` local version labels so a stale CPU torch can silently persist ([pydevtools handbook](https://pydevtools.com/handbook/explanation/installing-cuda-python-packages.md)).
 
-**Expected behavior:** `metrics.py` emits only canonical names (`AUROC`, `AUPRC`, `spearmanr`, `pearsonr` — current spellings per the intake fact-correction D2); `resolve(name)` returns the canonical entry and raises a matchable `ValueError` on unknown names (dnallm's 127-of-170 ValueError convention); aliases map old spellings for recognition; a round-trip contract test covers every metric key any task path can emit (47 tasks).
+**How torch communicates the matrix.** The [Get Started selector](https://docs.pytorch.org/get-started/locally/) exposes OS × package manager × compute platform (CUDA 12.6/12.8/13.0/13.2, ROCm, CPU) and emits the exact lane command (`pip3 install torch --index-url https://download.pytorch.org/whl/cu128`, or `uv add torch --default-index .../cu128`). Lane EOLs are announced publicly — e.g., [CUDA 12.6 wheels stop with PyTorch 2.15 (drops Maxwell/Pascal/Volta)](https://dev-discuss.pytorch.org/t/notice-cuda-12-6-wheels-will-no-longer-be-published-from-pytorch-2-15-drops-maxwell-pascal-volta/3432) — and the runtime itself warns users on dropped architectures ([PR #158478](https://github.com/pytorch/pytorch/pull/158478): sm_50/sm_60 removed from cu128 builds in 2.8). Support facts that bracket dnallm's pre-verified matrix: cu121 wheels are no longer built (last ≈torch 2.5, the standard refuge for Maxwell/Pascal/Volta per [compatibility cheat sheets](http://llmlaba.com/articles/cuda-pytorch-compatibility.html) and the [CUDA wheel matrix](https://pozzettiandrea.github.io/cuda-wheels/matrix/)); CUDA 13 drops everything below Turing sm_75 ([NVIDIA blog](https://developer.nvidia.com/blog/navigating-gpu-architecture-support-a-guide-for-nvidia-cuda-developers/)); plain-Linux `pip install torch` now defaults to a CUDA 13.0 wheel supporting CC 7.5+. dnallm's pre-verified boundaries (Pascal→cpu-only, 20xx→cu128, 30/40xx→all extras, 50xx→cu128+) sit exactly on these ecosystem facts — the docs just have to say so.
+
+**Honest GPU extras under pip exist — when the wheels live on PyPI.** spaCy ships `cuda11x`/`cuda12x`/`cuda-autodetect` extras that genuinely work under plain pip because they pull `cupy-cuda12x`/`cupy-wheel` from PyPI ([spaCy install setup](https://deepwiki.com/explosion/spaCy/1.2-installation-and-setup)) — and notably spaCy **removed** its overly-specific `cuda121`/`cuda122` extras, breaking users who asked for them ([discussion #13567](https://github.com/explosion/spaCy/discussions/13567)) — a direct precedent for retiring a frozen minor-version CUDA extra rather than keeping it undead. jax is the gold standard: `jax[cuda12]`/`jax[cuda13]` pull plugin wheels (`jax-cuda12-plugin` + NVIDIA runtime wheels) that live on PyPI, so the extra is honest under every installer; the old `jax[cuda12_pip]` was removed and names dash-normalized per [PEP 685](https://peps.python.org/pep-0685/) ([jax v0.6.0 notes](https://www.gitclear.com/open_repos/google/jax/release/jax-v0.6.0)). dnallm cannot fully reach the jax shape (torch CUDA wheels are not on PyPI), so the honest intermediate is: keep the uv extras machinery as the primary lane, retire the undead lane, and document the pip `--index-url` lane explicitly.
+
+**On `base` (and meta-extras generally).** No PEP or PyPA spec blesses or bans extra *names* like `base`/`all` — PEP 685 only fixes normalization; the criticism found in standards discussions targets default/meta extras generally (dependency bloat, "you may also like" UX — [PEP 771 discussion](https://discuss.python.org/t/pep-771-default-extras-for-python-software-packages-round-2/94905/14)). The dishonesty in dnallm's `base` is semantic, not syntactic: `Provides-Extra: base` is public on PyPI, and a user reasonably reads "base" as the minimal runtime when it actually installs dev+test+notebook+mcp plus isort and stubs (pyproject lines 145-149). The fix direction (fold into `dev`, or re-scope `base` to mean the actual runtime default) is a LOW-complexity rename with a one-release deprecation note; spaCy's cuda-extra removal shows users survive extra renames at 0.x/1.x.
 
 ### Categories
 
 | Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
 |------|---------|-----------|------------|---------------------|
-| Table stakes | Single `{canonical: (fn, aliases)}` registry module; `metrics.py` fully routed through it | evaluate/torchmetrics registry norms | LOW | `dnallm/tasks/metrics.py` emitters (AUROC :134/:135/:299/:306, spearmanr/pearsonr :181-219) |
-| Table stakes | `resolve(name)` raising ValueError on unknown name | dnallm error convention; fail-loud | LOW | — |
-| Table stakes | Contract tests: all emitted keys resolvable; alias→canonical correct for both current and historical spellings; cross-repo importable | the drift-prevention mechanism (D2: P0 before re-run) | LOW | pytest |
-| Differentiator | Registry version stamp asserted by both repos' CI | makes contract drift visible in CI, not in a paper table | LOW | CI wiring |
-| Anti-feature | Renaming canonical names (again) | the registry exists to stop exactly this | — | — |
-| Anti-feature | Fuzzy/case-insensitive auto-coercion of arbitrary names | hides typos, reopens silent drift | — | — |
-| Anti-feature | Torch/sklearn import at registry module import time | blocks lightweight cross-repo import (F3) | — | — |
-
-**Sources:** HF evaluate docs (MEDIUM); no-alias-table finding is a negative claim verified against evaluate docs + searches (MEDIUM).
+| Table stakes | `cuda121` extra retired (or explicitly frozen-and-labeled legacy) | cu121 wheels stopped ≈torch 2.5 — the lane resolves to an EOL torch while `<2.12` pretends otherwise; spaCy removed its cuda121-class extras | LOW | pyproject + uv index/sources/conflicts cleanup |
+| Table stakes | rocm pin decision: restore the commented-out `torch-rocm` index/conflict rows **or** remove the `rocm` extra entirely — a declared extra that resolves to plain PyPI torch on every installer is dishonest | same uv/pip asymmetry fact | LOW | pyproject |
+| Table stakes | Install-lane documentation: one page/table stating, per extra, what pip actually installs vs what uv installs, with the explicit pip `--index-url https://download.pytorch.org/whl/cuXXX` lane commands | dataeval-flow pattern; torch get-started is the reference shape | LOW-MED | docs pipeline |
+| Table stakes | cuda130 as the documented default recommendation | torch's own Linux default is now the cu130 wheel (CC 7.5+); project runs torch 2.11 cu130 in dev | LOW | docs |
+| Table stakes | Published GPU support matrix (Pascal cpu-only, 20xx→cu128, 30/40xx all extras, 50xx cu128+) with the pre-verification evidence linked | torch/bitsandbytes-class packages publish matrices; boundaries pre-verified 2026-10-11 | MED (writing + evidence chain; verification done) | docs; pre-verification records |
+| Table stakes | `base` extra rename/re-scope so no PyPI-visible extra misdescribes its contents | PyPA surface-visibility fact; meta-extra bloat criticism | LOW | pyproject; publish smoke proves no consumer breakage |
+| Table stakes | Extra-name hygiene check (PEP 685 normalized, no near-collisions) after the rename | PEP 685 | LOW | — |
+| Differentiator | Cross-installer honesty matrix: a table of "command × installer → what you actually get" | rare; most projects document only their blessed lane | LOW | same lane docs, phrased comparatively |
+| Differentiator | Per-GPU-generation **verified** matrix (each row backed by a live install/execution proof on the actual hardware classes, not vendor charts) | torch publishes vendor-level support; nobody publishes tested-on-our-matrix evidence at small-project scale | — | GB10 box + RTX 5080 Windows env |
+| Differentiator | Runtime lane warning (torch 2.8-style): detect dropped-arch GPU at import and point at the right lane doc | torch PR #158478 precedent | MED | version/device probe utilities |
+| Anti-feature | Trying to make cudaXXX extras pip-routable via dependency tricks (torch local-version pins, sdists with dynamic deps) | PEP 440 local versions ignored by resolvers — the unsloth silent-CPU-training trap; complexity with zero honesty gain | — | — |
+| Anti-feature | Deleting the uv index machinery and going docs-only | the uv lane is the project's primary dev lane and works; jax-level pip-honest extras are unreachable for torch | — | — |
+| Anti-feature | Publishing matrix rows without verification provenance | turns the honesty milestone into its own violation; every row cites its proof | — | — |
+| Anti-feature | Keeping `cuda121` "for legacy users" while the torch floor has moved | undead lane = the exact dishonesty being fixed | — | — |
 
 ---
 
-## REV-03 · Docs / terminology / comparability warnings
+## 3 · Publish chain robustness (smoke, OIDC, #20, mypy cap)
 
 ### How established tools do it
 
-Terminology: "DNA language model(s)" is the standard term in this literature — e.g. "DNA language models are powerful zero-shot predictors of genome-wide variant effects" (GPN paper title), "The DNA dialect: a comprehensive guide to pretrained genomic language models" (Mol Syst Biol 2025) — so unifying on the editor's requested phrasing follows field convention. Comparability warnings: cross-model evaluation comparability is a recognized issue in the DNA-LM benchmarking literature (models differ in `valid_chars`; 13 models in the dnallm registry cannot accept N). The D3 ruling in the intake plan is consistent with how benchmark suites handle it: the **pipeline** applies one common eval subset; the **library** documents the constraint loudly at the API surface (`validate_sequences` docstring, data.py:842 / sequence.py:89) rather than adding a new API mode. CHANGELOG-per-fix with clickable commits is standard revision-evidence practice.
+**Trusted Publishing (OIDC) is the recommended modern flow; tokens still work.** PyPI introduced Trusted Publishing in April 2023 ([PyPI blog](https://blogpypiorg.readthedocs.io/posts/2023-04-20-introducing-trusted-publishers/)) — short-lived (≈15-min) OIDC tokens exchanged per-CI-run, no stored credentials. Setup: job-level `permissions: id-token: write` (workflow-level discouraged), publisher registered on PyPI with owner/repo/workflow-filename, and a GitHub **environment** binding which is optional but strongly recommended — it can require manual approval and blocks fork-originated publishes ([PyPI docs: using a publisher](https://docs.pypi.org/trusted-publishers/using-a-publisher/), [safeguard.sh adoption guide](https://safeguard.sh/resources/blog/pypi-trusted-publishing-adoption-guide)). `pypa/gh-action-pypi-publish` has produced PEP 740 attestations **by default** since v1.11 (Nov 2024) ([PyPI attestations docs](https://docs.pypi.org/attestations/producing-attestations/)). No API-token sunset has been announced (LOW confidence on any removal date), but 2FA has been mandatory for all uploading accounts since 2024-01-01 ([PyPI blog](https://blog.pypi.org/posts/2023-12-13-2fa-enforcement/)) and OIDC is the direction; staged publishing went GA 2026-05-22, enabling staging-only trusted publishers ([konishi note](https://hidekazu-konishi.com/entry/publishing_npm_and_pypi_packages_without_long_lived_tokens.html)) — relevant only if the smoke lane later wants server-side rehearsal. Since dnallm already builds with `uv build`, note `uv publish` natively supports `--trusted-publishing automatic|always|never` (auto-detects GitHub OIDC with `id-token: write`) plus `--dry-run` and `--index testpypi` ([uv publish reference](https://mintlify.wiki/astral-sh/uv/cli/publish), [uv PR #7475](https://github.com/astral-sh/uv/pull/7475)).
+
+**Publish smoke is a recognized pre-publish validation chain.** The recurring pattern across release guides: `uv build` → `check-wheel-contents dist/*.whl` (wheel-contents lint) → `twine check dist/*` (metadata/README rendering) → **install the built wheel in a clean venv and import-smoke it** → optional TestPyPI rehearsal (`uv publish --index testpypi --dry-run`) → real publish; the publish job downloads already-validated artifacts rather than rebuilding ([PyKMP releasing guide](https://gertvdijk.github.io/PyKMP/releasing/), NVIDIA-NeMo and Ananke-Plexus release workflows). dnallm's current `publish.yml` post-hoc "Verify installation" (`pip install dnallm` from PyPI after upload) is the race-y inverted variant: propagation delays can serve a stale version, and it validates nothing before the artifact is public. The honest variant validates the built artifact in a clean venv *before* upload. A `workflow_dispatch`-triggered dry-run lane running this chain periodically (no credentials needed if it stops before upload) catches resolver/registry/toolchain drift between releases — rare in the ecosystem (most projects validate only at release time), which makes it a genuine differentiator rather than a borrowed norm.
+
+**#20 (local-venv `pytest --cov` crash)** is internal tooling: coverage 7.16.2 `source_pkgs` imports dnallm under the tracer, tripping numpy 2.5.x's load-once C-extension guard on the py3.13 local venv (CI legs on numpy 1.26.4/2.2.0 unaffected; WINDOWS #20). The feature framing is "dev-env reproducibility": either a documented numpy ceiling for the local lane or a coverage invocation that doesn't import-at-start. **mypy cap** for the dev extra follows the widespread practice of bounding type-checker versions in dev dependencies so a new mypy release cannot flip CI red overnight (MEDIUM confidence — consistent with how scipy/numpy pin mypy in dev requirements; not separately researched).
 
 ### Categories
 
 | Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
 |------|---------|-----------|------------|---------------------|
-| Table stakes | `validate_sequences` docstring + docs page on cross-model valid_chars comparability (N-containing sequences silently drop for 13 models) | D3 ruling; benchmarking-literature comparability concern | LOW | `check_sequence` (sequence.py:89), `validate_sequences` (data.py:842) |
-| Table stakes | Terminology unification to "DNA large language models" per Ed-2 | field-standard phrasing (paper titles above) | LOW | docs tree |
-| Table stakes | LoRA/QLoRA/IA³ usage chapter (after REV-04/05 land) | PEFT docs pattern: per-method quickstart | LOW | REV-04/05 |
-| Table stakes | CHANGELOG entries mapping v0.7.1→v0.7.2 fixes to commits | reply-letter evidence chain | LOW | — |
-| Differentiator | Published per-model-family minimal `valid_chars` table (generated from model_info.yaml) so users can pre-filter to the intersection themselves | turns a warning into an actionable artifact | LOW | model registry |
-| Anti-feature | Changing `validate_sequences` default drop behavior, or adding a unified-subset API mode in the suite | ruled out by D3 (pipeline side implements it); silent behavior change breaks F7 audit | — | — |
+| Table stakes | workflow_dispatch publish-smoke: `uv build` → `check-wheel-contents` → `twine check` → clean-venv install-from-wheel + import/version smoke, exiting before any upload | PyKMP/NeMo/Ananke pattern | MED | existing uv build step in publish.yml |
+| Table stakes | Real publish path reuses the same validation steps (one reusable chain; publish downloads validated artifacts) | release-workflow norm | LOW-MED | publish.yml refactor |
+| Table stakes | Trusted Publishing migration (if chosen): job-level `id-token: write`, PyPI publisher registration + `pypi` environment, `PYPI_API_TOKEN` secret retired | PyPI docs; uv publish `--trusted-publishing automatic` | MED | publish.yml; PyPI-side registration (owner) |
+| Table stakes | mypy upper cap in dev extra (`mypy>=1.15.0,<X`) | dev-tool bounding practice | LOW | pyproject dev extra |
+| Table stakes | #20 fix or documented local-lane pin so `pytest --cov` works repo-wide in the dev venv | WINDOWS #20 | MED (debugging-heavy) | coverage config in pyproject |
+| Differentiator | *Periodic* (scheduled, not just pre-release) smoke dispatch — catches drift between releases | rare in ecosystem | LOW (once dry-run exists) | smoke workflow + cron |
+| Differentiator | PEP 740 attestations on published artifacts | free with OIDC; supply-chain credibility for a scientific package | — | rides the migration |
+| Anti-feature | Smoke that uploads anywhere real (PyPI or TestPyPI) without explicit promotion semantics | version-collision noise; dry-run exists precisely to avoid this | — | — |
+| Anti-feature | Post-upload PyPI install as the *only* install smoke (current shape) | propagation race validates the wrong artifact; clean-venv from the built wheel is the honest form | — | — |
+| Anti-feature | Keeping API token and OIDC both live long-term | two standing credential classes after migrating defeats the point | — | — |
+| Anti-feature | Full test suite inside the release job | release job bloat; the gate already ran on the exact commit — validate artifacts, not tests, at publish time | — | — |
 
-**Sources:** paper titles / Mol Syst Biol guide (MEDIUM); D3 ruling is project-internal (HIGH, from intake doc).
+**OIDC decision input (owner, may subsume the smoke):** migration cost is workflow surgery + one PyPI registration; benefit is no stored token, environment-gated publishing, default attestations. The dry-run smoke is orthogonal and worth having regardless of which credential mechanism wins — the token flow can host the dry-run lane today.
 
 ---
 
-## REV-04 · IA³ adapter support
+## 4 · Docs accuracy review (docs/ + example/ per-file sweep)
 
 ### How established tools do it
 
-Verified against the official PEFT docs (fetched directly — HIGH confidence): `IA3Config(task_type, target_modules, feedforward_modules, init_ia3_weights=True, modules_to_save, exclude_modules, fan_in_fan_out)` via `get_peft_model`. IA³ injects three learned vectors per block that rescale the **outputs of attention key/value projections** and the **input of the second FFN layer** — the critical semantic difference from LoRA-style configs is `feedforward_modules`, which must be a **subset of `target_modules`** and tells PEFT to apply the vector to the module *input* rather than *output*. The official recipe for autoregressive models is `target_modules=["k_proj","v_proj","down_proj"], feedforward_modules=["down_proj"]`; encoder-style (BERT-family) targets are `query/key/value` + the FFN intermediate dense layer. IA³ trains ~0.01% of parameters (LoRA >0.1%), merges into the base weights with zero inference latency, and uses the same `save_pretrained`/`PeftModel` lifecycle as LoRA — so dnallm's existing adapter save/reload path (inference.py:112-130) and the trainer's LoRA init branch (trainer.py:153-170) are the right seams. `init_ia3_weights=False` is officially discouraged. For Mamba-family models there is no canonical IA³ recipe; the SSM-PEFT literature (REV-05) warns that adapting SSM core parameters can break stability constraints — treat Mamba IA³ as experimental and validated only empirically (the intake's "1 transformer + 1 mamba model" acceptance).
+**Executable documentation is the ecosystem's strongest anti-drift tool, and dnallm already exceeds the norm.** The standard ladder: doctest / [pytest-doctestplus](https://github.com/scientific-python/pytest-doctestplus/) (numpy/astropy; FLOAT_CMP directives, rst support) → [sybil](https://skills.rest/skill/sybil) (executes prose-embedded code samples inside pytest — audeering's auglib [migrated to it](https://github.com/audeering/auglib/pull/51) to catch docs drift) → sphinx-gallery (scikit-learn/matplotlib: every example script executed at docs build) → notebook validation via nbval/nbpages ([LSST SQR-032](https://raw.githubusercontent.com/lsst-sqre/sqr-032/tickets/DM-20939/index.rst)). dnallm's example-nightly already executes the entire example tree and keeps docs mirrors byte-identical (`check_docs_sync.py`) — a stronger guarantee than sphinx-gallery gives its users. What the ecosystem adds on top is *periodic prose hygiene*: scheduled link checks and quarterly example reviews (e.g., [yt-cli docs gates](https://yt-cli.readthedocs.io/_/downloads/en/v0.13.5/pdf/)), and mkdocs `--strict` (warnings-are-errors) as the table-states build gate — dnallm carries 15 pre-existing `--strict` warnings as ledgered debt.
+
+**What "systematic review" means at mature projects:** a per-file pass with an explicit checklist (does every named API exist; does every install command still resolve; is every version claim current; is every number traceable), fixes landing in the same pass, and a regression mechanism so the fixed state stays fixed. For dnallm the regression mechanisms already exist (byte-sync gate, example-nightly, docs-validation.yml); the milestone feature is the *sweep itself* plus closing the warnings debt. The post-numpy2/py311 staleness class (old install commands, pre-float64-change idioms, removed-API references) is exactly what doctest/sybil-style execution catches mechanically — but only for code; prose claims need the per-file human-verifiable pass the milestone defines.
 
 ### Categories
 
 | Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
 |------|---------|-----------|------------|---------------------|
-| Table stakes | `Ia3Config` Pydantic model with `target_modules` (default from REV-05 presets) + per-family `feedforward_modules` | official IA3Config semantics | LOW-MED | configs.py BaseModel patterns |
-| Table stakes | `TrainingConfig.use_ia3` branch in trainer init mirroring the LoRA branch; mutual exclusion `use_ia3`×`use_lora` → ValueError | both-on is undefined in PEFT practice | LOW-MED | trainer.py:153-170 |
-| Table stakes | Adapter save/reload round-trip through the existing PeftModel path (byte-identical semantics to LoRA path) | PEFT unified adapter lifecycle | LOW | inference.py:112-130 |
-| Table stakes | Runs end-to-end on 1 transformer + 1 Mamba model, one task each | intake acceptance | MED (GPU runs) | models registry |
-| Differentiator | IA³ vs LoRA parity comparison exported to the same results table (F4 lane) | reviewer-facing comparability | LOW | REV-09 export shape |
-| Anti-feature | Custom IA³ reimplementation instead of `peft.IA3Config/get_peft_model` | peft is already a dependency and battle-tested | — | — |
-| Anti-feature | IA³ on Mamba SSM cores (A/B/C/Δ) | ICML25 ssm-peft: A must remain negative-definite; low-rank/vector perturbation of SSM cores underperforms and risks instability | — | — |
-
-**Sources:** PEFT IA³ official docs (HIGH); ssm-peft stability finding (MEDIUM, cross-checked).
+| Table stakes | Per-file accuracy sweep of docs/ + example/ prose vs code, with same-pass fixes and per-file disposition records | milestone definition; periodic-review norm | MED-HIGH (breadth: full docs surface) | docs-validation.yml; check_docs_sync.py |
+| Table stakes | Install-command correctness re-verified **after** the packaging changes land (ordering dependency) | lane-honesty is the point of the matrix docs | LOW if sequenced after | packaging phase outputs |
+| Table stakes | mkdocs `--strict` zero-warnings (15 ledgered warnings dispositioned/fixed) | warnings-are-errors is the table-stakes gate | MED | mkdocs config |
+| Table stakes | Showcase/selection.md wording reconciled with the platform split (frozen-convention cells stay bedtools-worded; numpy path documented as parity-verified alternate) | #19 inventory classes the docs-only surface | LOW | selection.md contract |
+| Differentiator | Every repaired docs claim carries the executing test that proves it (accuracy with evidence chain) | matches the project's verification culture; no ecosystem norm demands it | — | example-nightly |
+| Differentiator | Recorded per-file review evidence (auditable "this doc was verified against this code on this date") | docs-audit trails are rare | LOW | planning artifacts |
+| Anti-feature | Restructuring docs (Diátaxis re-org, theme changes) inside the accuracy pass | accuracy ≠ reorganization; scope creep doubles the diff under review | — | — |
+| Anti-feature | LLM-bulk-rewritten docs without per-claim verification | hallucination risk; violates the truth→docs direction the project enforces elsewhere | — | — |
+| Anti-feature | Fixing drift by editing code to match stale docs | direction is truth → docs, always | — | — |
 
 ---
 
-## REV-05 · Per-model PEFT target-module presets
+## 5 · Ollama test-surface removal (~59 refs, remove-vs-skip per item)
 
 ### How established tools do it
 
-PEFT itself auto-selects targets from `TRANSFORMERS_MODELS_TO_LORA_TARGET_MODULES_MAPPING` keyed on model type, and **raises an error when the architecture is unknown** (documented in `LoraConfig.target_modules` help text; confirmed in [peft #1289](https://github.com/huggingface/peft/issues/1289) where the Llama default is recorded as `["q_proj","v_proj"]`). Community registries exist for exactly this (easylora's model-support table: Llama/Qwen/Gemma → `q_proj,v_proj`; GPT-NeoX/Falcon/Bloom → fused `query_key_value`; GPT-2 → `c_attn`; BERT-family → `query,key,value`). Two hard lessons from the literature make verification-from-checkpoint non-negotiable: (1) **silent partial application** — PEFT #3554 (NemotronH hybrid): defaults covered only 7% of layers (4 attention of 56), DPO loss never moved; and PEFT #2556: custom Mamba kernels can silently skip LoRA layers, and PEFT keeps a forbidden list for Mamba modules (`in_proj` blocked in some versions). (2) **Architecture-appropriate targets** — the ICML-2025 systematic study of SSM PEFT ([arXiv 2410.09016](http://export.arxiv.org/pdf/2410.09016)) shows LoRA on Mamba *linear projections* (`in_proj`, `out_proj`, `x_proj`, `dt_proj`) matches full fine-tuning (GLUE 81.2 vs 80.5) while SSM-matrix targets underperform (76.9). Since dnallm loads DNA models via `trust_remote_code=True` with custom module names (DNABERT-2 BPE BertModel, Evo/StripedHyena, Caduceus/Mamba variants), PEFT's stock mapping cannot be trusted — presets must be generated/checked against each model's `config.json`-derived module names, with a dry-run validator that errors listing available candidates when a preset name matches nothing.
+**The consensus is unambiguous: permanently-skipped tests are dead code — delete them; git history is the archive.** PostHog's test-maintenance guidance is the crispest statement: "Delete expired tests. Do not leave them skipped," with deletion requiring that the covered behavior be nameable and no supported path needs it ([PostHog skill](https://github.com/PostHog/posthog/blob/master/.agents/skills/maintaining-python-tests/SKILL.md)). The middle-ground pattern (USGS [dataretrieval-python PR #259](https://github.com/DOI-USGS/dataretrieval-python/pull/259)) allows a module-level skip **only inside a bounded deprecation window** with a removal date, after which the file is deleted. The recurring pathology named across sources: skip lists monotonically grow because "a skipped test is indistinguishable from a deleted one after the first sprint" ([quarantine-pattern writeup](https://dev.to/multigrid/quarantining-a-flaky-llm-test-without-deleting-it-2k1j)). dnallm is better armed than most: typed-skip prefixes + `expected_skips.yaml` + `scripts/audit_skips.py` already make every skip enumerated and CI-enforced — the ledger prevents the invisible growth pathology by construction.
+
+Mapping to the directive: refs covering surface that will **not** be supported (dead integration paths, probes for services the runner will never host again) → delete per the PostHog rule; refs covering surface that **remains a supported feature** but is environment-gated (the two mcp_example client notebooks' live-ollama/MCP tests, WINDOWS #13) → the existing probe-then-execute typed skip with live evidence is the defensible state, since the feature is alive and the skip is self-healing by design. Per-item disposition at planning time is exactly the ecosystem-correct shape.
 
 ### Categories
 
 | Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
 |------|---------|-----------|------------|---------------------|
-| Table stakes | Family-keyed preset YAML (BERT/GPT/Mamba/Gemma/Llama/hybrid) with target_modules + recommended r, **verified from actual model module names, not guessed** | peft mapping + #3554/#2556 silent-failure lessons | MEDIUM (≈44-model verification workload, not algorithmic) | `PRETRAIN_MODEL_MAPS` (modeling_auto.py), model_info.yaml |
-| Table stakes | `target_modules=None` → family auto-select with INFO log | peft auto-select norm + auditability | LOW | config plumbing |
-| Table stakes | Dry-run validation: preset module name not found in model → hard error listing candidate module names | prevents the #3554/#2556 silent no-op class | LOW | — |
-| Table stakes | Preset regression test (table locked against drift) | intake acceptance | LOW | pytest |
-| Differentiator | Explicit "unsupported" entries for non-transformer families (GPN CNN etc.) rather than absence | turns silent failure into a loud contract | LOW | — |
-| Anti-feature | Copying PEFT's stock mapping blindly | trust_remote_code DNA architectures use custom names outside the mapping | — | — |
-| Anti-feature | Guessing module names from papers/READMEs | exactly the "臆测" the intake plan forbids | — | — |
-
-**Sources:** PEFT docs/issues #1289/#2556/#3554 (MEDIUM-HIGH); easylora registry (MEDIUM); ssm-peft ICML25 + Memba (MEDIUM, cross-checked).
-
----
-
-## REV-06 · `random_init=True` from-scratch loading
-
-### How established tools do it
-
-The canonical transformers pattern: `AutoModel.from_config(config)` / `ModelClass(config)` builds the architecture with random weights; `from_pretrained()` internally builds from config **then loads checkpoint weights** ([HF LLM course ch. 2](https://huggingface.co/learn/llm-course/zh-TW/chapter2/3), [transformers #26901 maintainer comment](https://github.com/huggingface/transformers/issues/26901), [#1283](https://github.com/huggingface/transformers/issues/1283)). The canonical horror story is Geneformer: a refactor swapped `BertModel.from_pretrained(path)` for `BertModel(self.config)` and the project **silently trained from scratch** until someone noticed — which is exactly why the intake plan requires a loud "randomly initialized" log plus a parameter hash as proof. Empirically, from-scratch baselines sit well below pretrained ones on downstream tasks (illustrative example: 6-layer DistilBERT on SST-2 ~80.7% scratch vs ~90.1% pretrained), which is the expected result shape for R2-5's learning-curve lane. dnallm's implementation should: run the normal config/tokenizer resolution through the dispatch chain, skip weight download/loading, re-init with `torch.nn.init` per model config, log the hash, and leave everything else (device, dtype, head attach) identical.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | `load_model_and_tokenizer(..., random_init=True)`: config+tokenizer loaded, weights skipped, re-initialized | `from_config` idiom | LOW | dispatch chain (model.py:736); special handlers must tolerate weight-skip |
-| Table stakes | Loud "randomly initialized" log + parameter hash; test asserts hash differs from pretrained path | Geneformer silent-scratch lesson | LOW | logging util |
-| Table stakes | Two-architecture unit coverage + downstream loss-curve divergence check | intake acceptance | LOW-MED | pytest, tiny models |
-| Differentiator | From-scratch rows exported in the same format as pretrained runs (F8 learning-curve lane compat) | makes the baseline drop into the paper table unchanged | LOW | REV-09 export shape |
-| Anti-feature | random_init altering device/dtype/quantization behavior or bypassing special-family config resolution | baseline must differ from pretrained **only** in weights | — | — |
-| Anti-feature | Seeding the init with the training seed silently | init seed and training seed are distinct provenance; record both | — | — |
-
-**Sources:** HF course + transformers issues (MEDIUM-HIGH); Geneformer commit (HIGH legitimacy, public commit); gap example (LOW, illustrative single source — do not cite as benchmark).
-
----
-
-## REV-07 · Frozen-embedding probing
-
-### How established tools do it
-
-The frozen-probing protocol is well standardized in the DNA-LM literature (cross-checked across three independent sources): backbone runs strictly in inference mode (no grads, no parameter updates); probes are **logistic regression** (tests linear accessibility) and/or a **shallow MLP** (nonlinear decodability); embeddings are **standardized with train-set statistics only** (no test leakage — same invariant as REV-01); results reported as mean ± sd over ≥5 seeds for stochastic probes; and a "Recovery" ratio (frozen-probe score ÷ full-fine-tune score × 100) contextualizes the probe against fine-tuning ([Frozen-but-Not-Always-Accessible, arXiv 2608.05329](https://arxiv.org/html/2608.05329v1); NT paper's own probing used 10 random 90/10 splits and found **intermediate layers often probe better than the last layer** — [bioRxiv 2023.01.11.523679](https://www.biorxiv.org/content/biorxiv/early/2024/10/07/2023.01.11.523679.full.pdf); reference implementation recipe: `StandardScaler` → `LogisticRegression(max_iter=1000, solver="lbfgs")` with acc/P/R/F1/MCC/AUC — [leannmlindsey/NTv2_generic_sequence_classification](https://github.com/leannmlindsey/NTv2_generic_sequence_classification/blob/main/embedding_analysis_nt.py)). DART-Eval's cross-cutting finding: probing underperforms fine-tuning but is far cheaper — which is the *point* of the R2-2 comparison lane. Layer selection must be exposed (not hardcoded to last layer) or the probe systematically misreports.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | `extract_embeddings(...)` reusing the existing `scoring()` embedding path with selectable pooling + layer | mirrors NT/2608.05329 protocols; zero new model code | MED | scoring() (inference.py:1746), pooling helpers |
-| Table stakes | `fit_probe(kind="logistic"\|"mlp")` with **fixed** hyperparameters, scaler fit on train only, dev-based early stop for MLP | standardization-leakage hygiene + comparability requires fixed probes | MED | sklearn (already a dep) |
-| Table stakes | Metrics via REV-02 registry; export comparable with full fine-tune rows (F4 lane same-table) | the reviewer comparison is probe-vs-finetune | LOW | REV-02 |
-| Table stakes | npz embedding cache keyed by (model, dataset, layer, pooling); second run hits cache | probing suites always cache embeddings (extraction dominates cost) | LOW | — |
-| Table stakes | Layer selection parameter (not last-layer-only) | NT intermediate-layer finding | LOW | — |
-| Differentiator | Layer-sweep probing curve report (per-layer probe metric) + Recovery% metric | NT-style analysis; strong paper figure | LOW | matplotlib/altair (altair already dep) |
-| Differentiator | Composition with `DNADataset.sampling` for annotation-fraction learning curves (R2-5 synergy) | sampling already stratified-ratio+seed | LOW | datahandling |
-| Anti-feature | Fine-tuning the backbone during "probing" | defeats the definition; it's just fine-tuning | — | — |
-| Anti-feature | Probe hyperparameter search | unfixed probes destroy cross-model comparability (the lane's purpose) | — | — |
-| Anti-feature | Deep GPU probes (many layers/epochs) | scope creep toward full fine-tuning; shallow MLP is the convention | — | — |
-
-**Sources:** 2608.05329 + NT paper + reference repo (MEDIUM, mutually consistent); DART-Eval (MEDIUM).
-
----
-
-## REV-08 · Zero-shot VEP module (largest scope)
-
-### How established tools do it — three paradigms, all with real implementations
-
-1. **CLM Δlog-likelihood** (Evo/Evo2, autoregressive): build ref/alt windows, compute per-token-average sequence log-likelihoods, score `delta_loglik = loglik(alt) − loglik(ref)`; negative ⇒ deleterious. Verified implementation reference: [ToolUniverse `evo2_variant_effect_tool`](https://zitniklab.hms.harvard.edu/ToolUniverse/zh-CN/_modules/tooluniverse/evo2_variant_effect_tool.html). Ecosystem practices that are effectively protocol requirements: **reverse-complement averaging** (DNA LMs are not RC-equivariant; (ΔLL_fwd+ΔLL_rev)/2 recommended), and **window size is a declared parameter** (an E. coli calibration study measured 5–7% AUROC loss from the 8kb default vs optimal 2–4kb windows; sanity controls: nonsense variants in essential genes ΔLL ≈ −46.5 vs benign synonymous ≈ −3.5). Magnitude calibration: Evo2-40B ClinVar AUROC ≈ 0.98.
-2. **MLM log-odds / LLR at the variant position** (GPN: `log P(ALT)/P(REF)` with only the variant position masked — GPN's single-nucleotide tokenization was **chosen specifically** to make this well-defined; NT: overlapping 6-mer tokens, LLR at the variant token, ClinVar AUC ≈ 0.7–0.8 for the 2.5B model). DART-Eval notes masked objectives need iterative masking (cost) and — critically — that **BPE tokenizations are problematic because a single-base change can alter multiple tokens unpredictably**.
-3. **Embedding distance** (BEND benchmark: cosine distance between the reference-nucleotide embedding and the variant-nucleotide embedding, 512 bp context, AUROC evaluated overall **and per variant-consequence type**; the Enformer-VEP family uses the same idea). This is the paradigm actually used for DNABERT-2-class BPE models in benchmarks — Feng et al. (Nat Commun 2025) scored DNABERT-2's zero-shot VEP this way and measured AUC 0.538 on pathogenic-vs-common (i.e., weak — an honest expectation), vs NT-v2 ≈ 0.73.
-
-**The alignment pitfall — the core of R1-3e① — is real and documented:** with BPE, ref and alt alleles need not tokenize into the same token slot; the 2025 Mut-BPE paper shows standard BPE caps zero-shot VEP AUROC near 0.6 and recovers ~11% by splitting tokens to restore single-nucleotide resolution. dnallm's same-slot rule (ref/alt must fall in the same token slot in the same window, else **explicit skip with reason + count**) is the defensible protocol answer — GPN avoided the problem by architecture choice; BEND avoided it by not using likelihoods; dnallm faces it head-on because it scores 150+ heterogeneous tokenizers.
-
-**Expected behavior:** `align_variant(seq,pos,ref,alt,tokenizer)` → alignable/skip verdict; `score_variant(paradigm="clm"|"mlm")` with formulas written into docstrings (protocol declaration); RC behavior and window size declared parameters with documented defaults; `evaluate_vcf` → per-variant scores + skip accounting + AUROC/AUPRC via REV-02; CLI entry. Skip accounting reported alongside metrics (e.g., "N evaluated / M skipped:slot-mismatch") — a skipped-variant fraction is itself a finding about the tokenizer.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | Depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | Same-slot alignment check + explicit skip with per-variant reason and aggregate skip counts | Mut-BPE/DART-Eval BPE findings; GPN's architecture choice | MED | tokenizer access via load_model_and_tokenizer |
-| Table stakes | CLM Δlog-lik (per-token normalized, RC behavior declared, window parameter with documented default) | Evo/Evo2 protocol | MED | `clm_evaluate` kernel (mutagenesis.py:312) |
-| Table stakes | MLM log-odds at masked variant position | GPN/NT protocol | MED | `mlm_evaluate` kernel (mutagenesis.py:258) |
-| Table stakes | `evaluate_vcf(...)` → scores + skip stats + AUROC/AUPRC via registry | every VEP benchmark reports AUROC/AUPRC | MED | REV-02; VCF parsing (pysam/cyvcf2 — STACK lane) |
-| Table stakes | CLI entry point + formulas in docstrings/README (protocol declaration) | intake: 评分公式写入 docstring | LOW | click CLI framework |
-| Table stakes | ClinVar-sampled validation run (1k × ≥5 models) with literature-magnitude AUROCs | acceptance criterion; calibration numbers above | MED (GPU) | models.lock pattern from v1.1 |
-| Differentiator | Embedding-distance paradigm (BEND-compatible) as third scoring mode | makes BPE-only models evaluable zero-shot; BEND/Enformer-VEP lineage | LOW-MED | scoring() embedding path |
-| Differentiator | Per-consequence-type metric breakdown (splice/intronic/…) | BEND reports per-consequence AUROC | LOW | registry metrics |
-| Differentiator | RC-averaging toggle (default on, per literature) | plant-genetics Evo paper; GPN averages strands | LOW | kernels operate on sequences already |
-| Anti-feature | Imputing/heuristically rescoring non-alignable variants | the explicit skip IS the reviewer response; imputation would re-create the credibility problem | — | — |
-| Anti-feature | Indels / multi-allelic / MNV support in v1 | even SNV alignment is the hard part (Mut-BPE); scope discipline | — | — |
-| Anti-feature | Folding GPN-style explicit genomic models into the tokenizer-based protocol in v1 | owner open question #4: different scoring surface (per-position nucleotide probabilities, no tokenizer slots); design as extension point instead | — | — |
-| Anti-feature | Any training/calibration on the eval set | "zero-shot" must stay zero-shot (same invariant as REV-01) | — | — |
-
-**Sources:** GPN bioRxiv 2022.08.22.504706 (MEDIUM-HIGH); Evo2 ToolUniverse source + E. coli calibration bioRxiv (MEDIUM); Feng et al. Nat Commun 2025 (HIGH legitimacy journal, MEDIUM-HIGH overall); Mut-BPE bioRxiv (MEDIUM); BEND arXiv 2311.12570 + Polaris hub (MEDIUM-HIGH); NT paper (MEDIUM-HIGH).
-
----
-
-## REV-09 · Multi-seed sweep protocol
-
-### How established tools do it
-
-The reporting convention across ML-methodology sources (cross-checked): run k seeds (3 is the common floor, ≥5 recommended for headline claims), report **mean ± standard deviation over seeds** — sd, not standard error, because SE shrinks arbitrarily with more runs and understates run-to-run variance (Varoquaux & Colliot, *Best Practices Guidelines* chapter) — and complement with a **bootstrap 95% CI** using the percentile method (2.5/97.5 percentiles over ~10³–10⁴ resamples) for metrics without closed-form standard errors (AUROC, AUPRC, macro-F1). Two documented caveats worth encoding as anti-features: overlapping mean±sd bars are **not** a significance test (paired tests like McNemar/paired-bootstrap are a separate concern, out of revision scope), and with very few seeds BCa correction has been recommended — overkill for k=3–5 here. Sweep runners (wandb sweeps, HF runs) conventionally materialize one directory per run with the seed in the path; dnallm's `{model}/{task}/seed_{s}/` layout + a JSON `statistics` block is the standard shape. The one dnallm-specific requirement: the bootstrap must be **seeded** (pure function with RNG seed recorded in the JSON) or the CI itself becomes irreproducible — the exact class of complaint (R1-2a) this REV answers.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | `run_seeds(fn, seeds, out_root)` → `{model}/{task}/seed_{s}/` layout | sweep-runner convention; must match dnallmmark F2 exactly | LOW-MED | `TrainingConfig.seed` (configs.py:291) |
-| Table stakes | `aggregate_seeds(...)` pure function → mean/sd/ci95_bootstrap | mean±sd + percentile bootstrap convention | LOW | numpy only (no new dep) |
-| Table stakes | Seeded bootstrap RNG; JSON `statistics` block records n_seeds, mean, sd, ci95, n_resamples, bootstrap seed | reproducibility of the CI itself | LOW | — |
-| Table stakes | Aggregation unit tests on constructed arrays with known moments; ≥3-seed full-chain trial on a small task | intake acceptance | LOW | pytest |
-| Differentiator | Per-seed provenance in each seed dir (config hash, git rev, timestamp) | strengthens the provenance-break complaint fix (R1-2d lineage) | LOW | — |
-| Differentiator | Uniform hook with REV-01 `evaluate(split=...)` so every seed evaluates the same split the same way | eliminates seed-level eval-semantics drift | LOW | REV-01 |
-| Anti-feature | Significance tests / p-value machinery in v1 | right tool but out of revision scope; report CIs only | — | — |
-| Anti-feature | Reporting best-seed or median-seed as headline | defeats the protocol; always mean±spread over all seeds | — | — |
-| Anti-feature | Mixing test-set bootstrap resampling with seed variance in one interval | conflates two variance sources; keep ci95 per seed-mean convention and document it | — | — |
-
-**Sources:** Varoquaux & Colliot OAPEN chapter (MEDIUM-HIGH); CODECRUNCH evaluation notes; arXiv 2511.19794 / 2607.09816 (MEDIUM).
-
----
-
-## REV-10 · JASPAR/CIS-BP PWM matching
-
-### How established tools do it
-
-FIMO (MEME Suite) is the reference semantics (official docs, HIGH legitimacy): scans each motif **independently** on **both strands**; scores are **log-odds in bits** against a (zero-order) background; a **dynamic-programming algorithm converts log-odds scores to p-values** under the background model; default reports matches with **p < 1e-4** (`--thresh`), and `--qv-thresh` switches selection to **Benjamini-Hochberg q-values** (FDR). MOODS (the standard Python-accessible scanner, used inside TOBIAS) reads JASPAR `.pfm` natively: `pfm_to_log_odds(matrix, bg, pseudocount)` → `threshold_from_p(matrix, bg, p)` → `Scanner(window).set_motifs(matrices, bg, thresholds).scan(seq, max_hits)`; the background is baked into the log-odds conversion (the scanner's bg argument doesn't affect results). A pure-Python alternative exists (motifmatchry — bit-identical to MOODS — but requires Python 3.12+/numba, conflicting with dnallm's 3.11–3.13 matrix). Practical implication for dnallm: the sliding log-odds scan is a trivial numpy windowed dot-product; **p-value calibration is the only hard part** — FIMO's exact DP is overkill for a v1 hotspot scanner; an empirical null (scores on GC/shuffle-matched null windows) with BH correction is a defensible, honest calibration, with the exact-DP threshold as a future refinement. JASPAR distributes PFMs directly (meme/pfm formats); CIS-BP likewise exports PFM/TRANSFAC — format loading is table stakes.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | PFM loading (JASPAR `.pfm` + MEME format) with pseudocount and configurable background (uniform default; sequence-derived option) | MOODS API semantics | LOW-MED | numpy |
-| Table stakes | Both-strand scan of hotspot windows; output table: motif ID, coords, strand, log-odds score, p (or q), matched sequence | FIMO output schema | LOW-MED | mutagenesis hotspot windows (`prepare_tfmodescan_inputs` mutagenesis.py:583) |
-| Table stakes | Threshold by p-value (default 1e-4, FIMO convention) + Benjamini-Hochberg FDR option | FIMO default + `--qv-thresh` | MED (calibration) | scipy (already dep) |
-| Table stakes | HBG1 case: BCL11A motif hit coordinates match the paper's Fig 4a annotation | intake acceptance — the credibility anchor | LOW (given above) | committed test locus pattern from v1.1 showcase |
-| Differentiator | E-value reporting (p × scan space size) | FIMO reports E-values; reviewers recognize them | LOW | — |
-| Differentiator | Background estimated from scanned hotspot windows (composition-matched null) | MOODS `bg_from_sequence` analog; improves plant-genome scans where uniform bg is wrong | LOW | — |
-| Anti-feature | De novo motif discovery (MEME/STREME's job) | dnallm's story is scoring found hotspots, not discovering motifs | — | — |
-| Anti-feature | TF-MoDISco integration | chain already stops at `prepare_tfmodesc_inputs` by design; leave it | — | — |
-| Anti-feature | Genome-wide scanning service / bigwig export | scope explosion; hotspot windows only in v1 | — | — |
-| Anti-feature | Claiming FIMO-identical p-values with an empirical null | state the calibration method honestly in docs (reviewers will ask) | — | — |
-
-**Sources:** FIMO official docs meme-suite.org (HIGH legitimacy, MEDIUM-HIGH overall); MOODS wiki + TOBIAS example (MEDIUM); motifmatchry PyPI (MEDIUM).
-
----
-
-## REV-11 · MCP tools (ism_scan / hotspots / zero_shot_score)
-
-### How established tools do it
-
-FastMCP conventions (official docs, HIGH legitimacy): tools are `@mcp.tool`-decorated functions; **name** (snake_case, action-oriented) and **docstring-derived description** are what LLM clients select on; input schema is generated from type annotations (no `*args`/`**kwargs`); errors surface via `ToolError` → `isError=True` result, and unhandled exceptions are auto-converted so a tool never crashes the server ([FastMCP tools docs](https://gofastmcp.com/servers/tools), [python-sdk error-handling commit](https://github.com/modelcontextprotocol/python-sdk/commit/c68e254bad1dd39e6a10dad43d954c6d17f9f514)). dnallm's existing MCP layer already matches this contract (11 tools, timeout wrappers `_with_timeout_wrapper` server.py:282, error dicts rather than raising across the boundary, executor-bridged blocking loads in ModelManager). There is direct precedent for agent-facing VEP: Harvard Zitnik Lab's ToolUniverse exposes an `evo2_variant_effect_tool` with delta-log-lik semantics — i.e., a `zero_shot_score` MCP tool has a real-world analog, not a novelty. Tool naming should follow the established action-oriented snake_case (`ism_scan`, `hotspots`, `zero_shot_score` already conform). The carried v1.1 audit item (CLI `--host/--port` silently overridden by YAML) is folded in: flag-parse precedence (CLI > YAML > default) is the universal CLI convention.
-
-### Categories
-
-| Kind | Feature | Grounding | Complexity | depends on (dnallm) |
-|------|---------|-----------|------------|---------------------|
-| Table stakes | Three tools wrapping existing/new classes with existing timeout + error-dict + ModelManager patterns | FastMCP conventions; repo's own 11-tool contract | LOW-MED | Mutagenesis (ism_scan), hotspot extraction (hotspots), REV-08 scorer (zero_shot_score) |
-| Table stakes | Handshake regression tests: server up → client calls 3 tools → JSON assertions | repo's existing MCP test pattern (v1.1 mcp_example probes) | LOW | dnallm/mcp/tests |
-| Table stakes | `--host/--port` CLI-override fix with tests (CLI > YAML > default) | v1.1 audit W item; universal CLI precedence | LOW | server.py main/argparse |
-| Table stakes | Docstrings written for LLM consumption (what it does, parameter semantics, skip behavior for zero_shot_score) | name+description drive selection | LOW | — |
-| Differentiator | `zero_shot_score` exposing skip accounting (evaluated/skipped counts) in its result JSON | agents can report data-quality caveats to users; differentiates from ToolUniverse's bare delta | LOW | REV-08 |
-| Anti-feature | Unbounded/whole-genome scans via MCP without result-size caps or async job semantics | blocks event loop / explodes context; cap inputs + return summaries | — | — |
-| Anti-feature | Adding tools whose underlying feature doesn't exist yet (REV-11 before REV-08/10) | a tool surface is a contract; wrap working code | — | — |
-| Anti-feature | Streaming large result tables | return chunked/capped JSON summaries consistent with existing tools | — | — |
-
-**Sources:** FastMCP official docs (HIGH legitimacy, MEDIUM-HIGH); python-sdk (MEDIUM-HIGH); ToolUniverse (MEDIUM).
+| Table stakes | Every one of ~59 ollama refs dispositioned remove-or-skip with recorded rationale per item | owner directive 2026-10-11; PostHog/dataretrieval norms | MED (breadth: 5 test files + 2 notebooks) | typed-skip machinery; audit_skips gate |
+| Table stakes | `expected_skips.yaml` + census counts re-pinned after removal (audit exit 0, no unexpected skips) | existing CI gate discipline | LOW | audit_skips.py; D-03 census triple |
+| Table stakes | Removed-surface tests deleted outright (not zombie-skipped) | "permanently-skipped tests are dead code" consensus | LOW | — |
+| Differentiator | Disposition ledger documenting why each ref was removed vs kept — the audit-skips philosophy extended to deletions | matches project culture; not an ecosystem norm | LOW | WINDOWS ledger / planning artifacts |
+| Anti-feature | Blanket skip-everything "to be safe" | creates the forever-skipped zombie class the consensus warns about; the directive explicitly forbids it | — | — |
+| Anti-feature | Removing the ollama MCP-client *capability* from the library/MCP server | directive scope is pytest surface + notebooks, not the feature; library surface stays | — | — |
+| Anti-feature | Deleting live-probe evidence for the remaining supported mcp_example pair | the both-up green state (6 live-server probes) is v1.1-earned truth; keep unless the notebooks themselves go | — | — |
 
 ---
 
 ## Feature Dependencies
 
 ```
-REV-02 metric registry ──required──> REV-07 (probe metrics)
-                     └──required──> REV-08 (VEP AUROC/AUPRC)
-                     └──required──> REV-09 (statistics keys) [soft: aggregation can emit raw]
-REV-05 presets ──required──> REV-04 (IA3 target defaults)
-REV-04/05 ──then──> REV-03 (usage docs chapter after adapters land)
-REV-08 VEP module ──required──> REV-11 zero_shot_score tool
-REV-10 motif module ──required──> REV-11 hotspots tool (hotspot windows feed scans)
-[existing] Mutagenesis mlm/clm kernels ──reused──> REV-08
-[existing] scoring() embedding path ──reused──> REV-07, REV-08(embedding paradigm)
-[existing] infer() predict path ──reused──> REV-01 evaluate(split=...)
-[existing] TrainingConfig.seed ──reused──> REV-09
-REV-01 ──enhances──> REV-09 (uniform per-seed evaluation split)
-REV-06 ──enhances──> REV-07 (probe-vs-scratch-vs-pretrained three-way comparison)
+[numpy evaluators (jaccard + loj)]
+    └──requires──> [parity tests on Linux CI]          (spikes proved it once; tests keep it true)
+                          └──gates──> [platform dispatch in example code]
+                                            └──requires──> [platform-aware test gates]
+                                                                  └──requires──> [test-windows numpy-path executor]
+                                                                                         └──asserts──> [exon_f1 band on BOTH paths]
+
+[packaging extras hygiene (base/cuda121/rocm)]
+    └──orders──> [install-lane docs + GPU matrix docs]     (docs must describe the final extras shape)
+                       └──orders──> [docs accuracy sweep]  (install-command re-verification sequenced last)
+
+[publish smoke (dry-run chain)]
+    ├──independent of──> [OIDC migration]                  (either credential flow can host the dry-run)
+    └──proves──> [base-extra rename consumer safety]
+
+[ollama disposition] ──independent── (re-pins census counts consumed by CI gates)
+
+[GAP-1 shim-or-remove] ──independent── (touches benchmark notebook + script test only)
+[#18 triton-windows declaration] ──independent── (pyproject + one test + docs row)
 ```
 
 ### Dependency Notes
 
-- **REV-02 before everything metric-emitting:** probing (REV-07), VEP (REV-08) and sweep aggregation (REV-09) all emit metrics; landing them before the registry means re-touching their outputs later. This matches the intake's Phase A gating.
-- **REV-05 before REV-04:** IA³'s target_modules default comes from the preset table; the intake dependency chain (REV-04 → REV-05 → F4) resolves to "build presets first, IA³ consumes them".
-- **REV-11 conflicts with nothing but requires REV-08 (zero_shot_score) and benefits from REV-10 (hotspots)**: `ism_scan` wraps existing Mutagenesis and could land independently.
-- **REV-01/02/03/06/09 are mutually independent** — parallelizable wave candidates; REV-08 is the long pole.
+- **Platform split requires continuous parity:** the owner precondition ("ships only under parity") is met by the spikes but must survive future bedtools/numpy releases — hence parity tests on Linux CI precede the split landing in the roadmap, and the Windows executor's band assertion is the end-to-end closure.
+- **Packaging precedes docs sweep:** install-lane/matrix docs describe the post-hygiene extras shape; the accuracy sweep re-verifies install commands last so it isn't done twice.
+- **Publish smoke enhances (does not require) the OIDC migration:** the dry-run chain is credential-free; the migration changes only the upload step's auth. The owner note "may subsume" means one workflow can carry both.
+- **Ollama disposition conflicts with nothing** but re-pins the census/gate counts other features assert against — land it early so later phases pin against the final counts.
+- **GAP-1 shim conflicts with facade stability if implemented globally** — hence the anti-feature row; a scoped shim inside the affected load path composes with the compat-span invariant instead.
 
 ## MVP Definition
 
-### Launch With (Phase A — P0, gate for the benchmark re-run)
+### Launch With (v1.3 — all in scope; these are the P1 core)
 
-- [ ] REV-01 eval-semantics leak guard + `evaluate(split=...)` — prevents reproducing the R1-2c leak in the re-run
-- [ ] REV-02 metric registry contract — must exist before any new results are generated (D2)
-- [ ] REV-03 comparability warnings + terminology + CHANGELOG — reviewer-facing evidence chain (docs chapter for IA³ lands with Phase B)
+- [ ] Platform dispatch + numpy evaluators + parity tests + platform-aware gates + test-windows numpy executor + tolerance pins — the milestone's headline; exon_f1=0.7522 in band on both paths is the acceptance
+- [ ] Extras hygiene: `base` rename/re-scope, cuda121 retirement, rocm restore-or-remove — the dishonest metadata rows go first
+- [ ] Install-lane docs + GPU support matrix + cuda130 default recommendation
+- [ ] Publish smoke (workflow_dispatch dry-run chain with clean-venv install-from-wheel)
+- [ ] Ollama surface: per-item remove-vs-skip disposition executed, gates re-pinned
+- [ ] GAP-1 #11/#12 and #18 decided and executed (shim-or-remove; declare-or-document)
 
-### Add After Validation (Phase B — P1, parallelizable with re-run)
+### Add After Validation (same milestone if capacity, else carry)
 
-- [ ] REV-05 presets then REV-04 IA³ — R2-2 adaptation lane
-- [ ] REV-06 random_init — unblocks F8 learning curves (R2-5)
-- [ ] REV-07 probing — R2-2 probe lane
-- [ ] REV-08 zero-shot VEP — E5 lane (long pole; start alignment/scoring kernels early)
-- [ ] REV-09 multi-seed protocol — F2 dependency; pure functions can land immediately
+- [ ] OIDC Trusted Publishing migration — well-bounded workflow surgery; may subsume the smoke workflow per owner note
+- [ ] mkdocs `--strict` 15-warning cleanup — ledgered debt the docs sweep surfaces naturally
+- [ ] mypy cap, #20 cov-crash fix — dev-lane robustness items
+- [ ] Scheduled (periodic, not just dispatch) publish smoke cadence
 
-### Future Consideration (Phase C — P2, post-submission commitment)
+### Future Consideration (post-v1.3)
 
-- [ ] REV-10 JASPAR/CIS-BP matching — manuscript uses external-annotation wording meanwhile (B-plan)
-- [ ] REV-11 MCP tools — narrative value (R2-7/Ed-6); strictly after REV-08/10 exist
+- [ ] Runtime lane/architecture warning at import (torch 2.8-style) — nice reach, not honesty-critical
+- [ ] Staged publishing / TestPyPI rehearsal lane with promotion semantics — only if release frequency grows
+- [ ] pyranges/ruranges re-evaluation — only if win_amd64 wheels ever ship (owner trigger condition already recorded)
 
 ## Feature Prioritization Matrix
 
-| Feature | User Value | Implementation Cost | Priority | Complexity (from sections) |
-|---------|------------|---------------------|----------|------------------------------|
-| REV-01 leak guard | HIGH (re-run integrity) | LOW | P0 | LOW-MED |
-| REV-02 metric registry | HIGH (re-run integrity) | LOW | P0 | LOW |
-| REV-03 docs/warnings | MED (reply-letter evidence) | LOW | P0 | LOW |
-| REV-05 PEFT presets | HIGH (unblocks REV-04, silent-failure prevention) | MED | P1 | MED |
-| REV-04 IA³ | MED-HIGH (R2-2) | LOW-MED | P1 | LOW-MED |
-| REV-06 random_init | MED-HIGH (R2-5) | LOW | P1 | LOW |
-| REV-07 probing | MED-HIGH (R2-2) | MED | P1 | MED |
-| REV-08 zero-shot VEP | HIGH (R2-3 + R1-3e①, new capability class) | HIGH | P1 | HIGH |
-| REV-09 multi-seed | HIGH (R1-2a/R2-4) | LOW-MED | P0→P1 (aggregation pure functions can be P0-adjacent) | LOW-MED |
-| REV-10 motif matching | MED (post-submission) | MED | P2 | MED |
-| REV-11 MCP tools | MED (narrative) | LOW-MED | P2 | LOW-MED |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Platform split + parity tests + Windows executor | HIGH (unlocks native Windows) | MEDIUM (surface fully inventoried) | P1 |
+| Extras hygiene (base/cuda121/rocm) | HIGH (installs do what they claim) | LOW | P1 |
+| Install-lane docs + GPU matrix | HIGH (first thing every user hits) | LOW-MED | P1 |
+| Publish smoke dry-run | MEDIUM-HIGH (rust-proofs the chain) | MEDIUM | P1 |
+| Ollama disposition | MEDIUM (suite honesty, runner stability) | MEDIUM (breadth) | P1 |
+| GAP-1 disposition | MEDIUM (recovers or retires blocked surface) | MEDIUM (shim) / LOW (remove) | P1 |
+| #18 triton-windows decision | MEDIUM (Windows fla users) | LOW | P1 |
+| OIDC migration | MEDIUM (security posture, attestations) | MEDIUM | P2 |
+| mkdocs --strict cleanup | MEDIUM (docs gate honesty) | MEDIUM | P2 |
+| mypy cap + #20 fix | LOW-MEDIUM (maintainer lane) | LOW / MEDIUM | P2 |
+| Periodic smoke cadence | LOW-MEDIUM | LOW | P2 |
+| Runtime GPU warning | LOW | MEDIUM | P3 |
+| Staged publishing lane | LOW | MEDIUM | P3 |
 
-## Comparable-Tool Feature Analysis
+## Comparable Analysis
 
-| Capability | How comparables do it | dnallm plan |
-|------------|----------------------|-------------|
-| Zero-shot VEP scoring | GPN: MLM log-odds, single-nuc tokenizer; Evo/Evo2: CLM Δlog-lik + RC averaging; NT: 6-mer LLR at variant token; BEND: embedding cosine distance; DNABERT-2 in benchmarks: embedding distance (LLR ill-defined under BPE) | All three likelihood/embedding paradigms behind `score_variant(paradigm=...)`, same-slot alignment with explicit skips — the differentiator is doing this uniformly across 150+ heterogeneous tokenizers, which none of the comparables attempt |
-| Variant-token alignment | Comparables avoid it by architecture (GPN single-nuc) or by paradigm choice (BEND embeddings); Mut-BPE rewrites tokenization | Same-slot rule + skip accounting — a protocol contribution, directly answering R1-3e① |
-| Metric naming | evaluate: canonical Hub names, no alias table; torchmetrics: class registry | Own `{canonical: (fn, aliases)}` registry shared cross-repo with contract tests |
-| PEFT target selection | peft: internal arch mapping, error on unknown; ssm-peft: Mamba linear projections; silent partial application documented in issues | Verified per-model preset YAML + dry-run validator + explicit-unsupported entries |
-| IA³ | peft IA3Config with feedforward_modules subset semantics | Ia3Config pydantic mirror + presets; Mamba marked experimental |
-| Probing | frozen backbone + LR/shallow-MLP, train-only scaler, layer sweep, Recovery% | probing.py reusing scoring() embedding path; fixed hyperparams |
-| Motif scanning | FIMO: log-odds bits, DP p-values, p<1e-4, BH q-values; MOODS: JASPAR pfm, threshold_from_p | Hotspot-window scanner, empirical-null calibration + BH, FIMO-compatible output schema |
-| Agent VEP tools | ToolUniverse evo2_variant_effect_tool (single model, bare ΔLL) | zero_shot_score over the whole registry with skip accounting |
-| From-scratch baselines | transformers from_config idiom; Geneformer silent-scratch incident as cautionary tale | random_init=True + loud log + param hash |
+| Dimension | Comparable | Their approach | dnallm v1.3 plan |
+|-----------|-----------|----------------|------------------|
+| Windows interval ops | pybedtools / bioframe | pybedtools: unsupported, WSL/Docker; bioframe: pure-numpy engine with documented bedtools-equivalence map (`-loj` → `overlap(how='left')`) | platform-split: keep bedtools where it installs, numpy evaluator only where it can't — bioframe's pattern scoped to jaccard + loj, with parity *tests* (bioframe ships mappings, dnallm ships measured parity) |
+| GPU extras that work under pip | spaCy (`cuda12x`, `cuda-autodetect`) / jax (`cuda12`/`cuda13` via PyPI plugin wheels) | extras pull GPU wheels that live on PyPI → honest under every installer; spaCy deleted its frozen `cuda121`-class extras | torch CUDA wheels aren't on PyPI → keep uv lanes primary, retire the undead cuda121 lane, document the pip `--index-url` lane explicitly |
+| Install-lane communication | PyTorch get-started matrix + dev-discuss lane-EOL notices + runtime arch warnings | OS × platform × lane selector emitting exact commands; public lane deprecation notices | lane docs + verified per-generation matrix; cuda130 default; (P3) runtime warning |
+| uv/pip asymmetry handling | dataeval-flow docs, vLLM (`--torch-backend=auto`) | explicitly document that `[tool.uv.sources]` is uv-only; give pip users index commands | same: cross-installer honesty table |
+| Publish auth | pypa/gh-action-pypi-publish / `uv publish --trusted-publishing` | job-level `id-token: write`, environment binding, attestations default-on | OIDC migration (P2), token retired |
+| Publish validation | PyKMP / NVIDIA-NeMo release guides | build → check-wheel-contents → twine check → clean-venv install-from-wheel smoke → optional TestPyPI dry-run | workflow_dispatch dry-run with exactly this chain, periodic cadence as differentiator |
+| Docs anti-drift | sphinx-gallery / sybil / pytest-doctestplus; periodic link+example reviews | execute everything; schedule prose hygiene | already exceeds (example-nightly + byte-sync); adds the per-file sweep + `--strict` zero-warnings |
+| Dead test surface | PostHog ("delete expired tests"), dataretrieval (bounded skip window) | delete removed-feature tests; skip only in dated deprecation windows | per-item remove-vs-skip with ledgered rationale; typed-skip allowlist enforces the survivors |
+| Stale remote-code checkpoints | OpenELM-on-v5 class | pin ceiling, upstream fix, or drop | scoped compat-shim inside transformers_compat.py, or removal — decided at planning |
 
 ## Sources
 
-- HF Trainer eval semantics: [Trainer docs](https://huggingface.co/docs/transformers/v4.38.2/ja/main_classes/trainer), [training_args.py](https://github.com/huggingface/transformers/blob/v4.57.0/src/transformers/training_args.py), [SO 76310533](https://stackoverflow.com/questions/76310533/how-to-fix-trainer-evaluation-requires-an-eval-dataset-in-huggingface-transfo), [TRL caveat](https://theneuralbase.com/sft/learn/beginner/evaluation-during-training/) — MEDIUM
-- Metric registries: [evaluate loading methods](https://huggingface.co/docs/evaluate/package_reference/loading_methods), [evaluate README](https://raw.githubusercontent.com/huggingface/evaluate/main/README.md) — MEDIUM
-- PEFT IA³: [official IA3 docs](https://huggingface.co/docs/peft/package_reference/ia3) — HIGH (official, directly fetched)
-- PEFT target selection: [peft #1289](https://github.com/huggingface/peft/issues/1289), [easylora registry](https://alexsuw.github.io/easylora/model-support/), [peft #2556 / #3554] via Mamba-PEFT search — MEDIUM
-- SSM/Mamba PEFT: [arXiv 2410.09016 (ICML25)](http://export.arxiv.org/pdf/2410.09016), [Memba arXiv 2506.18184](https://ar5iv.labs.arxiv.org/html/2506.18184) — MEDIUM
-- From-scratch loading: [HF LLM course](https://huggingface.co/learn/llm-course/zh-TW/chapter2/3), [transformers #1283](https://github.com/huggingface/transformers/issues/1283), [#26901](https://github.com/huggingface/transformers/issues/26901), [Geneformer silent-scratch commit](https://huggingface.co/ctheodoris/Geneformer/commit/33693688b3eaa03e4ed385a115e3a74ae37af9ff) — MEDIUM-HIGH
-- Probing: [arXiv 2608.05329](https://arxiv.org/html/2608.05329v1), [NT paper](https://www.biorxiv.org/content/biorxiv/early/2024/10/07/2023.01.11.523679.full.pdf), [NTv2 probe reference impl](https://github.com/leannmlindsey/NTv2_generic_sequence_classification/blob/main/embedding_analysis_nt.py), [DART-Eval](https://arxiv.org/html/2412.05430) — MEDIUM
-- Zero-shot VEP: [GPN paper](https://www.biorxiv.org/content/10.1101/2022.08.22.504706v2.full), [Evo2 delta-loglik tool](https://zitniklab.hms.harvard.edu/ToolUniverse/zh-CN/_modules/tooluniverse/evo2_variant_effect_tool.html), [Evo2 calibration study](https://www.biorxiv.org/content/10.64898/2026.07.02.736037v1), [Feng et al. Nat Commun 2025](https://www.nature.com/articles/s41467-025-65823-8), [Mut-BPE](https://www.biorxiv.org/content/biorxiv/early/2025/12/01/2025.12.01.691503.source.xml), [BEND](https://github.com/dna-llm/BEND) + [Polaris task](https://polarishub.io/benchmarks/mlls/bend-zeroshot-variant-effects-disease) — MEDIUM-HIGH (multi-source)
-- Multi-seed reporting: [Varoquaux & Colliot chapter (OAPEN)](https://library.oapen.org/handle/20.500.12657/75361), [arXiv 2511.19794](https://browse-export.arxiv.org/pdf/2511.19794), [arXiv 2607.09816](https://arxiv.org/pdf/2607.09816v3) — MEDIUM
-- Motif scanning: [FIMO official docs](https://meme-suite.org/meme/doc/fimo.html), [MOODS wiki](https://github.com/jhkorhonen/MOODS/wiki/Brief-theoretical-introduction), [TOBIAS MOODS example](https://github.molgen.mpg.de/loosolab/TOBIAS-nextflow/blob/ae165153649f375895f74e9f956b75bad7ab993a/TOBIAS_MAPOKS/dockerfile/old_TOBIAS/MOODS-python-1.9.2/scripts/ex-scanner.py), [motifmatchry](https://pypi.org/project/motifmatchpy/) — MEDIUM-HIGH (FIMO official)
-- MCP conventions: [FastMCP tools](https://gofastmcp.com/servers/tools), [python-sdk error handling](https://github.com/modelcontextprotocol/python-sdk/commit/c68e254bad1dd39e6a10dad43d954c6d17f9f514), [MCP spec](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) — MEDIUM-HIGH
+- pybedtools installation docs (Windows unsupported): https://daler.github.io/pybedtools/main.html — MEDIUM (official docs, single source for the negative claim but unambiguous)
+- bioframe paper + "Bioframe for bedtools users" + benchmarks: https://www.biorxiv.org/content/10.1101/2022.02.16.480748v1.full.pdf, https://bioframe.readthedocs.io/en/latest/guide-bedtools.html, https://pmc.ncbi.nlm.nih.gov/articles/PMC10903647/ — MEDIUM (cross-verified, official docs + peer-reviewed)
+- Bioconda no-Windows / downstream breakage: https://stackoverflow.com/questions/48441023/, https://github.com/gao-lab/GLUE/issues/95 — MEDIUM
+- torch get-started lane matrix + commands: https://docs.pytorch.org/get-started/locally/ — MEDIUM (official)
+- cu126 wheel EOL notice (2.15, drops Maxwell/Pascal/Volta): https://dev-discuss.pytorch.org/t/notice-cuda-12-6-wheels-will-no-longer-be-published-from-pytorch-2-15-drops-maxwell-pascal-volta/3432 — MEDIUM (official mailing list)
+- sm_50/sm_60 removal warnings in 2.8 cu128: https://github.com/pytorch/pytorch/pull/158478 — MEDIUM
+- cu121 wheels stopped / CUDA 13 drops pre-Turing: https://pozzettiandrea.github.io/cuda-wheels/matrix/, https://developer.nvidia.com/blog/navigating-gpu-architecture-support-a-guide-for-nvidia-cuda-developers/ — MEDIUM (cross-checked against cheat sheets)
+- `[tool.uv.sources]` invisible to pip; lane docs pattern: https://pypi.org/project/dataeval-flow/0.2.3/#2 — MEDIUM (single project's docs but states the mechanism plainly; consistent with uv docs)
+- uv `--torch-backend` semantics + pitfalls: https://app.semanticdiff.com/gh/astral-sh/uv/pull/12070/overview, https://pydevtools.com/handbook/explanation/installing-cuda-python-packages.md — MEDIUM
+- spaCy GPU extras + cuda121-class removal: https://deepwiki.com/explosion/spaCy/1.2-installation-and-setup, https://github.com/explosion/spaCy/discussions/13567 — MEDIUM
+- jax cuda extras / PEP 685: https://www.gitclear.com/open_repos/google/jax/release/jax-v0.6.0, https://peps.python.org/pep-0685/ — MEDIUM (PEP is HIGH-legitimacy primary)
+- PyPI Trusted Publishing + attestations + 2FA timeline: https://docs.pypi.org/trusted-publishers/using-a-publisher/, https://docs.pypi.org/attestations/producing-attestations/, https://blogpypiorg.readthedocs.io/posts/2023-04-20-introducing-trusted-publishers/, https://blog.pypi.org/posts/2023-12-13-2fa-enforcement/ — MEDIUM (official docs, cross-verified)
+- uv publish flags (dry-run, trusted-publishing, testpypi): https://mintlify.wiki/astral-sh/uv/cli/publish, https://github.com/astral-sh/uv/pull/7475 — MEDIUM
+- Publish smoke chain: https://gertvdijk.github.io/PyKMP/releasing/ — MEDIUM (single guide but corroborated by NVIDIA-NeMo/Ananke workflow shapes in the same results)
+- Staged publishing GA (2026-05-22): https://hidekazu-konishi.com/entry/publishing_npm_and_pypi_packages_without_long_lived_tokens.html — LOW (single secondary source)
+- Docs testing tools: https://github.com/scientific-python/pytest-doctestplus/, https://skills.rest/skill/sybil, https://github.com/audeering/auglib/pull/51, https://raw.githubusercontent.com/lsst-sqre/sqr-032/tickets/DM-20939/index.rst — MEDIUM (cross-verified)
+- transformers v5 config dataclass breakage + OpenELM precedent: https://huggingface.co/apple/OpenELM-1_1B-Instruct/discussions/8, https://raw.githubusercontent.com/huggingface/transformers/c472755e79aac54d675845bff5e5c821c21260af/MIGRATION_GUIDE_V5.md — MEDIUM (official guide + live incident)
+- triton-windows fork status + requirements: https://github.com/triton-lang/triton-windows, https://raw.githubusercontent.com/woct0rdho/triton-windows/master/README.md, https://raw.githubusercontent.com/unslothai/unsloth/refs/tags/September-2025-v3/README.md — MEDIUM
+- Test deletion vs skip consensus: https://github.com/PostHog/posthog/blob/master/.agents/skills/maintaining-python-tests/SKILL.md, https://github.com/DOI-USGS/dataretrieval-python/pull/259, https://dev.to/multigrid/quarantining-a-flaky-llm-test-without-deleting-it-2k1j — MEDIUM (three independent sources agreeing)
+- Internal (HIGH, read directly): `.planning/PROJECT.md`, `.planning/WINDOWS.md` (#11/#12/#13/#18/#19/#20), `pyproject.toml` extras + uv tables, `.github/workflows/publish.yml`, parity-spike verdicts recorded in PROJECT.md
+
+**Gaps to flag for phase-time research:** exact pypa/gh-action-pypi-publish input syntax for the combined environment+OIDC workflow (README not fetched — the action README should be read at plan time); whether PyPI API tokens gain any sunset date (no announcement found — treat as "recommended migration," not forced); mypy capping practice not separately researched (MEDIUM from training; verify at plan time if the cap choice matters); bioframe's own test suite internals not inspected (its bedtools-parity *tests* vs documented mappings — dnallm's spike already exceeds this bar locally).
 
 ---
-*Feature research for: DNALLM v1.2 Paper Revision Suite Support (REV-01…REV-11)*
-*Researched: 2026-10-09*
+*Feature research for: v1.3 Platform Reach & Packaging Honesty (Windows parity, packaging honesty, publish chain, docs accuracy)*
+*Researched: 2026-10-11*

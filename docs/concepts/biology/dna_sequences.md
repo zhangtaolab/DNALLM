@@ -39,7 +39,7 @@ This process is why DNA sequences are so critical. The order of A, C, G, and T i
 
 In the context of DNALLM, a DNA sequence is treated as a "language." The models learn the "grammar" and "syntax" of this language from vast amounts of genomic data.
 
-- **Tokens**: Just like human language is broken down into words or sub-words, a DNA sequence is broken into tokens. This can be as simple as single nucleotides (`A`, `C`, `G`, `T`) or k-mers (e.g., 6-mers like `GATTACA`).
+- **Tokens**: Just like human language is broken down into words or sub-words, a DNA sequence is broken into tokens. This can be as simple as single nucleotides (`A`, `C`, `G`, `T`) or k-mers (e.g., the 6-mer `GATTAC`).
 - **Sentences**: A complete DNA sequence, such as a gene or a regulatory element, is treated as a "sentence" or a "document."
 
 By learning the patterns within these sequences, DNALLM can perform a wide range of biological tasks, from predicting the function of a sequence to designing entirely new ones.

@@ -14,7 +14,7 @@ This tutorial demonstrates how to generate novel DNA sequences using a pre-train
 ## Prerequisites
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 ## Load Configuration

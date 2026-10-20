@@ -169,14 +169,14 @@ class ModelManager:
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results
-        loading_results = {}
+        loading_results: dict[str, bool] = {}
         for i, model_name in enumerate(enabled_models):
             result = results[i]
             if isinstance(result, Exception):
                 logger.error(f"Exception loading model {model_name}: {result}")
                 loading_results[model_name] = False
             else:
-                loading_results[model_name] = result  # type: ignore[assignment]
+                loading_results[model_name] = result  # ty: ignore[invalid-assignment]  # load_model only returns bool; non-Exception BaseExceptions never occur
 
         successful_loads = sum(loading_results.values())
         logger.info("\n📊 Loading Summary:")
@@ -262,7 +262,7 @@ class ModelManager:
                     return inference_engine.infer_seqs(sequence, **kwargs)
 
             result = await loop.run_in_executor(None, _single_flight_infer)
-            return result  # type: ignore
+            return result
         except Exception as e:
             logger.error(f"Prediction failed for model {model_name}: {e}")
             return None
@@ -298,7 +298,7 @@ class ModelManager:
                     return inference_engine.infer_seqs(sequences, **kwargs)
 
             result = await loop.run_in_executor(None, _single_flight_infer)
-            return result  # type: ignore
+            return result
         except Exception as e:
             logger.error(f"Batch prediction failed for model {model_name}: {e}")
             return None
@@ -334,7 +334,7 @@ class ModelManager:
                 logger.error(f"Exception in multi-model prediction for {model_name}: {result}")
                 multi_results[model_name] = {"error": str(result)}
             else:
-                multi_results[model_name] = result  # type: ignore[assignment]
+                multi_results[model_name] = result
 
         return multi_results
 

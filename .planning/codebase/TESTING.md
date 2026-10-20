@@ -37,6 +37,7 @@ python scripts/check_code.py --with-tests # lint + format + tests wrapper
 - Two suites: `tests/` (mirrors the package layout) and `dnallm/mcp/tests/` (packaged with the module; omitted from coverage via `[tool.coverage.run]` omit)
 - Shared fixtures in `tests/conftest.py` (root); MCP suite has no conftest — helpers live in `dnallm/mcp/tests/_network_skip.py`
 - Real test data under `tests/test_data/<task_type>/` (binary_classification, multiclass, multilabel, regression, token_classification, embedding, language_model)
+- Committed frozen-data fixtures under `tests/fixtures/genomic_intervals/` (real interval pairs + bedtools loj oracle tsv + PROVENANCE.md; git-tracked via scoped .gitignore exceptions — consumed by `tests/test_frozen_pairs.py`, phase 16-03)
 - ~1622 test functions total; 133 async
 
 **Naming:**
@@ -53,7 +54,8 @@ tests/
 ├── inference/ mcp/ models/ scripts/ tasks/ utils/
 │   └── (test_<module>.py per source module; models/test_special/ nests deeper)
 ├── examples/_execution.py       # private nbclient harness (see Example Execution Layer)
-└── test_data/                   # per-task-type fixture data
+├── test_data/                   # per-task-type fixture data
+└── fixtures/genomic_intervals/ # frozen interval pairs + oracle tsv + PROVENANCE.md (16-03)
 dnallm/mcp/tests/                # packaged second suite + _network_skip.py helper
 ```
 

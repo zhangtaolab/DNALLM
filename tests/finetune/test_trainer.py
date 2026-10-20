@@ -34,7 +34,11 @@ from dnallm.configuration.configs import (
     load_config,
 )
 from dnallm.datahandling.data import DNADataset
-from dnallm.finetune.trainer import DNATrainer
+from dnallm.finetune.trainer import (
+    DNATrainer,
+    _OutermostModulesToSave,
+    _outermost_modules_to_save,
+)
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_finetune_config.yaml")
 
@@ -597,6 +601,36 @@ class TestEarlyStopping:
         DNATrainer(model=Mock(), config=trainer_config, datasets=make_datasets(["train", "val"]))
 
         assert trainer_cls.call_args.kwargs["callbacks"] == []
+
+
+class TestModulesToSaveNormalization:
+    """Nested-head modules_to_save stays single-wrapped (PEFT 0.21.2 round-trip)."""
+
+    def test_nested_head_keeps_only_the_outermost_module(self):
+        class Head(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.classifier = torch.nn.Linear(4, 2)
+
+        class Nested(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.score = Head()
+
+        result = _outermost_modules_to_save(Nested(), None)
+
+        assert isinstance(result, _OutermostModulesToSave)
+        assert list(result) == ["score"]
+        result.extend(["classifier", "score"])
+        assert list(result) == ["score"]
+
+    def test_flat_head_keeps_peft_defaults(self):
+        class Flat(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.classifier = torch.nn.Linear(4, 2)
+
+        assert _outermost_modules_to_save(Flat(), None) is None
 
 
 class TestLoraWiring:

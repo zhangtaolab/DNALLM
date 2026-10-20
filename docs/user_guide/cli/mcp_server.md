@@ -311,6 +311,11 @@ The MCP server provides the following tools:
 {"tool": "_get_model_info", "arguments": {"model_name": "promoter_model"}}
 ```
 
+The three tools above are the most commonly used; the server registers the full
+set (batch, streaming, multi-model, mutagenesis, interpretation, and the
+Phase-12 variant-effect tools) — see the [MCP usage guide](../mcp/usage.md)
+for the complete list.
+
 ## Integration Examples
 
 ### Claude Desktop Integration

@@ -6,9 +6,20 @@ proper resource cleanup and prevent hanging processes.
 
 import gc
 import multiprocessing
+import os
 import time
 
 import pytest
+
+# Traffic discipline (owner directive, 2026-10-19): prefer ModelScope for every
+# model it serves, and never re-download what the local HuggingFace cache
+# already holds. Opt in for local full-suite runs with DNALLM_TEST_HF_OFFLINE=1
+# -- pytest imports this root conftest before any dnallm/transformers module,
+# so huggingface_hub's module-level constants pick offline mode up at first
+# import and cached models load without the online etag round-trip.
+if os.environ.get("DNALLM_TEST_HF_OFFLINE", "") == "1":
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
 
 
 def pytest_configure(config):

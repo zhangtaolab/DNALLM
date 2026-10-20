@@ -49,6 +49,7 @@ finetune:
 ```python
 # trust_remote_code is applied internally where needed — just pass a TaskConfig
 from dnallm.configuration.configs import TaskConfig
+from dnallm.models import load_model_and_tokenizer
 
 task_config = TaskConfig(task_type="binary", num_labels=2)
 model, tokenizer = load_model_and_tokenizer("model_name", task_config, source="huggingface")

@@ -40,7 +40,7 @@ This output is a new representation of the token that is enriched with contextua
 
 The quadratic complexity of standard attention has led to the development of more efficient implementations.
 
-- **Flash Attention**: This is a highly optimized version of the attention algorithm that uses techniques like kernel fusion and tiling to reduce the amount of memory read/written to and from the GPU's main memory. It doesn't change the mathematical result but makes the process significantly faster and more memory-efficient. DNALLM automatically uses Flash Attention if it's installed and supported by the model and hardware.
+- **Flash Attention**: This is a highly optimized version of the attention algorithm that uses techniques like kernel fusion and tiling to reduce the amount of memory read/written to and from the GPU's main memory. It doesn't change the mathematical result but makes the process significantly faster and more memory-efficient. In DNALLM, Flash Attention is enabled automatically only on the native Evo path: when the `flash-attn` package is installed and supported, the Evo loader selects a flash-attention architecture config (`dnallm/models/special/evo.py`), otherwise it falls back to the `-noFA` variant. Generic model loads always use eager attention (`attn_implementation: "eager"` is hard-coded in `dnallm/models/model.py`), so installing `flash-attn` changes the attention implementation for no other model family (see the [Performance Guide](../../user_guide/performance_guide.md)).
 
 - **Sparse Attention**: Models like `BigBird` use sparse attention patterns (e.g., windowed and random attention) to reduce the number of scores that need to be calculated, approximating the full attention matrix.
 

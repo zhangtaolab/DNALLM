@@ -48,7 +48,7 @@ class TestTaskType:
     def test_task_type_comparison(self):
         """Test task type comparison operations."""
         assert TaskType.BINARY == TaskType.BINARY
-        # type: ignore[comparison-overlap]
+
         assert TaskType.BINARY != TaskType.REGRESSION
         assert TaskType.MULTICLASS in TaskType
         assert "embedding" in [t.value for t in TaskType]
@@ -252,7 +252,7 @@ class TestTaskConfigEdgeCases:
     def test_task_config_missing_required_field(self):
         """Test that missing required field raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            TaskConfig()  # type: ignore[call-arg]
+            TaskConfig()
 
         assert "task_type" in str(exc_info.value)
 
@@ -266,7 +266,7 @@ class TestTaskConfigEdgeCases:
     def test_task_config_none_task_type(self):
         """Test that None task type raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            TaskConfig(task_type=None)  # type: ignore[arg-type]
+            TaskConfig(task_type=None)
 
         assert "task_type" in str(exc_info.value)
 

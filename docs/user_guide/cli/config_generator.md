@@ -32,7 +32,7 @@ dnallm-model-config-generator
 
 - `--output, -o`: Specify output file path (default: auto-generated based on type)
 - `--preview, -p`: Preview configuration before saving
-- `--non-interactive, -n`: Use non-interactive mode with defaults
+- `--non-interactive, -n`: Not yet implemented — the flag is accepted, but the tool prints a notice and falls back to interactive mode
 
 The configuration type is not a command-line option — it is selected interactively from a 1-3 menu (fine-tuning, inference, benchmark) after the command starts.
 

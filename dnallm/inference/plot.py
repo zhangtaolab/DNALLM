@@ -137,7 +137,7 @@ def _prepare_annotations(data: list | dict) -> dict:
         return annotations
     elif isinstance(data, dict):
         models = list(data.keys())
-        label_names = set(data[models[0]])  # type: ignore[index]
+        label_names = set(data[models[0]])
         annotations = {model: {name: set() for name in label_names} for model in models}
         for model in models:
             for i, name in enumerate(data[model]):
@@ -241,7 +241,7 @@ def plot_bars(
         if height is None:
             height = 25 * len(dbar["models"])
         bar = (
-            alt
+            alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
             .Chart(dbar)
             .mark_bar(size=bar_width)
             .encode(
@@ -256,7 +256,7 @@ def plot_bars(
         if show_score:
             # Optimized text positioning and formatting
             text = (
-                alt
+                alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
                 .Chart(dbar)
                 .mark_text(
                     dx=-10 if dbar[metric].min() >= 0.2 else 5,
@@ -353,7 +353,7 @@ def plot_polar_bar(
     })
 
     base = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df)
         .mark_arc(stroke="grey", padAngle=0.05, cornerRadius=10, tooltip=True)
         .encode(
@@ -457,7 +457,7 @@ def plot_radar(
     # Create base radar chart
     rings = pd.DataFrame({"ring": [0.2, 0.4, 0.6, 0.8, 1.0]})
     base_rings = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(rings)
         .mark_arc(stroke="lightgrey", fill=None)
         .encode(theta=alt.value(np.pi * 2), radius=alt.Radius("ring").stack(False))
@@ -466,14 +466,14 @@ def plot_radar(
         text="ring", theta=alt.value(np.pi / len(labels))
     )
     out_rings = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(rings)
         .mark_arc(stroke="black", fill=None)
         .encode(theta=alt.value(np.pi * 2), radius=alt.datum(1))
     )
     # Create spokes
     spokes = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(plot_df)
         .mark_arc(stroke="lightgrey", fill=None, strokeDash=[5, 5])
         .encode(
@@ -483,7 +483,7 @@ def plot_radar(
         )
     )
     labels_text = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(plot_df)
         .mark_text(radiusOffset=10, align="center")
         .encode(
@@ -495,7 +495,7 @@ def plot_radar(
     )
     # Create radar fill and line
     radar_fill = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(plot_df)
         .mark_line(filled=True, fillOpacity=0.3)
         .encode(
@@ -506,7 +506,7 @@ def plot_radar(
         )
     )
     radar_line = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(plot_df)
         .mark_line(
             point=True,
@@ -577,7 +577,7 @@ def plot_curve(
 
     # ROC chart
     roc_chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(roc_data)
         .mark_line()
         .encode(
@@ -591,7 +591,7 @@ def plot_curve(
 
     # Diagonal line
     diag_line = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(pd.DataFrame({"fpr": [0, 1], "tpr": [0, 1]}))
         .mark_line(strokeDash=[5, 5], color="gray")
         .encode(
@@ -622,7 +622,7 @@ def plot_curve(
 
         auroc_text_df = pd.DataFrame(text_data, columns=["models", "label", "fpr", "tpr"])
         auroc_text_layer = (
-            alt
+            alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
             .Chart(auroc_text_df)
             .mark_text(
                 align="right",
@@ -647,7 +647,7 @@ def plot_curve(
 
     # PR chart
     pr_chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(pr_data)
         .mark_line()
         .encode(
@@ -659,7 +659,7 @@ def plot_curve(
         .properties(width=width, height=height, title="PR Curve")
     )
     pr_baseline = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(
             pd.DataFrame({
                 "recall": [0, 1],
@@ -697,7 +697,7 @@ def plot_curve(
 
         auprc_text_df = pd.DataFrame(text_data, columns=["models", "label", "recall", "precision"])
         auprc_text_layer = (
-            alt
+            alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
             .Chart(auprc_text_df)
             .mark_text(
                 align="left",
@@ -718,9 +718,9 @@ def plot_curve(
         p_separate["PR"] = pline[1]
 
     # Combine plots if not separate
-    plines: alt.Chart = pline[0] if pline else alt.Chart()
+    plines: alt.Chart = pline[0] if pline else alt.Chart()  # ty: ignore[invalid-assignment]  # alt.layer() yields LayerChart, not a Chart subclass
     for i in range(1, len(pline)):
-        plines |= pline[i]
+        plines |= pline[i]  # ty: ignore[invalid-assignment]  # __or__ returns HConcatChart/ConcatChart
 
     plines = plines.configure_axis(grid=False)
 
@@ -729,7 +729,7 @@ def plot_curve(
         print(f"ROC/PR curves saved to {save_path}")
 
     if separate:
-        return p_separate
+        return p_separate  # ty: ignore[invalid-return-type]  # dict values are layered charts, not Chart
     else:
         return plines
 
@@ -807,7 +807,7 @@ def plot_scatter(
         #     .properties(width=width, height=height)
         # )
         base = alt.Chart(ddot, title=model).properties(width=width, height=height)
-        dot = base.mark_point(filled=True, size=15, opacity=1).encode(
+        dot = base.mark_point(filled=True, size=15, opacity=1).encode(  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
             x=alt.X("experiment:Q", title="Observed"),
             y=alt.Y("predicted:Q", title="Predicted"),
             color=alt.Color(
@@ -828,7 +828,7 @@ def plot_scatter(
             max_y = ddot["experiment"].max()
 
             text = (
-                alt
+                alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
                 .Chart()
                 .mark_text(size=14, align="left", baseline="top", dx=5, dy=5)
                 .encode(
@@ -930,7 +930,7 @@ def plot_token_scatter(
     # Base Scatter Layer
     # Use status for color encoding
     base_scatter = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df)
         .mark_point(filled=True)
         .encode(
@@ -974,7 +974,7 @@ def plot_token_scatter(
         },
     ])
     rule_lines = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(line_data)
         .mark_rule(strokeWidth=2)
         .encode(
@@ -999,7 +999,7 @@ def plot_token_scatter(
     )
     # Text Layer for Outliers
     text_labels = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df)
         .mark_text(align="left", dx=5, color="darkred")
         .encode(x="index:Q", y="Value:Q", text="Token:N")
@@ -1009,7 +1009,7 @@ def plot_token_scatter(
         # Convert to zero started index if necessary
         start_pos = extra_data[0][1]
         if len(extra_data[0]) == 4:
-            color_map = {item[0]: item[3] for item in extra_data}  # type: ignore[unreachable]
+            color_map = {item[0]: item[3] for item in extra_data}
         else:
             color_map: dict[str, str] = {}
         for i, item in enumerate(extra_data):
@@ -1041,7 +1041,7 @@ def plot_token_scatter(
             domain = unique_types
             range_colors = colors[: len(unique_types)]
         band_chart = (
-            alt
+            alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
             .Chart(extra_df)
             .mark_rect(opacity=0.3)
             .encode(
@@ -1096,7 +1096,7 @@ def plot_line(
     df = pd.DataFrame(records)
 
     chart: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df)
         .mark_line(interpolate="monotone")
         .encode(
@@ -1211,7 +1211,7 @@ def plot_annotations(
         height = len(data) * 30
 
     chart: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df)
         .mark_bar()
         .encode(
@@ -1367,7 +1367,7 @@ def plot_attention_map(
     # Create attention map with optimized encoding and axis configuration
     # Original: Multiple axis configurations
     attn_map: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(source)
         .mark_rect()
         .encode(
@@ -1583,7 +1583,7 @@ def _compute_mean_embeddings(
         else:  # mean pooling without mask
             attention_mask_array = np.ones((embeddings.shape[0], embeddings.shape[1]), dtype=int)
     else:
-        attention_mask_array = np.array(attention_mask)  # type: ignore[assignment]
+        attention_mask_array = np.array(attention_mask)
 
     # use center (middle of window) embeddings within window size
     if isinstance(strategy, int):
@@ -1644,7 +1644,7 @@ def _create_embedding_plot(source_df, layer_idx, width, height, size=10):
         Altair chart object
     """
     return (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(source_df, title=f"Layer {layer_idx + 1}")
         .mark_point(filled=True, size=size, opacity=0.6)
         .encode(
@@ -1930,9 +1930,9 @@ def _build_mutation_datasets(
         # Update line plot data
         for score in dheat_pos["score"]:
             if score >= 0:
-                dline["score"][i] += score  # type: ignore[index]
+                dline["score"][i] += score
             else:
-                dline["score"][i + seqlen] -= score  # type: ignore[index]
+                dline["score"][i + seqlen] -= score
 
         # Update bar chart data
         dbar["x"].append(f"{str(i).zfill(flen)}{base1}")
@@ -2023,7 +2023,7 @@ def _create_mutation_charts(
         alt.Tooltip("score:Q", title="Score", format=".4f"),
     ]
     pheat: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df_heat)
         .mark_rect()
         .encode(
@@ -2043,7 +2043,7 @@ def _create_mutation_charts(
         alt.Tooltip("score:Q", title="Score", format=".4f"),
     ]
     pbar: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df_bar)
         .mark_bar()
         .encode(
@@ -2064,7 +2064,7 @@ def _create_mutation_charts(
         alt.Tooltip("score:Q", title="Score", format=".4f"),
     ]
     pline: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(df_line)
         .mark_line()
         .encode(
@@ -2180,7 +2180,7 @@ def plot_attributions_token(
 
     if len(vis_tokens) == 0:
         print("Warning: No valid tokens to plot after filtering.")
-        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         return chart
 
     # 2. Calculate each token"s length and precise position in the sequence
@@ -2212,7 +2212,7 @@ def plot_attributions_token(
     )
 
     # Background rectangles, using x and x2 to define variable width
-    rects = base.mark_rect().encode(
+    rects = base.mark_rect().encode(  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         x=alt.X("start_pos:Q", axis=None, title="Base Position"),
         x2=alt.X2("end_pos:Q"),
         color=alt.Color(
@@ -2228,7 +2228,7 @@ def plot_attributions_token(
     )
 
     # Text layer, centered
-    text = base.mark_text(baseline="middle", fontSize=12, clip=True).encode(
+    text = base.mark_text(baseline="middle", fontSize=12, clip=True).encode(  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         x=alt.X("center_pos:Q", axis=None),
         text="token:N",
         color=alt.condition(
@@ -2281,7 +2281,7 @@ def plot_attributions_line(
 
     if len(vis_scores) == 0:
         print("Warning: No valid scores to plot after filtering.")
-        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         return chart
 
     source = pd.DataFrame({
@@ -2291,7 +2291,7 @@ def plot_attributions_line(
 
     # Create base chart (raw scores)
     area = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(source)
         .mark_area(opacity=0.2, color="lightblue")
         .encode(
@@ -2301,7 +2301,7 @@ def plot_attributions_line(
     )
     # Add base line at y=0 (dashed line)
     area += (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(pd.DataFrame({"y": [0]}))
         .mark_rule(color="black", strokeDash=[5, 5])
         .encode(y="y:Q")
@@ -2319,7 +2319,7 @@ def plot_attributions_line(
 
     # Create line chart layer
     lines = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(long_source)
         .mark_line()
         .encode(
@@ -2367,7 +2367,7 @@ def plot_attributions_multi(
     """
     if not all_attributions:
         print("Warning: No scores provided to plot.")
-        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")
+        chart: alt.Chart = alt.Chart().mark_text().properties(title="No data to display")  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         return chart
 
     # 0. Remove right padding tokens/scores if any
@@ -2437,7 +2437,7 @@ def plot_attributions_multi(
 
     # 4. Create heatmap
     heatmap: alt.Chart = (
-        alt
+        alt  # ty: ignore[unresolved-attribute]  # altair mark_* TypeVar leak
         .Chart(source)
         .mark_rect()
         .encode(

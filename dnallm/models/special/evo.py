@@ -2,7 +2,7 @@ import os
 import json
 from glob import glob
 import torch
-from transformers import PreTrainedConfig, BatchEncoding  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedConfig, BatchEncoding
 from ...utils import is_flash_attention_capable, is_fp8_capable
 
 
@@ -197,6 +197,18 @@ class EvoTokenizerWrapper:
         self._model_max_length = value
 
 
+def _transformer_engine_available() -> bool:
+    """Probe for the transformer_engine package without importing it.
+
+    The fp8-config guard below consults this; find_spec keeps the probe
+    side-effect-free and gives tests a stable patch seam (an import-based
+    probe cannot be monkeypatched).
+    """
+    import importlib.util
+
+    return importlib.util.find_spec("transformer_engine") is not None
+
+
 def _handle_evo2_models(
     model_name: str,
     source: str,
@@ -214,16 +226,67 @@ def _handle_evo2_models(
 
     for m in evo2_models:
         if m in model_name.lower():
+            # Import-order guard: flash_attn's python package registers
+            # torch.library kernels for the same flash_attn:: ops that
+            # vortex's attn_interface wraps; when vortex registers first,
+            # the later python-package import leaves the op entry without
+            # a schema (PyTorch INTERNAL ASSERT on every later call, e.g.
+            # "Tried to access the schema for ..."). Importing flash_attn
+            # BEFORE evo2/vortex avoids the clobbering.
+            try:
+                import flash_attn  # ruff: ignore[unused-import]  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
+            except ImportError:
+                pass
             try:
                 from evo2 import Evo2  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]  # optional dep, guarded
                 from vortex.model.tokenizer import CharLevelTokenizer  # ty: ignore[unresolved-import]  # optional dep, guarded
 
-                # Overwrite Evo2 to avoid init errors
-                class CustomEvo2(Evo2):
+                # Overwrite Evo2 to avoid init errors. Evo2 0.6 is a plain
+                # class, so without nn.Module inheritance the StripedHyena
+                # backbone assigned to self.model stays OUTSIDE the module
+                # tree — a finetuning optimizer would then see only the
+                # classification head (~4k params) and silently skip the
+                # 1.1B backbone. Inheriting nn.Module registers the
+                # backbone so parameters, gradients and peft all reach it.
+                class CustomEvo2(Evo2, torch.nn.Module):
                     def __init__(self):
-                        pass
+                        torch.nn.Module.__init__(self)
 
                     load_evo2_model = Evo2.load_evo2_model
+
+                    def forward(self, input_ids, return_embeddings=False, layer_names=None):
+                        # Grad-enabled re-implementation of evo2 0.6's
+                        # Evo2.forward: the stock version wraps the backbone
+                        # in torch.no_grad() AND detaches the hook outputs,
+                        # which silently reduces finetuning to head-only
+                        # training (no gradient ever reaches the backbone).
+                        embeddings = {}
+                        handles = []
+                        if return_embeddings:
+                            if layer_names is None:
+                                raise ValueError(
+                                    "layer_names must be specified when return_embeddings=True"
+                                )
+
+                            def hook_fn(layer_name):
+                                def hook(_, __, output):
+                                    if isinstance(output, tuple):
+                                        output = output[0]
+                                    embeddings[layer_name] = output
+
+                                return hook
+
+                            for name in layer_names:
+                                layer = self.model.get_submodule(name)
+                                handles.append(layer.register_forward_hook(hook_fn(name)))
+                        try:
+                            logits = self.model.forward(input_ids)
+                            if return_embeddings:
+                                return logits, embeddings
+                            return logits, None
+                        finally:
+                            for handle in handles:
+                                handle.remove()
 
             except ImportError as e:
                 raise ImportError(
@@ -253,6 +316,12 @@ def _handle_evo2_models(
                 model_path = model_name
             # Check the dependencies and find the correct config file
             is_fp8 = is_fp8_capable()
+            if is_fp8 and not _transformer_engine_available():
+                # evo2>=0.6 hard-requires Transformer Engine whenever the
+                # config carries use_fp8_input_projections=True (non-7b
+                # models raise ImportError at load), so without the TE
+                # package the -noFP8 config variant is the loadable one.
+                is_fp8 = False
             has_flash_attention = is_flash_attention_capable()
             config_dir = os.path.abspath(
                 os.path.join(os.path.dirname(__file__), "..", "..", "configuration/evo")
@@ -267,6 +336,21 @@ def _handle_evo2_models(
                 suffix2 = "-noFP8"
             suffix = suffix1 + suffix2 + ".yml"
             config_path = os.path.join(config_dir, evo2_models[m] + suffix)
+            # evo2>=0.6 resolves config_path through pkgutil against its own
+            # package directory, so an absolute filesystem path must be
+            # staged into evo2/configs/ and passed as a package-relative
+            # resource name (older evo2 accepted the absolute path directly).
+            import evo2 as _evo2_pkg  # ty: ignore[unresolved-import]  # optional dep, guarded
+
+            stage_dir = os.path.join(os.path.dirname(_evo2_pkg.__file__), "configs")
+            os.makedirs(stage_dir, exist_ok=True)
+            staged_name = "dnallm_" + os.path.basename(config_path)
+            with (
+                open(config_path, encoding="utf-8") as src,
+                open(os.path.join(stage_dir, staged_name), "w", encoding="utf-8") as dst,
+            ):
+                dst.write(src.read())
+            config_path = os.path.join("configs", staged_name)
             # Load the model with the built-in method
             evo2_model = CustomEvo2()
             if source.lower() == "local":
@@ -286,6 +370,24 @@ def _handle_evo2_models(
                     local_path=downloaded_model_path,
                     config_path=config_path,
                 )
+            # vortex's load_checkpoint loads weights under
+            # torch.inference_mode(), leaving every parameter an inference
+            # tensor — unusable for finetuning ("Inference tensors cannot
+            # be saved for backward"). Clone each parameter/buffer into a
+            # normal tensor so the backbone is trainable.
+            for module in evo2_model.model.modules():
+                for p_name, p in list(module.named_parameters(recurse=False)):
+                    module._parameters[p_name] = torch.nn.Parameter(
+                        p.clone(), requires_grad=p.requires_grad
+                    )
+                for b_name, b in list(module.named_buffers(recurse=False)):
+                    module._buffers[b_name] = b.clone()
+            # The with_head finetune config trains in fp32 (bf16: False),
+            # but vortex's load_checkpoint force-converts the backbone to
+            # bf16 (to_bfloat16_except_pr_lc), which crashes the fp32 head's
+            # matmul on the first step. Upcast the backbone so the whole
+            # model matches the config's fp32 training mode.
+            evo2_model.model = evo2_model.model.float()
             tokenizer = CharLevelTokenizer(512)
             evo2_model.tokenizer = tokenizer
             model_config = Evo2Config(**evo2_model.model.config)
@@ -302,7 +404,7 @@ def _handle_evo2_models(
                 model_config.head_config = head_config
                 evo2_model.config = model_config
                 evo2_model.config.pad_token_id = evo2_model.tokenizer.pad_id
-                evo2_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
+                evo2_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo2_model,
                 )
@@ -348,8 +450,8 @@ def _handle_evo1_models(
                         config_path: str | None = None,
                         modules: dict | None = None,
                     ) -> StripedHyena:
-                        autoconfig = modules["AutoConfig"]  # type: ignore[index]
-                        automodelforcausallm = modules["AutoModelForCausalLM"]  # type: ignore[index]
+                        autoconfig = modules["AutoConfig"]  # ty: ignore[not-subscriptable]
+                        automodelforcausallm = modules["AutoModelForCausalLM"]  # ty: ignore[not-subscriptable]
                         # Load the model configuration and weights
                         model_config = autoconfig.from_pretrained(
                             model_name,
@@ -437,7 +539,7 @@ def _handle_evo1_models(
                 model_config.head_config = head_config
                 evo_model.config = model_config
                 evo_model.config.pad_token_id = evo_model.tokenizer.pad_id
-                evo_model = DNALLMforSequenceClassification(  # type: ignore[assignment]
+                evo_model = DNALLMforSequenceClassification(
                     config=model_config,
                     custom_model=evo_model,
                 )
