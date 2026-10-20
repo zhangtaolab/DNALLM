@@ -5,16 +5,16 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 23
 current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
 status: executing
-stopped_at: Completed 23-01-PLAN.md
-last_updated: "2026-10-20T16:12:44.417Z"
+stopped_at: Completed 23-02-PLAN.md
+last_updated: "2026-10-20T16:34:43.548Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 23 execution started
-state_head: 0dce3824777f551f986fcbbf4c3cd94cb5ca8ba6
+state_head: 8704ecca56e432122d66d14587c646294982fa9d
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 23 execution started
 
@@ -50,6 +50,7 @@ Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
 | Phase 22 P22-01 | 26 min | 3 tasks | 3 files |
 | Phase 22 P22-02 | 54 min | 3 tasks | 3 files |
 | Phase 23 P01 | 34 min | 3 tasks | 7 files |
+| Phase 23 P02 | 11 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 23]: 23-01: list[str] disambiguation — a list whose every element carries a supported data suffix is a file list, otherwise raw sequences; dict-of-splits values follow the same rule
 - [Phase 23]: 23-01: label inference = candidate-name match (label/labels/y/target/class/category) then two-column fallback; fasta/txt carry canonical sequence/label names with no guess finding
 - [Phase 23]: 23-01: preflight docstrings never name the registry YAML by filename — the Phase-22 sole-mentioner grep guard is substring-based and fails CI on documentation mentions too
+- [Phase 23]: 23-02: ListingEntry carries no per-dimension verdicts (frozen 23-01 type has no field; report.py locked) — dimension functions applied via the finetune listing's warn-or-ok task filter instead
+- [Phase 23]: 23-02: unknown tokenizer kind never fails charset — a gap cannot prove hard incompatibility (D-05); rejected chars warn CHARSET_NONSTANDARD_CHARS on unknown stances like BPE classes
+- [Phase 23]: 23-02: default intent is finetune when only task_type is given; predict without a task degrades to an empty listing, never an error; k-mer budgets classify from entry names first (6mer 517, BPE x3 1536)
 
 ### Pending Todos
 
@@ -114,8 +118,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:12:44.393Z
-Stopped at: Completed 23-01-PLAN.md
+Last session: 2026-10-20T16:34:43.523Z
+Stopped at: Completed 23-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
