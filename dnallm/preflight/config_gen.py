@@ -319,9 +319,10 @@ def _load_existing(existing: str | Path) -> dict:
             contract (WR-01), never a raw ``OSError`` traceback.
         yaml.YAMLError: If the document is not safely constructible.
     """
+    loader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
     try:
         with open(existing, encoding="utf-8") as f:
-            data = yaml.load(f, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))  # ruff: ignore[unsafe-yaml-load]
+            data = yaml.load(f, Loader=loader)  # ruff: ignore[unsafe-yaml-load]
     except FileNotFoundError as e:
         raise ValueError(f"Existing config not found: {existing}.") from e
     except OSError as e:
