@@ -234,3 +234,224 @@ def test_yaml_parse_error_raises_value_error() -> None:
             registry.resolve(PINNED_PRETRAINED_NAME)
     finally:
         monkeypatch.undo()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Query surface: task_type / base_model / all entries / lab-first helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+EXPECTED_TOTAL_ENTRIES = 236
+EXPECTED_LAB_ENTRIES = 189
+THIRD_PARTY_REPO = "kuleshov-group/caduceus-ph_seqlen-131k_d_model-256_n_layer-16"
+
+
+def test_get_by_task_type_spans_both_sections() -> None:
+    """task_type queries return matching entries from both packaged sections."""
+    mask = registry.get_by_task_type("mask")
+    assert "zhangtaolab/plant-dnabert-6mer" in [e.model for e in mask]
+    assert all(e.task.task_type == "mask" for e in mask)
+    assert any(e.kind == "pretrained" for e in mask)
+    binary = registry.get_by_task_type("binary")
+    assert PINNED_FINETUNED_REPO in [e.model for e in binary]
+    assert all(e.kind == "finetuned" for e in binary)
+
+
+def test_empty_or_unknown_list_queries_return_empty_lists() -> None:
+    """Empty-string and unknown inputs to list queries yield [], never a KeyError."""
+    assert registry.get_by_task_type("") == []
+    assert registry.get_by_base_model("") == []
+    assert registry.get_by_task_type("no-such-task-type") == []
+    assert registry.get_by_base_model("org/no-such-base") == []
+
+
+def test_get_by_base_model_lists_finetuned_children() -> None:
+    """base_model queries return the finetuned children of a base repo id."""
+    children = registry.get_by_base_model(PINNED_FINETUNED_BASE)
+    assert PINNED_FINETUNED_REPO in [e.model for e in children]
+    assert all(e.kind == "finetuned" for e in children)
+
+
+def test_all_entries_count_and_file_order() -> None:
+    """all_entries() returns all 236 entries in file order (pretrained first)."""
+    entries = registry.all_entries()
+    assert len(entries) == EXPECTED_TOTAL_ENTRIES
+    assert entries[0].name == "Plant DNABERT"
+    assert entries[0].kind == "pretrained"
+    assert entries[-1].kind == "finetuned"
+
+
+def test_is_lab_model_and_sort_key_partition_and_order() -> None:
+    """is_lab_model partitions 189/47; sort_key_lab_first ranks lab first, name-stable."""
+    lab = registry.resolve(PINNED_FINETUNED_BASE)
+    third_party = registry.resolve(THIRD_PARTY_REPO)
+    assert registry.is_lab_model(lab) is True
+    assert registry.is_lab_model(third_party) is False
+
+    entries = registry.all_entries()
+    lab_count = sum(1 for e in entries if registry.is_lab_model(e))
+    assert lab_count == EXPECTED_LAB_ENTRIES
+    assert len(entries) - lab_count == EXPECTED_TOTAL_ENTRIES - EXPECTED_LAB_ENTRIES
+
+    ranked = sorted(entries, key=registry.sort_key_lab_first)
+    assert registry.is_lab_model(ranked[0]) is True
+    assert registry.sort_key_lab_first(ranked[0]) < (1, "")
+    lab_names = [e.name for e in ranked if registry.is_lab_model(e)]
+    third_names = [e.name for e in ranked if not registry.is_lab_model(e)]
+    assert lab_names == sorted(lab_names)
+    assert third_names == sorted(third_names)
+
+
+def test_subpackage_facade_exports_registry_api() -> None:
+    """All eleven public registry names import from the dnallm.models facade."""
+    from dnallm.models import (
+        RegistryEntry,
+        all_entries,
+        effective_max_length,
+        effective_tokenizer_type,
+        get_by_base_model,
+        get_by_task_type,
+        is_lab_model,
+        reload,
+        resolve,
+        sort_key_lab_first,
+        try_resolve,
+    )
+
+    assert callable(all_entries)
+    assert callable(effective_max_length)
+    assert callable(effective_tokenizer_type)
+    assert callable(get_by_base_model)
+    assert callable(get_by_task_type)
+    assert callable(is_lab_model)
+    assert callable(reload)
+    assert callable(resolve)
+    assert callable(sort_key_lab_first)
+    assert callable(try_resolve)
+    assert issubclass(RegistryEntry, __import__("pydantic").BaseModel)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Effective-value inheritance over base_model lineage (D-02)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _synthetic_registry():
+    """Crafted two-section registry exercising the inheritance axes of D-02."""
+    mask_task = {"describe": "d", "task_type": "mask"}
+    binary_task = {"describe": "d", "task_type": "binary"}
+    data = {
+        "pretrained": [
+            {
+                "name": "Synth Base",
+                "model": "synth/base",
+                "task": mask_task,
+                "max_length": 1000,
+                "tokenizer_type": "bpe",
+            },
+            {"name": "Synth Bare Base", "model": "synth/bare-base", "task": mask_task},
+        ],
+        "finetuned": [
+            {
+                "name": "Synth Own Value",
+                "model": "synth/own",
+                "base_model": "synth/base",
+                "task": binary_task,
+                "max_length": 512,
+            },
+            {
+                "name": "Synth Inherit",
+                "model": "synth/inherit",
+                "base_model": "synth/base",
+                "task": binary_task,
+            },
+            {
+                "name": "Synth Child of Bare",
+                "model": "synth/child-of-bare",
+                "base_model": "synth/bare-base",
+                "task": binary_task,
+            },
+            {
+                "name": "Synth Ghost Child",
+                "model": "synth/ghost-child",
+                "base_model": "synth/ghost",
+                "task": binary_task,
+            },
+            {
+                "name": "Synth Cycle X",
+                "model": "synth/x",
+                "base_model": "synth/y",
+                "task": binary_task,
+            },
+            {
+                "name": "Synth Cycle Y",
+                "model": "synth/y",
+                "base_model": "synth/x",
+                "task": binary_task,
+            },
+        ],
+    }
+    return registry._build_registry(data)
+
+
+def test_effective_value_own_override_wins() -> None:
+    """An entry's own value wins over the base chain (explicit override)."""
+    data = _synthetic_registry()
+    own = data.by_repo["synth/own"]
+    assert registry._effective_value(own, "max_length", data) == 512
+    assert registry._effective_value(own, "tokenizer_type", data) == "bpe"
+
+
+def test_effective_value_inherits_from_base_chain() -> None:
+    """A missing own value resolves from the base_model chain."""
+    data = _synthetic_registry()
+    inherit = data.by_repo["synth/inherit"]
+    assert registry._effective_value(inherit, "max_length", data) == 1000
+    assert registry._effective_value(inherit, "tokenizer_type", data) == "bpe"
+
+
+def test_effective_value_none_when_absent_everywhere() -> None:
+    """None propagates when neither the entry nor its chain carries a value."""
+    data = _synthetic_registry()
+    bare_base = data.by_repo["synth/bare-base"]
+    child = data.by_repo["synth/child-of-bare"]
+    assert registry._effective_value(bare_base, "max_length", data) is None
+    assert registry._effective_value(child, "max_length", data) is None
+    assert registry._effective_value(child, "tokenizer_type", data) is None
+
+
+def test_effective_value_unresolvable_base_is_none() -> None:
+    """A base_model that resolves to no registry entry surfaces as None."""
+    data = _synthetic_registry()
+    ghost_child = data.by_repo["synth/ghost-child"]
+    assert registry._effective_value(ghost_child, "max_length", data) is None
+
+
+def test_effective_value_cycle_returns_none() -> None:
+    """A base_model cycle terminates via the visited-set guard, returning None."""
+    data = _synthetic_registry()
+    x = data.by_repo["synth/x"]
+    y = data.by_repo["synth/y"]
+    assert registry._effective_value(x, "max_length", data) is None
+    assert registry._effective_value(y, "tokenizer_type", data) is None
+
+
+def test_effective_max_length_delegates_against_live_cache(monkeypatch) -> None:
+    """Public wrappers delegate to _effective_value over the live cached registry."""
+    data = _synthetic_registry()
+    monkeypatch.setattr(registry, "_load_registry", lambda: data)
+    own = data.by_repo["synth/own"]
+    assert registry.effective_max_length(own) == 512
+    assert registry.effective_tokenizer_type(own) == "bpe"
+    inherit = data.by_repo["synth/inherit"]
+    assert registry.effective_max_length(inherit) == 1000
+
+
+def test_effective_value_live_registry_pre_enrichment_is_none() -> None:
+    """Over the real packaged file (22-01, pre-enrichment) missing values are None.
+
+    22-02 lands tokenizer_type/max_length enrichment; this pins the 22-01
+    None-surfacing contract over the live registry (no runtime probing).
+    """
+    entry = registry.resolve(PINNED_FINETUNED_NAME)
+    assert registry.effective_max_length(entry) is None
+    assert registry.effective_tokenizer_type(entry) is None
