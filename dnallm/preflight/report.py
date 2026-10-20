@@ -12,9 +12,13 @@
    agent-friendly by design: every finding and every dimension verdict
    carries one, so shells (Phase 25 TUI, Phase 26 MCP) can route on codes
    without owning verdict logic.
-4. Import-light discipline: this module imports nothing beyond the stdlib,
-   pydantic, and the package logger — never torch/transformers/datasets
-   (enforced by ``tests/preflight/test_structure.py``).
+4. Import-light discipline, enforced at the SOURCE level: this module's
+   own imports are nothing beyond the stdlib, pydantic, and the package
+   logger — never torch/transformers/datasets (AST-enforced by
+   ``tests/preflight/test_structure.py``). Runtime ``sys.modules`` purity
+   is a known open constraint deferred to Phase 25: the logger's
+   ``dnallm.utils`` (and the registry's ``dnallm.models``) parent-init
+   imports still pull the training stack in transitively.
 5. Reports are return values only: nothing here reads files, touches the
    network, or mutates user data (the pure/read-only contract of
    ``dnallm.preflight``).

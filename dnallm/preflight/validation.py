@@ -21,8 +21,12 @@ and the list-of-files rules — pinned by the double-read parity structure
 test in ``tests/preflight/test_reader_parity.py``. ``pkl``/``pickle``
 inputs are refused with an UNSUPPORTED_FORMAT_PKL error finding and are
 never opened as pickle (D-04: ``pickle.load`` on user input is an
-arbitrary-code-execution vector). This module never imports
-datasets/torch/transformers and never imports ``dnallm.datahandling``.
+arbitrary-code-execution vector). At the source level this module never
+imports datasets/torch/transformers and never imports
+``dnallm.datahandling`` (AST-enforced by ``tests/preflight/test_structure.py``);
+runtime ``sys.modules`` purity is a known open constraint deferred to
+Phase 25 (transitive imports via the ``dnallm.utils`` / ``dnallm.models``
+package inits).
 """
 
 import os

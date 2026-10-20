@@ -27,9 +27,11 @@ Design invariants:
 5. **Hub clients live only here, lazily.** This is the one module under
    ``dnallm/preflight/`` permitted to import ``huggingface_hub`` /
    ``modelscope`` (enforced by ``tests/preflight/test_structure.py``);
-   imports sit inside the adapter functions so importing this module
-   stays cheap, and the unit suite stays network-free via the injectable
-   prober seam (PFC-03).
+   imports sit inside the adapter functions so this module's own source
+   pulls no hub client at import time, and the unit suite stays
+   network-free via the injectable prober seam (PFC-03). Runtime
+   ``sys.modules`` purity (the parent package inits' transitive imports)
+   is a known open constraint deferred to Phase 25.
 6. **Endpoints are reported, not assumed.** ``effective_endpoints``
    reads library constants (``huggingface_hub.constants.ENDPOINT`` and
    the resolved ModelScope cache root) — never ``os.environ``, which can

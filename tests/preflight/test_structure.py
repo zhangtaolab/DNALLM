@@ -1,9 +1,12 @@
 """Structure tests enforcing the preflight package's architecture invariants (23-01 Task 3).
 
-1. Import discipline (D-03): no torch/transformers/datasets import at ANY
-   scope (module-level or function-local) anywhere under ``dnallm/preflight/``
-   — the package stays import-light so every shell (TUI, MCP, notebooks)
-   can validate data without dragging the training stack in. The glob
+1. Import discipline (D-03), enforced at the SOURCE level: no
+   torch/transformers/datasets import at ANY scope (module-level or
+   function-local) anywhere under ``dnallm/preflight/``. This AST guard
+   cannot see transitive imports: importing ``dnallm.preflight`` still
+   executes the ``dnallm.utils`` / ``dnallm.models`` package inits, which
+   pull the training stack in — a runtime/sys.modules purity test is a
+   known open constraint deferred to Phase 25 (review CR-01). The glob
    applies automatically as Wave-2 modules (23-02/23-03/23-04) appear.
 2. Hub-client confinement: huggingface_hub / modelscope imports are
    permitted ONLY in ``dnallm/preflight/availability.py`` (created by
