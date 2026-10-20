@@ -1,11 +1,12 @@
-"""Fast-leg registry-integrity tests for the model registry data layer (KWT-01/02/04).
+"""Fast-leg registry-integrity tests for the model registry data layer (KWT-01..04).
 
 No network: these tests parse the packaged ``model_info.yaml`` directly (same
 pattern as ``tests/models/test_plant_helixseek_registry.py``) and pin the
 pretrained tokenizer-variant checkpoints, the ``PRETRAIN_MODEL_MAPS`` task-class
-strings, and the tRNA titles in ``MODEL_INFO``. The registry YAML has no runtime
-consumer inside the package, so wrong values mislead without any runtime error —
-these structure tests are the enforcement layer (quick task 261020-kwt).
+strings, the tRNA titles in ``MODEL_INFO``, and the finetuned-entry base_model
+lineage. The registry YAML has no runtime consumer inside the package, so wrong
+values mislead without any runtime error — these structure tests are the
+enforcement layer (quick task 261020-kwt).
 """
 
 from pathlib import Path
@@ -48,6 +49,35 @@ VARIANT_TASK_TYPES = {
     "zhangtaolab/plant-dnamamba-singlebase": "generation",
 }
 
+# Pre-existing external base_model pointers (PlantCAD2 Medium/Large upstream
+# repos, real but not registry pretrained entries — only PlantCAD2-Small is
+# registered). Documented out of scope for the lineage backfill.
+EXTERNAL_BASE_ALLOWLIST = {
+    "kuleshov-group/PlantCAD2-Medium-l48-d1024",
+    "kuleshov-group/PlantCAD2-Large-l48-d1536",
+}
+
+# Finetuned entries intentionally lacking base_model. Empty after the KWT-03
+# backfill: the test asserts this set equals the actual entries without
+# lineage, so any future finetuned entry added without a base_model fails
+# loudly instead of silently regressing coverage.
+DERIVATION_EXEMPT: set[str] = set()
+
+# Load-bearing lineage mappings pinned explicitly (KWT-03): the two repo-alias
+# tRNA entries, two prefix-derived variant bases, and the three name-derived
+# short-alias family bases.
+SPOT_PINNED_BASE_MODELS = {
+    "zhangtaolab/tRNADetector": "zhangtaolab/plant-dnamamba-singlebase",
+    "zhangtaolab/tRNAPointer": "zhangtaolab/plant-nucleotide-transformer-singlebase",
+    "zhangtaolab/plant-dnabert-BPE-promoter": "zhangtaolab/plant-dnabert-BPE",
+    "zhangtaolab/plant-dnamamba-6mer-promoter": "zhangtaolab/plant-dnamamba-6mer",
+    "zhangtaolab/agront-1b-promoter": "InstaDeepAI/agro-nucleotide-transformer-1b",
+    "zhangtaolab/dnabert2-promoter": "zhihan1996/DNABERT-2-117M",
+    "zhangtaolab/nucleotide-transformer-v2-100m-promoter": (
+        "InstaDeepAI/nucleotide-transformer-v2-100m-multi-species"
+    ),
+}
+
 
 def _load_registry() -> dict:
     """Parse the packaged registry with yaml.safe_load, failing with file context.
@@ -71,6 +101,13 @@ def _pretrained() -> list[dict]:
     """Return the pretrained section as a list of entry mappings."""
     section = _load_registry().get("pretrained")
     assert isinstance(section, list), "pretrained section must be a list"
+    return section
+
+
+def _finetuned() -> list[dict]:
+    """Return the finetuned section as a list of entry mappings."""
+    section = _load_registry().get("finetuned")
+    assert isinstance(section, list), "finetuned section must be a list"
     return section
 
 
@@ -118,3 +155,40 @@ def test_trna_titles_read_a_dna_sequence() -> None:
         title = MODEL_INFO[family]["title"]
         assert "a DNA sequence" in title, family
         assert JOINED_TITLE_FORM not in title, family
+
+
+def test_every_finetuned_entry_carries_base_model() -> None:
+    """Every finetuned entry has base_model unless explicitly exempt (KWT-03).
+
+    The exempt set must equal the actual set of entries lacking lineage, so a
+    future finetuned entry added without base_model fails here even if someone
+    widens DERIVATION_EXEMPT without cleaning it up afterwards.
+    """
+    missing = {e["model"] for e in _finetuned() if "base_model" not in e}
+    assert missing == DERIVATION_EXEMPT
+
+
+def test_every_base_model_resolves_to_pretrained_or_external() -> None:
+    """Each base_model is a pretrained registry id or a documented external pointer."""
+    pretrained_ids = {e["model"] for e in _pretrained()}
+    for entry in _finetuned():
+        base = entry.get("base_model")
+        if base is None:
+            continue
+        assert base in pretrained_ids or base in EXTERNAL_BASE_ALLOWLIST, (
+            f"{entry['model']}: base_model {base!r} resolves to neither"
+        )
+
+
+def test_spot_pinned_lineage_mappings_hold() -> None:
+    """The load-bearing base_model mappings keep their pinned values (KWT-03)."""
+    by_repo = {e["model"]: e for e in _finetuned()}
+    for repo, expected_base in SPOT_PINNED_BASE_MODELS.items():
+        assert repo in by_repo, repo
+        assert by_repo[repo]["base_model"] == expected_base, repo
+
+
+def test_pretrained_entries_carry_no_base_model() -> None:
+    """base_model is a finetuned-only field — no pretrained entry carries it."""
+    offenders = [e["model"] for e in _pretrained() if "base_model" in e]
+    assert offenders == []
