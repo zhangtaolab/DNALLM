@@ -1,0 +1,7 @@
+{
+  "task": "22-02 Task 2 GREEN",
+  "command": ".venv/bin/python -m pytest tests/models/test_model_info_registry.py tests/models/test_registry.py -q",
+  "exitCode": 0,
+  "actual": "52 passed (16 kwt-file: 9 pre-existing unmodified + 7 new; 36+flip test_registry) after the scripted insertion landed 122 lines (49 pretrained + 14 external-based + provenance block); numstat 0 deleted; sentinels intact; loader validates 49/49",
+  "commit": "2b74aa7"
+}

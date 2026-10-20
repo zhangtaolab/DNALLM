@@ -1,0 +1,7 @@
+{
+  "task": "22-02 Task 3 GREEN",
+  "command": ".venv/bin/python -m pytest tests/models/test_registry.py tests/models/test_model_info_registry.py -q",
+  "exitCode": 0,
+  "actual": "57 passed; plan verify command prints '187/187 effective max_length resolve'; whole models lane 527 passed; registry.py coverage 100% (plain coverage run, pytest-cov broken locally per known deferred item)",
+  "commit": "7a3331e"
+}

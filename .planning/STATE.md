@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 22
 current_phase_name: Registry Foundation — Runtime Loader & Enrichment
-status: executing
-stopped_at: Completed 22-01-PLAN.md
-last_updated: "2026-10-20T11:01:47.247Z"
+status: verifying
+stopped_at: Completed 22-02-PLAN.md
+last_updated: "2026-10-20T12:08:25.001Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 22 execution started
-state_head: 431d1b7019be410bc9643674207676a039ac2a06
+state_head: 7a3331efec07507638a3b2525d11d1684bc52c52
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 
 Phase: 22 (Registry Foundation — Runtime Loader & Enrichment) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-20 — Phase 22 execution started
 
 Progress: [░░░░░░░░░░] 0% (0 of 5 v1.4 phases)
@@ -48,6 +48,7 @@ Progress: [░░░░░░░░░░] 0% (0 of 5 v1.4 phases)
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 22 P22-01 | 26 min | 3 tasks | 3 files |
+| Phase 22 P22-02 | 54 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 22]: 22-01: TaskInfo.label_names accepts the packaged regression-entry bare-string form (36 entries) via field_validator wrap to a one-element list — published contract stays list[str] | None, matching TaskConfig's regression convention
 - [Phase 22]: 22-01: sole-mentioner allowlist pinned to {dnallm/models/registry.py, dnallm/mcp/server.py} (stale :821 integration comment; Phase 26 rewire target)
 - [Phase 22]: 22-01: local coverage measured via plain coverage run + filtered report — pytest-cov broken in dev venv by numpy 2.5.3/py3.13 (known deferred item); CI matrix unaffected
+- [Phase 22]: 22-02: enrichment committed from measured artifacts only — hyenadna pinned at measured 32770 (not the 32768 repo-name figure), tokenizer model_max_length accepted as a measured source where configs carry no key, GPTNeoX class-default 1024 rejected as a plausible default
+- [Phase 22]: 22-02: three unmeasurable pretrained repos resolved via documented constants (PlantCAD2 8192 / PlantCaduceus 512 / GPN 512 from the PlantCAD2 paper bioRxiv 10.1101/2025.08.27.672609; mamba-BPE 512 from the PDLLMs training script; GENERanno 8192 from the surviving 0.5b sibling) — 14 external-based plantcad entries explicit at 8192, zero registry-based overrides (all measured finetuned values equal their bases')
 
 ### Pending Todos
 
@@ -106,8 +109,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-20T11:01:47.231Z
-Stopped at: Completed 22-01-PLAN.md
+Last session: 2026-10-20T12:08:24.984Z
+Stopped at: Completed 22-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

@@ -1,0 +1,18 @@
+{
+  "task": "22-02 Task 2 (data TDD: tests first, insertion second, one commit)",
+  "command": ".venv/bin/python -m pytest tests/models/test_model_info_registry.py -q",
+  "exitCode": 1,
+  "targetTests": [
+    "test_all_pretrained_entries_carry_positive_int_max_length",
+    "test_lab_pretrained_entries_carry_tokenizer_type",
+    "test_third_party_enrichment_values_present_or_absent_never_degenerate",
+    "test_finetuned_max_length_only_as_explicit_override",
+    "test_provenance_blocks_present_verbatim",
+    "test_registry_section_counts_unchanged",
+    "test_spot_pinned_enrichment_values"
+  ],
+  "expected": "RED before insertion: the five behavior tests fail on the planned assertions (pretrained max_length absent, lab tokenizer_type absent, 14 external-based plantcad entries lack explicit max_length, enrichment provenance sentinel absent, spot pins get None)",
+  "actual": "5 failed, 11 passed — failures are assertion failures on the planned enrichment behavior (e.g. spot pin 'assert None == 32770' for LongSafari/hyenadna-small-32k-seqlen-hf), never import/syntax/collection errors; the 9 pre-existing kwt tests plus the two structure tests (never-degenerate vacuous pre-enrichment, section counts) pass",
+  "semanticAssessment": "VALID RED: each failing test executed and failed on the exact planned assertion for the intended reason — the enrichment data does not exist yet. The two passing tests are vacuous-or-structural by design (counts are 49/187 both before and after; no keys exist yet for the never-degenerate scan). Machine classifier note: gsd_run check tdd-red-evidence adapters do not parse pytest console output and workflow.tdd_mode is false for this plan (type: execute) — evidence is the real command output with semantic assessment, per the 22-01 precedent.",
+  "outputTail": "FAILED test_all_pretrained_entries_carry_positive_int_max_length\nFAILED test_lab_pretrained_entries_carry_tokenizer_type\nFAILED test_finetuned_max_length_only_as_explicit_override\nFAILED test_provenance_blocks_present_verbatim\nFAILED test_spot_pinned_enrichment_values\n========================= 5 failed, 11 passed in 4.70s =================="
+}
