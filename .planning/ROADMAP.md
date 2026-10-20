@@ -6,15 +6,20 @@
 - ✅ **v1.1 Example Execution Testing & Repair** — Phases 5–9 (shipped 2026-10-07) — [archive](milestones/v1.1-ROADMAP.md)
 - ✅ **v1.2 Paper Revision Suite Support** — Phases 10–12 (shipped 2026-10-10) — [archive](milestones/v1.2-ROADMAP.md)
 - ✅ **v1.3 Platform Reach & Packaging Honesty** — Phases 13–21 (shipped 2026-10-16; reopened 2026-10-17 for owner-directed Phase 21) — [archive](milestones/v1.3-ROADMAP.md)
+- 🚧 **v1.4 Pre-flight UX & Registry-as-Truth-Source** — Phases 22–26 (in progress)
+
+## Overview — v1.4 Pre-flight UX & Registry-as-Truth-Source
+
+v1.4 Track A gives DNALLM its first user-facing onboarding surface: one terminal flow takes a user from their own dataset to a validated, model-compatible config and a downloaded model — data validated read-only, suitability checked for real (task × sequence length × tokenizer, with live availability), config generated or edited under live collect-all validation. Underneath, `model_info.yaml` (236 entries: 49 pretrained + 187 finetuned after quick 261020-kwt) becomes the runtime single source of truth through one cached read-only loader, and the same pure-function core later feeds MCP tools and notebooks (one-core-many-shells). Track B (dnallmmark TUI substrate merge) and Track C (R2/R3/R5/R6) are future requirements; defects #62/#63/#64 fix outside v1.4, with only #64's registry-consumption half in scope here (Phase 26).
+
+Five phases, ordered by the research-converged dependency chain rather than category convenience: **loader before consumers** (Phase 22's registry loader unblocks everything downstream and is only cheap to keep read-only on day one); **core before shells** (Phase 23's pure functions are the milestone's testability foundation — the TUI is a thin consumer, never the owner of verdict logic); **rewire is file-disjoint** (Phase 24 fills the grep-verified dead `preset` path in `load_preset_model` — net-new behavior, parallelizable with Phase 23 under wave discipline); **infrastructure before panels** (Phase 25's first act is the `tui` extra + CI install wiring + structure tests + the thread-worker seam, sequenced atomically with the one-cycle `full`-alias removal — not a single panel before that seam exists); **registry stable before comparison freezes** (Phase 26's consistency checker runs last, after the registry format has survived two consumers, and is independent of the TUI — a parallelization candidate).
+
+Cross-cutting invariants for every phase: **main is frozen — all v1.4 work lands on branch `v1.4`**; every `dnallm/` change ships with its pytest coverage in the same change; the `fail_under=90` coverage gate holds throughout with per-module ≥96% for new code and no omit entries; ModelScope-first on every probe and download path; lab models (`zhangtaolab/*`) rank first in every listing the product surfaces; WARN never blocks and unavailability degrades to UNKNOWN, never an error; no snapshot/golden TUI infrastructure (Pilot-functional tests only); the registry loader stays read-only forever (registry maintenance = scripted text insertion, never a YAML round-trip).
 
 ## Phases
 
-- [x] **Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09)** — completed 2026-10-17 (CI-validated on ed1c2e8/2041e00; full-tree residue sweep quick 261017-414)
-
-**Goal:** ty (pinned `ty@0.0.84`) becomes the sole type gate and mypy retires in ONE atomic change (the D-08/D-09 discipline set in v1.1 Phase 9). The 232-diagnostic baseline clears to zero via real fixes plus line-level `# ty: ignore[code]` pragmas for library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. Same change: the coverage-gate advisory ty step hardens (`|| true` dropped), the two test-job advisory mypy steps retire, the pre-commit mypy hook retires, `check_code.py` swaps mypy→ty, and the mypy dev-dep + `[tool.mypy]`/overrides + `.mypy_cache` gitignore entry are removed. `# type: ignore` comments stay — ty honors them live.
-
 <details>
-<summary>✅ v1.3 Platform Reach & Packaging Honesty (Phases 13–20) — SHIPPED 2026-10-16</summary>
+<summary>✅ v1.3 Platform Reach & Packaging Honesty (Phases 13–21) — SHIPPED 2026-10-16 (reopened 2026-10-17 for owner-directed Phase 21)</summary>
 
 - [x] Phase 13: Ollama Surface Disposition (1/1 plans) — completed 2026-10-13
 - [x] Phase 14: GAP-1 Transformers 5.x Disposition (2/2 plans) — completed 2026-10-13
@@ -24,6 +29,7 @@
 - [x] Phase 18: Packaging & Install Honesty — Atomic Extras Surgery (3/3 plans; 18-03 halted at owner-deferred Windows KDA smoke, WINDOWS #27) — completed 2026-10-15
 - [x] Phase 19: Docs Accuracy Sweep & Milestone Closeout (7/7 plans) — completed 2026-10-15
 - [x] Phase 20: Tech-debt closeout — CLI flag-only crash + residual docs mentions (1/1 plan; post-audit option B) — completed 2026-10-16
+- [x] Phase 21: Type-checker atomic swap — ty hard flip + mypy retirement (D-09) (owner-directed reopen) — completed 2026-10-17
 
 Full phase details, requirements mapping, and success criteria: [milestones/v1.3-ROADMAP.md](milestones/v1.3-ROADMAP.md)
 
@@ -68,5 +74,88 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 </details>
 
 **Phase Numbering:**
-- The next milestone continues from Phase 22 (numbering never restarts; Phase 21 consumed by the v1.3 reopen)
-- Decimal phases (e.g. 21.1): urgent insertions (marked INSERTED)
+- Integer phases (22–26): planned v1.4 milestone work (continues v1.3's Phase 21 — numbering never restarts)
+- Decimal phases (22.1, 22.2): urgent insertions (marked INSERTED)
+
+- [ ] **Phase 22: Registry Foundation — Runtime Loader & Enrichment** - Cached read-only single-parse loader for `model_info.yaml` (typed lookups by name/repo_id/task_type/base_model) + `tokenizer_type`/`max_length` enrichment and extended integrity tests
+- [ ] **Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API** - `validate_data` / `check_compatibility` / `generate_config` plus a ModelScope-first availability probe as pure, pytest-covered, offline-safe functions; lab-first listings; shared `validate_sections` path
+- [ ] **Phase 24: Preset Loading — `load_preset_model` Registry Rewire** - Registry entry names resolve with `num_labels`/`label_names`/`threshold` patched into TaskConfig; the existing family-name path is preserved and regression-tested
+- [ ] **Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra** - `dnallm preflight` Textual wizard over the core (env → data → suitability → config panels, select-to-download); extra + CI wiring + worker seam land before any panel; `full`-alias removal rides the same change
+- [ ] **Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing** - `check_config_registry_consistency()` (repo-id-keyed, warn-first, never writes) + CI check over committed configs + `get_all_available_models` registry listing with configured/loaded overlay
+
+## Phase Details
+
+**Milestone goal (v1.4):** one terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout, all work on branch `v1.4`.
+
+### Phase 22: Registry Foundation — Runtime Loader & Enrichment
+**Goal**: `model_info.yaml` becomes a runtime-consumable single source of truth — one cached, read-only, typed loader is the file's sole parser, entries gain structured tokenizer/max-length metadata, and integrity tests make both properties permanent
+**Depends on**: Nothing (first phase of v1.4 — v1.3 shipped 2026-10-16; Phase 21 reopen closed 2026-10-17)
+**Requirements**: REG-01, REG-02, REG-03
+**Success Criteria** (what must be TRUE):
+  1. Any consumer can look up registry entries by name, repo_id, task_type, or base_model through `dnallm/models/registry.py` and get typed entries from a single cached parse (CSafeLoader with SafeLoader fallback; `reload()` forces a refresh) — and a grep-guard test fails if any second parser of `model_info.yaml` appears in `dnallm/`
+  2. Registry entries expose structured `tokenizer_type` and `max_length` — enrichment landed as scripted text insertion with provenance comments preserved — with enrichment-schema invariants tested across all 236 entries
+  3. The extended 261020-kwt integrity suite proves the loader is born — and stays — read-only: no write or YAML round-trip API exists on it, and every provenance block (including the PlantHelixSeek label-order freeze) remains present and intact
+**Plans**: TBD
+**Note**: enrichment schema (`tokenizer_type`/`max_length` shape, insertion discipline) is finalized at phase planning (research flag within Phase R); the loader itself is a standard cached package-data pattern — no `--research-phase` needed
+
+### Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API
+**Goal**: A pure, synchronous, pytest-covered pre-flight API — `validate_data`, `check_compatibility`, `generate_config`, and a ModelScope-first availability probe — that every future shell (TUI now, MCP tools and notebooks later) consumes without owning any verdict logic
+**Depends on**: Phase 22 (the core reads registry metadata, lineage, and lab-model identity through the loader — never a second parse)
+**Requirements**: PFC-01, PFC-02, PFC-03, PFC-04, PFC-05, PFC-06, PFC-07
+**Success Criteria** (what must be TRUE):
+  1. `validate_data()` on any user dataset returns a read-only collect-all report — stats, charset census, length distribution, severities with reason codes — and never drops or mutates a row
+  2. `check_compatibility()` returns three-state verdicts (OK/WARN/FAIL) over task × length (truncation vs max context) × tokenizer/charset with WARN never blocking; intent-routed listings come back over the base↔finetuned axis ("fine-tune" lists bases, "predict now" lists task models with heads/labels) with `zhangtaolab/*` ranked first in every listing the core produces
+  3. The availability probe is ModelScope-first and returns cached / remote-confirmed / unknown states with size and revision — without downloading weights; rate-limit responses map to unknown (never "unavailable"), and probes are injectable so the unit suite runs network-free
+  4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
+  5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
+**Plans**: TBD
+**Note**: `--research-phase` suggested — two spikes: (a) effective-endpoint reporting through huggingface_hub resolved constants (in-process `HF_ENDPOINT` toggle effect at installed versions), (b) the ModelScope cache-layout resolver against installed modelscope (two layouts)
+
+### Phase 24: Preset Loading — `load_preset_model` Registry Rewire
+**Goal**: Registry entry names resolve at runtime in `load_preset_model` — a finetuned entry loads with its head/labels/threshold patched into TaskConfig — filling the grep-verified dead `preset` path without changing any existing family behavior
+**Depends on**: Phase 22 (resolution goes through the loader; needs nothing from Phase 23 — file-disjoint from it and wave-parallelizable under single-tree pathspec-commit discipline)
+**Requirements**: LOAD-01
+**Success Criteria** (what must be TRUE):
+  1. A user can pass a registry entry name (e.g. a PlantHelixSeek finetuned checkpoint) to `load_preset_model` and get a loaded model with `num_labels` / `label_names` / `threshold` taken from the registry entry and patched into TaskConfig — no manual config editing
+  2. Every existing family-name invocation of `load_preset_model` behaves identically after the rewire (regression-tested), so the new behavior is additive only — and the base↔finetuned axis is live at runtime via `base_model`
+**Plans**: TBD
+**Note**: integration points grep-verified with line anchors (model.py:1567–1614, dead `preset` path); low-risk standard pattern — no `--research-phase`
+
+### Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra
+**Goal**: `dnallm preflight` launches a Textual wizard — env → data → suitability → config → select-to-download — that is presentation-only over the Phase-23 core, lands behind a `tui` extra whose CI wiring arrives atomically before any panel, and absorbs the R4 config-editing need
+**Depends on**: Phases 22, 23 (deepest dependency: the wizard renders core reports and registry listings; Phase 24 is sequenced before it so registry-name resolution is live end-to-end when the wizard emits configs)
+**Requirements**: TUI-01, TUI-02, TUI-03, TUI-04, TUI-05, TUI-06, TUI-07, TUI-08, PKG-01
+**Success Criteria** (what must be TRUE):
+  1. The first act lands atomically — the `tui` extra (`textual>=8.2,<9`, `platformdirs>=3.6,<5`) with `test = ["dnallm[tui]", ...]` riding every pytest CI leg, the one-cycle `full` extras alias removed in the same sequencing window, structure tests enforcing zero textual imports outside `dnallm/tui/` and zero torch/transformers imports inside it, and the thread-worker seam in place — before any panel exists
+  2. `dnallm preflight` launches the wizard via lazy import; on a bare install the user gets a friendly `pip install dnallm[tui]` message, never a traceback
+  3. A user can walk the full flow — env panel (device/VRAM/library versions/disk from the core, no logic in screens) → data panel (the `validate_data()` report with per-rule failures, counts, and reason codes) → suitability panel (compatibility/availability verdicts with lineage routing and lab-first ordering; model selection feeds the next step) → config panel (generate or edit an existing YAML with live collect-all validation) — and leave with a validated config emitted
+  4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
+  5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
+**Plans**: TBD
+**UI hint**: yes
+**Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
+
+### Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing
+**Goal**: The MCP layer tells the truth about models — per-model MCP YAMLs are compared against the registry (repo-id-keyed, warn-first, never writing) with a CI check over committed configs, and `get_all_available_models` serves the registry listing with a configured/loaded overlay
+**Depends on**: Phases 22, 23 (registry keying plus the core's finding-type conventions; deliberately last so the registry format stabilizes through two consumers before comparison semantics freeze — independent of Phase 25 and parallelizable with it)
+**Requirements**: MCP-01, MCP-02, MCP-03
+**Success Criteria** (what must be TRUE):
+  1. `check_config_registry_consistency()` compares every per-model MCP YAML against the registry keyed on repo id across task_type, num_labels, label_names ORDER, threshold, and source — warn-first with a `strict_registry` opt-in — and it never writes anything
+  2. A CI check runs the consistency checker over `dnallm/mcp/configs/`, so config↔registry drift fails the build (coverage of user-facing example configs decided at phase planning)
+  3. `get_all_available_models` reports the registry listing overlaid with configured/loaded state — an MCP client's model menu matches what it can actually call (closing the name/reality mismatch, issue #64's registry-consumption half)
+**Plans**: TBD
+**Note**: owner call at phase planning — consistency-check scope (committed configs only vs also `configs/*.yaml` user-facing examples)
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
+(Phase 24 is file-disjoint from Phase 23 and Phase 26 is independent of Phase 25 — both pairs are wave-parallelizable under single-tree pathspec-commit discipline where dependencies allow)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 22. Registry Foundation | 0/TBD | Not started | - |
+| 23. Pre-flight Core | 0/TBD | Not started | - |
+| 24. Preset Loading | 0/TBD | Not started | - |
+| 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
+| 26. MCP Consistency | 0/TBD | Not started | - |
