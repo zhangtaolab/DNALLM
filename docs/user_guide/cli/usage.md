@@ -11,21 +11,28 @@ DNALLM provides two ways to use the command-line interface:
 After installing the DNALLM package, you can use the following commands:
 
 ```bash
-# Training
+# Training (the task and finetune sections come from the config file)
 dnallm-train --config config.yaml
-dnallm-train --model model_name --data data_path --output output_dir
 
-# Run inference
+# Run inference (the task and inference sections come from the config file)
 dnallm-inference --config config.yaml
-dnallm-inference --model model_name --input input_file
 
 # Generate configuration files
 dnallm-model-config-generator --output config.yaml
 dnallm-model-config-generator --preview
 
+# Zero-shot variant effect prediction
+dnallm-vep --vcf variants.vcf.gz --reference genome.fa --model-name model_name
+
 # MCP server
 dnallm-mcp-server --config config.yaml
 ```
+
+Note: the `--model`/`--data`/`--input` flags exist on the training and inference
+entry points, but invoking them without `--config` exits with a usage error —
+`--config is required`. The `task` section (and the finetune/inference
+sections) come only from a configuration file; generate one with
+`dnallm-model-config-generator --output config.yaml`.
 
 ## Development Environment Usage
 
@@ -93,11 +100,8 @@ Train a DNA large language model with specified configuration.
 
 **Examples:**
 ```bash
-# Using configuration file
+# Using a configuration file (required — see the note above)
 dnallm-train --config finetune_config.yaml
-
-# Using command line arguments
-dnallm-train --model zhangtaolab/plant-dnagpt-BPE --data ./data --output ./outputs
 ```
 
 ### `dnallm-inference`
@@ -112,11 +116,8 @@ Run inference with a trained DNA large language model.
 
 **Examples:**
 ```bash
-# Using configuration file
+# Using a configuration file (required — see the note above)
 dnallm-inference --config inference_config.yaml
-
-# Using command line arguments
-dnallm-inference --model ./models/trained_model --input ./test_data.csv
 ```
 
 ### `dnallm-model-config-generator`
@@ -177,27 +178,40 @@ dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequence ATCGATCG
 dnallm-mutagenesis --model-name zhangtaolab/plant-dnagpt-BPE --sequences sequences.txt --output results.json
 ```
 
+### `dnallm-vep`
+
+Standalone zero-shot variant effect prediction: score the variants in a VCF against a reference genome with a CLM or MLM model.
+
+**Options:**
+- `--config, -c`: Path to a YAML config file with a `vep` section (VepConfig: paradigm, context_window, output_dir)
+- `--vcf`: Path to the (optionally gzipped) VCF to score (required)
+- `--reference`: Path to the reference genome FASTA, plain or `.gz` (required)
+- `--model-name, -m`: Model name or path for variant scoring (required)
+- `--source`: `huggingface` or `modelscope` (default: `huggingface`)
+- `--paradigm`: `clm` or `mlm` scoring paradigm (default: the VepConfig value, else `mlm`)
+- `--output, -o`: Output JSON file path (defaults to stdout)
+
+**Examples:**
+```bash
+# Score a VCF with a masked-language model
+dnallm-vep --vcf variants.vcf.gz --reference genome.fa \
+  --model-name zhangtaolab/plant-dnabert-BPE --source modelscope --output scores.json
+```
+
 ## Configuration Examples
 
 ### Training Configuration (config.yaml)
 
-```yaml
-model:
-  name_or_path: "zhangtaolab/plant-dnagpt-BPE"
-  source: "huggingface"
+`load_config` reads the `task` and `finetune` sections (plus optional `inference`, `lora`, `ia3`, `vep`, `sweep` sections). There is no `model:` or `data:` section to fill in — the model is passed via `load_model_and_tokenizer` and the dataset via `DNADataset`, then both go to the `DNATrainer` constructor (see [Common Workflows](../common_workflows.md)):
 
+```yaml
 task:
-  task_type: "binary_classification"
+  task_type: "binary"
   num_labels: 2
   label_names: ["negative", "positive"]
 
-data:
-  train_file: "path/to/train.csv"
-  eval_file: "path/to/eval.csv"
-  text_column: "sequence"
-  label_column: "label"
-
 finetune:
+  output_dir: "./outputs"
   num_train_epochs: 3
   per_device_train_batch_size: 8
   learning_rate: 5e-5
@@ -207,18 +221,20 @@ finetune:
 
 ### Inference Configuration (config.yaml)
 
-```yaml
-model:
-  name_or_path: "path/to/trained/model"
-  source: "local"
+The inference config carries the `task` and `inference` sections; the input file and model are arguments to the Python API (`DNAInference.infer(file_path=...)`, `load_model_and_tokenizer`):
 
+```yaml
 task:
-  task_type: "binary_classification"
+  task_type: "binary"
   num_labels: 2
 
-data:
-  input_file: "path/to/input/data"
-  output_file: "predictions.csv"
+inference:
+  batch_size: 16
+  device: "auto"
+  max_length: 512
+  num_workers: 4
+  use_fp16: false
+  output_dir: "./results"
 ```
 
 ### Benchmark Configuration (config.yaml)
@@ -231,11 +247,11 @@ benchmark:
 models:
   - name: "Model 1"
     source: "huggingface"
-    path: "zhangtaolab/plant-dnagpt-BPE"
+    path: "zhangtaolab/plant-dnagpt-BPE-promoter"
     task_type: "binary_classification"
   - name: "Model 2"
     source: "modelscope"
-    path: "zhangtaolab/plant-dnabert"
+    path: "zhangtaolab/plant-dnabert-BPE"
     task_type: "binary_classification"
 
 datasets:

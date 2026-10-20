@@ -34,6 +34,7 @@ import json
 import re
 import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
+import sys
 from pathlib import Path
 
 import pytest
@@ -520,11 +521,13 @@ def test_cre_notebook_executes_within_selection_bands(tmp_path: Path) -> None:
     # (check=True); nothing in the nightly job provisions bedtools, so a
     # rebuilt runner would die inside the kernel with a bare FileNotFoundError.
     # Fail loud up front instead, pointing at the wrapper's prerequisites.
-    assert shutil.which("bedtools") is not None, (
-        "bedtools is not on PATH -- the CRE notebook's jaccard agreement step "
-        "requires bedtools v2.31+ (see 'Prerequisites' in "
-        "docs/example/notebooks/plant_helixseek_cre.md)"
-    )
+    # On Windows the jaccard cell executes via the numpy evaluator (in-process, no CLI binary).
+    if sys.platform != "win32":
+        assert shutil.which("bedtools") is not None, (
+            "bedtools is not on PATH -- the CRE notebook's jaccard agreement step "
+            "requires bedtools v2.31+ (see 'Prerequisites' in "
+            "docs/example/notebooks/plant_helixseek_cre.md)"
+        )
 
     spec = NOTEBOOK_EXEC_SPECS[str(CRE_NB)]
     # Pitfall 6: the harness contract requires cell_timeout < the outer mark,

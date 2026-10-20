@@ -20,7 +20,7 @@ The committed notebook carries its executed outputs, including the embedded pred
 Install DNALLM with the flash-linear-attention kernels PlantHelixSeek needs:
 
 ```bash
-uv pip install -e '.[base,fla]'
+uv pip install -e '.[full,fla]'
 ```
 
 The jaccard step additionally requires [bedtools](https://bedtools.readthedocs.io) v2.31+ on `PATH`, and the scan runs on a CUDA GPU (the eager-attention route through dnallm has a batch-4 memory ceiling; see the notebook's provenance cell).
@@ -83,15 +83,20 @@ The threshold is calibrated on this locus's bin scores; above-threshold bin runs
 
 ```python
 import subprocess
+import sys
 
-result = subprocess.run(
-    ["bedtools", "jaccard", "-a", str(predicted_bed_path), "-b", str(truth_bed_path)],
-    capture_output=True,
-    text=True,
-    check=True,
-)
-jaccard_value = float(result.stdout.strip().splitlines()[1].split("\t")[2])
-print(f"jaccard={jaccard_value:.4f}")
+if sys.platform == "win32":
+    from dnallm.utils import jaccard as _np_jaccard
+    jaccard_value = _np_jaccard(predicted_bed_path, truth_bed_path)["jaccard"]
+else:
+    result = subprocess.run(
+        ["bedtools", "jaccard", "-a", str(predicted_bed_path), "-b", str(truth_bed_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    jaccard_value = float(result.stdout.strip().splitlines()[1].split("\t")[2])
+print(f"jaccard={jaccard_value:.4f}")  # identical format on both branches (stream regex)
 ```
 
 ## Negative Control

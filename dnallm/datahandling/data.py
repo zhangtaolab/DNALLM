@@ -8,7 +8,7 @@ techniques, and statistical analysis.
 import os
 import random
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 import pandas as pd
 import numpy as np
 from datasets import (
@@ -17,7 +17,7 @@ from datasets import (
     load_dataset,
     concatenate_datasets,
 )
-from transformers import PreTrainedTokenizerBase  # type: ignore[attr-defined]  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+from transformers import PreTrainedTokenizerBase  # transformers lazy export, resolves live
 from transformers.tokenization_utils_base import BatchEncoding
 
 from ..utils.sequence import (
@@ -74,7 +74,7 @@ class DNADataset:
         self.multi_label_sep: str | None = None
         self.data_type: str | None = None
         self.stats: dict | None = None
-        self.stats_for_plot: pd.DataFrame | None = None
+        self.stats_for_plot: pd.DataFrame | dict[str, pd.DataFrame] | None = None
         self.is_split: bool = isinstance(ds, DatasetDict)
         self.__data_type__()  # Determine the data type of the dataset
 
@@ -131,7 +131,7 @@ class DNADataset:
                 file_paths, seq_col, label_col, sep, fasta_sep, multi_label_sep
             )
             cls.is_split = False
-        dataset.stats = None  # Initialize stats as None
+        dataset.stats = None  # Initialize stats as None  # ty: ignore[invalid-assignment]  # dynamic attr on the HF dataset object
 
         return cls(dataset, tokenizer=tokenizer, max_length=max_length)
 
@@ -245,7 +245,7 @@ class DNADataset:
             ds = load_dataset("json", data_files=file_path, split="train")
         elif file_type in ["parquet", "arrow"]:
             ds = load_dataset(file_type, data_files=file_path, split="train")
-        return ds
+        return ds  # split="train" always yields a Dataset
 
     @classmethod
     def _load_dict_data(cls, file_path: str) -> Dataset:
@@ -292,7 +292,7 @@ class DNADataset:
                         data_files=file_path,
                         split="train",
                         delimiter=sep,
-                    )
+                    )  # split="train" always yields a Dataset
                 record = line.strip().split(sep) if sep else line.strip().split()
                 if len(record) >= 2:
                     sequences.append(record[0])
@@ -365,8 +365,8 @@ class DNADataset:
             ds = ds.rename_column(seq_col, "sequence")
         if label_col != "labels":
             ds = ds.rename_column(label_col, "labels")
-        cls.is_split: bool = isinstance(ds, DatasetDict)  # type: ignore[misc]
-        return cls(ds, tokenizer=tokenizer, max_length=max_length)
+        cls.is_split: bool = isinstance(ds, DatasetDict)
+        return cls(cast(Dataset | DatasetDict, ds), tokenizer=tokenizer, max_length=max_length)
 
     @classmethod
     def from_modelscope(
@@ -393,10 +393,13 @@ class DNADataset:
         """
         from modelscope import MsDataset
 
+        # MsDataset duck-types the HF Dataset/DatasetDict API; its declared
+        # return union (dict | MsDataset | NativeIterableDataset) is broader
+        # than the Dataset contract DNADataset consumes.
         if data_dir:
-            ds = MsDataset.load(dataset_name, data_dir=data_dir)
+            ds = cast(Dataset | DatasetDict, MsDataset.load(dataset_name, data_dir=data_dir))
         else:
-            ds = MsDataset.load(dataset_name)
+            ds = cast(Dataset | DatasetDict, MsDataset.load(dataset_name))
         # Rename columns if necessary
         if seq_col != "sequence":
             ds = ds.rename_column(seq_col, "sequence")
@@ -486,7 +489,9 @@ class DNADataset:
             raise ValueError("Tokenizer is required")
         if not self.tokenizer:
             raise ValueError("Tokenizer is required")
-        sp_token_map = (
+        # Special-token lookups mix str ids with str | list[str] token
+        # fields, so the accumulator is deliberately Any-valued.
+        sp_token_map: dict[str, Any] = (
             self.tokenizer.special_tokens_map
             if hasattr(self.tokenizer, "special_tokens_map")
             else {}
@@ -662,7 +667,7 @@ class DNADataset:
         all_ids = all_ids + [config["pad_id"]] * pad_len
 
         if isinstance(example_tokens, str):
-            example_tokens = list(example_tokens)  # type: ignore[unreachable]
+            example_tokens = list(example_tokens)
         if config["cls_token"]:
             example_tokens, example_ner_tags = self._add_special_tokens(
                 example_tokens, example_ner_tags, pad_len, config
@@ -776,7 +781,7 @@ class DNADataset:
             "pt": "torch",
         }
         self.dataset.set_format(type=format_map.get(return_tensors, None))
-        self.dataset._is_encoded = True
+        self.dataset._is_encoded = True  # ty: ignore[invalid-assignment]  # dynamic flag on the HF dataset object
 
     def _remove_unused_columns(self) -> None:
         """Remove unused columns from the dataset."""
@@ -1257,7 +1262,7 @@ class DNADataset:
                 "instead."
             )
         else:
-            return self.dataset[idx]  # type: ignore[no-any-return]
+            return self.dataset[idx]
 
     def __data_type__(self) -> None:
         """Get the data type of the dataset (classification, regression, etc.).
@@ -1384,13 +1389,16 @@ class DNADataset:
         seq_col = "sequence"
         # label_col = "labels"  # Not used in current implementation
         if isinstance(self.dataset, DatasetDict):
-            self.stats_for_plot = {}  # type: ignore[assignment]
+            self.stats_for_plot = {}
             for split_name, split_ds in self.dataset.items():
+                # datasets>=4 keys() yields NamedSplit (a str subclass); coerce
+                # so the str-keyed stats dicts stay type-honest on both libs.
+                split_key = str(split_name)
                 df = prepare_dataframe(split_ds)
                 data_type = self.data_type
                 basic = compute_basic_stats(df, seq_col)
-                stats[split_name] = {"data_type": data_type, **basic}
-                self.stats_for_plot[split_name] = df  # type: ignore[index]
+                stats[split_key] = {"data_type": data_type, **basic}
+                self.stats_for_plot[split_key] = df
         else:
             df = prepare_dataframe(self.dataset)
             data_type = self.data_type
@@ -1429,8 +1437,8 @@ class DNADataset:
             )
 
         task_type = self.data_type or "unknown"
-        if isinstance(self.stats_for_plot, dict):  # type: ignore[unreachable]
-            df_list = {}  # type: ignore[unreachable]
+        if isinstance(self.stats_for_plot, dict):
+            df_list = {}
             for split_name, df in self.stats_for_plot.items():
                 df_list[split_name] = df.copy()
             final = self._create_final_chart(df_list, task_type)
@@ -1506,7 +1514,7 @@ class DNADataset:
             alt
             .Chart(df)
             .mark_bar(opacity=0.7)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X(
                     "seq_len:Q",
                     bin=alt.Bin(maxbins=60),
@@ -1523,7 +1531,7 @@ class DNADataset:
             alt
             .Chart(df)
             .mark_boxplot(size=20)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X("label_str:N", title="Label"),
                 y=alt.Y("gc:Q", title="GC content"),
                 color=alt.Color("label_str:N", legend=None),
@@ -1549,7 +1557,7 @@ class DNADataset:
             alt
             .Chart(df)
             .mark_bar(opacity=0.7)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X(
                     "seq_len:Q",
                     bin=alt.Bin(maxbins=60),
@@ -1566,7 +1574,7 @@ class DNADataset:
             alt
             .Chart(df)
             .mark_point()
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X("gc:Q", title="GC content"),
                 y=alt.Y("label_val:Q", title="Label value"),
                 tooltip=[
@@ -1633,7 +1641,7 @@ class DNADataset:
             alt
             .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X(
                     "seq_len:Q",
                     bin=alt.Bin(maxbins=50),
@@ -1649,7 +1657,7 @@ class DNADataset:
             alt
             .Chart(subdf_for_plot)
             .mark_boxplot(size=20)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X("labels_for_plot:N", title=f"{c}"),
                 y=alt.Y("gc:Q", title="GC content"),
                 color=alt.Color("labels_for_plot:N", legend=None),
@@ -1671,7 +1679,7 @@ class DNADataset:
             alt
             .Chart(subdf_for_plot)
             .mark_bar(opacity=0.7)
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X(
                     "seq_len:Q",
                     bin=alt.Bin(maxbins=50),
@@ -1686,7 +1694,7 @@ class DNADataset:
             alt
             .Chart(subdf_for_plot)
             .mark_point()
-            .encode(
+            .encode(  # ty: ignore[unresolved-attribute]  # altair use_signature decorator erases mark_* return types
                 x=alt.X("gc:Q", title="GC content"),
                 y=alt.Y("label_val:Q", title="Label value"),
                 tooltip=[

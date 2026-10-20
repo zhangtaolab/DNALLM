@@ -526,7 +526,7 @@ class DNALLMMCPServer:
             if request_id is not None:
                 log_entry["request_id"] = request_id
             if duration_ms is not None:
-                log_entry["duration_ms"] = round(duration_ms, 2)  # type: ignore[assignment]
+                log_entry["duration_ms"] = round(duration_ms, 2)
             if status is not None:
                 log_entry["status"] = status
             log_entry.update(extra)
@@ -923,9 +923,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if stream_progress and context:
                     # Send initial progress update
                     await context.report_progress(
@@ -1045,9 +1043,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_batch_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if stream_progress and context:
                     await context.report_progress(
                         0,
@@ -1194,9 +1190,7 @@ class DNALLMMCPServer:
         tool_name = "dna_stream_multi_model_predict"
         start = time.perf_counter()
         try:
-            async with asyncio.timeout(  # type: ignore[attr-defined]
-                self._tool_timeout_seconds
-            ):
+            async with asyncio.timeout(self._tool_timeout_seconds):
                 if model_names is None:
                     model_names = self.model_manager.get_loaded_models()
 
@@ -1673,7 +1667,11 @@ class DNALLMMCPServer:
             # of killing the server for every connected client.
             try:
                 guard_config = self.model_manager.config_manager.get_model_config(model_name)
-                architecture = str(guard_config.model.task_info.architecture or "")
+                architecture = (
+                    str(guard_config.model.task_info.architecture or "")
+                    if guard_config is not None
+                    else ""
+                )
             except Exception:
                 architecture = ""
             if "mamba" in architecture.lower():
@@ -1707,7 +1705,7 @@ class DNALLMMCPServer:
                 # lock so a timeout-cancellation cannot stack concurrent
                 # attributions on one shared torch model.
                 with self._interpret_thread_lock:
-                    interpreter = DNAInterpret(model, tokenizer, config)  # type: ignore[arg-type]
+                    interpreter = DNAInterpret(model, tokenizer, config)
 
                     # Handle layer_conductance: auto-detect embedding layer
                     kwargs: dict[str, Any] = {}
@@ -1721,7 +1719,7 @@ class DNALLMMCPServer:
                         method=mapped_method,
                         target=target_class,
                         max_length=max_length,
-                        **kwargs,  # type: ignore[arg-type]
+                        **kwargs,
                     )
 
             # WR-01 (261003-ij4): a synchronous captum attribution (observed
@@ -1893,7 +1891,10 @@ class DNALLMMCPServer:
                     "isError": True,
                 }
             if sequences is None:
-                sequences = [sequence]
+                # Exactly one of sequence/sequences is set (guard above);
+                # the empty-list fallback keeps the unreachable None path on
+                # the same "non-empty list of strings" error below.
+                sequences = [sequence] if sequence is not None else []
             if not sequences or not all(isinstance(seq, str) and seq for seq in sequences):
                 return {
                     "error": "sequences must be a non-empty list of non-empty strings",
@@ -2882,7 +2883,7 @@ class DNALLMMCPServer:
         # correct path
         main_app = Starlette(
             routes=[
-                Mount(mount_path, sse_app),
+                Mount(str(mount_path), sse_app),
                 Mount("", sse_app),  # Also mount at root for /sse
             ],
             lifespan=self._create_server_lifespan(),

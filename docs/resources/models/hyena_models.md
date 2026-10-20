@@ -66,10 +66,10 @@ model.eval()
 dna_sequence = "GATTACAGATTACAGATTACAGATTACAGATTACAGATTACA"
 inputs = tokenizer(dna_sequence, return_tensors="pt")
 
-# 3. Perform inference
+# 3. Perform inference (request hidden states explicitly — they default to None)
 with torch.no_grad():
-    outputs = model(**inputs)
+    outputs = model(**inputs, output_hidden_states=True)
 
-embeddings = outputs.hidden_states[-1]  # Hyena outputs hidden states differently
+embeddings = outputs.hidden_states[-1]  # Last-layer hidden states
 print("Shape of embeddings:", embeddings.shape)
 ```

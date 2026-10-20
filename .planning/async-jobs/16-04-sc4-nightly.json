@@ -1,0 +1,24 @@
+{
+  "job_id": "38441258701",
+  "job_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/38441258701",
+  "target_jobs": [
+    "example-nightly (py3.12, example execution census)",
+    "coverage-nightly (py3.12, full suite incl. slow)"
+  ],
+  "backend": "github-actions",
+  "runner": "self-hosted local GB10 (forrest@edgexpert, runner id 22, ~/github-runners/dnallm-nightly)",
+  "status": "terminal — run concluded failure 2026-10-14T09:27:42Z; every phase-16 surface green (live-pybedtools parity executed green, CRE band re-executed green, NER notebook green in example-nightly, both root suites 19+4 green in the full census, D-03 census gate held byte-identical); the only reds are the owner-accepted rice.uga.edu external-host class on two input-download lanes (4th/5th manifestations, phase-14 H.4/H.4.final precedent; owner-directed accept-with-caveat). Terminal record: 16-EVIDENCE.md section A.4/A.5. WINDOWS #24 resolved with that record.",
+  "submitted_at": "2026-10-13T17:45:44Z",
+  "plan_id": "16-04",
+  "purpose": "SC4 (WPAR-06 same-change clause + WPAR-08 nightly clause): prove the Linux nightly re-execution holds the parsed selection.md bands over the COMPLETE phase-16 change (headSha 4863883890fe62c845e3c81da06c7e07d4e8e282 = all 16-01/02/03 commits). Both nightly jobs must conclude success. No SUMMARY.md for 16-04 until this resolves and the SC matrix flips 5/5.",
+  "expected_artifacts": [
+    "run 38441258701 conclusion success; both nightly jobs conclusion success",
+    "example-nightly stage 0.5 census line: '216/217 tests collected (1 deselected)' (census-collect.txt in the example-nightly-junit artifact)",
+    "stage-1 green rows: test_cre_notebook_executes_within_selection_bands, test_anno_notebook_executes_within_selection_bands, NER notebook lane, test_generate_bpe_dataset_produces_artifact (POSIX bedtools+pybedtools chain)",
+    "parsed-band assertion log lines (jaccard/exon_f1 evidence keys) from stage1-examples.log",
+    "coverage-nightly full census collects and passes tests/test_dispatch_direction.py (19) + tests/test_frozen_pairs.py (4) — junit has no artifact upload: capture pytest-junit-nightly.xml from ~/github-runners/dnallm-nightly/_work/DNALLM/DNALLM/ BEFORE the next serialized job cleans the workspace, or job logs via gh"
+  ],
+  "verification_command": "gh run view 38441258701 --repo zhangtaolab/DNALLM --json status,conclusion,jobs",
+  "resume_command": "no re-dispatch while 38441258701 is queued/in_progress — poll the verification_command; on triage (see 16-EVIDENCE.md section A.5) the single sanctioned re-dispatch is: gh workflow run ci.yml --repo zhangtaolab/DNALLM --ref v1.3",
+  "notes": "Dispatch discipline: failures are recorded with resolutions in 16-EVIDENCE.md, never silently retried. Triage split: phase-red (dispatch leakage / gate regression / band drift) = fix in the offending plan then re-dispatch; infra-red = recovery manual (memory: phase13-uat-nightly-recovery) then re-dispatch; rice.uga.edu transient class (truncated FASTA KeyError / wget CellTimeoutError, phase-14 H.4/H.5 precedent) = record + ONE re-dispatch, second manifestation escalates to the owner. Local half of 16-04 is already green and recorded (16-EVIDENCE.md sections C/D: SC1/2/3/5 matrix rows + phase-wide guards); the continuation only completes section A with the concluded-run evidence, flips the SC4 row green, then proceeds to 16-04 Task 2 close-out (SUMMARY, state updates, WPAR-06/08 shared-ID marking)."
+}

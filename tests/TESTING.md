@@ -58,6 +58,28 @@ pytest tests/utils/
 pytest --cov=dnallm --cov-report=html
 ```
 
+### Bandwidth-Saving Local Runs (ModelScope-first)
+
+Traffic rules (owner directive): every model that ModelScope serves is fetched
+with `source="modelscope"` (the zhangtaolab catalogue and most plant models);
+HuggingFace is used only for fixtures with no ModelScope mirror
+(`InstaDeepAI/nucleotide-transformer-*`, `kuleshov-group/PlantCAD*`,
+`lingxusb/megaDNA_updated`, `microsoft/DialoGPT-small`) — and those are already
+in the local HF cache after a first run, so they must not be re-downloaded.
+
+Local full-suite runs against an existing cache should set the offline switch
+(wired in the root `conftest.py`, applied before `huggingface_hub` is first
+imported):
+
+```bash
+# Cached HF fixtures load straight from disk; no online etag round-trips.
+# Without this, a flaky link to huggingface.co can stall the suite for hours
+# even though every model is already cached.
+DNALLM_TEST_HF_OFFLINE=1 pytest -m "not giants" -q --no-cov
+```
+
+CI runners download on demand and never set this switch.
+
 ### Module-Specific Testing
 
 From individual test directories:

@@ -57,8 +57,11 @@ not substitute the `0.0.0.0` example from the ollama FAQ.
 `OLLAMA_CONTEXT_LENGTH=8192` pins the server-default context window. The
 qwen3.5:4b model (4.2B Q4_K_M, ~3.3GB pull) carries a default context length
 of 262144 — still 256k-class, so a request at native context still allocates
-a giant kv-cache and dominates mcp-notebook latency and the nightly VRAM
-budget (the retired 17.74GB predecessor measured ~36GB per request at 256k;
+a giant kv-cache and dominates mcp-notebook latency wherever the stack is up;
+the nightly no longer brings the model service up at all (Phase 13 D-04,
+2026-10-11: the mcp pair typed-skips there when the stack is down), so this
+VRAM budget is a live-service/local concern only (the retired 17.74GB
+predecessor measured ~36GB per request at 256k;
 owner A/A runtime cut, 2026-10-05). A server default is the only seam that
 covers BOTH mcp client stacks uniformly: the pydantic_ai sibling talks the
 OpenAI-compatible `/v1` endpoint, which has no per-request context parameter.

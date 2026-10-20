@@ -115,13 +115,13 @@ def _handle_borzoi_models(
                                 else:
                                     loss = loss_fct(logits, labels)
                             elif self.config.problem_type == "single_label_classification":
-                                loss_fct = nn.CrossEntropyLoss()  # type: ignore[assignment]
+                                loss_fct = nn.CrossEntropyLoss()
                                 loss = loss_fct(
                                     logits.view(-1, self.num_labels),
                                     labels.view(-1),
                                 )
                             elif self.config.problem_type == "multi_label_classification":
-                                loss_fct = nn.BCEWithLogitsLoss()  # type: ignore[assignment]
+                                loss_fct = nn.BCEWithLogitsLoss()
                                 loss = loss_fct(logits, labels)
                             else:
                                 raise NotImplementedError(self.config.problem_type)

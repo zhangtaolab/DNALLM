@@ -297,7 +297,7 @@ def _numpy_fromstring_shim() -> None:
         data = text.encode("utf-8") if isinstance(text, str) else text
         return np.frombuffer(data, dtype=dtype)
 
-    np.fromstring = _fromstring  # type: ignore[attr-defined]
+    np.fromstring = _fromstring  # type: ignore
 
 
 def spike_evo1(variant: str) -> int:

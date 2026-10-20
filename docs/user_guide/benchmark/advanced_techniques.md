@@ -136,7 +136,7 @@ benchmark = Benchmark(
 )
 ```
 
-If the built-in set does not cover a metric you need, compute it from the raw outputs yourself: run the benchmark or `evaluate_single_model(...)` to collect predictions/logits and labels, then apply your own metric function outside of DNALLM. To contribute a new built-in metric for everyone, extend the task-specific metric functions in `dnallm/tasks/metrics.py` (see [CONTRIBUTING.md](../../../CONTRIBUTING.md)).
+If the built-in set does not cover a metric you need, compute it from the raw outputs yourself: run the benchmark or `evaluate_single_model(...)` to collect predictions/logits and labels, then apply your own metric function outside of DNALLM. To contribute a new built-in metric for everyone, extend the task-specific metric functions in `dnallm/tasks/metrics.py` (see [CONTRIBUTING.md](https://github.com/zhangtaolab/DNALLM/blob/main/CONTRIBUTING.md)).
 
 ## Performance Profiling
 
@@ -267,7 +267,7 @@ def detailed_memory_profile(model, dataset, batch_size=32):
 
 ## Optimization Strategies
 
-### Mixed Precision Training
+### Mixed Precision Inference
 
 ```python
 from torch.cuda.amp import autocast, GradScaler

@@ -31,7 +31,7 @@ def _network_leaves(exc: BaseException) -> list[BaseException]:
     """
     if hasattr(exc, "exceptions"):
         out: list[BaseException] = []
-        for sub in exc.exceptions:
+        for sub in getattr(exc, "exceptions", ()):  # duck-typed read, see guard above
             out.extend(_network_leaves(sub))
         return out
     return [exc]

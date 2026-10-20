@@ -111,7 +111,7 @@ class TestDNALLMMCPServer:
 
         # Create second model config
         model_config2 = model_config.copy()
-        model_config2["model"]["name"] = "test_model2"  # type: ignore[index]
+        model_config2["model"]["name"] = "test_model2"
         model_config2_path = temp_dir / "test_model2_config.yaml"
         with open(model_config2_path, "w") as f:
             yaml.dump(model_config2, f)

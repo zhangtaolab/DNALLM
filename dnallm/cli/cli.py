@@ -44,36 +44,22 @@ def cli():
 )
 def train(config, model, data, output):
     """Train a DNA large language model"""
+    if not config:
+        raise click.UsageError(
+            "--config is required: the task section and other core settings "
+            "come only from a configuration file, so a flag-only invocation "
+            "is not supported. Generate a config with "
+            "`dnallm-model-config-generator --output config.yaml` and rerun "
+            "with --config. See the CLI usage docs "
+            "(docs/user_guide/cli/usage.md)."
+        )
+
     from ..finetune import DNATrainer
     from ..configuration import load_config
 
-    if config:
-        # Load configuration from file
-        config_dict = load_config(config)
-        trainer = DNATrainer(model=None, config=config_dict)
-        trainer.train()
-    else:
-        # Use command line arguments
-        if not all([model, data, output]):
-            click.echo("Error: --model, --data, and --output are required when not using --config")
-            sys.exit(1)
-
-        # Create minimal config
-        minimal_config = {
-            "model_name_or_path": model,
-            "data_path": data,
-            "output_dir": output,
-            "finetune": {
-                "num_train_epochs": 3,
-                "per_device_train_batch_size": 4,
-                "learning_rate": 5e-5,
-                "save_steps": 1000,
-                "eval_steps": 1000,
-            },
-        }
-
-        trainer = DNATrainer(model=None, config=minimal_config)  # type: ignore[arg-type]
-        trainer.train()
+    config_dict = load_config(config)
+    trainer = DNATrainer(model=None, config=config_dict)
+    trainer.train()
 
 
 @cli.command()
@@ -93,40 +79,28 @@ def train(config, model, data, output):
 @click.option("--output", "-o", type=click.Path(), help="Output file path")
 def inference(config, model, input, output):
     """Run inference with a trained DNA large language model"""
+    if not config:
+        raise click.UsageError(
+            "--config is required: the task section and other core settings "
+            "come only from a configuration file, so a flag-only invocation "
+            "is not supported. Generate a config with "
+            "`dnallm-model-config-generator --output config.yaml` and rerun "
+            "with --config. See the CLI usage docs "
+            "(docs/user_guide/cli/usage.md)."
+        )
+
     from ..inference import DNAInference
     from ..configuration import load_config
 
-    if config:
-        # Load configuration from file
-        config_dict = load_config(config)
-        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
-        results = inference_engine.infer()
+    config_dict = load_config(config)
+    inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
+    results = inference_engine.infer()
 
-        if output:
-            # Note: save_results method may not exist in DNAInference
-            print(f"Results saved to: {output}")
-        else:
-            logger.info(f"Inference results: {results}")
+    if output:
+        # Note: save_results method may not exist in DNAInference
+        print(f"Results saved to: {output}")
     else:
-        # Use command line arguments
-        if not all([model, input]):
-            click.echo("Error: --model and --input are required when not using --config")
-            sys.exit(1)
-
-        # Create minimal config
-        config_dict = {
-            "model_name_or_path": model,
-            "data_path": input,
-        }
-
-        inference_engine = DNAInference(model=None, tokenizer=None, config=config_dict)
-        results = inference_engine.infer()
-
-        if output:
-            # Note: save_results method may not exist in DNAInference
-            print(f"Results saved to: {output}")
-        else:
-            logger.info(f"Inference results: {results}")
+        logger.info(f"Inference results: {results}")
 
 
 @cli.command()

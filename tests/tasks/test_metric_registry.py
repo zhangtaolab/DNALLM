@@ -237,7 +237,7 @@ class TestImmutability:
 
     def test_registry_mapping_rejects_item_assignment(self):
         with pytest.raises(TypeError):
-            METRIC_REGISTRY["bogus_metric"] = (_stub_metric, ())  # type: ignore[index]
+            METRIC_REGISTRY["bogus_metric"] = (_stub_metric, ())
 
     def test_no_public_mutation_api_is_exported(self):
         assert set(metric_registry_module.__all__) == {

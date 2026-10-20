@@ -795,6 +795,15 @@ def test_ia3_training_transformer(tmp_path):
 def test_ia3_training_mamba(tmp_path):
     """IA³ fine-tunes one task on the Mamba pinned model — the silent-skip
     proving ground (pre-presets, IA³ on Mamba froze the backbone)."""
+    if sys.platform == "win32":
+        import torch
+
+        if torch.cuda.is_available():
+            pytest.skip(
+                "environment-unavailable: mambapy pscan forward needs >16GB VRAM; "
+                "OOMs on Windows 16GB GPUs (2026-10-19 RTX 5080 census, WINDOWS #28). "
+                "Linux nightly (GB10) and Windows CPU runs still execute this test."
+            )
     from dnallm import DNATrainer, load_model_and_tokenizer
     from dnallm.finetune.trainer import _load_peft_presets
 

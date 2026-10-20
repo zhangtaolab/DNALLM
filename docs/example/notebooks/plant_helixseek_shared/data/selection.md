@@ -71,6 +71,7 @@ neg_anno_fraction=0.0000 (intergenic window Chr1:14953292-14973291)
 | Anno gene models with exon-F1 >= 0.8 | >= 3 genes | >= 3 genes | 59 |
 | Negative CRE peak-base fraction (flanking) | <= 0.05 | [0.00, 0.05] | 0.0325 |
 | Negative Anno genic-base fraction (intergenic) | <= 0.1 | [0.00, 0.1] | 0.0000 |
+| Anno pooled exon-F1 (frozen pair) | = 692/920 | [0.752173912, 0.752173914] | 0.7522 |
 
 Phase 7/8 assertions reuse the floors verbatim; the observed headroom (observed - floor) is the margin absorbing transformers 4.49-5.x drift. The guarantee is 'substantially consistent' - never exact outputs.
 

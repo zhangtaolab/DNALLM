@@ -48,7 +48,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 
@@ -478,7 +478,7 @@ def _load_reference(reference: str | Path | Mapping[str, str]) -> dict[str, str]
     sequences: dict[str, str] = {}
     name: str | None = None
     chunks: list[str] = []
-    with opener(path, "rt", encoding="utf-8") as handle:  # type: ignore[operator]
+    with opener(path, "rt", encoding="utf-8") as handle:
         for line in handle:
             line = line.rstrip("\n")
             if line.startswith(">"):
@@ -718,10 +718,20 @@ def score_variant(
     if paradigm == "mlm":
         return float(
             mlm_slot_log_prob(
-                model, tokenizer, sequence, alignment.slot_index, alignment.alt_token_id
+                model,
+                tokenizer,
+                sequence,
+                # slot ids are always set when the variant is evaluatable
+                cast(int, alignment.slot_index),
+                cast(int, alignment.alt_token_id),
             )
             - mlm_slot_log_prob(
-                model, tokenizer, sequence, alignment.slot_index, alignment.ref_token_id
+                model,
+                tokenizer,
+                sequence,
+                # slot ids are always set when the variant is evaluatable
+                cast(int, alignment.slot_index),
+                cast(int, alignment.ref_token_id),
             )
         )
     alt_sequence = sequence[:pos] + alt + sequence[pos + len(ref) :]
@@ -852,7 +862,7 @@ def evaluate_vcf(
         n_rows = len(chroms)
 
     for i in range(n_rows):
-        chrom = _as_str(chroms[i])
+        chrom = _as_str(chroms[i])  # ty: ignore[not-subscriptable]  # loop runs only when chroms is not None
         clnvc = _field_cell(callset, "variants/CLNVC", i)
         if clnvc != clnsig_filter.variant_type:
             exclusion_counts["non_snv_clnvc"] += 1
@@ -909,7 +919,7 @@ def evaluate_vcf(
                     f"Scoring failed at {chrom}:{pos1} (REF={ref}, ALT={alt}): {exc}"
                 ) from exc
             if isinstance(outcome, VariantAlignment):
-                skip_counts[outcome.skip_reason] += 1
+                skip_counts[outcome.skip_reason] += 1  # ty: ignore[invalid-argument-type]  # skip records always carry a reason
                 records.append(
                     VepVariantRecord(
                         chrom=chrom,

@@ -154,6 +154,17 @@ pretrained:
     task:
       describe: "Pretrained model for DNA sequence understanding."
       task_type: "mask"
+  - name: "FungiHelixSeek"
+    model: "zhangtaolab/FungiHelixSeek"
+    task:
+      describe: "Kingdom-scale fungal DNA foundation model (hybrid linear-attention/Transformer MoE, 263M total / ~112M active, singleBase tokenizer)."
+      task_type: "mask"
+  - name: "PlantBiMoE"
+    model: "lgq12697/PlantBiMoE"
+    task:
+      describe: "Plant genome foundation model (BiMamba + SparseMoE hybrid, 86.95M total / 63.93M active, single-base tokenizer, trained on 42 plant species)."
+      task_type: "mask"
+
   - name: "CrossDNA"
     model: "chengCCC/CrossDNA_pretrain"
     task:

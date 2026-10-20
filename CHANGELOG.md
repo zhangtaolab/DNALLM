@@ -7,9 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-10-20
+
+### Overview
+
+Patch release on the v1.3 line: PEFT robustness (PEFT 0.21.2 compat, first GENERanno support), a metrics edge-case fix, docs nav wiring, bandwidth-saving test tooling, and a version-source contract gate. No public API breaks against 1.3.2.
+
+### Added
+
+- **GENERanno model family** — LoRA/IA3 preset row (Llama-layout targets from the remote `modeling_generanno.py`), `PRETRAIN_MODEL_MAPS` family entry (GenerTeam, Masked Language Model per the HF model cards — `Fill-Mask` / `AutoModelForMaskedLM`), and MODEL_INFO catalog entry defaulting to the ModelScope mirror
+- `DNALLM_TEST_HF_OFFLINE=1` opt-in (root `conftest.py`): local full-suite runs load cached HF fixtures offline — no online etag round-trips that can stall a run for hours on a flaky link; CI unaffected (documents the owner's ModelScope-first / no-redundant-download traffic rules)
+- `tests/test_version_contract.py`: fails the suite whenever `dnallm.__version__` (dnallm/version.py) drifts from `pyproject.toml` — the version string lives in three places and the v1.3.1/v1.3.2 bumps missed one
+
+### Fixed
+
+- **PEFT 0.21.2 `modules_to_save` double-wrap**: keep only the outermost saved head — a nested `score.classifier` wrapper made `load_best_model_at_end` die with `KeyError` after training
+- **Collapsed binary confusion matrix**: pin `labels=[0, 1]` in `classification_metrics` so an all-one-class predictor no longer raises "not enough values to unpack" on the 4-way ravel
+- `dnallm/version.py` was still 1.3.0 while the package shipped 1.3.2 (`dnallm.__version__` lied); now synced and gated
+- The five GSD canonical docs (added in 1.3.2) are wired into the `mkdocs.yml` nav — `mkdocs build --strict` passes with zero warnings
+
+### Compatibility Notes
+
+- The full nightly lanes (coverage incl. slow, example census with MCP live-server probes, mamba) ran green on this line before release
+
+## [1.3.2] - 2026-10-19
+
+### Overview
+
+Patch release on the v1.3 line: the custom-ESM checkpoint probe loading path (re-landed from an owner branch with green gates), five new GSD canonical docs, and a documentation-accuracy pass (152-doc full audit; 9 stale claims fixed). No public API breaks against 1.3.1.
+
+### Added
+
+- **Custom ESM checkpoint probe loading** — checkpoints whose `auto_map` registers `AutoModelForSequenceClassification` but no `AutoModel` now load through a dedicated path (`from_base_model` extracts the pretrained backbone instead of building a native `EsmModel` that needs `config.rope_theta`); probe wiring honors a caller-supplied custom backbone, syncs `num_labels` from `head_config.num_classes` (checkpoint/config mismatch warns and the task head wins), keeps custom-ESM pretrained weights by skipping `post_init`, and freezes the backbone in eval mode for probe use
+- Five canonical docs: `docs/architecture/overview.md`, `docs/configuration/configuration.md`, `docs/guides/getting-started.md`, `docs/guides/development.md`, `docs/testing/testing.md` (all verifier-green, cross-referenced against the existing mkdocs tree; not yet in `mkdocs.yml` nav)
+
 ### Changed
 
+- Probe forward guards: task-type mismatch and logits/num_labels dimension mismatch now fail loudly at `RuntimeError`; regression targets reject CE/NLL classification losses by `ValueError` (guard test included); classification requires integer labels (`TypeError` otherwise); regression loss computation moves to float32 with shape-compat validation
+- README `fla` install notes extend to Windows: the `fla` extra declares `triton-windows` behind a `platform_system == 'Windows'` marker
+
+### Fixed
+
+- Documentation accuracy pass over all 152 existing docs (gsd-doc-verifier full audit, 1687 claims): `docs/concepts/mcp.md` architecture-diagram config filename now the real `*_inference_config.yaml` pattern; `install_honesty.md` full-extra row drops `types-transformers` (retired with the mypy→ty flip); `config_generator.md` documents `--non-interactive` as not-yet-implemented (matches the code's fallback notice); `mutagenesis_analysis.md` points all four example configs at files that exist; README `mcp` extras row no longer claims "(included in core)"; the testing guide's MCP live-probe skip claim is now scoped to PR/push lanes (example-nightly Stage 2 does start the server)
+- 18-01 cuda121/rocm residue-gate sanctioned list synced with the extended README fla line (verbatim-line matching)
+
+### Compatibility Notes
+
+- Windows example execution hardening from the 1.3.1 runbook landed: CRE zoom rendering cell platform guard and a Windows-GPU typed skip for the >16GB mambapy pscan task (WINDOWS #28)
+
+## [1.3.1] - 2026-10-19
+
+### Overview
+
+Patch release on the v1.3 line: dependency-surface refresh (dependabot #55/#56 validated locally on v1.3 before merge) plus the Windows KDA verification runbook. No source-code changes against 1.3.0.
+
+### Changed
+
+- `starlette` upper bound widened `<1.8.0` → `<1.9.0`, admitting the 1.8.x line (dependabot #56; CI green across py3.11–3.13, windows, cuda 12.1/12.4; local `tests/mcp/` 307 passed on starlette 1.8.0)
+- dev pin `ruff` `0.16.10` → `0.17.1` (dependabot #55; `ruff format --check .` + `ruff check .` clean over all 312 files, markdown fences included)
+
+### Added
+
+- `WINDOWS-KDA-VERIFY.md` — self-contained six-step runbook for WINDOWS #27 KDA real-machine verification (runbook ruff-formatted; Step 5 probe fixed to fused-gate call + fp32 reference)
+
+## [1.3.0] - 2026-10-18
+
+### Overview
+
+Platform Reach & Packaging Honesty (milestone v1.3): Windows-native example execution via pure-numpy interval evaluators behind platform dispatch seams, an honest packaging surface (`full` extras with the one-cycle deprecated `base` alias; cuda130 as the recommended default with the first-ever cuda130 CI leg; cuda121 retired; rocm removed with a documented restore path; triton-windows declared behind the Windows platform marker), a never-uploading publish chain (release-event-gated upload, OIDC trusted publishing ready, weekly smoke), and a docs surface verified accurate against the final code state (149-file disposition ledger, mkdocs --strict zero warnings). CLI train/inference now require `--config` with a clear usage error instead of crashing.
+
+### Changed
+
+- **Type gate: ty (astral, exact-pinned `ty@0.0.84`) replaces mypy** in ONE atomic change (Phase 21, discharging the D-08/D-09 discipline set in v1.1 Phase 9): the 232-diagnostic baseline cleared to zero via real fixes (annotations, `typing.cast` narrowing) plus line-level `# ty: ignore[code]` pragmas with root-cause comments for verified library dynamics — no severity overrides, no new `[tool.ty.src]` excludes. The CI coverage-gate ty step is a HARD gate running against a pinned stub environment (`ty-stub-constraints.txt`, 12 exact pins — upstream releases cannot flap the gate); both test-job advisory mypy steps, the pre-commit mypy hook, `check_code.py`'s mypy step, the `mypy` dev-dep pin, `[tool.mypy]`/overrides, and the mypy-only stub packages (`pandas-stubs`, `types-transformers`) are retired in the same change. `# type: ignore` bare comments stay live (ty honors them); coded mypy-syntax ignores are inert and were swept (145 removed).
+- **Breaking**: the `base` extra is renamed to `full`; `dnallm[base]` keeps resolving through a deprecated alias until v1.4
+- **Breaking**: the `cuda121` extra is retired (index frozen at torch 2.5.1) and `rocm` is removed (restore path documented in docs/getting_started/gpu_support.md)
+- `cuda130` is the recommended default GPU lane everywhere (install docs, examples, CI; test-cuda leg re-pointed to 13.0)
 - **Breaking**: the `requires-python` floor is raised from `>=3.10` to `>=3.11` (Python 3.10 reaches end-of-life 2026-10-31). Users on Python 3.10 should stay on 1.2.1.
+- `dnallm-train`/`dnallm-inference` flag-only invocation exits with a `--config is required` usage error (was: `KeyError: 'task'` crash)
+- `mypy` dev-extra capped `>=1.15.0,<2.5`
+
+### Added
+
+- Windows parity: `dnallm.utils.genomic_intervals` (numpy jaccard/loj-intersect evaluators), platform dispatch seams with fail-loud direction tests, frozen interval pairs with dual oracles, `triton-windows` declared for the `fla` extra on Windows
+
+### Fixed
+
+- Nightly CI interpreter honesty: self-hosted nightly venvs pinned to the labeled interpreter; mamba wheelhouse cache keyed with the Python tag
 
 ## [1.2.1] - 2026-10-10
 

@@ -31,7 +31,7 @@ The `dnallm.datahandling.DNADataset` module provides efficient `reverse_compleme
 # dna_ds.concat_reverse_complement()
 ```
 
-When training, you can randomly choose to replace a sequence with its reverse complement in each training batch.
+Augmentation happens at the dataset level, before training: `raw_reverse_complement(ratio=...)` replaces a random fraction of the sequences with their reverse complements, `augment_reverse_complement()` adds the reverse-complement copies, and `concat_reverse_complement()` concatenates the mirrored sequences onto the dataset.
 
 ---
 

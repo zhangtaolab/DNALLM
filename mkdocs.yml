@@ -54,11 +54,19 @@ theme:
 
 nav:
   - Introduction: index.md
-  - Getting Started: 
+  - Architecture:
+    - Overview: architecture/overview.md
+  - Getting Started:
     - Quick Start: getting_started/quick_start.md
     - Installation: getting_started/installation.md
+    - GPU Support Matrix: getting_started/gpu_support.md
+    - Install Honesty Matrix: getting_started/install_honesty.md
   - User Guide:
     - Getting Started: user_guide/getting_started.md
+    - 15-Minute Tour: guides/getting-started.md
+    - Configuration Overview: configuration/configuration.md
+    - Development Guide: guides/development.md
+    - Testing Overview: testing/testing.md
     - Common Workflows: user_guide/common_workflows.md
     - Best Practices: user_guide/best_practices.md
     - Performance Guide: user_guide/performance_guide.md

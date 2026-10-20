@@ -1,7 +1,6 @@
 # Guide to Other Special Models
 
 DNALLM supports several other specialized models that have unique architectures or dependencies. This guide covers how to install and use them.
-DNALLM supports several specialized models that have unique architectures or require extra dependencies beyond the base installation. This guide covers how to install and use them.
 
 **Related Documents**:
 - [Installation Guide](../../getting_started/installation.md)
@@ -111,7 +110,7 @@ from dnallm import load_config, load_model_and_tokenizer
 configs = load_config("path/to/your/generation_config.yaml")
 
 model, tokenizer = load_model_and_tokenizer(
-    "zehui127/Omni-DNA-20M", task_config=configs["task"], source="huggingface"
+    "zehui127/Omni-DNA-116M", task_config=configs["task"], source="huggingface"
 )
 
 print("Omni-DNA model loaded successfully!")

@@ -13,10 +13,10 @@ This tutorial demonstrates how to fine-tune a DNA large language model for multi
 
 ## Prerequisites
 
-Install DNALLM with the base extras:
+Install DNALLM with the full extras:
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 ## Load Configuration
@@ -90,7 +90,7 @@ metrics = trainer.train()
 print(metrics)
 ```
 
-Training returns evaluation metrics including loss and accuracy on the validation set.
+Training returns the training-loop metrics (train loss, runtime, learning-rate stats); evaluation metrics come from `evaluate()`.
 
 ## Run Inference
 

@@ -106,14 +106,14 @@ class TestTrainCommand:
         trainer_cls.assert_called_once_with(model=None, config=SENTINEL_CONFIG)
         trainer_cls.return_value.train.assert_called_once_with()
 
-    def test_missing_required_options_without_config(self, runner):
-        """No --config and no --model/--data/--output exits 1 with usage help."""
+    def test_without_config_is_a_usage_error(self, runner):
+        """No --config exits 2 with the --config-required usage error."""
         result = runner.invoke(cli, ["train"])
-        assert result.exit_code == 1
-        assert "--model, --data, and --output are required" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
 
-    def test_minimal_config_from_cli_arguments(self, runner, data_file, tmp_path):
-        """--model/--data/--output builds the minimal config dict for the trainer."""
+    def test_flag_only_invocation_is_a_usage_error(self, runner, data_file, tmp_path):
+        """--model/--data/--output without --config exits 2; core not built."""
         output_dir = str(tmp_path / "run")
         with patch("dnallm.finetune.DNATrainer") as trainer_cls:
             result = runner.invoke(
@@ -121,14 +121,9 @@ class TestTrainCommand:
                 ["train", "-m", "tiny-dna", "-d", data_file, "-o", output_dir],
             )
 
-        assert result.exit_code == 0
-        config = trainer_cls.call_args.kwargs["config"]
-        assert trainer_cls.call_args.kwargs["model"] is None
-        assert config["model_name_or_path"] == "tiny-dna"
-        assert config["data_path"] == data_file
-        assert config["output_dir"] == output_dir
-        assert config["finetune"]["num_train_epochs"] == 3
-        trainer_cls.return_value.train.assert_called_once_with()
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        trainer_cls.assert_not_called()
 
     def test_nonexistent_config_path_is_a_usage_error(self, runner):
         """click.Path(exists=True) rejects a missing config with exit code 2."""
@@ -154,22 +149,20 @@ class TestInferenceCommand:
         engine_cls.return_value.infer.assert_called_once_with()
         assert "Results saved to: out.txt" in result.output
 
-    def test_missing_required_options_without_config(self, runner):
-        """No --config and no --model/--input exits 1 with the error text."""
+    def test_without_config_is_a_usage_error(self, runner):
+        """No --config exits 2 with the --config-required usage error."""
         result = runner.invoke(cli, ["inference"])
-        assert result.exit_code == 1
-        assert "--model and --input are required" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
 
-    def test_minimal_config_builds_two_key_dict(self, runner, data_file, caplog):
-        """--model/--input builds the minimal config and logs the results."""
+    def test_flag_only_invocation_is_a_usage_error(self, runner, data_file):
+        """--model/--input without --config exits 2; the core is never built."""
         with patch("dnallm.inference.DNAInference") as engine_cls:
-            engine_cls.return_value.infer.return_value = {"sentinel": 1}
             result = runner.invoke(cli, ["inference", "-m", "m1", "-i", data_file])
 
-        assert result.exit_code == 0
-        config = engine_cls.call_args.kwargs["config"]
-        assert config == {"model_name_or_path": "m1", "data_path": data_file}
-        assert "Inference results" in caplog.text
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        engine_cls.assert_not_called()
 
     def test_config_path_without_output_logs_results(self, runner, config_file, caplog):
         """-c without -o logs the results instead of printing a save path."""
@@ -184,14 +177,15 @@ class TestInferenceCommand:
         assert "Inference results" in caplog.text
         assert "Results saved to" not in result.output
 
-    def test_minimal_config_with_output_prints_save_location(self, runner, data_file):
-        """--model/--input with -o echoes the save path on the minimal path."""
+    def test_flag_only_with_output_is_a_usage_error(self, runner, data_file):
+        """--model/--input with -o still exits 2; no save-location echo."""
         with patch("dnallm.inference.DNAInference") as engine_cls:
-            engine_cls.return_value.infer.return_value = {"v": 1}
             result = runner.invoke(cli, ["inference", "-m", "m1", "-i", data_file, "-o", "res.txt"])
 
-        assert result.exit_code == 0
-        assert "Results saved to: res.txt" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        assert "Results saved to" not in result.output
+        engine_cls.assert_not_called()
 
 
 class TestBenchmarkCommand:
@@ -418,14 +412,14 @@ class TestStandaloneTrainModule:
         trainer_cls.assert_called_once_with(model=None, config=SENTINEL_CONFIG)
         trainer_cls.return_value.train.assert_called_once_with()
 
-    def test_main_without_config_exits_one(self, runner):
-        """Missing --model/--data/--output exits 1 with the error on stderr."""
+    def test_main_without_config_is_a_usage_error(self, runner):
+        """No --config exits 2 with the --config-required usage error."""
         result = runner.invoke(train_module.main, [])
-        assert result.exit_code == 1
-        assert "--model, --data, and --output are required" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
 
-    def test_main_minimal_config_from_cli_arguments(self, runner, data_file, tmp_path):
-        """--model/--data/--output builds the minimal config for the trainer."""
+    def test_main_flag_only_invocation_is_a_usage_error(self, runner, data_file, tmp_path):
+        """--model/--data/--output without --config exits 2; core not built."""
         output_dir = str(tmp_path / "standalone-run")
         with patch("dnallm.finetune.DNATrainer") as trainer_cls:
             result = runner.invoke(
@@ -433,28 +427,22 @@ class TestStandaloneTrainModule:
                 ["-m", "tiny-dna", "-d", data_file, "-o", output_dir],
             )
 
-        assert result.exit_code == 0
-        config = trainer_cls.call_args.kwargs["config"]
-        assert config["model_name_or_path"] == "tiny-dna"
-        assert config["data_path"] == data_file
-        assert config["output_dir"] == output_dir
-        assert config["finetune"]["learning_rate"] == 5e-5
-        trainer_cls.return_value.train.assert_called_once_with()
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        trainer_cls.assert_not_called()
 
 
 class TestStandaloneInferenceModule:
     """The dnallm-inference console script module (dnallm.cli.inference)."""
 
-    def test_main_minimal_path_builds_config_dict(self, runner, data_file):
-        """--model/--input builds the minimal two-key config for DNAInference."""
+    def test_flag_only_invocation_is_a_usage_error(self, runner, data_file):
+        """--model/--input without --config exits 2; the core is never built."""
         with patch("dnallm.inference.DNAInference") as engine_cls:
-            engine_cls.return_value.infer.return_value = []
             result = runner.invoke(inference_module.main, ["-m", "m2", "-i", data_file])
 
-        assert result.exit_code == 0
-        config = engine_cls.call_args.kwargs["config"]
-        assert config == {"model_name_or_path": "m2", "data_path": data_file}
-        engine_cls.return_value.infer.assert_called_once_with()
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        engine_cls.assert_not_called()
 
     def test_main_with_config_loads_config(self, runner, config_file):
         """-c loads the YAML via load_config and drives DNAInference.infer()."""
@@ -469,11 +457,11 @@ class TestStandaloneInferenceModule:
         engine_cls.assert_called_once_with(model=None, tokenizer=None, config=SENTINEL_CONFIG)
         engine_cls.return_value.infer.assert_called_once_with()
 
-    def test_main_without_config_exits_one(self, runner):
-        """Missing --model/--input exits 1 with the error on stderr."""
+    def test_without_config_is_a_usage_error(self, runner):
+        """No --config exits 2 with the --config-required usage error."""
         result = runner.invoke(inference_module.main, [])
-        assert result.exit_code == 1
-        assert "--model and --input are required" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
 
     def test_main_with_config_and_output_prints_save_location(self, runner, config_file):
         """-c with -o echoes the save path after the config-driven run."""
@@ -487,16 +475,17 @@ class TestStandaloneInferenceModule:
         assert result.exit_code == 0
         assert "Results saved to: cfg-out.txt" in result.output
 
-    def test_main_minimal_path_with_output_prints_save_location(self, runner, data_file):
-        """--model/--input with -o echoes the save path."""
+    def test_flag_only_with_output_is_a_usage_error(self, runner, data_file):
+        """--model/--input with -o still exits 2; no save-location echo."""
         with patch("dnallm.inference.DNAInference") as engine_cls:
-            engine_cls.return_value.infer.return_value = []
             result = runner.invoke(
                 inference_module.main, ["-m", "m2", "-i", data_file, "-o", "o.txt"]
             )
 
-        assert result.exit_code == 0
-        assert "Results saved to: o.txt" in result.output
+        assert result.exit_code == 2
+        assert "--config is required" in result.output
+        assert "Results saved to" not in result.output
+        engine_cls.assert_not_called()
 
 
 class TestStandaloneModelConfigGeneratorModule:

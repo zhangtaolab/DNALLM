@@ -8,7 +8,7 @@ To get the most out of DNALLM, follow these best practices for data handling, mo
 
 -   **Perform Quality Control**: Always clean your data before training.
     -   Use the `DNADataset.validate_sequences()` method to filter out sequences that are too short, too long, or contain invalid characters.
-    -   Check for and handle class imbalance in classification tasks. You can oversample the minority class or use weighted loss functions.
+    -   Check for and handle class imbalance in classification tasks. You can oversample the minority class or use a loss that compensates for imbalance (`loss_function: "focal"` in the head config — per-class weights are not supported).
 
 -   **Use Efficient Formats**: For large datasets, prefer high-performance formats like **Parquet** or **Arrow** over CSV. They are significantly faster to load and process.
 

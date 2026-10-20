@@ -40,7 +40,8 @@ The workflows are triggered on:
 6. **Test Execution**: Runs the fast test suite (`pytest -m "not slow" --cov`); the coverage total is enforced against the `fail_under = 90` floor from `pyproject.toml [tool.coverage.report]` — dropping below it fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the junit — unexpected skips fail the job
 8. **Exit-Code Canary**: an intentionally failing test must make pytest exit non-zero (guards against exit-code masking regressions)
-9. **Type Checking**: Runs MyPy for static type analysis (advisory — does not fail the job)
+
+No type-check step runs on this leg — type checking lives only on the `coverage-gate` job's ty hard gate (the advisory mypy steps were deleted in the 2026-10-17 D-09 flip; mypy retired).
 
 ### 2. Windows Test Job (`test-windows`)
 
@@ -48,7 +49,7 @@ The workflows are triggered on:
 
 **Runner**: `windows-latest` (push/PR only), Python 3.12, 60-minute timeout
 
-**Steps**: mirrors the `test` job — Ruff format/lint checks, fast tests with the coverage floor, skip audit, exit-code canary, advisory MyPy. Sets `PYTHONUTF8=1` (the root conftest prints emoji, which would crash non-UTF8 pipes on Windows) and disables git `autocrlf` so `ruff format` line endings match.
+**Steps**: mirrors the `test` job — Ruff format/lint checks, fast tests with the coverage floor, skip audit, exit-code canary (no type-check step; type checking lives only on the `coverage-gate` ty hard gate). Sets `PYTHONUTF8=1` (the root conftest prints emoji, which would crash non-UTF8 pipes on Windows) and disables git `autocrlf` so `ruff format` line endings match.
 
 ### 3. CUDA Test Job (`test-cuda`)
 
@@ -56,7 +57,7 @@ The workflows are triggered on:
 
 **Matrix Strategy**:
 - Python version: 3.11
-- CUDA versions: 12.1, 12.4
+- CUDA version: 13.0
 - Operating system: Ubuntu Latest
 
 **Steps**:
@@ -78,7 +79,7 @@ The workflows are triggered on:
 2. **GPU Check**: Detects `nvidia-smi`; if the box ever loses its GPU the remaining steps are skipped as a fail-safe no-op
 3. **Python Setup**: Installs Python 3.11
 4. **UV Installation**: Installs the UV package manager
-5. **Mamba Dependency Installation**: Installs `.[base]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport) — plus `.[mamba]` (kernel source build)
+5. **Mamba Dependency Installation**: Installs `.[full,fla]` — the same extras set the other legs use (`dev,test,notebook,mcp`; the `mcp` extra is required by the not-slow census: the `mcp_example` notebook-import tests and the `exceptiongroup` backport), plus the `fla` extra (WR-01: so the not-slow chunk_kda import guard exercises the import instead of skipping typed) — plus `.[mamba]` (kernel source build)
 6. **Mamba Test Execution**: Runs tests excluding slow tests — a failing test fails the job; test logs are uploaded as an artifact on failure
 
 ### 5. Coverage Gate Job (`coverage-gate`)
@@ -95,7 +96,7 @@ The workflows are triggered on:
 5. **Dependency Installation**: Installs base dependencies plus NumPy 2.2.0
 6. **Gated Fast Census**: Runs the fast census with coverage; a total below the 90 floor fails the job
 7. **Skip Audit**: `scripts/audit_skips.py` against the gate junit — unexpected skips fail the job
-8. **Type Checking (ty, advisory)**: `uvx ty@0.0.84 check dnallm/` — an exact-pinned advisory step (D-08, same seconds-scale layer as the ruff statistics step) that does not fail the job; the hard flip plus the mypy retirement land together in one later atomic change (D-09). The advisory MyPy steps on the other legs are unchanged until that swap
+8. **Type Checking (ty, hard gate)**: builds a pinned stub environment (`uv venv /tmp/ty-stub-env --python 3.12`, then `uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" -c .github/workflows/ty-stub-constraints.txt`) and runs `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env` — an exact-pinned step that fails the job. Flipped hard and mypy retired in one atomic change on 2026-10-17 (Phase 21, discharging D-08/D-09 from v1.1 Phase 9); the former advisory mypy steps on the test legs are deleted
 
 ### 6. Nightly Coverage Job (`coverage-nightly`)
 
@@ -103,7 +104,7 @@ The workflows are triggered on:
 
 **Census scope**: 27 tests carry the `slow` mark; 21 of them execute in this job. The remaining 6 — the MCP live-server probes in `dnallm/mcp/tests/test_sse_client.py` and `test_streamable_http_client.py` — target `localhost:8000`, which no CI job starts, so they skip deterministically as typed `network-unavailable:` skips (allowlisted in `tests/expected_skips.yaml`). Those probes are local-only: run them against a manually started `dnallm-mcp-server`.
 
-**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[base,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
+**Timeout**: 900 minutes — a deliberate override recorded with measurement in hand (D-12): the full census measured **1:27:14** with ~4 min of install ahead of it (job ~88 min; runs [37345067326](https://github.com/zhangtaolab/DNALLM/actions/runs/37345067326) / [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230)), while the recomputed paper ceilings over the current per-test `@pytest.mark.timeout` marks are ~640 min for the marks that can actually bind in this job's `.[full,fla]` venv (~3920 min over all full-tree marks — the examples-lane majority typed-skips at gate time here and belongs to `example-nightly`). The per-test marks stay the **primary** hang protection — a hung test dies at its own mark with junit and the skip audit still produced — and the job kill is the backstop, kept at 900 because raising it buys no protection the marks do not already provide.
 
 **Model Caches**: none — the `models.lock`-keyed hub cache layer was removed (D-11, owner decision 2026-10-05): cold pulls are proven (a 65-min all-cold example stage 1 against a 2700-min budget) and the lock-only cache (~15.2GiB) exceeded the 10GB Actions cache quota without ever successfully saving. The runner box's local `$HOME` hub caches remain the warm path and are never cleaned (owner rule).
 
@@ -120,26 +121,25 @@ The workflows are triggered on:
 
 **Trigger**: the **05:30 UTC** schedule entry only (cron-string gate, D-19) plus manual `workflow_dispatch` — never push/PR, so PR-authored code (including forks) never reaches the self-hosted box.
 
-**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.12, 2700-minute timeout (per-test `@pytest.mark.timeout` marks are the primary hang protection; the job kill is the whole-job backstop). Measured pipeline **2:43** end-to-end including the ~24-min mamba wheelhouse build (run [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230), the green-gate run; the full D-12 measured budget lives in the workflow comments and the 09 census rollup). The mcp pair's num_ctx cut is **DEFERRED** (owner decision 2026-10-06) — stage 3 runs at the existing ~256k ctx, measured ~8 min with no memory-floor pressure on the 128GB box.
+**Runner**: `self-hosted` GPU box (`dnallm-nightly`), Python 3.12, 2700-minute timeout (per-test `@pytest.mark.timeout` marks are the primary hang protection; the job kill is the whole-job backstop). Measured pipeline **2:43** end-to-end including the ~24-min mamba wheelhouse build (run [37377004230](https://github.com/zhangtaolab/DNALLM/actions/runs/37377004230), the green-gate run; the full D-12 measured budget lives in the workflow comments and the 09 census rollup). The stage-3 ollama batch is **deleted** (2026-10-11, Phase 13 D-04): the `mcp_example` pair now stays collected in stage 1 and typed-skips as `network-unavailable:` carries when the stack is down, executing only where ollama and the MCP server exist.
 
-**Staged-serial topology** (stages run strictly in order inside one job — a server-binding stage may never start while the previous stage still holds GPU memory or kernel processes):
+**Staged-serial topology** (stages run strictly in order inside one job — a server-binding stage may never start while the previous stage still holds GPU memory or kernel processes). The stage-3 ollama batch — fresh MCP server + the `mcp_example` pair re-run with the stack up — is deleted per Phase 13 D-04 (2026-10-11): with no stage starting the stack, the pair stays collected in stage 1 and typed-skips as `network-unavailable:` carries when ollama and the MCP server are down, executing only where both exist; the stage numbering keeps its gap by design, and the ci.yml deletion marker at the former site records the restore path (re-adding a stage-3-shaped batch):
 
 | Stage | Content |
 |-------|---------|
 | 0 | venv + full extras + bedtools rootless prefix + mamba kernel wheelhouse (cached) + megaDNA pinned provisioning + runner inventory probe. **No evo provisioning (D-04), no model cache (D-11)** |
-| 0.5 | **Census collection assertion** (D-03) — hard gate: the collect-only triple for the exact stage-1 selector set (`-m "not giants" -k "not mcp_example"`) is pinned in the workflow; any drift (collection breakage, marker typo, accidental over-marking) fails the job before stage 1 runs. The pinned literal is the deliberate census-growth bump-point |
-| 1 | torch-heavy example execution: `pytest tests/examples` with the two `mcp_example` ids deselected (stage 3 owns them) and the `giants`-marked evo execution test deselected (D-01 owner-policy exclusion — the runner environment works, so a typed skip would be dishonest; the dispatch/manual lane runs it explicitly with `-m giants`), plus the fast YAML config leg. Every pytest invocation is tee'd to its own `stage*.log` via `set -o pipefail` (D-14) so exit codes still record while the full text is preserved |
+| 0.5 | **Census collection assertion** (D-03) — hard gate: the collect-only triple for the exact stage-1 selector set (`-m "not giants"`), pinned at `216/217 tests collected (1 deselected)` in the workflow; any drift (collection breakage, marker typo, accidental over-marking) fails the job before stage 1 runs. The pinned literal is the deliberate census-growth bump-point |
+| 1 | torch-heavy example execution: `pytest tests/examples` with the `mcp_example` pair staying collected in this batch (it typed-skips via the in-gate D-13 probe when the stack is down — Phase 13 D-04) and the `giants`-marked evo execution test deselected (D-01 owner-policy exclusion — the runner environment works, so a typed skip would be dishonest; the dispatch/manual lane runs it explicitly with `-m giants`), plus the fast YAML config leg. Every pytest invocation is tee'd to its own `stage*.log` via `set -o pipefail` (D-14) so exit codes still record while the full text is preserved |
 | 1.5 | named hygiene step (D-13, HARD gate): kernel pkill + before/after `free -g` available-memory value logging + the **>=35Gi floor assertion** on the available column — a failed floor fails the job (the box cannot safely continue into a server-binding stage). `nvidia-smi` stays telemetry-only: GB10 reports no memory through it, so the free -g column is the operative metric |
 | 2 | MCP live-server probes on :8000 (streamable-http probes, restart, sse probes) |
-| 2.5 | named hygiene step (D-13, HARD gate) before the ollama batch: the same kernel pkill + memory-floor + before/after logging discipline |
-| 3 | fresh MCP server + the `mcp_example` pair (ollama loopback) |
+| 2.5 | named hygiene step (D-13, HARD gate) as end-of-run hygiene before the stage-4 audits: the same kernel pkill + memory-floor + before/after logging discipline |
 | 4 | skip audits + fail-soft summary + the complete-failure-scene artifact upload |
 
 **Fail-soft contract** (D-08): every stage-1+ invocation records its exit code to `stage-results.txt` and its step exits 0 so later stages still run; the stage-4 summary exits non-zero when ANY recorded outcome failed. NO step carries `continue-on-error` — a forever-green job is prohibited. Stage-0-area failures (venv, provisioning, and the stage-0.5 assertion) fail the job directly. The two D-13 hygiene steps sit between fail-soft stages but are themselves hard gates: a memory floor below 35Gi fails the job rather than letting a server-binding stage start on an exhausted box.
 
 **Complete failure scene** (D-14): the `if: always()` artifact upload carries everything needed to diagnose a red (or green) run — every junit xml, every per-stage tee'd log (`stage*.log`), the D-03 census capture (`census-collect.txt`), the stage-results ledger, and the MCP server logs (`mcp-server-*.log`). A red run never loses its own evidence.
 
-**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus an advisory `uvx ty@0.0.84 check dnallm/` step (D-08); the mypy advisory steps elsewhere are unchanged until the later atomic swap (D-09) that flips ty hard and retires mypy together.
+**Static checks on the fast leg**: the `coverage-gate` job carries ruff plus the hard ty gate `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env`, run against a pinned stub environment built under `.github/workflows/ty-stub-constraints.txt` (hard since the 2026-10-17 D-09 flip; mypy is retired — no mypy step runs anywhere).
 
 **Caches**: uv dependency cache + bedtools rootless prefix + mamba kernel wheelhouse only. The `models.lock`-keyed hub cache layer is gone (D-11 — cold pulls by design; the box's local `$HOME` caches are the warm path), and the evo provisioning steps (isolated venv, flash-attention wheelhouse, giant-model prefetch) are deleted per D-04 — the flash-attn build-isolation failure of run 37278002681 dissolved with that deletion. The evo family's committed executed-notebook outputs remain the evidence, and the dispatch/manual lane keeps working from the local giants model tier (never cleaned, owner rule).
 
@@ -153,7 +153,7 @@ The workflows are triggered on:
 
 **Steps**:
 1. **GPU Check** (runs BEFORE checkout): on GPU absence writes a `gpu_absent` marker into the artifact path and FAILS the job — unlike `test-mamba`'s green fail-safe no-op, this job's deliverable is evidence, so zero-evidence green is forbidden (the `if: always()` upload still delivers the marker). **Code Checkout** follows, gated on the GPU check's `has_gpu` output — the check must precede checkout so the marker survives the skipped checkout
-2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[base]"` (the coverage-nightly-proven extras set; their absence from this venv is deliberate evidence)
+2. **UV + Dependency Installation**: `uv venv` + `uv pip install -e ".[full]"` (the coverage-nightly-proven extras set; their absence from this venv is deliberate evidence)
 3. **Runner Identity**: records the `nvidia-smi` identity line (the D-04 parity claim)
 4. **Spike Execution**: `--family all --fallback` (D-06 fallback variants only — `--fallback` replaces the notebook variant, it does not run both; notebook-variant verdicts rest on the committed local evidence in `spike-logs/`); expected failures for environment-unavailable families are carried as evidence text in the artifacts, not hidden
 5. **Artifact Upload**: spike logs + `05-FEASIBILITY.md`, unconditionally (`if: always()`)
@@ -196,7 +196,7 @@ The project uses pytest markers to categorize tests:
 
 - **Code Formatting**: Must pass `ruff format --check .` (ruff's Black-compatible formatter)
 - **Linting**: Must pass `ruff check .` (rule set configured in `pyproject.toml [tool.ruff.lint]`)
-- **Type Safety**: MyPy type checking runs in CI as an advisory step (it does not fail the job)
+- **Type Safety**: Must pass `uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env` — the exact-pinned ty hard gate on the `coverage-gate` job, run against a pinned stub environment (`.github/workflows/ty-stub-constraints.txt`; mypy retired 2026-10-17); it fails the job
 
 Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy `.flake8` config.
 
@@ -238,7 +238,7 @@ Flake8 is not run in CI; it remains a local, MCP-module-only tool via the legacy
 3. **Quality Check Failures**
    - Run `ruff format .` to auto-format code
    - Run `ruff check . --fix` to auto-fix lint violations
-   - Address MyPy type annotation issues
+   - Address ty type annotation issues
 
 4. **CUDA Test Failures**
    - Verify CUDA toolkit installation
@@ -253,10 +253,13 @@ Before pushing code, run these commands locally:
 # Install development dependencies
 uv pip install -e ".[test,dev]"
 
-# Run quality checks (what CI runs)
+# Run quality checks (what CI runs; the ty gate checks against a pinned
+# stub env so upstream releases cannot drift the diagnostic set)
 ruff format --check .
 ruff check .
-mypy dnallm/
+uv venv /tmp/ty-stub-env --python 3.12
+uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" -c .github/workflows/ty-stub-constraints.txt
+uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env
 
 # Run tests
 pytest --cov

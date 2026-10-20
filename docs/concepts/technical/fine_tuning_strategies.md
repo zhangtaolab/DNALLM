@@ -15,7 +15,7 @@ The quality of your fine-tuning data is the single most important factor for suc
 - **Strategies**:
     - **Downsampling**: Randomly remove samples from the majority class. This is simple but discards data.
     - **Upsampling**: Duplicate samples from the minority class. This can lead to overfitting on the minority class.
-    - **Weighted Loss**: A better approach, supported by DNALLM. You can configure the trainer to give more weight to errors on the minority class, forcing the model to pay more attention to it.
+    - **Focal Loss**: A better approach, supported by DNALLM. Instead of re-weighting classes (per-class loss weights are not supported), set `loss_function: "focal"` in the model head configuration: `FocalLoss` (`dnallm/models/losses.py`) down-weights well-classified examples and focuses training on the hard, informative ones — the standard remedy for class imbalance.
 
 ### Data Splitting
 - **The Rule**: Always split your data into three sets: **training**, **validation**, and **testing**.
@@ -39,7 +39,7 @@ Hyperparameters are the "dials" you can turn to control the training process. Fi
 - **Number of Epochs (`num_train_epochs`)**: An epoch is one full pass through the training dataset.
     - **Too few**: The model will be underfit.
     - **Too many**: The model will overfit to the training data.
-    - **Recommendation**: Use **early stopping**. Monitor performance on the validation set and stop training when the validation metric (e.g., `eval_loss` or `eval_accuracy`) stops improving. DNALLM's `DNATrainer` handles this automatically.
+    - **Recommendation**: Use **early stopping**. Monitor performance on the validation set and stop training when the validation metric (e.g., `eval_loss` or `eval_accuracy`) stops improving. DNALLM's `DNATrainer` supports this through the `callbacks.early_stopping` block of the training configuration: set `patience` (it is disabled by default) and the trainer wires the callback, requiring an evaluation split and auto-enabling `load_best_model_at_end`.
 
 - **Weight Decay (`weight_decay`)**: A regularization technique that helps prevent overfitting by penalizing large weights. A common value is `0.01`.
 

@@ -15,14 +15,17 @@ Fine-tuning in DNALLM allows you to:
 Ensure you have the following installed and configured:
 
 ```bash
-# Install DNALLM
+# Install DNALLM — torch, transformers, datasets, and accelerate are core
+# dependencies and install with it
 pip install dnallm
 
 # Or with uv (recommended)
 uv pip install dnallm
 
-# Install additional dependencies for fine-tuning
-pip install torch transformers datasets accelerate
+# For NVIDIA GPU acceleration, use a CUDA extra instead of the plain install
+# (cuda130 is the recommended default; older Turing 20xx GPUs need the
+# CUDA 12.4/12.8 lanes — see the GPU Support Matrix in the Installation Guide)
+uv pip install -e '.[cuda130]'
 ```
 
 ## Basic Setup
@@ -145,14 +148,11 @@ DNALLM also provides a convenient command-line interface:
 # Basic fine-tuning run — model, data, and all training parameters live in the YAML config
 dnallm train --config finetune_config.yaml
 
-# Without a config, --model, --data, and --output must all be provided
-dnallm train --model zhangtaolab/plant-dnabert-BPE --data path/to/data.csv --output ./outputs
-
 # The standalone entry point takes the same options
 dnallm-train --config finetune_config.yaml
 ```
 
-The CLI only accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o`. Training parameters such as epochs, batch size, and learning rate are set in the `finetune` section of the config file, not via command-line flags. To resume an interrupted run, set `resume_from_checkpoint` in the `finetune` section:
+A config file is required — flag-only invocation exits with a `--config is required` usage error. The CLI only accepts `--config/-c`, `--model/-m`, `--data/-d`, and `--output/-o`. Training parameters such as epochs, batch size, and learning rate are set in the `finetune` section of the config file, not via command-line flags. To resume an interrupted run, set `resume_from_checkpoint` in the `finetune` section:
 
 ```yaml
 finetune:

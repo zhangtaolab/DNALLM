@@ -75,13 +75,13 @@ from dnallm import load_config, load_model_and_tokenizer, DNAInference
 configs = load_config("inference_config.yaml")
 
 # 1. Load the base model
-base_model_name = "lgq12697/PlantCAD2-Small-l24-d0768"
+base_model_name = "kuleshov-group/PlantCAD2-Small-l24-d0768"
 model, tokenizer = load_model_and_tokenizer(
-    base_model_name, task_config=configs["task"], source="modelscope"
+    base_model_name, task_config=configs["task"], source="huggingface"
 )
 
 # 2. Specify the LoRA adapter
-lora_adapter_id = "lgq12697/cross_species_acr_train_on_arabidopsis_plantcad2_small"
+lora_adapter_id = "plantcad/cross_species_acr_train_on_arabidopsis_plantcad2_small"
 
 # 3. Initialize the engine with the adapter
 # The engine will automatically download and apply the LoRA weights

@@ -110,7 +110,7 @@ class DNALLMLogger:
 class ColoredFormatter(logging.Formatter):
     """Custom formatter with colored output for console."""
 
-    COLORS: ClassVar[dict[str, str]] = {
+    COLORS: ClassVar[dict[str, str]] = {  # ty: ignore[invalid-assignment]  # colorama rebinds consts to str at import
         "DEBUG": Fore.WHITE,
         "INFO": Fore.CYAN,
         "WARNING": Fore.YELLOW,

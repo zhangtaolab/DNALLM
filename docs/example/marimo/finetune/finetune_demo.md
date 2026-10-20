@@ -12,10 +12,10 @@ This interactive demo shows how to fine-tune a DNA large language model with a c
 
 ## Prerequisites
 
-Install DNALLM with the base extras:
+Install DNALLM with the full extras:
 
 ```bash
-uv pip install -e '.[base,cuda124]'
+uv pip install -e '.[full,cuda130]'
 ```
 
 Then launch the demo:
@@ -561,8 +561,8 @@ else:
 
 ## See Also
 
-- [Binary Classification Fine-Tuning Notebook](example/notebooks/finetune_binary.md) — Static tutorial for binary classification
-- [Multi-Label Classification Notebook](example/notebooks/finetune_multi_labels.md) — Fine-tuning for multi-label tasks
-- [LoRA Fine-Tuning Notebook](example/notebooks/lora_finetune.md) — Parameter-efficient fine-tuning with LoRA
-- [Fine-Tuning User Guide](user_guide/fine_tuning/getting_started.md) — Comprehensive fine-tuning documentation
-- [DNATrainer API](api/finetune/trainer.md) — API reference for the trainer class
+- [Binary Classification Fine-Tuning Notebook](../../notebooks/finetune_binary.md) — Static tutorial for binary classification
+- [Multi-Label Classification Notebook](../../notebooks/finetune_multi_labels.md) — Fine-tuning for multi-label tasks
+- [LoRA Fine-Tuning Notebook](../../notebooks/lora_finetune.md) — Parameter-efficient fine-tuning with LoRA
+- [Fine-Tuning User Guide](../../../user_guide/fine_tuning/getting_started.md) — Comprehensive fine-tuning documentation
+- [DNATrainer API](../../../api/finetune/trainer.md) — API reference for the trainer class

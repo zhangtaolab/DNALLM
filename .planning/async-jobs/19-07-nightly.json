@@ -1,0 +1,36 @@
+{
+  "job_id": "19-07-nightly",
+  "plan_id": "19-07",
+  "phase_dir": ".planning/phases/19-docs-accuracy-sweep-milestone-closeout",
+  "kind": "github_actions_dispatch",
+  "workflow": "ci.yml",
+  "run_id": 38695301631,
+  "run_url": "https://github.com/zhangtaolab/DNALLM/actions/runs/38695301631",
+  "repo": "zhangtaolab/DNALLM",
+  "ref": "v1.3",
+  "head_sha": "bdf6ba3",
+  "dispatched_at": "2026-10-15T06:54:46Z",
+  "dispatched_by": "orchestrator (19-07 repo-caused-red fix cycle)",
+  "status": "concluded",
+  "expected_jobs": ["test-mamba", "example-nightly", "coverage-nightly"],
+  "red_classification_rule": "A.5 classify-before-retry: repo-caused = blocker/fix; rice.uga.edu input-download class = owner-accepted caveat (phase-14 H.4 precedent); infra reds = cancel-and-re dispatch of owned runs only",
+  "conclusions": {
+    "run": "success (concluded 2026-10-15T15:09:43Z)",
+    "test-mamba": "success (09:59:03→10:08:52)",
+    "example-nightly": "success (06:54:50→09:59:00; Stage 0 wheelhouse rebuilt under the pinned 3.12 and saved under the py-tagged key, entry 8986514177)",
+    "coverage-nightly": "success (10:49:19→15:09:43, 4h20m; full slow suite green)"
+  },
+  "prior_runs": [
+    {
+      "run_id": 38678158479,
+      "head_sha": "15bf646",
+      "dispatched_at": "2026-10-15T03:44:30Z",
+      "concluded_at": "2026-10-15T06:33:16Z",
+      "conclusion": "failure",
+      "per_job": {"test-mamba": "success", "coverage-nightly": "success", "example-nightly": "failure"},
+      "classification": "repo-caused (A.5): unpinned uv venv interpreter drift + Python-untagged wheelhouse cache key; example-nightly Stage 0 died on the cp311-vs-cp313 wheel-tag mismatch",
+      "fix_commit": "bdf6ba3",
+      "cache_entry_deleted": 8913155507
+    }
+  ]
+}

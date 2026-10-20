@@ -1,0 +1,28 @@
+# ty stub-environment constraints — the type-checking surface is pinned so
+# upstream releases cannot drift the CI ty hard gate (the failure class that
+# red-flagged the flip three times on 2026-10-17: CI re-resolves fresh every
+# run, and any typing-bearing release shifts the diagnostic set).
+#
+# Scope: only the packages whose stubs meaningfully shape ty's inference over
+# dnallm/ (verified against the environment the gate was green in). Everything
+# else floats with the normal `.[full]` resolution — a typing change there
+# surfaces as a normal diagnostic to fix, not gate flapping.
+#
+# Bump procedure: raise a pin deliberately -> run
+#   uv venv /tmp/ty-stub-env --python 3.12 &&
+#   uv pip install --python /tmp/ty-stub-env/bin/python -e ".[full]" \
+#     -c .github/workflows/ty-stub-constraints.txt &&
+#   uvx ty@0.0.84 check dnallm/ --python /tmp/ty-stub-env
+# -> clear any new diagnostics in the same change. Never bump mid-fire.
+torch==2.10.0
+transformers==5.17.0
+datasets==4.8.4
+tokenizers==0.23.3
+peft==0.21.2
+accelerate==1.15.0
+evaluate==0.4.6
+altair==6.3.0
+modelscope==1.40.2
+numpy==2.2.0
+pandas==3.0.6
+pydantic==2.14.1

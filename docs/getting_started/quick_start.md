@@ -41,7 +41,7 @@ pip install --upgrade pip
 pip install uv
 
 # Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c 'import dnallm; print("DNALLM installed successfully!")'
@@ -64,7 +64,7 @@ conda activate dnallm
 conda install uv -c conda-forge
 
 # Install DNALLM with base dependencies
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 
 # Verify installation
 python -c 'import dnallm; print("DNALLM installed successfully!")'
@@ -92,14 +92,11 @@ source .venv/bin/activate  # Linux/MacOS
 # For conda users: activate conda environment
 # conda activate dnallm
 
-# CUDA 12.4 (recommended for recent GPUs)
-uv pip install -e '.[cuda124]'
-
-# CUDA 13.0 (torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
+# CUDA 13.0 (recommended — torch >= 2.9, Windows & Linux, NVIDIA driver >= 580)
 uv pip install -e '.[cuda130]'
 
-# Other supported versions: cpu, cuda121, cuda126, cuda128
-uv pip install -e '.[cuda121]'
+# Older GPUs (Turing 20xx) are served by the CUDA 12.4–12.8 lanes — see the Installation guide
+# Other supported versions: cpu, cuda126, cuda128
 ```
 
 ### Huawei NPU Support
@@ -176,7 +173,7 @@ configs = load_config("./example/notebooks/in_silico_mutagenesis/inference_confi
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnagpt-BPE-promoter_strength_protoplast"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # Initialize mutagenesis analyzer
@@ -205,7 +202,7 @@ configs = load_config("./example/notebooks/finetune_binary/finetune_config.yaml"
 # Load model and tokenizer
 model_name = "zhangtaolab/plant-dnabert-BPE"
 model, tokenizer = load_model_and_tokenizer(
-    model_name, task_config=configs["task"], source="huggingface"
+    model_name, task_config=configs["task"], source="modelscope"
 )
 
 # Prepare dataset
@@ -292,8 +289,8 @@ DNALLM provides convenient CLI tools:
 # Training
 dnallm-train --config path/to/config.yaml
 
-# Inference
-dnallm-inference --config path/to/config.yaml --input path/to/sequences.txt
+# Inference (input data comes from the config's data section)
+dnallm-inference --config path/to/config.yaml
 
 # Model configuration generator
 dnallm-model-config-generator
@@ -326,7 +323,7 @@ DNALLM supports the following task types:
 
 - See [Installation Guide](installation.md) for complete dependency information, including:
   - All available dependency groups (`all`, `base`, `dev`, `test`, `notebook`, `docs`, `ui`, `mcp`, `fla`)
-  - Hardware-specific groups (`cpu`, `cuda121`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `rocm`, `mamba`) — mutually exclusive
+  - Hardware-specific groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130` — mutually exclusive; `mamba` combines with a CUDA group)
   - Installation scenarios for different use cases
   - Troubleshooting common issues
 

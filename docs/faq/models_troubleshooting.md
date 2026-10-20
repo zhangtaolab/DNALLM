@@ -10,7 +10,7 @@ PlantHelixSeek-CRE/-Anno remote code imports `fla.ops.kda.chunk.chunk_kda` from 
 uv pip install -e '.[fla]'
 ```
 
-With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install the package **bare** — since v0.5 its `[cuda]`/`[rocm]` extras pin their own torch and would downgrade your environment — and keep the version within `0.5.x` (`chunk_kda` semantics are not stable across minor versions).
+With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in-DHS vs 0.22 non-DHS on the probe set). Install the package **bare** — the `[cuda]`/`[rocm]` extras it shipped since v0.5 are legacy names no longer on the current install surface (they pin their own torch and would downgrade your environment) — and keep the version within `0.5.x` (`chunk_kda` semantics are not stable across minor versions). For current GPU installation lanes see the [GPU Support Matrix](../getting_started/gpu_support.md).
 
 #### Mamba models on macOS (Apple Silicon)
 
@@ -20,7 +20,7 @@ With the kernels installed the same checkpoints separate cleanly (p(CRE) 0.77 in
 
 ```bash
 # Install without the [mamba] extra
-uv pip install -e '.[base]'
+uv pip install -e '.[full]'
 ```
 
 Then load a Mamba model through `transformers` (cpu only) as usual. Note that this fallback path is significantly slower than the optimized `mamba-ssm` kernels (which require Linux + CUDA).

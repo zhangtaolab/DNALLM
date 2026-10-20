@@ -131,6 +131,38 @@
 
 ---
 
+## Milestone: v1.3 — Platform Reach & Packaging Honesty
+
+**Shipped:** 2026-10-16
+**Phases:** 8 (13–20, incl. post-audit option-B phase 20) | **Plans:** 22
+
+### What Was Built
+Ollama surface clean exit with census re-pin; GAP-1 zero-rung disposition; Windows numpy parity core + dispatch gates + frozen pairs; never-uploading publish chain (event gate + OIDC + smoke); atomic extras surgery (full alias / cuda121 retired / rocm removed / triton-windows marker); 149-file docs accuracy ledger with cuda130 default + strict zero warnings; first-ever cuda130 CI leg; nightly interpreter-honesty fix; CLI --config-required closeout.
+
+### What Worked
+- Async-job manifest discipline (16-04 precedent) carried two nightly cycles and a fix cycle without losing state; A.5 classify-before-retry turned a confusing red into a root-caused fix (bdf6ba3) instead of a flaky retry loop
+- One-census-move-per-phase discipline held across all 8 phases — the triple never drifted once
+- The verifier gate repeatedly earned its keep: numeric_claim_authority caught a 6-vs-7 site miscount before execution; moved_files pinpointed exactly which phase-20 edits re-staled 18/19
+- Owner human-gates halted cleanly (17-03/18-03 pattern) — nothing improvised past a supply-chain or hardware gate
+
+### What Was Inefficient
+- Nightly wall-clock dominated the close (two serialized trios ≈ 34 h for one plan); single-runner serialization is the structural cost
+- phase.complete mechanically flipped owner-deferred requirements to Complete (caught + reverted by hand) — a tooling gap worth an upstream fix
+- The unpinned-uv-venv drift class was latent for 8 days before firing — a pin-from-day-one rule on persistent runners would have avoided the red entirely
+
+### Patterns Established
+- Interpreter-label honesty on persistent self-hosted runners: pin `uv venv --python "$pythonLocation/bin/python"`; never key a wheelhouse cache without the cpXY tag
+- moved_files-driven incremental re-verification (stale ≠ redo: re-verify the moved set, re-issue the fingerprint)
+- Deferred-items Resolutions prose (scanner-safe resolution records)
+
+### Key Lessons
+- A repo-caused red that dies in 15 ms with no output is still fully diagnosable from per-step timings + the artifacts on the box — classify before retry, always
+- Fresh goal-backward re-verification is cheap (minutes) versus override bookkeeping; prefer re-verify at every fixpoint
+
+### Cost Observations
+- ~2 days wall (10-11 → 10-16) for 8 phases incl. two ~15 h nightly cycles; execution heavily subagent-parallel with a lean orchestrator
+- Notable: the milestone closed with zero Co-Authored-By trailers (owner directive, verified per commit)
+
 ## Cross-Milestone Trends
 
 ### Process Evolution

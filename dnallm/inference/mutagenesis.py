@@ -176,9 +176,9 @@ class Mutagenesis:
         if batch_size <= 1:
             batch_size = pred_config.batch_size
         self.dataloader: DataLoader = DataLoader(
-            dataset,  # type: ignore[arg-type]
+            dataset,  # ty: ignore[invalid-argument-type]
             batch_size=batch_size,
-            num_workers=pred_config.num_workers,  # type: ignore[arg-type]
+            num_workers=pred_config.num_workers,
         )
 
     def pred_comparison(self, raw_pred, mut_pred):
@@ -255,7 +255,7 @@ class Mutagenesis:
         return device
 
     @torch.no_grad()
-    def mlm_evaluate(self, return_sum: bool = True) -> list[float]:
+    def mlm_evaluate(self, return_sum: bool = True) -> list[float | list[tuple[Any, float]]]:
         """Calculate pseudo-log-likelihood score using masked token prediction.
 
         This method computes the pseudo-log-likelihood (PLL) score for each
@@ -266,14 +266,14 @@ class Mutagenesis:
         Returns:
             List of pseudo-log-likelihood scores for each sequence
         """
-        all_logprobs = []
+        all_logprobs: list[float | list[tuple[Any, float]]] = []
         model = self.model
         tokenizer = self.tokenizer
         device = self.get_model_device(model)
-        if len(self.sequences["sequence"]) > 1:  # type: ignore[index]
-            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # type: ignore[index]
+        if len(self.sequences["sequence"]) > 1:  # ty: ignore[not-subscriptable]
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # ty: ignore[not-subscriptable]
         else:
-            input_data = self.sequences["sequence"]  # type: ignore[index]
+            input_data = self.sequences["sequence"]  # ty: ignore[not-subscriptable]
         for seq in input_data:
             toks = tokenizer(seq, return_tensors="pt", add_special_tokens=True).to(device)
             input_ids = toks["input_ids"].clone()
@@ -309,7 +309,7 @@ class Mutagenesis:
         return all_logprobs
 
     @torch.no_grad()
-    def clm_evaluate(self, return_sum: bool = True) -> list[float]:
+    def clm_evaluate(self, return_sum: bool = True) -> list[float | list[float]]:
         """Calculate sequence log-probability using causal language modeling.
 
         This method computes the log-probability of each sequence under a
@@ -319,14 +319,14 @@ class Mutagenesis:
         Returns:
             List of log-probabilities for each sequence
         """
-        all_logprobs = []
+        all_logprobs: list[float | list[float]] = []
         model = self.model
         tokenizer = self.tokenizer
         device = self.get_model_device(model)
-        if len(self.sequences["sequence"]) > 1:  # type: ignore[index]
-            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # type: ignore[index]
+        if len(self.sequences["sequence"]) > 1:  # ty: ignore[not-subscriptable]
+            input_data = tqdm(self.sequences["sequence"], desc="Inferring")  # ty: ignore[not-subscriptable]
         else:
-            input_data = self.sequences["sequence"]  # type: ignore[index]
+            input_data = self.sequences["sequence"]  # ty: ignore[not-subscriptable]
         for seq in input_data:
             toks = tokenizer(seq, return_tensors="pt", add_special_tokens=True).to(device)
             input_ids = toks["input_ids"]
@@ -408,15 +408,15 @@ class Mutagenesis:
                     do_pred=do_pred,
                     return_dict=False,
                 )
-                scores = outputs[1] if do_pred else outputs[0]  # type: ignore[assignment]
-            scores = scores[0] if isinstance(scores, tuple) else scores  # type: ignore[unreachable]
+                scores = outputs[1] if do_pred else outputs[0]
+            scores = scores[0] if isinstance(scores, tuple) else scores
             # Get the raw predictions
-            raw_pred = scores[0].numpy() if isinstance(scores, torch.Tensor) else scores[0]  # type: ignore[unreachable]
+            raw_pred = scores[0].numpy() if isinstance(scores, torch.Tensor) else scores[0]  # ty: ignore[not-subscriptable]
             # Get the mutated predictions
-            mut_preds = scores[1:].numpy() if isinstance(scores, torch.Tensor) else scores[1:]  # type: ignore[unreachable]
+            mut_preds = scores[1:].numpy() if isinstance(scores, torch.Tensor) else scores[1:]  # ty: ignore[not-subscriptable]
 
         # Calculate scores
-        def get_score(values: np.ndarray, raw_score: np.ndarray = None):  # type: ignore[assignment]
+        def get_score(values: np.ndarray, raw_score: np.ndarray | None = None):
             # Get final score
             if strategy == "first":
                 score = values[0]
@@ -439,15 +439,15 @@ class Mutagenesis:
 
         for i, mut_pred in tqdm(enumerate(mut_preds), desc="Evaluating mutations"):
             # Get the mutated name
-            mut_name = self.sequences["name"][i + 1]  # type: ignore[index]
+            mut_name = self.sequences["name"][i + 1]  # ty: ignore[not-subscriptable]
             # Get the mutated sequence
-            mut_seq = self.sequences["sequence"][i + 1]  # type: ignore[index]
+            mut_seq = self.sequences["sequence"][i + 1]  # ty: ignore[not-subscriptable]
             # Compare the predictions
             raw_score, mut_score, logfc, diff = self.pred_comparison(raw_pred, mut_pred)
             # Store the results
             if "raw" not in all_predictions:
                 all_predictions["raw"] = {
-                    "sequence": self.sequences["sequence"][0],  # type: ignore[index]
+                    "sequence": self.sequences["sequence"][0],  # ty: ignore[not-subscriptable]
                     "pred": raw_score,
                     "logfc": np.zeros(len(raw_score)),
                     "diff": np.zeros(len(raw_score)),
@@ -614,7 +614,7 @@ class Mutagenesis:
             all_hyp_scores.append(hyp_scores)
 
         one_hot_seqs = np.array(all_one_hot)
-        hyp_scores = np.array(all_hyp_scores)  # type: ignore[assignment]
+        hyp_scores = np.array(all_hyp_scores)
         contrib_scores = hyp_scores * one_hot_seqs
         return one_hot_seqs, hyp_scores, contrib_scores
 

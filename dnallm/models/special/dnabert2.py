@@ -1,4 +1,7 @@
 import os
+from importlib import import_module
+from typing import Any
+
 from ...utils import get_logger
 
 
@@ -23,11 +26,15 @@ def _handle_dnabert2_models(model_path: str, load_args: list) -> tuple:
 
     def triton_supports_trans_b():
         try:
-            import triton.language as tl
+            # Typed Any: this is a runtime capability probe — `trans_b` is
+            # deliberately passed to learn whether this triton build accepts
+            # it (TypeError caught below), so the call must not be
+            # signature-checked against whatever triton version is installed.
+            tl: Any = import_module("triton.language")
 
             a = tl.zeros((1, 1), dtype=tl.float32)
             b = tl.zeros((1, 1), dtype=tl.float32)
-            tl.dot(a, b, trans_b=True)
+            tl.dot(a, b, trans_b=True)  # capability probe: TypeError caught below
             return True
         except TypeError:
             return False

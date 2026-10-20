@@ -32,17 +32,19 @@ from tests.examples._execution import (
 SCRIPT_DIR = EXAMPLE_DIR / "notebooks" / "finetune_NER_task"
 SCRIPT = SCRIPT_DIR / "generate_bpe_dataset.py"
 
-# GAP-1 terminal signature (05-04): the zhangtaolab NT-family remote
-# modeling_esm.py reads config.is_decoder / config.add_cross_attention --
-# transformers-4.x PretrainedConfig defaults removed in 5.x and absent from
-# the checkpoint's config.json.  plant-nucleotide-transformer-BPE (this
-# script's tokenizer model) carries the same remote code (failing live at
-# remote modeling_esm.py:335 after the 05-04 import shim let it load).
-# Owner disposition pending (05-04 hand-off options); per D-08 the census
-# terminal state for this item is an evidence-backed typed skip.  The skip
-# is a live probe, not a dead skip: once the environment gap closes the
-# script runs to completion and this test goes green through the real
-# artifact assertions below.
+# GAP-1 resolved (phase 14 -- disposition shim-path-zero-rung): the
+# closed-map legacy-defaults rung (dnallm/utils/transformers_compat.py,
+# landed 2026-10-02) answers config.is_decoder /
+# config.add_cross_attention for the plant-nucleotide-transformer-BPE
+# remote modeling_esm.py (this script's tokenizer model carries the same
+# NT-family remote code), and the script passed for real in the
+# example-nightly -- CI run 38308972028, stage-1 row
+# test_generate_bpe_dataset_produces_artifact PASS
+# (14-EVIDENCE.md section D).  The marker below and the branch in
+# test_generate_bpe_dataset_produces_artifact are the dormant tripwire:
+# on a transformers regression that re-breaks the remote-code load, the
+# lane re-skips loudly (typed, marker line as evidence) instead of
+# failing opaquely.
 _NT_STRUCTURAL_MARKER = "Failed to load model: 'EsmConfig' object has no attribute 'is_decoder'"
 
 # Documented input-download URLs from the sibling notebook
@@ -128,13 +130,21 @@ def _seed_rice_input(name: str, url: str, sandbox: Path) -> None:
 def _gate_script_pybedtools() -> None:
     """Probe pybedtools before any rice input is fetched (Windows first exposure).
 
-    generate_bpe_dataset.py imports ``pybedtools`` at line 7 for its
-    genome-interval prep; the dev extra excludes it on Windows (pyproject
-    platform marker).  Present -> plain return (the script executes for
-    real, Linux lanes unchanged); absent -> the honest optional-dep typed
-    skip, fired BEFORE the rice-input downloads so a gated box never
-    spends network on inputs it cannot consume.
+    generate_bpe_dataset.py's platform-conditional import seam pulls
+    ``pybedtools`` on POSIX for its genome-interval prep; the dev extra
+    excludes it on Windows (pyproject platform marker).  Present -> plain
+    return (the script executes for real, Linux lanes unchanged); absent
+    -> the honest optional-dep typed skip, fired BEFORE the rice-input
+    downloads so a gated box never spends network on inputs it cannot
+    consume.
+
+    Third outcome (16-02, WPAR-04): on win32 the probe never runs -- the
+    script executes for real through the numpy loj dispatch at its
+    acquisition seam, which needs no pybedtools and no bedtools binary.
+    The Windows route contains no skip call.
     """
+    if sys.platform == "win32":
+        return  # numpy loj dispatch (16-02): Windows executes, probe skipped
     spec = importlib.util.find_spec("pybedtools")
     if spec is None:
         optional_dep_skip(
@@ -150,6 +160,9 @@ class TestScriptGateContracts:
         """An absent probe raises the optional-dep typed skip with evidence."""
         from _pytest.outcomes import Skipped
 
+        # Pin POSIX: the win32 early-return (16-02) must not shadow the
+        # probe contract this test pins -- it runs on test-windows too.
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(
             importlib.util, "find_spec", lambda name: None if name == "pybedtools" else object()
         )
@@ -161,6 +174,7 @@ class TestScriptGateContracts:
 
     def test_gate_passes_when_pybedtools_resolves(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A resolved probe returns silently -- the script executes for real."""
+        monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.setattr(importlib.util, "find_spec", lambda name: object())
         _gate_script_pybedtools()
 

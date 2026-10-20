@@ -42,8 +42,8 @@ class TestMetaExtraParser:
     """The bracket-spec parser must match members exactly, never by substring."""
 
     def test_parses_members_with_whitespace_tolerance(self):
-        assert _meta_extra_names("dnallm[base,dev,test,notebook,docs,ui,mcp,fla]") == [
-            "base",
+        assert _meta_extra_names("dnallm[full,dev,test,notebook,docs,ui,mcp,fla]") == [
+            "full",
             "dev",
             "test",
             "notebook",
@@ -53,13 +53,13 @@ class TestMetaExtraParser:
             "fla",
         ]
         # Whitespace inside the brackets is cosmetic, not semantic
-        assert "fla" in _meta_extra_names("dnallm[base, fla ]")
+        assert "fla" in _meta_extra_names("dnallm[full, fla ]")
 
     def test_substring_colliding_names_are_not_members(self):
         # IN-05 regression: a future "flash-attn"-style spec must not satisfy
         # a fla-membership check the way it satisfied the old substring match
-        assert "fla" not in _meta_extra_names("dnallm[base,flash-attn]")
-        assert "fla" not in _meta_extra_names("dnallm[base,fla-core,mamba-fla]")
+        assert "fla" not in _meta_extra_names("dnallm[full,flash-attn]")
+        assert "fla" not in _meta_extra_names("dnallm[full,fla-core,mamba-fla]")
 
     def test_non_meta_specs_return_empty_list(self):
         assert _meta_extra_names("fla") == []

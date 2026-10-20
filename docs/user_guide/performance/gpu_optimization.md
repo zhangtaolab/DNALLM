@@ -66,7 +66,7 @@ The self-attention mechanism in Transformers has a quadratic memory and time com
 
 Flash Attention re-orders the computation to reduce the number of memory read/write operations to HBM (High Bandwidth Memory).
 
-Many modern models in the DNALLM ecosystem, such as `Evo` and recent `Llama` variants, can use Flash Attention.
+Many modern attention architectures support Flash Attention; within the DNALLM ecosystem, it is wired automatically for the `Evo` models only (see below).
 
 1.  **Install Flash Attention:**
     ```bash

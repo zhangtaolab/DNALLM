@@ -19,8 +19,8 @@ from typing import TYPE_CHECKING
 import torch
 
 if TYPE_CHECKING:  # pragma: no cover - typing-only import
-    from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
-    from transformers import PreTrainedModel  # ty: ignore[unresolved-import]  # lazy export, resolves live
+    from transformers import PreTrainedConfig  # lazy export, resolves live
+    from transformers import PreTrainedModel  # lazy export, resolves live
 
 
 def _iter_uninitialized_quantized_weights(model):
@@ -216,8 +216,12 @@ def _patch_get_parameter_or_buffer():
                     return _QuantStatProxy(tensor)
             raise
 
-    PreTrainedModel.get_parameter_or_buffer = get_parameter_or_buffer  # type: ignore[method-assign]
-    PreTrainedModel._dnallm_quant_key_patch = True  # type: ignore[attr-defined]
+    PreTrainedModel.get_parameter_or_buffer = get_parameter_or_buffer
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "_dnallm_quant_key_patch",
+        True,
+    )
 
 
 def _patch_initialize_weights_for_quantized_missing():
@@ -280,8 +284,12 @@ def _patch_initialize_weights_for_quantized_missing():
         finally:
             _restore_quantized(swapped)
 
-    PreTrainedModel.initialize_weights = initialize_weights  # type: ignore[method-assign]
-    PreTrainedModel._dnallm_quant_init_patch = True  # type: ignore[attr-defined]
+    PreTrainedModel.initialize_weights = initialize_weights
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "_dnallm_quant_init_patch",
+        True,
+    )
 
 
 class _QuantStatProxy:
@@ -319,7 +327,7 @@ def _attach_remote_code_pruning_helpers(module: object) -> None:
 
     attached = False
     # setattr with a literal name is invisible to static attribute resolution,
-    # keeping mypy AND ty/pyright clean without dialect-specific ignore
+    # keeping ty/pyright clean without dialect-specific ignore
     # comments (ruff B010 is silenced because the dynamic form is deliberate).
     if not hasattr(module, "find_pruneable_heads_and_indices"):
         setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic module patch (checker-agnostic)
@@ -480,10 +488,14 @@ def _patch_get_extended_attention_mask():
     if getattr(PreTrainedModel, "_dnallm_extended_mask_patch", False):
         return
 
-    PreTrainedModel.get_extended_attention_mask = (  # type: ignore[method-assign]
-        _get_extended_attention_mask
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel,
+        "get_extended_attention_mask",
+        _get_extended_attention_mask,
     )
-    PreTrainedModel._dnallm_extended_mask_patch = True  # type: ignore[attr-defined]
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        PreTrainedModel, "_dnallm_extended_mask_patch", True
+    )
 
 
 # The legacy config defaults below restore READ behavior that transformers 4.x
@@ -693,14 +705,14 @@ class _MambaCache:
         self.ssm_states: list[torch.Tensor] = []
         for _ in range(config.num_hidden_layers):
             conv_state: torch.Tensor = torch.zeros(
-                self.max_batch_size,
+                self.max_batch_size,  # ty: ignore[invalid-argument-type]  # vendored upstream signature
                 self.intermediate_size,
                 self.conv_kernel_size,
                 device=self.device,
                 dtype=dtype,
             )
             ssm_state: torch.Tensor = torch.zeros(
-                self.max_batch_size,
+                self.max_batch_size,  # ty: ignore[invalid-argument-type]  # vendored upstream signature
                 self.intermediate_size,
                 self.ssm_state_size,
                 device=self.device,
@@ -810,7 +822,7 @@ def _patch_deberta_vocab_dict():
     the hook is absent (transformers 4.x has no ``convert_to_native_format``).
     """
     try:
-        from transformers.models.deberta_v2.tokenization_deberta_v2 import (  # ty: ignore[unresolved-import]  # lazy export, resolves live
+        from transformers.models.deberta_v2.tokenization_deberta_v2 import (  # lazy export, resolves live
             DebertaV2Tokenizer,
         )
     except Exception:  # pragma: no cover - transformers not installed / module renamed
@@ -834,10 +846,14 @@ def _patch_deberta_vocab_dict():
             native["vocab"] = list(vocab.items())
         return native
 
-    DebertaV2Tokenizer.convert_to_native_format = classmethod(  # type: ignore[method-assign]
-        convert_to_native_format
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        DebertaV2Tokenizer,
+        "convert_to_native_format",
+        classmethod(convert_to_native_format),
     )
-    DebertaV2Tokenizer._dnallm_deberta_vocab_patch = True  # type: ignore[attr-defined]
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        DebertaV2Tokenizer, "_dnallm_deberta_vocab_patch", True
+    )
 
 
 # The head-mask helpers below are vendored with semantics and docstrings kept
@@ -851,7 +867,7 @@ def _patch_deberta_vocab_dict():
 # call sites across the cached zhangtaolab/InstaDeepAI remote modeling
 # files); the patch re-attaches the vendored v4.49.0 implementations under
 # their upstream names on the PreTrainedModel class, per name only where the
-# class does not already expose it. Three documented deviations from upstream:
+# class does not already expose it. Four documented deviations from upstream:
 # (1) modern builtin-generic annotations; (2) upstream's bare
 # `assert head_mask.dim() == 5` is re-raised as an explicit
 # `raise AssertionError` with the identical message because repo lint (S101)
@@ -860,7 +876,12 @@ def _patch_deberta_vocab_dict():
 # reassigned `head_mask = [None] * num_hidden_layers` (the reassignment lies
 # about the local's Tensor type; the early return is behavior-identical) and
 # the `self` parameters are typed `PreTrainedModel` instead of upstream's
-# implicit ModuleUtilsMixin receiver so attribute access checks honestly.
+# implicit ModuleUtilsMixin receiver so attribute access checks honestly; and
+# (4) the internal `self._convert_head_mask_to_5d(...)` call is spelled as a
+# `getattr(self, ...)` dispatch -- identical attribute lookup and override
+# semantics, but invisible to static resolution (the method is attached at
+# runtime by _patch_get_head_mask and is absent on stock 5.x classes, where a
+# direct read falls through nn.Module.__getattr__, typed `Tensor | Module`).
 
 
 def _convert_head_mask_to_5d(
@@ -902,7 +923,16 @@ def _get_head_mask(
         `[None]` for each layer.
     """
     if head_mask is not None:
-        head_mask = self._convert_head_mask_to_5d(head_mask, num_hidden_layers)
+        # getattr dispatch: `_convert_head_mask_to_5d` exists on PreTrainedModel
+        # only after _patch_get_head_mask attaches it (stock transformers 5.x
+        # removed the method), so a direct attribute read falls through torch's
+        # nn.Module.__getattr__ (typed `Tensor | Module`), which ty then flags
+        # as non-callable. getattr keeps the identical dynamic dispatch while
+        # staying invisible to static attribute resolution.
+        convert_head_mask_to_5d = getattr(  # ruff: ignore[get-attr-with-constant] - deliberate dynamic dispatch (checker-agnostic)
+            self, "_convert_head_mask_to_5d"
+        )
+        head_mask = convert_head_mask_to_5d(head_mask, num_hidden_layers)
         if is_attention_chunked is True:
             head_mask = head_mask.unsqueeze(-1)
         return head_mask
@@ -929,15 +959,23 @@ def _patch_get_head_mask():
 
     attached = False
     if not hasattr(PreTrainedModel, "get_head_mask"):
-        PreTrainedModel.get_head_mask = _get_head_mask  # type: ignore[method-assign]
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel,
+            "get_head_mask",
+            _get_head_mask,
+        )
         attached = True
     if not hasattr(PreTrainedModel, "_convert_head_mask_to_5d"):
-        PreTrainedModel._convert_head_mask_to_5d = (  # type: ignore[method-assign]
-            _convert_head_mask_to_5d
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel,
+            "_convert_head_mask_to_5d",
+            _convert_head_mask_to_5d,
         )
         attached = True
     if attached:
-        PreTrainedModel._dnallm_head_mask_patch = True  # type: ignore[attr-defined]
+        setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+            PreTrainedModel, "_dnallm_head_mask_patch", True
+        )
 
 
 # The init_weights wrapper below restores the bookkeeping that transformers
@@ -973,7 +1011,7 @@ def _post_init_computes_tied_weights_keys() -> bool:
     try:
         import transformers.modeling_utils
 
-        from transformers import PreTrainedConfig  # ty: ignore[unresolved-import]  # lazy export, resolves live
+        from transformers import PreTrainedConfig  # lazy export, resolves live
 
         probe = transformers.modeling_utils.PreTrainedModel(PreTrainedConfig())
         probe.post_init()
@@ -1017,8 +1055,117 @@ def _patch_legacy_init_weights_bookkeeping():
             return self.post_init()
         return original(self)
 
-    model_cls.init_weights = init_weights  # type: ignore[method-assign]
-    model_cls._dnallm_init_weights_patch = True  # type: ignore[attr-defined]
+    model_cls.init_weights = init_weights
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls, "_dnallm_init_weights_patch", True
+    )
+
+
+# transformers 5.x narrowed the internal weight-tying protocol: base
+# ``tie_weights(self, missing_keys=None, recompute_mapping=True)`` is now
+# invoked WITH kwargs from ``init_weights`` (modeling_utils: self.tie_weights
+# (recompute_mapping=False)) and again post-load in ``from_pretrained``
+# (model.tie_weights(missing_keys=..., recompute_mapping=False)). A
+# remote-code class that overrides ``tie_weights`` with the older
+# zero-kwarg signature -- first seen live on lgq12697/PlantBiMoE's
+# PlantbimoeForMaskedLM.tie_weights(self) (modeling_plantbimoe.py:533,
+# 2026-10-17) -- then dies with ``TypeError: ... got an unexpected keyword
+# argument 'recompute_mapping'`` inside ``post_init``, before any weights
+# load. The rung below bridges exactly that arity gap: when the model's
+# EFFECTIVE tie_weights (MRO-resolved) neither names ``recompute_mapping``
+# nor takes **kwargs, a per-instance forwarder is installed that strips the
+# 5.x-only kwargs and delegates to the legacy override under its historical
+# bare-call contract. Consequence, recorded honestly: ``missing_keys``
+# filtering is dropped for such models, so a from_pretrained missing-keys
+# report may list tied parameters -- cosmetic, versus the hard crash.
+# Signatures that already carry the kwarg or **kwargs are never touched
+# (absence-gated per instance, self-guarding because the installed
+# forwarder reads as VAR_KEYWORD on any re-run); a class sentinel keeps the
+# init_weights wrap idempotent; the rung no-ops entirely on transformers
+# 4.x, whose init_weights passes no kwargs (probe-gated on the base
+# signature).
+
+
+def _base_tie_weights_takes_recompute_mapping() -> bool:
+    """Probe whether the installed base ``tie_weights`` carries the 5.x kwarg.
+
+    Returns:
+        True when ``PreTrainedModel.tie_weights`` names ``recompute_mapping``
+        (the 5.x protocol this rung bridges toward).
+    """
+    try:
+        import inspect
+
+        import transformers.modeling_utils
+
+        params = inspect.signature(
+            transformers.modeling_utils.PreTrainedModel.tie_weights
+        ).parameters
+        return "recompute_mapping" in params
+    except Exception:
+        return False
+
+
+def _bridge_legacy_tie_weights(model: object) -> None:
+    """Install the per-instance forwarder when ``model`` runs a legacy override.
+
+    No-op when the effective signature already accepts the 5.x kwargs
+    (explicitly or via ``**kwargs``), or when no signature can be read.
+    """
+    import inspect
+
+    bound = model.tie_weights  # ty: ignore[unresolved-attribute]
+    try:
+        params = inspect.signature(bound).parameters
+    except (TypeError, ValueError):
+        return
+    if "recompute_mapping" in params:
+        return
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return
+
+    def bridged(*args, **kwargs):
+        kwargs.pop("recompute_mapping", None)
+        kwargs.pop("missing_keys", None)
+        accepted = {k: v for k, v in kwargs.items() if k in params}
+        return bound(*args, **accepted)
+
+    model.tie_weights = bridged  # ty: ignore[unresolved-attribute]
+
+
+def _patch_legacy_tie_weights_arity():
+    """Wrap ``init_weights`` to bridge 4.x-signed remote ``tie_weights`` overrides.
+
+    The wrap only adds the instance bridge before delegating to the previous
+    ``init_weights`` (the bookkeeping rung's, when installed); it is gated on
+    the :func:`_base_tie_weights_takes_recompute_mapping` probe (no-op on
+    transformers 4.x) and a class sentinel for idempotency.
+    """
+    try:
+        import transformers.modeling_utils
+    except Exception:  # pragma: no cover - transformers not installed
+        return
+
+    model_cls = transformers.modeling_utils.PreTrainedModel
+
+    if getattr(model_cls, "_dnallm_tie_weights_arity_patch", False):
+        return
+
+    if not _base_tie_weights_takes_recompute_mapping():
+        return
+
+    previous = vars(model_cls).get("init_weights")
+    if previous is None:
+        return
+
+    def init_weights(self):
+        _bridge_legacy_tie_weights(self)
+        return previous(self)
+
+    model_cls.init_weights = init_weights
+    setattr(  # ruff: ignore[set-attr-with-constant] - deliberate dynamic class patch (checker-agnostic)
+        model_cls, "_dnallm_tie_weights_arity_patch", True
+    )
 
 
 # numpy 2.0 removed ``np.fromstring`` entirely (its binary mode had been
@@ -1105,8 +1252,8 @@ def _patch_numpy_fromstring():
     if getattr(numpy, "_dnallm_fromstring_patch", False):
         return
 
-    numpy.fromstring = _np_fromstring
-    numpy._dnallm_fromstring_patch = True  # type: ignore[attr-defined]
+    numpy.fromstring = _np_fromstring  # ty: ignore[invalid-assignment]  # intentional monkeypatch
+    numpy._dnallm_fromstring_patch = True  # ty: ignore[unresolved-attribute]
 
 
 # transformers 5.19.0 (freshly resolved by the open >=4.49,<6 range on
@@ -1215,14 +1362,14 @@ def _patch_device_type_query():
                 return "cpu"
             raise
 
-    module.get_device_type = get_device_type
-    module._dnallm_device_type_patch = True  # type: ignore[attr-defined]
+    module.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # intentional monkeypatch
+    module._dnallm_device_type_patch = True  # ty: ignore[unresolved-attribute]
 
     # transformers.utils re-exports import_utils names; mirror the wrapper
     # there too, but only where the re-export still holds the exact original
     # object -- a divergent binding is never stamped over.
     if getattr(transformers.utils, "get_device_type", None) is original:
-        transformers.utils.get_device_type = get_device_type
+        transformers.utils.get_device_type = get_device_type  # ty: ignore[unresolved-attribute]  # re-export mirror, intentional monkeypatch
 
 
 def apply_patches():
@@ -1243,6 +1390,7 @@ def apply_patches():
     _patch_deberta_vocab_dict()
     _patch_get_head_mask()
     _patch_legacy_init_weights_bookkeeping()
+    _patch_legacy_tie_weights_arity()
     _patch_numpy_fromstring()
 
 

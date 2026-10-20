@@ -142,7 +142,7 @@ class DNAOneHotTokenizer:
 
         if return_tensors == "np" and return_dict:
             for key in output:
-                output[key] = output[key].numpy()  # type: ignore[assignment]
+                output[key] = output[key].numpy()
 
         return output if return_dict else None
 
@@ -294,14 +294,14 @@ def load_tokenizer_with_fallback(
             logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
     else:
         try:
-            from transformers import AutoTokenizer  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+            from transformers import AutoTokenizer
 
             return AutoTokenizer.from_pretrained(model_name, **kwargs)
         except Exception as e:
             logger.debug(f"AutoTokenizer failed for {model_name}: {e!r}")
 
     try:
-        from transformers import PreTrainedTokenizerFast  # ty: ignore[unresolved-import]  # transformers lazy export, resolves live
+        from transformers import PreTrainedTokenizerFast
 
         tokenizer = PreTrainedTokenizerFast.from_pretrained(model_name, **kwargs)
         logger.warning(

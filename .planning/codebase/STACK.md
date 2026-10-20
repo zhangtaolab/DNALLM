@@ -45,7 +45,7 @@ last_mapped_at: 2026-10-05
 
 **Build/Dev:**
 - ruff (`==0.16.9`) — lint AND format (line-length 100, preview mode); configured in `pyproject.toml` `[tool.ruff.*]`; legacy `.flake8` (79-char) still present for the MCP module
-- mypy (`>=1.15.0`; installed 2.3.1) — advisory only; CI runs `mypy dnallm/ ... || true`
+- mypy (`>=1.15.0,<2.5` — capped in the dev extra, 17-02/PKGH-08; observed runner resolution 2.4.0 stays admitted, 2.5.0 excluded) — advisory only; CI runs `mypy dnallm/ ... || true`
 - **ty (Astral)** — `[tool.ty.src]` in `pyproject.toml` excludes vendored code (`dnallm/tasks/metrics/**`, `mamba_npu.py`, `megatron.py`); invoked as `uvx ty check dnallm/` (config comment); deliberately no severity overrides. Owner decision (commit 9ec6bf5) is ty-hard-gate / mypy-retire — ty is the going-forward type checker
 - pre-commit — local hooks: `ruff format` → `ruff check` → `mypy dnallm/` (`.pre-commit-config.yaml`)
 - setuptools build backend (`[tool.setuptools.packages.find] include = ["dnallm*"]`); `setup.py` is a backward-compat stub only

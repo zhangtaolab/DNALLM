@@ -36,13 +36,27 @@ def _is_magic_or_comment_only(source: str) -> bool:
 
 
 def _strip_magic_lines(source: str) -> str:
-    """Remove Jupyter magic command lines from source."""
-    lines = source.splitlines()
-    return "\n".join(
-        line
-        for line in lines
-        if line.strip() and not line.strip().startswith("!") and not line.strip().startswith("%")
-    )
+    """Replace Jupyter magic command lines with indented ``pass`` placeholders.
+
+    Placeholder substitution instead of deletion keeps indented magics
+    inside control flow parseable: the conditional-install notebook
+    pattern (16-02 NER cells 0/1) guards ``!`` lines inside if/else
+    branches, and deleting them would leave bodyless branches -- a false
+    syntax error in the cell-syntax lane. Preserving each line's
+    indentation (and the original empty-line dropping) keeps both
+    consumer lanes honest for guarded and unguarded magic shapes alike.
+    """
+    out_lines = []
+    for line in source.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("!") or stripped.startswith("%"):
+            indent = line[: len(line) - len(line.lstrip())]
+            out_lines.append(f"{indent}pass")
+        else:
+            out_lines.append(line)
+    return "\n".join(out_lines)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
