@@ -28,7 +28,7 @@ from dnallm.configuration.configs import (
     load_config,
     validate_sections,
 )
-from dnallm.preflight.config_gen import _SECTION_ORDER, generate_config
+from dnallm.preflight.config_gen import _SECTION_ORDER, edit_config, generate_config
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 PACKAGED_CONFIGS = sorted((REPO_ROOT / "configs").glob("*.yaml"))
@@ -265,3 +265,210 @@ class TestCollectAllValidation:
             "sweep",
             "benchmark",
         )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 3: edit_config round-trip (D-14) + YAML dump contract (D-15) + edges
+# ─────────────────────────────────────────────────────────────────────────────
+
+BASE_CONFIG_YAML = """\
+task:
+  task_type: binary
+  num_labels: 2
+  label_names: ["negative", "positive"]
+finetune:
+  learning_rate: 2.0e-05
+  num_train_epochs: 3
+"""
+
+
+def _write_base_config(tmp_path: Path) -> Path:
+    cfg_path = tmp_path / "base_config.yaml"
+    cfg_path.write_text(BASE_CONFIG_YAML, encoding="utf-8")
+    return cfg_path
+
+
+class TestEditConfigRoundTrip:
+    """Load existing → patch → revalidate over path and dict inputs."""
+
+    def test_round_trip_from_yaml_path(self, tmp_path):
+        """A YAML path patched on one field revalidates; untouched fields
+        survive verbatim (learning_rate bit-identical — precision edge)."""
+        cfg_path = _write_base_config(tmp_path)
+        original_raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+
+        result = edit_config(cfg_path, {"task": {"num_labels": 3}})
+
+        assert result.errors == []
+        assert result.config["task"].num_labels == 3
+        assert result.config["task"].label_names == ["negative", "positive"]
+        assert result.config["finetune"].learning_rate == original_raw["finetune"]["learning_rate"]
+
+    def test_round_trip_from_dict_equals_path_variant(self, tmp_path):
+        """A parsed dict input produces the same sections as the path variant."""
+        cfg_path = _write_base_config(tmp_path)
+        raw = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+        patch = {"task": {"num_labels": 3}}
+
+        from_path = edit_config(cfg_path, patch)
+        from_dict = edit_config(raw, patch)
+
+        _assert_section_maps_equal(from_path.config, from_dict.config)
+        assert from_dict.errors == []
+
+    def test_patch_overwrites_per_field_at_section_level(self, tmp_path):
+        """Patch keys overwrite exactly the named fields; no recursive merge."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(
+            cfg_path,
+            {"finetune": {"learning_rate": 1.0e-03, "num_train_epochs": 5}},
+        )
+
+        assert result.errors == []
+        finetune = result.config["finetune"]
+        assert finetune.learning_rate == 1.0e-03
+        assert finetune.num_train_epochs == 5
+        # Untouched fields keep their values (packaged value and default).
+        assert finetune.seed == 42
+        assert finetune.report_to == ["tensorboard"]
+
+    def test_empty_patch_revalidates_unchanged(self, tmp_path):
+        """An empty patch changes nothing: identical section values out."""
+        cfg_path = _write_base_config(tmp_path)
+        baseline = edit_config(cfg_path, {})
+
+        assert baseline.errors == []
+        again = edit_config(cfg_path, {})
+        _assert_section_maps_equal(baseline.config, again.config)
+        assert baseline.config["task"].num_labels == 2
+
+    def test_patch_unknown_section_is_field_level_error(self, tmp_path):
+        """A patch naming an unknown section yields UNKNOWN_SECTION; the
+        bogus key never enters the config."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(cfg_path, {"bogus": {"x": 1}})
+
+        assert any("UNKNOWN_SECTION" in e.message for e in result.errors)
+        assert "bogus" not in result.config
+        # The valid sections still validate (collect-all).
+        assert isinstance(result.config["task"], TaskConfig)
+
+    def test_patch_invalid_value_is_field_level_error_not_traceback(self, tmp_path):
+        """A patch to an invalid value yields the section's field-level
+        errors — both the joined-path and model-level (empty loc) forms."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(cfg_path, {"task": {"task_type": "multiclass", "num_labels": -1}})
+
+        assert any(e.field == "task" for e in result.errors)
+        assert "task" not in result.config
+        assert isinstance(result.config["finetune"], TrainingConfig)
+
+    def test_null_section_treated_as_absent_and_empty_section_defaults(self, tmp_path):
+        """A null-valued section is absent; a {} section constructs defaults."""
+        cfg_path = tmp_path / "edge.yaml"
+        cfg_path.write_text("task:\nfinetune: {}\n", encoding="utf-8")
+
+        result = edit_config(cfg_path, {})
+
+        assert result.errors == []
+        assert "task" not in result.config
+        assert isinstance(result.config["finetune"], TrainingConfig)
+        assert result.config["finetune"].num_train_epochs == 3
+
+    def test_zero_recognized_sections_yields_no_sections_error(self, tmp_path):
+        """A YAML with only an unrelated top key yields NO_SECTIONS."""
+        cfg_path = tmp_path / "unrelated.yaml"
+        cfg_path.write_text("notes: hello\n", encoding="utf-8")
+
+        result = edit_config(cfg_path, {})
+
+        assert any("NO_SECTIONS" in e.message for e in result.errors)
+        assert result.config == {}
+
+    def test_input_dict_not_mutated(self, tmp_path):
+        """The caller's dict is patched on a copy, never mutated in place."""
+        raw = {"task": {"task_type": "binary"}, "finetune": {"learning_rate": 2.0e-05}}
+        snapshot = {"task": dict(raw["task"]), "finetune": dict(raw["finetune"])}
+
+        result = edit_config(raw, {"task": {"num_labels": 4}})
+
+        assert raw == snapshot
+        assert result.config["task"].num_labels == 4
+
+
+class TestYamlDumpContract:
+    """Write only when output_path is given (D-15); never touch the input."""
+
+    def test_output_written_when_output_path_given(self, tmp_path):
+        """The dumped YAML re-loads to equal section values."""
+        cfg_path = _write_base_config(tmp_path)
+        out_path = tmp_path / "out" / "edited.yaml"
+        out_path.parent.mkdir()
+        out = str(out_path)
+
+        result = edit_config(cfg_path, {"task": {"num_labels": 3}}, output_path=out)
+
+        assert result.errors == []
+        assert out_path.exists()
+        reloaded = yaml.safe_load(out_path.read_text(encoding="utf-8"))
+        assert reloaded["task"]["num_labels"] == 3
+        assert reloaded["finetune"]["learning_rate"] == 2.0e-05
+
+    def test_no_file_written_when_output_path_omitted(self, tmp_path):
+        """Without output_path nothing is created anywhere under tmp_path."""
+        cfg_path = _write_base_config(tmp_path)
+        before = sorted(os.listdir(tmp_path))
+
+        edit_config(cfg_path, {"task": {"num_labels": 3}})
+
+        assert sorted(os.listdir(tmp_path)) == before
+
+    def test_input_file_never_modified(self, tmp_path):
+        """Editing writes only to the named output; the input bytes stay put."""
+        cfg_path = _write_base_config(tmp_path)
+        original_bytes = cfg_path.read_bytes()
+        out_path = tmp_path / "edited.yaml"
+
+        edit_config(cfg_path, {"task": {"num_labels": 3}}, output_path=out_path)
+
+        assert cfg_path.read_bytes() == original_bytes
+        assert out_path.exists()
+
+    def test_generate_config_dumps_complete_config(self, tmp_path):
+        """generate_config(output_path=...) writes the complete config; the
+        dumped YAML carries the finetune max_length key and reloads to the
+        same section values."""
+        out_path = tmp_path / "generated.yaml"
+
+        result = generate_config(FINETUNED_REPO, output_path=out_path)
+
+        assert result.errors == []
+        assert out_path.exists()
+        dumped = yaml.safe_load(out_path.read_text(encoding="utf-8"))
+        assert sorted(dumped) == ["finetune", "inference", "lora", "model", "task"]
+        assert dumped["finetune"]["max_length"] == 512
+        assert dumped["inference"]["max_length"] == 512
+        assert dumped["model"] == {"name": FINETUNED_REPO}
+        # The dump revalidates to the same sections the call returned.
+        revalidated = edit_config(dumped, {})
+        assert revalidated.errors == []
+        _assert_section_maps_equal(revalidated.config, result.config)
+
+
+class TestUnsafeYamlRefusal:
+    """The round-trip loader refuses arbitrary constructors (T-23-08)."""
+
+    def test_python_object_tag_refused(self, tmp_path):
+        """A YAML carrying a python/object tag raises the safe-loader error —
+        no arbitrary constructor ever executes."""
+        cfg_path = tmp_path / "evil.yaml"
+        cfg_path.write_text(
+            'model: !!python/object/apply:os.system ["touch /tmp/pwned"]\n',
+            encoding="utf-8",
+        )
+
+        with pytest.raises(yaml.YAMLError):
+            edit_config(cfg_path, {})
