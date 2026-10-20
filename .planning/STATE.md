@@ -2,39 +2,39 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 23
-current_phase_name: Pre-flight Core — Pure Validation / Suitability / Config API
-status: verifying
-stopped_at: Completed 23-05-PLAN.md
-last_updated: "2026-10-20T17:38:06.658Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 23 execution started
-state_head: 5e92885d5477aa8fe73a92dc19c2fc020b4af943
+current_phase: 24
+current_phase_name: Preset Loading — `load_preset_model` Registry Rewire
+status: planning
+stopped_at: Phase 23 complete, ready to plan Phase 24
+last_updated: "2026-10-20T23:42:18.718Z"
+last_activity: 2026-10-21
+last_activity_desc: Phase 23 complete, transitioned to Phase 24
+state_head: 1ccf4e4496d4152dba19520685a5946ce2dd80b3
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
   completed_plans: 7
-  percent: 20
+  percent: 40
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20)
+See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 23 — Pre-flight Core — Pure Validation / Suitability / Config API
+**Current focus:** Phase 24 — Preset Loading — `load_preset_model` Registry Rewire
 
 ## Current Position
 
-Phase: 23 (Pre-flight Core — Pure Validation / Suitability / Config API) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-20 — Phase 23 execution started
+Phase: 24 — Preset Loading — `load_preset_model` Registry Rewire
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-21 — Phase 23 complete, transitioned to Phase 24
 
-Progress: [██░░░░░░░░] 20% (1 of 5 v1.4 phases)
+Progress: [████░░░░░░] 40% (1 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -130,7 +130,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-20T17:38:06.631Z
-Stopped at: Completed 23-05-PLAN.md
+Stopped at: Phase 23 complete, ready to plan Phase 24
 Resume file: None
 
 ## Operator Next Steps

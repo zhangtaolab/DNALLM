@@ -78,7 +78,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 - Decimal phases (22.1, 22.2): urgent insertions (marked INSERTED)
 
 - [x] **Phase 22: Registry Foundation — Runtime Loader & Enrichment** - Cached read-only single-parse loader for `model_info.yaml` (typed lookups by name/repo_id/task_type/base_model) + `tokenizer_type`/`max_length` enrichment and extended integrity tests (completed 2026-10-20)
-- [ ] **Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API** - `validate_data` / `check_compatibility` / `generate_config` plus a ModelScope-first availability probe as pure, pytest-covered, offline-safe functions; lab-first listings; shared `validate_sections` path
+- [x] **Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API** - `validate_data` / `check_compatibility` / `generate_config` plus a ModelScope-first availability probe as pure, pytest-covered, offline-safe functions; lab-first listings; shared `validate_sections` path (completed 2026-10-21)
 - [ ] **Phase 24: Preset Loading — `load_preset_model` Registry Rewire** - Registry entry names resolve with `num_labels`/`label_names`/`threshold` patched into TaskConfig; the existing family-name path is preserved and regression-tested
 - [ ] **Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra** - `dnallm preflight` Textual wizard over the core (env → data → suitability → config panels, select-to-download); extra + CI wiring + worker seam land before any panel; `full`-alias removal rides the same change
 - [ ] **Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing** - `check_config_registry_consistency()` (repo-id-keyed, warn-first, never writes) + CI check over committed configs + `get_all_available_models` registry listing with configured/loaded overlay
@@ -120,7 +120,7 @@ Plans:
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -186,7 +186,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
-| 23. Pre-flight Core | 5/5 | In Progress | - |
+| 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
