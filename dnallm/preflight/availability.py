@@ -348,14 +348,131 @@ def _bounded_wait(fn: Callable[[], T], timeout: float) -> T:
 
 
 def _probe_remote(repo_id: str, *, timeout: float = DEFAULT_PROBE_TIMEOUT) -> AvailabilityReport:
-    """Remote fallback chain for an uncached repo id (MS-first, D-11).
+    """Remote fallback chain for an uncached repo id: ModelScope first (D-11).
 
-    The adapter chain and the failure taxonomy land with this plan's
-    remote task; until then every non-cached probe degrades to unknown
-    rather than guessing — the never-raise contract holds either way.
+    A confirmed ModelScope repo is returned without ever calling the HF
+    adapter; a clean miss (falsy existence) falls through to Hugging
+    Face. Every failure degrades to unknown with a reason (PFC-06): a
+    timeout ends the probe immediately (the core owns the time bound),
+    a raising hub falls through to the other one, and clean misses on
+    both hubs conclude ``NOT_FOUND_ON_EITHER_HUB``.
     """
-    logger.debug(f"probe_availability: {repo_id!r} remote half not yet wired")
-    return _unknown(AvailabilityReasonCode.PROBE_ERROR.value)
+    ms_error: Exception | None = None
+    try:
+        confirmed = _bounded_wait(lambda: _ms_adapter(repo_id), timeout)
+    except TimeoutError:
+        return _unknown(AvailabilityReasonCode.PROBE_TIMEOUT.value)
+    except Exception as exc:
+        ms_error = exc
+        logger.info(f"probe_availability: modelscope probe failed for {repo_id!r}: {exc!r}")
+    else:
+        if confirmed is not None:
+            return confirmed
+
+    try:
+        confirmed = _bounded_wait(lambda: _hf_adapter(repo_id), timeout)
+    except TimeoutError:
+        return _unknown(AvailabilityReasonCode.PROBE_TIMEOUT.value)
+    except Exception as exc:
+        hf_verdict = _classify_hf_error(exc)
+        if hf_verdict is not None:
+            return hf_verdict
+    else:
+        return confirmed
+
+    if ms_error is not None:
+        # MS errored and HF only confirmed the absence: name the MS failure.
+        return _unknown(
+            f"{AvailabilityReasonCode.PROBE_ERROR.value}: {ms_error.__class__.__name__}"
+        )
+    return _unknown(AvailabilityReasonCode.NOT_FOUND_ON_EITHER_HUB.value)
+
+
+def _ms_adapter(repo_id: str) -> AvailabilityReport | None:
+    """ModelScope remote probe: a confirmed report, or None on a clean miss.
+
+    Existence via the pinned library's HubApi (no hand-rolled REST); on a
+    hit, ``size_bytes`` is the exact integer sum of the file listing's
+    ``Size`` fields and the revision comes from the listing's
+    ``Revision`` field (``"master"`` default). Transport/auth failures
+    raise for the chain to classify — never a not-found verdict.
+    """
+    from modelscope.hub.api import HubApi
+
+    api = HubApi()
+    if not api.repo_exists(repo_id):
+        return None
+    files = api.get_model_files(repo_id)
+    size_bytes = sum(
+        int(entry["Size"])
+        for entry in files
+        if isinstance(entry, dict) and entry.get("Size") is not None
+    )
+    revision = "master"
+    for entry in files:
+        if isinstance(entry, dict) and entry.get("Revision"):
+            revision = str(entry["Revision"])
+            break
+    return AvailabilityReport(
+        state=AvailabilityState.REMOTE_CONFIRMED,
+        size_bytes=size_bytes,
+        revision=revision,
+        source_hub=Hub.MODELSCOPE,
+    )
+
+
+def _hf_adapter(repo_id: str) -> AvailabilityReport:
+    """Hugging Face remote probe: a confirmed report, or raises for classification.
+
+    The endpoint is pinned to the library constant (no user-controlled
+    URL construction). A missing repo raises the library's not-found /
+    gated errors, which :func:`_classify_hf_error` treat as a clean miss
+    on this hub rather than a probe failure.
+    """
+    import huggingface_hub.constants as hf_constants
+    from huggingface_hub import HfApi
+
+    api = HfApi(endpoint=hf_constants.ENDPOINT)
+    info = api.model_info(repo_id, files_metadata=True)
+    size_bytes = sum(
+        int(sibling.size)
+        for sibling in (info.siblings or [])
+        if getattr(sibling, "size", None) is not None
+    )
+    return AvailabilityReport(
+        state=AvailabilityState.REMOTE_CONFIRMED,
+        size_bytes=size_bytes,
+        revision=info.sha,
+        source_hub=Hub.HUGGINGFACE,
+    )
+
+
+def _classify_hf_error(exc: Exception) -> AvailabilityReport | None:
+    """Map an HF-side exception to an unknown report; None means a clean miss.
+
+    ``RepositoryNotFoundError`` / ``GatedRepoError`` mean the repo really
+    is not usable from this hub — the chain continues to its both-hubs
+    conclusion instead of degrading to unknown. A 429
+    ``HfHubHTTPError`` is ``RATE_LIMITED``; ``OfflineModeIsEnabled`` is
+    ``OFFLINE``; every other failure is ``PROBE_ERROR`` carrying the
+    exception class name (PFC-03/PFC-06 taxonomy).
+    """
+    from huggingface_hub.errors import (
+        GatedRepoError,
+        HfHubHTTPError,
+        OfflineModeIsEnabled,
+        RepositoryNotFoundError,
+    )
+
+    if isinstance(exc, (RepositoryNotFoundError, GatedRepoError)):
+        return None
+    if isinstance(exc, HfHubHTTPError):
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status == 429:
+            return _unknown(AvailabilityReasonCode.RATE_LIMITED.value)
+    if isinstance(exc, OfflineModeIsEnabled):
+        return _unknown(AvailabilityReasonCode.OFFLINE.value)
+    return _unknown(f"{AvailabilityReasonCode.PROBE_ERROR.value}: {exc.__class__.__name__}")
 
 
 def _unknown(reason: str) -> AvailabilityReport:

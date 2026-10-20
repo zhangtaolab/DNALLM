@@ -11,13 +11,13 @@ Registry pins are live (Phase 22 data): entry name ``Plant DNABERT``
 resolves to repo id ``zhangtaolab/plant-dnabert-BPE``.
 """
 
+import importlib
 import threading
 import time
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import huggingface_hub
-import modelscope.hub.api
 import pytest
 
 import dnallm.preflight.availability as availability
@@ -34,6 +34,11 @@ from dnallm.preflight.report import (
     AvailabilityState,
     Hub,
 )
+
+# The modelscope package is a lazy module whose attribute access can raise
+# ("modelscope.hub" resolves through its lazy loader); bind the hub-api
+# submodule through importlib so patching targets the module object itself.
+ms_hub_api = importlib.import_module("modelscope.hub.api")
 
 # Live-registry fixtures (Phase 22 lane): the pretrained BPE base entry and
 # its human-readable registry name resolve to the same repo id.
@@ -377,7 +382,7 @@ def test_remote_ms_adapter_body_exact_size_and_revision(monkeypatch) -> None:
                 {"Name": "config.json", "Size": 23, "Revision": "v1.2.0"},
             ]
 
-    monkeypatch.setattr(modelscope.hub.api, "HubApi", FakeHubApi)
+    monkeypatch.setattr(ms_hub_api, "HubApi", FakeHubApi)
 
     report = probe_availability("ms-adapter-body/org")
 
