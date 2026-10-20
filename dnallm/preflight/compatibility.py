@@ -27,22 +27,29 @@ config or data cleanup stays warn with counts.
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 import numpy as np
 
 from ..models.registry import (
     RegistryEntry,
+    all_entries,
     effective_max_length,
     effective_tokenizer_type,
+    get_by_task_type,
     is_lab_model,
+    sort_key_lab_first,
     try_resolve,
 )
 from ..utils import get_logger
 from .report import (
+    AvailabilityReasonCode,
+    AvailabilityReport,
+    AvailabilityState,
     CompatReasonCode,
     CompatibilityReport,
     DimensionVerdict,
+    ListingEntry,
     ModelVerdict,
     VerdictStatus,
 )
@@ -114,14 +121,24 @@ _U_CHAR = "U"
 _CHARSET_STANCE_STRICT = "strict"
 _CHARSET_STANCE_BPE = "bpe"
 
+# Intent routing (PFC-05) over the base<->finetuned axis, with the prober
+# shortlist cap (D-10): labs get probed first, never all 236 entries.
+INTENT_FINETUNE = "finetune"
+INTENT_PREDICT = "predict"
+_VALID_INTENTS = frozenset({INTENT_FINETUNE, INTENT_PREDICT})
+DEFAULT_PROBE_SHORTLIST = 20
+
 
 def check_compatibility(
     data=None,
     *,
     task_type: str | None = None,
     models: Iterable[str] | None = None,
+    intent: str | None = None,
+    prober: Callable[[str], AvailabilityReport] | None = None,
+    probe_shortlist: int | None = None,
 ) -> CompatibilityReport:
-    """Check data suitability per requested model across all three dimensions.
+    """Check data suitability per model, optionally with an intent listing.
 
     Args:
         data: The :class:`~dnallm.preflight.report.DataReport` to check
@@ -132,22 +149,59 @@ def check_compatibility(
             vocabulary (``binary_classification`` -> ``binary``).
         models: Model names / repo ids to check. Each resolves through the
             registry; a miss becomes a fail MODEL_NOT_IN_REGISTRY verdict
-            (per-model isolation, never an exception).
+            (per-model isolation, never an exception). When given, no
+            listing is built.
+        intent: Listing route over the base<->finetuned axis (PFC-05):
+            ``"finetune"`` lists pretrained/base entries (optionally
+            filtered to warn-or-ok task compatibility when ``task_type`` is
+            given); ``"predict"`` lists finetuned entries of
+            ``task_type`` that ship task heads (``num_labels``).
+            Normalized via ``lower().strip()``; any other value raises.
+        prober: Optional availability probe callable (D-10). Without it the
+            listing is network-free and every ``availability`` stays None;
+            with it, only the first ``probe_shortlist`` listing entries are
+            probed (labs first — the listing is lab-first sorted). A raising
+            prober degrades that entry to an unknown availability report,
+            never an exception (PFC-06).
+        probe_shortlist: How many listing entries to probe when a prober is
+            given (default cap 20; capped at the listing length).
 
     Returns:
         The compatibility report: one verdict per requested model in request
         order, each carrying task/length/charset dimension verdicts. Overall
         status per model is the worst dimension status (fail > warn >
-        unknown > ok). ``listing`` stays empty in this slice (23-02 Task 2).
+        unknown > ok). The intent-routed ``listing`` is lab-first sorted
+        (``zhangtaolab/*`` first, then name — PFC-07).
+
+    Raises:
+        ValueError: If ``intent`` is neither ``"finetune"`` nor
+            ``"predict"`` (after normalization).
     """
+    normalized_task = _normalize_task_type(task_type)
+    normalized_intent = intent.lower().strip() if intent else None
+    if normalized_intent is not None and normalized_intent not in _VALID_INTENTS:
+        raise ValueError(
+            f"check_compatibility intent must be 'finetune' or 'predict', got {intent!r}."
+        )
+
     model_names = list(models or [])
     verdicts = _verdicts_for_models(model_names, data=data, task_type=task_type)
-    if model_names:
+    listing: list[ListingEntry] = []
+    if models is None and (normalized_intent is not None or normalized_task is not None):
+        effective_intent = normalized_intent or INTENT_FINETUNE
+        listing = _build_listing(_intent_listing(normalized_task, effective_intent))
+        if prober is not None:
+            listing = _attach_probes(listing, prober, probe_shortlist)
+        logger.debug(
+            f"check_compatibility: {len(listing)} listing entr(ies) for intent "
+            f"{effective_intent!r} task {normalized_task!r}"
+        )
+    elif model_names:
         logger.debug(
             f"check_compatibility: {len(verdicts)} model verdict(s) over "
             "task/length/charset dimensions"
         )
-    return CompatibilityReport(verdicts=verdicts, listing=[])
+    return CompatibilityReport(verdicts=verdicts, listing=listing)
 
 
 def _verdicts_for_models(
@@ -470,3 +524,86 @@ def _charset_verdict(data, entry: RegistryEntry) -> DimensionVerdict:
     return DimensionVerdict(
         dimension=DIMENSION_CHARSET, status=VerdictStatus.OK, reason_code=None, details=details
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Intent-routed listings (PFC-05) with lab-first ordering (PFC-07) and the
+# prober shortlist seam (D-10)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _intent_listing(task_type: str | None, intent: str) -> list[RegistryEntry]:
+    """Route the listing over the base<->finetuned axis, lab-first sorted.
+
+    ``finetune`` lists pretrained/base entries — every entry when no task is
+    requested, otherwise those whose task-dimension verdict is warn-or-ok
+    (hard task mismatches drop out). ``predict`` lists finetuned entries of
+    the requested task type that ship task heads (``num_labels``); a task
+    with no such entries yields an empty listing, never an error.
+    """
+    if intent == INTENT_FINETUNE:
+        entries = [e for e in all_entries() if e.kind == "pretrained"]
+        if task_type is not None:
+            entries = [
+                e
+                for e in entries
+                if _task_verdict(e, task_type).status in (VerdictStatus.OK, VerdictStatus.WARN)
+            ]
+    elif intent == INTENT_PREDICT:
+        if task_type is None:
+            logger.debug("check_compatibility: predict intent without task_type -> no listing")
+            return []
+        entries = [
+            e
+            for e in get_by_task_type(task_type)
+            if e.kind == "finetuned" and e.task.num_labels is not None
+        ]
+    else:  # pragma: no cover — guarded by check_compatibility's ValueError
+        raise ValueError(f"Unknown intent {intent!r}.")
+    return sorted(entries, key=sort_key_lab_first)
+
+
+def _build_listing(entries: list[RegistryEntry]) -> list[ListingEntry]:
+    """Turn registry entries into listing rows carrying task-head metadata."""
+    return [
+        ListingEntry(
+            model=entry.model,
+            entry_name=entry.name,
+            is_lab=is_lab_model(entry),
+            task_type=entry.task.task_type,
+            num_labels=entry.task.num_labels,
+            label_names=entry.task.label_names,
+        )
+        for entry in entries
+    ]
+
+
+def _attach_probes(
+    listing: list[ListingEntry],
+    prober: Callable[[str], AvailabilityReport],
+    probe_shortlist: int | None,
+) -> list[ListingEntry]:
+    """Probe the first N listing entries (labs first — the listing is sorted).
+
+    Never probes beyond ``min(probe_shortlist or 20, len(listing))`` (D-10:
+    never all 236 entries). Each probe is isolated: a raising prober
+    degrades that one entry to an unknown availability report (PFC-06),
+    never an exception.
+    """
+    cap = DEFAULT_PROBE_SHORTLIST if probe_shortlist is None else max(0, probe_shortlist)
+    probed = listing
+    for position in range(min(cap, len(listing))):
+        entry = listing[position]
+        try:
+            availability = prober(entry.model)
+        except Exception as e:  # PFC-06: any probe failure degrades to unknown
+            logger.info(
+                f"check_compatibility: probe for {entry.model!r} failed "
+                f"({AvailabilityReasonCode.PROBE_ERROR.value}): {e}"
+            )
+            availability = AvailabilityReport(
+                state=AvailabilityState.UNKNOWN,
+                reason=AvailabilityReasonCode.PROBE_ERROR.value,
+            )
+        probed[position] = entry.model_copy(update={"availability": availability})
+    return probed

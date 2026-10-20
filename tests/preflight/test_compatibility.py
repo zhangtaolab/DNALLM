@@ -454,9 +454,7 @@ def test_prober_shortlist_probes_first_n_in_lab_order() -> None:
         task_type="binary", intent="predict", prober=prober, probe_shortlist=3
     )
     assert prober.call_count == 3
-    assert [call.args[0] for call in prober.call_args_list] == [
-        e.model for e in result.listing[:3]
-    ]
+    assert [call.args[0] for call in prober.call_args_list] == [e.model for e in result.listing[:3]]
     assert all(result.listing[i].availability is prober.return_value for i in range(3))
     # Beyond the shortlist: untouched, availability stays None.
     assert all(e.availability is None for e in result.listing[3:])
