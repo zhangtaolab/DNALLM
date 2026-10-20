@@ -13,11 +13,25 @@ Registry pins are live (Phase 22 data): budget 517 = 512 + 6 - 1 for the
 6-mer entry, 1536 = 512 x 3 for the BPE entry, 512 for the char-level entry.
 """
 
+from unittest.mock import Mock
+
 import pytest
 
-from dnallm.models.registry import RegistryEntry, TaskInfo, sort_key_lab_first, try_resolve
+from dnallm.models.registry import (
+    RegistryEntry,
+    TaskInfo,
+    all_entries,
+    sort_key_lab_first,
+    try_resolve,
+)
 from dnallm.preflight import check_compatibility, validate_data
-from dnallm.preflight.report import CompatReasonCode, VerdictStatus
+from dnallm.preflight.report import (
+    AvailabilityReport,
+    AvailabilityState,
+    CompatReasonCode,
+    Hub,
+    VerdictStatus,
+)
 
 # Live-registry fixtures (Phase 22 lane): ids, tokenizer classes, and max
 # lengths are pinned facts of the packaged registry data file.
@@ -344,3 +358,139 @@ def test_dimension_vocabulary_is_task_length_charset() -> None:
     entry = try_resolve(PROMOTER_REPO)
     assert result.verdicts[0].entry_name == entry.name
     assert sort_key_lab_first(entry) == (0, entry.name)  # lab partition pins
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 2: intent-routed listings (PFC-05), lab-first ordering (PFC-07),
+# and the prober shortlist seam (D-10)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_intent_finetune_lists_pretrained_entries_only() -> None:
+    """intent='finetune' lists pretrained/base entries (warn-or-ok task compat)."""
+    result = check_compatibility(task_type="binary", intent="finetune")
+    assert result.listing
+    for listing_entry in result.listing:
+        assert try_resolve(listing_entry.model).kind == "pretrained"
+    # With a supervised request every mask/generation base warns (uncertain
+    # head support) and warn-or-ok keeps all of them.
+    pretrained_models = {e.model for e in all_entries() if e.kind == "pretrained"}
+    assert {e.model for e in result.listing} == pretrained_models
+
+
+def test_intent_finetune_without_task_type_lists_all_pretrained() -> None:
+    """intent='finetune' without a task filter lists every pretrained entry."""
+    result = check_compatibility(intent="finetune")
+    pretrained_models = {e.model for e in all_entries() if e.kind == "pretrained"}
+    assert {e.model for e in result.listing} == pretrained_models
+
+
+def test_intent_predict_lists_finetuned_entries_with_heads() -> None:
+    """intent='predict' lists finetuned entries shipping task heads + labels."""
+    result = check_compatibility(task_type="binary", intent="predict")
+    assert result.listing
+    for listing_entry in result.listing:
+        assert listing_entry.task_type == "binary"
+        assert listing_entry.num_labels is not None
+        assert listing_entry.label_names is not None
+        assert try_resolve(listing_entry.model).kind == "finetuned"
+
+
+def test_listing_is_sorted_lab_first() -> None:
+    """zhangtaolab/* entries rank before third-party, then by name (PFC-07)."""
+    result = check_compatibility(task_type="binary", intent="predict")
+    assert any(not e.is_lab for e in result.listing)  # mixed listing (6 third-party)
+    keys = [sort_key_lab_first(try_resolve(e.model)) for e in result.listing]
+    assert keys == sorted(keys)  # equals registry.sort_key_lab_first output
+    assert result.listing[0].is_lab is True
+    # Partition boundary: no third-party entry appears before any lab entry.
+    first_third_party = next(i for i, e in enumerate(result.listing) if not e.is_lab)
+    assert all(e.is_lab for e in result.listing[:first_third_party])
+
+
+def test_listing_task_type_normalization_case_and_whitespace() -> None:
+    """' Binary ' routes the predict listing exactly like 'binary'."""
+    loose = check_compatibility(task_type=" Binary ", intent="predict")
+    tight = check_compatibility(task_type="binary", intent="predict")
+    assert [e.model for e in loose.listing] == [e.model for e in tight.listing]
+
+
+def test_intent_zero_matches_returns_empty_listing_not_error() -> None:
+    """intent='predict' with a task that has no finetuned entries -> empty listing."""
+    # Census-checked: 'generation' exists only as pretrained task type today.
+    result = check_compatibility(task_type="generation", intent="predict")
+    assert result.listing == []
+    assert result.verdicts == []
+
+
+def test_invalid_intent_raises_matchable_value_error() -> None:
+    """An intent outside {finetune, predict} raises a descriptive ValueError."""
+    with pytest.raises(ValueError, match=r"intent"):
+        check_compatibility(task_type="binary", intent="explore")
+
+
+def test_intent_value_is_normalized_before_validation() -> None:
+    """' Predict ' behaves as 'predict' (case/whitespace normalization)."""
+    result = check_compatibility(task_type="binary", intent=" Predict ")
+    assert result.listing  # same routing as predict
+
+
+def _mock_prober():
+    """A fake prober returning one shared remote-confirmed report."""
+    return Mock(
+        return_value=AvailabilityReport(
+            state=AvailabilityState.REMOTE_CONFIRMED,
+            size_bytes=1,
+            revision="abc",
+            source_hub=Hub.MODELSCOPE,
+        )
+    )
+
+
+def test_prober_shortlist_probes_first_n_in_lab_order() -> None:
+    """prober + probe_shortlist=3 -> exactly 3 calls on the first 3 entries."""
+    prober = _mock_prober()
+    result = check_compatibility(
+        task_type="binary", intent="predict", prober=prober, probe_shortlist=3
+    )
+    assert prober.call_count == 3
+    assert [call.args[0] for call in prober.call_args_list] == [
+        e.model for e in result.listing[:3]
+    ]
+    assert all(result.listing[i].availability is prober.return_value for i in range(3))
+    # Beyond the shortlist: untouched, availability stays None.
+    assert all(e.availability is None for e in result.listing[3:])
+
+
+def test_without_prober_no_calls_and_availability_none() -> None:
+    """Default is network-free: no prober -> availability None on every entry."""
+    result = check_compatibility(task_type="binary", intent="predict")
+    assert result.listing
+    assert all(e.availability is None for e in result.listing)
+
+
+def test_probe_shortlist_larger_than_listing_caps_at_listing_length() -> None:
+    """probe_shortlist=10 on a 3-entry listing probes only 3 times."""
+    prober = _mock_prober()
+    result = check_compatibility(
+        task_type="multilabel", intent="predict", prober=prober, probe_shortlist=10
+    )
+    assert len(result.listing) == 3  # census-checked: 3 multilabel finetuned entries
+    assert prober.call_count == len(result.listing)
+
+
+def test_prober_without_n_defaults_to_shortlist_20() -> None:
+    """prober given without probe_shortlist probes the default cap of 20."""
+    prober = Mock(return_value=AvailabilityReport(state=AvailabilityState.UNKNOWN))
+    result = check_compatibility(task_type="binary", intent="predict", prober=prober)
+    assert len(result.listing) > 20  # 115 binary entries — the cap is exercised
+    assert prober.call_count == 20
+
+
+def test_models_argument_suppresses_listing() -> None:
+    """Explicit models still return verdicts only — the listing stays empty."""
+    result = check_compatibility(
+        validate_data(["ACGT" * 10]), models=[PROMOTER_REPO], task_type="binary"
+    )
+    assert result.listing == []
+    assert len(result.verdicts) == 1
