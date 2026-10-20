@@ -330,10 +330,14 @@ def test_validate_data_autodetect_picks_acgt_dominant_column(tmp_path) -> None:
 
 
 def test_validate_data_no_dna_column_reports_error_and_returns(tmp_path) -> None:
-    """No qualifying column: error SEQUENCE_COLUMN_NOT_FOUND, report still returns."""
+    """No qualifying column: error SEQUENCE_COLUMN_NOT_FOUND, report still returns.
+
+    The header carries "sequence" as a substring so the headerless-csv txt
+    demotion rule does NOT fire — the tabular autodetect path is exercised.
+    """
     path = _write_lines(
         tmp_path / "prose.csv",
-        ["description,title", "hello world,foo bar", "another line,baz qux"],
+        ["sequence_id,note", "hello world,foo", "another line,bar"],
     )
     report = validate_data(path)
     missing = _finding(report, DataReasonCode.SEQUENCE_COLUMN_NOT_FOUND)
@@ -405,21 +409,20 @@ def test_validate_data_dict_of_splits_one_report_per_key(tmp_path) -> None:
     train = _write_lines(
         tmp_path / "train.csv", ["sequence,label", "ACGT" * 10 + ",1", "ACGT" * 10 + ",0"]
     )
-    test = _write_lines(
-        tmp_path / "test.csv", ["sequence,label", "TTTT" * 10 + ",0"]
-    )
+    test = _write_lines(tmp_path / "test.csv", ["sequence,label", "TTTT" * 10 + ",0"])
     report = validate_data({"train": train, "test": test})
     assert [s.name for s in report.splits] == ["train", "test"]
     assert [s.row_count for s in report.splits] == [2, 1]
     assert sum(s.row_count for s in report.splits) == 3
     # combined (deduplicated) report-level findings from the split readers
-    assert sum(
-        1 for f in report.findings if f.reason_code == DataReasonCode.LABEL_COLUMN_GUESSED
-    ) == 1
+    assert (
+        sum(1 for f in report.findings if f.reason_code == DataReasonCode.LABEL_COLUMN_GUESSED) == 1
+    )
 
 
 def test_validate_data_duplicates_never_drop_rows(tmp_path) -> None:
     """100 rows containing 5 duplicate occurrences: count 5 reported, 100 counted."""
+
     def _vary(i: int) -> str:
         """Distinct quaternary tail over ACGT so every generated row is unique."""
         chars = []
@@ -430,7 +433,7 @@ def test_validate_data_duplicates_never_drop_rows(tmp_path) -> None:
 
     unique = ["ACGT" * 5 + _vary(i) for i in range(95)]  # 95 distinct, >= 21 chars
     body = unique + [unique[0]] * 5  # 100 rows, 95 distinct
-    rows = ["sequence"] + body
+    rows = ["sequence", *body]
     path = _write_lines(tmp_path / "dups.csv", rows)
     report = validate_data(path)
     split = report.splits[0]
@@ -442,12 +445,8 @@ def test_validate_data_duplicates_never_drop_rows(tmp_path) -> None:
 
 def test_validate_data_list_of_file_paths_concatenates(tmp_path) -> None:
     """A list of structured file paths is read and concatenated (parity rule)."""
-    first = _write_lines(
-        tmp_path / "a.csv", ["sequence,label", "ACGT" * 10 + ",1"]
-    )
-    second = _write_lines(
-        tmp_path / "b.csv", ["sequence,label", "TTTT" * 10 + ",0"]
-    )
+    first = _write_lines(tmp_path / "a.csv", ["sequence,label", "ACGT" * 10 + ",1"])
+    second = _write_lines(tmp_path / "b.csv", ["sequence,label", "TTTT" * 10 + ",0"])
     report = validate_data([first, second])
     assert report.splits[0].row_count == 2
 
@@ -504,9 +503,7 @@ def test_validate_data_explicit_columns_win_and_missing_label_warns(tmp_path) ->
 
 def test_validate_data_explicit_seq_col_missing_errors(tmp_path) -> None:
     """An explicit but absent sequence column errors SEQUENCE_COLUMN_NOT_FOUND."""
-    path = _write_lines(
-        tmp_path / "noseq.csv", ["label", "1", "0"]
-    )
+    path = _write_lines(tmp_path / "noseq.csv", ["label", "1", "0"])
     report = validate_data(path, seq_col="sequence")
     assert _finding(report, DataReasonCode.SEQUENCE_COLUMN_NOT_FOUND) is not None
     assert report.splits[0].row_count == 0
@@ -518,3 +515,153 @@ def test_validate_data_dict_of_split_sequence_lists(tmp_path) -> None:
     assert [s.name for s in report.splits] == ["train", "val"]
     assert [s.row_count for s in report.splits] == [2, 1]
     assert sum(s.row_count for s in report.splits) == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reader edge behaviors: dispatch guards and degradation paths
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_validate_data_empty_dict_raises() -> None:
+    """An empty dict of splits raises a matchable ValueError."""
+    with pytest.raises(ValueError, match=r"must not be empty"):
+        validate_data({})
+
+
+def test_validate_data_unsupported_source_type_raises() -> None:
+    """A non-path/non-list/non-dict source raises the unsupported-type ValueError."""
+    with pytest.raises(ValueError, match=r"Unsupported validate_data source type"):
+        validate_data(42)  # type: ignore[arg-type]
+
+
+def test_validate_data_nonstring_sequence_element_raises() -> None:
+    """A raw sequence list holding a non-string raises naming the position."""
+    with pytest.raises(ValueError, match=r"element 1"):
+        validate_data(["ACGT" * 10, 5])  # type: ignore[list-item]
+
+
+def test_validate_data_dict_split_unsupported_value_raises(tmp_path) -> None:
+    """A dict split value that is neither path nor list raises matchably."""
+    with pytest.raises(ValueError, match=r"Unsupported source type for split 'train'"):
+        validate_data({"train": 42})  # type: ignore[dict-item]
+
+
+def test_validate_data_dict_split_pkl_refused(tmp_path) -> None:
+    """A pkl path inside a dict of splits: zero-row split + report-level refusal."""
+    pkl_path = tmp_path / "split.pkl"
+    pkl_path.write_bytes(b"\x80\x04nope")
+    report = validate_data({"train": str(pkl_path)})
+    assert report.splits[0].row_count == 0
+    assert _finding(report, DataReasonCode.UNSUPPORTED_FORMAT_PKL) is not None
+    assert report.splits[0].findings == []  # refusal finding lives at report level
+
+
+def test_validate_data_fasta_path_reads_with_canonical_columns(tmp_path) -> None:
+    """A fasta path: sequences + structural label column (sequence/label names)."""
+    path = tmp_path / "data.fa"
+    path.write_text(">seq1|sample1\nACGT\nACGTACGTACGTACGTAC\n", encoding="utf-8")
+    report = validate_data(str(path))
+    assert report.splits[0].row_count == 1
+    assert report.seq_col == "sequence"
+    assert report.label_col == "label"
+    assert report.label_dtype == "str"
+
+
+def test_validate_data_fasta_and_txt_lists_refused(tmp_path) -> None:
+    """Lists of fasta/txt paths raise the same refusals the parity reference raises."""
+    first = tmp_path / "one.fa"
+    second = tmp_path / "two.fa"
+    first.write_text(">a|x\nACGTACGTACGTACGTACGT\n", encoding="utf-8")
+    second.write_text(">b|y\nTTTTTTTTTTTTTTTTTTTT\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"FASTA files must be single files"):
+        validate_data([str(first), str(second)])
+    txt_first = tmp_path / "a.txt"
+    txt_second = tmp_path / "b.txt"
+    txt_first.write_text("ACGTACGTACGTACGTACGT one\n", encoding="utf-8")
+    txt_second.write_text("TTTTTTTTTTTTTTTTTTTT zero\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"TXT files must be single files"):
+        validate_data([str(txt_first), str(txt_second)])
+
+
+def test_validate_data_json_lines_file_reads(tmp_path) -> None:
+    """A JSON-lines file falls back to line-oriented parsing and validates."""
+    path = tmp_path / "lines.json"
+    path.write_text(
+        '{"sequence": "ACGTACGTACGTACGTACGT", "label": 1}\n'
+        '{"sequence": "TTTTTTTTTTTTTTTTTTTT", "label": 0}\n',
+        encoding="utf-8",
+    )
+    report = validate_data(str(path))
+    assert report.splits[0].row_count == 2
+    assert report.seq_col == "sequence"
+
+
+def test_validate_data_corrupt_json_raises_failed_to_read(tmp_path) -> None:
+    """An unparseable json file raises the wrapped matchable read error."""
+    path = tmp_path / "broken.json"
+    path.write_text("this is not json {", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"Failed to read data file"):
+        validate_data(str(path))
+
+
+def test_validate_data_empty_label_cells_and_all_null_column(tmp_path) -> None:
+    """Empty label cells and an all-null column: null-safe census, no crash."""
+    path = _write_lines(
+        tmp_path / "nulls.csv",
+        ["sequence,note", "ACGT" * 10 + ",", "TTTT" * 10 + ","],
+    )
+    report = validate_data(path)
+    assert report.splits[0].row_count == 2
+    assert report.label_col == "note"  # two-column fallback, guessed
+    assert report.label_dtype is None  # all label cells empty -> no dtype guess
+    assert report.multilabel_sep is None
+
+
+def test_validate_data_two_column_label_fallback(tmp_path) -> None:
+    """With exactly two columns and no candidate name, the other column is the label."""
+    path = _write_lines(
+        tmp_path / "twocol.csv",
+        ["sequence,value", "ACGT" * 10 + ",1.5", "TTTT" * 10 + ",2.5"],
+    )
+    report = validate_data(path)
+    assert report.seq_col == "sequence"
+    assert report.label_col == "value"
+    assert _finding(report, DataReasonCode.LABEL_COLUMN_GUESSED) is not None
+    assert report.label_dtype == "float"
+
+
+def test_validate_data_json_empty_string_cell_scores_zero(tmp_path) -> None:
+    """A real empty-string cell (json) is scored 0.0 without crashing the autodetect."""
+    import json as jsonlib
+
+    path = tmp_path / "emptycell.json"
+    path.write_text(
+        jsonlib.dumps([
+            {"sequence": "ACGT" * 10, "note": ""},
+            {"sequence": "TTTT" * 10, "note": "x"},
+        ]),
+        encoding="utf-8",
+    )
+    report = validate_data(str(path))
+    assert report.seq_col == "sequence"
+    assert report.splits[0].row_count == 2
+
+
+def test_read_local_values_guard_raises(tmp_path) -> None:
+    """The parity seam's own guards: unsupported suffix, empty list, missing column, pkl."""
+    import dnallm.preflight.validation as validation_module
+
+    xyz = tmp_path / "f.xyz"
+    xyz.write_text("x", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"Unsupported file type"):
+        validation_module._read_local_values(str(xyz))
+    with pytest.raises(ValueError, match=r"Empty list of data file paths"):
+        validation_module._read_local_values([])
+    headered = tmp_path / "cols.csv"
+    headered.write_text("sequence_x,label_y\nACGTACGTACGTACGTACGT,1\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=r"Sequence column 'sequence' not found"):
+        validation_module._read_local_values(str(headered), seq_col="sequence")
+    pkl = tmp_path / "f.pkl"
+    pkl.write_bytes(b"x")
+    with pytest.raises(ValueError, match=r"pickle inputs are refused"):
+        validation_module._read_local_values(str(pkl))

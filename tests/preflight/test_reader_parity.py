@@ -70,9 +70,7 @@ def _assert_parity(path, seq_col=SEQ_COL, label_col=LABEL_COL):
 def test_parity_csv_with_header(tmp_path) -> None:
     """Headered csv: both readers yield identical sequence/label values."""
     path = tmp_path / "with_header.csv"
-    path.write_text(
-        f"{SEQ_COL},{LABEL_COL}\n{SEQ_A},1\n{SEQ_B},0\n{SEQ_C},1\n", encoding="utf-8"
-    )
+    path.write_text(f"{SEQ_COL},{LABEL_COL}\n{SEQ_A},1\n{SEQ_B},0\n{SEQ_C},1\n", encoding="utf-8")
     _assert_parity(path)
 
 
@@ -86,9 +84,7 @@ def test_parity_csv_headerless_demotes_to_txt(tmp_path) -> None:
 def test_parity_tsv_with_header(tmp_path) -> None:
     """Headered tsv: tab-delimited values agree across both readers."""
     path = tmp_path / "data.tsv"
-    path.write_text(
-        f"{SEQ_COL}\t{LABEL_COL}\n{SEQ_A}\t1\n{SEQ_B}\t0\n", encoding="utf-8"
-    )
+    path.write_text(f"{SEQ_COL}\t{LABEL_COL}\n{SEQ_A}\t1\n{SEQ_B}\t0\n", encoding="utf-8")
     _assert_parity(path)
 
 
@@ -118,7 +114,9 @@ def test_parity_list_of_files_concatenates(tmp_path) -> None:
     second = tmp_path / "b.csv"
     first.write_text(f"{SEQ_COL},{LABEL_COL}\n{SEQ_A},1\n", encoding="utf-8")
     second.write_text(f"{SEQ_COL},{LABEL_COL}\n{SEQ_B},0\n", encoding="utf-8")
-    pf_seqs, pf_labels = pv._read_local_values([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
+    pf_seqs, _ = pv._read_local_values(
+        [str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL
+    )
     ds = DNADataset.load_local_data([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
     assert pf_seqs == [str(s) for s in ds.dataset["sequence"]]
     assert len(pf_seqs) == 2
@@ -153,9 +151,7 @@ def test_parity_fasta_list_refusal_matches(tmp_path) -> None:
     with pytest.raises(ValueError, match=r"FASTA files must be single files"):
         pv._read_local_values([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
     with pytest.raises(ValueError, match=r"FASTA files must be single files"):
-        DNADataset.load_local_data(
-            [str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL
-        )
+        DNADataset.load_local_data([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -166,24 +162,24 @@ def test_parity_fasta_list_refusal_matches(tmp_path) -> None:
 def test_parity_txt_header_line_triggers_csv_reparse(tmp_path) -> None:
     """A .txt whose first line contains both column names is re-parsed as csv."""
     path = tmp_path / "headerish.txt"
-    path.write_text(
-        f"{SEQ_COL},{LABEL_COL}\n{SEQ_A},1\n{SEQ_B},0\n", encoding="utf-8"
-    )
+    path.write_text(f"{SEQ_COL},{LABEL_COL}\n{SEQ_A},1\n{SEQ_B},0\n", encoding="utf-8")
     _assert_parity(path)
 
 
 def test_parity_txt_plain_split(tmp_path) -> None:
-    """Plain txt split: first two whitespace-separated fields; 1-field lines skipped."""
+    """Plain txt split: first two whitespace-separated fields; 1-field lines skipped.
+
+    Labels stay consistently string-typed: DNADataset's Arrow cast rejects
+    mixed numeric/string label columns, so a numeric/string mix is outside
+    the parity reference's own domain.
+    """
     path = tmp_path / "plain.txt"
-    path.write_text(
-        f"{SEQ_A} 1\n{SEQ_B} 0\nONLYONEFIELD\n{SEQ_C} extra fields here\n",
-        encoding="utf-8",
-    )
+    path.write_text(f"{SEQ_A} one\n{SEQ_B} zero\nONLYONEFIELD\n{SEQ_C} extra\n", encoding="utf-8")
     _assert_parity(path)
     # Pin the skipping/first-two-fields semantics explicitly:
     pf_seqs, pf_labels = _preflight_values(path)
     assert pf_seqs == [SEQ_A, SEQ_B, SEQ_C]
-    assert pf_labels == ["1", "0", "extra"]
+    assert pf_labels == ["one", "zero", "extra"]
 
 
 def test_parity_txt_list_refusal_matches(tmp_path) -> None:
@@ -195,6 +191,4 @@ def test_parity_txt_list_refusal_matches(tmp_path) -> None:
     with pytest.raises(ValueError, match=r"TXT files must be single files"):
         pv._read_local_values([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
     with pytest.raises(ValueError, match=r"TXT files must be single files"):
-        DNADataset.load_local_data(
-            [str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL
-        )
+        DNADataset.load_local_data([str(first), str(second)], seq_col=SEQ_COL, label_col=LABEL_COL)
