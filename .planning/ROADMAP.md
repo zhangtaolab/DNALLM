@@ -120,7 +120,7 @@ Plans:
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 **Wave 1**
@@ -129,7 +129,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1; three file-disjoint plans, parallelizable)*
 - [x] 23-02-PLAN.md — `check_compatibility` complete: three-dimension verdicts (task × length × charset), k-mer/BPE budget classifier, intent-routed lab-first listings, prober shortlist seam (PFC-02/05/07)
 - [x] 23-03-PLAN.md — `probe_availability`: ModelScope-first cached/remote-confirmed/unknown with size/revision, three-way local cache detection, failure→UNKNOWN taxonomy, memo, degraded mode (PFC-03/06)
-- [ ] 23-04-PLAN.md — `validate_sections` factor-out (the one sanctioned refactor, zero behavior change) + `generate_config`/`edit_config` collect-all round-trip (PFC-04)
+- [x] 23-04-PLAN.md — `validate_sections` factor-out (the one sanctioned refactor, zero behavior change) + `generate_config`/`edit_config` collect-all round-trip (PFC-04)
 
 **Wave 3** *(blocked on Waves 1–2)*
 - [ ] 23-05-PLAN.md — facade completion + cross-module user-story integration test (happy + severed-network paths) + phase closeout (per-module coverage ≥96%, structure re-proof, security spot checks)
@@ -186,7 +186,7 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
-| 23. Pre-flight Core | 3/5 | In Progress | - |
+| 23. Pre-flight Core | 4/5 | In Progress | - |
 | 24. Preset Loading | 0/TBD | Not started | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
