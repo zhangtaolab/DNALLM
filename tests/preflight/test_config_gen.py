@@ -24,13 +24,21 @@ from pydantic import BaseModel, ValidationError
 from dnallm.configuration.configs import (
     BenchmarkConfig,
     TaskConfig,
+    TrainingConfig,
     load_config,
     validate_sections,
 )
+from dnallm.preflight.config_gen import _SECTION_ORDER, generate_config
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 PACKAGED_CONFIGS = sorted((REPO_ROOT / "configs").glob("*.yaml"))
 BENCHMARK_YAML = REPO_ROOT / "example" / "notebooks" / "benchmark" / "benchmark_config.yaml"
+
+# Registry-pinned fixtures (Phase 22 test-suite precedent): every prefilled
+# value asserted below was measured against the real registry at plan time.
+FINETUNED_REPO = "zhangtaolab/plant-dnabert-BPE-promoter"
+FINETUNED_LABEL_NAMES = ["Not promoter", "Core promoter"]
+BASE_REPO = "zhangtaolab/plant-dnabert-BPE"
 
 
 def _raw_with_config_path(path: Path) -> dict:
@@ -123,3 +131,141 @@ class TestFactorOutStructure:
 
         assert source.count("def validate_sections(") == 1
         assert source.count('configs["task"] = TaskConfig') == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 2: generate_config — validated emission with model-derived defaults
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestGenerateConfigEmission:
+    """generate_config emits a complete validated config or field-level errors."""
+
+    def test_finetuned_entry_prefill_from_registry(self):
+        """A finetuned entry prefills task fields and max_length from the registry."""
+        result = generate_config(FINETUNED_REPO)
+
+        assert result.errors == []
+        task = result.config["task"]
+        assert isinstance(task, TaskConfig)
+        assert task.task_type == "binary"
+        assert task.num_labels == 2
+        assert task.label_names == FINETUNED_LABEL_NAMES
+        assert task.threshold == 0.5
+        # The registry-derived context length lands in the section that
+        # validates it (InferenceConfig.max_length) and is the field actually
+        # consumed at runtime (inference.py reads pred_config.max_length).
+        assert result.config["inference"].max_length == 512
+        assert isinstance(result.config["finetune"], TrainingConfig)
+        assert result.config["model"] == {"name": FINETUNED_REPO}
+
+    def test_finetuned_max_length_follows_registry_value(self):
+        """A finetuned entry whose effective_max_length is not the 512 default
+        carries it into the validated inference section (registry-as-truth)."""
+        from dnallm.models import registry
+
+        entry = registry.try_resolve("zhangtaolab/plant-dnagemma-BPE")
+        eff = registry.effective_max_length(entry)
+        assert eff is not None and eff != 512
+
+        result = generate_config("zhangtaolab/plant-dnagemma-BPE")
+
+        assert result.errors == []
+        assert result.config["inference"].max_length == eff
+
+    def test_base_model_with_task_type_argument(self):
+        """A base model takes task_type from the argument; TaskConfig fills
+        the head defaults per its own conventions."""
+        result = generate_config(BASE_REPO, task_type="multiclass")
+
+        assert result.errors == []
+        task = result.config["task"]
+        assert task.task_type == "multiclass"
+        assert task.num_labels == 2
+        assert task.label_names == ["class_0", "class_1"]
+
+    def test_base_model_without_task_type_is_field_level_error(self):
+        """A base model ships no task: omitting task_type yields a
+        TASK_TYPE_REQUIRED field-level error, never a traceback."""
+        result = generate_config(BASE_REPO)
+
+        assert any(
+            "TASK_TYPE_REQUIRED" in e.message and e.section == "task" for e in result.errors
+        )
+        assert "task" not in result.config
+        # Collect-all: the other sections still validate and return.
+        assert result.config["model"] == {"name": BASE_REPO}
+        assert isinstance(result.config["inference"], object)
+
+    def test_unknown_model_is_field_level_error(self):
+        """An unknown model name yields MODEL_NOT_IN_REGISTRY_CFG and an empty
+        config dict — never a top-level exception."""
+        result = generate_config("no-such/model")
+
+        assert len(result.errors) == 1
+        assert result.errors[0].section == "model"
+        assert "MODEL_NOT_IN_REGISTRY_CFG" in result.errors[0].message
+        assert "no-such/model" in result.errors[0].message
+        assert result.config == {}
+
+
+class TestCollectAllValidation:
+    """The collect-all wrapper reports every broken section in one report."""
+
+    def test_two_broken_sections_both_reported_task_first(self):
+        """Two invalid sections each contribute their own errors, ordered by
+        the fixed section order (task before finetune)."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all(
+            {
+                "task": {"task_type": "bogus"},
+                "finetune": {"max_grad_norm": -1.0},
+            }
+        )
+
+        assert [e.section for e in errors] == ["task", "finetune"]
+        assert errors[0].field == "task.task_type"
+        assert errors[1].field == "finetune.max_grad_norm"
+        # Neither broken section constructed; nothing raised.
+        assert "task" not in configs and "finetune" not in configs
+
+    def test_section_error_field_paths_joined(self):
+        """Each ValidationError errors() entry becomes a SectionError with the
+        field path joined as 'section.field' (or the section itself when the
+        error is model-level, e.g. loc == ())."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all(
+            {"task": {"task_type": "multiclass", "num_labels": -1}}
+        )
+
+        assert len(errors) == 1
+        assert errors[0].section == "task"
+        assert errors[0].field == "task"
+        assert "num_labels must be at least 2" in errors[0].message
+
+    def test_valid_section_constructs_alongside_broken_one(self):
+        """One section's failure never stops another from constructing."""
+        from dnallm.preflight.config_gen import _validate_collect_all
+
+        configs, errors = _validate_collect_all(
+            {"task": {"task_type": "bogus"}, "lora": {"r": 16}}
+        )
+
+        assert [e.section for e in errors] == ["task"]
+        assert configs["lora"].r == 16
+
+    def test_section_order_constant_is_canonical(self):
+        """_SECTION_ORDER is the fixed deterministic error-ordering contract."""
+        assert _SECTION_ORDER == (
+            "task",
+            "model",
+            "inference",
+            "finetune",
+            "lora",
+            "ia3",
+            "vep",
+            "sweep",
+            "benchmark",
+        )
