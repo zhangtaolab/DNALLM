@@ -492,7 +492,29 @@ class TestEditConfigRoundTrip:
 
 
 class TestYamlDumpContract:
-    """Write only when output_path is given (D-15); never touch the input."""
+    """Write only when output_path is given AND the run is error-free (D-15, WR-02)."""
+
+    def test_generate_config_with_errors_writes_no_file(self, tmp_path):
+        """generate_config carrying errors never writes output_path (WR-02):
+        a base model without task_type yields TASK_TYPE_REQUIRED and no file
+        on disk — the caller cannot mistake file existence for validity."""
+        out_path = tmp_path / "generated.yaml"
+
+        result = generate_config(BASE_REPO, output_path=str(out_path))
+
+        assert any("TASK_TYPE_REQUIRED" in e.message for e in result.errors)
+        assert not out_path.exists()
+
+    def test_edit_config_with_errors_writes_no_file(self, tmp_path):
+        """edit_config carrying errors (patch or validation) never writes
+        output_path (WR-02) — same rule on the round-trip path."""
+        cfg_path = _write_base_config(tmp_path)
+        out_path = tmp_path / "edited.yaml"
+
+        result = edit_config(cfg_path, {"bogus": {"x": 1}}, output_path=str(out_path))
+
+        assert any("UNKNOWN_SECTION" in e.message for e in result.errors)
+        assert not out_path.exists()
 
     def test_output_written_when_output_path_given(self, tmp_path):
         """The dumped YAML re-loads to equal section values."""

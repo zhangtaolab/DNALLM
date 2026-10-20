@@ -222,9 +222,10 @@ def generate_config(
         model: Model name or repo id to look up in the registry.
         task_type: Task type for base models (ignored for finetuned
             entries, whose registry task wins).
-        output_path: When given, the assembled config mapping is written
-            to exactly this path (``yaml.safe_dump``); when omitted,
-            nothing is written anywhere.
+        output_path: When given and the run is error-free, the assembled
+            config mapping is written to exactly this path
+            (``yaml.safe_dump``); when omitted, or when the result carries
+            any error records, nothing is written anywhere (WR-02).
 
     Returns:
         The :class:`GeneratedConfig` with every successfully validated
@@ -284,7 +285,9 @@ def generate_config(
     config_dict["lora"] = {}
 
     configs, validation_errors = _validate_collect_all(config_dict)
-    if output_path is not None:
+    if output_path is not None and not (errors + validation_errors):
+        # WR-02: an error-carrying result is never materialized on disk —
+        # callers must not mistake file existence for validity.
         _dump_yaml(config_dict, output_path)
     logger.debug(
         f"Generated config for {entry.model}: {len(configs)} sections, "
@@ -387,10 +390,12 @@ def edit_config(
     unknown patch section, an invalid value, or a document with no
     recognized sections is a record in ``errors``, never a traceback.
 
-    Nothing is written unless ``output_path`` is explicitly given, in
-    which case the patched mapping is dumped (``yaml.safe_dump``) to
-    exactly that path; the input file is never modified and the caller's
-    dict is never mutated.
+    Nothing is written unless ``output_path`` is explicitly given AND the
+    run produced no error records, in which case the patched mapping is
+    dumped (``yaml.safe_dump``) to exactly that path (WR-02: file
+    existence always implies a valid config — an error-carrying result is
+    never silently materialized on disk); the input file is never modified
+    and the caller's dict is never mutated.
 
     Args:
         existing: YAML path or parsed config mapping to start from.
@@ -418,7 +423,9 @@ def edit_config(
     patch_errors = _apply_patch(config_dict, patch or {})
     configs, validation_errors = _validate_collect_all(config_dict)
 
-    if output_path is not None:
+    if output_path is not None and not (patch_errors + validation_errors):
+        # WR-02 (same rule as generate_config): only an error-free run is
+        # dumped — file existence must imply a valid config.
         _dump_yaml(config_dict, output_path)
     logger.debug(
         f"Edited config: {len(configs)} sections, "
