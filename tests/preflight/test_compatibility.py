@@ -224,9 +224,7 @@ def test_supervised_typed_base_entry_ok_for_supervised_task() -> None:
 def test_task_alias_normalization_matches_registry_vocabulary() -> None:
     """'multi_label_classification' behaves as 'multilabel' (alias normalization)."""
     multilabel_repo = next(
-        e.model
-        for e in _finetuned_entries("multilabel")
-        if e.task.num_labels is not None
+        e.model for e in _finetuned_entries("multilabel") if e.task.num_labels is not None
     )
     result = check_compatibility(
         validate_data(["ACGT" * 10]),

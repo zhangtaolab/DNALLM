@@ -23,10 +23,13 @@ from dnallm.preflight import (
     validate_data,
 )
 
-# Pinned registry fixture (Phase 22 lane): the promoter finetuned entry with
-# effective_max_length 512 inherited from its base zhangtaolab/plant-dnabert-BPE.
+# Pinned registry fixture (Phase 22 lane): the promoter finetuned entry over
+# base zhangtaolab/plant-dnabert-BPE (DebertaV2Tokenizer = BPE class,
+# effective_max_length 512). The 23-02 budget classifier gives BPE entries a
+# conservative 3-chars-per-token char budget: 512 x 3 = 1536 (supersedes the
+# 23-01 tracer's 1:1 pin of 512).
 PROMOTER_REPO = "zhangtaolab/plant-dnabert-BPE-promoter"
-PROMOTER_BUDGET = 512
+PROMOTER_BUDGET = 1536
 
 # Plan fixture with the too-short member corrected to 18 chars (the plan's
 # literal "ACGTACGTACGTACGTACGT" is 5 x ACGT = 20 chars, which is NOT shorter
@@ -206,7 +209,7 @@ def test_check_compatibility_real_model_length_ok() -> None:
 
 def test_check_compatibility_truncation_warns_with_exact_counts() -> None:
     """Rows longer than the char budget warn with exact count and fraction."""
-    report = validate_data(["A" * 600, "C" * 100])
+    report = validate_data(["A" * 1600, "C" * 100])
     result = check_compatibility(report, models=[PROMOTER_REPO])
     length = _length_dimension(result.verdicts[0])
     assert length.status == VerdictStatus.WARN
@@ -280,10 +283,15 @@ def test_end_to_end_tracer_flow_over_real_registry_entry() -> None:
     result = check_compatibility(report, models=[PROMOTER_REPO], task_type="Binary ")
     verdict = result.verdicts[0]
     assert verdict.model == PROMOTER_REPO
-    assert verdict.overall == VerdictStatus.OK  # all lengths <= 512-char budget
+    # 23-02 three-dimension engine: task ok, length ok (all <= 1536 budget),
+    # charset warn (N is an ambiguity code) -> overall warn, never fail.
+    assert verdict.overall == VerdictStatus.WARN
     length = _length_dimension(verdict)
     assert length.details["budget_chars"] == PROMOTER_BUDGET
     assert length.details["truncated_row_count"] == 0
+    charset = next(d for d in verdict.dimensions if d.dimension == "charset")
+    assert charset.status == VerdictStatus.WARN
+    assert charset.details["ambiguity_chars"] == {"N": 8}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
