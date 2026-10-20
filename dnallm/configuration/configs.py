@@ -695,16 +695,29 @@ class DNALLMConfig(TypedDict, total=False):
     benchmark: BenchmarkConfig
 
 
-def load_config(config_path: str) -> DNALLMConfig:
-    """Load configuration from a YAML file and return a dictionary of
-    configuration objects.
-    Args:
-        config_path (str): Path to the YAML configuration file.
-    """
+def validate_sections(config_dict: dict) -> DNALLMConfig:
+    """Construct the per-section config objects from a raw config mapping.
 
-    with open(config_path, encoding="utf-8") as f:
-        config_dict = yaml.safe_load(f)
-        config_dict["config_path"] = os.path.abspath(config_path)
+    The shared validation path for every config workflow: ``load_config``
+    calls this after reading the YAML file, and the pre-flight config
+    generator (``dnallm.preflight.config_gen``) calls it for validated
+    emission and round-trip revalidation. Every section is optional; the
+    ``model`` section stays a plain dict (passthrough, never validated).
+
+    Args:
+        config_dict (dict): The raw config mapping. ``load_config`` injects
+            the resolved ``config_path`` key into it before calling; the
+            benchmark section consumes this FULL raw dict.
+
+    Returns:
+        A ``DNALLMConfig`` mapping holding every section present in the
+        input (empty when the input carries none).
+
+    Raises:
+        pydantic.ValidationError: On the first section that fails its
+            schema (raise-first — the caller decides whether to collect
+            all errors instead).
+    """
 
     configs: DNALLMConfig = {}
 
@@ -745,3 +758,22 @@ def load_config(config_path: str) -> DNALLMConfig:
         configs["benchmark"] = BenchmarkConfig(**config_dict)
 
     return configs
+
+
+def load_config(config_path: str) -> DNALLMConfig:
+    """Load configuration from a YAML file and return a dictionary of
+    configuration objects.
+
+    File reading and ``config_path`` injection live here; section
+    construction is delegated to the shared :func:`validate_sections`
+    path (same behavior as before the factor-out).
+
+    Args:
+        config_path (str): Path to the YAML configuration file.
+    """
+
+    with open(config_path, encoding="utf-8") as f:
+        config_dict = yaml.safe_load(f)
+        config_dict["config_path"] = os.path.abspath(config_path)
+
+    return validate_sections(config_dict)
