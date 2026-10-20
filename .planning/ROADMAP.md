@@ -88,6 +88,7 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
 **Milestone goal (v1.4):** one terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout, all work on branch `v1.4`.
 
 ### Phase 22: Registry Foundation — Runtime Loader & Enrichment
+
 **Goal**: `model_info.yaml` becomes a runtime-consumable single source of truth — one cached, read-only, typed loader is the file's sole parser, entries gain structured tokenizer/max-length metadata, and integrity tests make both properties permanent
 **Depends on**: Nothing (first phase of v1.4 — v1.3 shipped 2026-10-16; Phase 21 reopen closed 2026-10-17)
 **Requirements**: REG-01, REG-02, REG-03
@@ -95,15 +96,20 @@ Full phase details, requirements mapping, and success criteria: [milestones/v1-R
   1. Any consumer can look up registry entries by name, repo_id, task_type, or base_model through `dnallm/models/registry.py` and get typed entries from a single cached parse (CSafeLoader with SafeLoader fallback; `reload()` forces a refresh) — and a grep-guard test fails if any second parser of `model_info.yaml` appears in `dnallm/`
   2. Registry entries expose structured `tokenizer_type` and `max_length` — enrichment landed as scripted text insertion with provenance comments preserved — with enrichment-schema invariants tested across all 236 entries
   3. The extended 261020-kwt integrity suite proves the loader is born — and stays — read-only: no write or YAML round-trip API exists on it, and every provenance block (including the PlantHelixSeek label-order freeze) remains present and intact
+
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 - [ ] 22-01-PLAN.md — Cached read-only typed loader (`dnallm/models/registry.py`, sole parser, grep-guarded, Pydantic-hard-validated, effective-value inheritance) + loader-side REG-03 guards
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 22-02-PLAN.md — `tokenizer_type`/`max_length` enrichment (probe-then-commit, scripted insertion) + extended integrity suite + live-inheritance proofs
 
 **Note**: enrichment schema (`tokenizer_type`/`max_length` shape, insertion discipline) is finalized at phase planning (research flag within Phase R); the loader itself is a standard cached package-data pattern — no `--research-phase` needed. Schema finalized in 22-01/22-02 plans: optional top-level `tokenizer_type: str` / `max_length: int > 0` fields, loader-resolved `base_model` inheritance.
 
 ### Phase 23: Pre-flight Core — Pure Validation / Suitability / Config API
+
 **Goal**: A pure, synchronous, pytest-covered pre-flight API — `validate_data`, `check_compatibility`, `generate_config`, and a ModelScope-first availability probe — that every future shell (TUI now, MCP tools and notebooks later) consumes without owning any verdict logic
 **Depends on**: Phase 22 (the core reads registry metadata, lineage, and lab-model identity through the loader — never a second parse)
 **Requirements**: PFC-01, PFC-02, PFC-03, PFC-04, PFC-05, PFC-06, PFC-07
@@ -113,20 +119,24 @@ Plans:
   3. The availability probe is ModelScope-first and returns cached / remote-confirmed / unknown states with size and revision — without downloading weights; rate-limit responses map to unknown (never "unavailable"), and probes are injectable so the unit suite runs network-free
   4. `generate_config()` emits a validated config and round-trips load-existing → edit → revalidate over a shared `validate_sections` path with `load_config` (the one sanctioned refactor), collecting field-level errors instead of raw tracebacks
   5. With the network severed or any probe failing, every core function still returns — degraded to UNKNOWN verdicts, never a hard error from unavailability
+
 **Plans**: TBD
 **Note**: `--research-phase` suggested — two spikes: (a) effective-endpoint reporting through huggingface_hub resolved constants (in-process `HF_ENDPOINT` toggle effect at installed versions), (b) the ModelScope cache-layout resolver against installed modelscope (two layouts)
 
 ### Phase 24: Preset Loading — `load_preset_model` Registry Rewire
+
 **Goal**: Registry entry names resolve at runtime in `load_preset_model` — a finetuned entry loads with its head/labels/threshold patched into TaskConfig — filling the grep-verified dead `preset` path without changing any existing family behavior
 **Depends on**: Phase 22 (resolution goes through the loader; needs nothing from Phase 23 — file-disjoint from it and wave-parallelizable under single-tree pathspec-commit discipline)
 **Requirements**: LOAD-01
 **Success Criteria** (what must be TRUE):
   1. A user can pass a registry entry name (e.g. a PlantHelixSeek finetuned checkpoint) to `load_preset_model` and get a loaded model with `num_labels` / `label_names` / `threshold` taken from the registry entry and patched into TaskConfig — no manual config editing
   2. Every existing family-name invocation of `load_preset_model` behaves identically after the rewire (regression-tested), so the new behavior is additive only — and the base↔finetuned axis is live at runtime via `base_model`
+
 **Plans**: TBD
 **Note**: integration points grep-verified with line anchors (model.py:1567–1614, dead `preset` path); low-risk standard pattern — no `--research-phase`
 
 ### Phase 25: Terminal UI — Pre-flight Wizard & `tui` Extra
+
 **Goal**: `dnallm preflight` launches a Textual wizard — env → data → suitability → config → select-to-download — that is presentation-only over the Phase-23 core, lands behind a `tui` extra whose CI wiring arrives atomically before any panel, and absorbs the R4 config-editing need
 **Depends on**: Phases 22, 23 (deepest dependency: the wizard renders core reports and registry listings; Phase 24 is sequenced before it so registry-name resolution is live end-to-end when the wizard emits configs)
 **Requirements**: TUI-01, TUI-02, TUI-03, TUI-04, TUI-05, TUI-06, TUI-07, TUI-08, PKG-01
@@ -136,11 +146,13 @@ Plans:
   3. A user can walk the full flow — env panel (device/VRAM/library versions/disk from the core, no logic in screens) → data panel (the `validate_data()` report with per-rule failures, counts, and reason codes) → suitability panel (compatibility/availability verdicts with lineage routing and lab-first ordering; model selection feeds the next step) → config panel (generate or edit an existing YAML with live collect-all validation) — and leave with a validated config emitted
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
+
 **Plans**: TBD
 **UI hint**: yes
 **Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
 
 ### Phase 26: MCP Consistency — Registry-Keyed Check & Honest Listing
+
 **Goal**: The MCP layer tells the truth about models — per-model MCP YAMLs are compared against the registry (repo-id-keyed, warn-first, never writing) with a CI check over committed configs, and `get_all_available_models` serves the registry listing with a configured/loaded overlay
 **Depends on**: Phases 22, 23 (registry keying plus the core's finding-type conventions; deliberately last so the registry format stabilizes through two consumers before comparison semantics freeze — independent of Phase 25 and parallelizable with it)
 **Requirements**: MCP-01, MCP-02, MCP-03
@@ -148,6 +160,7 @@ Plans:
   1. `check_config_registry_consistency()` compares every per-model MCP YAML against the registry keyed on repo id across task_type, num_labels, label_names ORDER, threshold, and source — warn-first with a `strict_registry` opt-in — and it never writes anything
   2. A CI check runs the consistency checker over `dnallm/mcp/configs/`, so config↔registry drift fails the build (coverage of user-facing example configs decided at phase planning)
   3. `get_all_available_models` reports the registry listing overlaid with configured/loaded state — an MCP client's model menu matches what it can actually call (closing the name/reality mismatch, issue #64's registry-consumption half)
+
 **Plans**: TBD
 **Note**: owner call at phase planning — consistency-check scope (committed configs only vs also `configs/*.yaml` user-facing examples)
 
