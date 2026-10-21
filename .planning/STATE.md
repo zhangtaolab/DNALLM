@@ -5,11 +5,11 @@ milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 25
 current_phase_name: Terminal UI — Pre-flight Wizard & `tui` Extra
 status: planning
-stopped_at: Phase 24 complete, ready to plan Phase 25
-last_updated: "2026-10-21T02:21:22.670Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-10-21T06:44:31.117Z"
 last_activity: 2026-10-21
 last_activity_desc: Phase 24 complete, transitioned to Phase 25
-state_head: a24bc0c45b64fcdf2ee502734d5db072fe50f8bb
+state_head: bf2acf34e63e400ef2ad0815c6d3c82057b7b90d
 progress:
   total_phases: 5
   completed_phases: 3
@@ -135,9 +135,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-21T02:11:42.843Z
-Stopped at: Phase 24 complete, ready to plan Phase 25
-Resume file: None
+Last session: 2026-10-21T06:44:31.084Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-terminal-ui-pre-flight-wizard-tui-extra/25-CONTEXT.md
 
 ## Operator Next Steps
 
