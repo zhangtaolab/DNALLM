@@ -6,6 +6,16 @@ from various sources including Hugging Face Hub, ModelScope, and local storage.
 """
 # pyright: reportAttributeAccessIssue=false, reportMissingImports=false
 
+# Ordering guarantee (see dnallm/models/__init__.py): the compatibility shims
+# must install before the module-level torch/transformers imports below resolve
+# any modeling symbol. transformers_compat runs apply_patches() at import time
+# (transformers >= 5.19 queries the accelerator while it imports
+# modeling_utils and raises on CUDA-built torch without a visible GPU -- the
+# test-cuda CI legs); cuda_compat registers the CUDA 13 SONAMEs that
+# bitsandbytes loads through this module for 4-bit models.
+from ..utils import transformers_compat as _transformers_compat  # ruff: ignore[unused-import]
+from ..utils import cuda_compat as _cuda_compat  # ruff: ignore[unused-import]
+
 import hashlib
 import os
 import time
