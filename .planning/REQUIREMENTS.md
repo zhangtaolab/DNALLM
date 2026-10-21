@@ -46,7 +46,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 ### Packaging (Phase 25)
 
-- [ ] **PKG-01**: The one-cycle `full` extras alias is removed (pre-committed at v1.3 close), sequenced atomically with TUI-01's install-line changes
+- [x] **PKG-01**: The one-cycle `full` extras alias is removed (pre-committed at v1.3 close), sequenced atomically with TUI-01's install-line changes
 
 ## Future Requirements
 
@@ -98,7 +98,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 | TUI-06 | Phase 25 | Pending |
 | TUI-07 | Phase 25 | Pending |
 | TUI-08 | Phase 25 | Pending |
-| PKG-01 | Phase 25 | Pending |
+| PKG-01 | Phase 25 | Complete |
 | MCP-01 | Phase 26 | Pending |
 | MCP-02 | Phase 26 | Pending |
 | MCP-03 | Phase 26 | Pending |
