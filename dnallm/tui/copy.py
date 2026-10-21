@@ -57,6 +57,12 @@ __all__ = [
     "DATA_SPLIT_ROW_EMPTY",
     "DATA_SUMMARY_HEADING",
     "EMPTY_PATH_PROMPT",
+    "ENTRY_BLURB",
+    "ENTRY_CONFIG_EMPTY",
+    "ENTRY_CONFIG_PROMPT",
+    "ENTRY_EDIT_CONFIG",
+    "ENTRY_PANEL_TITLE",
+    "ENTRY_START_FROM_DATA",
     "ENV_CHECK_FAILED",
     "ENV_CONTINUE_ACTION",
     "ENV_DEVICE_SECTION",
@@ -94,6 +100,27 @@ __all__ = [
 ]
 
 APP_TITLE = "DNALLM pre-flight check"
+
+# ── Entry choice (D-07) ─────────────────────────────────────────────────────
+# Two doors: the new user starts from their data, the returning user opens the
+# file they already have. Exported by the entry panel, skipped by --config.
+
+ENTRY_PANEL_TITLE = "Where would you like to start?"
+
+ENTRY_BLURB = (
+    "Start from your own data and we will suggest models and build a config, "
+    "or open a config file you already have."
+)
+
+ENTRY_START_FROM_DATA = "Start from my data"
+
+ENTRY_EDIT_CONFIG = "Edit an existing config file"
+
+ENTRY_CONFIG_PROMPT = "Paste the full path to an existing config file (.yaml)."
+
+ENTRY_CONFIG_EMPTY = (
+    'Type the full path to the config file first, then press "Edit an existing config file".'
+)
 
 INSTALL_HINT = (
     "The terminal wizard needs an optional package that is not installed yet. "

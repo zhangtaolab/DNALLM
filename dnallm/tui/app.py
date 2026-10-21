@@ -128,6 +128,14 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-save { width: auto; margin-left: 2; }
     #config-save-reason { padding: 0 2; }
     #config-quit-hint { padding: 0 2; }
+    #entry-body { height: 1fr; padding: 0 2; }
+    #entry-title { text-style: bold; }
+    #entry-blurb { margin-bottom: 1; }
+    #entry-from-data { width: auto; }
+    #entry-config-path { margin-top: 1; }
+    #entry-from-config { width: auto; margin-top: 1; }
+    #entry-status { text-style: italic; }
+    #entry-quit-hint { padding: 0 2; }
     """
 
     def __init__(
@@ -280,6 +288,50 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("AvailabilityUpdated arrived with no suitability panel showing")
             return
         await apply_update(message.model, message.availability)
+
+    def show_entry(self) -> None:
+        """Move past the environment panel: ask how to start, or jump to config.
+
+        D-07's dual entry. ``--config`` means the user already told us which
+        file to open, so the choice is skipped and the config panel opens on
+        that path; otherwise the entry panel offers "start from your data"
+        versus "edit an existing config file".
+
+        The import is function-local so this module imports without the later
+        panels, exactly as :meth:`show_suitability` does.
+        """
+        if self.state.config_path:
+            self.show_config(config_path=self.state.config_path)
+            return
+        try:
+            from .screens.entry import EntryScreen
+        except ImportError:
+            logger.warning("The entry panel is not part of this build yet")
+            return
+        self.push_screen(EntryScreen())
+
+    def show_config(
+        self,
+        *,
+        model: str | None = None,
+        task_type: str | None = None,
+        config_path: str | None = None,
+    ) -> None:
+        """Open the config panel, seeded with a model, a file, or nothing.
+
+        Args:
+            model: The model the suitability panel handed over (D-09's
+                suitability → config edge lands here, and only here).
+            task_type: The task type for a base model, passed through verbatim.
+            config_path: An existing YAML to edit; the panel loads it through
+                the core's ``edit_config``, never a screen-side read.
+        """
+        try:
+            from .screens.config import ConfigScreen
+        except ImportError:
+            logger.warning("The config panel is not part of this build yet")
+            return
+        self.push_screen(ConfigScreen(model=model, task_type=task_type, config_path=config_path))
 
     def show_suitability(self) -> None:
         """Move on to the suitability step after the data step ends.

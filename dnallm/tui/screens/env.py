@@ -66,19 +66,16 @@ class EnvScreen(Screen):
         app.collect_env_worker(app.collector)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Open the data panel when the Continue action is pressed.
+        """Open the next step when the Continue action is pressed.
+
+        The app decides that step: the entry choice for a new run, or the
+        config panel directly when ``--config`` named a file (D-07).
 
         Args:
             event: The button press; every other action belongs elsewhere.
         """
         if event.button.id == _CONTINUE_BUTTON_ID:
-            self._open_data_panel()
-
-    def _open_data_panel(self) -> None:
-        """Push the data panel (function-local import: screens stay independent)."""
-        from .data import DataScreen
-
-        self.app.push_screen(DataScreen())
+            self._preflight_app.show_entry()
 
     async def apply_env_report(self, env_report: Mapping[str, object]) -> None:
         """Replace the checking placeholders with the worker's real rows.

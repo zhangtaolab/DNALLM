@@ -26,6 +26,7 @@ from dnallm.preflight import (
     AvailabilityState,
     CompatibilityReport,
     DimensionVerdict,
+    GeneratedConfig,
     Hub,
     ListingEntry,
     ModelVerdict,
@@ -38,6 +39,7 @@ from dnallm.tui import copy
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.data import DataScreen
+from dnallm.tui.screens.entry import EntryScreen
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.screens.suitability import INTENT_FINETUNE, INTENT_PREDICT, SuitabilityScreen
 
@@ -86,8 +88,8 @@ async def _open_data_screen(app: DNALLMPreflightApp, pilot) -> DataScreen:
     return screen
 
 
-async def test_env_continue_opens_the_data_panel() -> None:
-    """The env panel's Continue action pushes the data panel."""
+async def test_env_continue_opens_the_entry_choice() -> None:
+    """The env panel's Continue action offers the two ways in (D-07)."""
     app = DNALLMPreflightApp(collector=FakeCollector())
 
     async with app.run_test(size=(100, 40)) as pilot:
@@ -95,7 +97,7 @@ async def test_env_continue_opens_the_data_panel() -> None:
         assert isinstance(app.screen, EnvScreen)
         await pilot.click("#env-continue")
         await pilot.pause()
-        assert isinstance(app.screen, DataScreen)
+        assert isinstance(app.screen, EntryScreen)
 
 
 async def test_data_panel_renders_the_core_report_verbatim(tmp_path) -> None:
@@ -1113,3 +1115,182 @@ async def test_back_navigation_keeps_the_working_mapping(tmp_path) -> None:
         "r": 16,
     }
     assert kept.raw["finetune"]["num_train_epochs"] == 9
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dual entry (D-07) and the suitability → config edge (D-09), 25-08 Task 3
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class FakeConfigCore:
+    """``generate_config`` / ``edit_config`` stand-ins that record every call.
+
+    Args:
+        generated: The frozen result both stand-ins return.
+    """
+
+    def __init__(self, generated: GeneratedConfig) -> None:
+        self.generated = generated
+        self.generate_calls: list[dict[str, Any]] = []
+        self.edit_calls: list[dict[str, Any]] = []
+
+    def generate(self, model: str, *, task_type: str | None = None) -> GeneratedConfig:
+        """Record the generation request and return the canned result."""
+        self.generate_calls.append({"model": model, "task_type": task_type})
+        return self.generated
+
+    def edit(
+        self,
+        existing: Any,
+        patch: Any = None,
+        *,
+        output_path: Any = None,
+    ) -> GeneratedConfig:
+        """Record the edit request and return the canned result."""
+        self.edit_calls.append({"existing": existing, "patch": patch, "output_path": output_path})
+        return self.generated
+
+
+def _install_config_core(monkeypatch, fake: FakeConfigCore) -> None:
+    """Point the preflight facade's config entry points at *fake*."""
+    monkeypatch.setattr(preflight_facade, "generate_config", fake.generate)
+    monkeypatch.setattr(preflight_facade, "edit_config", fake.edit)
+
+
+async def _open_entry_screen(app: DNALLMPreflightApp, pilot) -> EntryScreen:
+    """Reach the entry panel the way a user does: through the env panel."""
+    await pilot.pause()
+    await pilot.click("#env-continue")
+    await pilot.pause()
+    screen = app.screen
+    assert isinstance(screen, EntryScreen)
+    return screen
+
+
+async def test_start_from_my_data_opens_the_data_panel() -> None:
+    """The first door keeps the D-09 order: data comes next."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _open_entry_screen(app, pilot)
+        await pilot.click("#entry-from-data")
+        await pilot.pause()
+        assert isinstance(app.screen, DataScreen)
+
+
+async def test_edit_an_existing_config_opens_it_through_the_core(tmp_path, monkeypatch) -> None:
+    """The second door loads the pasted path through edit_config, never raw YAML."""
+    config_file = tmp_path / "existing.yaml"
+    config_file.write_text("task:\n  task_type: binary\n", encoding="utf-8")
+    expected = edit_config(config_file, {})
+    fake = FakeConfigCore(expected)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_entry_screen(app, pilot)
+        screen.query_one("#entry-config-path", Input).value = str(config_file)
+        await pilot.click("#entry-from-config")
+        await pilot.pause()
+        active = isinstance(app.screen, ConfigScreen)
+        await _settle_config(pilot, app)
+
+    assert active
+    assert fake.edit_calls[0]["existing"] == str(config_file)
+    assert fake.edit_calls[0]["patch"] == {}
+    assert fake.edit_calls[0]["output_path"] is None
+
+
+async def test_edit_an_existing_config_with_an_empty_path_prompts(monkeypatch) -> None:
+    """An empty path is a prompt, not a read: no core call is made."""
+    fake = FakeConfigCore(GeneratedConfig(config={}, errors=[], raw={}))
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_entry_screen(app, pilot)
+        await pilot.click("#entry-from-config")
+        await pilot.pause()
+        text = _rendered_text(screen)
+        still_entry = isinstance(app.screen, EntryScreen)
+
+    assert still_entry
+    assert copy.ENTRY_CONFIG_EMPTY in text
+    assert fake.edit_calls == []
+
+
+async def test_use_this_model_opens_the_config_panel_with_that_model(monkeypatch) -> None:
+    """The suitability → config edge (D-09) hands the chosen model to the core."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    generated = edit_config({"task": {"task_type": "binary"}}, {})
+    fake = FakeConfigCore(generated)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        table = screen.query_one("#suitability-listing", DataTable)
+        table.move_cursor(row=1)
+        await pilot.pause()
+        await pilot.click("#suitability-use")
+        await pilot.pause()
+        active = isinstance(app.screen, ConfigScreen)
+        await _settle_config(pilot, app)
+
+    assert active
+    assert fake.generate_calls[0]["model"] == report.listing[1].model
+    assert app.state.selected_entry is report.listing[1]
+
+
+async def test_use_this_model_stays_disabled_without_a_selection(monkeypatch) -> None:
+    """With no listing row to choose, the action is disabled and says why."""
+    empty = CompatibilityReport(verdicts=[], listing=[])
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(empty))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    fake = FakeConfigCore(GeneratedConfig(config={}, errors=[], raw={}))
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        disabled = screen.query_one("#suitability-use", Button).disabled
+        await pilot.click("#suitability-use")
+        await pilot.pause()
+        still_suitability = isinstance(app.screen, SuitabilityScreen)
+
+    assert disabled
+    assert still_suitability
+    assert fake.generate_calls == []
+
+
+async def test_back_from_the_config_panel_returns_to_the_entry_screen(
+    tmp_path, monkeypatch
+) -> None:
+    """Escape goes back one step and the loaded mapping survives the trip."""
+    config_file = tmp_path / "existing.yaml"
+    config_file.write_text(CONFIG_WITH_IA3, encoding="utf-8")
+    expected = edit_config(config_file, {})
+    fake = FakeConfigCore(expected)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_entry_screen(app, pilot)
+        screen.query_one("#entry-config-path", Input).value = str(config_file)
+        await pilot.click("#entry-from-config")
+        await pilot.pause()
+        await _settle_config(pilot, app)
+        loaded = app.state.generated_config
+        await pilot.press("escape")
+        await pilot.pause()
+        returned = isinstance(app.screen, EntryScreen)
+        kept = app.state.generated_config
+
+    assert returned
+    assert loaded is not None
+    assert kept is loaded
+    assert kept.raw["ia3"]["r"] == 16

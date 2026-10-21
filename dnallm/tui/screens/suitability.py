@@ -26,8 +26,9 @@ Three rules the renderer exists to keep:
 
 Choosing a row stores the frozen :class:`~dnallm.preflight.report.ListingEntry`
 in :attr:`dnallm.tui.state.WizardState.selected_entry`. The "Use this model"
-control is built here; its destination (the config panel) is wired by 25-08,
-which owns that transition.
+control is built here and its destination is the config panel: activating it
+pushes :class:`~dnallm.tui.screens.config.ConfigScreen` seeded with the chosen
+model (the suitability → config edge of D-09's flow order).
 
 Example:
     app.push_screen(SuitabilityScreen())  # or the data panel's Continue action
@@ -458,12 +459,20 @@ class SuitabilityScreen(Screen):
         self._preflight_app.probe_availability_worker(entry.model, self._preflight_app.prober)
 
     def _confirm_selection(self) -> None:
-        """Acknowledge the recorded choice; the config step owns the transition."""
+        """Open the config panel seeded with the chosen model (D-09).
+
+        This is the suitability → config edge, and the only place it is
+        implemented: ``25-07`` built the control, this plan gives it its
+        destination. The model and the task type the user typed are handed to
+        the panel, which builds the config through the core's
+        ``generate_config``.
+        """
         entry = self._preflight_app.state.selected_entry
         if entry is None:
             self._set_status(copy.SELECT_MODEL_HINT)
             return
         self._set_status(copy.USE_MODEL_CONFIRMED.format(model=entry.entry_name))
+        self._preflight_app.show_config(model=entry.model, task_type=self._task_type())
 
     def _set_status(self, text: str) -> None:
         """Replace the status line with *text*, rendered literally."""

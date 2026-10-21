@@ -15,10 +15,11 @@ import time
 from textual.screen import Screen
 from textual.widgets import Static
 
-from dnallm.preflight import AvailabilityReport, AvailabilityState, GeneratedConfig
+from dnallm.preflight import AvailabilityReport, AvailabilityState, GeneratedConfig, edit_config
 from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.messages import AvailabilityUpdated, ConfigReady
+from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.workers import PreflightWorkers
 from dnallm.utils.env_info import EnvRow
@@ -331,3 +332,49 @@ async def test_a_config_ready_with_no_config_panel_is_harmless() -> None:
         await pilot.pause()
         assert app.last_failure is None
         await pilot.press("q")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-08 Task 3: --config jumps straight to the config panel (D-07)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class FakeEditConfig:
+    """An ``edit_config`` stand-in that records every argument."""
+
+    def __init__(self, generated: GeneratedConfig) -> None:
+        self.generated = generated
+        self.calls: list[dict] = []
+
+    def __call__(self, existing, patch=None, *, output_path=None) -> GeneratedConfig:
+        """Record the request and return the canned result."""
+        self.calls.append({"existing": existing, "patch": patch, "output_path": output_path})
+        return self.generated
+
+
+async def test_the_config_flag_opens_the_config_panel_instead_of_the_entry_choice(
+    monkeypatch, tmp_path
+) -> None:
+    """--config skips the choice and loads the file through edit_config."""
+    config_file = tmp_path / "existing.yaml"
+    config_file.write_text("task:\n  task_type: binary\n", encoding="utf-8")
+    expected = edit_config(config_file, {})
+    fake = FakeEditConfig(expected)
+    monkeypatch.setattr("dnallm.preflight.edit_config", fake)
+    app = DNALLMPreflightApp(collector=FakeCollector(), config_path=str(config_file))
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, EnvScreen)
+        await pilot.click("#env-continue")
+        await pilot.pause()
+        first_non_env = app.screen
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        preview = str(app.screen.query_one("#config-preview", Static).content)
+
+    assert isinstance(first_non_env, ConfigScreen)
+    assert fake.calls[0]["existing"] == str(config_file)
+    assert fake.calls[0]["patch"] == {}
+    assert fake.calls[0]["output_path"] is None
+    assert "task_type: binary" in preview
