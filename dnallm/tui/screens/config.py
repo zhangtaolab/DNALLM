@@ -55,6 +55,7 @@ __all__ = ["ConfigScreen"]
 _TITLE_ID = "config-title"
 _STATUS_ID = "config-status"
 _ERRORS_ID = "config-errors"
+_DETAILS_ID = "config-error-details"
 _PREVIEW_ID = "config-preview"
 _BODY_ID = "config-body"
 _FORM_ID = "config-form"
@@ -250,6 +251,7 @@ class ConfigScreen(Screen):
         self._config_path = config_path
         self._raw: dict = {}
         self._errors: list[SectionError] = []
+        self._show_details = False
         self._bound = False
         self._kept: tuple[str, ...] = ()
 
@@ -284,6 +286,7 @@ class ConfigScreen(Screen):
             with VerticalScroll(id=_SIDE_ID):
                 yield Static(copy.CONFIG_ERRORS_HEADING, id="config-errors-heading")
                 yield Static("", markup=False, id=_ERRORS_ID)
+                yield Button(copy.CONFIG_ERROR_DETAILS_SHOW, id=_DETAILS_ID, disabled=True)
                 yield Static(copy.CONFIG_PREVIEW_HEADING, id="config-preview-heading")
                 yield Static("", markup=False, id=_PREVIEW_ID)
         with Horizontal(id="config-output-row"):
@@ -327,13 +330,16 @@ class ConfigScreen(Screen):
         self._set_status(copy.CONFIG_NO_SOURCE)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Save the config when the (gated) save action is pressed.
+        """Handle this panel's three actions: save, error detail, continue.
 
         Args:
-            event: The button press; only this panel's save action is handled.
+            event: The button press; only this panel's buttons are handled.
         """
         if event.button.id == _SAVE_ID:
             self._save()
+        elif event.button.id == _DETAILS_ID:
+            self._show_details = not self._show_details
+            self._render_errors()
         elif event.button.id == _CONTINUE_ID:
             self._preflight_app.show_download()
 
@@ -454,12 +460,27 @@ class ConfigScreen(Screen):
                 widget.value = _typed_text(values.get(spec.name))
 
     def _render_errors(self) -> None:
-        """Print every error in the core's own order, one line each."""
-        lines = [
-            copy.CONFIG_ERROR_LINE.format(field=error.field, message=error.message)
-            for error in self._errors
-        ]
+        """Print every error as one plain sentence, in the core's own order.
+
+        The plain sentence comes from :func:`copy.config_error_message`; the
+        core's exact message is appended only while the detail toggle is on and
+        only when it differs from that sentence, so nothing is printed twice
+        and the raw text is never silently dropped (GAP A).
+        """
+        if not self._errors:
+            self._show_details = False
+        lines: list[str] = []
+        for error in self._errors:
+            plain = copy.config_error_message(error.section, error.field, error.message)
+            lines.append(copy.CONFIG_ERROR_LINE.format(field=error.field, message=plain))
+            if self._show_details and plain != error.message:
+                lines.append(copy.CONFIG_ERROR_DETAIL_LINE.format(message=error.message))
         self.query_one(f"#{_ERRORS_ID}", Static).update("\n".join(lines))
+        details = self.query_one(f"#{_DETAILS_ID}", Button)
+        details.disabled = not self._errors
+        details.label = (
+            copy.CONFIG_ERROR_DETAILS_HIDE if self._show_details else copy.CONFIG_ERROR_DETAILS_SHOW
+        )
 
     def _render_preview(self) -> None:
         """Show exactly the document a save would write (the core's serializer)."""

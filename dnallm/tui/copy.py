@@ -22,7 +22,12 @@ __all__ = [
     "CONFIG_DEFAULT_EXPORT_NAME",
     "CONFIG_EDITING",
     "CONFIG_ERRORS_HEADING",
+    "CONFIG_ERROR_DETAILS_HIDE",
+    "CONFIG_ERROR_DETAILS_SHOW",
+    "CONFIG_ERROR_DETAIL_LINE",
+    "CONFIG_ERROR_GENERIC",
     "CONFIG_ERROR_LINE",
+    "CONFIG_ERROR_MESSAGES",
     "CONFIG_FIELD_LABELS",
     "CONFIG_HAS_ERRORS",
     "CONFIG_KEPT_AS_IS_HEADING",
@@ -122,6 +127,7 @@ __all__ = [
     "UNKNOWN_STILL_DOWNLOADABLE",
     "USE_MODEL_ACTION",
     "USE_MODEL_CONFIRMED",
+    "config_error_message",
 ]
 
 APP_TITLE = "DNALLM pre-flight check"
@@ -345,8 +351,18 @@ CONFIG_HAS_ERRORS = (
 
 CONFIG_ERRORS_HEADING = "What needs fixing"
 
-# One error line: the exact field path, then the core's own plain message.
+# One error line: the exact field path, then the plain sentence from
+# :func:`config_error_message`.
 CONFIG_ERROR_LINE = "{field} → {message}"
+
+# GAP A: the core's own message is never lost. The plain sentence is what the
+# pane shows; the raw text is one press away and appears only when it differs
+# from the plain sentence, so nothing is printed twice.
+CONFIG_ERROR_DETAILS_SHOW = "Show details from the check"
+
+CONFIG_ERROR_DETAILS_HIDE = "Hide details from the check"
+
+CONFIG_ERROR_DETAIL_LINE = "    detail from the check: {message}"
 
 CONFIG_PREVIEW_HEADING = "The file this would save"
 
@@ -424,6 +440,139 @@ CONFIG_FIELD_LABELS = {
     ("lora", "lora_dropout"): "LoRA dropout",
     ("lora", "target_modules"): "LoRA target modules",
 }
+
+
+# ── Config errors in plain language (GAP A, D-10) ───────────────────────────
+# The core reports a field-level problem as a SectionError: section, field and
+# the message it produced. That message is exact but it is written in Pydantic
+# and reason-code vocabulary ("String should match pattern '^(embedding|...')"),
+# which a biologist cannot act on. These tables translate it.
+#
+# Three rules, in order — and a miss never invents:
+#
+# 1. An exact (section, field, kind) entry wins. Its sentences are the only
+#    place a specific problem is described.
+# 2. Otherwise the kind's generic sentence, filled with the field's friendly
+#    label (or the field path when the field has no label).
+# 3. Otherwise the core's own message, verbatim.
+
+# Ordered: the first fragment found in the raw message decides the kind. The
+# reason codes come first because their messages also contain ordinary words;
+# the Pydantic families follow, from the most specific to the least.
+_CONFIG_ERROR_KINDS: tuple[tuple[str, str], ...] = (
+    ("TASK_TYPE_REQUIRED:", "task_type_required"),
+    ("MODEL_NOT_IN_REGISTRY_CFG:", "model_not_in_registry"),
+    ("UNKNOWN_SECTION:", "unknown_section"),
+    ("NO_SECTIONS:", "no_sections"),
+    ("Value error, num_labels must be at least 2", "too_few_outputs"),
+    ("must be a mapping", "not_a_section"),
+    ("String should match pattern", "not_an_allowed_value"),
+    ("Input should be a valid integer", "not_a_whole_number"),
+    ("Input should be a valid number", "not_a_number"),
+    ("Input should be a valid list", "not_a_list"),
+    ("Input should be a valid boolean", "not_yes_or_no"),
+    ("Field required", "required"),
+    ("Input should be greater than", "too_small"),
+    ("Input should be less than", "too_large"),
+)
+
+# Exact sentences, keyed by (section, section-relative field, kind). The field
+# is always the section-relative form: ``_relative_field`` collapses the
+# core's dotted Pydantic path (``task.task_type``) and its bare hand-built
+# name (``task_type``) onto the same key, so neither convention can miss.
+CONFIG_ERROR_MESSAGES: dict[tuple[str, str, str], str] = {
+    ("task", "task_type", "not_an_allowed_value"): (
+        "Choose one of: embedding, mask, generation, binary, multiclass, multilabel, "
+        "regression or token. Binary is a yes/no answer, multiclass is one of several "
+        "classes, and token is a label for each DNA letter. The longer spellings such as "
+        "binary_classification also work."
+    ),
+    ("task", "task_type", "task_type_required"): (
+        "This model has no built-in task, so choose one: binary is a yes/no answer, "
+        "multiclass is one of several classes, and token is a label for each DNA letter."
+    ),
+    ("task", "task", "too_few_outputs"): (
+        "Multiclass and multilabel training need at least 2 outputs, but this config "
+        "sets fewer. Change Number of outputs in the file."
+    ),
+    ("model", "model", "model_not_in_registry"): (
+        "This model name is not in the model list. Check the spelling, or go back and "
+        "choose a model there."
+    ),
+}
+
+# One sentence per kind, for a field whose exact problem has no entry of its
+# own. Kinds with no template (the three reason codes with an exact entry
+# above) fall through to the core's own message rather than a guess.
+CONFIG_ERROR_GENERIC: dict[str, str] = {
+    "not_a_whole_number": "{label} needs a whole number, for example 3.",
+    "not_a_number": "{label} needs a number, for example 0.001.",
+    "not_a_list": "{label} needs a list separated by commas, for example query, value.",
+    "not_yes_or_no": "{label} needs yes or no.",
+    "required": "{label} cannot be empty.",
+    "too_small": "{label} is below the smallest value allowed. Raise it until this line disappears.",
+    "too_large": "{label} is above the largest value allowed. Lower it until this line disappears.",
+    "not_an_allowed_value": (
+        "{label} is not one of the allowed values. Choose one of the values this setting accepts."
+    ),
+    "not_a_section": "{label}: this part of the file should be a block of settings, not a single value.",
+    "unknown_section": 'The section "{label}" is not one this file understands. Remove it from the file.',
+    "no_sections": "This file has no config sections this wizard understands. Check that it is a DNALLM config file.",
+}
+
+
+def _relative_field(section: str, field: str) -> str:
+    """Strip a leading ``"<section>."`` from a field path, when it has one.
+
+    The core emits two shapes for the same concept: Pydantic-derived errors
+    carry the dotted path (``task.task_type``), while its hand-built errors
+    carry the bare name (``task_type``, ``model``). One normalised key serves
+    both, so a table entry cannot silently miss one convention — the check
+    includes the dot, so a field merely *named* like its section (``lora``
+    holding ``lora_alpha``) is left alone.
+
+    Args:
+        section: The config section the error belongs to.
+        field: The field path as the core reported it.
+
+    Returns:
+        The field relative to its section.
+    """
+    prefix = f"{section}."
+    if field.startswith(prefix):
+        return field[len(prefix) :]
+    return field
+
+
+def config_error_message(section: str, field: str, message: str) -> str:
+    """Say one core validation problem in words a biologist can act on.
+
+    Falls back in a fixed order — the exact sentence, then the kind's generic
+    sentence with the field's friendly label, then the core's own message
+    unchanged. It never invents a sentence for a problem it does not
+    recognise: telling a user something false is worse than showing jargon.
+
+    Args:
+        section: The config section the error belongs to.
+        field: The field path the core reported (dotted or bare).
+        message: The core's own message.
+
+    Returns:
+        The plain sentence, or *message* verbatim when nothing matches.
+    """
+    kind = next((kind for fragment, kind in _CONFIG_ERROR_KINDS if fragment in message), None)
+    if kind is None:
+        return message
+    relative = _relative_field(section, field)
+    exact = CONFIG_ERROR_MESSAGES.get((section, relative, kind))
+    if exact is not None:
+        return exact
+    template = CONFIG_ERROR_GENERIC.get(kind)
+    if template is None:
+        return message
+    label = CONFIG_FIELD_LABELS.get((section, relative), field)
+    return template.format(label=label)
+
 
 # ── Download panel (TUI-07) ────────────────────────────────────────────────
 # The one step that touches the network from the user's intent. Every sentence

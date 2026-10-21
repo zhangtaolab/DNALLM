@@ -834,27 +834,120 @@ async def test_the_preview_equals_the_serialized_working_mapping() -> None:
 
 
 async def test_a_base_model_without_a_task_type_shows_the_error() -> None:
-    """The core's TASK_TYPE_REQUIRED reaches the pane as one readable line."""
+    """The core's TASK_TYPE_REQUIRED reaches the pane as one plain sentence.
+
+    GAP A: the pane says what to choose (A2) and never the reason code; the
+    core's exact message is one press away behind the details control.
+    """
     app = DNALLMPreflightApp(collector=FakeCollector())
 
     async with app.run_test(size=(140, 50)) as pilot:
         screen = await _open_config_screen(app, pilot, model=CONFIG_BASE_REPO)
         await _settle_config(pilot, app)
-        errors = str(screen.query_one("#config-errors", Static).content)
+        plain_errors = str(screen.query_one("#config-errors", Static).content)
         status = _rendered_text(screen)
         stored = app.state.generated_config
+        await pilot.click("#config-error-details")
+        await pilot.pause()
+        detail_errors = str(screen.query_one("#config-errors", Static).content)
+        details_label = screen.query_one("#config-error-details", Button).label
 
     assert stored is not None
-    assert "TASK_TYPE_REQUIRED" in errors
-    assert "task_type" in errors
-    # The error line carries the core's field path and message, core order intact.
-    assert (
-        copy.CONFIG_ERROR_LINE.format(
-            field=stored.errors[0].field, message=stored.errors[0].message
-        )
-        in errors
+    expected = copy.CONFIG_ERROR_MESSAGES["task", "task_type", "task_type_required"]
+    # The error line carries the core's field path and the plain sentence.
+    assert copy.CONFIG_ERROR_LINE.format(field=stored.errors[0].field, message=expected) in (
+        plain_errors
     )
+    assert "TASK_TYPE_REQUIRED" not in plain_errors
+    assert "detail from the check:" not in plain_errors
     assert copy.CONFIG_HAS_ERRORS in status
+    # The core's exact message is never lost — it is one press away.
+    assert "detail from the check:" in detail_errors
+    assert "TASK_TYPE_REQUIRED" in detail_errors
+    assert str(details_label) == copy.CONFIG_ERROR_DETAILS_HIDE
+
+
+async def test_an_unknown_model_shows_the_plain_model_sentence() -> None:
+    """GAP A, the hand-built model error: ("model", "model") reads as A4.
+
+    This is the real path for a hand-built ``SectionError`` that is not the
+    base-model case — the one the earlier suite had no live assertion for.
+    """
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model="no/such-model-xyz")
+        await _settle_config(pilot, app)
+        pane = str(screen.query_one("#config-errors", Static).content)
+        rendered = _rendered_text(screen)
+        save_disabled = screen.query_one("#config-save", Button).disabled
+
+    expected = copy.CONFIG_ERROR_MESSAGES["model", "model", "model_not_in_registry"]
+    assert expected in pane
+    assert "MODEL_NOT_IN_REGISTRY_CFG" not in pane
+    assert save_disabled
+    assert copy.CONFIG_SAVE_DISABLED_REASON in rendered
+
+
+async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp_path) -> None:
+    """GAP A on the smallest screen: A1 fits, the save reason stays visible.
+
+    The details control may sit below the side pane's fold at 80x24, so it is
+    pressed directly rather than clicked. A second press removes the detail
+    lines again — nothing is truncated away or duplicated.
+    """
+    config_file = tmp_path / "bad_task.yaml"
+    config_file.write_text("task:\n  task_type: not-a-task\n", encoding="utf-8")
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        screen = await _open_config_screen(app, pilot, config_path=str(config_file))
+        await _settle_config(pilot, app)
+        pane = str(screen.query_one("#config-errors", Static).content)
+        save_disabled = screen.query_one("#config-save", Button).disabled
+        reason = str(screen.query_one("#config-save-reason", Static).content)
+        reason_bottom = screen.query_one("#config-save-reason", Static).region.bottom
+        height = app.size.height
+        details = screen.query_one("#config-error-details", Button)
+        enabled = not details.disabled
+        label_before = str(details.label)
+        details.press()
+        await pilot.pause()
+        pane_with_details = str(screen.query_one("#config-errors", Static).content)
+        label_after = str(details.label)
+        details.press()
+        await pilot.pause()
+        pane_again = str(screen.query_one("#config-errors", Static).content)
+
+    expected = copy.CONFIG_ERROR_MESSAGES["task", "task_type", "not_an_allowed_value"]
+    assert expected in pane
+    assert "String should match pattern" not in pane
+    assert save_disabled
+    assert reason == copy.CONFIG_SAVE_DISABLED_REASON
+    assert reason_bottom <= height
+    assert enabled
+    assert label_before == copy.CONFIG_ERROR_DETAILS_SHOW
+    assert "detail from the check:" in pane_with_details
+    assert "String should match pattern" in pane_with_details
+    assert label_after == copy.CONFIG_ERROR_DETAILS_HIDE
+    assert pane_again == pane
+
+
+async def test_the_details_control_is_off_while_the_config_is_clean() -> None:
+    """With nothing to explain, the detail control is disabled and says Show."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        details = screen.query_one("#config-error-details", Button)
+        disabled = details.disabled
+        label = str(details.label)
+        pane = str(screen.query_one("#config-errors", Static).content)
+
+    assert disabled
+    assert label == copy.CONFIG_ERROR_DETAILS_SHOW
+    assert pane == ""
 
 
 async def test_the_preview_widget_is_read_only_text() -> None:
@@ -980,9 +1073,14 @@ async def test_the_error_pane_lists_errors_in_the_core_section_order(tmp_path) -
 
     assert len(expected.errors) >= 2
     assert lines == [
-        copy.CONFIG_ERROR_LINE.format(field=error.field, message=error.message)
+        copy.CONFIG_ERROR_LINE.format(
+            field=error.field,
+            message=copy.config_error_message(error.section, error.field, error.message),
+        )
         for error in expected.errors
     ]
+    # The plain sentences replaced the raw messages; no jargon leaked through.
+    assert "String should match pattern" not in "\n".join(lines)
     # task is reported before finetune, exactly as the core ordered them.
     assert expected.errors[0].section == "task"
     assert expected.errors[-1].section == "finetune"
