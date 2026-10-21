@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     )
 
 __all__ = [
+    "AvailabilityUpdated",
     "CompatibilityReady",
     "ConfigReady",
     "DataReportReady",
@@ -80,6 +81,22 @@ class CompatibilityReady(Message):
         super().__init__()
         self.report = report
         self.local_by_name = local_by_name
+
+
+class AvailabilityUpdated(Message):
+    """One model's availability was re-checked on the user's request.
+
+    Attributes:
+        model: The repo id the probe was asked about.
+        availability: The frozen ``AvailabilityReport`` the core returned. An
+            unknown state stays a valid answer (PFC-06) — it replaces the row
+            rather than being treated as a failure.
+    """
+
+    def __init__(self, model: str, availability: AvailabilityReport) -> None:
+        super().__init__()
+        self.model = model
+        self.availability = availability
 
 
 class ConfigReady(Message):

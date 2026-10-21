@@ -32,7 +32,13 @@ from textual.widgets import Static
 
 from ..utils import env_info, get_logger
 from . import copy
-from .messages import CompatibilityReady, DataReportReady, EnvReportReady, WorkerFailed
+from .messages import (
+    AvailabilityUpdated,
+    CompatibilityReady,
+    DataReportReady,
+    EnvReportReady,
+    WorkerFailed,
+)
 from .screens.env import EnvScreen
 from .state import WizardState
 from .workers import PreflightWorkers
@@ -219,6 +225,19 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("CompatibilityReady arrived with no suitability panel showing")
             return
         await apply_report(message.report, message.local_by_name)
+
+    async def on_availability_updated(self, message: AvailabilityUpdated) -> None:
+        """Hand a re-checked row's availability back to the panel that asked.
+
+        Args:
+            message: The typed payload naming the model and its new report.
+        """
+        screen = self._active_screen()
+        apply_update = getattr(screen, "apply_availability_update", None)
+        if apply_update is None:
+            logger.debug("AvailabilityUpdated arrived with no suitability panel showing")
+            return
+        await apply_update(message.model, message.availability)
 
     def show_suitability(self) -> None:
         """Move on to the suitability step after the data step ends.

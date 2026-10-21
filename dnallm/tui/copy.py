@@ -63,6 +63,7 @@ __all__ = [
     "SUITABILITY_VERDICTS_HEADING",
     "SUITABILITY_VERDICT_COLUMNS",
     "THIRD_PARTY_ROW_FLAG",
+    "UNKNOWN_STILL_DOWNLOADABLE",
     "USE_MODEL_ACTION",
     "USE_MODEL_CONFIRMED",
 ]
@@ -228,6 +229,13 @@ HUB_NAMES = {
 
 # Prefix for the detail line that shows a probe's own reason, verbatim.
 AVAILABILITY_DETAIL_LABEL = "Note from the check:"
+
+# D-06: an unverified row is never an unavailable row. The sentence says so,
+# because a blank column would let a user read UNKNOWN as "cannot download".
+UNKNOWN_STILL_DOWNLOADABLE = (
+    "We have not confirmed where this model is hosted. You can still choose "
+    "it: the download tries ModelScope first, then Hugging Face."
+)
 
 # D-08: the length and character checks need data; without it the state is
 # stated plainly and never shown as a failure.

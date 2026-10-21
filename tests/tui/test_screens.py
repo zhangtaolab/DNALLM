@@ -425,6 +425,14 @@ def _synthetic_report() -> CompatibilityReport:
                     state=AvailabilityState.UNKNOWN, reason="RATE_LIMITED"
                 ),
             ),
+            # A third-party family the shortlist never reached: no report at
+            # all, which is the D-05 case — listed, unverified, choosable.
+            ListingEntry(
+                model="third-party/file-c",
+                entry_name="Third C",
+                is_lab=False,
+                task_type="mask",
+            ),
         ],
     )
 
@@ -444,6 +452,7 @@ async def test_suitability_renders_the_core_listing_in_core_order(monkeypatch) -
     gate = threading.Event()
     fake_core = FakeCompatibilityCore(report, gate=gate)
     monkeypatch.setattr(preflight_facade, "check_compatibility", fake_core)
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
     prober = FakeProber()
     app = DNALLMPreflightApp(collector=FakeCollector(), prober=prober)
 
@@ -452,8 +461,7 @@ async def test_suitability_renders_the_core_listing_in_core_order(monkeypatch) -
         # Before the report lands the page says plainly that it is probing.
         probing = copy.PROBING_PLACEHOLDER in _rendered_text(screen)
         gate.set()
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _settle(pilot, app)
         rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
         verdict_rows = _table_rows(screen.query_one("#suitability-verdicts", DataTable))
         status = _rendered_text(screen)
@@ -461,15 +469,22 @@ async def test_suitability_renders_the_core_listing_in_core_order(monkeypatch) -
     assert probing
     # The lab row stays second: the screen never re-sorts the core's listing.
     assert [row[0] for row in rows] == [entry.entry_name for entry in report.listing]
-    assert [row[1] for row in rows] == [copy.THIRD_PARTY_ROW_FLAG, copy.LAB_ROW_FLAG]
+    assert [row[1] for row in rows] == [
+        copy.THIRD_PARTY_ROW_FLAG,
+        copy.LAB_ROW_FLAG,
+        copy.THIRD_PARTY_ROW_FLAG,
+    ]
     assert rows[1][2] == "binary"
     assert rows[1][3] == "2"
+    assert rows[2][2] == "mask"
     # Each availability cell names the hub the core reported — never another.
     assert copy.AVAILABILITY_REMOTE.format(hub="Hugging Face") == rows[0][4]
     assert rows[1][4] == copy.HOSTING_NOT_VERIFIED
+    # A third-party row nobody probed is listed like any other and says so.
+    assert rows[2][4] == copy.HOSTING_NOT_VERIFIED
     # One verdict row per dimension, carrying the core's status and reason.
     assert [row[1] for row in verdict_rows] == ["task", "length"]
-    assert [row[2] for row in verdict_rows] == ["ok", "unknown"]
+    assert [row[2] for row in verdict_rows] == ["ok", copy.NO_DATA_YET]
     assert verdict_rows[1][3] == "NO_DATA"
     assert copy.SUITABILITY_READY in status
     # The core got the pinned vocabulary, the app's prober, the 20-row cap,
@@ -623,3 +638,91 @@ async def test_a_locally_cached_row_outside_the_shortlist_shows_cached(monkeypat
     assert rows[26][4] == copy.HOSTING_NOT_VERIFIED
     assert stored[beyond.model] == cached_report
     assert stored[later.model].state == AvailabilityState.UNKNOWN
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Suitability panel, honesty rules (D-05/D-06/D-08): UNKNOWN is not
+# unavailable, NO_DATA is not a failure, and an on-demand probe touches one row.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_an_unknown_row_is_honest_and_still_choosable(monkeypatch) -> None:
+    """The unverified row says so, shows the reason, and stays selectable."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        table = screen.query_one("#suitability-listing", DataTable)
+        rows = _table_rows(table)
+        table.move_cursor(row=1)
+        await pilot.pause()
+        text = _rendered_text(screen)
+        use_enabled = not screen.query_one("#suitability-use", Button).disabled
+        selected = app.state.selected_entry
+
+    assert rows[1][4] == copy.HOSTING_NOT_VERIFIED
+    # The probe's own reason is shown verbatim, never translated or dropped.
+    assert f"{copy.AVAILABILITY_DETAIL_LABEL} RATE_LIMITED" in text
+    # D-06: an unverified row is choosable, and the page says why that is safe.
+    assert copy.UNKNOWN_STILL_DOWNLOADABLE in text
+    assert use_enabled
+    assert selected is report.listing[1]
+
+
+async def test_a_no_data_verdict_reads_as_no_data_yet(monkeypatch) -> None:
+    """A dimension that needs data says so; it never reads as a failure."""
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        rows = _table_rows(screen.query_one("#suitability-verdicts", DataTable))
+
+    no_data_rows = [row for row in rows if row[3] == "NO_DATA"]
+    assert no_data_rows, "the synthetic report must carry a NO_DATA dimension"
+    assert all(row[2] == copy.NO_DATA_YET for row in no_data_rows)
+    assert all("fail" not in row[2].lower() for row in no_data_rows)
+
+
+async def test_the_on_demand_probe_replaces_exactly_one_row(monkeypatch) -> None:
+    """Pressing p probes the focused row only, and rewrites only its cell."""
+    on_demand = AvailabilityReport(
+        state=AvailabilityState.REMOTE_CONFIRMED,
+        size_bytes=9,
+        revision="rev-2",
+        source_hub=Hub.HUGGINGFACE,
+    )
+    prober = FakeProber(report=on_demand)
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=prober)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        table = screen.query_one("#suitability-listing", DataTable)
+        before = _table_rows(table)
+        table.move_cursor(row=25)
+        await pilot.pause()
+        await pilot.press("p")
+        await _settle(pilot, app)
+        after = _table_rows(table)
+        report = app.state.compatibility_report
+        stored = app.state.availability_by_entry
+
+    assert report is not None
+    # Twenty automatic shortlist probes, then exactly one on-demand probe.
+    assert len(prober.calls) == 21
+    assert prober.calls[-1] == report.listing[25].model
+    changed = [
+        index for index, (old, new) in enumerate(zip(before, after, strict=True)) if old != new
+    ]
+    assert changed == [25]
+    assert after[25][4] == copy.AVAILABILITY_REMOTE.format(hub="Hugging Face")
+    assert stored[report.listing[25].model] is on_demand

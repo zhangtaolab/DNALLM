@@ -35,10 +35,11 @@ Example:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, ClassVar, cast
 
 from rich.text import Text
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.coordinate import Coordinate
 from textual.screen import Screen
@@ -69,6 +70,7 @@ _CHECK_BUTTON_ID = "suitability-check"
 _STATUS_ID = "suitability-status"
 _VERDICTS_TABLE_ID = "suitability-verdicts"
 _LISTING_TABLE_ID = "suitability-listing"
+_DETAIL_ID = "suitability-detail"
 _USE_BUTTON_ID = "suitability-use"
 
 # Column index of the availability cell in the listing table (one constant, so
@@ -81,11 +83,16 @@ _AVAILABILITY_COLUMN = 4
 # are for typing only.
 _STATE_CACHED = "cached"
 _STATE_REMOTE_CONFIRMED = "remote_confirmed"
+_STATE_UNKNOWN = "unknown"
 _HUB_LOCAL = "local"
+_REASON_NO_DATA = "NO_DATA"
 
 
 class SuitabilityScreen(Screen):
     """Render ``check_compatibility``'s report; never compute a verdict."""
+
+    #: "p" re-checks the focused row's hosting — one row, on the user's request.
+    BINDINGS: ClassVar[list[Binding]] = [Binding("p", "probe_row", "Check hosting")]
 
     def __init__(self) -> None:
         """Start on the fine-tune route (base models) with nothing selected."""
@@ -94,6 +101,8 @@ class SuitabilityScreen(Screen):
         self._report: CompatibilityReport | None = None
         self._listing: list[ListingEntry] = []
         self._local_by_model: dict[str, AvailabilityReport] = {}
+        self._on_demand: dict[str, AvailabilityReport] = {}
+        self._probing: set[str] = set()
         self._local_requested = False
 
     @property
@@ -121,6 +130,7 @@ class SuitabilityScreen(Screen):
             yield DataTable(id=_VERDICTS_TABLE_ID)
             yield Static(copy.SUITABILITY_LISTING_HEADING, id="suitability-listing-heading")
             yield DataTable(id=_LISTING_TABLE_ID)
+            yield Static("", markup=False, id=_DETAIL_ID)
             yield Button(copy.USE_MODEL_ACTION, id=_USE_BUTTON_ID, disabled=True)
         yield Static(copy.QUIT_HINT, id="suitability-quit-hint")
         yield Footer()
@@ -198,6 +208,8 @@ class SuitabilityScreen(Screen):
         self._set_status(copy.PROBING_PLACEHOLDER)
         self._report = None
         self._local_by_model = {}
+        self._on_demand = {}
+        self._probing = set()
         self._local_requested = False
         self._preflight_app.check_compatibility_worker(
             self._preflight_app.state.data_report,
@@ -274,7 +286,7 @@ class SuitabilityScreen(Screen):
                 verdicts.add_row(
                     _cell(verdict.entry_name or verdict.model),
                     _cell(dimension.dimension),
-                    _cell(dimension.status.value),
+                    _cell(_verdict_result_text(dimension.status.value, dimension.reason_code)),
                     _cell(dimension.reason_code or ""),
                 )
 
@@ -304,10 +316,11 @@ class SuitabilityScreen(Screen):
     def _availability_text(self, entry: ListingEntry, position: int) -> str:
         """One row's availability, in the documented fallback order.
 
-        The shortlist's remote result wins, then whatever the local pass
-        found, then the honest default: a row the core has not verified says
-        "hosting not verified" (D-05), and a row still inside the probing
-        window says "probing…".
+        An on-demand result (the user asked about this row) wins, then the
+        shortlist's remote result, then whatever the local pass found, then the
+        honest default: a row the core has not verified says "hosting not
+        verified" (D-05), and a row still inside the probing window says
+        "probing…".
 
         Args:
             entry: The frozen listing row.
@@ -316,11 +329,28 @@ class SuitabilityScreen(Screen):
         Returns:
             The availability sentence for the row.
         """
-        availability = entry.availability or self._local_by_model.get(entry.model)
+        if entry.model in self._probing:
+            return copy.PROBING_PLACEHOLDER
+        availability = self._availability_for(entry)
         is_pending_shortlist_row = availability is None and position < PROBE_SHORTLIST
         if is_pending_shortlist_row:
             return copy.PROBING_PLACEHOLDER
         return _availability_sentence(availability)
+
+    def _availability_for(self, entry: ListingEntry) -> AvailabilityReport | None:
+        """Everything known about one row's availability, most recent first.
+
+        Args:
+            entry: The frozen listing row.
+
+        Returns:
+            The newest report for this model, or None when nothing is known.
+        """
+        return (
+            self._on_demand.get(entry.model)
+            or entry.availability
+            or self._local_by_model.get(entry.model)
+        )
 
     def _refresh_availability_cells(self) -> None:
         """Rewrite only the availability column, keeping every other cell."""
@@ -346,11 +376,86 @@ class SuitabilityScreen(Screen):
     def _select(self, entry: ListingEntry) -> None:
         """Record the chosen row as the wizard's model.
 
+        An unknown availability never blocks the choice (D-06): the row is
+        chosen exactly like a confirmed one, and the detail line says why.
+
         Args:
             entry: The frozen listing row the user focused.
         """
         self._preflight_app.state.selected_entry = entry
         self.query_one(f"#{_USE_BUTTON_ID}", Button).disabled = False
+        self._show_detail(entry)
+
+    def _show_detail(self, entry: ListingEntry) -> None:
+        """Show what is known about the chosen row, in the core's own words.
+
+        Args:
+            entry: The frozen listing row the user focused.
+        """
+        availability = self._availability_for(entry)
+        lines: list[str] = []
+        if availability is not None and availability.reason:
+            # The probe's reason is a technical identifier: shown verbatim.
+            lines.append(f"{copy.AVAILABILITY_DETAIL_LABEL} {availability.reason}")
+        if availability is None or availability.state == _STATE_UNKNOWN:
+            # D-06: nothing verified is not "unavailable". Say the user may
+            # still choose this model, and why that is safe.
+            lines.append(copy.UNKNOWN_STILL_DOWNLOADABLE)
+        self.query_one(f"#{_DETAIL_ID}", Static).update("\n".join(lines))
+
+    def _position_of(self, model: str) -> int | None:
+        """The listing row index for *model*, or None when it is not listed.
+
+        Args:
+            model: The repo id to locate.
+        """
+        for position, entry in enumerate(self._listing):
+            if entry.model == model:
+                return position
+        return None
+
+    async def apply_availability_update(self, model: str, availability: AvailabilityReport) -> None:
+        """Replace exactly one row's availability with a re-checked report.
+
+        Args:
+            model: The repo id the on-demand probe was asked about.
+            availability: The report the core returned (an unknown state is a
+                valid answer and is shown as such, PFC-06).
+        """
+        self._probing.discard(model)
+        self._on_demand[model] = availability
+        self._preflight_app.state.availability_by_entry[model] = availability
+        position = self._position_of(model)
+        if position is not None:
+            listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
+            listing.update_cell_at(
+                Coordinate(row=position, column=_AVAILABILITY_COLUMN),
+                _cell(self._availability_text(self._listing[position], position)),
+            )
+            selected = self._preflight_app.state.selected_entry
+            if selected is not None and selected.model == model:
+                self._show_detail(selected)
+        self._set_status(copy.SUITABILITY_READY)
+
+    def action_probe_row(self) -> None:
+        """Re-check the focused row's hosting — that row only (D-04).
+
+        The automatic pass is capped; this is the user's explicit request for
+        one row, so it probes one row and replaces one row.
+        """
+        listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
+        position = listing.cursor_row
+        entry = self._entry_at(position)
+        if entry is None:
+            self._set_status(copy.SELECT_MODEL_HINT)
+            return
+        self._probing.add(entry.model)
+        listing.update_cell_at(
+            Coordinate(row=position, column=_AVAILABILITY_COLUMN),
+            _cell(copy.PROBING_PLACEHOLDER),
+        )
+        self._set_status(copy.PROBING_PLACEHOLDER)
+        self._preflight_app.probe_availability_worker(entry.model, self._preflight_app.prober)
 
     def _confirm_selection(self) -> None:
         """Acknowledge the recorded choice; the config step owns the transition."""
@@ -385,6 +490,25 @@ def _availability_sentence(availability: AvailabilityReport | None) -> str:
     if availability.state == _STATE_REMOTE_CONFIRMED and availability.source_hub is not None:
         return copy.AVAILABILITY_REMOTE.format(hub=_hub_name(availability.source_hub))
     return copy.HOSTING_NOT_VERIFIED
+
+
+def _verdict_result_text(status: str, reason_code: str | None) -> str:
+    """The result cell for one dimension verdict.
+
+    ``NO_DATA`` is the core's way of saying this check needs data (D-08). It is
+    stated in words instead of being shown as a status that could read as a
+    failure: the dimension was not measured, so nothing was rejected.
+
+    Args:
+        status: The verdict status value (``ok``/``warn``/``fail``/``unknown``).
+        reason_code: The dimension's reason code, when it has one.
+
+    Returns:
+        The cell text for the result column.
+    """
+    if reason_code == _REASON_NO_DATA:
+        return copy.NO_DATA_YET
+    return status
 
 
 def _hub_name(hub: object) -> str:

@@ -22,6 +22,7 @@ from textual.worker import get_current_worker
 from ..utils import get_logger
 from .copy import ENV_CHECK_FAILED, SUITABILITY_FAILED
 from .messages import (
+    AvailabilityUpdated,
     CompatibilityReady,
     DataReportReady,
     DownloadFinished,
@@ -239,6 +240,30 @@ class PreflightWorkers:
         if worker.is_cancelled:
             return
         self.post_message(CompatibilityReady(report, by_model))
+
+    @work(thread=True, exit_on_error=False)
+    def probe_availability_worker(
+        self, model: str, prober: Callable[[str], Any] | None = None
+    ) -> None:
+        """Re-check one model's hosting off the event loop (the on-demand probe).
+
+        Only the row the user asked about is probed: the shortlist cap is a
+        policy for the automatic pass, and an explicit request is the user's
+        own single probe (D-04), never a sweep of the rest of the listing.
+
+        Args:
+            model: The repo id of the focused listing row.
+            prober: The app's injected availability prober. ``None`` means
+                production: the core's own ``probe_availability`` is used.
+        """
+        worker = get_current_worker()
+        from ..preflight.availability import probe_availability
+
+        effective_prober = prober if prober is not None else probe_availability
+        availability = probe_availability(model, prober=effective_prober)
+        if worker.is_cancelled:
+            return
+        self.post_message(AvailabilityUpdated(model, availability))
 
     @work(thread=True, exit_on_error=False)
     def download_worker(self, model_name: str, downloader: Callable[..., str]) -> None:

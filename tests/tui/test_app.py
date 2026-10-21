@@ -12,10 +12,13 @@ import asyncio
 import threading
 import time
 
+from textual.screen import Screen
 from textual.widgets import Static
 
+from dnallm.preflight import AvailabilityReport, AvailabilityState
 from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
+from dnallm.tui.messages import AvailabilityUpdated
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.workers import PreflightWorkers
 from dnallm.utils.env_info import EnvRow
@@ -232,3 +235,51 @@ async def test_config_path_is_stored_and_never_loaded(tmp_path) -> None:
         await pilot.pause()
         assert app.state.config_path == str(config_file)
         assert app.config_path == str(config_file)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-07: the app routes the suitability worker payloads to the live panel
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _AvailabilityRecorder(Screen):
+    """A screen that records the availability updates the app hands it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.updates: list[tuple[str, AvailabilityReport]] = []
+
+    async def apply_availability_update(self, model: str, availability: AvailabilityReport) -> None:
+        """Record one update, exactly as the app's routing hook delivers it."""
+        self.updates.append((model, availability))
+
+
+async def test_the_app_routes_an_availability_update_to_the_active_screen() -> None:
+    """An on-demand probe result reaches only the panel that is showing."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    recorder = _AvailabilityRecorder()
+    report = AvailabilityReport(state=AvailabilityState.UNKNOWN, reason="RATE_LIMITED")
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.push_screen(recorder)
+        await pilot.pause()
+        app.post_message(AvailabilityUpdated("org/model", report))
+        await pilot.pause()
+        updates = list(recorder.updates)
+
+    assert updates == [("org/model", report)]
+
+
+async def test_an_availability_update_with_no_panel_is_harmless() -> None:
+    """A late probe result on a panel without the hook never reaches the user."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, EnvScreen)  # no apply_availability_update hook
+        app.post_message(
+            AvailabilityUpdated("org/model", AvailabilityReport(state=AvailabilityState.UNKNOWN))
+        )
+        await pilot.pause()
+        assert app.last_failure is None
+        await pilot.press("q")
