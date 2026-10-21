@@ -89,6 +89,7 @@ dev = [
     "seaborn>=0.13.0",
 ]
 test = [
+    "dnallm[tui]",
     "pytest>=8.4",
     "pytest-asyncio>=1.0",
     "pytest-cov>=7.0",
@@ -143,6 +144,12 @@ mcp = [
     # landing on the broken 1.22.
     "pydantic-ai>=1.107.0,<2",
 ]
+# Optional terminal-wizard layer (`dnallm preflight`); the platformdirs band
+# mirrors textual's own declared >=3.6,<5 constraint so the resolver has one answer.
+tui = [
+    "textual>=8.2,<9",
+    "platformdirs>=3.6,<5",
+]
 full = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
@@ -155,7 +162,7 @@ base = [
     "dnallm[full]",
 ]
 all = [
-    "dnallm[full,dev,test,notebook,docs,ui,mcp,fla]",
+    "dnallm[full,dev,test,notebook,docs,ui,mcp,fla,tui]",
 ]
 cpu = [
     "torch>=2.4.0,<2.12",

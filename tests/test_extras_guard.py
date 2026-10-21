@@ -56,6 +56,15 @@ EXPECTED_NOTEBOOK_MEMBERS = frozenset({
     "pygenometracks>=3.9; platform_system != 'Windows'",
 })
 
+# The tui extra's exact members (TUI-01, v1.4): the terminal pre-flight wizard
+# layer. Exact-string equality both directions -- the extra must never be
+# empty, diluted, or gain an unpinned member, and the platformdirs band must
+# stay textual's own declared >=3.6,<5 range so the resolver has one answer.
+EXPECTED_TUI_MEMBERS = frozenset({
+    "textual>=8.2,<9",
+    "platformdirs>=3.6,<5",
+})
+
 # The full extra's exact members after the 18-01 atomic rename (base -> full,
 # owner decision 2026-10-14): the rename must carry the former base surface
 # verbatim -- nothing lost, nothing added.
@@ -133,6 +142,57 @@ class TestNotebookExtraMembers:
         notebook = _load_notebook_extra()
         missing = EXPECTED_NOTEBOOK_MEMBERS - set(notebook)
         assert not missing, f"notebook extra lost pre-existing members: {sorted(missing)}"
+
+
+class TestTuiExtraMembers:
+    """Bracket-member assertions over project.optional-dependencies["tui"] (TUI-01).
+
+    The ``tui`` extra is the only install gate for the terminal pre-flight
+    wizard; ``test`` carries it so every pytest CI leg (which installs a
+    ``.[full...]`` variant) resolves textual transitively, and ``all`` names
+    it explicitly. Membership is asserted, never position -- reordering any
+    of these lists can neither fake a pass nor drop a member.
+    """
+
+    def test_tui_extra_members_exact(self) -> None:
+        """tui is exactly the two owner-pinned members -- nothing lost, nothing extra."""
+        tui = set(_load_extras().get("tui", []))
+        missing = EXPECTED_TUI_MEMBERS - tui
+        assert not missing, (
+            f"tui extra lost pinned members (TUI-01): {sorted(missing)} -- "
+            f"textual drives the wizard and platformdirs is its own "
+            f">=3.6,<5 constraint made explicit"
+        )
+        extra_members = tui - EXPECTED_TUI_MEMBERS
+        assert not extra_members, (
+            f"tui extra gained members beyond the pinned pair (TUI-01): "
+            f"{sorted(extra_members)} -- every tui dependency must be an "
+            f"owner-reviewed exact range"
+        )
+
+    def test_test_extra_rides_tui(self) -> None:
+        """dnallm[tui] is a member of the test extra, so every CI pytest leg installs textual."""
+        test_extra = _load_extras().get("test", [])
+        assert "dnallm[tui]" in test_extra, (
+            f"the test extra must carry dnallm[tui] (TUI-01): measured {test_extra} "
+            f"-- without it, a .[full] install reaches textual only by accident, "
+            f"and the TUI pytest lane fails on a clean runner"
+        )
+
+    def test_all_extra_includes_tui(self) -> None:
+        """tui appears in the comma-split bracket list parsed out of all[0]."""
+        all_extra = _load_extras().get("all", [])
+        assert all_extra, "the all extra must declare its bracket list"
+        bracket = all_extra[0]
+        assert bracket.startswith("dnallm[") and bracket.endswith("]"), (
+            f"the all extra's first member must stay a dnallm[...] bracket "
+            f"list (measured: {bracket!r})"
+        )
+        members = [item.strip() for item in bracket[len("dnallm[") : -1].split(",")]
+        assert "tui" in members, (
+            f"the all extra must include tui (TUI-01): measured members {members} "
+            f"from {bracket!r}"
+        )
 
 
 class TestFullExtraAndBaseAlias:
