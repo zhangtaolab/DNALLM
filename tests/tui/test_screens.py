@@ -930,9 +930,8 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         assert errors_widget.region.height >= _rows_the_text_needs(errors_widget)
         tail_line = errors_widget.render_line(errors_widget.region.height - 1).text
         assert "binary_classification" in tail_line
-        side.scroll_y = min(
-            side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
-        )
+        # Textual's scroll_y setter clamps into [0, max_scroll_y] itself.
+        side.scroll_y += errors_widget.region.bottom - side.region.bottom
         await pilot.pause()
         assert side.region.contains_point((
             errors_widget.region.x + 1,
@@ -942,9 +941,7 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         await pilot.pause()
         pane_with_details = str(screen.query_one("#config-errors", Static).content)
         assert errors_widget.region.height >= _rows_the_text_needs(errors_widget)
-        side.scroll_y = min(
-            side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
-        )
+        side.scroll_y += errors_widget.region.bottom - side.region.bottom
         await pilot.pause()
         assert side.region.contains_point((
             errors_widget.region.x + 1,
@@ -964,7 +961,6 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         side.scroll_home(animate=False)
         await pilot.pause()
         pane_top_visible_after_repair = side.region.contains_region(errors_widget.region)
-        scroll_in_range_after_repair = side.scroll_y <= side.max_scroll_y
 
         wide_config_file = tmp_path / "several_bad.yaml"
         wide_config_file.write_text(
@@ -984,10 +980,7 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         await pilot.pause()
         wide_laid_out = wide_pane.region.height
         wide_needed = _rows_the_text_needs(wide_pane)
-        wide_side.scroll_y = min(
-            wide_side.max_scroll_y,
-            wide_side.scroll_y + (wide_pane.region.bottom - wide_side.region.bottom),
-        )
+        wide_side.scroll_y += wide_pane.region.bottom - wide_side.region.bottom
         await pilot.pause()
         wide_tail_visible = wide_side.region.contains_point((
             wide_pane.region.x + 1,
@@ -1009,11 +1002,12 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
     # Appended by 25-13 (all pre-existing assertions above stay byte-identical):
     # repairing the last error repaints an empty pane and, once the side is
     # scrolled home, the errors block's top edge is laid out inside its viewport.
+    # WR-10 removed the old `scroll_y <= max_scroll_y` check here: Textual's
+    # validate_scroll_y clamps into [0, max_scroll_y], so it could never fail.
     assert pane_after_repair == ""
     assert details_disabled_after_repair
     assert save_enabled_after_repair
     assert pane_top_visible_after_repair
-    assert scroll_in_range_after_repair
     # The several-error case rides this same app run (one resize, one push).
     assert wide_laid_out >= wide_needed
     assert wide_tail_visible
