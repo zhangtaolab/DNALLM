@@ -322,3 +322,30 @@ async def test_an_attempt_only_downloader_still_reports_each_attempt() -> None:
     attempts_seen = [m.done for m in app.progress_events if m.total == DOWNLOAD_MAX_TRY]
     assert attempts_seen == [1]
     assert app.progress_events[0].done == 0  # the "downloading…" opener
+
+
+def test_resolve_hub_downloader_returns_that_hub_client() -> None:
+    """Each hub resolves to its own snapshot_download, imported on demand."""
+    hugging_face = workers_module._resolve_hub_downloader(Hub.HUGGINGFACE)
+
+    assert hugging_face.__name__ == "snapshot_download"
+    assert "huggingface_hub" in hugging_face.__module__
+
+    model_scope = workers_module._resolve_hub_downloader(Hub.MODELSCOPE)
+
+    assert model_scope.__name__ == "snapshot_download"
+    assert "modelscope" in model_scope.__module__
+
+
+def test_bind_progress_leaves_a_downloader_it_cannot_inspect(monkeypatch) -> None:
+    """No readable signature, or no tqdm, means no binding: progress degrades."""
+    unreadable = object()
+
+    assert _bind_progress(unreadable, lambda done, total, label: None) is unreadable
+
+    monkeypatch.setattr(workers_module, "_make_progress_reporter", lambda emit: None)
+
+    def with_bytes(model_name: str, *, tqdm_class=None, **kwargs: object) -> str:
+        return model_name
+
+    assert _bind_progress(with_bytes, lambda done, total, label: None) is with_bytes

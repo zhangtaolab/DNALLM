@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+import time
 from typing import Any
 
 import yaml
@@ -1518,3 +1519,107 @@ async def test_a_failed_download_reads_plainly_and_retry_tries_again() -> None:
     assert "Traceback" not in text
     assert calls_after_failure == [DOWNLOAD_MODEL_REPO]
     assert calls_after_retry == [DOWNLOAD_MODEL_REPO, DOWNLOAD_MODEL_REPO]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Cooperative cancel, quit safety, and the skip path (25-09 Task 3)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_cancel_between_attempts_stops_after_exactly_one_call(monkeypatch) -> None:
+    """A stop mid-attempt lets that attempt finish and blocks the next one."""
+    from types import SimpleNamespace
+
+    from dnallm.models import model as model_module
+
+    # download_model sleeps one second before each retry; keep it out of wall time.
+    monkeypatch.setattr(model_module, "time", SimpleNamespace(sleep=lambda _seconds: None))
+    gate = threading.Event()
+    downloader = FakeDownloader(gate=gate, failure=ConnectionError("connection reset"))
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        await pilot.click("#download-start")
+        started = await _wait_until(lambda: bool(downloader.calls))
+        await pilot.click("#download-cancel")
+        await pilot.pause()
+        pending_note = str(screen.query_one("#download-status", Static).content)
+        gate.set()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(screen)
+        retry_visible = screen.query_one("#download-retry", Button).display
+        calls = list(downloader.calls)
+
+    assert started
+    # The stop is honest while the attempt is still running...
+    assert pending_note == copy.CANCEL_PENDING_NOTE
+    # ...and the sentinel escapes the retry loop: no second attempt, ever.
+    assert calls == [DOWNLOAD_MODEL_REPO]
+    assert copy.DOWNLOAD_CANCELLED in text
+    assert retry_visible
+    assert "Cancelled" not in text.replace(copy.DOWNLOAD_CANCELLED, "")
+
+
+async def test_quitting_during_a_download_is_prompt() -> None:
+    """Quit never waits for a blocked download thread (D-09)."""
+    gate = threading.Event()
+    downloader = FakeDownloader(gate=gate)
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+    started_at = time.monotonic()
+
+    try:
+        async with app.run_test(size=(100, 40)) as pilot:
+            await _open_download_screen(app, pilot)
+            await pilot.click("#download-start")
+            assert await _wait_until(lambda: bool(downloader.calls))
+            await pilot.press("q")
+    finally:
+        gate.set()
+
+    assert time.monotonic() - started_at < 20
+
+
+async def test_skipping_the_download_reaches_the_summary_without_downloading() -> None:
+    """Skip is a first-class path: no downloader call, both rows still in order."""
+    downloader = FakeDownloader()
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        await pilot.click("#download-skip")
+        await pilot.pause()
+        summary = app.screen
+        assert isinstance(summary, SummaryScreen)
+        text = _rendered_text(summary)
+
+    assert downloader.calls == []
+    assert copy.SUMMARY_MODEL_SKIPPED in text
+    assert CONFIG_EXPORT_PATH in text
+    # The fixed order holds even when nothing was downloaded.
+    assert text.index(copy.SUMMARY_HEADINGS["model"]) < text.index(copy.SUMMARY_MODEL_SKIPPED)
+    assert text.index(copy.SUMMARY_MODEL_SKIPPED) < text.index(copy.SUMMARY_HEADINGS["config"])
+    assert text.index(copy.SUMMARY_HEADINGS["config"]) < text.index(CONFIG_EXPORT_PATH)
+
+
+async def test_the_closing_step_without_a_model_goes_straight_to_the_summary() -> None:
+    """With no model chosen the step offers nothing to download (TUI-07/empty)."""
+    downloader = FakeDownloader()
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = None
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.show_download()
+        await pilot.pause()
+        summary = app.screen
+        assert isinstance(summary, SummaryScreen)
+        text = _rendered_text(summary)
+
+    assert downloader.calls == []
+    assert copy.SUMMARY_MODEL_SKIPPED in text
+    assert copy.SUMMARY_CONFIG_MISSING in text
