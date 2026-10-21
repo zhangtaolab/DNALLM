@@ -15,10 +15,10 @@ import time
 from textual.screen import Screen
 from textual.widgets import Static
 
-from dnallm.preflight import AvailabilityReport, AvailabilityState
+from dnallm.preflight import AvailabilityReport, AvailabilityState, GeneratedConfig
 from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
-from dnallm.tui.messages import AvailabilityUpdated
+from dnallm.tui.messages import AvailabilityUpdated, ConfigReady
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.workers import PreflightWorkers
 from dnallm.utils.env_info import EnvRow
@@ -280,6 +280,54 @@ async def test_an_availability_update_with_no_panel_is_harmless() -> None:
         app.post_message(
             AvailabilityUpdated("org/model", AvailabilityReport(state=AvailabilityState.UNKNOWN))
         )
+        await pilot.pause()
+        assert app.last_failure is None
+        await pilot.press("q")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-08: the app routes the config worker payloads to the live panel
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _ConfigRecorder(Screen):
+    """A screen that records the config results the app hands it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.results: list[tuple[GeneratedConfig, str | None]] = []
+
+    async def apply_config_ready(
+        self, generated: GeneratedConfig, output_path: str | None = None
+    ) -> None:
+        """Record one result, exactly as the app's routing hook delivers it."""
+        self.results.append((generated, output_path))
+
+
+async def test_the_app_routes_a_config_ready_to_the_active_screen() -> None:
+    """A validated config (and a save path) reaches only the showing panel."""
+    generated = GeneratedConfig(config={}, errors=[], raw={"task": {"task_type": "binary"}})
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    recorder = _ConfigRecorder()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.push_screen(recorder)
+        await pilot.pause()
+        app.post_message(ConfigReady(generated, "out.yaml"))
+        await pilot.pause()
+        results = list(recorder.results)
+
+    assert results == [(generated, "out.yaml")]
+
+
+async def test_a_config_ready_with_no_config_panel_is_harmless() -> None:
+    """A late config result on a panel without the hook never reaches the user."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        assert isinstance(app.screen, EnvScreen)  # no apply_config_ready hook
+        app.post_message(ConfigReady(GeneratedConfig(config={}, errors=[], raw={})))
         await pilot.pause()
         assert app.last_failure is None
         await pilot.press("q")

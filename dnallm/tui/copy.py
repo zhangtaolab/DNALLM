@@ -17,14 +17,25 @@ __all__ = [
     "AVAILABILITY_REMOTE",
     "CHECKING_PLACEHOLDER",
     "CONFIG_BUILDING",
+    "CONFIG_DEFAULT_EXPORT_NAME",
+    "CONFIG_EDITING",
     "CONFIG_ERRORS_HEADING",
     "CONFIG_ERROR_LINE",
     "CONFIG_FIELD_LABELS",
     "CONFIG_HAS_ERRORS",
+    "CONFIG_KEPT_AS_IS_HEADING",
+    "CONFIG_KEPT_AS_IS_LINE",
+    "CONFIG_NO_SOURCE",
+    "CONFIG_OUTPUT_PATH_LABEL",
+    "CONFIG_OUTPUT_PATH_PROMPT",
     "CONFIG_PANEL_TITLE",
     "CONFIG_PREVIEW_HEADING",
     "CONFIG_READONLY_FACTS_NOTE",
     "CONFIG_READY",
+    "CONFIG_SAVED",
+    "CONFIG_SAVE_ACTION",
+    "CONFIG_SAVE_DISABLED_REASON",
+    "CONFIG_SAVING",
     "CONFIG_SECTION_FINETUNE",
     "CONFIG_SECTION_INFERENCE",
     "CONFIG_SECTION_LORA",
@@ -286,8 +297,39 @@ CONFIG_PREVIEW_HEADING = "The file this would save"
 
 # D-12: the checkpoint decides these; an editable field would be silently
 # overridden at load time anyway (registry always wins).
-CONFIG_READONLY_FACTS_NOTE = (
-    "from the model checkpoint; loading uses this value"
+CONFIG_READONLY_FACTS_NOTE = "from the model checkpoint; loading uses this value"
+
+# D-11: a section this form does not cover rides along untouched.
+CONFIG_KEPT_AS_IS_HEADING = "Kept exactly as they are"
+
+CONFIG_KEPT_AS_IS_LINE = (
+    '"{section}" is kept exactly as it is — this form does not change it, '
+    "and saving keeps every value in it."
+)
+
+# D-13: the write is the one irreversible act in the wizard, so it is gated.
+CONFIG_SAVE_ACTION = "Save this config"
+
+CONFIG_SAVE_DISABLED_REASON = (
+    'Saving stays off until the list under "What needs fixing" is empty, '
+    "so a broken config can never be written."
+)
+
+CONFIG_OUTPUT_PATH_LABEL = "Save as:"
+
+CONFIG_DEFAULT_EXPORT_NAME = "dnallm_config.yaml"
+
+CONFIG_OUTPUT_PATH_PROMPT = 'Type the file name to save as, then press "Save this config".'
+
+CONFIG_SAVING = "saving…"
+
+CONFIG_SAVED = 'Saved "{path}". That file is ready to use.'
+
+CONFIG_EDITING = "reading your config…"
+
+CONFIG_NO_SOURCE = (
+    "There is nothing to configure yet. Go back a step and choose a model, "
+    "or open an existing config file."
 )
 
 CONFIG_SECTION_TASK = "Task"

@@ -122,8 +122,10 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-preview { max-height: 24; }
     #config-kept-as-is-heading { text-style: bold; margin-top: 1; }
     #config-kept-as-is { height: auto; }
-    #config-output-row { height: auto; margin-top: 1; }
-    #config-save { width: auto; }
+    #config-output-row { height: auto; margin: 1 2; }
+    #config-output-label { width: auto; padding: 0 1 0 0; }
+    #config-output-path { width: 1fr; }
+    #config-save { width: auto; margin-left: 2; }
     #config-save-reason { padding: 0 2; }
     #config-quit-hint { padding: 0 2; }
     """

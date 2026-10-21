@@ -15,6 +15,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
+import yaml
 from textual.containers import VerticalScroll
 from textual.widgets import Button, DataTable, Input, Static
 
@@ -29,6 +30,7 @@ from dnallm.preflight import (
     ListingEntry,
     ModelVerdict,
     VerdictStatus,
+    edit_config,
     render_yaml,
     validate_data,
 )
@@ -750,7 +752,10 @@ async def _open_config_screen(app: DNALLMPreflightApp, pilot, **kwargs) -> Confi
 
 
 async def _settle_config(pilot, app: DNALLMPreflightApp) -> None:
-    """Let the config worker finish and the pane repaint."""
+    """Let queued input changes start their worker, then let it finish."""
+    await pilot.pause()
+    await app.workers.wait_for_complete()
+    await pilot.pause()
     await app.workers.wait_for_complete()
     await pilot.pause()
 
@@ -851,3 +856,260 @@ async def test_the_preview_widget_is_read_only_text() -> None:
 
     assert isinstance(preview, Static)
     assert not isinstance(preview, Input)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Config panel (TUI-06, 25-08 Task 2): edit round-trip, read-only facts,
+# live revalidation, and the save gate (D-11 / D-12 / D-13)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# A loaded config that carries a section the form does not cover. ia3 is
+# outside the five core sections, so it must ride through an edit + save
+# byte-identically (D-11, 23-04 zero-data-loss round-trip). The fixture is
+# written in the shared serializer's own style, so the byte comparison below
+# tests data survival rather than a difference in quoting style.
+CONFIG_WITH_IA3 = """\
+task:
+  task_type: binary
+  num_labels: 2
+  label_names:
+  - negative
+  - positive
+finetune:
+  learning_rate: 2.0e-05
+  num_train_epochs: 3
+ia3:
+  target_modules:
+  - query
+  - value
+  feedforward_modules:
+  - dense
+  r: 16
+"""
+
+# Two broken sections in two different sections: the core always reports task
+# first, so a screen-side sort (alphabetical, or by field name) would show it.
+CONFIG_TWO_PROBLEMS = """\
+finetune:
+  max_grad_norm: -1.0
+task:
+  task_type: not-a-task
+"""
+
+
+def _section_block(text: str, section: str) -> str:
+    """The exact text of one top-level YAML section, header line included."""
+    lines = text.splitlines(keepends=True)
+    start = next(index for index, line in enumerate(lines) if line.startswith(f"{section}:"))
+    end = start + 1
+    while end < len(lines) and (lines[end].startswith(" ") or not lines[end].strip()):
+        end += 1
+    return "".join(lines[start:end])
+
+
+async def test_an_out_of_scope_section_survives_an_edit_and_save_verbatim(tmp_path) -> None:
+    """Editing a core field never drops ia3: it is kept byte-identically."""
+    config_file = tmp_path / "with_ia3.yaml"
+    config_file.write_text(CONFIG_WITH_IA3, encoding="utf-8")
+    out_path = tmp_path / "saved.yaml"
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, config_path=str(config_file))
+        await _settle_config(pilot, app)
+        screen.query_one("#config-field-finetune-num_train_epochs", Input).value = "7"
+        await _settle_config(pilot, app)
+        screen.query_one("#config-output-path", Input).value = str(out_path)
+        await pilot.click("#config-save")
+        await _settle_config(pilot, app)
+        saved_text = out_path.read_text(encoding="utf-8")
+
+    assert _section_block(saved_text, "ia3") == _section_block(CONFIG_WITH_IA3, "ia3")
+    saved = yaml.safe_load(saved_text)
+    assert saved["ia3"] == {
+        "target_modules": ["query", "value"],
+        "feedforward_modules": ["dense"],
+        "r": 16,
+    }
+    # The edit really happened, so the survival is not a no-op save.
+    assert saved["finetune"]["num_train_epochs"] == 7
+
+
+async def test_the_kept_as_is_block_names_an_out_of_scope_section(tmp_path) -> None:
+    """A preserved section is shown, read-only, so nothing is lost unseen."""
+    config_file = tmp_path / "with_ia3.yaml"
+    config_file.write_text(CONFIG_WITH_IA3, encoding="utf-8")
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, config_path=str(config_file))
+        await _settle_config(pilot, app)
+        kept_text = _rendered_text(screen)
+        heading_visible = screen.query_one("#config-kept-as-is-heading", Static).display
+        input_ids = [widget.id for widget in screen.query(Input)]
+
+    assert copy.CONFIG_KEPT_AS_IS_HEADING in kept_text
+    assert heading_visible
+    assert copy.CONFIG_KEPT_AS_IS_LINE.format(section="ia3") in kept_text
+    assert all(not (widget_id or "").startswith("config-field-ia3") for widget_id in input_ids)
+
+
+async def test_the_error_pane_lists_errors_in_the_core_section_order(tmp_path) -> None:
+    """The pane is the core's list, in the core's order — never re-sorted."""
+    config_file = tmp_path / "broken.yaml"
+    config_file.write_text(CONFIG_TWO_PROBLEMS, encoding="utf-8")
+    expected = edit_config(config_file, {})
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, config_path=str(config_file))
+        await _settle_config(pilot, app)
+        lines = str(screen.query_one("#config-errors", Static).content).splitlines()
+
+    assert len(expected.errors) >= 2
+    assert lines == [
+        copy.CONFIG_ERROR_LINE.format(field=error.field, message=error.message)
+        for error in expected.errors
+    ]
+    # task is reported before finetune, exactly as the core ordered them.
+    assert expected.errors[0].section == "task"
+    assert expected.errors[-1].section == "finetune"
+
+
+async def test_architectural_facts_are_read_only_and_policy_fields_editable() -> None:
+    """D-12: checkpoint facts are disabled; policy fields stay open."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        facts = {
+            name: screen.query_one(f"#config-field-task-{name}", Input).disabled
+            for name in ("num_labels", "label_names", "threshold")
+        }
+        editable = {
+            "max_length": screen.query_one("#config-field-inference-max_length", Input).disabled,
+            "epochs": screen.query_one("#config-field-finetune-num_train_epochs", Input).disabled,
+            "learning_rate": screen.query_one(
+                "#config-field-finetune-learning_rate", Input
+            ).disabled,
+            "batch_size": screen.query_one(
+                "#config-field-finetune-per_device_train_batch_size", Input
+            ).disabled,
+            "output_dir": screen.query_one("#config-field-finetune-output_dir", Input).disabled,
+        }
+        note = _rendered_text(screen)
+
+    assert facts == {"num_labels": True, "label_names": True, "threshold": True}
+    assert editable == {
+        "max_length": False,
+        "epochs": False,
+        "learning_rate": False,
+        "batch_size": False,
+        "output_dir": False,
+    }
+    assert copy.CONFIG_READONLY_FACTS_NOTE in note
+
+
+async def test_editing_a_field_revalidates_live_and_gates_the_save(tmp_path) -> None:
+    """A bad value disables saving; fixing it enables it again (D-13)."""
+    out_path = tmp_path / "never.yaml"
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        clean_button = screen.query_one("#config-save", Button).disabled
+
+        screen.query_one("#config-field-finetune-learning_rate", Input).value = "not-a-number"
+        await _settle_config(pilot, app)
+        broken_button = screen.query_one("#config-save", Button).disabled
+        broken_errors = str(screen.query_one("#config-errors", Static).content)
+
+        screen.query_one("#config-field-finetune-learning_rate", Input).value = "0.001"
+        await _settle_config(pilot, app)
+        fixed_button = screen.query_one("#config-save", Button).disabled
+        fixed_errors = str(screen.query_one("#config-errors", Static).content)
+        stored = app.state.generated_config
+
+    assert clean_button is False
+    assert broken_button is True
+    assert "finetune.learning_rate" in broken_errors
+    assert fixed_button is False
+    assert fixed_errors == ""
+    assert stored is not None
+    assert stored.raw["finetune"]["learning_rate"] == 0.001
+    assert not out_path.exists()
+
+
+async def test_save_with_an_error_writes_nothing(tmp_path) -> None:
+    """SC3: with any problem on the list, no file is ever written."""
+    out_path = tmp_path / "invalid.yaml"
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_BASE_REPO)
+        await _settle_config(pilot, app)
+        screen.query_one("#config-output-path", Input).value = str(out_path)
+        disabled = screen.query_one("#config-save", Button).disabled
+        reason = _rendered_text(screen)
+        # Even a forced call is a no-op while the list is non-empty.
+        screen._save()
+        await _settle_config(pilot, app)
+        exists = out_path.exists()
+
+    assert disabled
+    assert copy.CONFIG_SAVE_DISABLED_REASON in reason
+    assert exists is False
+
+
+async def test_save_writes_the_previewed_document_when_clean(tmp_path) -> None:
+    """A clean save writes exactly render_yaml(working mapping)."""
+    out_path = tmp_path / "clean.yaml"
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        preview = str(screen.query_one("#config-preview", Static).content)
+        screen.query_one("#config-output-path", Input).value = str(out_path)
+        await pilot.click("#config-save")
+        await _settle_config(pilot, app)
+        status = _rendered_text(screen)
+        stored = app.state.generated_config
+        export_path = app.state.export_path
+        written = out_path.read_text(encoding="utf-8")
+
+    assert stored is not None
+    assert written == render_yaml(stored.raw)
+    assert written == preview
+    assert export_path == str(out_path)
+    assert copy.CONFIG_SAVED.format(path=out_path) in status
+
+
+async def test_back_navigation_keeps_the_working_mapping(tmp_path) -> None:
+    """Escape leaves the panel; the mapping stays on the wizard state."""
+    config_file = tmp_path / "with_ia3.yaml"
+    config_file.write_text(CONFIG_WITH_IA3, encoding="utf-8")
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, config_path=str(config_file))
+        await _settle_config(pilot, app)
+        screen.query_one("#config-field-finetune-num_train_epochs", Input).value = "9"
+        await _settle_config(pilot, app)
+        stored_before = app.state.generated_config
+        await pilot.press("escape")
+        await pilot.pause()
+        kept = app.state.generated_config
+        returned = isinstance(app.screen, EnvScreen)
+
+    assert returned
+    assert kept is stored_before
+    assert kept is not None
+    assert kept.raw["ia3"] == {
+        "target_modules": ["query", "value"],
+        "feedforward_modules": ["dense"],
+        "r": 16,
+    }
+    assert kept.raw["finetune"]["num_train_epochs"] == 9

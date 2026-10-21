@@ -6,7 +6,7 @@ when an existing file (or a mapping already in the wizard) is being edited — a
 renders the frozen :class:`~dnallm.preflight.report.GeneratedConfig` that comes
 back.
 
-Three rules the panel exists to keep:
+Four rules the panel exists to keep:
 
 1. **The form edits the raw mapping, never a parsed copy of it.** The working
    mapping is exactly ``GeneratedConfig.raw`` — the mapping the writer emits —
@@ -19,7 +19,14 @@ Three rules the panel exists to keep:
 3. **The preview is the file.** It is produced by the core's own
    ``render_yaml`` — the one serializer ``_dump_yaml`` writes — so what the user
    reads is byte-for-byte what a save would put on disk. The panel never
-   imports yaml and never writes a file itself.
+   imports yaml and never writes a file itself: the only write is the core's
+   ``edit_config(..., output_path=...)``, reached through the seam, and reached
+   only while the error list is empty.
+4. **Architectural facts are read-only, policy fields are editable (D-12).**
+   ``num_labels`` / ``label_names`` / ``threshold`` come from the model
+   checkpoint and are rendered disabled; loading uses the checkpoint's value
+   regardless, so an editable field would be silently overridden. ``max_length``
+   and every training hyperparameter are the user's own policy and stay open.
 
 Example:
     app.push_screen(ConfigScreen(model="zhangtaolab/plant-dnabert-BPE-promoter"))
@@ -27,14 +34,15 @@ Example:
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, cast
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Static
+from textual.widgets import Button, Footer, Header, Input, Static
 
 from .. import copy
 
@@ -51,6 +59,11 @@ _PREVIEW_ID = "config-preview"
 _BODY_ID = "config-body"
 _FORM_ID = "config-form"
 _SIDE_ID = "config-side"
+_KEPT_ID = "config-kept-as-is"
+_KEPT_HEADING_ID = "config-kept-as-is-heading"
+_OUTPUT_PATH_ID = "config-output-path"
+_SAVE_ID = "config-save"
+_SAVE_REASON_ID = "config-save-reason"
 
 # The five sections the structured form covers (D-11). A section present in
 # the loaded YAML but absent here is preserved verbatim and shown read-only.
@@ -123,6 +136,12 @@ _FORM_SECTIONS: tuple[tuple[str, str, tuple[_FieldSpec, ...]], ...] = (
 
 _SECTION_FIELDS = {name: fields for name, _title, fields in _FORM_SECTIONS}
 
+_FIELD_BY_ID: dict[str, tuple[str, _FieldSpec]] = {
+    f"config-field-{section}-{spec.name}": (section, spec)
+    for section, fields in _SECTION_FIELDS.items()
+    for spec in fields
+}
+
 
 def _field_id(section: str, name: str) -> str:
     """The widget id for one form field.
@@ -179,6 +198,29 @@ def _parse(kind: str, text: str) -> object:
     return text
 
 
+def _unchanged(kind: str, parsed: object, existing: object) -> bool:
+    """True when a field's text already says what the mapping already holds.
+
+    The guard matters because assembling the form sets every input's value,
+    which queues the same ``Changed`` message a keystroke produces. Comparing
+    the parsed text with the working mapping makes such a message a no-op, so
+    merely opening the panel never invents a patch.
+
+    Args:
+        kind: The field's declared kind.
+        parsed: The value the input's text parses to.
+        existing: The value the working mapping holds for that key.
+
+    Returns:
+        True when revalidating this field would change nothing.
+    """
+    if existing is None and parsed in ("", []):
+        return True
+    if isinstance(existing, float) and isinstance(parsed, (int, float)):
+        return float(existing) == float(parsed)
+    return bool(parsed == existing)
+
+
 class ConfigScreen(Screen):
     """Edit the five core config sections; never compute a verdict or write a file."""
 
@@ -208,7 +250,7 @@ class ConfigScreen(Screen):
         self._raw: dict = {}
         self._errors: list[SectionError] = []
         self._bound = False
-        self._populating = False
+        self._kept: tuple[str, ...] = ()
 
     @property
     def _preflight_app(self) -> DNALLMPreflightApp:
@@ -236,11 +278,18 @@ class ConfigScreen(Screen):
                             )
                         if section == "task":
                             yield Static(copy.CONFIG_READONLY_FACTS_NOTE, id="config-facts-note")
+                yield Static(copy.CONFIG_KEPT_AS_IS_HEADING, id=_KEPT_HEADING_ID)
+                yield Container(id=_KEPT_ID)
             with VerticalScroll(id=_SIDE_ID):
                 yield Static(copy.CONFIG_ERRORS_HEADING, id="config-errors-heading")
                 yield Static("", markup=False, id=_ERRORS_ID)
                 yield Static(copy.CONFIG_PREVIEW_HEADING, id="config-preview-heading")
                 yield Static("", markup=False, id=_PREVIEW_ID)
+        with Horizontal(id="config-output-row"):
+            yield Static(copy.CONFIG_OUTPUT_PATH_LABEL, id="config-output-label")
+            yield Input(copy.CONFIG_DEFAULT_EXPORT_NAME, id=_OUTPUT_PATH_ID)
+        yield Button(copy.CONFIG_SAVE_ACTION, id=_SAVE_ID, variant="primary", disabled=True)
+        yield Static(copy.CONFIG_SAVE_DISABLED_REASON, markup=False, id=_SAVE_REASON_ID)
         yield Static(copy.QUIT_HINT, id="config-quit-hint")
         yield Footer()
 
@@ -249,29 +298,119 @@ class ConfigScreen(Screen):
         self._start()
 
     def _start(self) -> None:
-        """Dispatch the one core call this panel starts with."""
+        """Dispatch the one core call this panel starts with.
+
+        Precedence: an explicit model, then an explicit file, then whatever the
+        wizard already holds (back navigation resumes the working mapping
+        through the core rather than re-reading a file), then ``--config``.
+        """
+        state = self._preflight_app.state
         if self._model is not None:
             self._set_status(copy.CONFIG_BUILDING)
             self._preflight_app.generate_config_worker(self._model, task_type=self._task_type)
+            return
+        if self._config_path is not None:
+            self._set_status(copy.CONFIG_EDITING)
+            self._preflight_app.edit_config_worker(self._config_path, {})
+            return
+        if state.generated_config is not None:
+            self._set_status(copy.CONFIG_EDITING)
+            self._preflight_app.edit_config_worker(state.generated_config.raw, {})
+            return
+        if state.config_path is not None:
+            self._set_status(copy.CONFIG_EDITING)
+            self._preflight_app.edit_config_worker(state.config_path, {})
+            return
+        self._set_status(copy.CONFIG_NO_SOURCE)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Save the config when the (gated) save action is pressed.
+
+        Args:
+            event: The button press; only this panel's save action is handled.
+        """
+        if event.button.id == _SAVE_ID:
+            self._save()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Revalidate the working mapping on every field change (D-13).
+
+        The working mapping is patched locally at the same instant the value
+        is typed, so two edits made inside one worker round-trip both survive;
+        the core then revalidates the whole mapping through the shared
+        ``validate_sections`` path and returns every remaining problem.
+
+        Args:
+            event: The input change; only this panel's editable fields matter.
+        """
+        field = _FIELD_BY_ID.get(event.input.id or "")
+        if field is None or not self._raw:
+            return
+        section, spec = field
+        if spec.readonly:
+            return
+        parsed = _parse(spec.kind, event.value)
+        current = self._raw.get(section)
+        existing = current.get(spec.name) if isinstance(current, dict) else None
+        if _unchanged(spec.kind, parsed, existing):
+            return
+        self._record(section, spec.name, parsed)
+        self._preflight_app.edit_config_worker(self._raw, {section: {spec.name: parsed}})
+
+    def _record(self, section: str, name: str, value: object) -> None:
+        """Write one edited value into the working mapping.
+
+        Args:
+            section: The config section being edited.
+            name: The raw key inside it.
+            value: The typed value the input now stands for.
+        """
+        current = self._raw.get(section)
+        if not isinstance(current, dict):
+            current = {}
+        current[name] = value
+        self._raw[section] = current
+
+    def _save(self) -> None:
+        """Write the config — only while clean, and only through the core."""
+        if not self._raw or self._errors:
+            return
+        path = self.query_one(f"#{_OUTPUT_PATH_ID}", Input).value.strip()
+        if not path:
+            self._set_status(copy.CONFIG_OUTPUT_PATH_PROMPT)
+            return
+        self._set_status(copy.CONFIG_SAVING)
+        self._preflight_app.edit_config_worker(self._raw, {}, output_path=path)
 
     async def apply_config_ready(
         self, generated: GeneratedConfig, output_path: str | None = None
     ) -> None:
-        """Adopt one validated result and repaint the pane.
+        """Adopt one validated result and repaint the form, errors, and preview.
 
         Args:
             generated: The frozen result the core returned.
-            output_path: Where a save wrote, or None for a validate-only run
-                (accepted here so the app's routing hook has one signature).
+            output_path: Where a save wrote, or None for a validate-only run.
+                The core writes only on a clean run, so a path here with no
+                errors means the file exists (WR-02).
         """
-        self._raw = dict(generated.raw)
+        self._raw = deepcopy(generated.raw)
         self._errors = list(generated.errors)
         self._preflight_app.state.generated_config = generated
-        if not self._bound:
+        if self._bound:
+            # Only the checkpoint-owned facts are refreshed; rewriting an
+            # editable field would move the caret out from under the user.
+            self._bind_fields(readonly_only=True)
+        else:
             self._bind_fields()
             self._bound = True
         self._render_errors()
         self._render_preview()
+        await self._render_kept_as_is()
+        self._update_save_state()
+        if output_path is not None and not generated.errors:
+            self._preflight_app.state.export_path = output_path
+            self._set_status(copy.CONFIG_SAVED.format(path=output_path))
+            return
         self._set_status(copy.CONFIG_READY if not self._errors else copy.CONFIG_HAS_ERRORS)
 
     async def apply_worker_failure(self, message: str) -> None:
@@ -286,18 +425,21 @@ class ConfigScreen(Screen):
         """Return to the previous step; the working mapping stays on the state."""
         self._preflight_app.pop_screen()
 
-    def _bind_fields(self) -> None:
-        """Fill every input from the working mapping, once, on the first result."""
-        self._populating = True
-        try:
-            for section, fields in _SECTION_FIELDS.items():
-                values = self._raw.get(section)
-                values = values if isinstance(values, dict) else {}
-                for spec in fields:
-                    widget = self.query_one(f"#{_field_id(section, spec.name)}", Input)
-                    widget.value = _typed_text(values.get(spec.name))
-        finally:
-            self._populating = False
+    def _bind_fields(self, *, readonly_only: bool = False) -> None:
+        """Fill the inputs from the working mapping.
+
+        Args:
+            readonly_only: Refresh only the disabled, checkpoint-owned facts —
+                the refresh that is safe while the user is typing elsewhere.
+        """
+        for section, fields in _SECTION_FIELDS.items():
+            values = self._raw.get(section)
+            values = values if isinstance(values, dict) else {}
+            for spec in fields:
+                if readonly_only and not spec.readonly:
+                    continue
+                widget = self.query_one(f"#{_field_id(section, spec.name)}", Input)
+                widget.value = _typed_text(values.get(spec.name))
 
     def _render_errors(self) -> None:
         """Print every error in the core's own order, one line each."""
@@ -313,6 +455,29 @@ class ConfigScreen(Screen):
         from ...preflight import render_yaml
 
         self.query_one(f"#{_PREVIEW_ID}", Static).update(render_yaml(self._raw))
+
+    async def _render_kept_as_is(self) -> None:
+        """List the sections this form does not touch, so none is lost unseen."""
+        kept = tuple(section for section in self._raw if section not in _CORE_SECTIONS)
+        heading = self.query_one(f"#{_KEPT_HEADING_ID}", Static)
+        container = self.query_one(f"#{_KEPT_ID}", Container)
+        heading.display = bool(kept)
+        container.display = bool(kept)
+        if kept == self._kept:
+            return
+        self._kept = kept
+        await container.remove_children()
+        for section in kept:
+            container.mount(
+                self._preflight_app.render_text(copy.CONFIG_KEPT_AS_IS_LINE.format(section=section))
+            )
+
+    def _update_save_state(self) -> None:
+        """Switch saving off while anything needs fixing (D-13, SC3)."""
+        button = self.query_one(f"#{_SAVE_ID}", Button)
+        button.disabled = bool(self._errors) or not self._raw
+        reason = "" if not button.disabled else copy.CONFIG_SAVE_DISABLED_REASON
+        self.query_one(f"#{_SAVE_REASON_ID}", Static).update(reason)
 
     def _set_status(self, text: str) -> None:
         """Replace the status line with *text*, rendered literally."""
