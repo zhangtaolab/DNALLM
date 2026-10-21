@@ -24,6 +24,20 @@
 | IN-05 | info | accepted | — | The broad `except ImportError` around the function-local screen imports is defensible at this stage: every screen ships in this build, and the guards are the documented older-build safety valve. Revisit if/when the TUI panels become independently installable. |
 | IN-06 | info | deferred | — | Partly addressed already: CR-01's regression test clicks an intent switch without settling the previous wave (old item b/c), and WR-02's rewritten quit test asserts the real thread contract instead of teardown time (old item a). No separate test-only commit was made. |
 
+## Incremental re-review (plans 25-11 and 25-12, 8 files)
+
+**Source review:** `25-REVIEW.md` re-run at `31ed6c7..HEAD` — 7 new findings: 1 critical, 2 warning, 4 info.
+
+| ID | severity | disposition | commit | note |
+|----|----------|-------------|--------|------|
+| CR-02 | critical | open | — | The config error pane silently truncates the list that gates saving. `#config-errors` is a `Static` with `max-height: 14`; `overflow-y: auto` is inert on a Static in Textual 8, so the pane is not scrollable. Independently confirmed here: the most common error (bad `task_type`) is 501 characters → 17 rendered rows at 80x24's 32-column pane, against `is_scrollable=False`, `max_scroll_y=0`. The last rows are unreachable, which defeats the GAP-A promise that the core's own message is never lost. |
+| WR-08 | warning | open | — | The task-type hint is 453 chars and renders 15 rows between the label and its input; `#config-form` is 9 rows at 80x24, so the first interactive control is off-screen. |
+| WR-09 | warning | open | — | The suitability legend pushes the "Use this model" button out of the visible body at 140x50 (y=37..40 → y=47..50). The fix in 25-12 scrolled before clicking, which holds reachability only by lowering the panel's "action inside the visible page" invariant. |
+| IN-07 | info | open | — | The "Show details from the check" toggle is enabled for every error but emits no detail line when the plain sentence equals the core's message. |
+| IN-08 | info | open | — | `CONFIG_ERROR_GENERIC["not_a_number"]` hard-codes "for example 0.001", which contradicts the threshold hint's "0.5 means an even chance" on the same field. |
+| IN-09 | info | open | — | `TASK_TYPE_GLOSSES` is exported mutable while every sentence composed from it is frozen at import, so a consumer mutating it silently re-splits the vocabulary. |
+| IN-10 | info | open | — | `_relative_field` strips one section prefix, but `benchmark` fields arrive as `benchmark.benchmark.name`, so that one section renders a doubled path. |
+
 ## Notes
 
 - No finding turned out to be invalid.

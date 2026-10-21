@@ -1,218 +1,268 @@
 ---
 phase: 25-terminal-ui-pre-flight-wizard-tui-extra
-reviewed: 2026-10-21T09:46:24Z
+reviewed: 2026-10-21T13:02:27Z
 depth: standard
-files_reviewed: 45
+files_reviewed: 8
 files_reviewed_list:
-  - dnallm/__init__.py
-  - dnallm/cli/cli.py
-  - dnallm/datahandling/__init__.py
-  - dnallm/finetune/__init__.py
-  - dnallm/inference/__init__.py
-  - dnallm/models/__init__.py
-  - dnallm/models/model.py
-  - dnallm/models/special/__init__.py
-  - dnallm/preflight/__init__.py
-  - dnallm/preflight/availability.py
-  - dnallm/preflight/config_gen.py
-  - dnallm/preflight/report.py
-  - dnallm/preflight/validation.py
-  - dnallm/tui/__init__.py
   - dnallm/tui/app.py
   - dnallm/tui/copy.py
-  - dnallm/tui/messages.py
-  - dnallm/tui/screens/__init__.py
   - dnallm/tui/screens/config.py
-  - dnallm/tui/screens/data.py
-  - dnallm/tui/screens/download.py
-  - dnallm/tui/screens/entry.py
-  - dnallm/tui/screens/env.py
   - dnallm/tui/screens/suitability.py
-  - dnallm/tui/screens/summary.py
-  - dnallm/tui/state.py
-  - dnallm/tui/workers.py
-  - dnallm/utils/__init__.py
-  - dnallm/utils/env_info.py
-  - tests/cli/test_cli.py
-  - tests/preflight/test_availability.py
-  - tests/preflight/test_config_gen.py
   - tests/test_extras_guard.py
-  - tests/test_package_facade.py
-  - tests/tui/__init__.py
   - tests/tui/test_app.py
+  - tests/tui/test_copy.py
   - tests/tui/test_screens.py
-  - tests/tui/test_structure.py
-  - tests/tui/test_workers.py
-  - tests/utils/test_env_info.py
-  - tests/utils/test_transformers_compat_device.py
 findings:
   critical: 1
-  warning: 7
-  info: 6
-  total: 14
+  warning: 2
+  info: 4
+  total: 7
 status: issues_found
 ---
 
-# Phase 25: Code Review Report
+# Phase 25: Code Review Report (incremental re-review)
 
-**Reviewed:** 2026-10-21T09:46:24Z
+**Reviewed:** 2026-10-21T13:02:27Z
 **Depth:** standard
-**Files Reviewed:** 45
+**Files Reviewed:** 8
 **Status:** issues_found
+
+## Prior Findings (carried forward)
+
+The first review of this phase (`31ed6c7`) covered 45 files and recorded 14 findings. Every one was
+triaged in `25-REVIEW-DISPOSITION.md`; that record is carried forward here verbatim by ID and
+disposition so a reader of this file alone still sees it.
+
+| ID | severity | disposition | fix commit |
+|----|----------|-------------|------------|
+| CR-01 | critical | fixed | `eaa38ad` — local batch valid only for the report on screen; per-request generation; previous batch cancelled |
+| WR-01 | warning | fixed | `55ce7c8` — dispatch sites deep-copy `self._raw` on the UI thread |
+| WR-02 | warning | fixed | `7330ae7` — download moved to its own daemon thread (`DownloadOperation`) |
+| WR-03 | warning | fixed | `2eb89c1` — mid-transfer skip records a pending skip; stopped transfer lands on `SUMMARY_MODEL_STOPPED` |
+| WR-04 | warning | fixed | `fe9e716` — `_dump_yaml` renders first, then atomic sibling temp + `os.replace` |
+| WR-05 | warning | fixed | `b8407e2` — `probe_availability_worker` failure guard |
+| WR-06 | warning | fixed | `4553daa` — `edit_config_worker` catches `OSError` and names the output path |
+| WR-07 | warning | fixed | `11c8d95` — `_render_report` clears the stale selection / disables "Use this model" |
+| IN-01 | info | fixed | `4fcf6c3` — preflight facade item 5 wording |
+| IN-02 | info | fixed | `8a54082` — root facade docstring renders `__version__` |
+| IN-03 | info | deferred | — — `ConfigReady` one-line summary still says "validated clean" (`dnallm/tui/messages.py:112`) |
+| IN-04 | info | fixed | `13474a6` — `_cuda_compat`/`_transformers_compat` removed from `dnallm.utils.__all__` |
+| IN-05 | info | accepted | — broad `except ImportError` around function-local screen imports |
+| IN-06 | info | deferred | — test-only items partly covered by CR-01/WR-02 regression tests |
+
+Spot-check of the fixes that live in the files re-reviewed here: the CR-01 generation guard, WR-01
+`deepcopy` snapshots, WR-02 `_download_operation` cancel on unmount, and WR-07 selection clearing are
+all still present and still covered by tests. Nothing regressed.
+
+**Numbering note:** new findings continue the prior sequence (CR-02, WR-08, WR-09, IN-07…IN-10) so
+the IDs in this file and in the disposition record can never be confused.
 
 ## Summary
 
-The phase delivers what its summaries claim at the level of structure: the `tui` extra is declared and guarded, three PEP 562 facades resolve every public name to the identical object, `import dnallm.preflight` is torch-free (measured: 0.26 s, no torch/transformers/datasets/matplotlib), the worker seam is the only thread boundary, the AST guards are non-tautological, and the whole 486-test lane passes. The config write path keeps its two hard promises (no write while errors exist; preview bytes == file bytes).
+This increment is presentation-only: plan 25-11 replaced the config panel's raw Pydantic messages
+with a plain-language mapper (`copy.config_error_message`) plus per-field glosses and an
+error-detail toggle, and plan 25-12 collapsed four independent task-type prose literals into one
+`TASK_TYPE_GLOSSES` mapping, added a static ten-row legend to the suitability panel, and composed
+two navigation sentences from the destination screens' own constants.
 
-One user-visible correctness defect survives: the suitability panel can permanently drop a freshly requested listing when the previous listing's offline local pass lands during the re-check — demonstrated with a reproduction (see CR-01). The rest of the findings are robustness and honesty gaps around the thread boundary, the download cancel/quit contract, and one latent write-path data-loss ordering.
+The vocabulary unification is sound: `TASK_TYPE_GLOSSES` matches the live `TaskConfig` pattern order
+exactly, and every one of the four sites is composed from it. The mapper itself is correct on every
+live path I exercised through the real core (`generate_config` / `edit_config`): the bare and dotted
+field conventions both resolve, the reason codes win over Pydantic fragments, and unknown wording
+passes through untouched — no sentence was observed to lie.
 
-Verification performed: the full phase lane (`tests/tui tests/preflight tests/cli tests/test_package_facade.py tests/test_extras_guard.py tests/utils/test_env_info.py`) → 486 passed; two purpose-built Pilot reproductions for CR-01 and the selection refresh; a direct probe of `_dump_yaml`'s truncate-then-serialize order; and a subprocess probe confirming that an abandoned `run_in_executor` thread blocks interpreter exit.
+The problem is the surface it renders into. The new sentences are two to four times longer than the
+raw messages they replace, and the existing `#config-errors` box cannot scroll, so the error list
+that gates saving now silently truncates. Measured, with the app running: 213 tests pass
+(`tests/tui` + `tests/test_extras_guard.py`), `ruff check` and `ruff format --check` are clean on all
+eight files, and per-module coverage stays above the 96% floor (`config.py` 100%, `suitability.py`
+99%, `app.py` 100%). Passing tests do not catch the defects below because the assertions check the
+`Static`'s content string, not what is on screen.
 
 ## Critical Issues
 
-### CR-01: A re-check silently drops the new report when the previous listing's local batch lands first
+### CR-02: The config error pane silently truncates the list that gates saving
 
-**File:** `dnallm/tui/screens/suitability.py:250-265` (with `_start_compatibility` at `:203-222`)
-**Issue:** `apply_compatibility_ready` treats *any* report as "the current report" whenever `self._report is None`:
+**File:** `dnallm/tui/app.py:123` (CSS), `dnallm/tui/screens/config.py:296` and `:470-491`
+**Severity:** BLOCKER
+
+**Issue:** `#config-errors` is a `Static` with `max-height: 14` and, added in this change,
+`overflow-y: auto`. In Textual 8 that `overflow-y` is inert on a `Static`: the widget's virtual size
+is its own (capped) size, so nothing inside it can be scrolled and every row past the 14th is
+dropped at render. Minimal reproduction (no dnallm code): a `Static` with 40 newline-separated lines
+under `max-height: 14; overflow-y: auto` reports `is_scrollable == False` and `max_scroll_y == 0`.
+
+The new plain sentences make this the normal case rather than an edge case:
+
+| scenario | content height at the pane's width | pane box | rows never displayable |
+|---|---|---|---|
+| one bad `task_type` (the single most common error), 80x24, width 32 | 17 | 14 | 3 |
+| eight errors, details off, 100x40, width 42 | ≈30 | 14 | ≈16 |
+| eight errors, details on, 100x40, width 42 | 56 | 14 | 42 |
+
+Verified by rendering the compositor at 80x24: the last three rows of the single-error sentence —
+including `The longer spellings such as binary_classification also work.` — are absent from the
+screen text, and the pane reports `max_scroll_y = 0`, so the user cannot reach them. The parent
+`#config-side` scrolls, but it only moves the 14-row pane; it cannot reveal rows the pane never
+lays out.
+
+**Impact:** the pane is the only place the user learns what blocks "Save this config", and its own
+heading-plus-reason copy says "the list on the right says what to change". In a multi-error config
+most of that list is invisible. It also breaks the promise the same change set makes in
+`dnallm/tui/copy.py:397-404` ("the core's own message is never lost"): with the detail toggle on,
+the raw message's tail is clipped too.
+
+The regression test that claims otherwise does not test it:
+`tests/tui/test_screens.py:896` is named `test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away`
+and its docstring says "A1 fits", but every assertion is a substring test against
+`Static.content` (`expected in pane`, `"detail from the check:" in pane_with_details`), which is true
+whether or not the text is rendered.
+
+**Fix:** give the list a real scroll container and put the literal `Static` inside it; then make the
+test assert geometry, not substrings.
 
 ```python
-if self._report is not None and report is not self._report:
-    return
-self._report = report
-...
-if local_by_name:
-    self._local_by_model.update(local_by_name)
-    self._refresh_availability_cells()
-    return
+# dnallm/tui/screens/config.py (compose)
+with VerticalScroll(id=f"{_ERRORS_ID}-scroll"):
+    yield Static("", markup=False, id=_ERRORS_ID)
 ```
-
-`_start_compatibility()` resets `self._report = None` and starts the new `check_compatibility_worker` without cancelling the still-running `local_availability_batch_worker` for the previous listing (that worker is in no group, so nothing stops it). If that stale batch arrives after the reset and before the new check finishes — the normal order on a cold cache, because the new check runs up to 20 bounded remote probes (5 s each) while the batch is disk-only — then:
-
-1. the stale batch passes the guard, sets `self._report = <old report>`, and returns early (so it is never rendered as a batch);
-2. the new report then hits `self._report is not None and report is not self._report` and is **dropped for good**.
-
-The panel keeps showing the old listing, `state.compatibility_report` keeps the stale report, and the status line stays on `PROBING_PLACEHOLDER` ("probing…") because the batch path returns before `SUITABILITY_READY`. Switching intent (or pressing Check) during the offline pass therefore silently ignores the user's request; only pressing Check again recovers.
-
-The existing stale-guard test (`tests/tui/test_screens.py:2023`, `test_a_batch_for_a_listing_the_user_already_replaced_is_ignored`) covers only the reverse order (a report is present when the stale batch arrives), and the route-switch test settles all workers between clicks, so neither can see this. Reproduced with a Pilot test (fake core gated on its second call, stale batch delivered while it is blocked): `state.compatibility_report.listing[0].model` stayed `third-party/a` instead of the requested `zhangtaolab/b`, and the rendered rows matched the stale listing.
-
-**Fix:** A local batch is only ever valid for the report already on screen — never as "the report". Also cancel/ignore the previous check explicitly:
-
+```css
+/* dnallm/tui/app.py */
+#config-errors-scroll { max-height: 14; }
+#config-errors { height: auto; }
+```
 ```python
-# apply_compatibility_ready
-if local_by_name:
-    if report is not self._report:          # batch for a listing we moved past
-        return
-    self._local_by_model.update(local_by_name)
-    self._refresh_availability_cells()
-    return
-self._report = report
-...
+# tests/tui/test_screens.py — the assertion that would have caught this
+pane = screen.query_one("#config-errors", Static)
+side = screen.query_one("#config-side", VerticalScroll)
+last_line_bottom = pane.region.y + pane.visual.get_height(pane.region.width)
+assert side.max_scroll_y >= last_line_bottom - side.region.bottom
 ```
-
-and make the compatibility worker exclusive (`group=CONFIG_WORKER_GROUP`-style token or a per-screen generation counter) so a newer check supersedes an older one instead of racing it. Add a test that delivers the stale batch *before* the new report and asserts the new listing renders and the status leaves "probing…".
 
 ## Warnings
 
-### WR-01: The config screen hands its live working mapping to a worker thread while the UI thread keeps mutating it
+### WR-08: The task-type hint is taller than the whole form viewport at 80x24
 
-**File:** `dnallm/tui/screens/config.py:340-363` and `:379-388`; `dnallm/preflight/config_gen.py:449-452`
-**Issue:** `on_input_changed` calls `self._preflight_app.edit_config_worker(self._raw, ...)` and `_save` calls the same with `self._raw`. The worker thread then runs `edit_config`, whose first act is `copy.deepcopy(existing)`. Meanwhile `_record()` keeps writing into the very same nested dicts from the UI thread on the next keystroke (that is the deliberate "patch locally at the keystroke" design). A keystroke that adds a *new* key while the previous worker is deep-copying changes the nested dict's size mid-iteration → `RuntimeError: dictionary changed size during iteration`, which surfaces as a spurious `WorkerFailed` ("We could not build this config…") if the older worker had not yet observed its exclusive-group cancellation. Replacing an existing key is safe in CPython; adding one is not.
-**Fix:** Copy on the UI thread, where the mapping is stable for the duration of the call:
+**File:** `dnallm/tui/screens/config.py:278-285`, `dnallm/tui/copy.py:491`
+**Severity:** WARNING
 
-```python
-snapshot = deepcopy(self._raw)
-self._preflight_app.edit_config_worker(snapshot, {section: {spec.name: parsed}})
-```
+**Issue:** `CONFIG_FIELD_HINTS[("task", "task_type")]` is 453 characters — it re-states the full
+eight-value glossary inside a form field. Measured at 80x24: the hint renders 15 rows between the
+"Task type" label and its input, the `#config-form` viewport is 9 rows, and the task-type `Input`
+therefore lands at y=23 against a form bottom of y=10. The first interactive control of the panel —
+and every control after it — is off-screen on the smallest supported terminal, and the first thing a
+user sees there is a wall of vocabulary.
 
-(the worker tree already imports `deepcopy` for `apply_config_ready`). Same in `_save`.
+`test_the_hinted_form_stays_legible_at_80x24` (`tests/tui/test_screens.py:1051`) does not catch this:
+it asserts the hint's *content* and that the **last** hint is reachable after `scroll_to_widget`.
 
-### WR-02: Quitting during a download freezes the process after the UI exits
-
-**File:** `dnallm/tui/app.py:218-225`; `dnallm/tui/workers.py:245-270` (`@work(thread=True)`); `tests/tui/test_screens.py:1570-1587`
-**Issue:** Textual thread workers are `loop.run_in_executor(None, ...)` (`textual/worker.py:326`) and `App.run()` uses `asyncio.run(...)` (`textual/app.py:2345`), whose `shutdown_default_executor()` joins the default executor. `on_unmount` only sets the cooperative cancel flag, which does nothing to an attempt already inside `snapshot_download`. So pressing `q` mid-download returns from the app but leaves the process blocked at interpreter exit until the current hub call returns — for a multi-GB model, minutes — with no UI and no feedback. Verified with a subprocess probe: an abandoned `run_in_executor` task made exit take exactly the task's remaining 6 s. `test_quitting_during_a_download_is_prompt` cannot detect this: it releases the gate in `finally` after teardown and measures only app teardown, so its `< 20 s` assertion passes by construction.
-**Fix:** Either accept and document the limitation honestly (`QUIT_HINT` should not promise an instant quit while downloading), or give the download its own non-joined execution path — e.g. run `download_model` in a `threading.Thread(daemon=True)` and post through `app.call_from_thread`/`post_message`, so process exit does not join it. Whichever is chosen, the test must assert the property the copy claims, not the tear-down time.
-
-### WR-03: "Finish without downloading" mid-download claims nothing was downloaded while the transfer continues
-
-**File:** `dnallm/tui/screens/download.py:289-294`; `dnallm/tui/copy.py:492`
-**Issue:** `_skip()` calls `_cancel()` and immediately `_show_summary(None)`. The cancel is cooperative, so the in-flight attempt keeps writing files into the hub cache, but the summary states `SUMMARY_MODEL_SKIPPED` — "No model files were downloaded — that step was skipped." The one sentence D-10 requires to be exactly true is false in the one state where it matters. (Contrast the non-skip cancel path, which correctly says the download stopped and offers retry.)
-**Fix:** While a download is running, have Skip request a cancel and show `CANCEL_PENDING_NOTE` instead of jumping to the summary; let `apply_download_finished(cancelled=True)` be the only path to the summary, so the closing copy matches what happened. Or add a "stopped" summary variant that does not claim nothing was written.
-
-### WR-04: `_dump_yaml` truncates the destination before serialization, so a write failure destroys the target file
-
-**File:** `dnallm/preflight/config_gen.py:214-229`
-**Issue:** `with open(path, "w", ...) as f: f.write(render_yaml(config))` evaluates `open(..., "w")` (which truncates) before `render_yaml`. Any representable error leaves a zero-byte file where the user's config was. Demonstrated: `_dump_yaml({"a": Path("/tmp/x")}, existing_file)` raised `yaml.representer.RepresenterError` and left the 26-byte file at 0 bytes. The Phase-25 TUI cannot produce an unserializable value (the form only emits str/int/float/lists of str), so this is a latent public-API defect, not a live wizard bug — but `edit_config(existing=<mapping>, output_path=...)` is documented for library callers and `render_yaml` is now exported as the public serializer.
-**Fix:** Serialize first, then write atomically:
+**Fix:** keep the hint to one line and let the suitability legend carry the glosses, e.g.
 
 ```python
-text = render_yaml(config)          # may raise; nothing touched yet
-path = os.path.expanduser(str(output_path))
-tmp = f"{path}.tmp-{os.getpid()}"
-with open(tmp, "w", encoding="utf-8") as f:
-    f.write(text)
-os.replace(tmp, path)
+("task", "task_type"): (
+    "What the model should do: embedding, mask, generation, binary, multiclass, "
+    "multilabel, regression or token."
+),
 ```
+and add an assertion that `#config-field-task-task_type` is inside `#config-form` before any
+scrolling, mirroring the data panel's `check_button.bottom <= body.bottom` invariant
+(`tests/tui/test_screens.py:320`).
 
-and add a test that a failing serialization leaves the previous file untouched.
+### WR-09: The ten-row suitability legend clips the panel's primary action, and the new test lowers the invariant instead of holding it
 
-### WR-05: `probe_availability_worker` is the only worker with no failure guard
+**File:** `dnallm/tui/screens/suitability.py:137`, `dnallm/tui/copy.py:286-292`,
+`tests/tui/test_screens.py:1017-1048`, `tests/tui/test_app.py:549-551`
+**Severity:** WARNING
 
-**File:** `dnallm/tui/workers.py:437-459`
-**Issue:** Every other worker imports inside a `try` and posts `WorkerFailed` on failure. This one imports `probe_availability` outside any `try` and calls it unguarded. With `exit_on_error=False`, a raise is swallowed by Textual and nothing is posted, so the row the user pressed `p` on stays on `PROBING_PLACEHOLDER` forever with no explanation and no recovery affordance. The core's "cannot raise" contract makes this defense-in-depth today, but it is the one place the documented worker-failure contract does not hold — and the worker test suite has failure/cancel tests for every worker except this one.
-**Fix:** Wrap the body in the same `try/except Exception` shape as the other workers, posting `WorkerFailed(SUITABILITY_FAILED)` (or a probe-specific sentence) when not cancelled; add the missing failure test.
+**Issue:** the static legend costs 10 rows of the panel's only scroll body. Measured with the app
+running, the "Use this model" button moves from y=37..40 to y=47..50 at 140x50, against a body whose
+bottom edge is y=48: fully visible without the legend, clipped with it. The page also grows by ten
+rows at every size.
 
-### WR-06: A save that fails on the output path is reported as a model-name problem
+Two things make this worth fixing rather than accepting:
 
-**File:** `dnallm/tui/workers.py:63-66`; `dnallm/tui/screens/config.py:422-428`
-**Issue:** `edit_config` writes with plain `open(path, "w")`. If `path` names a directory that does not exist (a very ordinary typo: `runs/config.yaml` with no `runs/`) or is not writable, `OSError` escapes to the worker's `except Exception` and the user reads `_CONFIG_FAILED_COPY`: "We could not build this config. Check that the model name is right and that the config file exists, then try again." Every clause of that sentence points at the wrong thing; the actual problem is the save location. SC3 depends on the user knowing the file was not written.
-**Fix:** Distinguish the save call from the validate call — catch `OSError` around the write (in `edit_config` or in a dedicated save path) and map it to a save-specific sentence naming the path, e.g. "We could not save to {path}. Check that the folder exists and that you can write there." Keep the existing sentence for the load/generate path.
+1. The two comments added in this change blame the legend for a condition it does not solely cause.
+   At 80x24 and 100x40 the button was already below the body's bottom edge before the legend existed
+   (measured with the legend hidden: y=38 and y=37, both still outside the body). The comments read
+   "The ten-row suitability legend puts this action below the body's bottom edge at 100x40"
+   (`tests/tui/test_app.py:549`), which is not true — the panel was already a scrolling page there.
+2. The new test `test_the_task_type_legend_is_reachable_at_80x24` proves reachability only after a
+   programmatic `scroll_to_widget`, weakening the invariant the sibling data panel still enforces
+   ("the action is inside the visible page", `tests/tui/test_screens.py:320`). The panel's own
+   `SUITABILITY_READY` sentence tells the user to "pick a model, then choose 'Use this model'" — a
+   control they cannot see.
 
-### WR-07: A check that returns no listing leaves a stale selection and an enabled "Use this model"
-
-**File:** `dnallm/tui/screens/suitability.py:275-297`, `:386-388`, `:461-475`
-**Issue:** `_render_report` replaces `self._listing` and clears the tables but never touches `state.selected_entry` or re-disables `#suitability-use`. In explicit-model mode (`models=[...]`) the listing is empty, so nothing can re-highlight; the button stays enabled from the previous listing and `_confirm_selection` then builds a config for a model that is no longer on screen. (When the new listing is non-empty the first-row highlight does refresh the selection — verified.)
-**Fix:** At the start of `_render_report`, clear the selection and disable the use action unless a row is highlighted after rendering (`self._preflight_app.state.selected_entry = None; use_button.disabled = True; self._show_detail_clear()`), letting the highlight repopulate it.
+**Fix:** pin the action row outside the scroll body, exactly as the download panel does with
+`#download-actions`, so the primary action is always visible; or collapse the legend to one wrapped
+line. Then correct the two comments, and assert `body.region.contains_region(use.region)` without a
+prior `scroll_to_widget`.
 
 ## Info
 
-### IN-01: The preflight facade docstring still calls the root package torch-heavy
+### IN-07: The "Show details from the check" toggle is a no-op for errors the mapper passes through
 
-**File:** `dnallm/preflight/__init__.py:36-37`
-**Issue:** Item 5 says "the root `dnallm` package stays torch-heavy by design", directly contradicting item 4 above it and the D-01 refactor this phase landed (the root facade is lazy and torch-free; only `click`/`stdlib`/numpy ride along). The stale-deferral guard only greps for the old "deferred to Phase 25" phrase, so it does not catch this.
-**Fix:** Reword to "Not a root-facade member: import from `dnallm.preflight` directly — the root `dnallm` facade does not re-export it."
+**File:** `dnallm/tui/screens/config.py:487-491`
+**Severity:** INFO
 
-### IN-02: Root facade docstring mangles `__version__`
+**Issue:** `details.disabled = not self._errors` enables the toggle for any non-empty error list, but
+`_render_errors` emits a detail line only when `plain != error.message`. For an error the mapper does
+not recognise the two are identical, so the button flips its label to "Hide details from the check"
+and the pane does not change. Reproduced through the real core: `task: {head_config: 5}` →
+`Input should be a valid dictionary or instance of HeadConfig`; `finetune: {output_dir: 3}` →
+`Input should be a valid string`. Both are shown verbatim and both enable a dead toggle.
 
-**File:** `dnallm/__init__.py:4`
-**Issue:** "The root facade is lazy (PEP 562): --version--, load_config, and cli bind eagerly" — `__version__` was mangled to `--version--` (likely a formatting artifact). It is the first sentence a maintainer reads about the facade contract.
-**Fix:** Restore the identifier.
+**Fix:** `details.disabled = not any(error.message != copy.config_error_message(...) for error in self._errors)`,
+or always echo the raw message under the plain line.
 
-### IN-03: `ConfigReady`'s docstring contradicts how the config panel uses it
+### IN-08: The generic number example `0.001` is wrong for the probability fields the template covers
 
-**File:** `dnallm/tui/messages.py:102-117`
-**Issue:** The class doc says "Config generation/editing finished and validated clean", but the payload regularly carries `generated.errors` non-empty — the panel's whole error-pane and save-gate logic depends on it. The `output_path` paragraph is accurate; the summary line is not.
-**Fix:** "Config generation/editing finished; `generated` carries the validated sections, the ordered errors, and the raw mapping."
+**File:** `dnallm/tui/copy.py:592`
+**Severity:** INFO
 
-### IN-04: Star-importing `dnallm.utils` pulls torch
+**Issue:** `CONFIG_ERROR_GENERIC["not_a_number"]` appends "for example 0.001" for every float field
+without an exact entry, including `task.threshold` and `task.mlm_probability`. Measured through
+`edit_config`: `task: {threshold: abc}` renders "Decision threshold needs a number, for example
+0.001." A reader who copies the example gets a valid but badly skewed classifier; a masking
+probability of 0.001 masks almost nothing. The threshold hint two widgets above says "0.5 means an
+even chance", so the pane contradicts the form.
 
-**File:** `dnallm/utils/__init__.py:54-57`, `:88-105`
-**Issue:** `__all__` exports the private shim names `_cuda_compat`/`_transformers_compat`, so `from dnallm.utils import *` resolves them through `__getattr__` and imports `transformers_compat`, which does `import torch` at module scope. The lazy promise holds for attribute access but not for star-import, and the parity test enforces the current `__all__` rather than questioning it.
-**Fix:** Keep the names resolvable via `__getattr__` but drop them from `__all__` (they are private modules, not public API); update `_UTILS_MODULE_VALUED` accordingly.
+**Fix:** add exact entries for `("task", "threshold", "not_a_number")` and
+`("task", "mlm_probability", "not_a_number")` with a sensible example, or drop the example from the
+generic template.
 
-### IN-05: `except ImportError` around existing screen imports can mask a real code bug as a missing build
+### IN-09: The exported vocabulary is mutable while every sentence built from it is frozen at import
 
-**File:** `dnallm/tui/app.py:358-363`, `:379-384`, `:402-407`, `:417-422`
-**Issue:** `dnallm/tui/screens/__init__.py` imports every screen, and `app.py` imports `.screens.env` at module scope, so by the time any of these function-local imports run, all screen modules are already loaded — the guard cannot fire for a genuinely absent panel. What it *can* catch is an `ImportError` raised *inside* a screen module (a typo'd import, a missing optional dependency), which is then logged as "not part of this build yet" and the step silently disappears. Note `run_preflight`'s `.app` import is at the same level, so the CLI would instead print the `dnallm[tui]` install hint for that same bug.
-**Fix:** Replace the guards with a single explicit `ImportResource`/`check`-style condition (or drop them now that the package is complete), and let unexpected `ImportError`s surface as `WorkerFailed`-style messages rather than silent no-ops. If kept, log at `error` with `exc_info` so a real bug is visible.
+**File:** `dnallm/tui/copy.py:128`, `:258-292`, `:491`, `:565-585`
+**Severity:** INFO
 
-### IN-06: Test-quality gaps that let the above defects stay green
+**Issue:** `TASK_TYPE_GLOSSES` is in `__all__` (so importable and mutable) while `_TASK_TYPE_PROSE`,
+`_TASK_TYPE_LEGEND_LINES`, `SUITABILITY_TASK_LEGEND`, the task-type hint and the two task-type error
+sentences are all composed once at import. A consumer that mutates the mapping — now the advertised
+single source — re-splits the vocabulary the plan exists to unify, silently, with no test failing
+(the tests compare against their own copies).
 
-**File:** `tests/tui/test_screens.py:1570-1587`, `:585-590`, `:2023-2041`; `tests/tui/test_app.py:488-570`
-**Issue:** Three guards assert weaker properties than their names claim: (a) `test_quitting_during_a_download_is_prompt` cannot detect WR-02 because it releases the download gate after teardown and measures only `run_test` duration; (b) `_settle()` waits for every worker between clicks, so `test_the_route_controls_switch_both_ways_and_recheck` and the end-to-end walk never exercise the interleaving that triggers CR-01; (c) `test_a_batch_for_a_listing_the_user_already_replaced_is_ignored` only covers the "report present" order.
-**Fix:** Add a stale-batch-before-new-report case (CR-01), a quit test that asserts the process/thread contract rather than the async-with duration, and one test that clicks an intent switch without settling the previous wave.
+**Fix:** expose it read-only (`MappingProxyType(dict(...))`) or keep the dict private and export a
+read-only accessor.
+
+### IN-10: The benchmark section's errors render with a doubled path
+
+**File:** `dnallm/tui/copy.py:607-627`, `:656`
+**Severity:** INFO
+
+**Issue:** `_relative_field` strips exactly one `"<section>."` prefix, but the core validates
+`benchmark` by passing the whole config dict to `BenchmarkConfig(**config_dict)`, so its loc already
+carries the section name and the field arrives as `benchmark.benchmark.name`. Measured through
+`edit_config` with `benchmark: {bogus: 1}`: four records, one of which renders
+"benchmark.benchmark.name cannot be empty." The section-relative form is `benchmark.name`.
+
+**Fix:** when the label lookup misses, strip a repeated leading `"<section>."` before using the path
+as the label:
+```python
+label = CONFIG_FIELD_LABELS.get((section, relative), relative if relative != field else field)
+```
 
 ---
 
-_Reviewed: 2026-10-21T09:46:24Z_
+_Reviewed: 2026-10-21T13:02:27Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
