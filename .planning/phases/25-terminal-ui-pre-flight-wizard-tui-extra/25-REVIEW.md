@@ -1,268 +1,246 @@
 ---
 phase: 25-terminal-ui-pre-flight-wizard-tui-extra
-reviewed: 2026-10-21T13:02:27Z
+reviewed: 2026-10-21T14:29:39Z
 depth: standard
-files_reviewed: 8
+files_reviewed: 3
 files_reviewed_list:
   - dnallm/tui/app.py
-  - dnallm/tui/copy.py
   - dnallm/tui/screens/config.py
-  - dnallm/tui/screens/suitability.py
-  - tests/test_extras_guard.py
-  - tests/tui/test_app.py
-  - tests/tui/test_copy.py
   - tests/tui/test_screens.py
 findings:
-  critical: 1
-  warning: 2
-  info: 4
-  total: 7
+  critical: 0
+  warning: 3
+  info: 3
+  total: 6
 status: issues_found
 ---
 
-# Phase 25: Code Review Report (incremental re-review)
+# Phase 25: Code Review Report (incremental re-review of 25-13)
 
-**Reviewed:** 2026-10-21T13:02:27Z
+**Reviewed:** 2026-10-21T14:29:39Z
 **Depth:** standard
-**Files Reviewed:** 8
+**Files Reviewed:** 3
 **Status:** issues_found
 
-## Prior Findings (carried forward)
-
-The first review of this phase (`31ed6c7`) covered 45 files and recorded 14 findings. Every one was
-triaged in `25-REVIEW-DISPOSITION.md`; that record is carried forward here verbatim by ID and
-disposition so a reader of this file alone still sees it.
-
-| ID | severity | disposition | fix commit |
-|----|----------|-------------|------------|
-| CR-01 | critical | fixed | `eaa38ad` — local batch valid only for the report on screen; per-request generation; previous batch cancelled |
-| WR-01 | warning | fixed | `55ce7c8` — dispatch sites deep-copy `self._raw` on the UI thread |
-| WR-02 | warning | fixed | `7330ae7` — download moved to its own daemon thread (`DownloadOperation`) |
-| WR-03 | warning | fixed | `2eb89c1` — mid-transfer skip records a pending skip; stopped transfer lands on `SUMMARY_MODEL_STOPPED` |
-| WR-04 | warning | fixed | `fe9e716` — `_dump_yaml` renders first, then atomic sibling temp + `os.replace` |
-| WR-05 | warning | fixed | `b8407e2` — `probe_availability_worker` failure guard |
-| WR-06 | warning | fixed | `4553daa` — `edit_config_worker` catches `OSError` and names the output path |
-| WR-07 | warning | fixed | `11c8d95` — `_render_report` clears the stale selection / disables "Use this model" |
-| IN-01 | info | fixed | `4fcf6c3` — preflight facade item 5 wording |
-| IN-02 | info | fixed | `8a54082` — root facade docstring renders `__version__` |
-| IN-03 | info | deferred | — — `ConfigReady` one-line summary still says "validated clean" (`dnallm/tui/messages.py:112`) |
-| IN-04 | info | fixed | `13474a6` — `_cuda_compat`/`_transformers_compat` removed from `dnallm.utils.__all__` |
-| IN-05 | info | accepted | — broad `except ImportError` around function-local screen imports |
-| IN-06 | info | deferred | — test-only items partly covered by CR-01/WR-02 regression tests |
-
-Spot-check of the fixes that live in the files re-reviewed here: the CR-01 generation guard, WR-01
-`deepcopy` snapshots, WR-02 `_download_operation` cancel on unmount, and WR-07 selection clearing are
-all still present and still covered by tests. Nothing regressed.
-
-**Numbering note:** new findings continue the prior sequence (CR-02, WR-08, WR-09, IN-07…IN-10) so
-the IDs in this file and in the disposition record can never be confused.
+Scope is the three files touched by plan 25-13 (`f213308`, `db798e4`): the `#config-errors` CSS
+change plus the task-section / output-row margins, the compose-order change that moves every field
+hint under its `Input`, and the strengthened 80x24 geometry tests. Nothing outside that diff was
+re-reported.
 
 ## Summary
 
-This increment is presentation-only: plan 25-11 replaced the config panel's raw Pydantic messages
-with a plain-language mapper (`copy.config_error_message`) plus per-field glosses and an
-error-detail toggle, and plan 25-12 collapsed four independent task-type prose literals into one
-`TASK_TYPE_GLOSSES` mapping, added a static ten-row legend to the suitability panel, and composed
-two navigation sentences from the destination screens' own constants.
+Both gap-closure fixes are real and both are now actually tested. I re-ran the sequences in the two
+modified tests with the pre-fix CSS and the pre-fix compose order restored (scratch app subclasses,
+no repo edits) and confirmed the new load-bearing assertions are red on the old layout:
 
-The vocabulary unification is sound: `TASK_TYPE_GLOSSES` matches the live `TaskConfig` pattern order
-exactly, and every one of the four sites is composed from it. The mapper itself is correct on every
-live path I exercised through the real core (`generate_config` / `edit_config`): the bare and dotted
-field conventions both resolve, the reason codes win over Pydantic fragments, and unknown wording
-passes through untouched — no sentence was observed to lie.
+| measurement at 80x24 | pre-fix | post-fix |
+|---|---|---|
+| `#config-errors` laid out vs rows needed, details off | 14 vs **17** (fails) | 17 vs 17 |
+| same, details on | 14 vs **25** (fails) | 25 vs 25 |
+| at 100x40, several errors, details on | 14 vs **36** (fails) | 36 vs 36 |
+| pane's last laid-out row | `…measured value) or token (one` (fails) | `binary_classification also work.` |
+| `#config-field-task-task_type` inside `#config-form`, clean | y=22 in a 9-row form (fails) | y=7 in an 11-row form |
+| same, error showing | y=23 in a 10-row form (fails) | y=8 in a 10-row form |
+| hint directly under its input | `False` | `True` |
 
-The problem is the surface it renders into. The new sentences are two to four times longer than the
-raw messages they replace, and the existing `#config-errors` box cannot scroll, so the error list
-that gates saving now silently truncates. Measured, with the app running: 213 tests pass
-(`tests/tui` + `tests/test_extras_guard.py`), `ruff check` and `ruff format --check` are clean on all
-eight files, and per-module coverage stays above the 96% floor (`config.py` 100%, `suitability.py`
-99%, `app.py` 100%). Passing tests do not catch the defects below because the assertions check the
-`Static`'s content string, not what is on screen.
+The compose-order change is behaviourally clean: because labels and hints are non-focusable
+`Static`s, the focusable order is byte-identical (verified by tabbing from `task_type` through eight
+fields on both orders — same widget ids, same sequence), `_rendered_text`'s `Static` order is
+unchanged, no rebinding or rename of a pre-existing name occurred, and ruff/format are clean.
+199/199 `tests/tui` tests pass, and the four `80x24` tests pass on five consecutive runs
+(2.6–2.7 s each, no flake).
 
-## Critical Issues
+No critical issue: the fix removes rows that were previously never laid out, and the new layout was
+stress-checked with a twelve-error config — the pane lays out all 98 rows it needs at 80x24 and
+`#config-side` reaches the tail (`max_scroll_y` 113). The remaining problems are in how much of the
+new test geometry can actually fail (it is less than the comments imply) and one usability
+consequence of removing the pane cap.
 
-### CR-02: The config error pane silently truncates the list that gates saving
+## Prior Findings (carried forward)
 
-**File:** `dnallm/tui/app.py:123` (CSS), `dnallm/tui/screens/config.py:296` and `:470-491`
-**Severity:** BLOCKER
+| ID | severity | disposition | note |
+|----|----------|-------------|------|
+| CR-01 | critical | fixed (`eaa38ad`) | generation-guarded local batch — still present |
+| WR-01…WR-07 | warning | fixed | still present, no regression in these files |
+| **CR-02** | critical | **fixed (`f213308`)** | cap removed; verified red-then-green above |
+| **WR-08** | warning | **fixed (`db798e4` + margins)** | input now contained at 80x24 in both states |
+| WR-09 | warning | deferred | suitability legend vs "Use this model" — out of this plan's blast radius |
+| IN-01…IN-06 | info | fixed/deferred/accepted as dispositioned | — |
+| IN-07…IN-10 | info | deferred | named in `25-13-PLAN.md` as out of scope |
 
-**Issue:** `#config-errors` is a `Static` with `max-height: 14` and, added in this change,
-`overflow-y: auto`. In Textual 8 that `overflow-y` is inert on a `Static`: the widget's virtual size
-is its own (capped) size, so nothing inside it can be scrolled and every row past the 14th is
-dropped at render. Minimal reproduction (no dnallm code): a `Static` with 40 newline-separated lines
-under `max-height: 14; overflow-y: auto` reports `is_scrollable == False` and `max_scroll_y == 0`.
+New IDs continue the sequence: **WR-10…WR-12**, **IN-11…IN-13**.
 
-The new plain sentences make this the normal case rather than an edge case:
+---
 
-| scenario | content height at the pane's width | pane box | rows never displayable |
-|---|---|---|---|
-| one bad `task_type` (the single most common error), 80x24, width 32 | 17 | 14 | 3 |
-| eight errors, details off, 100x40, width 42 | ≈30 | 14 | ≈16 |
-| eight errors, details on, 100x40, width 42 | 56 | 14 | 42 |
+## Narrative Findings (AI reviewer)
 
-Verified by rendering the compositor at 80x24: the last three rows of the single-error sentence —
-including `The longer spellings such as binary_classification also work.` — are absent from the
-screen text, and the pane reports `max_scroll_y = 0`, so the user cannot reach them. The parent
-`#config-side` scrolls, but it only moves the 14-row pane; it cannot reveal rows the pane never
-lays out.
+### Warnings
 
-**Impact:** the pane is the only place the user learns what blocks "Save this config", and its own
-heading-plus-reason copy says "the list on the right says what to change". In a multi-error config
-most of that list is invisible. It also breaks the promise the same change set makes in
-`dnallm/tui/copy.py:397-404` ("the core's own message is never lost"): with the detail toggle on,
-the raw message's tail is clipped too.
+#### WR-10: `scroll_in_range_after_repair` cannot fail — `scroll_y` is clamped by Textual before the assertion sees it
 
-The regression test that claims otherwise does not test it:
-`tests/tui/test_screens.py:896` is named `test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away`
-and its docstring says "A1 fits", but every assertion is a substring test against
-`Static.content` (`expected in pane`, `"detail from the check:" in pane_with_details`), which is true
-whether or not the text is rendered.
+**File:** `tests/tui/test_screens.py:966` (also the three `min(max_scroll_y, …)` guards at `:932-934`, `:944-946`, `:986-989`)
+**Severity:** WARNING
 
-**Fix:** give the list a real scroll container and put the literal `Static` inside it; then make the
-test assert geometry, not substrings.
+**Issue:** `side.scroll_y` is a reactive whose validator is
 
 ```python
-# dnallm/tui/screens/config.py (compose)
-with VerticalScroll(id=f"{_ERRORS_ID}-scroll"):
+# textual/widget.py, Widget.validate_scroll_y (8.2.8)
+def validate_scroll_y(self, value: float) -> float:
+    return clamp(value, 0, self.max_scroll_y)
+```
+
+so `assert scroll_in_range_after_repair` (`side.scroll_y <= side.max_scroll_y`) is true by
+construction, for every value, on every path — it can never detect the orphaned-offset condition it
+is appended for. The `min(side.max_scroll_y, …)` wrappers at the three scroll sites are redundant for
+the same reason (the setter already clamps), which makes the suite read as if it were defending a
+range it is not defending. The plan (`25-13-PLAN.md:29`, `:124`) calls this a "sanity guard", but the
+code carries no such note, so a future reader will count it as protection.
+
+**Fix:** drop the line, or replace it with an assertion about observable layout rather than about the
+clamped scalar:
+
+```python
+side.scroll_home(animate=False)
+await pilot.pause()
+pane_top_visible_after_repair = side.region.contains_region(errors_widget.region)
+# scroll_in_range_after_repair removed: Widget.validate_scroll_y clamps scroll_y
+# into [0, max_scroll_y], so the comparison cannot fail.
+```
+
+#### WR-11: Three of the seven appended assertions pass with the pre-fix CSS restored, so the "side column scrolls that row into view" clause is not proven
+
+**File:** `tests/tui/test_screens.py:936-939`, `:948-951`, `:991-994`, `:965`
+**Severity:** WARNING
+
+**Issue:** I restored `#config-errors { max-height: 14; overflow-y: auto; }` in a scratch app
+subclass and re-ran the exact sequences. Every reachability assertion still passed:
+
+```
+narrow, details off: pane 14 high / 17 needed, contained=True
+narrow, details on:  pane 14 high / 25 needed, contained=True
+wide,   details on:  pane 14 high / 36 needed, contained=True
+post-repair:         contains_region(errors_widget.region)=True
+```
+
+That is structural, not incidental: a capped `Static` still has a *region*, so its bottom-left point
+is inside `#config-side` after the side is scrolled, even though the rows past the cap were never
+laid out and the last text row is unreachable. `side.region.contains_point(...)` therefore says
+nothing about whether the pane's *content* is visible; `contains_region` on the repaired, empty
+one-row pane is likewise true under both layouts. Only `region.height >= _rows_the_text_needs(...)`
+and the `binary_classification` tail check discriminate — and those are doing all of the work in
+this test.
+
+The suite as a whole still catches CR-02, so this is not a false green; the risk is an over-claim
+(the comment at `:1008-1010` and the UI-SPEC's "the side column scrolls that row into view") and a
+future edit that keeps the three decorative checks while dropping the height check.
+
+**Fix:** keep them but label them as secondary guards (as the plan does), and prefer the simpler
+form, which at least fails if the side's scroll range stops reaching the pane's bottom:
+
+```python
+# Secondary guard only: the discriminating checks are the height-vs-needed
+# assertion and the tail-row text above; a capped pane's region still sits
+# inside #config-side, so reachability alone cannot catch that regression.
+side.scroll_y = side.max_scroll_y
+await pilot.pause()
+assert errors_widget.region.bottom <= side.region.bottom
+```
+
+#### WR-12: With the pane unbounded, "Show details from the check" moves off-screen when it is pressed in a multi-error config
+
+**File:** `dnallm/tui/app.py:124` (CSS), `dnallm/tui/screens/config.py:294-299` (side-pane compose order)
+**Severity:** WARNING
+
+**Issue:** `#config-errors { height: auto; }` removes the only bound on the pane, and the details
+toggle is composed *below* it, so the toggle's position is a function of the error count and of its
+own state. Measured on the real app at 140x50 with twelve invalid values (`many_bad.yaml`):
+
+```
+before click:      toggle y=33   side viewport bottom=38   visible
+after the click:   toggle y=59   side viewport bottom=38   NOT visible  (label = "Hide details…")
+```
+
+The side does not auto-scroll to it (`scroll_y` stays 0), so the press that expanded the detail
+lines leaves the same control below the fold — undoing the toggle now needs a manual scroll through
+the pane. At 80x24 the control was already below the fold before this change (14-row pane in a
+10-row viewport), so this is not a small-screen regression; it is new at normal sizes for the
+multi-error configs this fix is aimed at. The tests use `details.press()` rather than a click
+precisely because the control can be off-screen, which is a symptom of the same layout.
+
+**Fix:** put the toggle above the list so its position depends only on the heading, not on the pane's
+height (the UI-SPEC pins `#config-errors`' row budget, not the side column's child order):
+
+```python
+with VerticalScroll(id=_SIDE_ID):
+    yield Static(copy.CONFIG_ERRORS_HEADING, id="config-errors-heading")
+    yield Button(copy.CONFIG_ERROR_DETAILS_SHOW, id=_DETAILS_ID, disabled=True)
     yield Static("", markup=False, id=_ERRORS_ID)
+    yield Static(copy.CONFIG_PREVIEW_HEADING, id="config-preview-heading")
+    yield Static("", markup=False, id=_PREVIEW_ID)
 ```
+
+If the toggle must stay below the list, keep it visible instead —
+`self.query_one(f"#{_DETAILS_ID}", Button).scroll_visible(animate=False)` at the end of
+`_render_errors()` — accepting that the error text it just expanded scrolls up.
+
+### Info
+
+#### IN-11: `_rows_the_text_needs` measures with the widget's outer width, not Textual's content width
+
+**File:** `tests/tui/test_screens.py:93`
+**Severity:** INFO
+
+**Issue:** Textual sizes a `Static` by calling `get_content_height(container, viewport, content_width)`,
+and that `content_width` excludes the widget's own padding and border (verified in
+`textual/widget.py`); the helper passes `widget.region.width`, which includes them. For
+`#config-errors` the two are equal today (both 32 at 80x24, no padding on the selector), so the
+assertion is exact. If padding or a border is ever added to the pane, the helper will over-estimate
+the available width, under-count the rows needed, and silently weaken both the 80x24 and the 100x40
+guard.
+
+**Fix:**
+
+```python
+return widget.visual.get_height(widget.styles, widget.content_region.width)
+```
+
+#### IN-12: The tail-row assertion is pinned to the exact wrap position of one word
+
+**File:** `tests/tui/test_screens.py:930-931`
+**Severity:** INFO
+
+**Issue:** `assert "binary_classification" in tail_line` only holds while `binary_classification`
+happens to land in the final wrapped row of a 489-character sentence in a 32-column pane. Reordering
+the sentence tail in `copy.CONFIG_ERROR_MESSAGES` or any wrapping change inside the pinned
+`textual>=8.2,<9` range moves the word to another row and fails the test for a reason unrelated to
+CR-02 (the *substance* it protects — the last laid-out row is real content, not a blank) would still
+hold.
+
+**Fix:** keep the red evidence in the plan, but make the assertion express the property, for example
+`assert tail_line.strip()` plus `assert "also work." in tail_line`, or compare the rendered pane text
+to the wrapped expectation once and assert the last element matches.
+
+#### IN-13: The `#config-section-task` override is a second rule that silently un-does part of a grouped rule
+
+**File:** `dnallm/tui/app.py:117-119`
+**Severity:** INFO
+
+**Issue:** The grouped rule sets `margin-top: 1` on all five sections, and the very next line
+overrides one member to `0`. It works (equal specificity, later rule wins — verified: form height 11
+with the override, 9 without), but the grouped selector now lies about `#config-section-task`, and a
+future reordering of the two rules silently reintroduces the WR-08 regression with no test that says
+which rule is authoritative.
+
+**Fix:**
+
 ```css
-/* dnallm/tui/app.py */
-#config-errors-scroll { max-height: 14; }
-#config-errors { height: auto; }
-```
-```python
-# tests/tui/test_screens.py — the assertion that would have caught this
-pane = screen.query_one("#config-errors", Static)
-side = screen.query_one("#config-side", VerticalScroll)
-last_line_bottom = pane.region.y + pane.visual.get_height(pane.region.width)
-assert side.max_scroll_y >= last_line_bottom - side.region.bottom
-```
-
-## Warnings
-
-### WR-08: The task-type hint is taller than the whole form viewport at 80x24
-
-**File:** `dnallm/tui/screens/config.py:278-285`, `dnallm/tui/copy.py:491`
-**Severity:** WARNING
-
-**Issue:** `CONFIG_FIELD_HINTS[("task", "task_type")]` is 453 characters — it re-states the full
-eight-value glossary inside a form field. Measured at 80x24: the hint renders 15 rows between the
-"Task type" label and its input, the `#config-form` viewport is 9 rows, and the task-type `Input`
-therefore lands at y=23 against a form bottom of y=10. The first interactive control of the panel —
-and every control after it — is off-screen on the smallest supported terminal, and the first thing a
-user sees there is a wall of vocabulary.
-
-`test_the_hinted_form_stays_legible_at_80x24` (`tests/tui/test_screens.py:1051`) does not catch this:
-it asserts the hint's *content* and that the **last** hint is reachable after `scroll_to_widget`.
-
-**Fix:** keep the hint to one line and let the suitability legend carry the glosses, e.g.
-
-```python
-("task", "task_type"): (
-    "What the model should do: embedding, mask, generation, binary, multiclass, "
-    "multilabel, regression or token."
-),
-```
-and add an assertion that `#config-field-task-task_type` is inside `#config-form` before any
-scrolling, mirroring the data panel's `check_button.bottom <= body.bottom` invariant
-(`tests/tui/test_screens.py:320`).
-
-### WR-09: The ten-row suitability legend clips the panel's primary action, and the new test lowers the invariant instead of holding it
-
-**File:** `dnallm/tui/screens/suitability.py:137`, `dnallm/tui/copy.py:286-292`,
-`tests/tui/test_screens.py:1017-1048`, `tests/tui/test_app.py:549-551`
-**Severity:** WARNING
-
-**Issue:** the static legend costs 10 rows of the panel's only scroll body. Measured with the app
-running, the "Use this model" button moves from y=37..40 to y=47..50 at 140x50, against a body whose
-bottom edge is y=48: fully visible without the legend, clipped with it. The page also grows by ten
-rows at every size.
-
-Two things make this worth fixing rather than accepting:
-
-1. The two comments added in this change blame the legend for a condition it does not solely cause.
-   At 80x24 and 100x40 the button was already below the body's bottom edge before the legend existed
-   (measured with the legend hidden: y=38 and y=37, both still outside the body). The comments read
-   "The ten-row suitability legend puts this action below the body's bottom edge at 100x40"
-   (`tests/tui/test_app.py:549`), which is not true — the panel was already a scrolling page there.
-2. The new test `test_the_task_type_legend_is_reachable_at_80x24` proves reachability only after a
-   programmatic `scroll_to_widget`, weakening the invariant the sibling data panel still enforces
-   ("the action is inside the visible page", `tests/tui/test_screens.py:320`). The panel's own
-   `SUITABILITY_READY` sentence tells the user to "pick a model, then choose 'Use this model'" — a
-   control they cannot see.
-
-**Fix:** pin the action row outside the scroll body, exactly as the download panel does with
-`#download-actions`, so the primary action is always visible; or collapse the legend to one wrapped
-line. Then correct the two comments, and assert `body.region.contains_region(use.region)` without a
-prior `scroll_to_widget`.
-
-## Info
-
-### IN-07: The "Show details from the check" toggle is a no-op for errors the mapper passes through
-
-**File:** `dnallm/tui/screens/config.py:487-491`
-**Severity:** INFO
-
-**Issue:** `details.disabled = not self._errors` enables the toggle for any non-empty error list, but
-`_render_errors` emits a detail line only when `plain != error.message`. For an error the mapper does
-not recognise the two are identical, so the button flips its label to "Hide details from the check"
-and the pane does not change. Reproduced through the real core: `task: {head_config: 5}` →
-`Input should be a valid dictionary or instance of HeadConfig`; `finetune: {output_dir: 3}` →
-`Input should be a valid string`. Both are shown verbatim and both enable a dead toggle.
-
-**Fix:** `details.disabled = not any(error.message != copy.config_error_message(...) for error in self._errors)`,
-or always echo the raw message under the plain line.
-
-### IN-08: The generic number example `0.001` is wrong for the probability fields the template covers
-
-**File:** `dnallm/tui/copy.py:592`
-**Severity:** INFO
-
-**Issue:** `CONFIG_ERROR_GENERIC["not_a_number"]` appends "for example 0.001" for every float field
-without an exact entry, including `task.threshold` and `task.mlm_probability`. Measured through
-`edit_config`: `task: {threshold: abc}` renders "Decision threshold needs a number, for example
-0.001." A reader who copies the example gets a valid but badly skewed classifier; a masking
-probability of 0.001 masks almost nothing. The threshold hint two widgets above says "0.5 means an
-even chance", so the pane contradicts the form.
-
-**Fix:** add exact entries for `("task", "threshold", "not_a_number")` and
-`("task", "mlm_probability", "not_a_number")` with a sensible example, or drop the example from the
-generic template.
-
-### IN-09: The exported vocabulary is mutable while every sentence built from it is frozen at import
-
-**File:** `dnallm/tui/copy.py:128`, `:258-292`, `:491`, `:565-585`
-**Severity:** INFO
-
-**Issue:** `TASK_TYPE_GLOSSES` is in `__all__` (so importable and mutable) while `_TASK_TYPE_PROSE`,
-`_TASK_TYPE_LEGEND_LINES`, `SUITABILITY_TASK_LEGEND`, the task-type hint and the two task-type error
-sentences are all composed once at import. A consumer that mutates the mapping — now the advertised
-single source — re-splits the vocabulary the plan exists to unify, silently, with no test failing
-(the tests compare against their own copies).
-
-**Fix:** expose it read-only (`MappingProxyType(dict(...))`) or keep the dict private and export a
-read-only accessor.
-
-### IN-10: The benchmark section's errors render with a doubled path
-
-**File:** `dnallm/tui/copy.py:607-627`, `:656`
-**Severity:** INFO
-
-**Issue:** `_relative_field` strips exactly one `"<section>."` prefix, but the core validates
-`benchmark` by passing the whole config dict to `BenchmarkConfig(**config_dict)`, so its loc already
-carries the section name and the field arrives as `benchmark.benchmark.name`. Measured through
-`edit_config` with `benchmark: {bogus: 1}`: four records, one of which renders
-"benchmark.benchmark.name cannot be empty." The section-relative form is `benchmark.name`.
-
-**Fix:** when the label lookup misses, strip a repeated leading `"<section>."` before using the path
-as the label:
-```python
-label = CONFIG_FIELD_LABELS.get((section, relative), relative if relative != field else field)
+#config-section-model, #config-section-finetune,
+#config-section-inference, #config-section-lora { height: auto; margin-top: 1; }
+#config-section-task { height: auto; margin-top: 0; }
 ```
 
 ---
 
-_Reviewed: 2026-10-21T13:02:27Z_
+_Reviewed: 2026-10-21T14:29:39Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
