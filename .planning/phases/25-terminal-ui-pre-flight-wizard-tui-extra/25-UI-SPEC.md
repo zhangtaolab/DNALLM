@@ -1,7 +1,8 @@
 ---
 phase: "25"
 slug: "terminal-ui-pre-flight-wizard-tui-extra"
-status: draft
+status: approved
+reviewed_at: "2026-10-21"
 shadcn_initialized: false
 preset: none
 created: "2026-10-21"
@@ -415,15 +416,17 @@ signals only and retained them.
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
-- [ ] Dimension 7 Inventory Provenance: PASS
+- [x] Dimension 1 Copywriting: FLAG (non-blocking — Copywriting Contract says no destructive action
+      exists, while D-3 records that saving silently replaces an existing output path; one of the two
+      must change)
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
+- [x] Dimension 7 Inventory Provenance: PASS
 
-**Approval:** pending
+**Approval:** approved (7/7 dimensions; 1 non-blocking FLAG) — 2026-10-21
 
 ---
 
