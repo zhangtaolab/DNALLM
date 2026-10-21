@@ -239,7 +239,7 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| **all** | Install all optional dependencies | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` + `tui` |
 | **full** | Full development environment | `dev` + `test` + `notebook` + `mcp` + extra tools (isort) |
 | **dev** | Complete development environment | `test` + `notebook` + linting/typing (ruff, pre-commit) + analysis tools (logomaker, pybedtools, pyfastx, seaborn) |
 | **test** | Testing environment only | pytest and plugins |
@@ -247,14 +247,13 @@ lane matches your GPU generation, the [GPU Support Matrix](gpu_support.md).
 | **docs** | Documentation building | mkdocs-material, mkdocstrings, mkdocs-jupyter |
 | **ui** | Gradio web interface | Gradio |
 | **mcp** | MCP server + LLM agent examples | `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, `pydantic-ai` (server core `mcp`/`starlette`/`uvicorn`/`websockets` is already in the core dependencies) |
+| **tui** | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
 
 > **Note:** The MCP server itself runs entirely on core dependencies (`mcp`, `starlette`, `uvicorn`, `websockets`), so server-only deployments need no extra install (see Scenario 8). The `mcp` extra adds the LLM-agent client libraries used by the bundled agent examples: `langchain`, `langchain-mcp-adapters`, `langchain-ollama`, `nest-asyncio`, and `pydantic-ai`.
 
 ### Hardware-Specific Groups
 
 > **Warning:** The `cpu` and `cuda*` groups are mutually exclusive (enforced by uv's `conflicts` list in `pyproject.toml`) — you MUST choose exactly one of them. `mamba` declares no conflicts: it is designed to be combined with a CUDA group (e.g., `.[cuda130,mamba]`, see Scenario 6).
-
-> **Deprecation note (v1.3):** the `base` group was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The `.[base]` alias still installs the full set and will be removed in v1.4 — after removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install. Use `.[full]` in new environments.
 
 | Group | PyTorch Version | GPU Type | When to Use |
 |-------|----------------|----------|-------------|

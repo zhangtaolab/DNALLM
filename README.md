@@ -175,15 +175,13 @@ uv pip install -e '.[all,cuda128]'
 
 > **Warning:** Hardware groups (`cpu`, `cuda124`, `cuda126`, `cuda128`, `cuda130`, `mamba`) must not be combined — `cpu`/`cuda*` pairs are enforced as mutually exclusive by the resolver, while `mamba` is designed to combine with a CUDA group (e.g. `.[cuda124,mamba]`). Do NOT combine multiple CUDA versions.
 
-> **Deprecation note (v1.3):** the `base` extra was renamed to `full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). The old `.[base]` spelling still resolves the full member set through a one-cycle alias and will be removed in v1.4 — after that removal pip/uv only print a warning that the extra does not exist and exit 0, leaving a core-only under-install (the silent hazard the alias exists to prevent). Use `.[full]`.
-
-> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the deprecated `base` alias rows.
+> Choosing a CUDA lane? The [GPU Support Matrix](docs/getting_started/gpu_support.md) maps GPU generations to extras (Pascal is cpu-only; Turing 20xx → cuda124–cuda128; 30/40xx run every extra; 50xx needs cuda128+), and the [Install Honesty Matrix](docs/getting_started/install_honesty.md) states exactly what each command delivers under uv vs plain pip — including the post-removal `base` row.
 
 ### Dependency Groups
 
 | Group | Purpose | Includes |
 |-------|---------|----------|
-| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` |
+| `all` | Install everything | `full` + `dev` + `test` + `notebook` + `docs` + `ui` + `mcp` + `fla` + `tui` |
 | `full` | Full dev environment | `dev` + `test` + `notebook` + `mcp` + extra tools |
 | `dev` | Development | `test` + `notebook` + linting tools |
 | `test` | Testing only | pytest and plugins |
@@ -192,6 +190,7 @@ uv pip install -e '.[all,cuda128]'
 | `ui` | Gradio web interface | Gradio |
 | `mcp` | MCP example-test clients | langchain / langchain-mcp-adapters / pydantic-ai stacks for the MCP example tests — the server runtime (`mcp`, `starlette`, `uvicorn`, `websockets`) is already in core |
 | `fla` | PlantHelixSeek KDA kernels | [flash-linear-attention](https://github.com/fla-org/flash-linear-attention) (Triton-based, uses the installed torch — combinable with any hardware group) |
+| `tui` | Terminal pre-flight wizard (`dnallm preflight`) | Textual — optional; the rest of the toolkit works without it |
 
 **Hardware groups (mutually exclusive, NOT included in `all`):**
 

@@ -74,12 +74,6 @@ EXPECTED_FULL_MEMBERS = frozenset({
 })  # types-transformers removed 2026-10-17: mypy-only stub (ty bundles its
 # own typeshed and never reads installed stub packages) — D-09 flip
 
-# The deprecated one-cycle alias: a pure self-reference to the full extra.
-# An EMPTY extra is the forbidden shape -- live-probed 2026-10-14 (18-RESEARCH
-# "Deprecated-Alias Mechanism"), pip AND uv both install nothing and print no
-# warning for an empty extra: the exact silent under-install hazard.
-EXPECTED_BASE_ALIAS = ["dnallm[full]"]
-
 # WPAR-07 declaration: the exact marker-gated triton-windows spec in the fla
 # extra (exact-string assertion; any drift in the band or marker fails).
 EXPECTED_TRITON_WINDOWS_SPEC = "triton-windows>=3.7.1.post27,<3.8; platform_system == 'Windows'"
@@ -196,14 +190,16 @@ class TestTuiExtraMembers:
 
 
 class TestFullExtraAndBaseAlias:
-    """18-01 atomic extras surgery guards: full rename, one-cycle alias, retirements.
+    """18-01 atomic extras surgery guards: full rename, alias retirement, retirements.
 
-    The rename base -> full (owner decision 2026-10-14) must land with the
-    full extra carrying the former base members verbatim, the deprecated
-    base alias a pure self-reference (never an empty extra -- live-probed
-    silent under-install under pip AND uv), the triton-windows declaration
-    marker-gated to Windows in fla (WPAR-07), and cuda121/rocm absent from
-    both the extras table and the uv index/sources machinery.
+    The rename base -> full (owner decision 2026-10-14) landed with the full
+    extra carrying the former base members verbatim. The one-cycle alias
+    lived through v1.3 and is retired at v1.4 (PKG-01, pre-committed at v1.3
+    close): the extras table must carry no ``base`` key at all, so the
+    deprecation cannot silently outlive its announced removal. The
+    triton-windows declaration stays marker-gated to Windows in fla
+    (WPAR-07), and cuda121/rocm stay absent from both the extras table and
+    the uv index/sources machinery.
     """
 
     def test_full_extra_members_preserved(self) -> None:
@@ -216,19 +212,22 @@ class TestFullExtraAndBaseAlias:
             f"full extra gained members beyond the former base set: {sorted(extra_members)}"
         )
 
-    def test_base_alias_is_pure_self_reference(self) -> None:
-        """base == ["dnallm[full]"] exactly -- one self-referential member, never empty."""
-        base = _load_extras().get("base")
-        assert base is not None, (
-            "the deprecated base alias is missing from optional-dependencies "
-            "(18-01: hard removal without the one-cycle alias exposes "
-            "pip/uv warn-and-exit-0 silent under-install)"
-        )
-        assert base == EXPECTED_BASE_ALIAS, (
-            f"the base alias must be the pure self-reference ['dnallm[full]'] "
-            f"(one-cycle deprecated alias, remove in v1.4); measured: {base} -- "
-            f"an EMPTY or diluted alias is the live-probed silent "
-            f"under-install hazard (18-RESEARCH 'Deprecated-Alias Mechanism')"
+    def test_base_alias_is_removed(self) -> None:
+        """The extras table carries no `base` key (PKG-01, the v1.4 cycle).
+
+        The alias's announced lifetime ended at v1.4. Keeping it would keep
+        masking the missing-extra case: without it pip/uv warn that the extra
+        does not exist and exit 0 on a core-only under-install, which is the
+        honest (if unhelpful) outcome the alias was created to defer, never
+        to hide permanently.
+        """
+        extras = _load_extras()
+        assert "base" not in extras, (
+            "the deprecated one-cycle base alias reappeared in "
+            f"optional-dependencies (PKG-01: removed at v1.4, pre-committed "
+            f"at v1.3 close); measured {extras.get('base')!r} -- the alias "
+            "silently resolves the full set and so masks the core-only "
+            "under-install that a missing extra produces"
         )
 
     def test_triton_windows_marker_declared_in_fla(self) -> None:
@@ -277,42 +276,16 @@ class TestExtrasSurgeryResidueGates:
     """
 
     # Pattern 1: bracket install forms of base (.[base...] / dnallm[base...]).
-    # The alias declaration itself (base = ["dnallm[full]"]) does NOT match.
-    # Sanctioned: the two v1.3 deprecation notes (README + installation) plus,
-    # since 18-02, the two dnallm[base] rows of the cross-installer honesty
-    # matrix page (the during-alias-cycle row and the post-v1.4-removal row —
-    # the page exists precisely to document those two commands honestly).
+    # The alias declaration itself (base = ["dnallm[full]"]) never matched.
+    # Sanctioned: exactly ONE row -- the post-v1.4-removal row of the
+    # cross-installer honesty matrix page, which documents the missing-extra
+    # outcome honestly. The README/installation deprecation notes and the
+    # during-alias-cycle honesty row were deleted with the alias (PKG-01).
     BASE_BRACKET_PATTERN = r"\.\[base|dnallm\[base"
     SANCTIONED_BASE_BRACKET_RESIDUE = frozenset({
         (
-            "README.md",
-            "> **Deprecation note (v1.3):** the `base` extra was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
-            "The old `.[base]` spelling still resolves "
-            "the full member set through a one-cycle alias and will be removed "
-            "in v1.4 — after that removal pip/uv only print a warning that the "
-            "extra does not exist and exit 0, leaving a core-only under-install "
-            "(the silent hazard the alias exists to prevent). Use `.[full]`.",
-        ),
-        (
-            "docs/getting_started/installation.md",
-            "> **Deprecation note (v1.3):** the `base` group was renamed to "
-            "`full` (same members: `dev` + `test` + `notebook` + `mcp` + isort). "
-            "The `.[base]` alias still installs the full "
-            "set and will be removed in v1.4 — after removal pip/uv only print "
-            "a warning that the extra does not exist and exit 0, leaving a "
-            "core-only under-install. Use `.[full]` in new environments.",
-        ),
-        (
             "docs/getting_started/install_honesty.md",
-            "| `dnallm[base]` — during the v1.3 alias cycle | resolves the "
-            "alias → the **full member set**, exit 0, **no warning** | "
-            "identical — full set, exit 0, **no warning** | live probe "
-            "2026-10-14 |",
-        ),
-        (
-            "docs/getting_started/install_honesty.md",
-            "| `dnallm[base]` — after the v1.4 alias removal | `warning: The "
+            "| `dnallm[base]` — since the v1.4 alias removal | `warning: The "
             "package ... does not have an extra named 'base'`; installs "
             "**core only**; exit 0 | `WARNING: dnallm X.Y.Z does not provide "
             "the extra 'base'`; installs **core only**; exit 0 | live probe "
@@ -398,10 +371,9 @@ class TestExtrasSurgeryResidueGates:
         extra = measured - sanctioned
         missing = sanctioned - measured
         assert not extra, (
-            f"unsanctioned base bracket-install residue (18-01 gate): "
+            f"unsanctioned base bracket-install residue (18-01 gate, PKG-01): "
             f"{sorted(extra)} -- every install command must use .[full]; only "
-            f"the two v1.3 deprecation notes and the two honesty-matrix rows "
-            f"carry the old spelling"
+            f"the post-removal honesty-matrix row may carry the old spelling"
         )
         assert not missing, (
             f"sanctioned base deprecation-note residue missing (18-01 gate, "

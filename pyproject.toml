@@ -154,13 +154,6 @@ full = [
     "dnallm[dev,test,notebook,mcp]",
     "isort>=6.0.1",
 ]
-# Deprecated one-cycle alias (owner 2026-10-14): base was renamed to full in
-# v1.3; this alias still installs the full set (no silent under-install).
-# Remove in v1.4 -- pip/uv then only warn that the extra does not exist and
-# exit 0, leaving a core-only under-install (which this cycle prevents).
-base = [
-    "dnallm[full]",
-]
 all = [
     "dnallm[full,dev,test,notebook,docs,ui,mcp,fla,tui]",
 ]
