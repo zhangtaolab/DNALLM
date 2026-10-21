@@ -25,7 +25,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 
 ### Preset Loading (Phase 24)
 
-- [ ] **LOAD-01**: Registry entry names resolve in `load_preset_model` (finetuned entries load with `num_labels`/`label_names`/`threshold` patched into TaskConfig); the existing family-name path is preserved and regression-tested
+- [x] **LOAD-01**: Registry entry names resolve in `load_preset_model` (finetuned entries load with `num_labels`/`label_names`/`threshold` patched into TaskConfig); the existing family-name path is preserved and regression-tested
 
 ### Terminal UI (Phase 25)
 
@@ -89,7 +89,7 @@ Scope pinned by owner 2026-10-20: Track A only; Track B (dnallmmark TUI substrat
 | PFC-05 | Phase 23 | Complete |
 | PFC-06 | Phase 23 | Complete |
 | PFC-07 | Phase 23 | Complete |
-| LOAD-01 | Phase 24 | Pending |
+| LOAD-01 | Phase 24 | Complete |
 | TUI-01 | Phase 25 | Pending |
 | TUI-02 | Phase 25 | Pending |
 | TUI-03 | Phase 25 | Pending |

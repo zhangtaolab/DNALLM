@@ -16,7 +16,7 @@
     {
       "number": "24",
       "name": "Preset Loading",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "25",
@@ -31,8 +31,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 24)",
-    "reason": "Phase 3 of 5 — needs a plan"
+    "label": "Advance to the next step (verify)",
+    "reason": "Phase 3 of 5 · 40% · ready to verify"
   },
-  "updated_at": "2026-10-20T23:42:18.724Z"
+  "updated_at": "2026-10-21T02:12:56.465Z"
 }

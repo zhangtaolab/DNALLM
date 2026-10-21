@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 24
 current_phase_name: Preset Loading — `load_preset_model` Registry Rewire
-status: executing
-stopped_at: Phase 24 context gathered
-last_updated: "2026-10-21T01:44:45.509Z"
+status: verifying
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-10-21T02:12:56.454Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 23 complete, transitioned to Phase 24
-state_head: ff529ee8b747fc328b6827ed388f378bf532e78b
+last_activity_desc: Phase 24 execution started
+state_head: b4f91259d5d8eb1ccc17cc097492ec09072cc2b5
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 40
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 ## Current Position
 
-Phase: 24 (Preset Loading — `load_preset_model` Registry Rewire) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-21 — Phase 23 complete, transitioned to Phase 24
+Phase: 24 (Preset Loading — `load_preset_model` Registry Rewire) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-10-21 — Phase 24 execution started
 
 Progress: [████░░░░░░] 40% (1 of 5 v1.4 phases)
 
@@ -54,6 +54,7 @@ Progress: [████░░░░░░] 40% (1 of 5 v1.4 phases)
 | Phase 23 P03 | 18 min | 3 tasks | 2 files |
 | Phase 23 P04 | 12 min | 3 tasks | 3 files |
 | Phase 23 P05 | 6 min | 2 tasks | 3 files |
+| Phase 24 P01 | 12 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 23]: edit_config round-trip input is the raw mapping derived from GeneratedConfig.config (section objects via model_dump) — the editor's documented input contract, verified live
 - [Phase 23]: facade completed as pure re-exports (probe_availability/effective_endpoints/clear_probe_memo/generate_config/edit_config); integration suite proves the user story facade-only on happy + severed-network paths
 - [Phase 23]: docstring-facade drift guard added — every public name documented in the package docstring must sit in __all__ (probe-verified red)
+- [Phase 24]: [Phase 24] 24-01: OQ-1 STRICT — registry entries with task_type='classification' (6 PlantCAD2, third-party) are intentionally unloadable by name under D-05; documented known limitation, pinned by a real-entry test; registry data fix out of scope — Smallest reading of locked D-05; all six entries sit outside every zhangtaolab flow, and widening the mismatch definition to alias entry-side 'classification' would silently change D-05's contract
+- [Phase 24]: [Phase 24] 24-01: patched preset configs are built with model_copy(update=...) only — never model_validate/reconstruction (model_post_init regression branch would clobber registry label_names to ['value']); caller's TaskConfig never mutated; returned un-copied when no field differs — Research Pitfall 2 reproduced against live data: 42 regression entries carry descriptive one-element label_names that a revalidation round-trip would destroy
 
 ### Pending Todos
 
@@ -129,9 +132,9 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-21T00:38:17.541Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-preset-loading-load-preset-model-registry-rewire/24-CONTEXT.md
+Last session: 2026-10-21T02:11:42.843Z
+Stopped at: Completed 24-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 

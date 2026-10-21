@@ -145,11 +145,11 @@ Plans:
   1. A user can pass a registry entry name (e.g. a PlantHelixSeek finetuned checkpoint) to `load_preset_model` and get a loaded model with `num_labels` / `label_names` / `threshold` taken from the registry entry and patched into TaskConfig — no manual config editing
   2. Every existing family-name invocation of `load_preset_model` behaves identically after the rewire (regression-tested), so the new behavior is additive only — and the base↔finetuned axis is live at runtime via `base_model`
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 24-01-PLAN.md — Registry-first `load_preset_model` rewire (D-01..D-08): `try_resolve` name/repo-id resolution → strict D-05 task-type check → D-04/D-06 skip-None patched-copy TaskConfig via `model_copy` → D-08 lineage log; family fallback preserved, dead preset branch deleted (D-07), 24-name collision delta pinned and documented; ten-family zhangtaolab regression (D-09) + scoped coverage/lint/guard gates
+- [x] 24-01-PLAN.md — Registry-first `load_preset_model` rewire (D-01..D-08): `try_resolve` name/repo-id resolution → strict D-05 task-type check → D-04/D-06 skip-None patched-copy TaskConfig via `model_copy` → D-08 lineage log; family fallback preserved, dead preset branch deleted (D-07), 24-name collision delta pinned and documented; ten-family zhangtaolab regression (D-09) + scoped coverage/lint/guard gates
 
 **Note**: integration points grep-verified with line anchors (model.py:1567–1614, dead `preset` path); low-risk standard pattern — no `--research-phase`
 
@@ -192,6 +192,6 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 |-------|----------------|--------|-----------|
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
-| 24. Preset Loading | 0/1 | Planned | - |
+| 24. Preset Loading | 1/1 | In Progress | - |
 | 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
