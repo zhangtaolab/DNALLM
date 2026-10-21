@@ -118,3 +118,65 @@ async def test_data_panel_renders_the_core_report_verbatim(tmp_path) -> None:
         copy.DATA_COUNT_NOT_APPLICABLE if finding.count is None else str(finding.count)
         for finding in findings
     ]
+
+
+async def test_skip_keeps_no_report_and_leaves_the_step(monkeypatch) -> None:
+    """Skipping makes no core call, leaves data_report None, and moves on."""
+    calls: list[object] = []
+    monkeypatch.setattr("dnallm.preflight.validate_data", lambda source: calls.append(source))
+    advanced: list[str] = []
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    monkeypatch.setattr(app, "show_suitability", lambda: advanced.append("suitability"))
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        assert copy.NO_DATA_PROVIDED in _rendered_text(screen)
+        await pilot.click("#data-skip")
+        await pilot.pause()
+        text = _rendered_text(screen)
+        assert app.state.data_report is None
+
+    assert advanced == ["suitability"]
+    assert calls == []
+    # The consequence of skipping is stated in the panel, in plain words (D-08).
+    assert copy.DATA_SKIP_NOTE in text
+
+
+async def test_empty_path_prompts_instead_of_calling_the_core(monkeypatch) -> None:
+    """An empty path is a prompt, not a read: the worker never starts."""
+    calls: list[object] = []
+    monkeypatch.setattr("dnallm.preflight.validate_data", lambda source: calls.append(source))
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        screen.query_one("#data-path", Input).value = "   "
+        await pilot.click("#data-check")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(screen)
+
+    assert copy.EMPTY_PATH_PROMPT in text
+    assert calls == []
+    assert app.state.data_report is None
+
+
+async def test_reentering_after_a_skip_shows_the_no_data_state(monkeypatch) -> None:
+    """Coming back to the panel after a skip shows the explained empty state."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    monkeypatch.setattr(app, "show_suitability", lambda: None)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_data_screen(app, pilot)
+        await pilot.click("#data-skip")
+        await pilot.pause()
+        app.pop_screen()
+        await pilot.pause()
+        screen = await _open_data_screen(app, pilot)
+        text = _rendered_text(screen)
+        table = screen.query_one("#data-findings", DataTable)
+        table_hidden = not table.display
+
+    assert copy.NO_DATA_PROVIDED in text
+    assert copy.DATA_SKIP_NOTE in text
+    assert table_hidden

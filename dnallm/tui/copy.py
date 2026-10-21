@@ -21,9 +21,12 @@ __all__ = [
     "DATA_PANEL_TITLE",
     "DATA_PATH_PROMPT",
     "DATA_READY",
+    "DATA_SKIP_ACTION",
+    "DATA_SKIP_NOTE",
     "DATA_SPLIT_ROW",
     "DATA_SPLIT_ROW_EMPTY",
     "DATA_SUMMARY_HEADING",
+    "EMPTY_PATH_PROMPT",
     "ENV_CHECK_FAILED",
     "ENV_CONTINUE_ACTION",
     "ENV_DEVICE_SECTION",
@@ -32,6 +35,7 @@ __all__ = [
     "ENV_ROW_LABELS",
     "ENV_VERSIONS_SECTION",
     "INSTALL_HINT",
+    "NO_DATA_PROVIDED",
     "QUIT_HINT",
 ]
 
@@ -77,6 +81,18 @@ DATA_PANEL_TITLE = "Your data"
 DATA_PATH_PROMPT = "Paste the full path to your data file (CSV, TSV, JSON, FASTA or TXT)."
 
 DATA_CHECK_ACTION = "Check this data"
+
+DATA_SKIP_ACTION = "I don't have data yet"
+
+# D-08: the step is optional, and skipping states the consequence plainly.
+DATA_SKIP_NOTE = (
+    "No data is fine. The next page will judge models from the model and your "
+    "task alone. The length and character checks stay empty until you add data."
+)
+
+NO_DATA_PROVIDED = "No data provided yet."
+
+EMPTY_PATH_PROMPT = 'Type the full path to your data file first, then press "Check this data".'
 
 DATA_READY = "We read your data. Here is what we found."
 

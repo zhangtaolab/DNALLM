@@ -74,6 +74,7 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #data-title { text-style: bold; }
     #data-actions { height: auto; }
     #data-check { width: auto; }
+    #data-skip { width: auto; margin-left: 2; }
     #data-status { margin-top: 1; }
     #data-summary-heading { margin-top: 1; text-style: bold; }
     #data-charset-heading { margin-top: 1; }

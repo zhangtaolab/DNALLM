@@ -37,9 +37,21 @@ __all__ = ["DataScreen"]
 
 _PATH_INPUT_ID = "data-path"
 _CHECK_BUTTON_ID = "data-check"
+_SKIP_BUTTON_ID = "data-skip"
 _FINDINGS_TABLE_ID = "data-findings"
 _SPLITS_CONTAINER_ID = "data-splits"
 _CHARSET_CONTAINER_ID = "data-charset"
+
+# The areas that only make sense once a report exists (D-08: with no data the
+# page shows the unchanged no-data state instead of empty tables).
+_REPORT_AREA_SELECTORS = (
+    "#data-summary-heading",
+    f"#{_SPLITS_CONTAINER_ID}",
+    "#data-charset-heading",
+    f"#{_CHARSET_CONTAINER_ID}",
+    "#data-findings-heading",
+    f"#{_FINDINGS_TABLE_ID}",
+)
 
 
 class DataScreen(Screen):
@@ -51,13 +63,14 @@ class DataScreen(Screen):
         return cast("DNALLMPreflightApp", self.app)
 
     def compose(self) -> ComposeResult:
-        """Lay out the path input, the action, and the report areas."""
+        """Lay out the path input, the actions, and the report areas."""
         yield Header()
         with VerticalScroll(id="data-body"):
             yield Static(copy.DATA_PANEL_TITLE, id="data-title")
             yield Input(placeholder=copy.DATA_PATH_PROMPT, id=_PATH_INPUT_ID)
             with Horizontal(id="data-actions"):
                 yield Button(copy.DATA_CHECK_ACTION, id=_CHECK_BUTTON_ID, variant="primary")
+                yield Button(copy.DATA_SKIP_ACTION, id=_SKIP_BUTTON_ID)
             yield Static("", markup=False, id="data-status")
             yield Static(copy.DATA_SUMMARY_HEADING, id="data-summary-heading")
             yield Container(id=_SPLITS_CONTAINER_ID)
@@ -69,27 +82,66 @@ class DataScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Declare the findings columns and show any report already collected."""
+        """Declare the findings columns and show the state already reached.
+
+        Re-entering the panel after a skip shows the same plain no-data state
+        rather than an empty table or an error; re-entering after a check
+        re-renders the stored report without re-reading the file.
+        """
         table = self.query_one(f"#{_FINDINGS_TABLE_ID}", DataTable)
         for label in copy.DATA_FINDINGS_COLUMNS:
             table.add_column(label)
         data_report = self._preflight_app.state.data_report
-        if data_report is not None:
-            self._render_report(data_report)
+        if data_report is None:
+            self._show_no_data_state()
+            return
+        self._set_report_areas_visible(True)
+        self._set_status(copy.DATA_READY)
+        self._render_report(data_report)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Start reading the pasted path through the worker seam.
+        """Start reading the pasted path, or skip the step entirely.
 
         Args:
-            event: The button press; only the "Check this data" action is ours.
+            event: The button press; the check and skip actions are ours.
         """
         if event.button.id == _CHECK_BUTTON_ID:
             self._check_data()
+        elif event.button.id == _SKIP_BUTTON_ID:
+            self._skip_data()
 
     def _check_data(self) -> None:
-        """Hand the pasted path to the core through the app's thread worker."""
+        """Hand the pasted path to the core through the app's thread worker.
+
+        An empty path never reaches the core: it is a prompt, not a read.
+        """
         path = self.query_one(f"#{_PATH_INPUT_ID}", Input).value.strip()
+        if not path:
+            self._set_status(copy.EMPTY_PATH_PROMPT)
+            return
+        self._set_status(copy.CHECKING_PLACEHOLDER)
         self._preflight_app.validate_data_worker(path)
+
+    def _skip_data(self) -> None:
+        """Leave the step without data and move on (D-08).
+
+        ``WizardState.data_report`` stays None, so the suitability step judges
+        models from the model and the task alone; no core call is made.
+        """
+        self._preflight_app.state.data_report = None
+        self.query_one(f"#{_PATH_INPUT_ID}", Input).value = ""
+        self._show_no_data_state()
+        self._preflight_app.show_suitability()
+
+    def _show_no_data_state(self) -> None:
+        """State plainly that there is no data and what that means downstream."""
+        self._set_status(f"{copy.NO_DATA_PROVIDED}\n{copy.DATA_SKIP_NOTE}")
+        self._set_report_areas_visible(False)
+
+    def _set_report_areas_visible(self, visible: bool) -> None:
+        """Show or hide the areas that need a report to make sense."""
+        for selector in _REPORT_AREA_SELECTORS:
+            self.query_one(selector).display = visible
 
     async def apply_data_report(self, data_report: DataReport) -> None:
         """Store the frozen report and render it exactly as the core returned it.
@@ -100,6 +152,7 @@ class DataScreen(Screen):
         """
         self._preflight_app.state.data_report = data_report
         await self._clear_report()
+        self._set_report_areas_visible(True)
         self._set_status(copy.DATA_READY)
         self._render_report(data_report)
 
