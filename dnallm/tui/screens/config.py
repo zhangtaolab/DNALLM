@@ -275,6 +275,10 @@ class ConfigScreen(Screen):
                                 copy.CONFIG_FIELD_LABELS.get((section, spec.name), spec.name),
                                 id=f"config-label-{section}-{spec.name}",
                             )
+                            yield Input(
+                                id=_field_id(section, spec.name),
+                                disabled=spec.readonly,
+                            )
                             hint = copy.CONFIG_FIELD_HINTS.get((section, spec.name))
                             if hint is not None:
                                 yield Static(
@@ -283,10 +287,6 @@ class ConfigScreen(Screen):
                                     id=f"config-hint-{section}-{spec.name}",
                                     classes="config-hint",
                                 )
-                            yield Input(
-                                id=_field_id(section, spec.name),
-                                disabled=spec.readonly,
-                            )
                         if section == "task":
                             yield Static(copy.CONFIG_READONLY_FACTS_NOTE, id="config-facts-note")
                 yield Static(copy.CONFIG_KEPT_AS_IS_HEADING, id=_KEPT_HEADING_ID)

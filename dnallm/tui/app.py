@@ -116,6 +116,7 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-status { text-style: italic; }
     #config-section-task, #config-section-model, #config-section-finetune,
     #config-section-inference, #config-section-lora { height: auto; margin-top: 1; }
+    #config-section-task { margin-top: 0; }
     #config-heading-task, #config-heading-model, #config-heading-finetune,
     #config-heading-inference, #config-heading-lora { text-style: bold; }
     #config-facts-note { text-style: italic; }
@@ -127,7 +128,7 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-preview { max-height: 24; }
     #config-kept-as-is-heading { text-style: bold; margin-top: 1; }
     #config-kept-as-is { height: auto; }
-    #config-output-row { height: auto; margin: 1 2; }
+    #config-output-row { height: auto; margin: 0 2; }
     #config-output-label { width: auto; padding: 0 1 0 0; }
     #config-output-path { width: 1fr; }
     #config-save { width: auto; margin-left: 2; }

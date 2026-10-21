@@ -933,9 +933,10 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
             side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
         )
         await pilot.pause()
-        assert side.region.contains_point(
-            (errors_widget.region.x + 1, errors_widget.region.bottom - 1)
-        )
+        assert side.region.contains_point((
+            errors_widget.region.x + 1,
+            errors_widget.region.bottom - 1,
+        ))
         details.press()
         await pilot.pause()
         pane_with_details = str(screen.query_one("#config-errors", Static).content)
@@ -944,9 +945,10 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
             side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
         )
         await pilot.pause()
-        assert side.region.contains_point(
-            (errors_widget.region.x + 1, errors_widget.region.bottom - 1)
-        )
+        assert side.region.contains_point((
+            errors_widget.region.x + 1,
+            errors_widget.region.bottom - 1,
+        ))
         label_after = str(details.label)
         details.press()
         await pilot.pause()
@@ -986,9 +988,10 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
             wide_side.scroll_y + (wide_pane.region.bottom - wide_side.region.bottom),
         )
         await pilot.pause()
-        wide_tail_visible = wide_side.region.contains_point(
-            (wide_pane.region.x + 1, wide_pane.region.bottom - 1)
-        )
+        wide_tail_visible = wide_side.region.contains_point((
+            wide_pane.region.x + 1,
+            wide_pane.region.bottom - 1,
+        ))
 
     expected = copy.CONFIG_ERROR_MESSAGES["task", "task_type", "not_an_allowed_value"]
     assert expected in pane
@@ -1147,6 +1150,13 @@ async def test_the_hinted_form_stays_legible_at_80x24() -> None:
         preview = str(screen.query_one("#config-preview", Static).content)
         save_enabled = not screen.query_one("#config-save", Button).disabled
         form = screen.query_one("#config-form", VerticalScroll)
+        task_type_input = screen.query_one("#config-field-task-task_type", Input)
+        task_type_hint = screen.query_one("#config-hint-task-task_type", Static)
+        form_at_top = form.scroll_y == 0
+        first_field_contained = form.region.contains_region(task_type_input.region)
+        hint_below_input = task_type_hint.region.y == task_type_input.region.bottom
+        expected_task_hint = copy.CONFIG_FIELD_HINTS["task", "task_type"]
+        hint_text_exact = str(task_type_hint.content) == expected_task_hint
         last_hint = "config-hint-lora-target_modules"
         screen.scroll_to_widget(screen.query_one(f"#{last_hint}", Static), animate=False)
         await pilot.pause()
@@ -1154,6 +1164,21 @@ async def test_the_hinted_form_stays_legible_at_80x24() -> None:
         hint_text = str(hint.content)
         hint_reachable = form.region.contains_region(hint.region)
         scrollable = form.max_scroll_y > 0
+        form.scroll_to_widget(task_type_hint, animate=False)
+        await pilot.pause()
+        glosses_top_visible = form.region.contains_point((
+            task_type_hint.region.x + 1,
+            task_type_hint.region.y,
+        ))
+        form.scroll_y = min(
+            form.max_scroll_y,
+            form.scroll_y + (task_type_hint.region.bottom - form.region.bottom),
+        )
+        await pilot.pause()
+        glosses_bottom_visible = form.region.contains_point((
+            task_type_hint.region.x + 1,
+            task_type_hint.region.bottom - 1,
+        ))
 
         screen.query_one("#config-field-task-task_type", Input).value = "not-a-task"
         await _settle_config(pilot, app)
@@ -1162,6 +1187,9 @@ async def test_the_hinted_form_stays_legible_at_80x24() -> None:
         reason_bottom = screen.query_one("#config-save-reason", Static).region.bottom
         height = app.size.height
         task_hint = str(screen.query_one("#config-hint-task-task_type", Static).content)
+        form.scroll_home(animate=False)
+        await pilot.pause()
+        error_state_contained = form.region.contains_region(task_type_input.region)
 
     assert headings == [
         copy.CONFIG_SECTION_TASK,
@@ -1180,6 +1208,17 @@ async def test_the_hinted_form_stays_legible_at_80x24() -> None:
     assert reason == copy.CONFIG_SAVE_DISABLED_REASON
     assert reason_bottom <= height
     assert task_hint == copy.CONFIG_FIELD_HINTS["task", "task_type"]
+    # Appended by 25-13 (every pre-existing assertion above stays byte-identical):
+    # the panel's first control sits inside the 80x24 form before any scrolling,
+    # in the clean state and again while a validation error is showing, and its
+    # hint renders directly beneath it with all eight glosses reachable.
+    assert form_at_top
+    assert first_field_contained
+    assert error_state_contained
+    assert hint_below_input
+    assert hint_text_exact
+    assert glosses_top_visible
+    assert glosses_bottom_visible
 
 
 async def test_the_preview_widget_is_read_only_text() -> None:
