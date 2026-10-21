@@ -35,6 +35,7 @@ from . import copy
 from .messages import (
     AvailabilityUpdated,
     CompatibilityReady,
+    ConfigReady,
     DataReportReady,
     EnvReportReady,
     WorkerFailed,
@@ -105,6 +106,26 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #suitability-detail { text-style: italic; }
     #suitability-use { width: auto; margin: 1 0; }
     #suitability-quit-hint { padding: 0 2; }
+    #config-body { height: 1fr; }
+    #config-form { width: 1fr; padding: 0 2; }
+    #config-side { width: 1fr; padding: 0 2; }
+    #config-title { text-style: bold; }
+    #config-status { text-style: italic; }
+    #config-section-task, #config-section-model, #config-section-finetune,
+    #config-section-inference, #config-section-lora { height: auto; margin-top: 1; }
+    #config-heading-task, #config-heading-model, #config-heading-finetune,
+    #config-heading-inference, #config-heading-lora { text-style: bold; }
+    #config-facts-note { text-style: italic; }
+    #config-errors-heading { text-style: bold; }
+    #config-errors { max-height: 14; }
+    #config-preview-heading { text-style: bold; margin-top: 1; }
+    #config-preview { max-height: 24; }
+    #config-kept-as-is-heading { text-style: bold; margin-top: 1; }
+    #config-kept-as-is { height: auto; }
+    #config-output-row { height: auto; margin-top: 1; }
+    #config-save { width: auto; }
+    #config-save-reason { padding: 0 2; }
+    #config-quit-hint { padding: 0 2; }
     """
 
     def __init__(
@@ -225,6 +246,25 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("CompatibilityReady arrived with no suitability panel showing")
             return
         await apply_report(message.report, message.local_by_name)
+
+    async def on_config_ready(self, message: ConfigReady) -> None:
+        """Hand a validated config result to the config panel.
+
+        ``generate_config_worker`` and ``edit_config_worker`` are mixed into
+        this app, so their message arrives here rather than at the screen. The
+        config panel opts in by defining an async
+        ``apply_config_ready(generated, output_path)`` hook.
+
+        Args:
+            message: The typed payload carrying the frozen result and, for a
+                save, the path the core wrote.
+        """
+        screen = self._active_screen()
+        apply_config_ready = getattr(screen, "apply_config_ready", None)
+        if apply_config_ready is None:
+            logger.debug("ConfigReady arrived with no config panel showing")
+            return
+        await apply_config_ready(message.generated, message.output_path)
 
     async def on_availability_updated(self, message: AvailabilityUpdated) -> None:
         """Hand a re-checked row's availability back to the panel that asked.

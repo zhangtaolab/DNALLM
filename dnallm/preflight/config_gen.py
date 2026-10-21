@@ -29,7 +29,12 @@
 5. Safe YAML only: round-trip loading uses the safe-loader family;
    output is written with ``yaml.safe_dump`` to exactly the user-named
    ``output_path`` and never otherwise (D-15 — no surprise writes, no
-   unsafe constructors).
+   unsafe constructors). There is exactly ONE serializer: the public
+   :func:`render_yaml` renders a mapping to the document text and
+   ``_dump_yaml`` writes that text, so a shell previewing ``render_yaml``
+   can never diverge from the bytes on disk. Both :func:`generate_config`
+   and :func:`edit_config` carry the mapping they would write on
+   ``GeneratedConfig.raw``.
 
 The registry-derived context length is emitted into both the ``inference``
 section (where ``InferenceConfig.max_length`` validates it and the runtime
@@ -62,7 +67,7 @@ from .report import GeneratedConfig, SectionError
 
 logger = get_logger("dnallm.preflight.config_gen")
 
-__all__ = ["edit_config", "generate_config"]
+__all__ = ["edit_config", "generate_config", "render_yaml"]
 
 # The fixed, deterministic error-ordering contract: error records are
 # ordered by this section order, then by each section's own field order.
@@ -188,12 +193,32 @@ def _validate_collect_all(config_dict: dict) -> tuple[DNALLMConfig, list[Section
     return configs, errors
 
 
+def render_yaml(config: dict) -> str:
+    """Render a config mapping to the exact text the writer emits.
+
+    One serializer for the whole package: :func:`_dump_yaml` writes the
+    string this function returns, so a preview built from it can never
+    diverge from the bytes that land on disk. Nothing is written here —
+    the returned string is the caller's to display or discard.
+
+    Args:
+        config: The config mapping to serialize.
+
+    Returns:
+        The YAML document text, with keys in the mapping's own order
+        (``sort_keys=False``) and block style (``default_flow_style=False``).
+    """
+    return yaml.safe_dump(config, default_flow_style=False, sort_keys=False)
+
+
 def _dump_yaml(config: dict, output_path: str | Path) -> None:
     """Write a config mapping to exactly the given path with ``yaml.safe_dump``.
 
     The only write in this module, reached exclusively when a caller
     passes ``output_path`` explicitly; nothing is derived beyond
-    ``os.path.expanduser`` and no other file is ever touched.
+    ``os.path.expanduser`` and no other file is ever touched. The document
+    itself comes from :func:`render_yaml`, so the file is byte-identical to
+    what a caller can preview.
 
     Args:
         config: The config mapping to serialize.
@@ -201,7 +226,7 @@ def _dump_yaml(config: dict, output_path: str | Path) -> None:
     """
     path = os.path.expanduser(str(output_path))
     with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
+        f.write(render_yaml(config))
 
 
 def generate_config(
@@ -233,7 +258,8 @@ def generate_config(
 
     Returns:
         The :class:`GeneratedConfig` with every successfully validated
-        section and the ordered field-level error records.
+        section, the ordered field-level error records, and the assembled
+        raw mapping (``raw``) that would be written on a clean run.
     """
     entry = registry.try_resolve(model)
     if entry is None:
@@ -297,7 +323,7 @@ def generate_config(
         f"Generated config for {entry.model}: {len(configs)} sections, "
         f"{len(errors) + len(validation_errors)} errors."
     )
-    return GeneratedConfig(config=configs, errors=errors + validation_errors)
+    return GeneratedConfig(config=configs, errors=errors + validation_errors, raw=config_dict)
 
 
 def _load_existing(existing: str | Path) -> dict:
@@ -411,7 +437,9 @@ def edit_config(
 
     Returns:
         The :class:`GeneratedConfig` with every successfully validated
-        section and the ordered field-level error records.
+        section, the ordered field-level error records, and the patched raw
+        mapping (``raw``) — the exact mapping the next write would emit,
+        unpatched sections included verbatim (D-11).
 
     Raises:
         ValueError: If ``existing`` is a path that does not exist or
@@ -436,4 +464,8 @@ def edit_config(
         f"Edited config: {len(configs)} sections, "
         f"{len(patch_errors) + len(validation_errors)} errors."
     )
-    return GeneratedConfig(config=configs, errors=patch_errors + validation_errors)
+    return GeneratedConfig(
+        config=configs,
+        errors=patch_errors + validation_errors,
+        raw=config_dict,
+    )

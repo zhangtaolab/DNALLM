@@ -103,13 +103,17 @@ class ConfigReady(Message):
     """Config generation/editing finished and validated clean.
 
     Attributes:
-        generated: The frozen ``GeneratedConfig`` (validated YAML plus the
-            section map the panels render).
+        generated: The frozen ``GeneratedConfig`` (validated sections plus the
+            raw mapping the config panel edits and previews).
+        output_path: Where the worker was asked to write the config, or None
+            for a generate/revalidate run. The core writes only on a clean
+            run, so a non-None value with no errors means the file exists.
     """
 
-    def __init__(self, generated: GeneratedConfig) -> None:
+    def __init__(self, generated: GeneratedConfig, output_path: str | None = None) -> None:
         super().__init__()
         self.generated = generated
+        self.output_path = output_path
 
 
 class DownloadProgress(Message):

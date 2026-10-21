@@ -29,10 +29,12 @@ from dnallm.preflight import (
     ListingEntry,
     ModelVerdict,
     VerdictStatus,
+    render_yaml,
     validate_data,
 )
 from dnallm.tui import copy
 from dnallm.tui.app import DNALLMPreflightApp
+from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.data import DataScreen
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.screens.suitability import INTENT_FINETUNE, INTENT_PREDICT, SuitabilityScreen
@@ -726,3 +728,126 @@ async def test_the_on_demand_probe_replaces_exactly_one_row(monkeypatch) -> None
     assert changed == [25]
     assert after[25][4] == copy.AVAILABILITY_REMOTE.format(hub="Hugging Face")
     assert stored[report.listing[25].model] is on_demand
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Config panel (TUI-06, 25-08): the form, the ordered error pane, the preview
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Registry-pinned fixtures, measured against the real registry at plan time
+# (same entries the Phase-23 core suite pins).
+CONFIG_FINETUNED_REPO = "zhangtaolab/plant-dnabert-BPE-promoter"
+CONFIG_BASE_REPO = "zhangtaolab/plant-dnabert-BPE"
+
+
+async def _open_config_screen(app: DNALLMPreflightApp, pilot, **kwargs) -> ConfigScreen:
+    """Push the config panel and wait for it to be the visible screen."""
+    app.push_screen(ConfigScreen(**kwargs))
+    await pilot.pause()
+    screen = app.screen
+    assert isinstance(screen, ConfigScreen)
+    return screen
+
+
+async def _settle_config(pilot, app: DNALLMPreflightApp) -> None:
+    """Let the config worker finish and the pane repaint."""
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+def test_render_yaml_is_a_facade_member() -> None:
+    """The one serializer is public: shells preview exactly what would be written."""
+    from dnallm.preflight import render_yaml as facade_render_yaml
+
+    assert facade_render_yaml({"task": {"task_type": "binary"}}) == ("task:\n  task_type: binary\n")
+
+
+async def test_the_config_screen_renders_the_five_core_sections() -> None:
+    """Every core section and field is on the page once the core reports."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        text = _rendered_text(screen)
+        headings = [
+            str(screen.query_one(f"#config-heading-{section}", Static).content)
+            for section in ("task", "model", "finetune", "inference", "lora")
+        ]
+        fields = [
+            screen.query_one(f"#config-field-{section}-{name}", Input).value
+            for section, name in (
+                ("task", "task_type"),
+                ("model", "name"),
+                ("finetune", "num_train_epochs"),
+                ("inference", "max_length"),
+                ("lora", "r"),
+            )
+        ]
+
+    for title in (
+        copy.CONFIG_SECTION_TASK,
+        copy.CONFIG_SECTION_MODEL,
+        copy.CONFIG_SECTION_FINETUNE,
+        copy.CONFIG_SECTION_INFERENCE,
+        copy.CONFIG_SECTION_LORA,
+    ):
+        assert title in headings
+    assert copy.CONFIG_PANEL_TITLE in text
+    assert fields[0] == "binary"
+    assert fields[1] == CONFIG_FINETUNED_REPO
+    # Absent from the generated mapping: the field is simply empty, not invented.
+    assert fields[2] == ""
+    assert fields[3] == "512"
+
+
+async def test_the_preview_equals_the_serialized_working_mapping() -> None:
+    """The preview text is exactly render_yaml(raw) — the bytes a save writes."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        preview = str(screen.query_one("#config-preview", Static).content)
+        stored = app.state.generated_config
+
+    assert stored is not None
+    assert preview == render_yaml(stored.raw)
+    assert "task_type: binary" in preview
+
+
+async def test_a_base_model_without_a_task_type_shows_the_error() -> None:
+    """The core's TASK_TYPE_REQUIRED reaches the pane as one readable line."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_BASE_REPO)
+        await _settle_config(pilot, app)
+        errors = str(screen.query_one("#config-errors", Static).content)
+        status = _rendered_text(screen)
+        stored = app.state.generated_config
+
+    assert stored is not None
+    assert "TASK_TYPE_REQUIRED" in errors
+    assert "task_type" in errors
+    # The error line carries the core's field path and message, core order intact.
+    assert (
+        copy.CONFIG_ERROR_LINE.format(
+            field=stored.errors[0].field, message=stored.errors[0].message
+        )
+        in errors
+    )
+    assert copy.CONFIG_HAS_ERRORS in status
+
+
+async def test_the_preview_widget_is_read_only_text() -> None:
+    """No raw-YAML editor: the preview is rendered text, never an input."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        preview = screen.query_one("#config-preview")
+
+    assert isinstance(preview, Static)
+    assert not isinstance(preview, Input)

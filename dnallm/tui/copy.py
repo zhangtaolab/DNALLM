@@ -16,6 +16,20 @@ __all__ = [
     "AVAILABILITY_DETAIL_LABEL",
     "AVAILABILITY_REMOTE",
     "CHECKING_PLACEHOLDER",
+    "CONFIG_BUILDING",
+    "CONFIG_ERRORS_HEADING",
+    "CONFIG_ERROR_LINE",
+    "CONFIG_FIELD_LABELS",
+    "CONFIG_HAS_ERRORS",
+    "CONFIG_PANEL_TITLE",
+    "CONFIG_PREVIEW_HEADING",
+    "CONFIG_READONLY_FACTS_NOTE",
+    "CONFIG_READY",
+    "CONFIG_SECTION_FINETUNE",
+    "CONFIG_SECTION_INFERENCE",
+    "CONFIG_SECTION_LORA",
+    "CONFIG_SECTION_MODEL",
+    "CONFIG_SECTION_TASK",
     "DATA_CHARSET_HEADING",
     "DATA_CHARSET_ROW",
     "DATA_CHECK_ACTION",
@@ -246,3 +260,66 @@ SELECT_MODEL_HINT = "Select a model with the arrow keys, then choose 'Use this m
 USE_MODEL_ACTION = "Use this model"
 
 USE_MODEL_CONFIRMED = 'You chose "{model}". The next step builds its config.'
+
+# ── Config panel (TUI-06) ───────────────────────────────────────────────────
+# D-13: the form builds a validated config, and no invalid file is ever
+# written. Every sentence a user reads is here; the identifiers the core
+# reports (section paths, field values) stay verbatim.
+
+CONFIG_PANEL_TITLE = "Your config"
+
+CONFIG_BUILDING = "building your config…"
+
+CONFIG_READY = "This config is ready. You can save it when you are happy with it."
+
+CONFIG_HAS_ERRORS = (
+    "This config needs a fix first. The list on the right says what to change; "
+    "saving stays switched off until the list is empty."
+)
+
+CONFIG_ERRORS_HEADING = "What needs fixing"
+
+# One error line: the exact field path, then the core's own plain message.
+CONFIG_ERROR_LINE = "{field} → {message}"
+
+CONFIG_PREVIEW_HEADING = "The file this would save"
+
+# D-12: the checkpoint decides these; an editable field would be silently
+# overridden at load time anyway (registry always wins).
+CONFIG_READONLY_FACTS_NOTE = (
+    "from the model checkpoint; loading uses this value"
+)
+
+CONFIG_SECTION_TASK = "Task"
+
+CONFIG_SECTION_MODEL = "Model"
+
+CONFIG_SECTION_FINETUNE = "Training"
+
+CONFIG_SECTION_INFERENCE = "Inference"
+
+CONFIG_SECTION_LORA = "LoRA"
+
+# Field labels, keyed by (section, raw key). Keys not listed show their own
+# name verbatim — the core's spelling is the file's spelling.
+CONFIG_FIELD_LABELS = {
+    ("task", "task_type"): "Task type",
+    ("task", "num_labels"): "Number of outputs",
+    ("task", "label_names"): "Output names",
+    ("task", "threshold"): "Decision threshold",
+    ("model", "name"): "Model name",
+    ("finetune", "output_dir"): "Where to save the trained model",
+    ("finetune", "num_train_epochs"): "Epochs",
+    ("finetune", "per_device_train_batch_size"): "Batch size",
+    ("finetune", "learning_rate"): "Learning rate",
+    ("finetune", "weight_decay"): "Weight decay",
+    ("finetune", "warmup_ratio"): "Warm-up share",
+    ("finetune", "seed"): "Random seed",
+    ("inference", "max_length"): "Longest sequence the model reads",
+    ("inference", "batch_size"): "Inference batch size",
+    ("inference", "device"): "Device",
+    ("lora", "r"): "LoRA rank",
+    ("lora", "lora_alpha"): "LoRA alpha",
+    ("lora", "lora_dropout"): "LoRA dropout",
+    ("lora", "target_modules"): "LoRA target modules",
+}

@@ -8,7 +8,10 @@ files, or any cache:
    ``generate_config``, and ``edit_config`` are synchronous, read-only,
    and offline-safe — reports are return values only; nothing is written,
    dropped, or rewritten (a config is written only when the caller passes
-   ``output_path`` explicitly).
+   ``output_path`` explicitly). ``render_yaml`` is the one serializer
+   behind that write: it returns the exact document text and never
+   touches the filesystem, so a shell can preview precisely what would be
+   saved.
 2. Availability (``probe_availability``) is the one network-capable
    path: opt-in, existence-and-metadata only, never downloading; every
    probe failure degrades to an unknown state with a reason — never an
@@ -51,7 +54,7 @@ from .availability import (
     probe_availability,
 )
 from .compatibility import check_compatibility
-from .config_gen import edit_config, generate_config
+from .config_gen import edit_config, generate_config, render_yaml
 from .report import (
     AvailabilityReasonCode,
     AvailabilityReport,
@@ -104,5 +107,6 @@ __all__ = [
     "generate_config",
     "local_availability",
     "probe_availability",
+    "render_yaml",
     "validate_data",
 ]

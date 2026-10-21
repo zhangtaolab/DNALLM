@@ -385,9 +385,16 @@ class GeneratedConfig(BaseModel):
         config: The validated config mapping (sections that validated).
         errors: Field-level errors for every section that failed — one
             section's failure never hides another's.
+        raw: The exact mapping that would be written to disk — the assembled
+            (``generate_config``) or patched (``edit_config``) raw config,
+            unknown sections included. A shell edits and previews this
+            mapping, so nothing present in the input file is ever lost
+            (D-11); :func:`dnallm.preflight.config_gen.render_yaml` turns it
+            into the bytes the writer emits.
     """
 
     model_config = ConfigDict(frozen=True)
 
     config: dict = Field(default_factory=dict)
     errors: list[SectionError] = Field(default_factory=list)
+    raw: dict = Field(default_factory=dict)

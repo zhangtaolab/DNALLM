@@ -24,6 +24,7 @@ from .copy import ENV_CHECK_FAILED, SUITABILITY_FAILED
 from .messages import (
     AvailabilityUpdated,
     CompatibilityReady,
+    ConfigReady,
     DataReportReady,
     DownloadFinished,
     DownloadProgress,
@@ -51,6 +52,15 @@ _DATA_FAILED_COPY = (
     "file format is one of CSV, TSV, JSON, FASTA or TXT, then try again."
 )
 _DOWNLOAD_FAILED_COPY = "The download did not finish. Check your internet connection and try again."
+_CONFIG_FAILED_COPY = (
+    "We could not build this config. Check that the model name is right and "
+    "that the config file exists, then try again."
+)
+
+#: Worker group for the config panel. ``exclusive`` makes a newer validation
+#: run replace an older one, so a fast typist's last keystroke is the result
+#: that renders (results can never arrive out of order and overwrite it).
+CONFIG_WORKER_GROUP = "config"
 
 #: How many listing rows the compatibility worker asks the core to probe
 #: (D-04/D-10: the lab-first shortlist only — never every entry).
@@ -156,6 +166,64 @@ class PreflightWorkers:
         if worker.is_cancelled:
             return
         self.post_message(DataReportReady(data_report))
+
+    @work(thread=True, exit_on_error=False, group=CONFIG_WORKER_GROUP, exclusive=True)
+    def generate_config_worker(self, model: str, *, task_type: str | None = None) -> None:
+        """Build a validated config for *model* off the event loop.
+
+        Args:
+            model: The model name the suitability panel recorded.
+            task_type: The task type to use for a base model; the core ignores
+                it for a finetuned registry entry, whose own task wins.
+        """
+        worker = get_current_worker()
+        try:
+            from ..preflight import generate_config
+
+            generated = generate_config(model, task_type=task_type)
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class name.
+            logger.error(f"generate_config failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(_CONFIG_FAILED_COPY))
+            return
+        if worker.is_cancelled:
+            return
+        self.post_message(ConfigReady(generated))
+
+    @work(thread=True, exit_on_error=False, group=CONFIG_WORKER_GROUP, exclusive=True)
+    def edit_config_worker(
+        self,
+        existing: Any,
+        patch: Any = None,
+        *,
+        output_path: str | None = None,
+    ) -> None:
+        """Revalidate an existing config (or raw mapping) off the event loop.
+
+        Args:
+            existing: A YAML path or the raw mapping the config panel is
+                editing. Both are the core's documented round-trip inputs.
+            patch: Field overrides per section; ``{}`` / None revalidates the
+                input unchanged (the panel's empty-edit no-op).
+            output_path: When given, the core writes exactly there — and only
+                when the run carries no error records (WR-02), so the file the
+                user sees can never be invalid.
+        """
+        worker = get_current_worker()
+        try:
+            from ..preflight import edit_config
+
+            generated = edit_config(existing, patch, output_path=output_path)
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class name.
+            logger.error(f"edit_config failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(_CONFIG_FAILED_COPY))
+            return
+        if worker.is_cancelled:
+            return
+        self.post_message(ConfigReady(generated, output_path))
 
     @work(thread=True, exit_on_error=False)
     def check_compatibility_worker(

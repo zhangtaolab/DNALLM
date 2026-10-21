@@ -29,7 +29,12 @@ from dnallm.configuration.configs import (
     load_config,
     validate_sections,
 )
-from dnallm.preflight.config_gen import _SECTION_ORDER, edit_config, generate_config
+from dnallm.preflight.config_gen import (
+    _SECTION_ORDER,
+    edit_config,
+    generate_config,
+    render_yaml,
+)
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 PACKAGED_CONFIGS = sorted((REPO_ROOT / "configs").glob("*.yaml"))
@@ -586,3 +591,91 @@ class TestUnsafeYamlRefusal:
 
         with pytest.raises(yaml.YAMLError):
             edit_config(cfg_path, {})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-08 Task 1: GeneratedConfig.raw + render_yaml, the one serializer
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestRawMappingAndRenderYaml:
+    """The raw mapping a shell edits is the mapping the writer emits."""
+
+    def test_generated_raw_carries_the_five_core_sections(self, tmp_path):
+        """raw names every emitted section, and the written file parses back
+        to an equal mapping (the preview can never drift from the file)."""
+        out_path = tmp_path / "generated.yaml"
+
+        result = generate_config(FINETUNED_REPO, output_path=out_path)
+
+        assert result.errors == []
+        assert sorted(result.raw) == ["finetune", "inference", "lora", "model", "task"]
+        assert yaml.safe_load(out_path.read_text(encoding="utf-8")) == result.raw
+        assert result.raw["model"] == {"name": FINETUNED_REPO}
+        assert result.raw["task"]["label_names"] == FINETUNED_LABEL_NAMES
+
+    def test_edit_config_populates_raw_with_the_patched_mapping(self, tmp_path):
+        """The round-trip raw carries the patch and every untouched field."""
+        cfg_path = _write_base_config(tmp_path)
+
+        result = edit_config(cfg_path, {"task": {"num_labels": 3}})
+
+        assert result.errors == []
+        assert result.raw["task"]["num_labels"] == 3
+        assert result.raw["task"]["label_names"] == ["negative", "positive"]
+        assert result.raw["finetune"]["learning_rate"] == 2.0e-05
+
+    def test_render_yaml_writes_nothing(self, tmp_path, monkeypatch):
+        """Rendering is a pure string transform: no file, no directory, no cwd
+        side effect — tmp_path is exactly as empty as it started."""
+        monkeypatch.chdir(tmp_path)
+        mapping = {"task": {"task_type": "binary"}, "lora": {"r": 8}}
+
+        text = render_yaml(mapping)
+
+        assert yaml.safe_load(text) == mapping
+        assert list(tmp_path.iterdir()) == []
+
+    def test_the_written_file_is_byte_identical_to_render_yaml(self, tmp_path):
+        """There is ONE serializer: the file is exactly render_yaml(raw)."""
+        out_path = tmp_path / "written.yaml"
+
+        result = edit_config(_write_base_config(tmp_path), {"task": {"num_labels": 3}})
+        generated = edit_config(
+            _write_base_config(tmp_path), {"task": {"num_labels": 3}}, output_path=out_path
+        )
+
+        assert generated.errors == []
+        assert out_path.read_text(encoding="utf-8") == render_yaml(result.raw)
+
+    def test_render_yaml_keeps_the_mapping_key_order(self):
+        """Keys stay where the mapping put them (sort_keys=False)."""
+        text = render_yaml({"model": {"name": "x"}, "task": {"task_type": "binary"}})
+
+        assert text.index("model:") < text.index("task:")
+
+    def test_unknown_model_still_carries_an_empty_raw(self):
+        """A registry miss has nothing to write, and raw says so."""
+        result = generate_config("no-such/model")
+
+        assert result.raw == {}
+        assert result.errors
+
+
+class TestEmptyPatchNoOp:
+    """An empty patch revalidates unchanged and never drops a section (D-11)."""
+
+    def test_revalidating_with_an_empty_patch_is_a_no_op(self, tmp_path):
+        """patch={} returns zero errors and the same mapping it was handed,
+        out-of-scope sections included — nothing is rewritten or dropped."""
+        raw = {
+            "task": {"task_type": "binary", "num_labels": 2},
+            "finetune": {"learning_rate": 2.0e-05},
+            "ia3": {"r": 16, "target_modules": ["query", "value"]},
+        }
+
+        result = edit_config(raw, {})
+
+        assert result.errors == []
+        assert result.raw == raw
+        assert result.raw["ia3"] == {"r": 16, "target_modules": ["query", "value"]}
