@@ -5,14 +5,15 @@ user commits to a model. Every fact it renders comes from here, because the
 TUI is presentation-only (TUI-03) and a screen must never have to catch an
 exception:
 
-1. Instant half of the report. :func:`collect_versions` and
-   :func:`collect_disk` are stdlib-only: they read package metadata and query
-   the model-cache filesystems without importing torch, so version and disk
-   rows paint while the terminal is still starting. :func:`collect` composes
-   the row groups this module owns in a stable order.
-2. Degrade, never raise. A missing package or an unreadable cache folder each
-   produce a normal row whose value says in plain words why the check could
-   not complete.
+1. Two speeds, one report. :func:`collect_versions` and :func:`collect_disk`
+   are stdlib-only and return instantly, so version and disk rows paint while
+   the terminal is still starting. :func:`collect_device` needs torch, which
+   it imports inside the function body only -- importing this module never
+   pulls torch, transformers, or datasets into ``sys.modules``. :func:`collect`
+   composes all three in a stable order (versions, device, disk).
+2. Degrade, never raise. A missing package, an absent GPU, an unreadable cache
+   folder, or a torch that is not installed each produce a normal row whose
+   value says in plain words why the check could not complete.
 3. Rows are data, not paragraphs. :class:`EnvRow` carries ``key``, ``label``,
    and ``value`` so the screen decides how to lay them out; the plain-language
    phrasing of ``label`` and ``value`` is produced here, once.
@@ -40,6 +41,7 @@ __all__ = [
     "EnvReport",
     "EnvRow",
     "collect",
+    "collect_device",
     "collect_disk",
     "collect_versions",
 ]
@@ -247,17 +249,125 @@ def collect_disk() -> list[EnvRow]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Device and GPU memory (torch, imported inside the function body -- D-02)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _torch():
+    """Return the torch module, importing it only when called (D-02 seam).
+
+    The import lives inside the body so that importing this module stays
+    torch-free; tests replace this seam to exercise the device branches on
+    machines without a GPU.
+
+    Returns:
+        The torch module.
+
+    Raises:
+        ImportError: torch is not installed in this environment.
+    """
+    import torch
+
+    return torch
+
+
+def _torch_missing_row() -> EnvRow:
+    """The single row shown when PyTorch itself is unavailable."""
+    return EnvRow(
+        key="torch_cuda",
+        label="GPU acceleration (CUDA)",
+        value="PyTorch is not installed — GPU details cannot be checked",
+    )
+
+
+def collect_device() -> list[EnvRow]:
+    """Describe the graphics card torch can see, its name, and its memory.
+
+    torch is imported here, inside the body, so the version and disk rows can
+    paint before the heavy import finishes. Every branch degrades to a row:
+    torch absent, CUDA absent, and a driver that answers nothing all produce
+    plain-language values instead of exceptions.
+
+    Returns:
+        For a usable GPU: the CUDA-availability, device-name, and GPU-memory
+        rows. For a CPU-only machine: a single "CPU only" row. For a missing
+        or unusable torch: a single row saying why the check could not run.
+    """
+    try:
+        torch = _torch()
+    except ImportError as exc:
+        logger.debug(f"torch is not importable: {exc}")
+        return [_torch_missing_row()]
+
+    try:
+        cuda_available = bool(torch.cuda.is_available())
+    except Exception as exc:
+        logger.debug(f"Could not query CUDA availability: {exc}")
+        return [
+            EnvRow(
+                key="torch_cuda",
+                label="GPU acceleration (CUDA)",
+                value="unknown — the graphics card could not be queried on this machine",
+            )
+        ]
+
+    if not cuda_available:
+        return [
+            EnvRow(
+                key="torch_cuda",
+                label="GPU acceleration (CUDA)",
+                value="CPU only — no GPU detected",
+            )
+        ]
+
+    rows = [
+        EnvRow(
+            key="torch_cuda",
+            label="GPU acceleration (CUDA)",
+            value="available — PyTorch can use the graphics card",
+        )
+    ]
+
+    try:
+        device_name = torch.cuda.get_device_name(0)
+    except Exception as exc:
+        logger.debug(f"Could not read the GPU name: {exc}")
+        device_name = None
+    rows.append(
+        EnvRow(
+            key="torch_device",
+            label="GPU model",
+            value=device_name or "unknown — the graphics card name could not be read",
+        )
+    )
+
+    total_bytes: int | None = None
+    free_bytes: int | None = None
+    try:
+        free_bytes, total_bytes = torch.cuda.mem_get_info(0)
+    except Exception as exc:
+        logger.debug(f"Could not read GPU memory: {exc}")
+    if total_bytes is None or free_bytes is None:
+        vram_value = "unknown — the graphics card memory could not be read"
+    else:
+        vram_value = f"{total_bytes / _GIGABYTE:.0f} GB total, {free_bytes / _GIGABYTE:.0f} GB free"
+    rows.append(EnvRow(key="torch_vram", label="GPU memory (VRAM)", value=vram_value))
+
+    return rows
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # The composed report
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def collect() -> EnvReport:
-    """Collect the environment rows this module can produce without torch.
+    """Collect the full environment report in its stable order.
 
-    Versions first (instant), then the cache-root disk rows, so two runs on
-    the same machine render identically.
+    Versions first (instant), then the device (which imports torch), then the
+    cache-root disk rows -- so two runs on the same machine render identically.
 
     Returns:
         The report the environment panel renders.
     """
-    return EnvReport(rows=[*collect_versions(), *collect_disk()])
+    return EnvReport(rows=[*collect_versions(), *collect_device(), *collect_disk()])

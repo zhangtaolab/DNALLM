@@ -3,7 +3,8 @@
 The collector backs the wizard's first panel (D-02/D-03), so these tests pin
 the contract the panel relies on: the exact row set with plain-language
 values, and "degrade, never raise" for a broken environment -- a package whose
-metadata is missing, and a cache folder that cannot be read.
+metadata is missing, a machine with no GPU, a torch that is not installed, and
+a cache folder that cannot be read.
 
 The torch-free fast path is asserted in a subprocess on purpose:
 ``tests/conftest.py`` imports torch at session start, so an in-process
@@ -14,9 +15,12 @@ import importlib.metadata as metadata
 import platform
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from dnallm.utils import env_info
+
+GIB = 1024**3
 
 
 def _run_isolated(code: str) -> subprocess.CompletedProcess:
@@ -24,6 +28,44 @@ def _run_isolated(code: str) -> subprocess.CompletedProcess:
     return subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]  # fixed argv only
         [sys.executable, "-I", "-c", code], capture_output=True, text=True
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Fakes for the torch seam (no real hardware is touched)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class _FakeCuda:
+    """A stand-in for ``torch.cuda`` with configurable answers."""
+
+    def __init__(
+        self,
+        *,
+        available: bool = True,
+        name: str = "NVIDIA GeForce RTX 4090",
+        total_gb: float = 24,
+        free_gb: float = 21,
+    ) -> None:
+        self._available = available
+        self._name = name
+        self._total = int(total_gb * GIB)
+        self._free = int(free_gb * GIB)
+
+    def is_available(self) -> bool:
+        return self._available
+
+    def get_device_name(self, index: int = 0) -> str:
+        return self._name
+
+    def mem_get_info(self, index: int = 0) -> tuple[int, int]:
+        return (self._free, self._total)
+
+
+@dataclass
+class _FakeTorch:
+    """A stand-in for the torch module holding a :class:`_FakeCuda`."""
+
+    cuda: object
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -204,3 +246,150 @@ class TestTorchFreeFastPath:
         assert result.returncode == 0, result.stderr
         # The package logger also writes to stdout; match the marker line.
         assert "TORCH=absent" in result.stdout
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Device and VRAM rows
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestCollectDevice:
+    """The GPU branches, driven through the replaceable torch seam."""
+
+    def test_cuda_device_reports_name_and_memory(self, monkeypatch) -> None:
+        fake = _FakeTorch(_FakeCuda(available=True, total_gb=24, free_gb=21))
+        monkeypatch.setattr(env_info, "_torch", lambda: fake)
+
+        values = {row.key: row.value for row in env_info.collect_device()}
+
+        assert values["torch_cuda"].startswith("available")
+        assert values["torch_device"] == "NVIDIA GeForce RTX 4090"
+        assert values["torch_vram"] == "24 GB total, 21 GB free"
+
+    def test_cpu_only_reports_a_single_row_and_no_vram(self, monkeypatch) -> None:
+        monkeypatch.setattr(env_info, "_torch", lambda: _FakeTorch(_FakeCuda(available=False)))
+
+        rows = env_info.collect_device()
+
+        assert len(rows) == 1
+        assert rows[0].value == "CPU only — no GPU detected"
+
+    def test_torch_absent_reports_plain_language_row(self, monkeypatch) -> None:
+        def _missing():
+            raise ImportError("No module named 'torch'")
+
+        monkeypatch.setattr(env_info, "_torch", _missing)
+
+        rows = env_info.collect_device()
+
+        assert len(rows) == 1
+        assert "PyTorch is not installed" in rows[0].value
+
+    def test_unanswerable_cuda_query_degrades(self, monkeypatch) -> None:
+        class _ExplodingCuda:
+            def is_available(self) -> bool:
+                raise RuntimeError("driver query failed")
+
+        monkeypatch.setattr(env_info, "_torch", lambda: _FakeTorch(_ExplodingCuda()))
+
+        rows = env_info.collect_device()
+
+        assert len(rows) == 1
+        assert rows[0].value.startswith("unknown")
+
+    def test_unreadable_driver_degrades_every_gpu_row(self, monkeypatch) -> None:
+        class _BrokenDriver(_FakeCuda):
+            def get_device_name(self, index: int = 0) -> str:
+                raise RuntimeError("no driver")
+
+            def mem_get_info(self, index: int = 0) -> tuple[int, int]:
+                raise RuntimeError("no driver")
+
+        monkeypatch.setattr(env_info, "_torch", lambda: _FakeTorch(_BrokenDriver(available=True)))
+
+        values = {row.key: row.value for row in env_info.collect_device()}
+
+        assert values["torch_cuda"].startswith("available")
+        assert values["torch_device"].startswith("unknown")
+        assert values["torch_vram"].startswith("unknown")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The composed report
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestCollect:
+    """``collect()`` composes versions, then device, then disk -- always."""
+
+    def test_row_order_is_versions_device_disk(self, monkeypatch, tmp_path) -> None:
+        monkeypatch.setattr(env_info, "_torch", lambda: _FakeTorch(_FakeCuda(available=False)))
+        monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "hub_cache"))
+        monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path / "ms_cache"))
+
+        report = env_info.collect()
+
+        keys = [row.key for row in report.rows]
+        assert keys[:5] == [
+            "dnallm_version",
+            "python_version",
+            "transformers_version",
+            "numpy_version",
+            "datasets_version",
+        ]
+        assert keys[5] == "torch_cuda"
+        assert keys[6:] == [
+            f"disk:{tmp_path / 'hub_cache'}",
+            f"disk:{tmp_path / 'ms_cache'}",
+        ]
+
+    def test_every_row_is_renderable(self, monkeypatch, tmp_path) -> None:
+        monkeypatch.setattr(env_info, "_torch", lambda: _FakeTorch(_FakeCuda(available=True)))
+        monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "hub_cache"))
+        monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path / "ms_cache"))
+
+        report = env_info.collect()
+
+        assert report.rows
+        for row in report.rows:
+            assert row.key.strip()
+            assert row.label.strip()
+            assert row.value.strip()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Import purity of the module itself, and the torch entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestImportPurity:
+    """``import dnallm.utils.env_info`` must not load torch (D-02)."""
+
+    def test_importing_the_module_leaves_torch_absent(self) -> None:
+        code = (
+            "import sys;"
+            "import dnallm.utils.env_info;"
+            "print('TORCH=' + ('present' if 'torch' in sys.modules else 'absent'))"
+        )
+
+        result = _run_isolated(code)
+
+        assert result.returncode == 0, result.stderr
+        assert "TORCH=absent" in result.stdout
+
+    def test_collect_device_is_the_only_torch_entry_point(self) -> None:
+        code = (
+            "import sys;"
+            "from dnallm.utils.env_info import collect_device;"
+            "before = 'present' if 'torch' in sys.modules else 'absent';"
+            "collect_device();"
+            "after = 'present' if 'torch' in sys.modules else 'absent';"
+            "print('BEFORE=' + before);"
+            "print('AFTER=' + after)"
+        )
+
+        result = _run_isolated(code)
+
+        assert result.returncode == 0, result.stderr
+        assert "BEFORE=absent" in result.stdout
+        assert "AFTER=present" in result.stdout
