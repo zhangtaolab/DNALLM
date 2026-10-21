@@ -360,15 +360,9 @@ def test_the_vocabulary_never_drifts_from_the_core_pattern() -> None:
 
 
 def _task_type_string(site: str) -> str:
-    """One of the four places a task type is offered, by its test-site name.
-
-    The static legend is this plan's new rendering surface; before it exists,
-    the completeness claim is held against the placeholder that carried the
-    vocabulary (the UAT's "vanishes on typing" site), so every site is judged
-    on the sentences that ship today.
-    """
+    """One of the four places a task type is offered, by its test-site name."""
     if site == "legend":
-        return getattr(copy, "SUITABILITY_TASK_LEGEND", copy.SUITABILITY_TASK_PROMPT)
+        return copy.SUITABILITY_TASK_LEGEND
     if site == "hint":
         return copy.CONFIG_FIELD_HINTS["task", "task_type"]
     return copy.CONFIG_ERROR_MESSAGES[("task", "task_type", site)]

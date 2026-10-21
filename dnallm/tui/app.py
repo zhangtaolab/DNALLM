@@ -99,6 +99,7 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #suitability-intent { height: auto; }
     #suitability-intent-finetune { width: auto; }
     #suitability-intent-predict { width: auto; margin-left: 2; }
+    #suitability-task-legend { color: $text-muted; }
     #suitability-check { width: auto; margin-top: 1; }
     #suitability-status { text-style: italic; }
     #suitability-verdicts-heading { text-style: bold; }

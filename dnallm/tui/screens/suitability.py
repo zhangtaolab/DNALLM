@@ -68,6 +68,7 @@ _TITLE_ID = "suitability-title"
 _FINETUNE_BUTTON_ID = "suitability-intent-finetune"
 _PREDICT_BUTTON_ID = "suitability-intent-predict"
 _TASK_INPUT_ID = "suitability-task-type"
+_TASK_LEGEND_ID = "suitability-task-legend"
 _MODELS_INPUT_ID = "suitability-models"
 _CHECK_BUTTON_ID = "suitability-check"
 _STATUS_ID = "suitability-status"
@@ -133,6 +134,7 @@ class SuitabilityScreen(Screen):
                 )
                 yield Button(copy.SUITABILITY_INTENT_PREDICT, id=_PREDICT_BUTTON_ID)
             yield Input(placeholder=copy.SUITABILITY_TASK_PROMPT, id=_TASK_INPUT_ID)
+            yield Static(copy.SUITABILITY_TASK_LEGEND, markup=False, id=_TASK_LEGEND_ID)
             yield Input(placeholder=copy.SUITABILITY_MODELS_PROMPT, id=_MODELS_INPUT_ID)
             yield Button(copy.SUITABILITY_CHECK_ACTION, id=_CHECK_BUTTON_ID)
             yield Static("", markup=False, id=_STATUS_ID)

@@ -115,6 +115,7 @@ __all__ = [
     "SUITABILITY_MODELS_PROMPT",
     "SUITABILITY_PANEL_TITLE",
     "SUITABILITY_READY",
+    "SUITABILITY_TASK_LEGEND",
     "SUITABILITY_TASK_PROMPT",
     "SUITABILITY_VERDICTS_HEADING",
     "SUITABILITY_VERDICT_COLUMNS",
@@ -124,6 +125,7 @@ __all__ = [
     "SUMMARY_MODEL_STOPPED",
     "SUMMARY_PANEL_TITLE",
     "SUMMARY_QUIT_ACTION",
+    "TASK_TYPE_GLOSSES",
     "THIRD_PARTY_ROW_FLAG",
     "UNKNOWN_STILL_DOWNLOADABLE",
     "USE_MODEL_ACTION",
@@ -249,10 +251,44 @@ SUITABILITY_INTENT_FINETUNE = "Fine-tune a base model on my data"
 
 SUITABILITY_INTENT_PREDICT = "Predict now with a ready-made model"
 
+# G-25-4: the ONE ordered source of the eight task types the core accepts and
+# one plain gloss each. Every task-type sentence and every legend line below is
+# composed from it, so the vocabulary cannot split into independent prose
+# literals again. Order is the core's pattern order (configs.py:109).
+TASK_TYPE_GLOSSES: dict[str, str] = {
+    "embedding": "a list of numbers for a whole sequence, to compare or search",
+    "mask": "fill in DNA letters that were hidden from the model",
+    "generation": "write out new DNA letters",
+    "binary": "one yes/no answer for the whole sequence",
+    "multiclass": "one answer chosen from several classes",
+    "multilabel": "several yes/no answers at once",
+    "regression": "a number, such as a measured value",
+    "token": "one label for each DNA letter",
+}
+
+# "value (gloss)", one per entry, in the mapping's locked order.
+_TASK_TYPE_CHOICES = tuple(
+    f"{value} ({gloss})" for value, gloss in TASK_TYPE_GLOSSES.items()
+)
+
+# The comma-separated prose every task-type sentence inserts between its own
+# punctuation, so no sentence retypes a gloss.
+_TASK_TYPE_PROSE = f"{', '.join(_TASK_TYPE_CHOICES[:-1])} or {_TASK_TYPE_CHOICES[-1]}"
+
+# One legend line per entry. Every line stays at or under 74 characters, the
+# width #suitability-body gives the legend at 80x24 once its scrollbar shows.
+_TASK_TYPE_LEGEND_LINES = tuple(
+    f"  {value} — {gloss}" for value, gloss in TASK_TYPE_GLOSSES.items()
+)
+
 SUITABILITY_TASK_PROMPT = (
-    "Task type, when you already know it. Binary is a yes/no answer, multiclass is "
-    "one of several classes, and token is a label for each DNA letter. Leave it "
-    "empty if you are not sure."
+    "Task type, when you already know it — the eight choices are listed below."
+)
+
+# The static legend under the task-type input (G-25-4): a placeholder vanishes
+# on the first keystroke, so the explanation lives in its own widget.
+SUITABILITY_TASK_LEGEND = "\n".join(
+    ("The eight task types:", *_TASK_TYPE_LEGEND_LINES, "Leave it empty if you are not sure.")
 )
 
 SUITABILITY_MODELS_PROMPT = (
@@ -450,8 +486,7 @@ CONFIG_FIELD_LABELS = {
 # preview, so what the file says is never rewritten by a label.
 CONFIG_FIELD_HINTS = {
     ("task", "task_type"): (
-        "What the model should do. Binary is a yes/no answer, multiclass is one of "
-        "several classes, and token is a label for each DNA letter."
+        "What the model should do. Choose one of: " + _TASK_TYPE_PROSE + "."
     ),
     ("task", "threshold"): (
         "The cut-off for calling a sequence positive: 0.5 means an even chance."
@@ -526,14 +561,12 @@ _CONFIG_ERROR_KINDS: tuple[tuple[str, str], ...] = (
 # name (``task_type``) onto the same key, so neither convention can miss.
 CONFIG_ERROR_MESSAGES: dict[tuple[str, str, str], str] = {
     ("task", "task_type", "not_an_allowed_value"): (
-        "Choose one of: embedding, mask, generation, binary, multiclass, multilabel, "
-        "regression or token. Binary is a yes/no answer, multiclass is one of several "
-        "classes, and token is a label for each DNA letter. The longer spellings such as "
-        "binary_classification also work."
+        "Choose one of: "
+        + _TASK_TYPE_PROSE
+        + ". The longer spellings such as binary_classification also work."
     ),
     ("task", "task_type", "task_type_required"): (
-        "This model has no built-in task, so choose one: binary is a yes/no answer, "
-        "multiclass is one of several classes, and token is a label for each DNA letter."
+        "This model has no built-in task, so choose one: " + _TASK_TYPE_PROSE + "."
     ),
     ("task", "task", "too_few_outputs"): (
         "Multiclass and multilabel training need at least 2 outputs, but this config "
