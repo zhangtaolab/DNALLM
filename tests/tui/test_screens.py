@@ -12,15 +12,19 @@ torch; only a small CSV in ``tmp_path`` is read.
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 from textual.containers import VerticalScroll
 from textual.widgets import Button, DataTable, Input, ProgressBar, Static
 
+import dnallm
 import dnallm.preflight as preflight_facade
 import dnallm.preflight.compatibility as compatibility_core
 from dnallm.preflight import (
@@ -1652,3 +1656,299 @@ def test_the_download_panel_never_imports_a_hub_client() -> None:
     referenced = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
     referenced |= {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
     assert "download_model" not in referenced
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Panel→core table (TUI-08), 25-10 Task 2
+#
+# Presentation-only is a claim, so it is a table: every screen module names the
+# exact set of core functions it may reach, and the test proves the table in
+# both directions — nothing missing, nothing extra. Screens reach the core two
+# ways: directly (an import or a call) or through the 25-02 thread-worker seam
+# (`self.app.<worker>` / `self._preflight_app.<worker>`), which is why the seam
+# map is declared next to the allowlist and expanded through it.
+# ─────────────────────────────────────────────────────────────────────────────
+
+PACKAGE_ROOT = Path(dnallm.__file__).parent
+SCREENS_DIR = PACKAGE_ROOT / "tui" / "screens"
+WORKERS_MODULE = PACKAGE_ROOT / "tui" / "workers.py"
+_SCREEN_PACKAGE = "dnallm.tui.screens"
+_CORE_MODULE_PREFIXES = ("dnallm.preflight", "dnallm.models", "dnallm.utils.env_info")
+
+#: The presentation-only contract. One entry per module under dnallm/tui/screens/.
+#: ``__init__.py`` is listed with an empty set so "every module present" is
+#: literal: a new screen module cannot appear without an allowlist decision.
+SCREEN_CORE_ALLOWLIST: dict[str, frozenset[str]] = {
+    "__init__.py": frozenset(),
+    "config.py": frozenset({"generate_config", "edit_config", "render_yaml"}),
+    "data.py": frozenset({"validate_data"}),
+    "download.py": frozenset({"download_model"}),
+    "entry.py": frozenset(),
+    "env.py": frozenset({"collect_versions", "collect_device", "collect_disk"}),
+    "suitability.py": frozenset({
+        "check_compatibility",
+        "local_availability",
+        "probe_availability",
+    }),
+    "summary.py": frozenset(),
+}
+
+#: What each worker seam method reaches in the core. A screen that calls a
+#: worker method inherits that method's core surface; a worker method without an
+#: entry here fails the test, and so does an entry naming a method that
+#: ``PreflightWorkers`` does not define.
+SEAM_CORE_MAP: dict[str, frozenset[str]] = {
+    "collect_env_worker": frozenset({"collect_device", "collect_disk"}),
+    "validate_data_worker": frozenset({"validate_data"}),
+    "check_compatibility_worker": frozenset({"check_compatibility"}),
+    "local_availability_batch_worker": frozenset({"local_availability"}),
+    "probe_availability_worker": frozenset({"probe_availability"}),
+    "generate_config_worker": frozenset({"generate_config"}),
+    "edit_config_worker": frozenset({"edit_config"}),
+    "download_worker": frozenset({"download_model"}),
+}
+
+
+def _screen_module_paths() -> dict[str, Path]:
+    """Every .py file under dnallm/tui/screens/, keyed by file name."""
+    return {path.name: path for path in sorted(SCREENS_DIR.glob("*.py"))}
+
+
+def _top_level_function_names(path: Path) -> set[str]:
+    """Names of the functions defined at module scope in *path*."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {
+        node.name for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _core_function_names() -> set[str]:
+    """Every function the three core surfaces define.
+
+    Types are deliberately excluded: a screen may import a frozen report type
+    for typing, and that is not a reach into core behaviour. Only callables
+    count, which is what "presentation-only" is about.
+    """
+    paths = [
+        *(PACKAGE_ROOT / "preflight").glob("*.py"),
+        PACKAGE_ROOT / "utils" / "env_info.py",
+        PACKAGE_ROOT / "models" / "model.py",
+    ]
+    names: set[str] = set()
+    for path in paths:
+        names |= _top_level_function_names(path)
+    return names
+
+
+def _resolve_relative_module(module: str, level: int) -> str:
+    """Resolve a screen module's relative import to its absolute dotted target."""
+    if level == 0:
+        return module
+    parts = _SCREEN_PACKAGE.split(".")
+    parts = parts[: len(parts) - (level - 1)]
+    base = ".".join(parts)
+    return f"{base}.{module}" if module else base
+
+
+def _is_core_module(target: str) -> bool:
+    """True when *target* is one of the three core surfaces a screen may reach."""
+    return any(
+        target == prefix or target.startswith(f"{prefix}.") for prefix in _CORE_MODULE_PREFIXES
+    )
+
+
+def _called_name(func: ast.expr) -> str | None:
+    """The name a call expression invokes (``f`` for ``f(...)``, ``g`` for ``x.g(...)``)."""
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def _direct_core_names(tree: ast.AST, core_names: set[str]) -> set[str]:
+    """Core functions *tree* imports from, or calls, without going through a worker."""
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            if _is_core_module(_resolve_relative_module(node.module or "", node.level)):
+                found |= {alias.name for alias in node.names if alias.name in core_names}
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if _is_core_module(alias.name):
+                    found.add(alias.name.rsplit(".", 1)[-1])
+        elif isinstance(node, ast.Call):
+            name = _called_name(node.func)
+            if name in core_names:
+                found.add(name)
+    return found
+
+
+def _is_self_app_chain(node: ast.expr) -> bool:
+    """True for the expression ``self.app`` or ``self._preflight_app``."""
+    return (
+        isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+        and node.attr in {"app", "_preflight_app"}
+    )
+
+
+def _app_alias_names(tree: ast.AST) -> set[str]:
+    """Local names a screen binds to its own app (``app = self._preflight_app``).
+
+    An alias is still the app: without this, a one-line local assignment would
+    hide a seam call from the table.
+    """
+    aliases: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            targets, value = [node.target], node.value
+        else:
+            continue
+        if not _is_self_app_chain(value):
+            continue
+        aliases |= {target.id for target in targets if isinstance(target, ast.Name)}
+    return aliases
+
+
+def _is_app_bound_attribute(node: ast.expr, aliases: set[str]) -> bool:
+    """True for ``<app>.<name>``, where ``<app>`` is ``self.app``, the typed
+    app property, or a local alias of either."""
+    if not isinstance(node, ast.Attribute):
+        return False
+    if _is_self_app_chain(node.value):
+        return True
+    return isinstance(node.value, ast.Name) and node.value.id in aliases
+
+
+def _app_bound_call_names(tree: ast.AST) -> set[str]:
+    """Every method name a screen calls on its app, aliases included."""
+    aliases = _app_alias_names(tree)
+    return {
+        node.func.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and _is_app_bound_attribute(node.func, aliases)
+    }
+
+
+def _preflight_worker_methods() -> set[str]:
+    """Every method ``PreflightWorkers`` defines (AST scan, no import of textual)."""
+    tree = ast.parse(WORKERS_MODULE.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name == "PreflightWorkers":
+            return {
+                member.name
+                for member in node.body
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef))
+            }
+    raise AssertionError("dnallm/tui/workers.py must define PreflightWorkers")
+
+
+def _screen_expanded_core_names(module_name: str) -> tuple[set[str], set[str]]:
+    """The core surface one screen reaches, plus the seam methods it used.
+
+    Args:
+        module_name: The screen module's file name.
+
+    Returns:
+        ``(core_names, seam_methods)`` — direct imports/calls unioned with every
+        seam method expanded through :data:`SEAM_CORE_MAP`.
+    """
+    tree = ast.parse(_screen_module_paths()[module_name].read_text(encoding="utf-8"))
+    core_names = _core_function_names()
+    direct = _direct_core_names(tree, core_names)
+    seam_methods = _app_bound_call_names(tree) & _preflight_worker_methods()
+    expanded = set(direct)
+    for seam in seam_methods:
+        expanded |= SEAM_CORE_MAP.get(seam, frozenset())
+    return expanded, seam_methods
+
+
+def test_the_allowlist_names_every_screen_module() -> None:
+    """A new screen module cannot appear without an allowlist decision."""
+    present = set(_screen_module_paths())
+    assert set(SCREEN_CORE_ALLOWLIST) == present, (
+        f"SCREEN_CORE_ALLOWLIST and dnallm/tui/screens/ disagree: "
+        f"unlisted={sorted(present - set(SCREEN_CORE_ALLOWLIST))}, "
+        f"missing={sorted(set(SCREEN_CORE_ALLOWLIST) - present)} (TUI-08)"
+    )
+
+
+@pytest.mark.parametrize("module_name", sorted(SCREEN_CORE_ALLOWLIST))
+def test_each_screen_reaches_exactly_its_allowlisted_core_functions(module_name: str) -> None:
+    """The table holds in both directions for one screen module.
+
+    Extra names mean the screen started doing domain work; missing names mean
+    the allowlist is stale. Either one fails.
+    """
+    expanded, seam_methods = _screen_expanded_core_names(module_name)
+    allowed = set(SCREEN_CORE_ALLOWLIST[module_name])
+
+    unmapped = sorted(seam_methods - set(SEAM_CORE_MAP))
+    assert unmapped == [], (
+        f"{module_name} calls seam methods with no SEAM_CORE_MAP entry: {unmapped} — "
+        f"declare what each worker reaches in the core (TUI-08)"
+    )
+
+    invented = sorted(expanded - _core_function_names())
+    assert invented == [], (
+        f"{module_name}'s expanded surface names non-core callables: {invented} — "
+        f"SEAM_CORE_MAP may only name core functions (TUI-08)"
+    )
+
+    extra = sorted(expanded - allowed)
+    missing = sorted(allowed - expanded)
+    assert extra == [], (
+        f"{module_name} reaches core functions its allowlist does not name: {extra} "
+        f"(allowed: {sorted(allowed)}) — screens are presentation only (TUI-08)"
+    )
+    assert missing == [], (
+        f"{module_name} no longer reaches allowlisted core functions: {missing} — "
+        f"the allowlist is the contract, so it must match (TUI-08)"
+    )
+
+
+def test_every_seam_method_a_screen_calls_has_a_mapping() -> None:
+    """Contract direction 1: no screen may reach an unmapped worker seam."""
+    called: set[str] = set()
+    for path in _screen_module_paths().values():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        called |= _app_bound_call_names(tree) & _preflight_worker_methods()
+    assert called - set(SEAM_CORE_MAP) == set(), (
+        f"seam methods called by screens with no SEAM_CORE_MAP entry: "
+        f"{sorted(called - set(SEAM_CORE_MAP))} (TUI-08)"
+    )
+
+
+def test_every_mapped_seam_name_exists_on_preflight_workers() -> None:
+    """Contract direction 2: the map cannot name a method the seam does not define."""
+    methods = _preflight_worker_methods()
+    unknown = sorted(set(SEAM_CORE_MAP) - methods)
+    assert unknown == [], (
+        f"SEAM_CORE_MAP names methods PreflightWorkers does not define: {unknown} "
+        f"(known: {sorted(methods)}) (TUI-08)"
+    )
+
+
+def test_no_screen_imports_yaml_pandas_or_a_hub_client() -> None:
+    """Screens render reports; parsing YAML or talking to a hub is core work."""
+    banned = {"yaml", "pandas", "huggingface_hub", "modelscope"}
+    offenders: dict[str, list[str]] = {}
+    for module_name, path in _screen_module_paths().items():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                imported.add(node.module.split(".")[0])
+        found = sorted(imported & banned)
+        if found:
+            offenders[module_name] = found
+    assert offenders == {}, (
+        f"screen modules import a library that belongs to the core: {offenders} — "
+        f"the panel renders reports and never parses a config or dials a hub (TUI-08)"
+    )

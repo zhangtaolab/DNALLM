@@ -289,3 +289,48 @@ def test_worker_methods_call_post_message_only() -> None:
         f"is the only thing that may cross the worker thread boundary "
         f"(TUI-07; 25-02 thread-boundary prohibition)"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-10 Task 2: the snapshot prohibition, extended from dependencies and
+# directories to the artefacts and the imports a snapshot suite would leave.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_SNAPSHOT_LIBRARIES = frozenset({
+    "pytest_textual_snapshot",
+    "pytest_snapshot",
+    "snapshottest",
+    "syrupy",
+    "pytest_regressions",
+})
+_SNAPSHOT_FILE_SUFFIXES = (".snap", ".snap.png", ".ambr", ".approved.txt", ".received.txt")
+
+
+def test_no_snapshot_artifacts_or_libraries_in_the_tui_suite() -> None:
+    """TUI tests are Pilot-functional: no golden files, no snapshot library.
+
+    A snapshot suite is recognisable three ways — a declared dependency, a
+    golden/snapshot directory, or the artefacts and imports it leaves in the
+    test tree. All three are checked here, so the prohibition cannot be
+    satisfied by moving the artefacts into a differently named folder.
+    """
+    artifacts = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in TESTS_TUI_DIR.rglob("*")
+        if path.is_file() and path.name.endswith(_SNAPSHOT_FILE_SUFFIXES)
+    )
+    assert artifacts == [], (
+        f"snapshot artefacts exist under tests/tui/: {artifacts} — TUI tests "
+        f"assert behaviour through Pilot, never stored renders (TUI-08)"
+    )
+
+    imported: dict[str, list[str]] = {}
+    for path in sorted(TESTS_TUI_DIR.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        libraries = sorted(_imported_top_level_modules(tree) & set(_SNAPSHOT_LIBRARIES))
+        if libraries:
+            imported[path.relative_to(REPO_ROOT).as_posix()] = libraries
+    assert imported == {}, (
+        f"tests/tui imports snapshot libraries: {imported} — no snapshot "
+        f"dependency is introduced in this phase (25-01/25-10 prohibition)"
+    )
