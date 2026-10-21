@@ -38,6 +38,7 @@ __all__ = ["DataScreen"]
 _PATH_INPUT_ID = "data-path"
 _CHECK_BUTTON_ID = "data-check"
 _SKIP_BUTTON_ID = "data-skip"
+_CONTINUE_BUTTON_ID = "data-continue"
 _FINDINGS_TABLE_ID = "data-findings"
 _SPLITS_CONTAINER_ID = "data-splits"
 _CHARSET_CONTAINER_ID = "data-charset"
@@ -72,6 +73,7 @@ class DataScreen(Screen):
             with Horizontal(id="data-actions"):
                 yield Button(copy.DATA_CHECK_ACTION, id=_CHECK_BUTTON_ID, variant="primary")
                 yield Button(copy.DATA_SKIP_ACTION, id=_SKIP_BUTTON_ID)
+                yield Button(copy.DATA_CONTINUE_ACTION, id=_CONTINUE_BUTTON_ID)
             yield Static("", markup=False, id="data-status")
             yield Static(copy.DATA_SUMMARY_HEADING, id="data-summary-heading")
             yield Container(id=_SPLITS_CONTAINER_ID)
@@ -105,12 +107,15 @@ class DataScreen(Screen):
         """Start reading the pasted path, or skip the step entirely.
 
         Args:
-            event: The button press; the check and skip actions are ours.
+            event: The button press; the check, skip and continue actions are
+                ours.
         """
         if event.button.id == _CHECK_BUTTON_ID:
             self._check_data()
         elif event.button.id == _SKIP_BUTTON_ID:
             self._skip_data()
+        elif event.button.id == _CONTINUE_BUTTON_ID:
+            self._preflight_app.show_suitability()
 
     def _check_data(self) -> None:
         """Hand the pasted path to the core through the app's thread worker.

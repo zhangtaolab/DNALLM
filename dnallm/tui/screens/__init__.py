@@ -6,5 +6,6 @@ verdict of its own.
 
 from .data import DataScreen
 from .env import EnvScreen
+from .suitability import SuitabilityScreen
 
-__all__ = ["DataScreen", "EnvScreen"]
+__all__ = ["DataScreen", "EnvScreen", "SuitabilityScreen"]

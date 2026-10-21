@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         CompatibilityReport,
         DataReport,
         GeneratedConfig,
+        ListingEntry,
     )
 
 __all__ = ["WizardState"]
@@ -35,9 +36,10 @@ class WizardState:
         compatibility_report: The frozen report ``check_compatibility``
             returned, once the suitability panel has run it.
         availability_by_entry: Per-model availability already known, keyed by
-            registry entry name. Rendering only — a row that is present is
+            model id (repo id). Rendering only — a row that is present is
             never re-probed.
-        selected_entry: The model the user chose in the suitability panel.
+        selected_entry: The frozen listing row the user chose in the
+            suitability panel, or None before a choice is made.
         generated_config: The validated config the config panel produced.
         export_path: Where the generated config was written, when it was saved.
     """
@@ -46,6 +48,6 @@ class WizardState:
     data_report: DataReport | None = None
     compatibility_report: CompatibilityReport | None = None
     availability_by_entry: dict[str, AvailabilityReport] = field(default_factory=dict)
-    selected_entry: str | None = None
+    selected_entry: ListingEntry | None = None
     generated_config: GeneratedConfig | None = None
     export_path: str | None = None

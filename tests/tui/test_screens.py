@@ -1,22 +1,41 @@
-"""Pilot tests for the data panel (TUI-04, 25-06).
+"""Pilot tests for the data and suitability panels (TUI-04/TUI-05).
 
-The panel is presentation only, so the tests are table tests against the core:
-a synthetic file is validated twice — once directly through ``validate_data``
-and once through the running panel — and the rendered rows must equal the
-report the core returned. Every seam is injected, so nothing touches the
-network or torch; only a small CSV in ``tmp_path`` is read.
+The panels are presentation only, so the tests are table tests against the
+core: a synthetic file is validated twice — once directly through
+``validate_data`` and once through the running panel — and the rendered rows
+must equal the report the core returned. The suitability panel is driven the
+same way: a fake core returns a frozen report whose row order is its own, and
+the panel must show exactly that order and pass the core's intent vocabulary
+through unchanged. Every seam is injected, so nothing touches the network or
+torch; only a small CSV in ``tmp_path`` is read.
 """
 
 from __future__ import annotations
 
+import threading
+from typing import Any
+
 from textual.containers import VerticalScroll
 from textual.widgets import Button, DataTable, Input, Static
 
-from dnallm.preflight import validate_data
+import dnallm.preflight as preflight_facade
+import dnallm.preflight.compatibility as compatibility_core
+from dnallm.preflight import (
+    AvailabilityReport,
+    AvailabilityState,
+    CompatibilityReport,
+    DimensionVerdict,
+    Hub,
+    ListingEntry,
+    ModelVerdict,
+    VerdictStatus,
+    validate_data,
+)
 from dnallm.tui import copy
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.screens.data import DataScreen
 from dnallm.tui.screens.env import EnvScreen
+from dnallm.tui.screens.suitability import INTENT_FINETUNE, INTENT_PREDICT, SuitabilityScreen
 
 # Two short sequences (below the default 20-character minimum) and one long
 # one; the duplicate pair and the missing-too-short rows give the core a
@@ -290,3 +309,237 @@ async def test_the_panel_is_usable_at_80x24(tmp_path) -> None:
     assert table_region.y + header_height + 1 <= body.bottom
     # And that first row really is the core's first finding.
     assert first_row[1] == expected_codes[0]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Suitability panel (TUI-05, 25-07): the core's order and vocabulary
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class FakeProber:
+    """An availability prober that records what it was asked and dials nothing.
+
+    Args:
+        report: The report every call returns (a ModelScope confirmation by
+            default).
+    """
+
+    def __init__(self, report: AvailabilityReport | None = None) -> None:
+        self.report = (
+            report
+            if report is not None
+            else AvailabilityReport(
+                state=AvailabilityState.REMOTE_CONFIRMED,
+                size_bytes=1,
+                revision="rev-1",
+                source_hub=Hub.MODELSCOPE,
+            )
+        )
+        self.calls: list[str] = []
+
+    def __call__(self, model: str) -> AvailabilityReport:
+        """Record the probed model id and return the canned report."""
+        self.calls.append(model)
+        return self.report
+
+
+class FakeCompatibilityCore:
+    """A ``check_compatibility`` stand-in that records every argument.
+
+    Args:
+        report: The frozen report every call returns.
+        gate: Optional event the call waits on, so a test can hold the worker
+            open and assert the probing state the user actually sees.
+    """
+
+    def __init__(self, report: CompatibilityReport, gate: threading.Event | None = None) -> None:
+        self.report = report
+        self.gate = gate
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(
+        self,
+        data: Any = None,
+        *,
+        task_type: str | None = None,
+        models: list[str] | None = None,
+        intent: str | None = None,
+        prober: Any = None,
+        probe_shortlist: int | None = None,
+    ) -> CompatibilityReport:
+        """Record the call, wait on the gate when set, and return the report."""
+        if self.gate is not None:
+            self.gate.wait(timeout=30)
+        self.calls.append({
+            "data": data,
+            "task_type": task_type,
+            "models": models,
+            "intent": intent,
+            "prober": prober,
+            "probe_shortlist": probe_shortlist,
+        })
+        return self.report
+
+
+def _synthetic_report() -> CompatibilityReport:
+    """A report whose row order only the screen could break.
+
+    The second row is the lab model, so a screen-side lab-first sort would
+    flip the two — exactly the reordering the panel must never do.
+    """
+    return CompatibilityReport(
+        verdicts=[
+            ModelVerdict(
+                model="zhangtaolab/lab-b",
+                entry_name="Lab B",
+                is_lab=True,
+                dimensions=[
+                    DimensionVerdict(dimension="task", status=VerdictStatus.OK),
+                    DimensionVerdict(
+                        dimension="length",
+                        status=VerdictStatus.UNKNOWN,
+                        reason_code="NO_DATA",
+                    ),
+                ],
+                overall=VerdictStatus.UNKNOWN,
+            )
+        ],
+        listing=[
+            ListingEntry(
+                model="third-party/file-a",
+                entry_name="Third A",
+                is_lab=False,
+                task_type="mask",
+                availability=AvailabilityReport(
+                    state=AvailabilityState.REMOTE_CONFIRMED, source_hub=Hub.HUGGINGFACE
+                ),
+            ),
+            ListingEntry(
+                model="zhangtaolab/lab-b",
+                entry_name="Lab B",
+                is_lab=True,
+                task_type="binary",
+                num_labels=2,
+                label_names=["0", "1"],
+                availability=AvailabilityReport(
+                    state=AvailabilityState.UNKNOWN, reason="RATE_LIMITED"
+                ),
+            ),
+        ],
+    )
+
+
+async def _open_suitability_screen(app: DNALLMPreflightApp, pilot) -> SuitabilityScreen:
+    """Push the suitability panel and wait for it to be the visible screen."""
+    app.push_screen(SuitabilityScreen())
+    await pilot.pause()
+    screen = app.screen
+    assert isinstance(screen, SuitabilityScreen)
+    return screen
+
+
+async def test_suitability_renders_the_core_listing_in_core_order(monkeypatch) -> None:
+    """Rows appear in ``report.listing`` order, with the core's own facts."""
+    report = _synthetic_report()
+    gate = threading.Event()
+    fake_core = FakeCompatibilityCore(report, gate=gate)
+    monkeypatch.setattr(preflight_facade, "check_compatibility", fake_core)
+    prober = FakeProber()
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=prober)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        # Before the report lands the page says plainly that it is probing.
+        probing = copy.PROBING_PLACEHOLDER in _rendered_text(screen)
+        gate.set()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+        verdict_rows = _table_rows(screen.query_one("#suitability-verdicts", DataTable))
+        status = _rendered_text(screen)
+
+    assert probing
+    # The lab row stays second: the screen never re-sorts the core's listing.
+    assert [row[0] for row in rows] == [entry.entry_name for entry in report.listing]
+    assert [row[1] for row in rows] == [copy.THIRD_PARTY_ROW_FLAG, copy.LAB_ROW_FLAG]
+    assert rows[1][2] == "binary"
+    assert rows[1][3] == "2"
+    # Each availability cell names the hub the core reported — never another.
+    assert copy.AVAILABILITY_REMOTE.format(hub="Hugging Face") == rows[0][4]
+    assert rows[1][4] == copy.HOSTING_NOT_VERIFIED
+    # One verdict row per dimension, carrying the core's status and reason.
+    assert [row[1] for row in verdict_rows] == ["task", "length"]
+    assert [row[2] for row in verdict_rows] == ["ok", "unknown"]
+    assert verdict_rows[1][3] == "NO_DATA"
+    assert copy.SUITABILITY_READY in status
+    # The core got the pinned vocabulary, the app's prober, the 20-row cap,
+    # and the wizard's stored data report (None: the data step was skipped).
+    assert fake_core.calls[0]["intent"] == "finetune"
+    assert fake_core.calls[0]["prober"] is prober
+    assert fake_core.calls[0]["probe_shortlist"] == 20
+    assert fake_core.calls[0]["data"] is None
+
+
+def test_screen_intent_constants_match_the_core_vocabulary() -> None:
+    """The screen pins the core's exact values, so copy can never drift in."""
+    assert INTENT_FINETUNE == compatibility_core.INTENT_FINETUNE
+    assert INTENT_PREDICT == compatibility_core.INTENT_PREDICT
+    # The UI's words are copy, and they are not the core's vocabulary.
+    assert copy.SUITABILITY_INTENT_FINETUNE not in (INTENT_FINETUNE, INTENT_PREDICT)
+    assert copy.SUITABILITY_INTENT_PREDICT not in (INTENT_FINETUNE, INTENT_PREDICT)
+
+
+async def test_choosing_predict_now_asks_the_core_with_predict(monkeypatch) -> None:
+    """The second route re-runs the core with ``intent="predict"``."""
+    fake_core = FakeCompatibilityCore(_synthetic_report())
+    monkeypatch.setattr(preflight_facade, "check_compatibility", fake_core)
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _open_suitability_screen(app, pilot)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        await pilot.click("#suitability-intent-predict")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert [call["intent"] for call in fake_core.calls] == ["finetune", "predict"]
+
+
+async def test_selecting_a_listing_row_records_it_in_wizard_state(monkeypatch) -> None:
+    """Focusing a row stores that exact frozen entry and enables the action."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        table = screen.query_one("#suitability-listing", DataTable)
+        table.move_cursor(row=1)
+        await pilot.pause()
+        selected = app.state.selected_entry
+        use_enabled = not screen.query_one("#suitability-use", Button).disabled
+        await pilot.click("#suitability-use")
+        await pilot.pause()
+        status = _rendered_text(screen)
+
+    assert selected is report.listing[1]
+    assert use_enabled
+    assert copy.USE_MODEL_CONFIRMED.format(model="Lab B") in status
+
+
+async def test_data_continue_opens_the_suitability_panel(monkeypatch) -> None:
+    """The data step's Continue action routes on to the suitability panel."""
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _open_data_screen(app, pilot)
+        await pilot.click("#data-continue")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        assert isinstance(app.screen, SuitabilityScreen)

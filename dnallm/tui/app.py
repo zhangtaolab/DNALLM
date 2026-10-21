@@ -32,7 +32,7 @@ from textual.widgets import Static
 
 from ..utils import env_info, get_logger
 from . import copy
-from .messages import DataReportReady, EnvReportReady, WorkerFailed
+from .messages import CompatibilityReady, DataReportReady, EnvReportReady, WorkerFailed
 from .screens.env import EnvScreen
 from .state import WizardState
 from .workers import PreflightWorkers
@@ -84,6 +84,21 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #data-findings { max-height: 14; }
     #data-no-findings { text-style: italic; }
     #data-quit-hint { padding: 0 2; }
+    #data-continue { width: auto; margin-left: 2; }
+    #suitability-body { height: 1fr; padding: 0 2; }
+    #suitability-title { text-style: bold; }
+    #suitability-intent { height: auto; }
+    #suitability-intent-finetune { width: auto; }
+    #suitability-intent-predict { width: auto; margin-left: 2; }
+    #suitability-check { width: auto; margin-top: 1; }
+    #suitability-status { text-style: italic; }
+    #suitability-verdicts-heading { text-style: bold; }
+    #suitability-listing-heading { text-style: bold; }
+    #suitability-verdicts { max-height: 12; }
+    #suitability-listing { max-height: 14; }
+    #suitability-detail { text-style: italic; }
+    #suitability-use { width: auto; margin: 1 0; }
+    #suitability-quit-hint { padding: 0 2; }
     """
 
     def __init__(
@@ -185,6 +200,25 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("DataReportReady arrived with no data panel showing")
             return
         await apply_data_report(message.data_report)
+
+    async def on_compatibility_ready(self, message: CompatibilityReady) -> None:
+        """Hand the suitability report to the panel that asked for it.
+
+        ``check_compatibility_worker`` and ``local_availability_batch_worker``
+        are mixed into this app, so their messages arrive here rather than at
+        the screen. The suitability panel opts in by defining an async
+        ``apply_compatibility_ready(report, local_by_name)`` hook.
+
+        Args:
+            message: The typed payload carrying the frozen report and whatever
+                local availability is already known.
+        """
+        screen = self._active_screen()
+        apply_report = getattr(screen, "apply_compatibility_ready", None)
+        if apply_report is None:
+            logger.debug("CompatibilityReady arrived with no suitability panel showing")
+            return
+        await apply_report(message.report, message.local_by_name)
 
     def show_suitability(self) -> None:
         """Move on to the suitability step after the data step ends.

@@ -20,8 +20,9 @@ from textual import work
 from textual.worker import get_current_worker
 
 from ..utils import get_logger
-from .copy import ENV_CHECK_FAILED
+from .copy import ENV_CHECK_FAILED, SUITABILITY_FAILED
 from .messages import (
+    CompatibilityReady,
     DataReportReady,
     DownloadFinished,
     DownloadProgress,
@@ -36,7 +37,12 @@ if TYPE_CHECKING:
 
 logger = get_logger("dnallm.tui.workers")
 
-__all__ = ["DownloadCancelled", "PreflightWorkers", "make_cancellable_downloader"]
+__all__ = [
+    "PROBE_SHORTLIST",
+    "DownloadCancelled",
+    "PreflightWorkers",
+    "make_cancellable_downloader",
+]
 
 # UI copy: written for a biologist, never an exception class name (D-10).
 _DATA_FAILED_COPY = (
@@ -44,6 +50,10 @@ _DATA_FAILED_COPY = (
     "file format is one of CSV, TSV, JSON, FASTA or TXT, then try again."
 )
 _DOWNLOAD_FAILED_COPY = "The download did not finish. Check your internet connection and try again."
+
+#: How many listing rows the compatibility worker asks the core to probe
+#: (D-04/D-10: the lab-first shortlist only — never every entry).
+PROBE_SHORTLIST = 20
 
 
 class DownloadCancelled(BaseException):
@@ -145,6 +155,62 @@ class PreflightWorkers:
         if worker.is_cancelled:
             return
         self.post_message(DataReportReady(data_report))
+
+    @work(thread=True, exit_on_error=False)
+    def check_compatibility_worker(
+        self,
+        data: Any,
+        *,
+        task_type: str | None = None,
+        models: list[str] | None = None,
+        intent: str | None = None,
+        prober: Callable[[str], Any] | None = None,
+        probe_shortlist: int = PROBE_SHORTLIST,
+    ) -> None:
+        """Work out model suitability and the intent listing off the event loop.
+
+        The core probes only the first ``probe_shortlist`` listing rows (labs
+        first); every visible row gets its offline local state from a second,
+        separate worker so the automatic probes stay bounded (D-04).
+
+        Args:
+            data: The frozen ``DataReport`` already validated, or ``None`` when
+                the user skipped the data step (D-08).
+            task_type: Optional task type filter, passed through verbatim.
+            models: Optional explicit model names; when given the core returns
+                verdicts instead of a listing.
+            intent: The core's intent vocabulary (``"finetune"`` /
+                ``"predict"``). Screens pass their pinned constants, never a
+                UI label.
+            prober: The app's injected availability prober. ``None`` means
+                production: the core's own ``probe_availability`` is used.
+                Tests inject a fake so nothing touches the network.
+            probe_shortlist: How many lab-first listing rows the core may
+                probe (D-04/D-10: never all entries).
+        """
+        worker = get_current_worker()
+        try:
+            from ..preflight import check_compatibility
+            from ..preflight.availability import probe_availability
+
+            effective_prober = prober if prober is not None else probe_availability
+            report = check_compatibility(
+                data,
+                task_type=task_type,
+                models=models,
+                intent=intent,
+                prober=effective_prober,
+                probe_shortlist=probe_shortlist,
+            )
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class name.
+            logger.error(f"check_compatibility failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(SUITABILITY_FAILED))
+            return
+        if worker.is_cancelled:
+            return
+        self.post_message(CompatibilityReady(report, {}))
 
     @work(thread=True, exit_on_error=False)
     def download_worker(self, model_name: str, downloader: Callable[..., str]) -> None:

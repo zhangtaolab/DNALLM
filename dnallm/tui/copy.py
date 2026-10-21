@@ -11,10 +11,15 @@ model name, a folder path) are shown verbatim.
 
 __all__ = [
     "APP_TITLE",
+    "AVAILABILITY_CACHED_HUB",
+    "AVAILABILITY_CACHED_LOCAL",
+    "AVAILABILITY_DETAIL_LABEL",
+    "AVAILABILITY_REMOTE",
     "CHECKING_PLACEHOLDER",
     "DATA_CHARSET_HEADING",
     "DATA_CHARSET_ROW",
     "DATA_CHECK_ACTION",
+    "DATA_CONTINUE_ACTION",
     "DATA_COUNT_NOT_APPLICABLE",
     "DATA_FINDINGS_COLUMNS",
     "DATA_FINDINGS_HEADING",
@@ -34,10 +39,32 @@ __all__ = [
     "ENV_PANEL_TITLE",
     "ENV_ROW_LABELS",
     "ENV_VERSIONS_SECTION",
+    "HOSTING_NOT_VERIFIED",
+    "HUB_NAMES",
     "INSTALL_HINT",
+    "LAB_ROW_FLAG",
     "NO_DATA_PROVIDED",
+    "NO_DATA_YET",
     "NO_FINDINGS",
+    "NO_HEAD_LABELS",
+    "PROBING_PLACEHOLDER",
     "QUIT_HINT",
+    "SELECT_MODEL_HINT",
+    "SUITABILITY_CHECK_ACTION",
+    "SUITABILITY_FAILED",
+    "SUITABILITY_INTENT_FINETUNE",
+    "SUITABILITY_INTENT_PREDICT",
+    "SUITABILITY_LISTING_COLUMNS",
+    "SUITABILITY_LISTING_HEADING",
+    "SUITABILITY_MODELS_PROMPT",
+    "SUITABILITY_PANEL_TITLE",
+    "SUITABILITY_READY",
+    "SUITABILITY_TASK_PROMPT",
+    "SUITABILITY_VERDICTS_HEADING",
+    "SUITABILITY_VERDICT_COLUMNS",
+    "THIRD_PARTY_ROW_FLAG",
+    "USE_MODEL_ACTION",
+    "USE_MODEL_CONFIRMED",
 ]
 
 APP_TITLE = "DNALLM pre-flight check"
@@ -83,6 +110,9 @@ DATA_PATH_PROMPT = "Paste the full path to your data file (CSV, TSV, JSON, FASTA
 
 DATA_CHECK_ACTION = "Check this data"
 
+# The step is optional (D-08), but the way forward must always be one click away.
+DATA_CONTINUE_ACTION = "Continue to models"
+
 DATA_SKIP_ACTION = "I don't have data yet"
 
 # D-08: the step is optional, and skipping states the consequence plainly.
@@ -122,3 +152,89 @@ DATA_SPLIT_ROW_EMPTY = 'Split "{name}": 0 sequences; nothing to measure.'
 
 # One row per character the core counted, with the split it belongs to.
 DATA_CHARSET_ROW = 'Split "{split}": the character "{char}" appears {count} times'
+
+# ── Suitability panel (TUI-05) ───────────────────────────────────────────────
+# The two routes over the base<->finetuned axis. These are the WORDS the user
+# reads; the core's own vocabulary ("finetune" / "predict") never reaches the
+# screen, and these sentences never reach the core.
+
+SUITABILITY_PANEL_TITLE = "Which model should do the job?"
+
+SUITABILITY_INTENT_FINETUNE = "Fine-tune a base model on my data"
+
+SUITABILITY_INTENT_PREDICT = "Predict now with a ready-made model"
+
+SUITABILITY_TASK_PROMPT = (
+    "Task type, when you already know it (for example binary, multiclass or token)."
+)
+
+SUITABILITY_MODELS_PROMPT = (
+    "Optional: type model names separated by commas to check them one by one."
+)
+
+SUITABILITY_CHECK_ACTION = "Check these models"
+
+SUITABILITY_VERDICTS_HEADING = "Models you asked about"
+
+SUITABILITY_LISTING_HEADING = "Models that fit this route"
+
+# Column labels. Reason codes, task types and model names stay verbatim.
+SUITABILITY_VERDICT_COLUMNS = ("Model", "Check", "Result", "Reason code")
+
+SUITABILITY_LISTING_COLUMNS = (
+    "Model",
+    "Who made it",
+    "Task type",
+    "Trained outputs",
+    "Availability",
+)
+
+# Shown while the core is working out the listing and its first probes.
+PROBING_PLACEHOLDER = "probing…"
+
+SUITABILITY_READY = (
+    "Here is what fits. Use the arrow keys to pick a model, then choose "
+    '"Use this model". Press p on a row to check where that model is hosted.'
+)
+
+SUITABILITY_FAILED = (
+    "We could not work out which models fit this data. Your data is safe and "
+    "you can try again or keep going with what is already on this page."
+)
+
+# D-05: an unprobed row says exactly what is known — nothing more.
+HOSTING_NOT_VERIFIED = "hosting not verified"
+
+NO_HEAD_LABELS = "no trained outputs"
+
+LAB_ROW_FLAG = "lab model"
+
+THIRD_PARTY_ROW_FLAG = "third party"
+
+# Availability sentences. The hub name is inserted verbatim.
+AVAILABILITY_CACHED_LOCAL = "already on this computer"
+
+AVAILABILITY_CACHED_HUB = "already downloaded from {hub}"
+
+AVAILABILITY_REMOTE = "available on {hub}"
+
+# How each hub is named to a reader. Keys are the core's Hub values.
+HUB_NAMES = {
+    "modelscope": "ModelScope",
+    "huggingface": "Hugging Face",
+    "local": "this computer",
+    "none": "no hub",
+}
+
+# Prefix for the detail line that shows a probe's own reason, verbatim.
+AVAILABILITY_DETAIL_LABEL = "Note from the check:"
+
+# D-08: the length and character checks need data; without it the state is
+# stated plainly and never shown as a failure.
+NO_DATA_YET = "no data provided yet"
+
+SELECT_MODEL_HINT = "Select a model with the arrow keys, then choose 'Use this model'."
+
+USE_MODEL_ACTION = "Use this model"
+
+USE_MODEL_CONFIRMED = 'You chose "{model}". The next step builds its config.'
