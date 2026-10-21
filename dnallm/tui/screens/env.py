@@ -22,10 +22,16 @@ from textual.widgets import Footer, Header, Static
 from .. import copy
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from ...utils.env_info import EnvRow
     from ..app import DNALLMPreflightApp
 
 __all__ = ["EnvScreen"]
+
+# Section keys shared with ``PreflightWorkers.collect_env_worker``.
+_DEVICE_SECTION = "device"
+_DISK_SECTION = "disk"
 
 
 class EnvScreen(Screen):
@@ -49,12 +55,42 @@ class EnvScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Paint the instant rows and the two checking placeholders."""
+        """Paint the instant rows, the checking placeholders, then start the worker."""
         app = self._preflight_app
         for row in app.collector.collect_versions():
             self._mount_row("env-versions", row)
-        self._mount_placeholder("env-device", copy.ENV_ROW_LABELS["device"])
-        self._mount_placeholder("env-disk", copy.ENV_ROW_LABELS["disk"])
+        self._mount_placeholder("env-device", copy.ENV_ROW_LABELS[_DEVICE_SECTION])
+        self._mount_placeholder("env-disk", copy.ENV_ROW_LABELS[_DISK_SECTION])
+        app.collect_env_worker(app.collector)
+
+    async def apply_env_report(self, env_report: Mapping[str, object]) -> None:
+        """Replace the checking placeholders with the worker's real rows.
+
+        Only the device and disk areas are rewritten, so the version rows
+        painted on mount stay exactly where they are (versions → device →
+        disk).
+
+        Args:
+            env_report: The collector's rows keyed by section — ``device`` and
+                ``disk``, each a list of ``EnvRow``.
+        """
+        for section in (_DEVICE_SECTION, _DISK_SECTION):
+            await self._replace_rows(
+                f"env-{section}", cast("list[EnvRow]", env_report.get(section) or [])
+            )
+
+    async def apply_worker_failure(self, message: str) -> None:
+        """Collapse both placeholders into one plain-language failure row."""
+        for section in (_DEVICE_SECTION, _DISK_SECTION):
+            await self.query_one(f"#env-{section}", Container).remove_children()
+        self.query_one("#env-device", Container).mount(self._preflight_app.render_text(message))
+
+    async def _replace_rows(self, container_id: str, rows: list[EnvRow]) -> None:
+        """Empty one area and mount *rows* into it, in the order the core gave."""
+        container = self.query_one(f"#{container_id}", Container)
+        await container.remove_children()
+        for row in rows:
+            self._mount_row(container_id, row)
 
     def _mount_row(self, container_id: str, row: EnvRow) -> None:
         """Mount one labelled fact as a literal (markup-free) row."""

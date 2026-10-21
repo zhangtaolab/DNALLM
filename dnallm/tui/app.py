@@ -17,12 +17,14 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from textual.app import App
+from textual.app import App, ScreenStackError
 from textual.binding import Binding
+from textual.screen import Screen
 from textual.widgets import Static
 
 from ..utils import env_info, get_logger
 from . import copy
+from .messages import EnvReportReady, WorkerFailed
 from .screens.env import EnvScreen
 from .state import WizardState
 from .workers import PreflightWorkers
@@ -119,3 +121,48 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
         never blocks on a slow core call.
         """
         self.workers.cancel_all()
+
+    def _active_screen(self) -> Screen | None:
+        """The visible screen, or ``None`` before the first one is pushed."""
+        try:
+            return self.screen
+        except ScreenStackError:
+            return None
+
+    async def on_env_report_ready(self, message: EnvReportReady) -> None:
+        """Hand the collector's rows to the panel that asked for them.
+
+        The worker method lives on this app (it is mixed in), so its message
+        arrives here rather than at the screen. Screens opt in by defining an
+        async ``apply_env_report(env_report)`` hook.
+
+        Args:
+            message: The typed payload carrying the collector's rows.
+        """
+        screen = self._active_screen()
+        apply_env_report = getattr(screen, "apply_env_report", None)
+        if apply_env_report is None:
+            logger.debug("EnvReportReady arrived with no environment panel showing")
+            return
+        await apply_env_report(message.env_report)
+
+    async def on_worker_failed(self, message: WorkerFailed) -> None:
+        """Show any worker error as a plain-language row, never an app exit.
+
+        ``exit_on_error=False`` on the seam keeps Textual from tearing the app
+        down when a core call raises; this handler is what the user sees
+        instead. Screens opt in by defining an async
+        ``apply_worker_failure(message)`` hook.
+
+        Args:
+            message: The typed payload whose ``message`` is already plain
+                language (exception details stay in the log).
+        """
+        self.last_failure = message.message
+        logger.warning(f"A wizard worker failed: {message.message}")
+        screen = self._active_screen()
+        apply_failure = getattr(screen, "apply_worker_failure", None)
+        if apply_failure is None:
+            logger.debug("WorkerFailed arrived with no screen able to show it")
+            return
+        await apply_failure(message.message)

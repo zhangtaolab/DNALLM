@@ -20,10 +20,12 @@ from textual import work
 from textual.worker import get_current_worker
 
 from ..utils import get_logger
+from .copy import ENV_CHECK_FAILED
 from .messages import (
     DataReportReady,
     DownloadFinished,
     DownloadProgress,
+    EnvReportReady,
     WorkerFailed,
 )
 
@@ -93,6 +95,33 @@ class PreflightWorkers:
     typed messages, and never touches a widget. Later plans extend this mixin
     with the remaining core calls.
     """
+
+    @work(thread=True, exit_on_error=False)
+    def collect_env_worker(self, collector: Any) -> None:
+        """Collect the slower environment facts off the event loop.
+
+        The version rows are already on screen when this runs; only the
+        graphics-card and free-disk facts need the worker (D-01).
+
+        Args:
+            collector: The app's environment collector. It must expose
+                ``collect_device`` and ``collect_disk``; the default is
+                :mod:`dnallm.utils.env_info`, and tests inject a fake so no row
+                touches torch or the filesystem.
+        """
+        worker = get_current_worker()
+        try:
+            device_rows = collector.collect_device()
+            disk_rows = collector.collect_disk()
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class name.
+            logger.error(f"Environment collection failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(ENV_CHECK_FAILED))
+            return
+        if worker.is_cancelled:
+            return
+        self.post_message(EnvReportReady({"device": device_rows, "disk": disk_rows}))
 
     @work(thread=True, exit_on_error=False)
     def validate_data_worker(self, source: Any) -> None:

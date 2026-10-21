@@ -8,9 +8,11 @@ finishes, and the device/disk placeholders are replaced afterwards.
 
 from __future__ import annotations
 
+import threading
+
 from textual.widgets import Static
 
-from dnallm.tui import run_preflight
+from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.workers import PreflightWorkers
@@ -95,15 +97,67 @@ def test_run_preflight_starts_the_app_with_the_config_path(monkeypatch) -> None:
 
 
 async def test_env_screen_renders_version_rows_before_any_heavy_work() -> None:
-    """The env panel shows the version rows and checking placeholders on mount."""
-    collector = FakeCollector()
+    """The env panel shows the version rows and checking placeholders on mount.
+
+    The collector is held open so the assertion sees the exact state a real
+    startup shows: version rows painted, the slow rows still checking.
+    """
+    gate = threading.Event()
+    collector = FakeCollector(gate=gate)
+    app = DNALLMPreflightApp(collector=collector)
+
+    try:
+        async with app.run_test(size=(100, 40)) as pilot:
+            await pilot.pause()
+            assert isinstance(app.screen, EnvScreen)
+            text = _rendered_text(app.screen)
+    finally:
+        gate.set()
+
+    assert "DNALLM version: 0.5.2" in text
+    assert "Python version: 3.13.15" in text
+    assert f"{copy.ENV_DEVICE_SECTION}: {copy.CHECKING_PLACEHOLDER}" in text
+    assert f"{copy.ENV_DISK_SECTION}: {copy.CHECKING_PLACEHOLDER}" in text
+
+
+async def test_worker_fills_the_placeholders_and_keeps_row_order() -> None:
+    """The placeholder holds until the worker reports, then the real rows land."""
+    gate = threading.Event()
+    collector = FakeCollector(
+        device_rows=[EnvRow("torch_vram", "GPU memory (VRAM)", "24 GB total, 21 GB free")],
+        gate=gate,
+    )
     app = DNALLMPreflightApp(collector=collector)
 
     async with app.run_test(size=(100, 40)) as pilot:
         await pilot.pause()
-        assert isinstance(app.screen, EnvScreen)
-        text = _rendered_text(app.screen)
+        before = _rendered_text(app.screen)
+        assert copy.CHECKING_PLACEHOLDER in before
+        assert "24 GB total" not in before
 
-    assert "DNALLM version: 0.5.2" in text
-    assert "Python version: 3.13.15" in text
-    assert "checking" in text
+        gate.set()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        after = _rendered_text(app.screen)
+
+    assert copy.CHECKING_PLACEHOLDER not in after
+    assert "GPU memory (VRAM): 24 GB total, 21 GB free" in after
+    assert "Free disk space for model downloads (/tmp): 100 GB free" in after
+    # versions -> device -> disk, the order fixed by the collector
+    assert after.index("DNALLM version") < after.index("GPU memory (VRAM)")
+    assert after.index("GPU memory (VRAM)") < after.index("Free disk space")
+
+
+async def test_failing_collector_renders_one_plain_language_row() -> None:
+    """A raising collector becomes one readable row; the app keeps running."""
+    app = DNALLMPreflightApp(collector=FakeCollector(failure=RuntimeError("boom")))
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(app.screen)
+        assert copy.ENV_CHECK_FAILED in text
+        assert copy.CHECKING_PLACEHOLDER not in text
+        assert "RuntimeError" not in text
+        # The quit binding still works after the failure.
+        await pilot.press("q")
