@@ -186,8 +186,9 @@ no Nerd Font glyphs — the Windows CI leg must render identically.
 ## Color
 
 The app defines **no hex value**. Color is Textual's `textual-dark` theme, referenced through theme
-variables; the only two variable references in the whole CSS are `$text-muted` (above) and the
-`variant="primary"` button style.
+variables. The CSS block contains exactly **two** color-variable references, both `$text-muted`
+(`#suitability-task-legend` and `.config-hint`); the accent is applied at widget level through
+`variant="primary"`, never through a CSS color rule.
 
 | Role | Value | Usage |
 |------|-------|-------|
