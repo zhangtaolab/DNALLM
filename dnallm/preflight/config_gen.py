@@ -21,10 +21,11 @@
    (research Pitfall 8) and ``effective_max_length``.
 4. Import-light at the SOURCE level: no torch/transformers/datasets and
    no hub clients anywhere in this module (AST structure-test enforced).
-   Runtime import purity — a shell generating a config without the
-   training stack already in ``sys.modules`` — is a known open constraint
-   deferred to Phase 25: the ``dnallm.utils`` / ``dnallm.models`` package
-   inits still import transitively.
+   Runtime import purity is closed: a shell generating a config without
+   the training stack already in ``sys.modules`` works, because the
+   ``dnallm.utils`` / ``dnallm.models`` package facades resolve their
+   heavy members lazily (subprocess marker test in
+   ``tests/test_package_facade.py``).
 5. Safe YAML only: round-trip loading uses the safe-loader family;
    output is written with ``yaml.safe_dump`` to exactly the user-named
    ``output_path`` and never otherwise (D-15 — no surprise writes, no

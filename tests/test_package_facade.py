@@ -112,8 +112,15 @@ def test_lazy_attribute_is_cached() -> None:
 
 
 def test_root_lazy_map_covers_the_non_eager_api() -> None:
-    """The root ``_LAZY`` map covers exactly the non-eager public API."""
-    eager = {"__version__", "load_config"}
+    """The root ``_LAZY`` map covers exactly the non-eager public API.
+
+    ``cli`` is eager rather than lazy: its name is also the ``dnallm.cli``
+    subpackage, so importing that package first would park the submodule in
+    this package's ``__dict__`` and ``from dnallm import cli`` would silently
+    become the module instead of the Click group. It is torch-free, so binding
+    it eagerly costs the light import path nothing.
+    """
+    eager = {"__version__", "load_config", "cli"}
     assert set(dnallm._LAZY) == set(dnallm.__all__) - eager
     assert eager & set(dnallm._LAZY) == set()
     for name in eager:
@@ -363,3 +370,25 @@ def test_direct_finetune_import_resolves_trainer() -> None:
     result = _run_isolated(code)
     assert result.returncode == 0, result.stderr
     assert _marker(result.stdout, "SHIM=") == "SHIM=True"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Closed deferral: the preflight docstrings must describe the closed state
+# ─────────────────────────────────────────────────────────────────────────────
+
+# The Phase-23 CR-01 wording that described runtime purity as an open
+# constraint. D-01 closes it; this guard keeps the stale claim from returning.
+_STALE_DEFERRAL_PHRASE = "deferred to Phase 25"
+
+
+def test_no_stale_purity_deferral_claim() -> None:
+    """No preflight module still defers runtime purity to a later phase."""
+    offenders = [
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in sorted((PACKAGE_ROOT / "preflight").glob("*.py"))
+        if _STALE_DEFERRAL_PHRASE in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == [], (
+        f"{offenders} still claim runtime purity is deferred — the facades are "
+        "lazy now; describe the closed state instead"
+    )

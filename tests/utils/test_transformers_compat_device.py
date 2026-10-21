@@ -15,6 +15,7 @@ against a fake ``transformers.utils.import_utils`` module so local proof
 never depends on reproducing the GPU-less CUDA environment.
 """
 
+import ast
 import pathlib
 import sys
 import types
@@ -239,26 +240,52 @@ class TestDeviceTypeQueryShim:
         assert fake.get_device_type is not divergent
 
 
-class TestRootInitOrdering:
-    """The root package must load dnallm.utils before dnallm.models."""
+class TestConsumerShimOrdering:
+    """The shim ordering guarantee travels with every consumer package.
 
-    def test_utils_imports_before_models_in_root_init(self):
-        """The root __init__ orders the .utils import before the .models import.
+    It used to be positional inside the root package (``.utils`` imported
+    before ``.models``). The root facade is lazy now, so the guarantee moved
+    to the consumers themselves: each module that resolves a transformers
+    modeling symbol installs the compat shim first. A direct submodule import
+    -- which never runs the root init -- therefore still gets the patch.
+    """
+
+    def test_models_model_installs_compat_before_transformers(self):
+        """dnallm/models/model.py imports the shim before any transformers symbol.
 
         transformers_compat.apply_patches() must run ahead of the first
-        "from transformers import" modeling-symbol resolution (dnallm.models
-        model.py), because transformers >= 5.19 queries the accelerator
-        during that import and raises on CUDA-built torch without a visible
-        GPU -- the test-cuda CI legs.
+        "from transformers import" modeling-symbol resolution, because
+        transformers >= 5.19 queries the accelerator during that import and
+        raises on CUDA-built torch without a visible GPU -- the test-cuda CI
+        legs. ``dnallm/__init__.py`` no longer carries this ordering.
         """
+        source = (
+            pathlib
+            .Path(dnallm.__file__)
+            .parent.joinpath("models/model.py")
+            .read_text(encoding="utf-8")
+        )
+        compat_idx = source.find("transformers_compat")
+        transformers_idx = source.find("from transformers import")
+        assert compat_idx != -1, "dnallm/models/model.py must import transformers_compat"
+        assert transformers_idx != -1, "dnallm/models/model.py must import transformers"
+        assert compat_idx < transformers_idx, (
+            "dnallm/models/model.py must install the transformers compat shim BEFORE its "
+            "module-level 'from transformers import' lines: apply_patches() installs the "
+            "pre-modeling device-query patch, while the modeling-symbol import queries "
+            "the accelerator (the >= 5.19 crash on GPU-less CUDA torch)"
+        )
+
+    def test_root_init_no_longer_owns_the_ordering(self):
+        """The root facade carries no runtime utils-before-models guarantee."""
         source = pathlib.Path(dnallm.__file__).read_text(encoding="utf-8")
-        utils_idx = source.find("from .utils import")
-        models_idx = source.find("from .models import")
-        assert utils_idx != -1, "dnallm/__init__.py must keep its 'from .utils import' line"
-        assert models_idx != -1, "dnallm/__init__.py must keep its 'from .models import' line"
-        assert utils_idx < models_idx, (
-            "dnallm/__init__.py must import .utils BEFORE .models: transformers_compat "
-            "installs the pre-modeling device-query patch at .utils import time, while "
-            "dnallm.models resolves transformers modeling_utils first (the >= 5.19 "
-            "accelerator query crashes GPU-less CUDA torch during collection)"
+        tree = ast.parse(source)
+        runtime_imports = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.ImportFrom) and node.module == ".models"
+        ]
+        assert runtime_imports == [], (
+            "dnallm/__init__.py must not eagerly import .models -- the ordering guarantee "
+            "lives in the consumer modules now (see TestConsumerShimOrdering)"
         )

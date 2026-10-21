@@ -19,13 +19,14 @@ files, or any cache:
    fact flows through ``dnallm.models.registry`` — this package never
    parses the packaged registry YAML and never probes the network on the
    validation/compatibility/config paths.
-4. Import-light at the SOURCE level: modules under ``dnallm/preflight/``
-   never import torch/transformers/datasets (AST-enforced by
-   ``tests/preflight/test_structure.py``); hub clients are confined to
-   ``availability.py`` (23-03). Runtime ``sys.modules`` purity — importing
-   this package without the parent inits pulling the training stack in
-   transitively (via the ``dnallm.utils`` and ``dnallm.models`` package
-   inits) — is a known open constraint deferred to Phase 25.
+4. Import-light at SOURCE and RUNTIME level: modules under
+   ``dnallm/preflight/`` never import torch/transformers/datasets
+   (AST-enforced by ``tests/preflight/test_structure.py``); hub clients are
+   confined to ``availability.py`` (23-03). Runtime ``sys.modules`` purity
+   is closed: the parent package facades resolve their heavy members
+   lazily, so importing this package leaves torch, transformers, datasets,
+   and matplotlib out of ``sys.modules`` — enforced by the subprocess
+   marker test in ``tests/test_package_facade.py``.
 5. Not a root-facade member: import from ``dnallm.preflight`` directly —
    the root ``dnallm`` package stays torch-heavy by design.
 

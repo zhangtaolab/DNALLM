@@ -30,8 +30,10 @@ Design invariants:
    imports sit inside the adapter functions so this module's own source
    pulls no hub client at import time, and the unit suite stays
    network-free via the injectable prober seam (PFC-03). Runtime
-   ``sys.modules`` purity (the parent package inits' transitive imports)
-   is a known open constraint deferred to Phase 25.
+   ``sys.modules`` purity is closed: the parent package facades resolve
+   their heavy members lazily, so importing this module pulls no part of
+   the training stack (subprocess marker test in
+   ``tests/test_package_facade.py``).
 6. **Endpoints are reported, not assumed.** ``effective_endpoints``
    reads library constants (``huggingface_hub.constants.ENDPOINT`` and
    the resolved ModelScope cache root) — never ``os.environ``, which can

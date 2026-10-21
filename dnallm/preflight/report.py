@@ -16,9 +16,11 @@
    own imports are nothing beyond the stdlib, pydantic, and the package
    logger — never torch/transformers/datasets (AST-enforced by
    ``tests/preflight/test_structure.py``). Runtime ``sys.modules`` purity
-   is a known open constraint deferred to Phase 25: the logger's
-   ``dnallm.utils`` (and the registry's ``dnallm.models``) parent-init
-   imports still pull the training stack in transitively.
+   is closed as well: the ``dnallm.utils`` and ``dnallm.models`` parent
+   package facades resolve their heavy members lazily, so the logger and
+   registry imports this module performs pull no part of the training
+   stack — pinned by the subprocess marker test in
+   ``tests/test_package_facade.py``.
 5. Reports are return values only: nothing here reads files, touches the
    network, or mutates user data (the pure/read-only contract of
    ``dnallm.preflight``).

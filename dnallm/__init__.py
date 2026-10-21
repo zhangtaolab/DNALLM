@@ -1,11 +1,16 @@
 """
 This is the main module for DNALLM.
 
-The root facade is lazy (PEP 562): --version-- and load_config bind eagerly
-because both are cheap and torch-free, while every heavier entry point is
+The root facade is lazy (PEP 562): --version--, load_config, and cli bind
+eagerly because all three are torch-free, while every heavier entry point is
 resolved through module __getattr__ on first access. That keeps an import of
 any light subpackage from dragging the training stack in through this package
 init.
+
+cli is bound eagerly on purpose rather than through __getattr__: its name is
+also the dnallm.cli subpackage, so importing that package first would set the
+submodule as this package's attribute and the lazy hook would never run --
+turning ``from dnallm import cli`` from the Click group into the module.
 
 The former utils-before-models ordering guarantee is no longer expressed here:
 it travels with the consumer. dnallm.models installs the transformers and cuda
@@ -38,6 +43,10 @@ from .version import __version__
 
 from .configuration import load_config
 
+# Bound eagerly (see the module docstring): cheap and torch-free, and its name
+# collides with the dnallm.cli subpackage attribute.
+from .cli import cli
+
 # name -> defining module. Covers exactly the public API that is not bound
 # eagerly above, so every name in __all__ resolves and nothing else does.
 _LAZY = {
@@ -47,14 +56,12 @@ _LAZY = {
     "DNAInterpret": "dnallm.inference",
     "DNATrainer": "dnallm.finetune",
     "Mutagenesis": "dnallm.inference",
-    "cli": "dnallm.cli.cli",
     "get_logger": "dnallm.utils",
     "load_model_and_tokenizer": "dnallm.models",
     "setup_logging": "dnallm.utils",
 }
 
 if TYPE_CHECKING:  # static bindings for the lazy names (never imported at runtime)
-    from .cli.cli import cli
     from .datahandling import DNADataset
     from .finetune import DNATrainer
     from .inference import Benchmark, DNAInference, DNAInterpret, Mutagenesis

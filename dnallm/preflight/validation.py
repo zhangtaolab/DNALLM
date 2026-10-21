@@ -24,9 +24,10 @@ never opened as pickle (D-04: ``pickle.load`` on user input is an
 arbitrary-code-execution vector). At the source level this module never
 imports datasets/torch/transformers and never imports
 ``dnallm.datahandling`` (AST-enforced by ``tests/preflight/test_structure.py``);
-runtime ``sys.modules`` purity is a known open constraint deferred to
-Phase 25 (transitive imports via the ``dnallm.utils`` / ``dnallm.models``
-package inits).
+runtime ``sys.modules`` purity is closed too: the ``dnallm.utils`` /
+``dnallm.models`` package facades resolve their heavy members lazily, so
+this module imports without the training stack (subprocess marker test in
+``tests/test_package_facade.py``).
 """
 
 import os
