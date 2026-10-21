@@ -316,6 +316,14 @@ class SuitabilityScreen(Screen):
                 filters, or recomputes a row.
         """
         self._listing = list(report.listing)
+        # A new listing invalidates whatever was selected: in explicit-model
+        # mode the listing is empty and nothing will re-highlight, so leaving
+        # the old choice in place would let "Use this model" build a config for
+        # a model no longer on screen (WR-07). The first-row highlight that
+        # follows a non-empty render repopulates both again.
+        self._preflight_app.state.selected_entry = None
+        self.query_one(f"#{_USE_BUTTON_ID}", Button).disabled = True
+        self._show_detail_clear()
         verdicts = self.query_one(f"#{_VERDICTS_TABLE_ID}", DataTable)
         verdicts.clear()
         for verdict in report.verdicts:
@@ -422,6 +430,10 @@ class SuitabilityScreen(Screen):
         self._preflight_app.state.selected_entry = entry
         self.query_one(f"#{_USE_BUTTON_ID}", Button).disabled = False
         self._show_detail(entry)
+
+    def _show_detail_clear(self) -> None:
+        """Empty the detail line: the row it described is gone (WR-07)."""
+        self.query_one(f"#{_DETAIL_ID}", Static).update("")
 
     def _show_detail(self, entry: ListingEntry) -> None:
         """Show what is known about the chosen row, in the core's own words.

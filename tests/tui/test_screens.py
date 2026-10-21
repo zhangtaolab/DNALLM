@@ -2199,6 +2199,46 @@ async def test_a_local_batch_is_only_valid_for_the_report_on_screen(monkeypatch)
     assert still is current
 
 
+async def test_a_check_with_no_listing_clears_the_stale_selection(monkeypatch) -> None:
+    """WR-07: "Use this model" can never point at a row that left the screen."""
+    first = _synthetic_report()
+    empty = CompatibilityReport(verdicts=[], listing=[])
+    reports = [first, empty]
+
+    class _SequenceCheck:
+        calls = 0
+
+        def __call__(self, *_args: object, **_kwargs: object) -> CompatibilityReport:
+            report = reports[min(self.calls, len(reports) - 1)]
+            self.calls += 1
+            return report
+
+    monkeypatch.setattr(preflight_facade, "check_compatibility", _SequenceCheck())
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        screen.query_one("#suitability-listing", DataTable).move_cursor(row=1)
+        await pilot.pause()
+        selected_before = app.state.selected_entry
+        enabled_before = not screen.query_one("#suitability-use", Button).disabled
+        # A check that returns no listing (explicit-model mode) replaces the
+        # rows, so the previous choice must not survive.
+        await pilot.click("#suitability-check")
+        await _settle(pilot, app)
+        selected_after = app.state.selected_entry
+        disabled_after = screen.query_one("#suitability-use", Button).disabled
+        detail = str(screen.query_one("#suitability-detail", Static).content)
+
+    assert selected_before is first.listing[1]
+    assert enabled_before
+    assert selected_after is None
+    assert disabled_after
+    assert detail == ""
+
+
 async def test_a_failed_suitability_check_reads_plainly(monkeypatch) -> None:
     """A raising compatibility call leaves a readable row, never a traceback."""
 
