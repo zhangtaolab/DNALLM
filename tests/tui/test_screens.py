@@ -2391,6 +2391,55 @@ async def test_editing_a_section_that_is_not_a_mapping_still_records(monkeypatch
     assert recorded == {"r": 8}
 
 
+async def test_a_field_edit_hands_the_worker_a_snapshot_of_the_mapping(monkeypatch) -> None:
+    """WR-01: the live working mapping is copied before it leaves this thread.
+
+    The worker deep-copies its input on its own thread, while the UI thread
+    keeps writing into the same nested dicts on the next keystroke. Adding a
+    key mid-copy raises "dictionary changed size during iteration", so the
+    snapshot has to be taken here, where the mapping is stable for the call.
+    """
+    generated = edit_config(
+        {"task": {"task_type": "binary"}, "finetune": {"learning_rate": 1e-05}}, {}
+    )
+    fake = FakeConfigCore(generated)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        live = screen._raw
+        dispatched: list[tuple[Any, Any, dict]] = []
+        monkeypatch.setattr(
+            app,
+            "edit_config_worker",
+            lambda existing, patch=None, **kwargs: dispatched.append((existing, patch, kwargs)),
+        )
+
+        screen.query_one("#config-field-finetune-num_train_epochs", Input).value = "7"
+        await pilot.pause()
+        edit_existing, edit_patch, _ = dispatched[0]
+        # The value at dispatch time is in the copy, and the copy is not live.
+        assert edit_patch == {"finetune": {"num_train_epochs": 7}}
+        snapshot_at_dispatch = edit_existing == live
+        live["finetune"]["added_while_the_worker_runs"] = True
+        copy_saw_the_late_key = "added_while_the_worker_runs" in edit_existing["finetune"]
+
+        dispatched.clear()
+        screen.query_one("#config-output-path", Input).value = "out.yaml"
+        await pilot.pause()
+        dispatched.clear()
+        screen._save()
+        await pilot.pause()
+        save_existing = dispatched[0][0]
+
+    assert snapshot_at_dispatch
+    assert edit_existing is not live
+    assert save_existing is not live
+    assert copy_saw_the_late_key is False
+
+
 async def test_a_failed_config_build_reads_plainly(monkeypatch) -> None:
     """A raising generate_config leaves one readable row on the panel."""
 

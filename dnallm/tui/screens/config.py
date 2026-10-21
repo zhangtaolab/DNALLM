@@ -360,7 +360,11 @@ class ConfigScreen(Screen):
         if _unchanged(spec.kind, parsed, existing):
             return
         self._record(section, spec.name, parsed)
-        self._preflight_app.edit_config_worker(self._raw, {section: {spec.name: parsed}})
+        # Snapshot on this thread: the worker deep-copies its input, and the
+        # next keystroke keeps writing into these same nested dicts. A key
+        # added mid-copy would raise "dictionary changed size during iteration"
+        # inside the worker (WR-01).
+        self._preflight_app.edit_config_worker(deepcopy(self._raw), {section: {spec.name: parsed}})
 
     def _record(self, section: str, name: str, value: object) -> None:
         """Write one edited value into the working mapping.
@@ -385,7 +389,9 @@ class ConfigScreen(Screen):
             self._set_status(copy.CONFIG_OUTPUT_PATH_PROMPT)
             return
         self._set_status(copy.CONFIG_SAVING)
-        self._preflight_app.edit_config_worker(self._raw, {}, output_path=path)
+        # Same snapshot rule as on_input_changed: the worker must not read a
+        # mapping this thread can still mutate (WR-01).
+        self._preflight_app.edit_config_worker(deepcopy(self._raw), {}, output_path=path)
 
     async def apply_config_ready(
         self, generated: GeneratedConfig, output_path: str | None = None
