@@ -165,7 +165,7 @@ Plans:
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
-**Plans**: 10/10 plans executed
+**Plans**: 10/11 plans executed
 
 Plans:
 **Wave 1**
@@ -193,6 +193,9 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7)*
 - [x] 25-10-PLAN.md — TUI-08 closeout: end-to-end Pilot flow, bidirectional panel→core table test, per-module coverage ≥96%, copy review + edge reconciliation
+
+**Wave 9** *(gap closure after UAT, blocked on Wave 8)*
+- [ ] 25-11-PLAN.md — Copy-layer gap closure (D-10): plain-language validation errors with the raw core message on demand, plus plain glosses for every ML term in config labels and hints (TUI-06/TUI-08)
 
 **UI hint**: yes
 **Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
