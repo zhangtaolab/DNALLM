@@ -12,6 +12,7 @@ sentinel is pushed through the REAL ``download_model`` so the design decision �
 downloader counts calls; nothing here asserts that a thread stopped.
 """
 
+import functools
 import threading
 import time
 from types import SimpleNamespace
@@ -20,10 +21,14 @@ import pytest
 from textual.app import App
 
 import dnallm.tui.workers as workers_module
-from dnallm.tui.messages import DataReportReady, DownloadFinished, WorkerFailed
+from dnallm.preflight import AvailabilityReport, AvailabilityState, Hub, ListingEntry
+from dnallm.tui.messages import DataReportReady, DownloadFinished, DownloadProgress, WorkerFailed
 from dnallm.tui.workers import (
+    DOWNLOAD_MAX_TRY,
     DownloadCancelled,
     PreflightWorkers,
+    _bind_progress,
+    _choose_hub,
     make_cancellable_downloader,
 )
 
@@ -36,6 +41,7 @@ class _Harness(PreflightWorkers, App[None]):
         self.data_reports: list = []
         self.worker_failures: list = []
         self.download_events: list = []
+        self.progress_events: list[DownloadProgress] = []
 
     def on_data_report_ready(self, message: DataReportReady) -> None:
         self.data_reports.append(message.data_report)
@@ -45,6 +51,9 @@ class _Harness(PreflightWorkers, App[None]):
 
     def on_download_finished(self, message: DownloadFinished) -> None:
         self.download_events.append(message)
+
+    def on_download_progress(self, message: DownloadProgress) -> None:
+        self.progress_events.append(message)
 
 
 async def test_seam_round_trip_delivers_a_real_data_report() -> None:
@@ -211,3 +220,105 @@ async def test_download_worker_reports_exhausted_retries_in_plain_language(monke
     assert finished.path is None
     assert "ValueError" not in finished.error
     assert "did not finish" in finished.error
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hub choice, progress binding, and plain-language failure copy (25-09 Task 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _entry(is_lab: bool) -> ListingEntry:
+    """A frozen listing row, lab or third-party."""
+    return ListingEntry(model="owner/model", entry_name="model", is_lab=is_lab)
+
+
+def _availability(state: AvailabilityState, hub: Hub | None) -> AvailabilityReport:
+    """A frozen availability report with (or without) a confirmed hub."""
+    return AvailabilityReport(state=state, size_bytes=None, source_hub=hub)
+
+
+def test_choose_hub_uses_a_confirmed_hub_even_for_a_lab_entry() -> None:
+    """A hub the probe actually confirmed wins over the lab default."""
+    availability = _availability(AvailabilityState.REMOTE_CONFIRMED, Hub.HUGGINGFACE)
+
+    assert _choose_hub(_entry(is_lab=True), availability) is Hub.HUGGINGFACE
+
+
+def test_choose_hub_defaults_to_modelscope_for_a_lab_entry() -> None:
+    """With no confirmed hub, a lab model keeps the ModelScope-first rule."""
+    availability = _availability(AvailabilityState.UNKNOWN, None)
+
+    assert _choose_hub(_entry(is_lab=True), availability) is Hub.MODELSCOPE
+    assert _choose_hub(_entry(is_lab=True), None) is Hub.MODELSCOPE
+
+
+def test_choose_hub_defaults_to_hugging_face_for_a_third_party_entry() -> None:
+    """A third-party model with no confirmed hub falls back to Hugging Face."""
+    availability = _availability(AvailabilityState.UNKNOWN, None)
+
+    assert _choose_hub(_entry(is_lab=False), availability) is Hub.HUGGINGFACE
+    assert _choose_hub(None, None) is Hub.HUGGINGFACE
+
+
+def test_bind_progress_binds_tqdm_class_only_when_declared() -> None:
+    """Byte progress is bound for a client that declares tqdm_class."""
+    seen: list[tuple[int, int, str]] = []
+
+    def with_bytes(model_name: str, *, tqdm_class=None, **kwargs: object) -> str:
+        return model_name
+
+    def attempt_only(model_name: str, **kwargs: object) -> str:
+        return model_name
+
+    bound = _bind_progress(with_bytes, lambda done, total, label: seen.append((done, total, label)))
+
+    assert isinstance(bound, functools.partial)
+    assert bound.keywords["tqdm_class"] is not None
+    # A downloader that only swallows **kwargs is left exactly as it was.
+    assert _bind_progress(attempt_only, lambda done, total, label: None) is attempt_only
+
+
+async def test_a_byte_reporting_downloader_posts_increasing_progress() -> None:
+    """A tqdm-compatible fake reports its byte positions, and they only grow."""
+    app = _Harness()
+
+    def byte_downloader(model_name: str, *, tqdm_class=None, **kwargs: object) -> str:
+        bar = tqdm_class(total=4, desc="bytes")
+        bar.update(1)
+        bar.update(1)
+        bar.close()
+        return "/models/reported"
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.download_worker("probe/model", byte_downloader)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    byte_events = [message for message in app.progress_events if message.total == 4]
+    assert [message.done for message in byte_events] == [1, 2]
+    assert all(message.label == "bytes" for message in byte_events)
+    attempt_events = [
+        message for message in app.progress_events if message.total == DOWNLOAD_MAX_TRY
+    ]
+    assert [message.done for message in attempt_events] == [1]
+    assert app.download_events[0].path == "/models/reported"
+
+
+async def test_an_attempt_only_downloader_still_reports_each_attempt() -> None:
+    """Without tqdm_class the seam reports attempt-level progress, honestly."""
+    app = _Harness()
+    attempts: list[str] = []
+
+    def attempt_only(model_name: str, **kwargs: object) -> str:
+        attempts.append(model_name)
+        return "/models/attempt"
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.download_worker("probe/model", attempt_only)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert attempts == ["probe/model"]
+    attempts_seen = [m.done for m in app.progress_events if m.total == DOWNLOAD_MAX_TRY]
+    assert attempts_seen == [1]
+    assert app.progress_events[0].done == 0  # the "downloading…" opener

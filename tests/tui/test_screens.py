@@ -45,6 +45,7 @@ from dnallm.tui.screens.entry import EntryScreen
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.screens.suitability import INTENT_FINETUNE, INTENT_PREDICT, SuitabilityScreen
 from dnallm.tui.screens.summary import SummaryScreen
+from dnallm.tui.workers import DOWNLOAD_MAX_TRY
 
 # Two short sequences (below the default 20-character minimum) and one long
 # one; the duplicate pair and the missing-too-short rows give the core a
@@ -1394,7 +1395,7 @@ async def test_the_download_panel_shows_progress_then_the_summary() -> None:
 
     assert started, "the download worker never reached the downloader"
     assert still_downloading
-    assert in_progress == copy.DOWNLOAD_PROGRESS.format(model=DOWNLOAD_MODEL_REPO)
+    assert in_progress == copy.DOWNLOAD_ATTEMPT.format(attempt=1, max_try=DOWNLOAD_MAX_TRY)
     assert downloader.calls == [DOWNLOAD_MODEL_REPO]
     # The path is shown exactly as the downloader returned it, and the config
     # path follows it (the fixed order of D-09).
@@ -1445,3 +1446,75 @@ async def test_a_saved_config_opens_the_download_step() -> None:
     assert disabled_before
     assert not disabled_after
     assert opened_download
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Hub choice, byte progress, and the plain-language failure state (25-09 Task 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_format_size_is_honest_about_an_unknown_size() -> None:
+    """A missing or zero size renders a phrase, never a division by zero."""
+    from dnallm.tui.screens.download import _format_size
+
+    assert _format_size(None) == copy.DOWNLOAD_SIZE_UNKNOWN
+    assert _format_size(0) == copy.DOWNLOAD_SIZE_UNKNOWN
+    assert _format_size(1_500_000_000) == "1.5 GB"
+
+
+async def test_the_download_panel_shows_the_reported_size_or_that_it_is_unknown() -> None:
+    """The size line comes from the availability report, and says so when absent."""
+    known_entry = _download_entry(
+        AvailabilityReport(
+            state=AvailabilityState.REMOTE_CONFIRMED,
+            size_bytes=2_400_000_000,
+            source_hub=Hub.MODELSCOPE,
+        )
+    )
+    unknown_entry = _download_entry(
+        AvailabilityReport(state=AvailabilityState.UNKNOWN, size_bytes=None)
+    )
+
+    texts: list[str] = []
+    for entry in (known_entry, unknown_entry):
+        app = DNALLMPreflightApp(collector=FakeCollector())
+        app.state.selected_entry = entry
+        async with app.run_test(size=(100, 40)) as pilot:
+            screen = await _open_download_screen(app, pilot)
+            texts.append(str(screen.query_one("#download-availability", Static).content))
+
+    assert texts[0] == copy.DOWNLOAD_SIZE_LABEL.format(size="2.4 GB")
+    assert texts[1] == copy.DOWNLOAD_SIZE_LABEL.format(size=copy.DOWNLOAD_SIZE_UNKNOWN)
+
+
+async def test_a_failed_download_reads_plainly_and_retry_tries_again() -> None:
+    """download_model's ValueError becomes a plain sentence, and retry re-runs it."""
+    # "not found" makes download_model stop after one attempt (no retry sleep).
+    downloader = FakeDownloader(failure=RuntimeError("repo is not found"))
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        await pilot.click("#download-start")
+        started = await _wait_until(lambda: bool(downloader.calls))
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        text = _rendered_text(screen)
+        retry_visible = screen.query_one("#download-retry", Button).display
+        still_on_download = app.screen is screen
+        calls_after_failure = list(downloader.calls)
+        await pilot.click("#download-retry")
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        calls_after_retry = list(downloader.calls)
+
+    assert started
+    assert still_on_download, "a failed download must not jump to the summary"
+    assert retry_visible
+    assert copy.DOWNLOAD_FAILED in text
+    assert "RuntimeError" not in text
+    assert "ValueError" not in text
+    assert "Traceback" not in text
+    assert calls_after_failure == [DOWNLOAD_MODEL_REPO]
+    assert calls_after_retry == [DOWNLOAD_MODEL_REPO, DOWNLOAD_MODEL_REPO]

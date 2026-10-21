@@ -14,13 +14,21 @@ scope: importing this module must not pull in torch or transformers.
 
 from __future__ import annotations
 
+import functools
+import inspect
 from typing import TYPE_CHECKING, Any
 
 from textual import work
 from textual.worker import get_current_worker
 
 from ..utils import get_logger
-from .copy import DOWNLOAD_PROGRESS, ENV_CHECK_FAILED, SUITABILITY_FAILED
+from .copy import (
+    DOWNLOAD_ATTEMPT,
+    DOWNLOAD_FAILED,
+    DOWNLOAD_PROGRESS,
+    ENV_CHECK_FAILED,
+    SUITABILITY_FAILED,
+)
 from .messages import (
     AvailabilityUpdated,
     CompatibilityReady,
@@ -51,11 +59,15 @@ _DATA_FAILED_COPY = (
     "We could not read this data. Check that the path is right and that the "
     "file format is one of CSV, TSV, JSON, FASTA or TXT, then try again."
 )
-_DOWNLOAD_FAILED_COPY = "The download did not finish. Check your internet connection and try again."
+_DOWNLOAD_FAILED_COPY = DOWNLOAD_FAILED
 _CONFIG_FAILED_COPY = (
     "We could not build this config. Check that the model name is right and "
     "that the config file exists, then try again."
 )
+
+#: ``download_model``'s attempt budget (T-25-17: core-owned, never a UI knob).
+#: Mirrored here only so the attempt line can say "attempt N of M".
+DOWNLOAD_MAX_TRY = 10
 
 #: Worker group for the config panel. ``exclusive`` makes a newer validation
 #: run replace an older one, so a fast typist's last keystroke is the result
@@ -107,6 +119,119 @@ def make_cancellable_downloader(
         return downloader(model_name, **kwargs)
 
     return cancellable_downloader
+
+
+def _choose_hub(entry: Any, availability: Any) -> Any:
+    """Pick the hub to download a model from (D-11 owner directive).
+
+    The rules, in order: a hub the availability report actually confirmed;
+    otherwise ModelScope for a lab entry (ModelScope first, lab first);
+    otherwise Hugging Face. This is plumbing, not domain logic — the core's own
+    retry policy inside ``download_model`` still applies, and the screen offers
+    a retry rather than trying another hub behind the user's back.
+
+    Args:
+        entry: The frozen listing row the user chose, or None.
+        availability: That row's frozen availability report, or None.
+
+    Returns:
+        A :class:`dnallm.preflight.report.Hub` member.
+    """
+    from ..preflight.report import Hub
+
+    confirmed = getattr(availability, "source_hub", None)
+    if confirmed in (Hub.MODELSCOPE, Hub.HUGGINGFACE):
+        return confirmed
+    if entry is not None and getattr(entry, "is_lab", False):
+        return Hub.MODELSCOPE
+    return Hub.HUGGINGFACE
+
+
+def _resolve_hub_downloader(hub: Any) -> Callable[..., str]:
+    """Return the hub client's ``snapshot_download`` for *hub*.
+
+    The imports stay function-local, like every other heavy import in this
+    package, so importing the TUI never pulls a hub client in.
+
+    Args:
+        hub: A :class:`dnallm.preflight.report.Hub` member.
+
+    Returns:
+        The download callable ``download_model`` expects.
+    """
+    from ..preflight.report import Hub
+
+    if hub == Hub.MODELSCOPE:
+        from modelscope.hub.snapshot_download import snapshot_download
+    else:
+        from huggingface_hub import snapshot_download
+    return snapshot_download
+
+
+def _make_progress_reporter(emit: Callable[[int, int, str], None]) -> Any | None:
+    """Build a ``tqdm``-compatible class that forwards byte counts to *emit*.
+
+    Args:
+        emit: Callback receiving ``(done, total, label)`` for one update.
+
+    Returns:
+        A subclass of ``tqdm`` usable as ``tqdm_class``, or None when tqdm is
+        not importable (attempt-level progress is the honest fallback).
+    """
+    try:
+        from tqdm.auto import tqdm
+    except Exception:  # pragma: no cover - tqdm is a declared dependency
+        logger.debug("tqdm is unavailable; byte progress stays attempt-level")
+        return None
+
+    class _ProgressReporter(tqdm):
+        """A tqdm bar that reports its own numbers to the UI thread."""
+
+        def update(self, n: int = 1) -> Any:
+            """Advance the bar and post the new position.
+
+            Args:
+                n: Units to advance by (bytes for a file bar).
+
+            Returns:
+                Whatever the parent bar returned.
+            """
+            shown = super().update(n)
+            total = int(self.total) if self.total else 0
+            if total:
+                emit(int(self.n), total, str(self.desc or ""))
+            return shown
+
+    return _ProgressReporter
+
+
+def _bind_progress(
+    downloader: Callable[..., str], emit: Callable[[int, int, str], None]
+) -> Callable[..., str]:
+    """Bind a byte-progress reporter when *downloader* accepts one.
+
+    Only an explicitly declared ``tqdm_class`` parameter counts: passing the
+    keyword to a client that merely swallows ``**kwargs`` could forward it
+    somewhere that rejects it, so a downloader without the parameter is left
+    exactly as it was (attempt-level progress only).
+
+    Args:
+        downloader: The resolved hub download callable.
+        emit: Callback receiving ``(done, total, label)``.
+
+    Returns:
+        The downloader unchanged, or a partial with ``tqdm_class`` bound.
+    """
+    try:
+        parameters = inspect.signature(downloader).parameters
+    except (TypeError, ValueError):
+        return downloader
+    if "tqdm_class" not in parameters:
+        return downloader
+    reporter = _make_progress_reporter(emit)
+    if reporter is None:
+        return downloader
+    return functools.partial(downloader, tqdm_class=reporter)
 
 
 class PreflightWorkers:
@@ -355,19 +480,47 @@ class PreflightWorkers:
             availability: The frozen availability report for that row.
         """
         worker = get_current_worker()
-        self.post_message(
-            DownloadProgress(done=0, total=0, label=DOWNLOAD_PROGRESS.format(model=model_name))
-        )
+        progress_label = DOWNLOAD_PROGRESS.format(model=model_name)
+        self.post_message(DownloadProgress(done=0, total=0, label=progress_label))
         resolved = downloader if callable(downloader) else getattr(self, "downloader", None)
+        attempt = {"count": 0}
+
+        def emit_progress(done: int, total: int, label: str) -> None:
+            # Called from the hub client's own callbacks, still inside the
+            # worker thread: the typed message is the only thing that crosses.
+            self.post_message(
+                DownloadProgress(done=done, total=total, label=label or progress_label)
+            )
+
         try:
             # Function-local: importing dnallm.models pulls torch/transformers in.
             from ..models.model import download_model
 
             if not callable(resolved):
-                from huggingface_hub import snapshot_download
+                hub = _choose_hub(entry, availability)
+                logger.info(f"Downloading {model_name} from {getattr(hub, 'value', hub)}")
+                resolved = _resolve_hub_downloader(hub)
+            reporting = _bind_progress(resolved, emit_progress)
 
-                resolved = snapshot_download
-            path = download_model(model_name, make_cancellable_downloader(worker, resolved))
+            def attempt_downloader(name: str, **kwargs: Any) -> str:
+                # One line per real attempt, posted before the hub is asked.
+                attempt["count"] += 1
+                self.post_message(
+                    DownloadProgress(
+                        done=attempt["count"],
+                        total=DOWNLOAD_MAX_TRY,
+                        label=DOWNLOAD_ATTEMPT.format(
+                            attempt=attempt["count"], max_try=DOWNLOAD_MAX_TRY
+                        ),
+                    )
+                )
+                return reporting(name, **kwargs)
+
+            path = download_model(
+                model_name,
+                make_cancellable_downloader(worker, attempt_downloader),
+                max_try=DOWNLOAD_MAX_TRY,
+            )
         except DownloadCancelled:
             logger.info(f"Download of {model_name} cancelled by the user")
             self.post_message(DownloadFinished(path=None, cancelled=True))
