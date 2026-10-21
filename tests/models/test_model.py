@@ -1892,6 +1892,44 @@ class TestLoadPresetModel:
         assert load_preset_model("plantHelixSeek CRE", task_config) == 0
 
 
+# Triples pinned from the live packaged registry + MODEL_INFO on 2026-10-21:
+# the eight families that are also registry entries resolve the same repo id
+# either way (registry value == family default), and tRNADetector / tRNAPointer
+# are not registry names (pure family path). A future registry or family-table
+# data change that breaks this test is a signal, not noise.
+@pytest.mark.parametrize(
+    ("family_name", "task_type", "expected_repo"),
+    [
+        ("Plant DNABERT", "mask", "zhangtaolab/plant-dnabert-BPE"),
+        ("Plant DNAGemma", "generation", "zhangtaolab/plant-dnagemma-BPE"),
+        ("Plant DNAGPT", "generation", "zhangtaolab/plant-dnagpt-BPE"),
+        ("Plant DNAMamba", "generation", "zhangtaolab/plant-dnamamba-BPE"),
+        ("Plant NT", "mask", "zhangtaolab/plant-nucleotide-transformer-BPE"),
+        ("Plant DNAModernBert", "mask", "zhangtaolab/plant-dnamodernbert-BPE"),
+        ("tRNADetector", "mask", "zhangtaolab/tRNADetector"),
+        ("tRNAPointer", "mask", "zhangtaolab/tRNAPointer"),
+        ("PlantHelixSeek", "mask", "zhangtaolab/PlantHelixSeek"),
+        ("FungiHelixSeek", "mask", "zhangtaolab/FungiHelixSeek"),
+    ],
+)
+def test_load_preset_model_zhangtaolab_family_regression(family_name, task_type, expected_repo):
+    """D-09: every zhangtaolab-default family resolves its default repo unchanged."""
+    task_config = TaskConfig(task_type=task_type)
+
+    with patch(
+        "dnallm.models.model.load_model_and_tokenizer",
+        return_value=("model", "tokenizer"),
+    ) as loader_mock:
+        result = load_preset_model(family_name, task_config)
+
+    assert result == ("model", "tokenizer")
+    assert loader_mock.call_count == 1
+    args = loader_mock.call_args.args
+    assert args[0] == expected_repo
+    assert args[2] == "modelscope"
+    assert args[3] is False
+
+
 @pytest.mark.parametrize(
     ("task_type", "expected_problem_type"),
     [
