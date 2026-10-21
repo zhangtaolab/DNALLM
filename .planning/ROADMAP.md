@@ -170,26 +170,28 @@ Plans:
 Plans:
 **Wave 1**
 - [ ] 25-01-PLAN.md — Packaging first act: `tui` extra (`textual>=8.2,<9`, `platformdirs>=3.6,<5`), `test`/`all` wiring, PKG-01 deprecated-alias retirement, extras-guard rewrite
-- [ ] 25-02-PLAN.md — `dnallm/tui/` skeleton + typed messages + TUI-01 structure guards + thread-worker seam with the BaseException cancel-sentinel Wave-0 proof
 - [ ] 25-03-PLAN.md — D-01 lazy facades (root/models/utils) + subprocess purity proof + shim-ordering guarantee at every consumer + import parity
-- [ ] 25-04-PLAN.md — `dnallm/utils/env_info.py` core collector (versions/device/disk, torch inside the body, degrade-never-raise)
 
 **Wave 2** *(blocked on Wave 1)*
-- [ ] 25-05-PLAN.md — `dnallm preflight` CLI + app shell + wizard state + copy module + env panel with worker-filled rows (TUI-02/TUI-03)
+- [ ] 25-02-PLAN.md — `dnallm/tui/` skeleton + typed messages + TUI-01 structure guards + thread-worker seam with the BaseException cancel-sentinel Wave-0 proof
+- [ ] 25-04-PLAN.md — `dnallm/utils/env_info.py` core collector (versions/device/disk, torch inside the body, degrade-never-raise); sequenced after 25-03, whose lazy facades its import-purity proof depends on
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 25-06-PLAN.md — Data panel rendering the `validate_data()` report + optional-data (skip) path (TUI-04)
+- [ ] 25-05-PLAN.md — `dnallm preflight` CLI + app shell + wizard state + copy module + env panel with worker-filled rows (TUI-02/TUI-03)
 
 **Wave 4** *(blocked on Wave 3)*
-- [ ] 25-07-PLAN.md — Suitability panel: core `local_availability`, lab-first shortlist probing, on-demand probe, UNKNOWN/no-data honesty (TUI-05)
+- [ ] 25-06-PLAN.md — Data panel rendering the `validate_data()` report + optional-data (skip) path (TUI-04)
 
 **Wave 5** *(blocked on Wave 4)*
-- [ ] 25-08-PLAN.md — Config panel: core `GeneratedConfig.raw` + `render_yaml`, live collect-all validation, save gate, dual entry + `--config` jump (TUI-06)
+- [ ] 25-07-PLAN.md — Suitability panel: core `local_availability`, lab-first shortlist probing, on-demand probe, UNKNOWN/no-data honesty (TUI-05)
 
 **Wave 6** *(blocked on Wave 5)*
-- [ ] 25-09-PLAN.md — Select-to-download with cooperative cancel, hub choice, progress, and the summary screen (TUI-07)
+- [ ] 25-08-PLAN.md — Config panel: core `GeneratedConfig.raw` + `render_yaml`, live collect-all validation, save gate, dual entry + `--config` jump (TUI-06)
 
 **Wave 7** *(blocked on Wave 6)*
+- [ ] 25-09-PLAN.md — Select-to-download with cooperative cancel, hub choice, progress, and the summary screen (TUI-07)
+
+**Wave 8** *(blocked on Wave 7)*
 - [ ] 25-10-PLAN.md — TUI-08 closeout: end-to-end Pilot flow, bidirectional panel→core table test, per-module coverage ≥96%, copy review + edge reconciliation
 
 **UI hint**: yes

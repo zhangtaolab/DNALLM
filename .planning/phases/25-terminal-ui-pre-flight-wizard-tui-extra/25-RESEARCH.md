@@ -557,13 +557,15 @@ async def test_suitability_renders_verdicts():
 | A6 | No repo code regresses under rich ≥14.2 | Pitfall 9 | Existing suite run with textual installed (first act) catches it |
 | A7 | `platformdirs` is used by the TUI for default config/export paths | Standard Stack | If unused, the extra still matches textual's own constraint — harmless |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Hard cancel expectation.** What should "cancel" promise on a slow link — "stop after this attempt" (recommended, cooperative) or true interruption (requires subprocess download)? Recommendation: cooperative now; record subprocess as a future Track-C/B item.
-2. **Does `all` gain `tui`?** Recommendation: yes (everything-install parity); ask owner only if they want `all` to stay byte-identical to today.
-3. **Default export filename / directory.** Discretion — suggest `dnallm_config.yaml` in CWD (matching CLI examples) rather than platformdirs, unless the owner prefers `user_config_dir("dnallm")`.
-4. **Shortlist N and probe concurrency cap.** Discretion — D-04 suggests N≈20; recommend probing sequentially or with a small cap (2–3) to respect hub rate limits.
-5. **Back-navigation recompute granularity.** Discretion — recommend recompute-on-re-entry only for views whose upstream inputs changed (cheap: reports are already in memory).
+All five were decided by the phase plans; recorded here so no artifact carries an unresolved question.
+
+1. **Hard cancel expectation.** What should "cancel" promise on a slow link — "stop after this attempt" (recommended, cooperative) or true interruption (requires subprocess download)? Recommendation: cooperative now; record subprocess as a future Track-C/B item. — RESOLVED (25-02, 25-09): cooperative. `DownloadCancelled(BaseException)` is checked before each attempt; copy states "Stopping — this download attempt will finish first"; subprocess interruption stays out of scope.
+2. **Does `all` gain `tui`?** Recommendation: yes (everything-install parity); ask owner only if they want `all` to stay byte-identical to today. — RESOLVED (25-01): yes — `all` gains `tui` (`dnallm[full,dev,test,notebook,docs,ui,mcp,fla,tui]`); `full` stays byte-identical and reaches `tui` transitively through `test`.
+3. **Default export filename / directory.** Discretion — suggest `dnallm_config.yaml` in CWD (matching CLI examples) rather than platformdirs, unless the owner prefers `user_config_dir("dnallm")`. — RESOLVED (25-08): `dnallm_config.yaml` in the current directory, user-editable before save; no platformdirs default.
+4. **Shortlist N and probe concurrency cap.** Discretion — D-04 suggests N≈20; recommend probing sequentially or with a small cap (2–3) to respect hub rate limits. — RESOLVED (25-07): N=20 passed as `probe_shortlist=20`; the screen never iterates the shortlist — the core owns probe order and timeouts, and on-demand probes are one row per explicit user action.
+5. **Back-navigation recompute granularity.** Discretion — recommend recompute-on-re-entry only for views whose upstream inputs changed (cheap: reports are already in memory). — RESOLVED (25-05, 25-08): `WizardState` keeps accumulated reports and the working mapping; a completed worker is never re-run on back navigation, and re-entry after a changed upstream input recomputes the dependent view from in-memory reports.
 
 ## Environment Availability
 
