@@ -64,6 +64,7 @@ _KEPT_HEADING_ID = "config-kept-as-is-heading"
 _OUTPUT_PATH_ID = "config-output-path"
 _SAVE_ID = "config-save"
 _SAVE_REASON_ID = "config-save-reason"
+_CONTINUE_ID = "config-continue"
 
 # The five sections the structured form covers (D-11). A section present in
 # the loaded YAML but absent here is preserved verbatim and shown read-only.
@@ -290,12 +291,14 @@ class ConfigScreen(Screen):
             yield Input(copy.CONFIG_DEFAULT_EXPORT_NAME, id=_OUTPUT_PATH_ID)
         yield Button(copy.CONFIG_SAVE_ACTION, id=_SAVE_ID, variant="primary", disabled=True)
         yield Static(copy.CONFIG_SAVE_DISABLED_REASON, markup=False, id=_SAVE_REASON_ID)
+        yield Button(copy.CONFIG_CONTINUE_TO_DOWNLOAD, id=_CONTINUE_ID, disabled=True)
         yield Static(copy.QUIT_HINT, id="config-quit-hint")
         yield Footer()
 
     def on_mount(self) -> None:
         """Ask the core for the config this panel was seeded with."""
         self._start()
+        self._update_continue_state()
 
     def _start(self) -> None:
         """Dispatch the one core call this panel starts with.
@@ -331,6 +334,8 @@ class ConfigScreen(Screen):
         """
         if event.button.id == _SAVE_ID:
             self._save()
+        elif event.button.id == _CONTINUE_ID:
+            self._preflight_app.show_download()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Revalidate the working mapping on every field change (D-13).
@@ -410,6 +415,7 @@ class ConfigScreen(Screen):
         if output_path is not None and not generated.errors:
             self._preflight_app.state.export_path = output_path
             self._set_status(copy.CONFIG_SAVED.format(path=output_path))
+            self._update_continue_state()
             return
         self._set_status(copy.CONFIG_READY if not self._errors else copy.CONFIG_HAS_ERRORS)
 
@@ -478,6 +484,16 @@ class ConfigScreen(Screen):
         button.disabled = bool(self._errors) or not self._raw
         reason = "" if not button.disabled else copy.CONFIG_SAVE_DISABLED_REASON
         self.query_one(f"#{_SAVE_REASON_ID}", Static).update(reason)
+
+    def _update_continue_state(self) -> None:
+        """Allow the optional closing step only once a config file exists (D-09).
+
+        The download step starts from the validated YAML, so the way on stays
+        switched off until a save has actually written that file; the path is
+        the one the core reported, never one this panel builds.
+        """
+        written = self._preflight_app.state.export_path is not None
+        self.query_one(f"#{_CONTINUE_ID}", Button).disabled = not written
 
     def _set_status(self, text: str) -> None:
         """Replace the status line with *text*, rendered literally."""

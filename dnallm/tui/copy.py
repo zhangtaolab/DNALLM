@@ -15,8 +15,10 @@ __all__ = [
     "AVAILABILITY_CACHED_LOCAL",
     "AVAILABILITY_DETAIL_LABEL",
     "AVAILABILITY_REMOTE",
+    "CANCEL_PENDING_NOTE",
     "CHECKING_PLACEHOLDER",
     "CONFIG_BUILDING",
+    "CONFIG_CONTINUE_TO_DOWNLOAD",
     "CONFIG_DEFAULT_EXPORT_NAME",
     "CONFIG_EDITING",
     "CONFIG_ERRORS_HEADING",
@@ -56,6 +58,23 @@ __all__ = [
     "DATA_SPLIT_ROW",
     "DATA_SPLIT_ROW_EMPTY",
     "DATA_SUMMARY_HEADING",
+    "DOWNLOAD_ATTEMPT",
+    "DOWNLOAD_BLURB",
+    "DOWNLOAD_CANCELLED",
+    "DOWNLOAD_CANCEL_ACTION",
+    "DOWNLOAD_DONE",
+    "DOWNLOAD_ELAPSED",
+    "DOWNLOAD_FAILED",
+    "DOWNLOAD_MODEL_LABEL",
+    "DOWNLOAD_NOT_STARTED",
+    "DOWNLOAD_NO_MODEL",
+    "DOWNLOAD_PANEL_TITLE",
+    "DOWNLOAD_PROGRESS",
+    "DOWNLOAD_RETRY_ACTION",
+    "DOWNLOAD_SIZE_LABEL",
+    "DOWNLOAD_SIZE_UNKNOWN",
+    "DOWNLOAD_SKIP_ACTION",
+    "DOWNLOAD_START_ACTION",
     "EMPTY_PATH_PROMPT",
     "ENTRY_BLURB",
     "ENTRY_CONFIG_EMPTY",
@@ -93,6 +112,11 @@ __all__ = [
     "SUITABILITY_TASK_PROMPT",
     "SUITABILITY_VERDICTS_HEADING",
     "SUITABILITY_VERDICT_COLUMNS",
+    "SUMMARY_CONFIG_MISSING",
+    "SUMMARY_HEADINGS",
+    "SUMMARY_MODEL_SKIPPED",
+    "SUMMARY_PANEL_TITLE",
+    "SUMMARY_QUIT_ACTION",
     "THIRD_PARTY_ROW_FLAG",
     "UNKNOWN_STILL_DOWNLOADABLE",
     "USE_MODEL_ACTION",
@@ -350,6 +374,10 @@ CONFIG_OUTPUT_PATH_PROMPT = 'Type the file name to save as, then press "Save thi
 
 CONFIG_SAVING = "saving…"
 
+# D-09: the save is the end of the config panel; the download is the optional
+# closing step, so the way on is one more click and never automatic.
+CONFIG_CONTINUE_TO_DOWNLOAD = "Continue to the download"
+
 CONFIG_SAVED = 'Saved "{path}". That file is ready to use.'
 
 CONFIG_EDITING = "reading your config…"
@@ -392,3 +420,74 @@ CONFIG_FIELD_LABELS = {
     ("lora", "lora_dropout"): "LoRA dropout",
     ("lora", "target_modules"): "LoRA target modules",
 }
+
+# ── Download panel (TUI-07) ────────────────────────────────────────────────
+# The one step that touches the network from the user's intent. Every sentence
+# is written for a biologist, and the cancel sentence is deliberately honest
+# about what a cooperative stop can do (RESEARCH Flag 2).
+
+DOWNLOAD_PANEL_TITLE = "Last step: get the model files"
+
+DOWNLOAD_BLURB = (
+    "Downloading is optional. Your config is already saved, so you can stop "
+    "here and use it whenever you like."
+)
+
+DOWNLOAD_MODEL_LABEL = "Model to download:"
+
+DOWNLOAD_SIZE_LABEL = "Size: {size}"
+
+# PFC-06: an unknown size is stated plainly, never guessed or divided by zero.
+DOWNLOAD_SIZE_UNKNOWN = "size not known yet"
+
+DOWNLOAD_START_ACTION = "Download this model"
+
+# Shown from the moment the download starts, before any byte count arrives.
+DOWNLOAD_PROGRESS = "Downloading {model}…"
+
+# One line per attempt, from the downloader's real callbacks (T-25-17).
+DOWNLOAD_ATTEMPT = "Download attempt {attempt} of {max_try}"
+
+DOWNLOAD_ELAPSED = "Time spent: {elapsed}"
+
+DOWNLOAD_NOT_STARTED = "Not started yet. The model files are not downloaded."
+
+DOWNLOAD_CANCEL_ACTION = "Stop the download"
+
+# The cooperative-cancel sentence (RESEARCH Flag 2, D-09): an attempt already
+# talking to the hub cannot be interrupted, and saying "cancelled" would lie.
+CANCEL_PENDING_NOTE = "Stopping — this download attempt will finish first."
+
+DOWNLOAD_CANCELLED = (
+    "The download stopped before it finished. Nothing you set up is lost: "
+    "you can try again, or finish without the model files."
+)
+
+DOWNLOAD_FAILED = "The download did not finish. Check your internet connection and try again."
+
+DOWNLOAD_RETRY_ACTION = "Try the download again"
+
+DOWNLOAD_SKIP_ACTION = "Finish without downloading"
+
+DOWNLOAD_DONE = "The model files are in place."
+
+# D-09/empty: no model was chosen, so the closing screen offers no download.
+DOWNLOAD_NO_MODEL = (
+    "No model was chosen in this run, so there is nothing to download. Here is your summary."
+)
+
+# ── Summary panel (TUI-07) ─────────────────────────────────────────────────
+
+SUMMARY_PANEL_TITLE = "All done"
+
+# Fixed order: the model files first, then the config.
+SUMMARY_HEADINGS = {
+    "model": "Where the model files are",
+    "config": "Where your config is",
+}
+
+SUMMARY_MODEL_SKIPPED = "No model files were downloaded — that step was skipped."
+
+SUMMARY_CONFIG_MISSING = "No config file was saved in this run."
+
+SUMMARY_QUIT_ACTION = "Quit the wizard"

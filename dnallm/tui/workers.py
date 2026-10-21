@@ -20,7 +20,7 @@ from textual import work
 from textual.worker import get_current_worker
 
 from ..utils import get_logger
-from .copy import ENV_CHECK_FAILED, SUITABILITY_FAILED
+from .copy import DOWNLOAD_PROGRESS, ENV_CHECK_FAILED, SUITABILITY_FAILED
 from .messages import (
     AvailabilityUpdated,
     CompatibilityReady,
@@ -334,21 +334,40 @@ class PreflightWorkers:
         self.post_message(AvailabilityUpdated(model, availability))
 
     @work(thread=True, exit_on_error=False)
-    def download_worker(self, model_name: str, downloader: Callable[..., str]) -> None:
+    def download_worker(
+        self,
+        model_name: str,
+        downloader: Callable[..., str] | None = None,
+        *,
+        entry: Any = None,
+        availability: Any = None,
+    ) -> None:
         """Download *model_name* off the event loop, with a working cancel.
 
         Args:
             model_name: Registry/repo id passed through to ``download_model``.
-            downloader: The real hub download callable. The worker wraps it so
-                a cancel stops the download before its next attempt.
+            downloader: The real hub download callable. An explicit callable is
+                the test hook; ``None`` falls back to the app's injected
+                ``downloader`` seam, then to the hub the availability report
+                names (25-09).
+            entry: The frozen listing row the user chose, used only to pick a
+                hub when the report names none.
+            availability: The frozen availability report for that row.
         """
         worker = get_current_worker()
-        self.post_message(DownloadProgress(done=0, total=1, label=f"Downloading {model_name}"))
+        self.post_message(
+            DownloadProgress(done=0, total=0, label=DOWNLOAD_PROGRESS.format(model=model_name))
+        )
+        resolved = downloader if callable(downloader) else getattr(self, "downloader", None)
         try:
             # Function-local: importing dnallm.models pulls torch/transformers in.
             from ..models.model import download_model
 
-            path = download_model(model_name, make_cancellable_downloader(worker, downloader))
+            if not callable(resolved):
+                from huggingface_hub import snapshot_download
+
+                resolved = snapshot_download
+            path = download_model(model_name, make_cancellable_downloader(worker, resolved))
         except DownloadCancelled:
             logger.info(f"Download of {model_name} cancelled by the user")
             self.post_message(DownloadFinished(path=None, cancelled=True))

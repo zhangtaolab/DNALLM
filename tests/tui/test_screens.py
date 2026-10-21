@@ -12,12 +12,13 @@ torch; only a small CSV in ``tmp_path`` is read.
 
 from __future__ import annotations
 
+import asyncio
 import threading
 from typing import Any
 
 import yaml
 from textual.containers import VerticalScroll
-from textual.widgets import Button, DataTable, Input, Static
+from textual.widgets import Button, DataTable, Input, ProgressBar, Static
 
 import dnallm.preflight as preflight_facade
 import dnallm.preflight.compatibility as compatibility_core
@@ -39,9 +40,11 @@ from dnallm.tui import copy
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.data import DataScreen
+from dnallm.tui.screens.download import DownloadScreen
 from dnallm.tui.screens.entry import EntryScreen
 from dnallm.tui.screens.env import EnvScreen
 from dnallm.tui.screens.suitability import INTENT_FINETUNE, INTENT_PREDICT, SuitabilityScreen
+from dnallm.tui.screens.summary import SummaryScreen
 
 # Two short sequences (below the default 20-character minimum) and one long
 # one; the duplicate pair and the missing-too-short rows give the core a
@@ -1294,3 +1297,151 @@ async def test_back_from_the_config_panel_returns_to_the_entry_screen(
     assert loaded is not None
     assert kept is loaded
     assert kept.raw["ia3"]["r"] == 16
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Download and summary panels (TUI-07), 25-09 Task 1
+# ─────────────────────────────────────────────────────────────────────────────
+
+# A real registry entry (lab model), so the hub default the worker picks is the
+# same one production would pick for it.
+DOWNLOAD_MODEL_REPO = "zhangtaolab/plant-dnabert-BPE-promoter"
+DOWNLOAD_RETURNED_PATH = "/home/user/.cache/modelscope/plant-dnabert-BPE-promoter"
+CONFIG_EXPORT_PATH = "/home/user/work/dnallm_config.yaml"
+
+
+class FakeDownloader:
+    """A hub-downloader stand-in: counts calls, can block, can fail.
+
+    Args:
+        path: The string the fake "stores the files in".
+        gate: When set, the first call blocks until this event is set.
+        failure: When set, every call raises it instead of returning a path.
+    """
+
+    def __init__(self, path: str = DOWNLOAD_RETURNED_PATH, gate=None, failure=None) -> None:
+        self.path = path
+        self.gate = gate
+        self.failure = failure
+        self.calls: list[str] = []
+
+    def __call__(self, model_name: str, **kwargs: object) -> str:
+        """Record the attempt, then block, fail, or return the stored path."""
+        self.calls.append(model_name)
+        if self.gate is not None:
+            self.gate.wait(timeout=20)
+        if self.failure is not None:
+            raise self.failure
+        return self.path
+
+
+def _download_entry(availability: AvailabilityReport | None = None) -> ListingEntry:
+    """The frozen listing row the suitability panel would have recorded."""
+    return ListingEntry(
+        model=DOWNLOAD_MODEL_REPO,
+        entry_name="plant-dnabert-BPE-promoter",
+        is_lab=True,
+        task_type="binary_classification",
+        availability=availability
+        or AvailabilityReport(
+            state=AvailabilityState.REMOTE_CONFIRMED,
+            size_bytes=1_500_000_000,
+            source_hub=Hub.HUGGINGFACE,
+        ),
+    )
+
+
+async def _wait_until(condition, tries: int = 500) -> bool:
+    """Poll *condition* while yielding to the event loop, for up to ~5 seconds."""
+    for _ in range(tries):
+        if condition():
+            return True
+        await asyncio.sleep(0.01)
+    return False
+
+
+async def _open_download_screen(app: DNALLMPreflightApp, pilot) -> DownloadScreen:
+    """Push the download panel and wait for it to settle as the visible screen."""
+    app.push_screen(DownloadScreen())
+    await pilot.pause()
+    screen = app.screen
+    assert isinstance(screen, DownloadScreen)
+    return screen
+
+
+async def test_the_download_panel_shows_progress_then_the_summary() -> None:
+    """Progress is visible while the download runs, then both paths are listed."""
+    gate = threading.Event()
+    downloader = FakeDownloader(gate=gate)
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        assert downloader.calls == []
+        await pilot.click("#download-start")
+        started = await _wait_until(lambda: bool(downloader.calls))
+        await pilot.pause()
+        in_progress = str(screen.query_one("#download-progress", Static).content)
+        still_downloading = app.screen is screen
+        gate.set()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        summary = app.screen
+        assert isinstance(summary, SummaryScreen)
+        text = _rendered_text(summary)
+
+    assert started, "the download worker never reached the downloader"
+    assert still_downloading
+    assert in_progress == copy.DOWNLOAD_PROGRESS.format(model=DOWNLOAD_MODEL_REPO)
+    assert downloader.calls == [DOWNLOAD_MODEL_REPO]
+    # The path is shown exactly as the downloader returned it, and the config
+    # path follows it (the fixed order of D-09).
+    assert DOWNLOAD_RETURNED_PATH in text
+    assert CONFIG_EXPORT_PATH in text
+    assert text.index(DOWNLOAD_RETURNED_PATH) < text.index(CONFIG_EXPORT_PATH)
+
+
+async def test_the_summary_lists_the_model_path_before_the_config_path() -> None:
+    """The two rows keep their fixed order, with both headings visible."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.push_screen(
+            SummaryScreen(model_path=DOWNLOAD_RETURNED_PATH, config_path=CONFIG_EXPORT_PATH)
+        )
+        await pilot.pause()
+        screen = app.screen
+        assert isinstance(screen, SummaryScreen)
+        text = _rendered_text(screen)
+        model_heading = str(screen.query_one("#summary-model-heading", Static).content)
+        config_heading = str(screen.query_one("#summary-config-heading", Static).content)
+
+    assert model_heading == copy.SUMMARY_HEADINGS["model"]
+    assert config_heading == copy.SUMMARY_HEADINGS["config"]
+    assert text.index(model_heading) < text.index(DOWNLOAD_RETURNED_PATH)
+    assert text.index(DOWNLOAD_RETURNED_PATH) < text.index(config_heading)
+    assert text.index(config_heading) < text.index(CONFIG_EXPORT_PATH)
+
+
+async def test_a_saved_config_opens_the_download_step() -> None:
+    """The config panel's way on appears only after a save, and reaches download."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    app.state.selected_entry = _download_entry()
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        disabled_before = screen.query_one("#config-continue", Button).disabled
+        app.state.export_path = CONFIG_EXPORT_PATH
+        screen._update_continue_state()  # the same refresh a save performs
+        await pilot.pause()
+        disabled_after = screen.query_one("#config-continue", Button).disabled
+        await pilot.click("#config-continue")
+        await pilot.pause()
+        opened_download = isinstance(app.screen, DownloadScreen)
+
+    assert disabled_before
+    assert not disabled_after
+    assert opened_download

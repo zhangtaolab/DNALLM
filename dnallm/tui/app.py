@@ -37,6 +37,8 @@ from .messages import (
     CompatibilityReady,
     ConfigReady,
     DataReportReady,
+    DownloadFinished,
+    DownloadProgress,
     EnvReportReady,
     WorkerFailed,
 )
@@ -126,8 +128,33 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #config-output-label { width: auto; padding: 0 1 0 0; }
     #config-output-path { width: 1fr; }
     #config-save { width: auto; margin-left: 2; }
+    #config-continue { width: auto; }
     #config-save-reason { padding: 0 2; }
     #config-quit-hint { padding: 0 2; }
+    #download-body { height: 1fr; padding: 0 2; }
+    #download-title { text-style: bold; }
+    #download-blurb { margin-bottom: 1; }
+    #download-model-label { text-style: bold; margin-top: 1; }
+    #download-model { padding: 0 2; }
+    #download-availability { padding: 0 2; text-style: italic; }
+    #download-progress { margin-top: 1; }
+    #download-bar { margin: 0 2; }
+    #download-elapsed { padding: 0 2; text-style: italic; }
+    #download-status { margin-top: 1; }
+    #download-actions { height: auto; margin-top: 1; }
+    #download-start { width: auto; }
+    #download-cancel { width: auto; margin-left: 2; }
+    #download-retry { width: auto; margin-left: 2; }
+    #download-skip { width: auto; margin-left: 2; }
+    #download-quit-hint { padding: 0 2; }
+    #summary-body { height: 1fr; padding: 0 2; }
+    #summary-title { text-style: bold; }
+    #summary-model-heading { text-style: bold; margin-top: 1; }
+    #summary-model-path { padding: 0 2; }
+    #summary-config-heading { text-style: bold; margin-top: 1; }
+    #summary-config-path { padding: 0 2; }
+    #summary-quit { width: auto; margin-top: 1; }
+    #summary-quit-hint { padding: 0 2; }
     #entry-body { height: 1fr; padding: 0 2; }
     #entry-title { text-style: bold; }
     #entry-blurb { margin-bottom: 1; }
@@ -288,6 +315,52 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("AvailabilityUpdated arrived with no suitability panel showing")
             return
         await apply_update(message.model, message.availability)
+
+    async def on_download_progress(self, message: DownloadProgress) -> None:
+        """Hand one downloader callback to the panel that asked for the download.
+
+        ``download_worker`` is mixed into this app, so its messages arrive here
+        rather than at the screen. The download panel opts in by defining an
+        async ``apply_download_progress(done, total, label)`` hook.
+
+        Args:
+            message: The typed payload carrying the stage's units and label.
+        """
+        screen = self._active_screen()
+        apply_progress = getattr(screen, "apply_download_progress", None)
+        if apply_progress is None:
+            logger.debug("DownloadProgress arrived with no download panel showing")
+            return
+        await apply_progress(message.done, message.total, message.label)
+
+    async def on_download_finished(self, message: DownloadFinished) -> None:
+        """Hand the download outcome to the panel that started it.
+
+        Args:
+            message: The typed payload carrying the returned path, the cancel
+                flag, and any plain-language error.
+        """
+        screen = self._active_screen()
+        apply_finished = getattr(screen, "apply_download_finished", None)
+        if apply_finished is None:
+            logger.debug("DownloadFinished arrived with no download panel showing")
+            return
+        await apply_finished(message.path, message.cancelled, message.error)
+
+    def show_download(self) -> None:
+        """Open the optional closing step: download the chosen model, or skip.
+
+        This is the config → download edge of D-09's flow order, and the only
+        place it is implemented. The import stays function-local for the same
+        reason :meth:`show_suitability`'s does: this module must import without
+        the later panels.
+        """
+        try:
+            from .screens.download import DownloadScreen
+        except ImportError:
+            logger.warning("The download panel is not part of this build yet")
+            return
+        self.push_screen(DownloadScreen())
 
     def show_entry(self) -> None:
         """Move past the environment panel: ask how to start, or jump to config.
