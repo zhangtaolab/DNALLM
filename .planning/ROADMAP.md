@@ -165,7 +165,7 @@ Plans:
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
-**Plans**: 12/12 plans executed
+**Plans**: 12/13 plans executed
 
 Plans:
 **Wave 1**
@@ -199,6 +199,9 @@ Plans:
 
 **Wave 10** *(gap closure after UAT round 2, blocked on Wave 9)*
 - [x] 25-12-PLAN.md — Copy-layer gap closure (D-10): one shared eight-value task-type vocabulary across every task-type string plus a static suitability legend, LoRA target-module provenance, and anchored navigation sentences (TUI-05/TUI-06/TUI-08)
+
+**Wave 11** *(gap closure after verification, blocked on Wave 10)*
+- [ ] 25-13-PLAN.md — Layout gap closure: the config error pane lays out and scrolls to every row it holds, including the raw detail (CR-02), and the task-type hint moves under its input so the first control stays inside the 80x24 form (WR-08) (TUI-06/TUI-08)
 
 **UI hint**: yes
 **Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
