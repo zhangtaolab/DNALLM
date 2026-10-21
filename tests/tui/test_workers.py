@@ -79,6 +79,22 @@ async def test_worker_failure_is_reported_in_plain_language() -> None:
     assert "could not read this data" in message
 
 
+async def test_validate_worker_drops_the_report_after_a_cancel(monkeypatch) -> None:
+    """A cancel that lands during validation suppresses the UI effect."""
+    cancelled_worker = SimpleNamespace(cancelled_event=threading.Event(), is_cancelled=True)
+    monkeypatch.setattr(workers_module, "get_current_worker", lambda: cancelled_worker)
+
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.validate_data_worker(["ACGT" * 10])
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert app.data_reports == []
+    assert app.worker_failures == []
+
+
 def test_download_cancelled_escapes_download_models_retry_loop() -> None:
     """Wave-0 probe: the BaseException sentinel leaves download_model in one attempt."""
     from dnallm.models.model import download_model
@@ -148,3 +164,50 @@ async def test_worker_cancel_before_first_attempt_delivers_cancelled(monkeypatch
     assert finished.cancelled is True
     assert finished.path is None
     assert finished.error is None
+
+
+async def test_download_worker_delivers_the_stored_path() -> None:
+    """A download that succeeds delivers the path, not cancelled, no error."""
+    app = _Harness()
+
+    def fake_downloader(model_name: str, **kwargs: object) -> str:
+        return f"/models/{model_name}"
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.download_worker("probe/model", fake_downloader)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert len(app.download_events) == 1
+    finished = app.download_events[0]
+    assert finished.path == "/models/probe/model"
+    assert finished.cancelled is False
+    assert finished.error is None
+
+
+async def test_download_worker_reports_exhausted_retries_in_plain_language(monkeypatch) -> None:
+    """download_model's ValueError becomes plain-language copy, never a class name."""
+    from dnallm.models import model as model_module
+
+    # The real retry loop sleeps one second per attempt; keep that out of wall time.
+    monkeypatch.setattr(model_module, "time", SimpleNamespace(sleep=lambda _seconds: None))
+    attempts: list[str] = []
+
+    def failing_downloader(model_name: str, **kwargs: object) -> str:
+        attempts.append(model_name)
+        raise ConnectionError("connection reset")
+
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.download_worker("probe/model", failing_downloader)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert len(attempts) == 10  # download_model's default max_try
+    assert len(app.download_events) == 1
+    finished = app.download_events[0]
+    assert finished.cancelled is False
+    assert finished.path is None
+    assert "ValueError" not in finished.error
+    assert "did not finish" in finished.error
