@@ -4,17 +4,17 @@ milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
 current_phase: 25
 current_phase_name: Terminal UI — Pre-flight Wizard & `tui` Extra
-status: executing
-stopped_at: Completed 25-12-PLAN.md
-last_updated: "2026-10-21T13:56:50.717Z"
+status: verifying
+stopped_at: Completed 25-13-PLAN.md
+last_updated: "2026-10-21T14:15:41.934Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 25 plan 25-12 complete
-state_head: 73cab7f44e28346916bf19bba91fde9df1073a93
+last_activity_desc: Phase 25 execution started
+state_head: db798e49c29ee1249bcd647234de71f26671e08e
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
   percent: 60
 ---
 
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 ## Current Position
 
-Phase: 25 (Terminal UI — Pre-flight Wizard & `tui` Extra) — READY TO EXECUTE
-Plan: 12 of 12
-Status: All plans complete; ready for verification
-Last activity: 2026-10-21 — 25-12 gap closure (G-25-4, G-25-4b, G-25-4c) executed
+Phase: 25 (Terminal UI — Pre-flight Wizard & `tui` Extra) — EXECUTING
+Plan: 13 of 13
+Status: Phase complete — ready for verification
+Last activity: 2026-10-21 — Phase 25 execution started
 
 Progress: [██████░░░░] 60% (3 of 5 v1.4 phases)
 
@@ -57,6 +57,7 @@ Progress: [██████░░░░] 60% (3 of 5 v1.4 phases)
 | Phase 24 P01 | 12 min | 3 tasks | 2 files |
 | Phase 24 P01 | 12 min | 3 tasks | 2 files |
 | Phase 25 P12 | 22 min | 2 tasks | 6 files |
+| Phase 25 P13 | 8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Roadmap decisions (2026-
 - [Phase 25]: 25-12: task-type vocabulary lives copy-side in TASK_TYPE_GLOSSES; a drift test reads the live TaskConfig schema pattern so the core stays untouched
 - [Phase 25]: 25-12: the eight-value suitability explanation is a static legend inside #suitability-body, not a placeholder that vanishes on typing
 - [Phase 25]: 25-12: the LoRA target-modules hint is pinned at 226 characters, the measured 80x24 form-viewport ceiling; navigation sentences interpolate the destination screens' own constants
+- [Phase 25]: Config error pane gives up its height cap and the side column carries the scroll, so every row the pane holds is laid out
+- [Phase 25]: Layout tests assert rendered geometry against Textual's own Content.get_height rather than .content strings
+- [Phase 25]: Field hints render under their Input for all twelve hinted fields, with no copy change
 
 ### Pending Todos
 
@@ -139,8 +143,8 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 
 ## Session Continuity
 
-Last session: 2026-10-21T12:49:23.652Z
-Stopped at: Completed 25-12-PLAN.md
+Last session: 2026-10-21T14:15:37.733Z
+Stopped at: Completed 25-13-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
