@@ -2,20 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v1.4
 milestone_name: Pre-flight UX & Registry-as-Truth-Source
-current_phase: 24
-current_phase_name: Preset Loading — `load_preset_model` Registry Rewire
-status: verifying
-stopped_at: Completed 24-01-PLAN.md
-last_updated: "2026-10-21T02:12:56.454Z"
+current_phase: 25
+current_phase_name: Terminal UI — Pre-flight Wizard & `tui` Extra
+status: planning
+stopped_at: Phase 24 complete, ready to plan Phase 25
+last_updated: "2026-10-21T02:21:22.670Z"
 last_activity: 2026-10-21
-last_activity_desc: Phase 24 execution started
-state_head: b4f91259d5d8eb1ccc17cc097492ec09072cc2b5
+last_activity_desc: Phase 24 complete, transitioned to Phase 25
+state_head: a24bc0c45b64fcdf2ee502734d5db072fe50f8bb
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
   completed_plans: 8
-  percent: 40
+  percent: 60
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-21)
 
 ## Current Position
 
-Phase: 24 (Preset Loading — `load_preset_model` Registry Rewire) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
-Last activity: 2026-10-21 — Phase 24 execution started
+Phase: 25 — Terminal UI — Pre-flight Wizard & `tui` Extra
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-21 — Phase 24 complete, transitioned to Phase 25
 
-Progress: [████░░░░░░] 40% (1 of 5 v1.4 phases)
+Progress: [██████░░░░] 60% (1 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -133,7 +133,7 @@ Items acknowledged and deferred at milestone close, most recent first. The six 2
 ## Session Continuity
 
 Last session: 2026-10-21T02:11:42.843Z
-Stopped at: Completed 24-01-PLAN.md
+Stopped at: Phase 24 complete, ready to plan Phase 25
 Resume file: None
 
 ## Operator Next Steps
