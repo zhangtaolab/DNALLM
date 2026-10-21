@@ -293,8 +293,11 @@ class ConfigScreen(Screen):
                 yield Container(id=_KEPT_ID)
             with VerticalScroll(id=_SIDE_ID):
                 yield Static(copy.CONFIG_ERRORS_HEADING, id="config-errors-heading")
-                yield Static("", markup=False, id=_ERRORS_ID)
+                # The toggle sits above the pane it expands: the pane is
+                # height-auto and unbounded, so a toggle below it would be
+                # pushed off-screen by its own detail lines.
                 yield Button(copy.CONFIG_ERROR_DETAILS_SHOW, id=_DETAILS_ID, disabled=True)
+                yield Static("", markup=False, id=_ERRORS_ID)
                 yield Static(copy.CONFIG_PREVIEW_HEADING, id="config-preview-heading")
                 yield Static("", markup=False, id=_PREVIEW_ID)
         with Horizontal(id="config-output-row"):

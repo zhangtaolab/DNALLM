@@ -905,9 +905,10 @@ async def test_an_unknown_model_shows_the_plain_model_sentence() -> None:
 async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp_path) -> None:
     """GAP A on the smallest screen: A1 fits, the save reason stays visible.
 
-    The details control may sit below the side pane's fold at 80x24, so it is
-    pressed directly rather than clicked. A second press removes the detail
-    lines again — nothing is truncated away or duplicated.
+    The details control is composed above the error pane, so the pane's growth
+    cannot push it off-screen; it is pressed directly rather than clicked
+    because this test is about the pane, not pointer targeting. A second press
+    removes the detail lines again — nothing is truncated away or duplicated.
     """
     config_file = tmp_path / "bad_task.yaml"
     config_file.write_text("task:\n  task_type: not-a-task\n", encoding="utf-8")
