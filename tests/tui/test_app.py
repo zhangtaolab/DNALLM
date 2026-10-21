@@ -12,15 +12,27 @@ import asyncio
 import threading
 import time
 
+import yaml
 from textual.screen import Screen
-from textual.widgets import Static
+from textual.widgets import Button, DataTable, Input, Static
 
-from dnallm.preflight import AvailabilityReport, AvailabilityState, GeneratedConfig, edit_config
+from dnallm.preflight import (
+    AvailabilityReport,
+    AvailabilityState,
+    GeneratedConfig,
+    Hub,
+    edit_config,
+)
 from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
 from dnallm.tui.messages import AvailabilityUpdated, ConfigReady
 from dnallm.tui.screens.config import ConfigScreen
+from dnallm.tui.screens.data import DataScreen
+from dnallm.tui.screens.download import DownloadScreen
+from dnallm.tui.screens.entry import EntryScreen
 from dnallm.tui.screens.env import EnvScreen
+from dnallm.tui.screens.suitability import SuitabilityScreen
+from dnallm.tui.screens.summary import SummaryScreen
 from dnallm.tui.workers import PreflightWorkers
 from dnallm.utils.env_info import EnvRow
 
@@ -378,3 +390,186 @@ async def test_the_config_flag_opens_the_config_panel_instead_of_the_entry_choic
     assert fake.calls[0]["patch"] == {}
     assert fake.calls[0]["output_path"] is None
     assert "task_type: binary" in preview
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-10 Task 1: one headless walk of the whole wizard (TUI-08 / SC3)
+#
+# The walk crosses every seam the wizard has — collector, prober, downloader —
+# and reads one small CSV from tmp_path. Nothing here touches the network, a
+# GPU, or a model checkpoint; the core work (data validation, suitability,
+# config generation, the config write) is the real one.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# A tiny labelled CSV: three sequences, a 0/1 label column. Long enough for the
+# core's length check, short enough to read at a glance.
+_WIZARD_CSV = (
+    "sequence,label\n"
+    "ACGTACGTACGTACGTACGTAC,0\n"
+    "TGCATGCATGCATGCATGCATG,1\n"
+    "AAAACCCCGGGGTTTTAAAACCC,0\n"
+)
+
+# The path the fake downloader "stores the files in" — shown verbatim on the summary.
+_WIZARD_DOWNLOAD_PATH = "/home/user/.cache/modelscope/agront-1b-H3K27ac"
+
+# A task type, so the ready-made-model listing contains binary models and the
+# generated config needs no further user input.
+_WIZARD_TASK_TYPE = "binary"
+
+
+class _FixedProber:
+    """An availability prober that answers without dialling anything.
+
+    Args:
+        report: The report every call returns (a ModelScope confirmation by
+            default).
+    """
+
+    def __init__(self, report: AvailabilityReport | None = None) -> None:
+        self.report = (
+            report
+            if report is not None
+            else AvailabilityReport(
+                state=AvailabilityState.REMOTE_CONFIRMED,
+                size_bytes=1_500_000_000,
+                revision="rev-1",
+                source_hub=Hub.MODELSCOPE,
+            )
+        )
+        self.calls: list[str] = []
+
+    def __call__(self, model: str) -> AvailabilityReport:
+        """Record the probed model id and return the fixed report."""
+        self.calls.append(model)
+        return self.report
+
+
+class _FixedDownloader:
+    """A hub-downloader stand-in that returns one fixed path.
+
+    Args:
+        path: The path the fake download reports it stored the files in.
+    """
+
+    def __init__(self, path: str = _WIZARD_DOWNLOAD_PATH) -> None:
+        self.path = path
+        self.calls: list[str] = []
+        self.kwargs: list[dict] = []
+
+    def __call__(self, model_name: str, **kwargs: object) -> str:
+        """Record the attempt and return the fixed path."""
+        self.calls.append(model_name)
+        self.kwargs.append(dict(kwargs))
+        return self.path
+
+
+async def _settle_wizard(pilot, app: DNALLMPreflightApp) -> None:
+    """Let every queued worker wave finish (report first, local batch second)."""
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+async def test_the_whole_wizard_walks_to_a_downloaded_model_summary(tmp_path) -> None:
+    """One Pilot walk: env -> entry -> data -> suitability -> config -> download -> summary.
+
+    Every seam is injected (a fake collector, a fake prober, a fake downloader)
+    and the only file read is a small CSV written here, so the walk is
+    network-free and GPU-free by construction. It proves the flow SC3
+    describes: the user leaves with a validated config file and, optionally,
+    the model files — listed in that order on the closing page.
+    """
+    data_file = tmp_path / "promoters.csv"
+    data_file.write_text(_WIZARD_CSV, encoding="utf-8")
+    out_path = tmp_path / "wizard_config.yaml"
+    prober = _FixedProber()
+    downloader = _FixedDownloader()
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=prober, downloader=downloader)
+    started = time.monotonic()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        # 1. Environment facts: the instant version rows are painted, and the
+        #    worker replaces the two checking placeholders.
+        await _settle_wizard(pilot, app)
+        assert isinstance(app.screen, EnvScreen)
+        env_text = _rendered_text(app.screen)
+        assert copy.CHECKING_PLACEHOLDER not in env_text
+        await pilot.click("#env-continue")
+        await pilot.pause()
+
+        # 2. Entry choice (D-07): a new run starts from the user's own data.
+        assert isinstance(app.screen, EntryScreen)
+        await pilot.click("#entry-from-data")
+        await pilot.pause()
+
+        # 3. Data: the pasted path is read by the core, not by the screen.
+        assert isinstance(app.screen, DataScreen)
+        app.screen.query_one("#data-path", Input).value = str(data_file)
+        await pilot.click("#data-check")
+        await _settle_wizard(pilot, app)
+        data_text = _rendered_text(app.screen)
+        await pilot.click("#data-continue")
+        await pilot.pause()
+
+        # 4. Suitability: ready-made models for a binary task, first row chosen.
+        await pilot.pause()
+        assert isinstance(app.screen, SuitabilityScreen)
+        app.screen.query_one("#suitability-task-type", Input).value = _WIZARD_TASK_TYPE
+        await pilot.click("#suitability-intent-predict")
+        await _settle_wizard(pilot, app)
+        app.screen.query_one("#suitability-listing", DataTable).move_cursor(row=0)
+        await pilot.pause()
+        chosen = app.state.selected_entry
+        assert chosen is not None
+        use_enabled = not app.screen.query_one("#suitability-use", Button).disabled
+        await pilot.click("#suitability-use")
+        await _settle_wizard(pilot, app)
+
+        # 5. Config: built by the core from the chosen model, with no errors.
+        assert isinstance(app.screen, ConfigScreen)
+        preview = str(app.screen.query_one("#config-preview", Static).content)
+        errors_pane = str(app.screen.query_one("#config-errors", Static).content)
+        save_enabled = not app.screen.query_one("#config-save", Button).disabled
+        app.screen.query_one("#config-output-path", Input).value = str(out_path)
+        await pilot.click("#config-save")
+        await _settle_wizard(pilot, app)
+        continue_enabled = not app.screen.query_one("#config-continue", Button).disabled
+
+        # 6. Download: the explicit "Continue to the download" action (25-09).
+        await pilot.click("#config-continue")
+        await pilot.pause()
+        assert isinstance(app.screen, DownloadScreen)
+        await pilot.click("#download-start")
+        await _settle_wizard(pilot, app)
+        summary = app.screen
+        assert isinstance(summary, SummaryScreen)
+        summary_text = _rendered_text(summary)
+
+    elapsed = time.monotonic() - started
+
+    # The environment page showed the instant rows before the walk moved on.
+    assert "DNALLM version: 0.5.2" in env_text
+    # The data page rendered the core's own split line for the pasted file.
+    assert 'Split "data": 3 sequences' in data_text
+    # The suitability page's listing came from the core, probed only through
+    # the injected prober (never the network).
+    assert use_enabled
+    assert chosen.model in prober.calls
+    # The config the core built for a ready-made model needed no fixes.
+    assert errors_pane == ""
+    assert save_enabled
+    assert continue_enabled
+    # The download went through the injected downloader, for the chosen model only.
+    assert downloader.calls == [chosen.model]
+    # The saved file exists and is exactly the previewed document.
+    written = out_path.read_text(encoding="utf-8")
+    assert written == preview
+    assert yaml.safe_load(written) == app.state.generated_config.raw
+    # The summary lists the model files first, then the config path.
+    assert _WIZARD_DOWNLOAD_PATH in summary_text
+    assert str(out_path) in summary_text
+    assert summary_text.index(_WIZARD_DOWNLOAD_PATH) < summary_text.index(str(out_path))
+    # Well inside the plan's 60 s per-test budget (pytest-timeout is the 300 s ceiling).
+    assert elapsed < 60
