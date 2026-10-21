@@ -1,7 +1,7 @@
 """
 This is the main module for DNALLM.
 
-The root facade is lazy (PEP 562): --version--, load_config, and cli bind
+The root facade is lazy (PEP 562): __version__, load_config, and cli bind
 eagerly because all three are torch-free, while every heavier entry point is
 resolved through module __getattr__ on first access. That keeps an import of
 any light subpackage from dragging the training stack in through this package
