@@ -202,15 +202,19 @@ _UTILS_PARITY = {
 }
 
 # Facade attributes whose VALUE is the submodule itself, not a name inside it.
+# They resolve like any other lazy attribute but are intentionally absent from
+# __all__: they are private implementation modules, and exporting them would
+# make `from dnallm.utils import *` import transformers (and torch) with them
+# (IN-04).
 _UTILS_MODULE_VALUED = {"_cuda_compat", "_transformers_compat"}
 
 
 def _assert_parity(facade_name: str, mapping: dict[str, str]) -> None:
     """Assert every ``__all__`` name resolves to its defining object."""
     facade = importlib.import_module(facade_name)
-    assert set(facade.__all__) == set(mapping) | (
-        _UTILS_MODULE_VALUED if facade_name == "dnallm.utils" else set()
-    ), f"{facade_name}.__all__ drifted from the parity contract"
+    assert set(facade.__all__) == set(mapping), (
+        f"{facade_name}.__all__ drifted from the parity contract"
+    )
     listed = dir(facade)
     for name, module_name in mapping.items():
         # Resolve the facade attribute FIRST: importing a submodule sets it as
@@ -244,6 +248,35 @@ def test_import_parity_utils() -> None:
         ), f"dnallm.utils.{name} must be the shim submodule itself"
         assert name in dir(facade)
     _assert_parity("dnallm.utils", _UTILS_PARITY)
+
+
+def test_star_importing_utils_does_not_resolve_the_private_shims() -> None:
+    """IN-04: the private shims are attributes, not star-import exports.
+
+    ``__all__`` is the public API. While the shim module names were listed
+    there, ``from dnallm.utils import *`` resolved them through ``__getattr__``
+    and imported ``transformers_compat`` — which imports torch at module scope
+    — for a caller that only asked for the public helpers. They stay reachable
+    as ``dnallm.utils._cuda_compat`` / ``._transformers_compat``.
+    """
+    code = (
+        "import sys;"
+        "ns = {};"
+        "exec('from dnallm.utils import *', ns);"
+        "print('PRIVATE=' + ','.join(sorted("
+        "name for name in ('_cuda_compat', '_transformers_compat') if name in ns)));"
+        "print('SHIMS=' + ','.join(sorted("
+        "name for name in ('dnallm.utils.cuda_compat',"
+        " 'dnallm.utils.transformers_compat') if name in sys.modules)))"
+    )
+    result = _run_isolated(code)
+    assert result.returncode == 0, result.stderr
+    assert _marker(result.stdout, "PRIVATE=") == "PRIVATE=", (
+        "a private shim module is exported by `from dnallm.utils import *`"
+    )
+    assert _marker(result.stdout, "SHIMS=") == "SHIMS=", (
+        "a star-import resolved a private compat shim (and torch/transformers with it)"
+    )
 
 
 def test_star_import_parity() -> None:

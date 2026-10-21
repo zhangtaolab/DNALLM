@@ -53,8 +53,6 @@ from .logger import (
 
 __all__ = [
     "LoggingContext",
-    "_cuda_compat",
-    "_transformers_compat",
     "calc_gc_content",
     "check_sequence",
     "fetch_sequence",
@@ -86,7 +84,11 @@ __all__ = [
 ]
 
 # Lazy members whose facade attribute IS the submodule (the two compat shims
-# plus the internal aliases the name table below resolves through).
+# plus the internal aliases the name table below resolves through). The two
+# private shims stay resolvable as attributes but are deliberately NOT in
+# __all__: a star-import would resolve them through __getattr__ and pull
+# transformers (and therefore torch) into a path that is meant to stay light
+# (IN-04). Public API means __all__; these are implementation modules.
 _LAZY_MODULES = {
     "_cuda_compat": ".cuda_compat",
     "_transformers_compat": ".transformers_compat",
@@ -105,8 +107,10 @@ _LAZY_NAMES = {
 }
 
 if TYPE_CHECKING:  # static bindings for the lazy names (never imported at runtime)
-    from . import cuda_compat as _cuda_compat
-    from . import transformers_compat as _transformers_compat
+    # The private shims are attributes only (never in __all__), so their only
+    # use here is to type the __getattr__ surface.
+    from . import cuda_compat as _cuda_compat  # ruff: ignore[unused-import]
+    from . import transformers_compat as _transformers_compat  # ruff: ignore[unused-import]
     from .support import is_flash_attention_capable, is_fp8_capable
     from .training_plots import plot_loss_curve, plot_lr_schedule
 
