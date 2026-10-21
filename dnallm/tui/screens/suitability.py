@@ -52,6 +52,8 @@ from ..workers import PROBE_SHORTLIST
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from textual.worker import Worker
+
     from ...preflight import AvailabilityReport, CompatibilityReport, ListingEntry
     from ..app import DNALLMPreflightApp
 
@@ -105,6 +107,13 @@ class SuitabilityScreen(Screen):
         self._on_demand: dict[str, AvailabilityReport] = {}
         self._probing: set[str] = set()
         self._local_requested = False
+        #: Bumped by every check request. Reports and batches carry the value
+        #: they were asked for, so a slower arrival from a listing the user has
+        #: already left is ignored instead of overwriting the current one.
+        self._generation = 0
+        #: The local batch running for the current listing, cancelled when a
+        #: newer check replaces that listing (CR-01).
+        self._batch_worker: Worker[None] | None = None
 
     @property
     def _preflight_app(self) -> DNALLMPreflightApp:
@@ -205,8 +214,15 @@ class SuitabilityScreen(Screen):
 
         A fresh run starts a fresh local pass: the listing may be entirely
         different, so yesterday's local results can never be shown against it.
+        The request gets a new generation, and the previous listing's local
+        pass is cancelled — a slow worker from a listing the user has left can
+        neither repaint nor become the current report (CR-01).
         """
         self._set_status(copy.PROBING_PLACEHOLDER)
+        self._generation += 1
+        if self._batch_worker is not None:
+            self._batch_worker.cancel()
+            self._batch_worker = None
         self._report = None
         self._local_by_model = {}
         self._on_demand = {}
@@ -219,6 +235,7 @@ class SuitabilityScreen(Screen):
             intent=self._intent,
             prober=self._preflight_app.prober,
             probe_shortlist=PROBE_SHORTLIST,
+            generation=self._generation,
         )
 
     def _task_type(self) -> str | None:
@@ -233,7 +250,10 @@ class SuitabilityScreen(Screen):
         return names or None
 
     async def apply_compatibility_ready(
-        self, report: CompatibilityReport, local_by_name: Mapping[str, AvailabilityReport]
+        self,
+        report: CompatibilityReport,
+        local_by_name: Mapping[str, AvailabilityReport],
+        generation: int = 0,
     ) -> None:
         """Render the core's report, then fill in every row's local state.
 
@@ -242,27 +262,43 @@ class SuitabilityScreen(Screen):
         the same report with the offline local states. The second arrival only
         rewrites the availability column, so the user's selection survives.
 
+        Two rules keep a slower arrival from undoing a newer request (CR-01):
+
+        1. An arrival from an older check generation is dropped outright.
+        2. A local batch is valid ONLY for the report already on screen. It
+           repaints that report; it never *becomes* the current report. Without
+           this, a batch for the previous listing landing before the new report
+           would be adopted, and the report the user asked for would then be
+           dropped for good — leaving the panel on "probing…" forever.
+
         Args:
             report: The report ``check_compatibility`` produced in the worker.
             local_by_name: Availability already known from the local cache,
                 keyed by model id (rendering only; never re-probed).
+            generation: The check request this arrival answers; anything older
+                than :attr:`_generation` is stale.
         """
-        if self._report is not None and report is not self._report:
-            # A batch for a listing the user has already replaced: ignore it.
+        if generation != self._generation:
+            # A result for a listing the user has already replaced: ignore it.
             return
-        self._report = report
-        self._preflight_app.state.compatibility_report = report
-        self._preflight_app.state.availability_by_entry.update(local_by_name)
         if local_by_name:
+            if report is not self._report:
+                # A batch can only repaint the report on screen, never replace it.
+                return
+            self._preflight_app.state.availability_by_entry.update(local_by_name)
             self._local_by_model.update(local_by_name)
             self._refresh_availability_cells()
             return
+        self._report = report
+        self._preflight_app.state.compatibility_report = report
         self._render_report(report)
         if report.listing or report.verdicts:
             self._set_status(copy.SUITABILITY_READY)
         if report.listing and not self._local_requested:
             self._local_requested = True
-            self._preflight_app.local_availability_batch_worker(report)
+            self._batch_worker = self._preflight_app.local_availability_batch_worker(
+                report, self._generation
+            )
 
     async def apply_worker_failure(self, message: str) -> None:
         """Show a failed check as one plain-language row.

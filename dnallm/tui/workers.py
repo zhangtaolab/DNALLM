@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 logger = get_logger("dnallm.tui.workers")
 
 __all__ = [
+    "COMPATIBILITY_WORKER_GROUP",
     "PROBE_SHORTLIST",
     "DownloadCancelled",
     "PreflightWorkers",
@@ -73,6 +74,11 @@ DOWNLOAD_MAX_TRY = 10
 #: run replace an older one, so a fast typist's last keystroke is the result
 #: that renders (results can never arrive out of order and overwrite it).
 CONFIG_WORKER_GROUP = "config"
+
+#: Worker group for the suitability panel's compatibility check. Exclusive, so
+#: a new check supersedes an older one: a slow run for the previous listing is
+#: cancelled rather than racing the run the user just asked for (CR-01).
+COMPATIBILITY_WORKER_GROUP = "compatibility"
 
 #: How many listing rows the compatibility worker asks the core to probe
 #: (D-04/D-10: the lab-first shortlist only — never every entry).
@@ -350,7 +356,12 @@ class PreflightWorkers:
             return
         self.post_message(ConfigReady(generated, output_path))
 
-    @work(thread=True, exit_on_error=False)
+    @work(
+        thread=True,
+        exit_on_error=False,
+        group=COMPATIBILITY_WORKER_GROUP,
+        exclusive=True,
+    )
     def check_compatibility_worker(
         self,
         data: Any,
@@ -360,6 +371,7 @@ class PreflightWorkers:
         intent: str | None = None,
         prober: Callable[[str], Any] | None = None,
         probe_shortlist: int = PROBE_SHORTLIST,
+        generation: int = 0,
     ) -> None:
         """Work out model suitability and the intent listing off the event loop.
 
@@ -381,6 +393,10 @@ class PreflightWorkers:
                 Tests inject a fake so nothing touches the network.
             probe_shortlist: How many lab-first listing rows the core may
                 probe (D-04/D-10: never all entries).
+            generation: The panel's check generation, echoed back on the
+                result so a newer check can supersede a slower older one
+                (CR-01). The worker is also exclusive, so Textual cancels an
+                older run in the same group before starting this one.
         """
         worker = get_current_worker()
         try:
@@ -404,10 +420,10 @@ class PreflightWorkers:
             return
         if worker.is_cancelled:
             return
-        self.post_message(CompatibilityReady(report, {}))
+        self.post_message(CompatibilityReady(report, {}, generation))
 
     @work(thread=True, exit_on_error=False)
-    def local_availability_batch_worker(self, report: Any) -> None:
+    def local_availability_batch_worker(self, report: Any, generation: int = 0) -> None:
         """Classify every listing row's local cache state off the event loop.
 
         This is the free, offline half of D-04: pure path and cache-directory
@@ -418,6 +434,9 @@ class PreflightWorkers:
         Args:
             report: The frozen ``CompatibilityReport`` whose ``listing`` rows
                 are classified. Its rows are read, never changed.
+            generation: The check generation the report belongs to, echoed so
+                the panel can tell a batch for the current listing from one
+                for a listing it has already replaced (CR-01).
         """
         worker = get_current_worker()
         try:
@@ -432,7 +451,7 @@ class PreflightWorkers:
             return
         if worker.is_cancelled:
             return
-        self.post_message(CompatibilityReady(report, by_model))
+        self.post_message(CompatibilityReady(report, by_model, generation))
 
     @work(thread=True, exit_on_error=False)
     def probe_availability_worker(

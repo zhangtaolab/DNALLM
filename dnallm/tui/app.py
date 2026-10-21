@@ -271,18 +271,19 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
         ``check_compatibility_worker`` and ``local_availability_batch_worker``
         are mixed into this app, so their messages arrive here rather than at
         the screen. The suitability panel opts in by defining an async
-        ``apply_compatibility_ready(report, local_by_name)`` hook.
+        ``apply_compatibility_ready(report, local_by_name, generation)`` hook.
 
         Args:
-            message: The typed payload carrying the frozen report and whatever
-                local availability is already known.
+            message: The typed payload carrying the frozen report, whatever
+                local availability is already known, and the check generation
+                it belongs to.
         """
         screen = self._active_screen()
         apply_report = getattr(screen, "apply_compatibility_ready", None)
         if apply_report is None:
             logger.debug("CompatibilityReady arrived with no suitability panel showing")
             return
-        await apply_report(message.report, message.local_by_name)
+        await apply_report(message.report, message.local_by_name, message.generation)
 
     async def on_config_ready(self, message: ConfigReady) -> None:
         """Hand a validated config result to the config panel.

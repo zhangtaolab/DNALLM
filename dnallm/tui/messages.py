@@ -67,20 +67,29 @@ class DataReportReady(Message):
 
 
 class CompatibilityReady(Message):
-    """Suitability checking finished.
+    """One suitability result arrived: a report, or a local batch for one.
 
     Attributes:
         report: The frozen ``CompatibilityReport`` from ``check_compatibility``.
         local_by_name: Availability already known from the local cache, keyed
-            by model id; rendering only, never re-probed.
+            by model id; rendering only, never re-probed. When empty, this
+            arrival *is* a report; when non-empty it is the offline batch for
+            the report already on screen.
+        generation: The check request this arrival belongs to. A panel that
+            has since started a newer check ignores it, so a slow worker from
+            a previous listing can never overwrite the current one (CR-01).
     """
 
     def __init__(
-        self, report: CompatibilityReport, local_by_name: Mapping[str, AvailabilityReport]
+        self,
+        report: CompatibilityReport,
+        local_by_name: Mapping[str, AvailabilityReport],
+        generation: int = 0,
     ) -> None:
         super().__init__()
         self.report = report
         self.local_by_name = local_by_name
+        self.generation = generation
 
 
 class AvailabilityUpdated(Message):

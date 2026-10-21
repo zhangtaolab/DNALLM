@@ -43,6 +43,7 @@ from dnallm.preflight import (
 )
 from dnallm.tui import copy
 from dnallm.tui.app import DNALLMPreflightApp
+from dnallm.tui.messages import CompatibilityReady
 from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.data import DataScreen
 from dnallm.tui.screens.download import DownloadScreen
@@ -2038,6 +2039,131 @@ async def test_a_batch_for_a_listing_the_user_already_replaced_is_ignored(monkey
 
     assert still is current
     assert stale is not current
+
+
+class _GatedSecondCheck:
+    """A ``check_compatibility`` stand-in whose second call waits for the test.
+
+    The first call answers at once, so the panel renders a listing and starts
+    its offline local pass. The second call blocks, which opens the window the
+    CR-01 order needs: the previous listing's local batch can land *before*
+    the new report exists.
+
+    Args:
+        first: The report the first call returns.
+        second: The report the second call returns once released.
+    """
+
+    def __init__(self, first: CompatibilityReport, second: CompatibilityReport) -> None:
+        self.first = first
+        self.second = second
+        self.calls = 0
+        self.second_started = threading.Event()
+        self.release_second = threading.Event()
+
+    def __call__(
+        self,
+        data: Any = None,
+        *,
+        task_type: str | None = None,
+        models: list[str] | None = None,
+        intent: str | None = None,
+        prober: Any = None,
+        probe_shortlist: int | None = None,
+    ) -> CompatibilityReport:
+        """Answer the first call, and hold the second until released."""
+        self.calls += 1
+        if self.calls == 1:
+            return self.first
+        self.second_started.set()
+        self.release_second.wait(timeout=30)
+        return self.second
+
+
+async def test_a_stale_local_batch_never_becomes_the_current_report(monkeypatch) -> None:
+    """CR-01: a local batch that lands during a re-check is not "the report".
+
+    The failing order is the normal one on a cold cache: the offline local pass
+    for the previous listing finishes while the new check is still probing, so
+    the batch arrives first. Adoption would set the stale report as current and
+    the real report would then be dropped for good — the panel would keep the
+    old listing and stay on "probing…" until Check was pressed again.
+    """
+    first = _synthetic_report()
+    second = CompatibilityReport(
+        verdicts=[],
+        listing=[
+            ListingEntry(
+                model="zhangtaolab/b",
+                entry_name="Lab B2",
+                is_lab=True,
+                task_type="binary",
+            )
+        ],
+    )
+    core = _GatedSecondCheck(first, second)
+    monkeypatch.setattr(preflight_facade, "check_compatibility", core)
+    batch_gate = threading.Event()
+    local_calls: list[str] = []
+
+    def gated_local(model: str) -> AvailabilityReport:
+        batch_gate.wait(timeout=30)
+        local_calls.append(model)
+        return AvailabilityReport(state=AvailabilityState.UNKNOWN)
+
+    monkeypatch.setattr(preflight_facade, "local_availability", gated_local)
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        assert await _wait_until(lambda: app.state.compatibility_report is first)
+        # The user asks for a new check while the previous listing's local pass
+        # is still running.
+        await pilot.click("#suitability-intent-predict")
+        assert await _wait_until(core.second_started.is_set)
+        batch_gate.set()
+        assert await _wait_until(lambda: len(local_calls) == len(first.listing))
+        # Deliver the stale batch the way the worker's message would arrive:
+        # through the app, before the new report exists.
+        app.post_message(
+            CompatibilityReady(
+                first,
+                {"third-party/file-a": AvailabilityReport(state=AvailabilityState.UNKNOWN)},
+            )
+        )
+        await pilot.pause()
+        await pilot.pause()
+        core.release_second.set()
+        assert await _wait_until(lambda: app.state.compatibility_report is second)
+        await pilot.pause()
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+        status = str(screen.query_one("#suitability-status", Static).content)
+
+    assert app.state.compatibility_report is second
+    assert [row[0] for row in rows] == ["Lab B2"]
+    assert copy.PROBING_PLACEHOLDER not in status
+
+
+async def test_a_local_batch_is_only_valid_for_the_report_on_screen(monkeypatch) -> None:
+    """A batch may repaint the current report; it may never become the report."""
+    current = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(current))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        stale = CompatibilityReport(verdicts=[], listing=[])
+        await screen.apply_compatibility_ready(
+            stale,
+            {"some/model": AvailabilityReport(state=AvailabilityState.UNKNOWN)},
+            screen._generation,
+        )
+        await pilot.pause()
+        still = app.state.compatibility_report
+
+    assert still is current
 
 
 async def test_a_failed_suitability_check_reads_plainly(monkeypatch) -> None:
