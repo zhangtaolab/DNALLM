@@ -90,7 +90,7 @@ def _rows_the_text_needs(widget: Static) -> int:
     Uses the same ``Content.get_height`` call Textual uses to size a ``Static``,
     so the number moves with the renderer instead of a re-implemented wrapper.
     """
-    return widget.visual.get_height(widget.styles, widget.region.width)
+    return widget.visual.get_height(widget.styles, widget.content_region.width)
 
 
 def _table_rows(table: DataTable) -> list[list[str]]:
