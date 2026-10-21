@@ -46,8 +46,8 @@ A3 = (
     "sets fewer. Change Number of outputs in the file."
 )
 A4 = (
-    "This model name is not in the model list. Check the spelling, or go back and "
-    "choose a model there."
+    "This model name is not in the model list. Check the spelling, then go back to "
+    '"Which model should do the job?" and choose a model with "Use this model".'
 )
 
 # The core's real message shapes, one per classifier kind. The messages mirror
@@ -127,7 +127,7 @@ _ERROR_CASES = (
         "task",
         "task.label_names",
         "Input should be a valid list",
-        "Output names needs a list separated by commas, for example query, value.",
+        "Output names needs a list separated by commas.",
     ),
     (
         "not_yes_or_no",
@@ -365,7 +365,7 @@ def _task_type_string(site: str) -> str:
         return copy.SUITABILITY_TASK_LEGEND
     if site == "hint":
         return copy.CONFIG_FIELD_HINTS["task", "task_type"]
-    return copy.CONFIG_ERROR_MESSAGES[("task", "task_type", site)]
+    return copy.CONFIG_ERROR_MESSAGES["task", "task_type", site]
 
 
 @pytest.mark.parametrize("site", ["legend", "hint", "not_an_allowed_value", "task_type_required"])
@@ -397,3 +397,27 @@ def test_the_legend_is_composed_from_the_same_vocabulary() -> None:
     # scrollbar shows (measured), so a longer gloss would wrap and silently add
     # rows to the panel's smallest-screen layout.
     assert max(len(line) for line in lines) <= 74
+
+
+def test_the_lora_hint_says_what_empty_means_and_where_the_names_come_from() -> None:
+    """The target-modules hint carries provenance, not two unexplained names (G-25-4b)."""
+    hint = copy.CONFIG_FIELD_HINTS["lora", "target_modules"]
+    assert "An empty value uses the built-in choice for models in a listed family" in hint
+    assert "Query and value are parts of the attention step" in hint
+    assert "dnallm/configuration/presets/lora_targets.yaml" in hint
+    assert "peft_dry_run" not in hint
+    assert "this model's family" not in hint
+    # 226 characters is the measured 80x24 ceiling: #config-form is 9 rows tall
+    # with 32 usable columns at 80x24, and 226 characters render 8 rows
+    # (contained by test_the_hinted_form_stays_legible_at_80x24) while 228
+    # render 9 and cannot be scrolled into view.
+    assert len(hint) <= 226
+
+
+def test_error_sentences_name_the_screen_they_send_the_reader_to() -> None:
+    """Navigation is composed from the destination's own constants (G-25-4c, T-25-22)."""
+    unknown_model = copy.CONFIG_ERROR_MESSAGES["model", "model", "model_not_in_registry"]
+    assert copy.SUITABILITY_PANEL_TITLE in unknown_model
+    assert copy.USE_MODEL_ACTION in unknown_model
+    assert copy.ENTRY_PANEL_TITLE in copy.CONFIG_NO_SOURCE
+    assert copy.SUITABILITY_PANEL_TITLE in copy.CONFIG_NO_SOURCE

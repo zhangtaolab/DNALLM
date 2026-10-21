@@ -267,9 +267,7 @@ TASK_TYPE_GLOSSES: dict[str, str] = {
 }
 
 # "value (gloss)", one per entry, in the mapping's locked order.
-_TASK_TYPE_CHOICES = tuple(
-    f"{value} ({gloss})" for value, gloss in TASK_TYPE_GLOSSES.items()
-)
+_TASK_TYPE_CHOICES = tuple(f"{value} ({gloss})" for value, gloss in TASK_TYPE_GLOSSES.items())
 
 # The comma-separated prose every task-type sentence inserts between its own
 # punctuation, so no sentence retypes a gloss.
@@ -287,9 +285,11 @@ SUITABILITY_TASK_PROMPT = (
 
 # The static legend under the task-type input (G-25-4): a placeholder vanishes
 # on the first keystroke, so the explanation lives in its own widget.
-SUITABILITY_TASK_LEGEND = "\n".join(
-    ("The eight task types:", *_TASK_TYPE_LEGEND_LINES, "Leave it empty if you are not sure.")
-)
+SUITABILITY_TASK_LEGEND = "\n".join((
+    "The eight task types:",
+    *_TASK_TYPE_LEGEND_LINES,
+    "Leave it empty if you are not sure.",
+))
 
 SUITABILITY_MODELS_PROMPT = (
     "Optional: type model names separated by commas to check them one by one."
@@ -442,8 +442,11 @@ CONFIG_SAVED = 'Saved "{path}". That file is ready to use.'
 CONFIG_EDITING = "reading your config…"
 
 CONFIG_NO_SOURCE = (
-    "There is nothing to configure yet. Go back a step and choose a model, "
-    "or open an existing config file."
+    'There is nothing to configure yet. Go back to "'
+    + ENTRY_PANEL_TITLE
+    + '", start from your data, and choose a model on "'
+    + SUITABILITY_PANEL_TITLE
+    + '" — or open an existing config file.'
 )
 
 CONFIG_SECTION_TASK = "Task"
@@ -485,9 +488,7 @@ CONFIG_FIELD_LABELS = {
 # These explain the SETTING — the key and its value stay verbatim in the
 # preview, so what the file says is never rewritten by a label.
 CONFIG_FIELD_HINTS = {
-    ("task", "task_type"): (
-        "What the model should do. Choose one of: " + _TASK_TYPE_PROSE + "."
-    ),
+    ("task", "task_type"): ("What the model should do. Choose one of: " + _TASK_TYPE_PROSE + "."),
     ("task", "threshold"): (
         "The cut-off for calling a sequence positive: 0.5 means an even chance."
     ),
@@ -516,7 +517,9 @@ CONFIG_FIELD_HINTS = {
         "The share of add-on weights ignored in each step, to avoid memorizing the data."
     ),
     ("lora", "target_modules"): (
-        "Which parts of the model receive the add-on weights, for example query, value."
+        "Which parts get the add-on weights. An empty value uses the built-in choice "
+        "for models in a listed family. Query and value are parts of the attention "
+        "step. Names for each family: dnallm/configuration/presets/lora_targets.yaml."
     ),
 }
 
@@ -573,8 +576,11 @@ CONFIG_ERROR_MESSAGES: dict[tuple[str, str, str], str] = {
         "sets fewer. Change Number of outputs in the file."
     ),
     ("model", "model", "model_not_in_registry"): (
-        "This model name is not in the model list. Check the spelling, or go back and "
-        "choose a model there."
+        'This model name is not in the model list. Check the spelling, then go back to "'
+        + SUITABILITY_PANEL_TITLE
+        + '" and choose a model with "'
+        + USE_MODEL_ACTION
+        + '".'
     ),
 }
 
@@ -584,7 +590,7 @@ CONFIG_ERROR_MESSAGES: dict[tuple[str, str, str], str] = {
 CONFIG_ERROR_GENERIC: dict[str, str] = {
     "not_a_whole_number": "{label} needs a whole number, for example 3.",
     "not_a_number": "{label} needs a number, for example 0.001.",
-    "not_a_list": "{label} needs a list separated by commas, for example query, value.",
+    "not_a_list": "{label} needs a list separated by commas.",
     "not_yes_or_no": "{label} needs yes or no.",
     "required": "{label} cannot be empty.",
     "too_small": "{label} is below the smallest value allowed. Raise it until this line disappears.",
