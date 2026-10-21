@@ -165,7 +165,33 @@ Plans:
   4. Select-to-download runs `download_model` sequentially with visible progress and working cancel; all blocking work runs in thread workers so the event loop never freezes
   5. The TUI is tested Pilot-functional only — no snapshot/golden infrastructure — and a panel→core-function table test proves screens contain no domain logic; per-module coverage ≥96% with no omit entries
 
-**Plans**: TBD
+**Plans**: 10 plans
+
+Plans:
+**Wave 1**
+- [ ] 25-01-PLAN.md — Packaging first act: `tui` extra (`textual>=8.2,<9`, `platformdirs>=3.6,<5`), `test`/`all` wiring, PKG-01 deprecated-alias retirement, extras-guard rewrite
+- [ ] 25-02-PLAN.md — `dnallm/tui/` skeleton + typed messages + TUI-01 structure guards + thread-worker seam with the BaseException cancel-sentinel Wave-0 proof
+- [ ] 25-03-PLAN.md — D-01 lazy facades (root/models/utils) + subprocess purity proof + shim-ordering guarantee at every consumer + import parity
+- [ ] 25-04-PLAN.md — `dnallm/utils/env_info.py` core collector (versions/device/disk, torch inside the body, degrade-never-raise)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 25-05-PLAN.md — `dnallm preflight` CLI + app shell + wizard state + copy module + env panel with worker-filled rows (TUI-02/TUI-03)
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 25-06-PLAN.md — Data panel rendering the `validate_data()` report + optional-data (skip) path (TUI-04)
+
+**Wave 4** *(blocked on Wave 3)*
+- [ ] 25-07-PLAN.md — Suitability panel: core `local_availability`, lab-first shortlist probing, on-demand probe, UNKNOWN/no-data honesty (TUI-05)
+
+**Wave 5** *(blocked on Wave 4)*
+- [ ] 25-08-PLAN.md — Config panel: core `GeneratedConfig.raw` + `render_yaml`, live collect-all validation, save gate, dual entry + `--config` jump (TUI-06)
+
+**Wave 6** *(blocked on Wave 5)*
+- [ ] 25-09-PLAN.md — Select-to-download with cooperative cancel, hub choice, progress, and the summary screen (TUI-07)
+
+**Wave 7** *(blocked on Wave 6)*
+- [ ] 25-10-PLAN.md — TUI-08 closeout: end-to-end Pilot flow, bidirectional panel→core table test, per-module coverage ≥96%, copy review + edge reconciliation
+
 **UI hint**: yes
 **Note**: `--research-phase` suggested — worker-seam shape (message types vs `call_from_thread`), download cancel semantics (cooperative vs abandon+resume), `tui`-extra membership vs `full`-alias removal ordering, Pilot test-batch wall-time budget (Pilot-in-this-gate is documented but unproven in this repo)
 
@@ -193,5 +219,5 @@ Phases execute in numeric order: 22 → 23 → 24 → 25 → 26
 | 22. Registry Foundation | 2/2 | Complete    | 2026-10-20 |
 | 23. Pre-flight Core | 5/5 | Complete    | 2026-10-21 |
 | 24. Preset Loading | 1/1 | Complete    | 2026-10-21 |
-| 25. Terminal UI & tui Extra | 0/TBD | Not started | - |
+| 25. Terminal UI & tui Extra | 0/10 | Planned | - |
 | 26. MCP Consistency | 0/TBD | Not started | - |
