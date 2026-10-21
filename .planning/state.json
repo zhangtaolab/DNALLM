@@ -21,7 +21,7 @@
     {
       "number": "25",
       "name": "Terminal UI & tui Extra",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "26",
@@ -31,8 +31,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (plan phase 25)",
-    "reason": "Phase 4 of 5 — needs a plan"
+    "label": "Advance to the next step",
+    "reason": "Phase 4 of 5 · 44% · executing"
   },
-  "updated_at": "2026-10-21T02:21:22.676Z"
+  "updated_at": "2026-10-21T07:33:56.242Z"
 }
