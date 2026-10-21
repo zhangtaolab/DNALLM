@@ -72,6 +72,12 @@ _CONFIG_FAILED_COPY = (
     "We could not build this config. Check that the model name is right and "
     "that the config file exists, then try again."
 )
+#: A write that failed on the output path is a different problem with a
+#: different fix, so it gets its own sentence naming the path (WR-06).
+_CONFIG_SAVE_FAILED_COPY = (
+    'We could not save to "{path}". Check that the folder exists and that you '
+    "can write there, then try again."
+)
 
 #: ``download_model``'s attempt budget (T-25-17: core-owned, never a UI knob).
 #: Mirrored here only so the attempt line can say "attempt N of M".
@@ -413,6 +419,21 @@ class PreflightWorkers:
             from ..preflight import edit_config
 
             generated = edit_config(existing, patch, output_path=output_path)
+        except OSError as exc:
+            # The write failed, not the config (WR-06): an unwritable folder is
+            # an ordinary typo, and telling the user to check the model name
+            # would point at the wrong thing. Reading an existing file already
+            # maps its OSErrors to ValueError in the core, so the only OSError
+            # reachable here is the output write.
+            logger.error(f"edit_config could not write the config: {exc!r}")
+            if not worker.is_cancelled:
+                message = (
+                    _CONFIG_SAVE_FAILED_COPY.format(path=output_path)
+                    if output_path is not None
+                    else _CONFIG_FAILED_COPY
+                )
+                self.post_message(WorkerFailed(message))
+            return
         except Exception as exc:
             # Details go to the log; the user reads plain words, never a class name.
             logger.error(f"edit_config failed inside the TUI worker: {exc!r}")

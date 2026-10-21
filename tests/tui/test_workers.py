@@ -499,6 +499,35 @@ async def test_a_cancelled_edit_worker_delivers_nothing(monkeypatch) -> None:
     assert app.worker_failures == []
 
 
+async def test_a_save_failure_names_the_path_not_the_model(tmp_path) -> None:
+    """WR-06: a write that fails on the output path gets save-specific copy.
+
+    The generic sentence tells the user to check the model name and that the
+    config file exists; neither has anything to do with an unwritable save
+    location, and SC3 depends on the user knowing the file was not written.
+    """
+    app = _Harness()
+    out_path = tmp_path / "no-such-folder" / "config.yaml"
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(
+            pilot,
+            app,
+            lambda: app.edit_config_worker(
+                {"task": {"task_type": "binary"}}, {}, output_path=str(out_path)
+            ),
+        )
+
+    assert app.config_events == []
+    assert len(app.worker_failures) == 1
+    message = app.worker_failures[0]
+    assert str(out_path) in message
+    assert "folder" in message
+    assert "model name" not in message
+    assert "OSError" not in message
+    assert not out_path.exists()
+
+
 async def test_check_compatibility_failure_is_plain_language(monkeypatch) -> None:
     """A raising suitability check says the data is safe and retry is open."""
     import dnallm.preflight as facade
