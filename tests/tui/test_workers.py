@@ -12,6 +12,7 @@ sentinel is pushed through the REAL ``download_model`` so the design decision â€
 downloader counts calls; nothing here asserts that a thread stopped.
 """
 
+import asyncio
 import functools
 import threading
 import time
@@ -158,28 +159,67 @@ def test_cancellable_downloader_blocks_the_retry_attempt(monkeypatch) -> None:
     assert calls == ["probe/model"]
 
 
-async def test_worker_cancel_before_first_attempt_delivers_cancelled(monkeypatch) -> None:
-    """A worker whose cancel flag is already set never calls the downloader."""
-    # A pre-set cancel flag stands in for a cancel that lands before the thread
-    # body starts (threads cannot be interrupted, so only the flag is checkable).
-    cancelled_worker = SimpleNamespace(cancelled_event=threading.Event(), is_cancelled=True)
-    cancelled_worker.cancelled_event.set()
-    monkeypatch.setattr(workers_module, "get_current_worker", lambda: cancelled_worker)
+def _cancellable_state() -> SimpleNamespace:
+    """An object with the ``cancelled_event`` contract a cancel check needs."""
+    return SimpleNamespace(cancelled_event=threading.Event())
 
+
+def test_cancellable_downloader_blocks_an_attempt_after_a_pre_set_cancel() -> None:
+    """A cancel that landed before the attempt started blocks it entirely."""
+    state = _cancellable_state()
+    state.cancelled_event.set()
     calls: list[str] = []
 
+    cancellable = make_cancellable_downloader(
+        state, lambda model_name, **kwargs: calls.append(model_name)
+    )
+
+    with pytest.raises(DownloadCancelled):
+        cancellable("probe/model")
+
+    assert calls == []
+
+
+async def _wait_for_download(operation, pilot) -> None:
+    """Wait for the transfer's daemon thread, then let its messages land."""
+    for _ in range(2000):
+        if not operation.is_alive:
+            break
+        await asyncio.sleep(0.005)
+    await pilot.pause()
+    await pilot.pause()
+
+
+async def test_a_cancelled_download_delivers_the_cancelled_outcome(monkeypatch) -> None:
+    """A stop during an attempt finishes it and delivers ``cancelled=True``.
+
+    The attempt fails (so the retry loop wants another one); the cooperative
+    check blocks that next attempt, which is exactly what a user's stop means.
+    """
+    from dnallm.models import model as model_module
+
+    # Keep the retry loop's one-second sleep out of the test's wall time.
+    monkeypatch.setattr(model_module, "time", SimpleNamespace(sleep=lambda _seconds: None))
+    started = threading.Event()
+    gate = threading.Event()
+
     def fake_downloader(model_name: str, **kwargs: object) -> str:
-        calls.append(model_name)
-        return "/tmp/never-used"
+        started.set()
+        gate.wait(timeout=10)
+        raise ConnectionError("connection reset")
 
     app = _Harness()
 
     async with app.run_test(size=(100, 40)) as pilot:
-        app.download_worker("probe/model", fake_downloader)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        operation = app.download_worker("probe/model", fake_downloader)
+        for _ in range(500):
+            if started.is_set():
+                break
+            await asyncio.sleep(0.01)
+        operation.cancel()
+        gate.set()
+        await _wait_for_download(operation, pilot)
 
-    assert calls == []
     assert len(app.download_events) == 1
     finished = app.download_events[0]
     assert finished.cancelled is True
@@ -195,9 +235,8 @@ async def test_download_worker_delivers_the_stored_path() -> None:
         return f"/models/{model_name}"
 
     async with app.run_test(size=(100, 40)) as pilot:
-        app.download_worker("probe/model", fake_downloader)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        operation = app.download_worker("probe/model", fake_downloader)
+        await _wait_for_download(operation, pilot)
 
     assert len(app.download_events) == 1
     finished = app.download_events[0]
@@ -221,9 +260,8 @@ async def test_download_worker_reports_exhausted_retries_in_plain_language(monke
     app = _Harness()
 
     async with app.run_test(size=(100, 40)) as pilot:
-        app.download_worker("probe/model", failing_downloader)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        operation = app.download_worker("probe/model", failing_downloader)
+        await _wait_for_download(operation, pilot)
 
     assert len(attempts) == 10  # download_model's default max_try
     assert len(app.download_events) == 1
@@ -302,9 +340,8 @@ async def test_a_byte_reporting_downloader_posts_increasing_progress() -> None:
         return "/models/reported"
 
     async with app.run_test(size=(100, 40)) as pilot:
-        app.download_worker("probe/model", byte_downloader)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        operation = app.download_worker("probe/model", byte_downloader)
+        await _wait_for_download(operation, pilot)
 
     byte_events = [message for message in app.progress_events if message.total == 4]
     assert [message.done for message in byte_events] == [1, 2]
@@ -326,9 +363,8 @@ async def test_an_attempt_only_downloader_still_reports_each_attempt() -> None:
         return "/models/attempt"
 
     async with app.run_test(size=(100, 40)) as pilot:
-        app.download_worker("probe/model", attempt_only)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        operation = app.download_worker("probe/model", attempt_only)
+        await _wait_for_download(operation, pilot)
 
     assert attempts == ["probe/model"]
     attempts_seen = [m.done for m in app.progress_events if m.total == DOWNLOAD_MAX_TRY]
@@ -396,10 +432,16 @@ def _raising(monkeypatch, target, module, name: str) -> None:
 
 
 async def _run(pilot, app: _Harness, start) -> None:
-    """Start one worker, then let the seam settle."""
-    start()
+    """Start one worker, then let the seam settle.
+
+    The download is not a Textual worker (WR-02), so its returned operation is
+    waited for explicitly; every other worker is managed by Textual.
+    """
+    operation = start()
     await app.workers.wait_for_complete()
     await pilot.pause()
+    if hasattr(operation, "is_alive"):
+        await _wait_for_download(operation, pilot)
 
 
 async def test_generate_config_failure_is_plain_language(monkeypatch) -> None:

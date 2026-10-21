@@ -216,13 +216,18 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
         self.push_screen(EnvScreen())
 
     def on_unmount(self) -> None:
-        """Stop in-flight workers without waiting for a thread to finish.
+        """Stop in-flight work without waiting for a thread to finish.
 
         Textual thread workers cannot be interrupted; ``cancel_all`` sets each
         worker's cancelled flag (checked before it posts anything) so quitting
-        never blocks on a slow core call.
+        never blocks on a slow core call. The download runs on its own daemon
+        thread (WR-02), outside the worker manager, so it is asked to stop the
+        same cooperative way and is never joined: the process can exit while a
+        hub call is still in flight.
         """
         self.workers.cancel_all()
+        if self._download_operation is not None:
+            self._download_operation.cancel()
 
     def _active_screen(self) -> Screen | None:
         """The visible screen, or ``None`` before the first one is pushed."""

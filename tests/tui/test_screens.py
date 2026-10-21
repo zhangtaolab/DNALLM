@@ -1376,6 +1376,22 @@ async def _open_download_screen(app: DNALLMPreflightApp, pilot) -> DownloadScree
     return screen
 
 
+async def _wait_for_the_download(pilot, app: DNALLMPreflightApp) -> None:
+    """Wait for the transfer's own daemon thread, then let its messages land.
+
+    The download is deliberately not a Textual worker (WR-02), so
+    ``app.workers.wait_for_complete()`` cannot see it.
+    """
+    operation = app._download_operation
+    if operation is not None:
+        for _ in range(2000):
+            if not operation.is_alive:
+                break
+            await asyncio.sleep(0.005)
+    await pilot.pause()
+    await pilot.pause()
+
+
 async def test_the_download_panel_shows_progress_then_the_summary() -> None:
     """Progress is visible while the download runs, then both paths are listed."""
     gate = threading.Event()
@@ -1393,8 +1409,7 @@ async def test_the_download_panel_shows_progress_then_the_summary() -> None:
         in_progress = str(screen.query_one("#download-progress", Static).content)
         still_downloading = app.screen is screen
         gate.set()
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
         summary = app.screen
         assert isinstance(summary, SummaryScreen)
         text = _rendered_text(summary)
@@ -1504,15 +1519,13 @@ async def test_a_failed_download_reads_plainly_and_retry_tries_again() -> None:
         screen = await _open_download_screen(app, pilot)
         await pilot.click("#download-start")
         started = await _wait_until(lambda: bool(downloader.calls))
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
         text = _rendered_text(screen)
         retry_visible = screen.query_one("#download-retry", Button).display
         still_on_download = app.screen is screen
         calls_after_failure = list(downloader.calls)
         await pilot.click("#download-retry")
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
         calls_after_retry = list(downloader.calls)
 
     assert started
@@ -1552,8 +1565,7 @@ async def test_cancel_between_attempts_stops_after_exactly_one_call(monkeypatch)
         await pilot.pause()
         pending_note = str(screen.query_one("#download-status", Static).content)
         gate.set()
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
         text = _rendered_text(screen)
         retry_visible = screen.query_one("#download-retry", Button).display
         calls = list(downloader.calls)
@@ -1569,23 +1581,44 @@ async def test_cancel_between_attempts_stops_after_exactly_one_call(monkeypatch)
 
 
 async def test_quitting_during_a_download_is_prompt() -> None:
-    """Quit never waits for a blocked download thread (D-09)."""
+    """Quit never waits for a blocked transfer — not even at process exit.
+
+    The previous version released its gate in ``finally`` and measured only
+    the app's teardown, so it passed by construction. The property WR-02 is
+    about is structural: the transfer must run on a daemon thread outside
+    Textual's executor, because ``asyncio.run`` and the interpreter both join
+    that executor at exit — which would freeze a real process for as long as
+    the hub call takes. Here the transfer is still blocked on its gate after
+    the app has gone, and its thread is a daemon, so nothing can join it.
+    """
     gate = threading.Event()
     downloader = FakeDownloader(gate=gate)
     app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
     app.state.selected_entry = _download_entry()
     started_at = time.monotonic()
-
+    operation = None
     try:
         async with app.run_test(size=(100, 40)) as pilot:
             await _open_download_screen(app, pilot)
             await pilot.click("#download-start")
             assert await _wait_until(lambda: bool(downloader.calls))
+            operation = app._download_operation
+            assert operation is not None
             await pilot.press("q")
+            # Quitting asked it to stop, but the in-flight attempt is
+            # uninterruptible and the app did not wait for it.
+            still_blocked = operation.is_alive
+        elapsed = time.monotonic() - started_at
+
+        assert still_blocked, "quit waited for the transfer"
+        assert operation.is_daemon, "a non-daemon thread would freeze process exit"
+        # Only an app that did not join the thread can get here while it is
+        # still blocked: a Textual worker would have kept teardown waiting.
+        assert elapsed < 20
     finally:
         gate.set()
-
-    assert time.monotonic() - started_at < 20
+        if operation is not None:
+            operation.join(10)
 
 
 async def test_skipping_the_download_reaches_the_summary_without_downloading() -> None:
@@ -2544,8 +2577,7 @@ async def test_leaving_the_download_page_goes_back_but_never_mid_download() -> N
         await pilot.pause()
         stayed = app.screen is running
         gate.set()
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
 
     assert left_idle_page
     assert stayed
@@ -2563,8 +2595,7 @@ async def test_stopping_or_ticking_before_a_download_starts_is_a_no_op() -> None
         screen._start_download()
         screen._start_download()  # a second start while the first is running
         status = str(screen.query_one("#download-status", Static).content)
-        await app.workers.wait_for_complete()
-        await pilot.pause()
+        await _wait_for_the_download(pilot, app)
 
     assert status == copy.DOWNLOAD_PROGRESS.format(model=DOWNLOAD_MODEL_REPO)
 
@@ -2587,8 +2618,7 @@ async def test_finishing_without_the_files_mid_download_stops_it_first() -> None
             reached_summary = isinstance(app.screen, SummaryScreen)
             text = _rendered_text(app.screen)
             gate.set()
-            await app.workers.wait_for_complete()
-            await pilot.pause()
+            await _wait_for_the_download(pilot, app)
     finally:
         gate.set()
 

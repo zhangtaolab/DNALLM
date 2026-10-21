@@ -478,11 +478,23 @@ class _FixedDownloader:
 
 
 async def _settle_wizard(pilot, app: DNALLMPreflightApp) -> None:
-    """Let every queued worker wave finish (report first, local batch second)."""
+    """Let every queued worker wave finish (report first, local batch second).
+
+    The download runs on its own daemon thread rather than as a Textual worker
+    (WR-02), so its operation is joined here explicitly.
+    """
     await app.workers.wait_for_complete()
     await pilot.pause()
     await app.workers.wait_for_complete()
     await pilot.pause()
+    operation = app._download_operation
+    if operation is not None:
+        for _ in range(2000):
+            if not operation.is_alive:
+                break
+            await asyncio.sleep(0.005)
+        await pilot.pause()
+        await pilot.pause()
 
 
 async def test_the_whole_wizard_walks_to_a_downloaded_model_summary(tmp_path) -> None:

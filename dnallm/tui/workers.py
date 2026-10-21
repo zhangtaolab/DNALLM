@@ -1,12 +1,19 @@
 """The single thread-worker seam between the wizard's event loop and the core.
 
 Every blocking core call (data validation, compatibility probes, config
-generation, downloads) runs in a Textual thread worker: the event loop keeps
-painting, and the only thing that crosses the thread boundary back to the UI is
-a typed ``post_message`` payload from :mod:`dnallm.tui.messages`. Widgets are
-never touched from a worker thread — ``tests/tui/test_structure.py`` enforces
-that by parsing this module and asserting ``post_message`` is the only ``self``
-call inside every ``@work`` body.
+generation) runs in a Textual thread worker: the event loop keeps painting, and
+the only thing that crosses the thread boundary back to the UI is a typed
+``post_message`` payload from :mod:`dnallm.tui.messages`. Widgets are never
+touched from a worker thread — ``tests/tui/test_structure.py`` enforces that by
+parsing this module and asserting ``post_message`` is the only ``self`` call
+inside every ``@work`` body.
+
+The download is the exception: it runs on its own daemon thread
+(:class:`DownloadOperation`). Textual thread workers use the loop's default
+executor, which ``asyncio.run`` and the interpreter both join at exit — an
+uninterruptible transfer would then keep the process alive after the user
+quits. The daemon thread keeps the same message-only boundary and the same
+cooperative ``cancelled_event`` contract, but nothing ever joins it.
 
 Heavy core modules are imported inside the worker bodies, never at module
 scope: importing this module must not pull in torch or transformers.
@@ -16,6 +23,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import threading
 from typing import TYPE_CHECKING, Any
 
 from textual import work
@@ -43,14 +51,13 @@ from .messages import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from textual.worker import Worker
-
 logger = get_logger("dnallm.tui.workers")
 
 __all__ = [
     "COMPATIBILITY_WORKER_GROUP",
     "PROBE_SHORTLIST",
     "DownloadCancelled",
+    "DownloadOperation",
     "PreflightWorkers",
     "make_cancellable_downloader",
 ]
@@ -97,18 +104,70 @@ class DownloadCancelled(BaseException):
     """
 
 
-def make_cancellable_downloader(
-    worker: Worker[Any], downloader: Callable[..., str]
-) -> Callable[..., str]:
-    """Wrap *downloader* with the cooperative pre-attempt cancellation check.
+class DownloadOperation:
+    """One model transfer running on its own daemon thread (WR-02).
 
-    Textual thread workers cannot be interrupted, so cancelling is
-    cooperative: an attempt already inside the hub client finishes, and the
-    next attempt never starts.
+    Textual thread workers run on ``loop.run_in_executor(None, ...)``. Both
+    ``asyncio.run`` and the interpreter itself join that default executor at
+    exit, and an attempt already inside a hub client cannot be interrupted, so
+    quitting mid-download would leave the process blocked until the transfer
+    finished. This operation owns a plain daemon thread instead: the app asks
+    it to stop cooperatively and never waits for it, and interpreter exit does
+    not wait either.
+
+    It exposes the same ``cancelled_event`` contract as a Textual worker, so
+    :func:`make_cancellable_downloader` works unchanged.
 
     Args:
-        worker: The thread worker running the download; its ``cancelled_event``
-            is set when the user asks to stop.
+        target: The thread body (the blocking download call).
+    """
+
+    def __init__(self, target: Callable[[], None]) -> None:
+        self.cancelled_event = threading.Event()
+        self._thread = threading.Thread(target=target, name="dnallm-download", daemon=True)
+
+    def start(self) -> DownloadOperation:
+        """Start the transfer thread and return this handle.
+
+        Returns:
+            This operation, for ``operation = ...start()`` at the call site.
+        """
+        self._thread.start()
+        return self
+
+    def cancel(self) -> None:
+        """Ask the transfer to stop before its next attempt (cooperative)."""
+        self.cancelled_event.set()
+
+    def join(self, timeout: float | None = None) -> None:
+        """Wait for the transfer thread — for tests, never for the UI path.
+
+        Args:
+            timeout: Seconds to wait at most, or None to wait forever.
+        """
+        self._thread.join(timeout)
+
+    @property
+    def is_alive(self) -> bool:
+        """True while the transfer thread is still running."""
+        return self._thread.is_alive()
+
+    @property
+    def is_daemon(self) -> bool:
+        """True when interpreter exit will not wait for this thread."""
+        return self._thread.daemon
+
+
+def make_cancellable_downloader(worker: Any, downloader: Callable[..., str]) -> Callable[..., str]:
+    """Wrap *downloader* with the cooperative pre-attempt cancellation check.
+
+    Textual thread workers (and the download's own daemon thread) cannot be
+    interrupted, so cancelling is cooperative: an attempt already inside the
+    hub client finishes, and the next attempt never starts.
+
+    Args:
+        worker: The running operation; its ``cancelled_event`` is set when the
+            user asks to stop.
         downloader: The real download callable (for example
             ``snapshot_download``), called with the same keyword arguments
             ``download_model`` forwards.
@@ -246,7 +305,15 @@ class PreflightWorkers:
     Each worker owns one blocking core call, reports progress/results with
     typed messages, and never touches a widget. Later plans extend this mixin
     with the remaining core calls.
+
+    ``download_worker`` is the one method that is not a Textual ``@work``
+    worker: it returns a :class:`DownloadOperation` on a daemon thread so a
+    quit never waits for a transfer (WR-02).
     """
+
+    #: The transfer started by :meth:`download_worker`, if any. Quitting asks
+    #: it to stop; nobody joins it.
+    _download_operation: DownloadOperation | None = None
 
     @work(thread=True, exit_on_error=False)
     def collect_env_worker(self, collector: Any) -> None:
@@ -477,7 +544,6 @@ class PreflightWorkers:
             return
         self.post_message(AvailabilityUpdated(model, availability))
 
-    @work(thread=True, exit_on_error=False)
     def download_worker(
         self,
         model_name: str,
@@ -485,8 +551,14 @@ class PreflightWorkers:
         *,
         entry: Any = None,
         availability: Any = None,
-    ) -> None:
-        """Download *model_name* off the event loop, with a working cancel.
+    ) -> DownloadOperation:
+        """Download *model_name* on its own daemon thread, with a working cancel.
+
+        This is deliberately NOT a Textual thread worker (WR-02): workers run
+        on the loop's default executor, which is joined at interpreter exit, so
+        quitting mid-download would block the process until the transfer
+        finished. The returned operation is cancelled cooperatively and is
+        never joined by the UI.
 
         Args:
             model_name: Registry/repo id passed through to ``download_model``.
@@ -497,64 +569,82 @@ class PreflightWorkers:
             entry: The frozen listing row the user chose, used only to pick a
                 hub when the report names none.
             availability: The frozen availability report for that row.
+
+        Returns:
+            The running :class:`DownloadOperation`; ``cancel()`` stops it before
+            the next attempt.
         """
-        worker = get_current_worker()
         progress_label = DOWNLOAD_PROGRESS.format(model=model_name)
+        # Posted from the UI thread, before the transfer starts: the opener is
+        # on screen before any byte is requested.
         self.post_message(DownloadProgress(done=0, total=0, label=progress_label))
         resolved = downloader if callable(downloader) else getattr(self, "downloader", None)
-        attempt = {"count": 0}
 
-        def emit_progress(done: int, total: int, label: str) -> None:
-            # Called from the hub client's own callbacks, still inside the
-            # worker thread: the typed message is the only thing that crosses.
-            self.post_message(
-                DownloadProgress(done=done, total=total, label=label or progress_label)
-            )
+        def run() -> None:
+            attempt = {"count": 0}
 
-        try:
-            # Function-local: importing dnallm.models pulls torch/transformers in.
-            from ..models.model import download_model
+            def post(message: Any) -> None:
+                # Thread-safe (Textual routes a cross-thread post through the
+                # event loop). A closed loop means the user has already quit,
+                # and a transfer that outlives the UI just stops reporting.
+                try:
+                    self.post_message(message)
+                except RuntimeError:
+                    logger.debug("The download outlived the message loop; dropping an update")
 
-            if not callable(resolved):
-                hub = _choose_hub(entry, availability)
-                logger.info(f"Downloading {model_name} from {getattr(hub, 'value', hub)}")
-                resolved = _resolve_hub_downloader(hub)
-            reporting = _bind_progress(resolved, emit_progress)
+            def emit_progress(done: int, total: int, label: str) -> None:
+                # Called from the hub client's own callbacks, still inside the
+                # transfer thread: the typed message is the only thing crossing.
+                post(DownloadProgress(done=done, total=total, label=label or progress_label))
 
-            def attempt_downloader(name: str, **kwargs: Any) -> str:
-                # One line per real attempt, posted before the hub is asked.
-                attempt["count"] += 1
-                self.post_message(
-                    DownloadProgress(
-                        done=attempt["count"],
-                        total=DOWNLOAD_MAX_TRY,
-                        label=DOWNLOAD_ATTEMPT.format(
-                            attempt=attempt["count"], max_try=DOWNLOAD_MAX_TRY
-                        ),
+            try:
+                # Function-local: importing dnallm.models pulls torch/transformers in.
+                from ..models.model import download_model
+
+                target = resolved
+                if not callable(target):
+                    hub = _choose_hub(entry, availability)
+                    logger.info(f"Downloading {model_name} from {getattr(hub, 'value', hub)}")
+                    target = _resolve_hub_downloader(hub)
+                reporting = _bind_progress(target, emit_progress)
+
+                def attempt_downloader(name: str, **kwargs: Any) -> str:
+                    # One line per real attempt, posted before the hub is asked.
+                    attempt["count"] += 1
+                    post(
+                        DownloadProgress(
+                            done=attempt["count"],
+                            total=DOWNLOAD_MAX_TRY,
+                            label=DOWNLOAD_ATTEMPT.format(
+                                attempt=attempt["count"], max_try=DOWNLOAD_MAX_TRY
+                            ),
+                        )
                     )
-                )
-                return reporting(name, **kwargs)
+                    return reporting(name, **kwargs)
 
-            path = download_model(
-                model_name,
-                make_cancellable_downloader(worker, attempt_downloader),
-                max_try=DOWNLOAD_MAX_TRY,
-            )
-        except DownloadCancelled:
-            logger.info(f"Download of {model_name} cancelled by the user")
-            self.post_message(DownloadFinished(path=None, cancelled=True))
-            return
-        except ValueError as exc:
-            # download_model's own failure signal: every attempt was retried.
-            logger.warning(f"Download of {model_name} failed after every retry: {exc}")
-            self.post_message(
-                DownloadFinished(path=None, cancelled=False, error=_DOWNLOAD_FAILED_COPY)
-            )
-            return
-        except Exception as exc:
-            logger.error(f"Unexpected failure downloading {model_name}: {exc!r}")
-            self.post_message(
-                DownloadFinished(path=None, cancelled=False, error=_DOWNLOAD_FAILED_COPY)
-            )
-            return
-        self.post_message(DownloadFinished(path=path, cancelled=False))
+                path = download_model(
+                    model_name,
+                    make_cancellable_downloader(operation, attempt_downloader),
+                    max_try=DOWNLOAD_MAX_TRY,
+                )
+            except DownloadCancelled:
+                logger.info(f"Download of {model_name} cancelled by the user")
+                post(DownloadFinished(path=None, cancelled=True))
+                return
+            except ValueError as exc:
+                # download_model's own failure signal: every attempt was retried.
+                logger.warning(f"Download of {model_name} failed after every retry: {exc}")
+                post(DownloadFinished(path=None, cancelled=False, error=_DOWNLOAD_FAILED_COPY))
+                return
+            except Exception as exc:
+                logger.error(f"Unexpected failure downloading {model_name}: {exc!r}")
+                post(DownloadFinished(path=None, cancelled=False, error=_DOWNLOAD_FAILED_COPY))
+                return
+            post(DownloadFinished(path=path, cancelled=False))
+
+        operation = DownloadOperation(run)
+        #: Kept on the app so quitting can ask it to stop, and so tests can
+        #: wait for it without going through the worker manager (it has no entry
+        #: there — it is not a Textual worker).
+        self._download_operation = operation
+        return operation.start()
