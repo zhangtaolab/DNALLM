@@ -84,6 +84,15 @@ def _rendered_text(screen) -> str:
     return "\n".join(str(widget.content) for widget in screen.query(Static))
 
 
+def _rows_the_text_needs(widget: Static) -> int:
+    """How many rows Textual's own layout needs for *widget*'s text at its width.
+
+    Uses the same ``Content.get_height`` call Textual uses to size a ``Static``,
+    so the number moves with the renderer instead of a re-implemented wrapper.
+    """
+    return widget.visual.get_height(widget.styles, widget.region.width)
+
+
 def _table_rows(table: DataTable) -> list[list[str]]:
     """The findings table's cells as plain strings, in row order."""
     return [[str(cell) for cell in table.get_row_at(index)] for index in range(table.row_count)]
@@ -908,6 +917,8 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         screen = await _open_config_screen(app, pilot, config_path=str(config_file))
         await _settle_config(pilot, app)
         pane = str(screen.query_one("#config-errors", Static).content)
+        errors_widget = screen.query_one("#config-errors", Static)
+        side = screen.query_one("#config-side", VerticalScroll)
         save_disabled = screen.query_one("#config-save", Button).disabled
         reason = str(screen.query_one("#config-save-reason", Static).content)
         reason_bottom = screen.query_one("#config-save-reason", Static).region.bottom
@@ -915,13 +926,69 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
         details = screen.query_one("#config-error-details", Button)
         enabled = not details.disabled
         label_before = str(details.label)
+        assert errors_widget.region.height >= _rows_the_text_needs(errors_widget)
+        tail_line = errors_widget.render_line(errors_widget.region.height - 1).text
+        assert "binary_classification" in tail_line
+        side.scroll_y = min(
+            side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
+        )
+        await pilot.pause()
+        assert side.region.contains_point(
+            (errors_widget.region.x + 1, errors_widget.region.bottom - 1)
+        )
         details.press()
         await pilot.pause()
         pane_with_details = str(screen.query_one("#config-errors", Static).content)
+        assert errors_widget.region.height >= _rows_the_text_needs(errors_widget)
+        side.scroll_y = min(
+            side.max_scroll_y, side.scroll_y + (errors_widget.region.bottom - side.region.bottom)
+        )
+        await pilot.pause()
+        assert side.region.contains_point(
+            (errors_widget.region.x + 1, errors_widget.region.bottom - 1)
+        )
         label_after = str(details.label)
         details.press()
         await pilot.pause()
         pane_again = str(screen.query_one("#config-errors", Static).content)
+        side.scroll_y = side.max_scroll_y
+        await pilot.pause()
+        screen.query_one("#config-field-task-task_type", Input).value = "binary"
+        await _settle_config(pilot, app)
+        pane_after_repair = str(errors_widget.content)
+        details_disabled_after_repair = details.disabled
+        save_enabled_after_repair = not screen.query_one("#config-save", Button).disabled
+        side.scroll_home(animate=False)
+        await pilot.pause()
+        pane_top_visible_after_repair = side.region.contains_region(errors_widget.region)
+        scroll_in_range_after_repair = side.scroll_y <= side.max_scroll_y
+
+        wide_config_file = tmp_path / "several_bad.yaml"
+        wide_config_file.write_text(
+            "task:\n  task_type: not-a-task\n  num_labels: 1\n"
+            "finetune:\n  num_train_epochs: abc\n"
+            "inference:\n  batch_size: xyz\n"
+            "lora:\n  r: nope\n",
+            encoding="utf-8",
+        )
+        await pilot.resize_terminal(100, 40)
+        wide_screen = await _open_config_screen(app, pilot, config_path=str(wide_config_file))
+        await _settle_config(pilot, app)
+        wide_pane = wide_screen.query_one("#config-errors", Static)
+        wide_side = wide_screen.query_one("#config-side", VerticalScroll)
+        wide_details = wide_screen.query_one("#config-error-details", Button)
+        wide_details.press()
+        await pilot.pause()
+        wide_laid_out = wide_pane.region.height
+        wide_needed = _rows_the_text_needs(wide_pane)
+        wide_side.scroll_y = min(
+            wide_side.max_scroll_y,
+            wide_side.scroll_y + (wide_pane.region.bottom - wide_side.region.bottom),
+        )
+        await pilot.pause()
+        wide_tail_visible = wide_side.region.contains_point(
+            (wide_pane.region.x + 1, wide_pane.region.bottom - 1)
+        )
 
     expected = copy.CONFIG_ERROR_MESSAGES["task", "task_type", "not_an_allowed_value"]
     assert expected in pane
@@ -935,6 +1002,17 @@ async def test_at_80x24_the_plain_error_fits_and_the_raw_one_is_a_press_away(tmp
     assert "String should match pattern" in pane_with_details
     assert label_after == copy.CONFIG_ERROR_DETAILS_HIDE
     assert pane_again == pane
+    # Appended by 25-13 (all pre-existing assertions above stay byte-identical):
+    # repairing the last error repaints an empty pane and, once the side is
+    # scrolled home, the errors block's top edge is laid out inside its viewport.
+    assert pane_after_repair == ""
+    assert details_disabled_after_repair
+    assert save_enabled_after_repair
+    assert pane_top_visible_after_repair
+    assert scroll_in_range_after_repair
+    # The several-error case rides this same app run (one resize, one push).
+    assert wide_laid_out >= wide_needed
+    assert wide_tail_visible
 
 
 async def test_the_details_control_is_off_while_the_config_is_clean() -> None:
