@@ -67,6 +67,7 @@ __all__ = [
     "DEFAULT_PROBE_TIMEOUT",
     "clear_probe_memo",
     "effective_endpoints",
+    "local_availability",
     "modelscope_cache_candidates",
     "probe_availability",
 ]
@@ -164,6 +165,35 @@ def probe_availability(
             if model != repo_id:
                 _MEMO[model] = report
         return report
+
+
+def local_availability(model: str) -> AvailabilityReport:
+    """Report a model's LOCAL state only, without probing or downloading (D-04).
+
+    The bulk path for a listing: every visible row can be classified for free
+    and offline, because this runs exactly the three-way local cache detection
+    the default probe starts with — an existing directory at the (expanded)
+    input path, the ModelScope dual-layout cache, then the HF cache scan. It
+    never calls a hub, never reads or writes the probe memo, and never raises.
+
+    Args:
+        model: Registry entry name, raw repo id, or local filesystem path.
+
+    Returns:
+        ``cached`` with the hub that holds the files when something is on
+        disk, otherwise ``unknown`` with **no** reason — "nothing cached
+        here" says nothing about where the model is hosted (D-05); only a
+        remote probe can answer that.
+    """
+    try:
+        repo_id, _entry = _resolve_model_ref(model)
+        cached = _probe_cached_local(model, repo_id)
+    except Exception as exc:  # a local check can never fail the listing
+        logger.debug(f"local_availability: {model!r} degraded to unknown: {exc!r}")
+        return AvailabilityReport(state=AvailabilityState.UNKNOWN)
+    if cached is not None:
+        return cached
+    return AvailabilityReport(state=AvailabilityState.UNKNOWN)
 
 
 def clear_probe_memo() -> None:

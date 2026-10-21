@@ -40,10 +40,12 @@ from typing import TYPE_CHECKING, cast
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
+from textual.coordinate import Coordinate
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Footer, Header, Input, Static
 
 from .. import copy
+from ..workers import PROBE_SHORTLIST
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -69,6 +71,10 @@ _VERDICTS_TABLE_ID = "suitability-verdicts"
 _LISTING_TABLE_ID = "suitability-listing"
 _USE_BUTTON_ID = "suitability-use"
 
+# Column index of the availability cell in the listing table (one constant, so
+# an in-place refresh cannot drift from the column it labels).
+_AVAILABILITY_COLUMN = 4
+
 # Core values the renderer branches on. ``AvailabilityState`` and ``Hub`` are
 # string enums, so comparing against the value string needs no runtime import
 # of the core — the screen stays presentation-only, and the type imports above
@@ -87,6 +93,8 @@ class SuitabilityScreen(Screen):
         self._intent = INTENT_FINETUNE
         self._report: CompatibilityReport | None = None
         self._listing: list[ListingEntry] = []
+        self._local_by_model: dict[str, AvailabilityReport] = {}
+        self._local_requested = False
 
     @property
     def _preflight_app(self) -> DNALLMPreflightApp:
@@ -182,14 +190,22 @@ class SuitabilityScreen(Screen):
         self._start_compatibility()
 
     def _start_compatibility(self) -> None:
-        """Hand the current route, task type and model names to the core."""
+        """Hand the current route, task type and model names to the core.
+
+        A fresh run starts a fresh local pass: the listing may be entirely
+        different, so yesterday's local results can never be shown against it.
+        """
         self._set_status(copy.PROBING_PLACEHOLDER)
+        self._report = None
+        self._local_by_model = {}
+        self._local_requested = False
         self._preflight_app.check_compatibility_worker(
             self._preflight_app.state.data_report,
             task_type=self._task_type(),
             models=self._requested_models(),
             intent=self._intent,
             prober=self._preflight_app.prober,
+            probe_shortlist=PROBE_SHORTLIST,
         )
 
     def _task_type(self) -> str | None:
@@ -206,19 +222,34 @@ class SuitabilityScreen(Screen):
     async def apply_compatibility_ready(
         self, report: CompatibilityReport, local_by_name: Mapping[str, AvailabilityReport]
     ) -> None:
-        """Store the frozen report and render it in the core's own order.
+        """Render the core's report, then fill in every row's local state.
+
+        Two arrivals share this hook: the compatibility worker posts the report
+        (shortlist probes already attached), and the local batch worker posts
+        the same report with the offline local states. The second arrival only
+        rewrites the availability column, so the user's selection survives.
 
         Args:
             report: The report ``check_compatibility`` produced in the worker.
             local_by_name: Availability already known from the local cache,
                 keyed by model id (rendering only; never re-probed).
         """
+        if self._report is not None and report is not self._report:
+            # A batch for a listing the user has already replaced: ignore it.
+            return
         self._report = report
         self._preflight_app.state.compatibility_report = report
         self._preflight_app.state.availability_by_entry.update(local_by_name)
+        if local_by_name:
+            self._local_by_model.update(local_by_name)
+            self._refresh_availability_cells()
+            return
         self._render_report(report)
         if report.listing or report.verdicts:
             self._set_status(copy.SUITABILITY_READY)
+        if report.listing and not self._local_requested:
+            self._local_requested = True
+            self._preflight_app.local_availability_batch_worker(report)
 
     async def apply_worker_failure(self, message: str) -> None:
         """Show a failed check as one plain-language row.
@@ -249,14 +280,15 @@ class SuitabilityScreen(Screen):
 
         listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
         listing.clear()
-        for entry in self._listing:
-            listing.add_row(*self._listing_cells(entry))
+        for position, entry in enumerate(self._listing):
+            listing.add_row(*self._listing_cells(entry, position))
 
-    def _listing_cells(self, entry: ListingEntry) -> list[Text]:
+    def _listing_cells(self, entry: ListingEntry, position: int) -> list[Text]:
         """One listing row's cells, straight from the entry's fields.
 
         Args:
             entry: The frozen listing row.
+            position: Its index in the core's order.
 
         Returns:
             The cells, markup-free.
@@ -266,8 +298,40 @@ class SuitabilityScreen(Screen):
             _cell(copy.LAB_ROW_FLAG if entry.is_lab else copy.THIRD_PARTY_ROW_FLAG),
             _cell(entry.task_type or ""),
             _cell(copy.NO_HEAD_LABELS if entry.num_labels is None else str(entry.num_labels)),
-            _cell(_availability_text(entry.availability)),
+            _cell(self._availability_text(entry, position)),
         ]
+
+    def _availability_text(self, entry: ListingEntry, position: int) -> str:
+        """One row's availability, in the documented fallback order.
+
+        The shortlist's remote result wins, then whatever the local pass
+        found, then the honest default: a row the core has not verified says
+        "hosting not verified" (D-05), and a row still inside the probing
+        window says "probing…".
+
+        Args:
+            entry: The frozen listing row.
+            position: Its index in the core's order.
+
+        Returns:
+            The availability sentence for the row.
+        """
+        availability = entry.availability or self._local_by_model.get(entry.model)
+        is_pending_shortlist_row = availability is None and position < PROBE_SHORTLIST
+        if is_pending_shortlist_row:
+            return copy.PROBING_PLACEHOLDER
+        return _availability_sentence(availability)
+
+    def _refresh_availability_cells(self) -> None:
+        """Rewrite only the availability column, keeping every other cell."""
+        listing = self.query_one(f"#{_LISTING_TABLE_ID}", DataTable)
+        for position, entry in enumerate(self._listing):
+            if position >= listing.row_count:
+                return
+            listing.update_cell_at(
+                Coordinate(row=position, column=_AVAILABILITY_COLUMN),
+                _cell(self._availability_text(entry, position)),
+            )
 
     def _entry_at(self, position: int) -> ListingEntry | None:
         """The listing entry at *position*, or None when the row is gone.
@@ -301,7 +365,7 @@ class SuitabilityScreen(Screen):
         self.query_one(f"#{_STATUS_ID}", Static).update(text)
 
 
-def _availability_text(availability: AvailabilityReport | None) -> str:
+def _availability_sentence(availability: AvailabilityReport | None) -> str:
     """Turn one availability report into the sentence a reader sees.
 
     Args:

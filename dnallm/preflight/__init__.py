@@ -12,9 +12,12 @@ files, or any cache:
 2. Availability (``probe_availability``) is the one network-capable
    path: opt-in, existence-and-metadata only, never downloading; every
    probe failure degrades to an unknown state with a reason — never an
-   exception, never an "unavailable" verdict. ``effective_endpoints``
-   reports the library-resolved endpoints/cache roots and
-   ``clear_probe_memo`` resets the in-process probe memo.
+   exception, never an "unavailable" verdict. ``local_availability`` is
+   its offline half: the same three-way local cache detection for one
+   model, free and network-free, so a shell can classify every visible
+   listing row and remote-probe only the shortlist (D-04).
+   ``effective_endpoints`` reports the library-resolved endpoints/cache
+   roots and ``clear_probe_memo`` resets the in-process probe memo.
 3. The registry is the sole model-metadata source (REG-01): every verdict
    fact flows through ``dnallm.models.registry`` — this package never
    parses the packaged registry YAML and never probes the network on the
@@ -41,7 +44,12 @@ Example:
     generated = generate_config("zhangtaolab/plant-dnabert-BPE-promoter")
 """
 
-from .availability import clear_probe_memo, effective_endpoints, probe_availability
+from .availability import (
+    clear_probe_memo,
+    effective_endpoints,
+    local_availability,
+    probe_availability,
+)
 from .compatibility import check_compatibility
 from .config_gen import edit_config, generate_config
 from .report import (
@@ -94,6 +102,7 @@ __all__ = [
     "edit_config",
     "effective_endpoints",
     "generate_config",
+    "local_availability",
     "probe_availability",
     "validate_data",
 ]

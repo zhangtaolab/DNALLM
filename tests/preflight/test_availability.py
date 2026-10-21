@@ -852,3 +852,96 @@ def test_slow_real_network_dual_homed_lab_model() -> None:
     if report.state == REMOTE_CONFIRMED:
         assert isinstance(report.size_bytes, int)
         assert report.size_bytes > 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Task 4: local_availability — the offline bulk path for every listing row
+# (D-04, 25-07). Local cache detection only: no hub client, no memo, no raise.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_local_availability_existing_directory_is_cached_local(monkeypatch, tmp_path) -> None:
+    """An existing directory reads cached/local; no hub client is touched."""
+    model_dir = tmp_path / "bulk-local-model"
+    model_dir.mkdir()
+    remote = Mock(side_effect=AssertionError("local_availability must never probe"))
+    hub_scan = Mock(side_effect=AssertionError("local_availability must not scan hubs"))
+    monkeypatch.setattr(availability, "_probe_remote", remote)
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", hub_scan)
+
+    report = availability.local_availability(str(model_dir))
+
+    assert report.state == CACHED
+    assert report.source_hub == Hub.LOCAL
+    assert report.reason is None
+    remote.assert_not_called()
+    hub_scan.assert_not_called()
+
+
+def test_local_availability_modelscope_layout_reports_exact_size(monkeypatch, tmp_path) -> None:
+    """A repo in the ModelScope dual layout reads cached with its on-disk size."""
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path))
+    cached_dir = tmp_path / "models" / "org" / "name___with___dots"
+    cached_dir.mkdir(parents=True)
+    (cached_dir / "weights.bin").write_bytes(b"abc")  # 3 bytes
+
+    report = availability.local_availability("org/name.with.dots")
+
+    assert report.state == CACHED
+    assert report.source_hub == Hub.MODELSCOPE
+    assert report.size_bytes == 3
+
+
+def test_local_availability_uncached_path_like_id_is_unknown_with_no_reason(
+    monkeypatch, tmp_path
+) -> None:
+    """Nothing cached is UNKNOWN with no reason — never a raise, never a verdict."""
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path))
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", Mock(return_value=None))
+
+    report = availability.local_availability(str(tmp_path / "not-on-disk"))
+
+    assert report.state == UNKNOWN
+    assert report.reason is None
+    assert report.source_hub is None
+
+
+def test_local_availability_degrades_instead_of_raising(monkeypatch) -> None:
+    """A failing local detector is UNKNOWN with no reason, never an exception."""
+    monkeypatch.setattr(
+        availability, "_probe_cached_local", Mock(side_effect=OSError("unreadable path"))
+    )
+
+    report = availability.local_availability("broken/org")
+
+    assert report.state == UNKNOWN
+    assert report.reason is None
+
+
+def test_local_availability_never_memoizes_and_never_probes(monkeypatch, tmp_path) -> None:
+    """Every call re-detects, and the remote probe memo stays untouched."""
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(tmp_path))
+    monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", Mock(return_value=None))
+    detector = Mock(return_value=None)
+    monkeypatch.setattr(availability, "_probe_cached_local", detector)
+    monkeypatch.setattr(
+        availability,
+        "_probe_remote",
+        Mock(side_effect=AssertionError("local_availability must never probe")),
+    )
+
+    first = availability.local_availability("bulk/org")
+    second = availability.local_availability("bulk/org")
+
+    assert first.state == UNKNOWN
+    assert second.state == UNKNOWN
+    assert detector.call_count == 2  # not memoized: every row is classified fresh
+    assert availability._MEMO == {}  # the remote-probe memo is never written here
+
+
+def test_local_availability_is_exported_from_the_facade() -> None:
+    """The offline bulk path is part of the documented preflight API."""
+    import dnallm.preflight as preflight
+
+    assert "local_availability" in preflight.__all__
+    assert preflight.local_availability is availability.local_availability

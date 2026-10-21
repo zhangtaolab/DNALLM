@@ -213,6 +213,34 @@ class PreflightWorkers:
         self.post_message(CompatibilityReady(report, {}))
 
     @work(thread=True, exit_on_error=False)
+    def local_availability_batch_worker(self, report: Any) -> None:
+        """Classify every listing row's local cache state off the event loop.
+
+        This is the free, offline half of D-04: pure path and cache-directory
+        checks for the whole listing, so a row outside the probed shortlist
+        still shows whether the files are already on this computer. No hub is
+        contacted here.
+
+        Args:
+            report: The frozen ``CompatibilityReport`` whose ``listing`` rows
+                are classified. Its rows are read, never changed.
+        """
+        worker = get_current_worker()
+        try:
+            from ..preflight import local_availability
+
+            by_model = {entry.model: local_availability(entry.model) for entry in report.listing}
+        except Exception as exc:
+            # Details go to the log; the user reads plain words, never a class name.
+            logger.error(f"local_availability failed inside the TUI worker: {exc!r}")
+            if not worker.is_cancelled:
+                self.post_message(WorkerFailed(SUITABILITY_FAILED))
+            return
+        if worker.is_cancelled:
+            return
+        self.post_message(CompatibilityReady(report, by_model))
+
+    @work(thread=True, exit_on_error=False)
     def download_worker(self, model_name: str, downloader: Callable[..., str]) -> None:
         """Download *model_name* off the event loop, with a working cancel.
 

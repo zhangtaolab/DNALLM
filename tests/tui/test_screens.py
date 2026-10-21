@@ -543,3 +543,83 @@ async def test_data_continue_opens_the_suitability_panel(monkeypatch) -> None:
         await app.workers.wait_for_complete()
         await pilot.pause()
         assert isinstance(app.screen, SuitabilityScreen)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Suitability panel, two-phase availability (D-04): every row local, the
+# shortlist remote. Nothing here touches a hub or the real disk caches.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def _settle(pilot, app: DNALLMPreflightApp) -> None:
+    """Let both worker waves finish (report first, local batch second)."""
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+def _fake_local(cached: dict[str, AvailabilityReport] | None = None):
+    """A local_availability stand-in: canned hits, UNKNOWN for everything else."""
+
+    def local_availability(model: str) -> AvailabilityReport:
+        canned = (cached or {}).get(model)
+        if canned is not None:
+            return canned
+        return AvailabilityReport(state=AvailabilityState.UNKNOWN)
+
+    return local_availability
+
+
+def test_the_probe_shortlist_cap_is_twenty() -> None:
+    """D-04/D-10: the automatic probe window is 20 rows, never all entries."""
+    from dnallm.tui.workers import PROBE_SHORTLIST
+
+    assert PROBE_SHORTLIST == 20
+
+
+async def test_only_the_lab_first_shortlist_is_remote_probed(monkeypatch) -> None:
+    """A long listing probes exactly 20 rows; the rest stay honestly unknown."""
+    prober = FakeProber()
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=prober)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+        report = app.state.compatibility_report
+
+    assert report is not None
+    assert len(rows) > 20
+    assert len(prober.calls) == 20
+    # The probed rows are the first 20 in the core's lab-first order.
+    assert prober.calls == [entry.model for entry in report.listing[:20]]
+    assert rows[0][4] == copy.AVAILABILITY_REMOTE.format(hub="ModelScope")
+    assert rows[20][4] == copy.HOSTING_NOT_VERIFIED
+
+
+async def test_a_locally_cached_row_outside_the_shortlist_shows_cached(monkeypatch) -> None:
+    """The local pass classifies rows the remote shortlist never reaches."""
+    listing = compatibility_core.check_compatibility(intent="finetune").listing
+    assert len(listing) > 26
+    beyond = listing[25]
+    later = listing[26]
+    cached_report = AvailabilityReport(
+        state=AvailabilityState.CACHED, size_bytes=5, source_hub=Hub.MODELSCOPE
+    )
+    monkeypatch.setattr(
+        preflight_facade, "local_availability", _fake_local({beyond.model: cached_report})
+    )
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        rows = _table_rows(screen.query_one("#suitability-listing", DataTable))
+        stored = app.state.availability_by_entry
+
+    assert rows[25][4] == copy.AVAILABILITY_CACHED_HUB.format(hub="ModelScope")
+    assert rows[26][4] == copy.HOSTING_NOT_VERIFIED
+    assert stored[beyond.model] == cached_report
+    assert stored[later.model].state == AvailabilityState.UNKNOWN
