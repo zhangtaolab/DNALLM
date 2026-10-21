@@ -12,7 +12,20 @@ model name, a folder path) are shown verbatim.
 __all__ = [
     "APP_TITLE",
     "CHECKING_PLACEHOLDER",
+    "DATA_CHARSET_HEADING",
+    "DATA_CHARSET_ROW",
+    "DATA_CHECK_ACTION",
+    "DATA_COUNT_NOT_APPLICABLE",
+    "DATA_FINDINGS_COLUMNS",
+    "DATA_FINDINGS_HEADING",
+    "DATA_PANEL_TITLE",
+    "DATA_PATH_PROMPT",
+    "DATA_READY",
+    "DATA_SPLIT_ROW",
+    "DATA_SPLIT_ROW_EMPTY",
+    "DATA_SUMMARY_HEADING",
     "ENV_CHECK_FAILED",
+    "ENV_CONTINUE_ACTION",
     "ENV_DEVICE_SECTION",
     "ENV_DISK_SECTION",
     "ENV_PANEL_TITLE",
@@ -52,3 +65,40 @@ ENV_CHECK_FAILED = (
     "We could not finish checking the graphics card and the free disk space. "
     "The rest of this page still works and you can keep going."
 )
+
+ENV_CONTINUE_ACTION = "Continue to your data"
+
+# ── Data panel (TUI-04) ──────────────────────────────────────────────────────
+# Plain language for a biologist; the technical identifiers the panel shows
+# beside these sentences (reason codes, file paths, characters) stay verbatim.
+
+DATA_PANEL_TITLE = "Your data"
+
+DATA_PATH_PROMPT = "Paste the full path to your data file (CSV, TSV, JSON, FASTA or TXT)."
+
+DATA_CHECK_ACTION = "Check this data"
+
+DATA_READY = "We read your data. Here is what we found."
+
+DATA_SUMMARY_HEADING = "What is in your data"
+
+DATA_CHARSET_HEADING = "Characters used"
+
+DATA_FINDINGS_HEADING = "Problems and notes"
+
+# Column labels for the findings table; the reason code column stays verbatim.
+DATA_FINDINGS_COLUMNS = ("How serious", "Reason code", "What this means", "Rows affected")
+
+# Shown when a finding has no exact count (the core reports None, not zero).
+DATA_COUNT_NOT_APPLICABLE = "not counted"
+
+# One row per split. "typical" is the median length the core computed (p50).
+DATA_SPLIT_ROW = (
+    'Split "{name}": {row_count} sequences; '
+    "shortest {shortest}, typical {typical}, longest {longest}"
+)
+
+DATA_SPLIT_ROW_EMPTY = 'Split "{name}": 0 sequences; nothing to measure.'
+
+# One row per character the core counted, with the split it belongs to.
+DATA_CHARSET_ROW = 'Split "{split}": the character "{char}" appears {count} times'

@@ -32,7 +32,7 @@ from textual.widgets import Static
 
 from ..utils import env_info, get_logger
 from . import copy
-from .messages import EnvReportReady, WorkerFailed
+from .messages import DataReportReady, EnvReportReady, WorkerFailed
 from .screens.env import EnvScreen
 from .state import WizardState
 from .workers import PreflightWorkers
@@ -68,7 +68,18 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
     #env-body { height: 1fr; padding: 1 2; }
     #env-title { text-style: bold; }
     #env-versions-heading { margin-top: 1; }
+    #env-continue { margin: 1 2; width: auto; }
     #env-quit-hint { padding: 0 2; }
+    #data-body { height: 1fr; padding: 1 2; }
+    #data-title { text-style: bold; }
+    #data-actions { height: auto; }
+    #data-check { width: auto; }
+    #data-status { margin-top: 1; }
+    #data-summary-heading { margin-top: 1; text-style: bold; }
+    #data-charset-heading { margin-top: 1; }
+    #data-findings-heading { margin-top: 1; text-style: bold; }
+    #data-findings { max-height: 14; }
+    #data-quit-hint { padding: 0 2; }
     """
 
     def __init__(
@@ -153,6 +164,38 @@ class DNALLMPreflightApp(PreflightWorkers, App[None]):
             logger.debug("EnvReportReady arrived with no environment panel showing")
             return
         await apply_env_report(message.env_report)
+
+    async def on_data_report_ready(self, message: DataReportReady) -> None:
+        """Hand the data report to the panel that asked for it.
+
+        ``validate_data_worker`` is mixed into this app, so its message arrives
+        here rather than at the screen. The data panel opts in by defining an
+        async ``apply_data_report(data_report)`` hook.
+
+        Args:
+            message: The typed payload carrying the frozen ``DataReport``.
+        """
+        screen = self._active_screen()
+        apply_data_report = getattr(screen, "apply_data_report", None)
+        if apply_data_report is None:
+            logger.debug("DataReportReady arrived with no data panel showing")
+            return
+        await apply_data_report(message.data_report)
+
+    def show_suitability(self) -> None:
+        """Move on to the suitability step after the data step ends.
+
+        The import is function-local for two reasons: this module must import
+        without the later panels, and the suitability panel (25-07) is the one
+        place that decides what it needs. A build without that panel logs a
+        line instead of raising into the UI thread.
+        """
+        try:
+            from .screens.suitability import SuitabilityScreen
+        except ImportError:
+            logger.warning("The suitability panel is not part of this build yet")
+            return
+        self.push_screen(SuitabilityScreen())
 
     async def on_worker_failed(self, message: WorkerFailed) -> None:
         """Show any worker error as a plain-language row, never an app exit.

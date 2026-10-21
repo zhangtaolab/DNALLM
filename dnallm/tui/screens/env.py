@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, cast
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Button, Footer, Header, Static
 
 from .. import copy
 
@@ -32,6 +32,7 @@ __all__ = ["EnvScreen"]
 # Section keys shared with ``PreflightWorkers.collect_env_worker``.
 _DEVICE_SECTION = "device"
 _DISK_SECTION = "disk"
+_CONTINUE_BUTTON_ID = "env-continue"
 
 
 class EnvScreen(Screen):
@@ -51,6 +52,7 @@ class EnvScreen(Screen):
             yield Container(id="env-versions")
             yield Container(id="env-device")
             yield Container(id="env-disk")
+        yield Button(copy.ENV_CONTINUE_ACTION, id="env-continue", variant="primary")
         yield Static(copy.QUIT_HINT, id="env-quit-hint")
         yield Footer()
 
@@ -62,6 +64,21 @@ class EnvScreen(Screen):
         self._mount_placeholder("env-device", copy.ENV_ROW_LABELS[_DEVICE_SECTION])
         self._mount_placeholder("env-disk", copy.ENV_ROW_LABELS[_DISK_SECTION])
         app.collect_env_worker(app.collector)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Open the data panel when the Continue action is pressed.
+
+        Args:
+            event: The button press; every other action belongs elsewhere.
+        """
+        if event.button.id == _CONTINUE_BUTTON_ID:
+            self._open_data_panel()
+
+    def _open_data_panel(self) -> None:
+        """Push the data panel (function-local import: screens stay independent)."""
+        from .data import DataScreen
+
+        self.app.push_screen(DataScreen())
 
     async def apply_env_report(self, env_report: Mapping[str, object]) -> None:
         """Replace the checking placeholders with the worker's real rows.
