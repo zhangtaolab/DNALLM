@@ -178,14 +178,17 @@ class TestTuiExtraMembers:
         all_extra = _load_extras().get("all", [])
         assert all_extra, "the all extra must declare its bracket list"
         bracket = all_extra[0]
-        assert bracket.startswith("dnallm[") and bracket.endswith("]"), (
+        assert bracket.startswith("dnallm["), (
+            f"the all extra's first member must stay a dnallm[...] bracket "
+            f"list (measured: {bracket!r})"
+        )
+        assert bracket.endswith("]"), (
             f"the all extra's first member must stay a dnallm[...] bracket "
             f"list (measured: {bracket!r})"
         )
         members = [item.strip() for item in bracket[len("dnallm[") : -1].split(",")]
         assert "tui" in members, (
-            f"the all extra must include tui (TUI-01): measured members {members} "
-            f"from {bracket!r}"
+            f"the all extra must include tui (TUI-01): measured members {members} from {bracket!r}"
         )
 
 
