@@ -308,9 +308,12 @@ AVAILABILITY_DETAIL_LABEL = "Note from the check:"
 
 # D-06: an unverified row is never an unavailable row. The sentence says so,
 # because a blank column would let a user read UNKNOWN as "cannot download".
+# It claims only what the seam does: ONE hub is chosen by rule and every retry
+# stays on it (``workers._choose_hub``), so it must not promise a second hub.
 UNKNOWN_STILL_DOWNLOADABLE = (
     "We have not confirmed where this model is hosted. You can still choose "
-    "it: the download tries ModelScope first, then Hugging Face."
+    "it: the download picks the most likely place for this model, and you can "
+    "try again if that does not work."
 )
 
 # D-08: the length and character checks need data; without it the state is

@@ -9,9 +9,11 @@ finishes, and the device/disk placeholders are replaced afterwards.
 from __future__ import annotations
 
 import asyncio
+import sys
 import threading
 import time
 
+import pytest
 import yaml
 from textual.screen import Screen
 from textual.widgets import Button, DataTable, Input, Static
@@ -19,13 +21,24 @@ from textual.widgets import Button, DataTable, Input, Static
 from dnallm.preflight import (
     AvailabilityReport,
     AvailabilityState,
+    CompatibilityReport,
     GeneratedConfig,
     Hub,
     edit_config,
+    validate_data,
 )
 from dnallm.tui import copy, run_preflight
 from dnallm.tui.app import DNALLMPreflightApp
-from dnallm.tui.messages import AvailabilityUpdated, ConfigReady
+from dnallm.tui.messages import (
+    AvailabilityUpdated,
+    CompatibilityReady,
+    ConfigReady,
+    DataReportReady,
+    DownloadFinished,
+    DownloadProgress,
+    EnvReportReady,
+    WorkerFailed,
+)
 from dnallm.tui.screens.config import ConfigScreen
 from dnallm.tui.screens.data import DataScreen
 from dnallm.tui.screens.download import DownloadScreen
@@ -573,3 +586,78 @@ async def test_the_whole_wizard_walks_to_a_downloaded_model_summary(tmp_path) ->
     assert summary_text.index(_WIZARD_DOWNLOAD_PATH) < summary_text.index(str(out_path))
     # Well inside the plan's 60 s per-test budget (pytest-timeout is the 300 s ceiling).
     assert elapsed < 60
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-10 Task 3: the composition root's degraded paths
+#
+# The app routes every typed payload to the active screen's optional hook, and
+# imports each later panel lazily so an older build still runs. Both are safety
+# valves; these tests hold them open.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_active_screen_is_none_before_the_first_panel() -> None:
+    """Before anything is pushed there is no active screen, and that is not an error."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    assert app._active_screen() is None
+
+
+class _BareScreen(Screen):
+    """A screen with none of the wizard's ``apply_*`` hooks."""
+
+    def compose(self):
+        """Draw nothing: this screen only exists to receive (and drop) messages."""
+        return iter(())
+
+
+async def test_routing_hooks_ignore_a_screen_without_the_hook() -> None:
+    """Every payload is harmless on a panel that does not implement its hook."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    data_report = validate_data(["ACGT" * 10, "TGCA" * 10])
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.push_screen(_BareScreen())
+        await pilot.pause()
+        app.post_message(EnvReportReady({"device": [], "disk": []}))
+        app.post_message(DataReportReady(data_report))
+        app.post_message(CompatibilityReady(CompatibilityReport(verdicts=[], listing=[]), {}))
+        app.post_message(DownloadProgress(done=0, total=0, label="nothing yet"))
+        app.post_message(DownloadFinished(path=None, cancelled=True))
+        app.post_message(WorkerFailed("Nobody on this page can show this."))
+        await pilot.pause()
+        failure = app.last_failure
+        await pilot.press("q")
+
+    # The failure is still recorded — only its on-screen rendering is skipped.
+    assert failure == "Nobody on this page can show this."
+
+
+_MISSING_PANEL_CASES = [
+    ("dnallm.tui.screens.download", "show_download", {}),
+    ("dnallm.tui.screens.entry", "show_entry", {}),
+    ("dnallm.tui.screens.config", "show_config", {"model": "zhangtaolab/FungiHelixSeek"}),
+    ("dnallm.tui.screens.suitability", "show_suitability", {}),
+]
+
+
+@pytest.mark.parametrize(("module_name", "action", "kwargs"), _MISSING_PANEL_CASES)
+async def test_a_missing_panel_module_logs_instead_of_pushing(
+    monkeypatch, module_name: str, action: str, kwargs: dict
+) -> None:
+    """An older build without one panel logs a line; the wizard keeps its page."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        before = app.screen
+        # ``None`` in sys.modules makes ``from <module> import X`` raise ImportError,
+        # which is exactly the older-build case the guarded import exists for.
+        monkeypatch.setitem(sys.modules, module_name, None)
+        getattr(app, action)(**kwargs)
+        await pilot.pause()
+        still = app.screen
+        await pilot.press("q")
+
+    assert still is before

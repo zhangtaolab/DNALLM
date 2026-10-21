@@ -39,12 +39,24 @@ class _Harness(PreflightWorkers, App[None]):
     def __init__(self) -> None:
         super().__init__()
         self.data_reports: list = []
+        self.config_events: list = []
+        self.compatibility_events: list = []
+        self.availability_events: list = []
         self.worker_failures: list = []
         self.download_events: list = []
         self.progress_events: list[DownloadProgress] = []
 
     def on_data_report_ready(self, message: DataReportReady) -> None:
         self.data_reports.append(message.data_report)
+
+    def on_config_ready(self, message) -> None:
+        self.config_events.append(message)
+
+    def on_compatibility_ready(self, message) -> None:
+        self.compatibility_events.append(message)
+
+    def on_availability_updated(self, message) -> None:
+        self.availability_events.append(message)
 
     def on_worker_failed(self, message: WorkerFailed) -> None:
         self.worker_failures.append(message.message)
@@ -349,3 +361,233 @@ def test_bind_progress_leaves_a_downloader_it_cannot_inspect(monkeypatch) -> Non
         return model_name
 
     assert _bind_progress(with_bytes, lambda done, total, label: None) is with_bytes
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-10 Task 3: the seam's failure and cancel paths, one test per worker
+#
+# Every worker has the same shape — core call, plain-language failure, cancel
+# check — so each one gets the same pair of tests: a raising core must surface
+# readable copy (never a class name), and a cancel that lands during the call
+# must deliver nothing at all.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_REGISTRY_MODEL = "zhangtaolab/plant-dnabert-BPE"
+
+
+def _safe_prober(_model: str) -> AvailabilityReport:
+    """A prober that answers UNKNOWN without touching a hub."""
+    return AvailabilityReport(state=AvailabilityState.UNKNOWN)
+
+
+def _cancelled_worker(monkeypatch) -> None:
+    """Make every worker body start already cancelled (threads cannot be interrupted)."""
+    cancelled = SimpleNamespace(cancelled_event=threading.Event(), is_cancelled=True)
+    monkeypatch.setattr(workers_module, "get_current_worker", lambda: cancelled)
+
+
+def _raising(monkeypatch, target, module, name: str) -> None:
+    """Replace ``module.name`` with a callable that raises RuntimeError."""
+
+    def boom(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(target, name, boom)
+
+
+async def _run(pilot, app: _Harness, start) -> None:
+    """Start one worker, then let the seam settle."""
+    start()
+    await app.workers.wait_for_complete()
+    await pilot.pause()
+
+
+async def test_generate_config_failure_is_plain_language(monkeypatch) -> None:
+    """A raising generate_config becomes read copy, never 'RuntimeError'."""
+    import dnallm.preflight as facade
+
+    _raising(monkeypatch, facade, "generate_config", "generate_config")
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.generate_config_worker(_REGISTRY_MODEL))
+
+    assert app.config_events == []
+    assert len(app.worker_failures) == 1
+    assert "could not build this config" in app.worker_failures[0]
+    assert "RuntimeError" not in app.worker_failures[0]
+
+
+async def test_a_cancelled_generate_worker_delivers_nothing(monkeypatch) -> None:
+    """A cancel during generation suppresses the result and the failure alike."""
+    _cancelled_worker(monkeypatch)
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.generate_config_worker(_REGISTRY_MODEL))
+
+    assert app.config_events == []
+    assert app.worker_failures == []
+
+
+async def test_edit_config_failure_is_plain_language(monkeypatch) -> None:
+    """A raising edit_config becomes the same read sentence as generate."""
+    import dnallm.preflight as facade
+
+    _raising(monkeypatch, facade, "edit_config", "edit_config")
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.edit_config_worker({"task": {"task_type": "binary"}}))
+
+    assert app.config_events == []
+    assert len(app.worker_failures) == 1
+    assert "could not build this config" in app.worker_failures[0]
+
+
+async def test_a_cancelled_edit_worker_delivers_nothing(monkeypatch) -> None:
+    """A cancel during a revalidation suppresses every UI effect."""
+    _cancelled_worker(monkeypatch)
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.edit_config_worker({"task": {"task_type": "binary"}}))
+
+    assert app.config_events == []
+    assert app.worker_failures == []
+
+
+async def test_check_compatibility_failure_is_plain_language(monkeypatch) -> None:
+    """A raising suitability check says the data is safe and retry is open."""
+    import dnallm.preflight as facade
+
+    _raising(monkeypatch, facade, "check_compatibility", "check_compatibility")
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(
+            pilot,
+            app,
+            lambda: app.check_compatibility_worker(None, intent="finetune", prober=_safe_prober),
+        )
+
+    assert app.compatibility_events == []
+    assert len(app.worker_failures) == 1
+    assert "could not work out which models fit" in app.worker_failures[0]
+    assert "RuntimeError" not in app.worker_failures[0]
+
+
+async def test_a_cancelled_compatibility_worker_delivers_nothing(monkeypatch) -> None:
+    """A cancel during the suitability check suppresses the report."""
+    _cancelled_worker(monkeypatch)
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(
+            pilot,
+            app,
+            lambda: app.check_compatibility_worker(
+                None, intent="finetune", prober=_safe_prober, probe_shortlist=1
+            ),
+        )
+
+    assert app.compatibility_events == []
+    assert app.worker_failures == []
+
+
+async def test_local_availability_failure_is_plain_language(monkeypatch) -> None:
+    """A raising local pass reports the same suitability sentence."""
+    import dnallm.preflight as facade
+
+    _raising(monkeypatch, facade, "local_availability", "local_availability")
+    report = facade.check_compatibility(
+        None, intent="finetune", prober=_safe_prober, probe_shortlist=1
+    )
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.local_availability_batch_worker(report))
+
+    assert app.compatibility_events == []
+    assert len(app.worker_failures) == 1
+    assert "could not work out which models fit" in app.worker_failures[0]
+
+
+async def test_a_cancelled_local_batch_delivers_nothing(monkeypatch) -> None:
+    """A cancel during the offline local pass suppresses the batch."""
+    _cancelled_worker(monkeypatch)
+    import dnallm.preflight as facade
+
+    report = facade.check_compatibility(
+        None, intent="finetune", prober=_safe_prober, probe_shortlist=1
+    )
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.local_availability_batch_worker(report))
+
+    assert app.compatibility_events == []
+    assert app.worker_failures == []
+
+
+async def test_a_cancelled_on_demand_probe_delivers_nothing(monkeypatch) -> None:
+    """A cancel during the single-row probe suppresses its update."""
+    _cancelled_worker(monkeypatch)
+    app = _Harness()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.probe_availability_worker("owner/model", _safe_prober))
+
+    assert app.availability_events == []
+
+
+async def test_a_download_with_no_downloader_resolves_the_chosen_hub(monkeypatch) -> None:
+    """With no explicit downloader the seam picks a hub and resolves its client."""
+    resolved: list[Hub] = []
+
+    def fake_resolver(hub: Hub):
+        resolved.append(hub)
+
+        def fake_downloader(model_name: str, **_kwargs: object) -> str:
+            return f"/models/{model_name}"
+
+        return fake_downloader
+
+    monkeypatch.setattr(workers_module, "_resolve_hub_downloader", fake_resolver)
+    app = _Harness()  # no ``downloader`` seam, exactly like a production app run
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(
+            pilot,
+            app,
+            lambda: app.download_worker("owner/lab-model", None, entry=_entry(is_lab=True)),
+        )
+
+    # A lab entry with no confirmed hub: ModelScope first (D-11 / PFC-07).
+    assert resolved == [Hub.MODELSCOPE]
+    assert app.download_events[0].path == "/models/owner/lab-model"
+    assert app.download_events[0].error is None
+
+
+async def test_an_unexpected_download_failure_is_plain_language(monkeypatch) -> None:
+    """A non-ValueError failure is still one readable sentence, with no class name."""
+    import dnallm.models.model as model_module
+
+    def boom(*_args: object, **_kwargs: object) -> str:
+        raise RuntimeError("unexpected")
+
+    monkeypatch.setattr(model_module, "download_model", boom)
+    app = _Harness()
+
+    def fake_downloader(model_name: str, **_kwargs: object) -> str:
+        return "/models/never-used"
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await _run(pilot, app, lambda: app.download_worker("probe/model", fake_downloader))
+
+    assert len(app.download_events) == 1
+    finished = app.download_events[0]
+    assert finished.path is None
+    assert finished.cancelled is False
+    assert "did not finish" in finished.error
+    assert "RuntimeError" not in finished.error

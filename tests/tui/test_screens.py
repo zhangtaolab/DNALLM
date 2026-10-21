@@ -1952,3 +1952,608 @@ def test_no_screen_imports_yaml_pandas_or_a_hub_client() -> None:
         f"screen modules import a library that belongs to the core: {offenders} — "
         f"the panel renders reports and never parses a config or dials a hub (TUI-08)"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 25-10 Task 3: the panel branches the happy-path tests never reach
+#
+# Every test below exists because a line of a screen could only be reached by a
+# specific user action or a specific degraded state: switching a route back,
+# pressing Enter instead of clicking, a stale batch arriving late, a section
+# that is not a mapping, a stop pressed before anything started. They keep the
+# per-module coverage floor honest instead of leaving the branches unasserted.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def test_the_route_controls_switch_both_ways_and_recheck(monkeypatch) -> None:
+    """Predict → finetune → check re-runs the core, always with its own vocabulary."""
+    fake_core = FakeCompatibilityCore(_synthetic_report())
+    monkeypatch.setattr(preflight_facade, "check_compatibility", fake_core)
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        await pilot.click("#suitability-intent-predict")
+        await _settle(pilot, app)
+        await pilot.click("#suitability-intent-finetune")
+        await _settle(pilot, app)
+        finetune_variant = screen.query_one("#suitability-intent-finetune", Button).variant
+        await pilot.click("#suitability-check")
+        await _settle(pilot, app)
+
+    assert [call["intent"] for call in fake_core.calls] == [
+        "finetune",
+        "predict",
+        "finetune",
+        "finetune",
+    ]
+    assert finetune_variant == "primary"
+
+
+async def test_enter_on_a_listing_row_selects_it_and_verdict_rows_are_ignored(monkeypatch) -> None:
+    """Enter is the keyboard equivalent of a click; the verdict table selects nothing."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        # A highlight on the verdicts table must not become a model choice: the
+        # listing's own first-row highlight is what the state already holds.
+        selection_before = app.state.selected_entry
+        screen.query_one("#suitability-verdicts", DataTable).move_cursor(row=0)
+        await pilot.pause()
+        assert app.state.selected_entry is selection_before
+        listing = screen.query_one("#suitability-listing", DataTable)
+        listing.focus()
+        listing.move_cursor(row=1)
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+        selected = app.state.selected_entry
+
+    assert selected is report.listing[1]
+
+
+async def test_a_batch_for_a_listing_the_user_already_replaced_is_ignored(monkeypatch) -> None:
+    """A late local batch never overwrites a report the panel has moved past."""
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        current = app.state.compatibility_report
+        stale = CompatibilityReport(verdicts=[], listing=[])
+        await screen.apply_compatibility_ready(stale, {})
+        await pilot.pause()
+        still = app.state.compatibility_report
+
+    assert still is current
+    assert stale is not current
+
+
+async def test_a_failed_suitability_check_reads_plainly(monkeypatch) -> None:
+    """A raising compatibility call leaves a readable row, never a traceback."""
+
+    def boom(*_args: object, **_kwargs: object) -> CompatibilityReport:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(preflight_facade, "check_compatibility", boom)
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        status = str(screen.query_one("#suitability-status", Static).content)
+
+    assert status == copy.SUITABILITY_FAILED
+
+
+async def test_the_row_being_probed_says_so_while_it_is_in_flight(monkeypatch) -> None:
+    """A row marked probing shows the probing sentence even on a refresh."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        listing = screen.query_one("#suitability-listing", DataTable)
+        listing.cursor_type = "row"
+        listing.move_cursor(row=2)
+        await pilot.pause()
+        screen.action_probe_row()
+        # Refresh while the probe is still in flight: the row must stay honest.
+        screen._refresh_availability_cells()
+        cell = str(listing.get_row_at(2)[4])
+        await _settle(pilot, app)
+
+    assert cell == copy.PROBING_PLACEHOLDER
+
+
+async def test_an_update_for_an_unlisted_model_is_still_recorded(monkeypatch) -> None:
+    """A probe result arriving after the listing changed is kept, not applied."""
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+    late = AvailabilityReport(state=AvailabilityState.REMOTE_CONFIRMED, source_hub=Hub.HUGGINGFACE)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        await screen.apply_availability_update("not/listed-any-more", late)
+        await pilot.pause()
+        recorded = app.state.availability_by_entry["not/listed-any-more"]
+        status = str(screen.query_one("#suitability-status", Static).content)
+
+    assert recorded is late
+    assert status == copy.SUITABILITY_READY
+
+
+async def test_probing_or_confirming_with_no_row_explains_what_to_do(monkeypatch) -> None:
+    """With an empty listing both actions say how to pick a model."""
+    empty = CompatibilityReport(verdicts=[], listing=[])
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(empty))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        screen.action_probe_row()
+        probe_status = str(screen.query_one("#suitability-status", Static).content)
+        assert screen._entry_at(5) is None
+        screen._confirm_selection()
+        confirm_status = str(screen.query_one("#suitability-status", Static).content)
+
+    assert probe_status == copy.SELECT_MODEL_HINT
+    assert confirm_status == copy.SELECT_MODEL_HINT
+
+
+async def test_the_availability_refresh_stops_at_the_table_edge(monkeypatch) -> None:
+    """A listing longer than the rendered table refreshes only the rows it has."""
+    report = _synthetic_report()
+    monkeypatch.setattr(preflight_facade, "check_compatibility", FakeCompatibilityCore(report))
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        listing = screen.query_one("#suitability-listing", DataTable)
+        screen._listing.append(report.listing[0])  # a row the table never received
+        screen._refresh_availability_cells()
+        rows = listing.row_count
+
+    assert rows == len(report.listing)
+
+
+def test_a_cached_report_without_a_hub_says_it_is_on_this_computer() -> None:
+    """The local state is named plainly whether the hub is absent or LOCAL."""
+    from dnallm.tui.screens.suitability import _availability_sentence
+
+    assert (
+        _availability_sentence(AvailabilityReport(state=AvailabilityState.CACHED))
+        == copy.AVAILABILITY_CACHED_LOCAL
+    )
+    assert (
+        _availability_sentence(
+            AvailabilityReport(state=AvailabilityState.CACHED, source_hub=Hub.LOCAL)
+        )
+        == copy.AVAILABILITY_CACHED_LOCAL
+    )
+
+
+# ── Config panel branches ───────────────────────────────────────────────────
+
+
+def test_the_field_parsers_are_total() -> None:
+    """An unparseable number stays text so the core can report it in its own words."""
+    from dnallm.tui.screens.config import _parse, _unchanged
+
+    assert _parse("int", "7") == 7
+    assert _parse("int", "seven") == "seven"
+    assert _parse("float", "0.5") == 0.5
+    assert _parse("float", "half") == "half"
+    assert _parse("labels", "query, value") == ["query", "value"]
+    assert _parse("text", " x ") == " x "
+    # An absent value and an empty field are the same thing: no patch at all.
+    assert _unchanged("text", "", None) is True
+    assert _unchanged("int", 3, 3) is True
+    assert _unchanged("float", 0.5, 0.5) is True
+    assert _unchanged("float", 1, 1.0) is True
+    assert _unchanged("int", 4, 3) is False
+
+
+async def test_the_panel_resumes_the_wizards_working_mapping(monkeypatch) -> None:
+    """Re-entering the panel revalidates the mapping already on the wizard state."""
+    generated = edit_config({"task": {"task_type": "binary"}}, {})
+    fake = FakeConfigCore(generated)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    app.state.generated_config = generated
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot)
+        await _settle_config(pilot, app)
+        status = str(screen.query_one("#config-status", Static).content)
+
+    assert fake.edit_calls[0]["existing"] is generated.raw
+    assert status == copy.CONFIG_READY
+
+
+async def test_the_panel_falls_back_to_the_config_flag_file(monkeypatch, tmp_path) -> None:
+    """With nothing in the wizard, the --config path is what the core is handed."""
+    config_file = tmp_path / "existing.yaml"
+    config_file.write_text("task:\n  task_type: binary\n", encoding="utf-8")
+    fake = FakeConfigCore(edit_config(config_file, {}))
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector(), config_path=str(config_file))
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot)
+        await _settle_config(pilot, app)
+        status = str(screen.query_one("#config-status", Static).content)
+
+    assert fake.edit_calls[0]["existing"] == str(config_file)
+    assert status == copy.CONFIG_READY
+
+
+async def test_the_panel_with_nothing_to_configure_says_so(monkeypatch) -> None:
+    """No model, no file, no mapping: the panel explains the way back."""
+    fake = FakeConfigCore(GeneratedConfig(config={}, errors=[], raw={}))
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot)
+        await pilot.pause()
+        status = str(screen.query_one("#config-status", Static).content)
+
+    assert status == copy.CONFIG_NO_SOURCE
+    assert fake.generate_calls == []
+    assert fake.edit_calls == []
+
+
+async def test_saving_with_a_blank_name_prompts_instead_of_writing(monkeypatch) -> None:
+    """A blank save name is a prompt, never a write to an empty path."""
+    generated = edit_config({"task": {"task_type": "binary"}}, {})
+    fake = FakeConfigCore(generated)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        writes_before = [call for call in fake.edit_calls if call["output_path"] is not None]
+        screen.query_one("#config-output-path", Input).value = "   "
+        await pilot.click("#config-save")
+        await _settle_config(pilot, app)
+        status = str(screen.query_one("#config-status", Static).content)
+        export_path = app.state.export_path
+
+    assert writes_before == []
+    assert status == copy.CONFIG_OUTPUT_PATH_PROMPT
+    assert export_path is None
+
+
+async def test_editing_a_section_that_is_not_a_mapping_still_records(monkeypatch) -> None:
+    """A malformed section is replaced by a mapping rather than crashing the form."""
+    generated = edit_config({"task": {"task_type": "binary"}}, {})
+    fake = FakeConfigCore(generated)
+    _install_config_core(monkeypatch, fake)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        screen._raw["lora"] = "not-a-mapping"
+        screen._record("lora", "r", 8)
+        recorded = screen._raw["lora"]
+
+    assert recorded == {"r": 8}
+
+
+async def test_a_failed_config_build_reads_plainly(monkeypatch) -> None:
+    """A raising generate_config leaves one readable row on the panel."""
+
+    def boom(*_args: object, **_kwargs: object) -> GeneratedConfig:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(preflight_facade, "generate_config", boom)
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(140, 50)) as pilot:
+        screen = await _open_config_screen(app, pilot, model=CONFIG_FINETUNED_REPO)
+        await _settle_config(pilot, app)
+        status = str(screen.query_one("#config-status", Static).content)
+
+    assert "could not build this config" in status
+    assert "RuntimeError" not in status
+
+
+# ── Download panel branches ─────────────────────────────────────────────────
+
+
+def test_format_size_uses_bytes_below_a_kilobyte() -> None:
+    """Small repos are quoted in whole bytes, larger ones in decimal units."""
+    from dnallm.tui.screens.download import _format_size
+
+    assert _format_size(999) == "999 bytes"
+    assert _format_size(1000) == "1.0 KB"
+
+
+def test_format_size_falls_back_when_the_unit_table_is_empty(monkeypatch) -> None:
+    """The defensive fallback says the size is unknown rather than raising."""
+    import dnallm.tui.screens.download as download_module
+
+    monkeypatch.setattr(download_module, "_SIZE_UNITS", ())
+
+    assert download_module._format_size(10**12) == copy.DOWNLOAD_SIZE_UNKNOWN
+
+
+async def test_progress_is_clamped_and_late_messages_are_ignored() -> None:
+    """Inside one measurement the bar never runs backwards; after the end nothing moves."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        await screen.apply_download_progress(done=10, total=100, label="first")
+        bar = screen.query_one("#download-bar", ProgressBar)
+        shown_after_first = bar.progress
+        await screen.apply_download_progress(done=4, total=100, label="still going")
+        shown_after_second = bar.progress
+        await screen.apply_download_progress(done=1, total=0, label="unknown total")
+        await screen.apply_download_finished(DOWNLOAD_RETURNED_PATH, False, None)
+        await pilot.pause()
+        summary_once = isinstance(app.screen, SummaryScreen)
+        # Both late arrivals must be no-ops rather than a second summary.
+        await screen.apply_download_progress(done=1, total=100, label="late")
+        await screen.apply_download_finished("/models/again", False, None)
+        await pilot.pause()
+        still_summary = isinstance(app.screen, SummaryScreen)
+
+    assert shown_after_first == 10
+    assert shown_after_second == 10  # clamped, never 4
+    assert summary_once
+    assert still_summary
+
+
+async def test_a_failed_seam_call_on_the_download_page_offers_a_retry() -> None:
+    """A raising worker leaves the retry action on screen and says what happened."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        await screen.apply_worker_failure("Something went wrong.")
+        retry_visible = screen.query_one("#download-retry", Button).display
+        status = str(screen.query_one("#download-status", Static).content)
+
+    assert retry_visible is True
+    assert status == "Something went wrong."
+
+
+async def test_leaving_the_download_page_goes_back_but_never_mid_download() -> None:
+    """Escape returns to the previous step while idle, and is inert while running."""
+    gate = threading.Event()
+    downloader = FakeDownloader(gate=gate)
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        screen.action_go_back()
+        await pilot.pause()
+        left_idle_page = not isinstance(app.screen, DownloadScreen)
+
+        running = await _open_download_screen(app, pilot)
+        await pilot.click("#download-start")
+        await _wait_until(lambda: bool(downloader.calls))
+        running.action_go_back()
+        await pilot.pause()
+        stayed = app.screen is running
+        gate.set()
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert left_idle_page
+    assert stayed
+
+
+async def test_stopping_or_ticking_before_a_download_starts_is_a_no_op() -> None:
+    """The idle page ignores stop and the elapsed tick, and keeps saying so."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    app.state.selected_entry = _download_entry()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        screen = await _open_download_screen(app, pilot)
+        screen._cancel()
+        screen._tick()
+        screen._start_download()
+        screen._start_download()  # a second start while the first is running
+        status = str(screen.query_one("#download-status", Static).content)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+
+    assert status == copy.DOWNLOAD_PROGRESS.format(model=DOWNLOAD_MODEL_REPO)
+
+
+async def test_finishing_without_the_files_mid_download_stops_it_first() -> None:
+    """Skip while running asks for a stop, then reaches the summary."""
+    gate = threading.Event()
+    downloader = FakeDownloader(gate=gate)
+    app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
+    app.state.selected_entry = _download_entry()
+    app.state.export_path = CONFIG_EXPORT_PATH
+
+    try:
+        async with app.run_test(size=(100, 40)) as pilot:
+            screen = await _open_download_screen(app, pilot)
+            await pilot.click("#download-start")
+            await _wait_until(lambda: bool(downloader.calls))
+            await pilot.click("#download-skip")
+            await pilot.pause()
+            reached_summary = isinstance(app.screen, SummaryScreen)
+            text = _rendered_text(app.screen)
+            gate.set()
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+    finally:
+        gate.set()
+
+    assert reached_summary
+    assert copy.SUMMARY_MODEL_SKIPPED in text
+    assert downloader.calls == [DOWNLOAD_MODEL_REPO]
+
+
+async def test_the_quit_action_leaves_the_wizard() -> None:
+    """The closing page's quit button exits the app."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        app.push_screen(SummaryScreen(model_path="/models/x", config_path="out.yaml"))
+        await pilot.pause()
+        await pilot.click("#summary-quit")
+        await pilot.pause()
+        exited = bool(app._exit)
+
+    assert exited
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy inventory (D-10): every sentence a screen shows comes from copy.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+_WIDGET_TEXT_CLASSES = frozenset({"Static", "Button", "Label"})
+_WIDGET_TEXT_KEYWORDS = frozenset({"placeholder", "label"})
+
+
+def _literal_widget_text(tree: ast.AST) -> list[str]:
+    """Non-empty literal strings handed straight to a text-showing widget."""
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or _called_name(node.func) not in _WIDGET_TEXT_CLASSES:
+            continue
+        candidates = list(node.args[:1]) + [
+            keyword.value for keyword in node.keywords if keyword.arg in _WIDGET_TEXT_KEYWORDS
+        ]
+        for candidate in candidates:
+            if (
+                isinstance(candidate, ast.Constant)
+                and isinstance(candidate.value, str)
+                and candidate.value.strip()
+            ):
+                found.append(candidate.value)
+    return found
+
+
+def test_no_screen_builds_a_widget_from_a_literal_sentence() -> None:
+    """D-10: user-facing words live in dnallm/tui/copy.py, not beside the layout.
+
+    Empty strings are allowed — a status line has to start somewhere — and so
+    are the values the core produced (a model name, a path, a report message):
+    those are not sentences this project writes.
+    """
+    offenders: dict[str, list[str]] = {}
+    for module_name, path in _screen_module_paths().items():
+        literals = _literal_widget_text(ast.parse(path.read_text(encoding="utf-8")))
+        if literals:
+            offenders[module_name] = literals
+    assert offenders == {}, (
+        f"screen widgets are built from literal sentences: {offenders} — move "
+        f"them into dnallm/tui/copy.py so the phase-end plain-language review "
+        f"is a single-file read (D-10)"
+    )
+
+
+def test_every_copy_constant_the_tui_uses_is_declared_in_copy_all() -> None:
+    """The copy inventory is complete: a used sentence is always an exported one."""
+    from dnallm.tui import copy as copy_module
+
+    exported = set(copy_module.__all__)
+    used: dict[str, set[str]] = {}
+    for path in sorted((PACKAGE_ROOT / "tui").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        names = {
+            node.attr
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "copy"
+        }
+        if names:
+            used[path.name] = names
+    referenced = set().union(*used.values())
+    undeclared = sorted(referenced - exported)
+    assert undeclared == [], (
+        f"copy constants used but not declared in dnallm/tui/copy.py __all__: "
+        f"{undeclared} (used by {used}) — the inventory is what the human copy "
+        f"review reads (D-10)"
+    )
+
+
+def test_the_unverified_hosting_sentence_promises_only_one_hub() -> None:
+    """D-10 honesty: the download picks one hub and retries it, never a second.
+
+    The earlier wording said "ModelScope first, then Hugging Face", which the
+    seam does not do (``workers._choose_hub`` picks one hub; a retry stays on
+    it). This pins the corrected sentence so the claim cannot drift back.
+    """
+    assert "then Hugging Face" not in copy.UNKNOWN_STILL_DOWNLOADABLE
+    assert "try again if that does not work" in copy.UNKNOWN_STILL_DOWNLOADABLE
+
+
+#: Engine words that must never reach a user-facing sentence (D-10).
+_BANNED_COPY_TOKENS = (
+    "Exception",
+    "Traceback",
+    "ValueError",
+    "RuntimeError",
+    "KeyError",
+    "kwargs",
+    "stderr",
+)
+
+
+def _copy_strings(value: object) -> list[str]:
+    """Every string inside one copy constant (a str, a tuple, or a dict's values)."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        return [text for item in value.values() for text in _copy_strings(item)]
+    if isinstance(value, (list, tuple)):
+        return [text for item in value for text in _copy_strings(item)]
+    return []
+
+
+def test_copy_never_leaks_engine_words() -> None:
+    """No exception class name, no traceback word, no keyword name reaches a user."""
+    from dnallm.tui import copy as copy_module
+
+    offenders: dict[str, list[str]] = {}
+    for name in copy_module.__all__:
+        for text in _copy_strings(getattr(copy_module, name)):
+            hits = [token for token in _BANNED_COPY_TOKENS if token in text]
+            if hits:
+                offenders[name] = hits
+    assert offenders == {}, (
+        f"copy constants carry engine words: {offenders} — every sentence is "
+        f"written for a biologist and exception details stay in the log (D-10)"
+    )
