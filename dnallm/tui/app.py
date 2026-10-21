@@ -11,6 +11,14 @@
 3. It holds the injectable seams — ``collector``, ``prober`` and
    ``downloader`` — so Pilot tests run without a graphics card, a network, or
    the training stack.
+
+Worker-failure contract: every worker is declared with
+``@work(thread=True, exit_on_error=False)``, so a core call that raises never
+tears the app down. The worker posts a :class:`~dnallm.tui.messages.WorkerFailed`
+whose ``message`` is already plain language; this app records it on
+``last_failure`` and hands it to the active screen's async
+``apply_worker_failure(message)`` hook, which renders it as a status row. A
+screen without that hook leaves the failure in the log rather than crashing.
 """
 
 from __future__ import annotations

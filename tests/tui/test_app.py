@@ -8,7 +8,9 @@ finishes, and the device/disk placeholders are replaced afterwards.
 
 from __future__ import annotations
 
+import asyncio
 import threading
+import time
 
 from textual.widgets import Static
 
@@ -44,6 +46,7 @@ class FakeCollector:
         self.gate = gate
         self.failure = failure
         self.calls: list[str] = []
+        self.device_started = threading.Event()
 
     def collect_versions(self) -> list[EnvRow]:
         """Return the instant version rows, as the real collector does."""
@@ -56,6 +59,7 @@ class FakeCollector:
     def collect_device(self) -> list[EnvRow]:
         """Return the device rows, optionally waiting on the test's gate."""
         self.calls.append("device")
+        self.device_started.set()
         if self.gate is not None:
             self.gate.wait(timeout=30)
         if self.failure is not None:
@@ -159,5 +163,72 @@ async def test_failing_collector_renders_one_plain_language_row() -> None:
         assert copy.ENV_CHECK_FAILED in text
         assert copy.CHECKING_PLACEHOLDER not in text
         assert "RuntimeError" not in text
+        assert app.last_failure == copy.ENV_CHECK_FAILED
         # The quit binding still works after the failure.
         await pilot.press("q")
+
+
+async def test_quitting_with_a_worker_in_flight_is_prompt() -> None:
+    """Quit does not wait for a blocked worker thread."""
+    release = threading.Event()
+    collector = FakeCollector(gate=release)
+    app = DNALLMPreflightApp(collector=collector)
+    started = time.monotonic()
+
+    try:
+        async with app.run_test(size=(100, 40)) as pilot:
+            for _ in range(500):
+                if collector.device_started.is_set():
+                    break
+                await asyncio.sleep(0.01)
+            assert collector.device_started.is_set(), "the env worker never started"
+            await pilot.press("q")
+    finally:
+        release.set()
+
+    # Far below the 300 s pytest timeout: quitting never blocks on the thread.
+    assert time.monotonic() - started < 20
+
+
+def test_render_text_shows_brackets_literally() -> None:
+    """render_text disables markup, so a "[" cannot be parsed (T-25-08)."""
+    app = DNALLMPreflightApp(collector=FakeCollector())
+    widget = app.render_text("[bold]not-a-tag[/bold]")
+
+    # visual.plain is what actually reaches the terminal; markup parsing would
+    # strip the bracketed words and leave "not-a-tag".
+    assert widget.visual.plain == "[bold]not-a-tag[/bold]"
+
+
+async def test_bracketed_collector_value_renders_verbatim() -> None:
+    """A bracketed value read from the machine cannot alter the layout."""
+    bracketed = "[bold]not-a-tag[/bold] 24 GB"
+    collector = FakeCollector(device_rows=[EnvRow("torch_vram", "GPU memory (VRAM)", bracketed)])
+    app = DNALLMPreflightApp(collector=collector)
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await app.workers.wait_for_complete()
+        await pilot.pause()
+        row = next(
+            widget
+            for widget in app.screen.query(Static)
+            if "GPU memory (VRAM)" in str(widget.content)
+        )
+
+    assert row.visual.plain == f"GPU memory (VRAM): {bracketed}"
+
+
+async def test_config_path_is_stored_and_never_loaded(tmp_path) -> None:
+    """--config lands on WizardState; the app never opens the file."""
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text("task:\n  task_type: binary\n")
+    app = DNALLMPreflightApp(collector=FakeCollector(), config_path=str(config_file))
+
+    # Deleting the file proves the running app does not read it: a load here
+    # would fail loudly instead of the wizard starting normally.
+    config_file.unlink()
+
+    async with app.run_test(size=(100, 40)) as pilot:
+        await pilot.pause()
+        assert app.state.config_path == str(config_file)
+        assert app.config_path == str(config_file)
