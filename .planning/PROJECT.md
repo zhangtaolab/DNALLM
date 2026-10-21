@@ -57,10 +57,14 @@ Shipped in Phase 2 (Suite Hygiene & Known-Bug Fixes, 2026-09-30):
 
 - [ ] Pre-flight validation & suitability API — `validate_data` / `check_compatibility` / `generate_config` pure functions with availability dimension (v1.4)
 - [ ] Pre-flight TUI — env/data/suitability/config panels over the API core, Textual behind a `tui` extra (v1.4)
-- [ ] Registry-as-truth-source — `model_info.yaml` consumed at runtime by the loading chain; MCP per-model config consistency-checked against it (v1.4)
+- [ ] MCP per-model config consistency-checked against the registry (v1.4; the loading-chain half shipped in Phase 24)
 - [ ] ModelScope-first downloads on the pre-flight critical path, lab models (`zhangtaolab/*`) prioritized in the UX (v1.4)
 
 ### Validated — v1.4 partial
+
+Shipped in Phase 24 (Preset Loading — `load_preset_model` Registry Rewire, 2026-10-21):
+
+- ✓ LOAD-01 — `load_preset_model` resolves registry entry names first (then repo ids) via `try_resolve`, falls back to the legacy `MODEL_INFO` family table, returns 0 on miss; finetuned entries patch `num_labels`/`label_names`/`threshold` verbatim into a `model_copy` of the caller's TaskConfig (never mutated); `task_type` validated with a plain-language ValueError, never patched; base-model lineage logged; dead preset-list branch deleted; ten-family zhangtaolab regression pins unchanged family behavior (verified 10/10 must-haves, 232+41+257 tests green, model.py coverage 93%)
 
 Shipped in Phase 22 (Registry Foundation — Runtime Loader & Enrichment, 2026-10-20):
 
@@ -210,6 +214,9 @@ Shipped v1 on 2026-10-01: 1,657 tests passing (7 allowlisted skips), **96.30% li
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| [Phase 24] OQ-1 STRICT: registry entries with `task_type='classification'` (6 PlantCAD2, third-party) stay unloadable by name — no aliasing to user binary/multiclass | Smallest reading of locked D-05; all six sit outside every zhangtaolab flow; widening the mismatch definition would silently change the validated contract | ✓ Pinned by a real-entry test; documented known limitation in the docstring; registry data fix out of scope (261020-kwt discipline) |
+| [Phase 24] Patched preset configs built with `model_copy(update=...)` only — never model_validate/reconstruction; caller's TaskConfig never mutated | `model_post_init`'s regression branch would clobber registry `label_names` (e.g. `['promoter strength in tobacco leaves']`) to `['value']`; research Pitfall 2 reproduced against live data | ✓ Regression-preservation test pins verbatim labels; non-mutation asserted twice (tracer + dedicated test) |
+| [Phase 24] Registry-first resolution order with registry-wins-on-collision disclosed in the docstring (24 third-party family names change resolved repo — intentional, documented) | D-01 order + research A2: the delta is real but every zhangtaolab-default family resolves identically; discoverability beats a silent behavior change | ✓ DNABERT-2 collision pinned to `zhihan1996/*`; ModelScope-hosting assumption carried as review WR-01 (deferred, Phases 25/26 awareness) |
 | Owner overrides instead of silent scope reduction (P11 VEP magnitude, P12 MOTIF-01 golden fixture) | Plans may add to, never subtract from, roadmap SCs; unmet acceptances must not pass silently — the owner adjudicates with the evidence on record | ✓ 2 overrides recorded in phase VERIFICATION frontmatter with reasons/timestamps; golden fixture tracked as GitHub issue #44 (fixture-files-only activation, no milestone reopen) |
 | Stale verifications regenerate at the milestone fixpoint | Phase 11/12 edits invalidated earlier covered-file digests; regenerating with zero code changes between proves the truths still hold at the shipped HEAD | ✓ Phase 10 re-verified 24/24 at 1e77a87; Phase 11 regenerated at the same fixpoint at close |
 | Zero new dependencies beyond scikit-allel (milestone invariant) | Reviewer capabilities fit the existing scipy/sklearn/stdlib footprint; the only addition (VCF reading) owner-approved with empirical Windows/numpy verification | ✓ Held — pyproject delta over the milestone is exactly 2 constraint changes on existing transitive deps (pyarrow<26, pydantic-ai>=1.107.0,<2 CI-drift fixes) |
@@ -262,4 +269,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-21 after Phase 23 (Pre-flight Core shipped — PFC-01..07 validated)*
+*Last updated: 2026-10-21 after Phase 24 (Preset Loading shipped — LOAD-01 validated)*

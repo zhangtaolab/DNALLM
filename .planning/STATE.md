@@ -25,7 +25,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-21)
 
 **Core value:** One terminal flow takes a user from their own data to a validated, model-compatible config, with the model registry as the runtime single source of truth (Track A first) — suite, coverage gate, and CI honest-green throughout.
-**Current focus:** Phase 24 — Preset Loading — `load_preset_model` Registry Rewire
+**Current focus:** Phase 25 — Terminal UI — Pre-flight Wizard & `tui` Extra
 
 ## Current Position
 
@@ -34,7 +34,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-10-21 — Phase 24 complete, transitioned to Phase 25
 
-Progress: [██████░░░░] 60% (1 of 5 v1.4 phases)
+Progress: [██████░░░░] 60% (3 of 5 v1.4 phases)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [██████░░░░] 60% (1 of 5 v1.4 phases)
 | Phase 23 P03 | 18 min | 3 tasks | 2 files |
 | Phase 23 P04 | 12 min | 3 tasks | 3 files |
 | Phase 23 P05 | 6 min | 2 tasks | 3 files |
+| Phase 24 P01 | 12 min | 3 tasks | 2 files |
 | Phase 24 P01 | 12 min | 3 tasks | 2 files |
 
 ## Accumulated Context
@@ -102,6 +103,8 @@ Carried open ledger items from the v1.1/v1.2 handoffs (owner-scoped, outside act
 
 ### Blockers/Concerns
 
+- [Phase 24 review WR-01, deferred] 24 third-party family names now resolve upstream repo ids via hardcoded `source="modelscope"` (hosting unprobed — research A2); surface to Phase 25 TUI / Phase 26 MCP before exposing those names in the UX (24-REVIEW-DISPOSITION.md)
+
 Carried runner-box ops items (cache-quota, `$HOME` cleanup) live in `milestones/v1.1-MILESTONE-AUDIT.md`. v1.3 known gaps carried in the WINDOWS ledger: #25 PyPI trusted-publisher registration, #27 Windows KDA smoke, #26 pip-side alias resolve.
 
 ### Quick Tasks Completed
@@ -138,5 +141,5 @@ Resume file: None
 
 ## Operator Next Steps
 
-- `/clear` then `/gsd-discuss-phase 23` — Pre-flight Core (no CONTEXT.md yet; discussion first)
-- Roadmap research flag: Phase 23 warrants `--research-phase` at planning (HF_ENDPOINT in-process effect spike + ModelScope cache-layout resolver)
+- `/clear` then `/gsd-discuss-phase 25` — Terminal UI — Pre-flight Wizard & `tui` Extra (no CONTEXT.md yet; discussion first)
+- Roadmap research flag: Phase 25 warrants `--research-phase` at planning (worker-seam shape, cancel semantics, extra-vs-alias ordering, Pilot wall-time budget)
