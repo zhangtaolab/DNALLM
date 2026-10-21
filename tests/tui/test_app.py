@@ -548,6 +548,10 @@ async def test_the_whole_wizard_walks_to_a_downloaded_model_summary(tmp_path) ->
         await pilot.pause()
         chosen = app.state.selected_entry
         assert chosen is not None
+        # The ten-row suitability legend puts this action below the body's
+        # bottom edge at 100x40, so scroll it in before clicking.
+        app.screen.scroll_to_widget(app.screen.query_one("#suitability-use", Button), animate=False)
+        await pilot.pause()
         use_enabled = not app.screen.query_one("#suitability-use", Button).disabled
         await pilot.click("#suitability-use")
         await _settle_wizard(pilot, app)

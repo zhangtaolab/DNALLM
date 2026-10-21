@@ -550,6 +550,10 @@ async def test_selecting_a_listing_row_records_it_in_wizard_state(monkeypatch) -
         table = screen.query_one("#suitability-listing", DataTable)
         table.move_cursor(row=1)
         await pilot.pause()
+        # The ten-row legend puts the use action below the body's bottom edge at
+        # this size, so scroll it in before clicking (never shrink the legend).
+        screen.scroll_to_widget(screen.query_one("#suitability-use", Button), animate=False)
+        await pilot.pause()
         selected = app.state.selected_entry
         use_enabled = not screen.query_one("#suitability-use", Button).disabled
         await pilot.click("#suitability-use")
@@ -989,16 +993,59 @@ async def test_every_glossed_field_renders_its_hint_and_keys_stay_verbatim() -> 
     assert "num_train_epochs: 5" in preview
 
 
-async def test_the_suitability_task_prompt_explains_its_examples() -> None:
-    """The suitability screen's placeholder carries the glossed prompt."""
+async def test_the_suitability_task_legend_names_all_eight_and_survives_typing() -> None:
+    """The eight task types are a static legend, not a placeholder that vanishes."""
     app = DNALLMPreflightApp(collector=FakeCollector())
 
     async with app.run_test(size=(140, 50)) as pilot:
         screen = await _open_suitability_screen(app, pilot)
+        legend = screen.query_one("#suitability-task-legend", Static)
         placeholder = screen.query_one("#suitability-task-type", Input).placeholder
+        before = str(legend.content)
+        screen.query_one("#suitability-task-type", Input).value = "binary"
+        await pilot.pause()
+        after = str(legend.content)
 
+    assert before == copy.SUITABILITY_TASK_LEGEND
     assert placeholder == copy.SUITABILITY_TASK_PROMPT
-    assert "Binary is a yes/no answer" in str(placeholder)
+    assert after == copy.SUITABILITY_TASK_LEGEND
+    for value, gloss in copy.TASK_TYPE_GLOSSES.items():
+        assert value in before
+        assert gloss in before
+
+
+async def test_the_task_type_legend_is_reachable_at_80x24(monkeypatch) -> None:
+    """The ten-row legend must not put the two actions out of reach on 80x24.
+
+    Measured with the legend mounted: the use action starts below the body's
+    bottom edge, so it is reachable only by scrolling. Every one of the three
+    widgets is proven contained in ``#suitability-body`` after
+    ``scroll_to_widget``.
+    """
+    monkeypatch.setattr(
+        preflight_facade, "check_compatibility", FakeCompatibilityCore(_synthetic_report())
+    )
+    monkeypatch.setattr(preflight_facade, "local_availability", _fake_local())
+    app = DNALLMPreflightApp(collector=FakeCollector(), prober=FakeProber())
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        screen = await _open_suitability_screen(app, pilot)
+        await _settle(pilot, app)
+        body = screen.query_one("#suitability-body", VerticalScroll)
+        legend = screen.query_one("#suitability-task-legend", Static)
+        assert str(legend.content) == copy.SUITABILITY_TASK_LEGEND
+        contained = {}
+        for selector in ("#suitability-task-legend", "#suitability-check", "#suitability-use"):
+            widget = screen.query_one(selector)
+            screen.scroll_to_widget(widget, animate=False)
+            await pilot.pause()
+            contained[selector] = body.region.contains_region(widget.region)
+
+    assert contained == {
+        "#suitability-task-legend": True,
+        "#suitability-check": True,
+        "#suitability-use": True,
+    }
 
 
 async def test_the_hinted_form_stays_legible_at_80x24() -> None:

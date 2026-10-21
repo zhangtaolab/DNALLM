@@ -13,21 +13,34 @@ from __future__ import annotations
 
 import pytest
 
+from dnallm.configuration.configs import TaskConfig
 from dnallm.preflight.config_gen import generate_config
 from dnallm.tui import copy
+
+# The reviewed eight task types and one plain gloss each (G-25-4). Pinned here
+# test-locally so the bytes below are checked against an independent record of
+# the reviewed wording, never re-derived from the copy module's own mapping.
+_TASK_TYPE_GLOSSES = {
+    "embedding": "a list of numbers for a whole sequence, to compare or search",
+    "mask": "fill in DNA letters that were hidden from the model",
+    "generation": "write out new DNA letters",
+    "binary": "one yes/no answer for the whole sequence",
+    "multiclass": "one answer chosen from several classes",
+    "multilabel": "several yes/no answers at once",
+    "regression": "a number, such as a measured value",
+    "token": "one label for each DNA letter",
+}
+_TASK_TYPE_CHOICES = tuple(f"{value} ({gloss})" for value, gloss in _TASK_TYPE_GLOSSES.items())
+_GLOSS_PROS = f"{', '.join(_TASK_TYPE_CHOICES[:-1])} or {_TASK_TYPE_CHOICES[-1]}"
 
 # The four locked sentences (D-10). Pinned byte-for-byte: a rewording here is a
 # deliberate copy decision, never a side effect of a refactor.
 A1 = (
-    "Choose one of: embedding, mask, generation, binary, multiclass, multilabel, "
-    "regression or token. Binary is a yes/no answer, multiclass is one of several "
-    "classes, and token is a label for each DNA letter. The longer spellings such as "
-    "binary_classification also work."
+    "Choose one of: "
+    + _GLOSS_PROS
+    + ". The longer spellings such as binary_classification also work."
 )
-A2 = (
-    "This model has no built-in task, so choose one: binary is a yes/no answer, "
-    "multiclass is one of several classes, and token is a label for each DNA letter."
-)
+A2 = "This model has no built-in task, so choose one: " + _GLOSS_PROS + "."
 A3 = (
     "Multiclass and multilabel training need at least 2 outputs, but this config "
     "sets fewer. Change Number of outputs in the file."
@@ -323,10 +336,70 @@ def test_the_glossed_headings_and_the_inference_batch_label() -> None:
     )
 
 
-def test_the_task_type_hint_explains_its_examples() -> None:
-    """The prompt names what binary, multiclass and token actually mean."""
-    prompt = copy.SUITABILITY_TASK_PROMPT
-    assert "Binary is a yes/no answer" in prompt
-    assert "multiclass is one of several classes" in prompt
-    assert "token is a label for each DNA letter" in prompt
-    assert "Leave it empty if you are not sure." in prompt
+def test_the_task_type_vocabulary_is_the_ordered_eight() -> None:
+    """One ordered mapping, in the core's pattern order, every gloss non-empty."""
+    assert list(copy.TASK_TYPE_GLOSSES) == list(_TASK_TYPE_GLOSSES)
+    assert all(gloss.strip() for gloss in copy.TASK_TYPE_GLOSSES.values())
+
+
+def test_the_vocabulary_never_drifts_from_the_core_pattern() -> None:
+    """The copy's eight equal the live core's canonical values (T-25-21).
+
+    The canonical eight exist only as the regex on ``TaskConfig.task_type``
+    (``dnallm/configuration/configs.py:109``); the four long spellings
+    (binary_classification, multi_class_classification,
+    multi_label_classification, token_classification) are canonicalised in
+    ``model_post_init``. Reading the live JSON-schema pattern keeps the copy in
+    step with the core without exporting a constant from it, so a core-side
+    addition fails here instead of silently misleading a reader.
+    """
+    pattern = TaskConfig.model_json_schema()["properties"]["task_type"]["pattern"]
+    allowed = pattern.removeprefix("^(").removesuffix(")$").split("|")
+    canonical = {spelling for spelling in allowed if not spelling.endswith("classification")}
+    assert canonical == set(copy.TASK_TYPE_GLOSSES)
+
+
+def _task_type_string(site: str) -> str:
+    """One of the four places a task type is offered, by its test-site name.
+
+    The static legend is this plan's new rendering surface; before it exists,
+    the completeness claim is held against the placeholder that carried the
+    vocabulary (the UAT's "vanishes on typing" site), so every site is judged
+    on the sentences that ship today.
+    """
+    if site == "legend":
+        return getattr(copy, "SUITABILITY_TASK_LEGEND", copy.SUITABILITY_TASK_PROMPT)
+    if site == "hint":
+        return copy.CONFIG_FIELD_HINTS["task", "task_type"]
+    return copy.CONFIG_ERROR_MESSAGES[("task", "task_type", site)]
+
+
+@pytest.mark.parametrize("site", ["legend", "hint", "not_an_allowed_value", "task_type_required"])
+def test_every_task_type_string_names_and_explains_all_eight(site: str) -> None:
+    """Every site names all eight values and explains all eight — no partial list."""
+    sentence = _task_type_string(site)
+    missing_values = [value for value in _TASK_TYPE_GLOSSES if value not in sentence]
+    missing_glosses = [gloss for gloss in _TASK_TYPE_GLOSSES.values() if gloss not in sentence]
+    assert missing_values == []
+    assert missing_glosses == []
+
+
+def test_the_task_type_hint_is_the_locked_sentence() -> None:
+    """The field hint names what the model should do and then all eight choices."""
+    assert copy.CONFIG_FIELD_HINTS["task", "task_type"] == (
+        "What the model should do. Choose one of: " + _GLOSS_PROS + "."
+    )
+
+
+def test_the_legend_is_composed_from_the_same_vocabulary() -> None:
+    """The legend's body is the mapping's eight lines; header and closer are fixed."""
+    lines = copy.SUITABILITY_TASK_LEGEND.splitlines()
+    assert lines[1:-1] == [
+        f"  {value} — {gloss}" for value, gloss in copy.TASK_TYPE_GLOSSES.items()
+    ]
+    assert lines[0] == "The eight task types:"
+    assert lines[-1] == "Leave it empty if you are not sure."
+    # 74 is the width #suitability-body gives the legend at 80x24 once its
+    # scrollbar shows (measured), so a longer gloss would wrap and silently add
+    # rows to the panel's smallest-screen layout.
+    assert max(len(line) for line in lines) <= 74
