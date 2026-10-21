@@ -1623,3 +1623,32 @@ async def test_the_closing_step_without_a_model_goes_straight_to_the_summary() -
     assert downloader.calls == []
     assert copy.SUMMARY_MODEL_SKIPPED in text
     assert copy.SUMMARY_CONFIG_MISSING in text
+
+
+def test_the_download_panel_never_imports_a_hub_client() -> None:
+    """The screen is presentation only: hub clients stay behind the seam.
+
+    This is the plan's "no network in tests" guard on the screen itself: a hub
+    import here would mean the panel could download without the app's worker,
+    its cancel flag, and its plain-language error mapping.
+    """
+    import ast
+    from pathlib import Path
+
+    import dnallm.tui.screens.download as download_module
+
+    source = Path(download_module.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split(".")[0])
+
+    assert imported & {"huggingface_hub", "modelscope"} == set()
+    assert imported & {"torch", "transformers", "datasets"} == set()
+    # The only way to a download is the app's worker, never download_model.
+    referenced = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+    referenced |= {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+    assert "download_model" not in referenced
