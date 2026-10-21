@@ -2600,10 +2600,22 @@ async def test_stopping_or_ticking_before_a_download_starts_is_a_no_op() -> None
     assert status == copy.DOWNLOAD_PROGRESS.format(model=DOWNLOAD_MODEL_REPO)
 
 
-async def test_finishing_without_the_files_mid_download_stops_it_first() -> None:
-    """Skip while running asks for a stop, then reaches the summary."""
+async def test_finishing_without_the_files_mid_download_stops_it_first(monkeypatch) -> None:
+    """Skip while running asks for a stop, then describes what really happened.
+
+    WR-03: the old code jumped straight to the summary, which then claimed no
+    model files were downloaded while the attempt was still writing into the
+    hub cache. Now the summary waits for the worker's outcome and uses the
+    "you stopped it, files may be incomplete" sentence.
+    """
+    from types import SimpleNamespace
+
+    from dnallm.models import model as model_module
+
+    # Keep the retry loop's one-second sleep out of the test's wall time.
+    monkeypatch.setattr(model_module, "time", SimpleNamespace(sleep=lambda _seconds: None))
     gate = threading.Event()
-    downloader = FakeDownloader(gate=gate)
+    downloader = FakeDownloader(gate=gate, failure=ConnectionError("connection reset"))
     app = DNALLMPreflightApp(collector=FakeCollector(), downloader=downloader)
     app.state.selected_entry = _download_entry()
     app.state.export_path = CONFIG_EXPORT_PATH
@@ -2615,15 +2627,21 @@ async def test_finishing_without_the_files_mid_download_stops_it_first() -> None
             await _wait_until(lambda: bool(downloader.calls))
             await pilot.click("#download-skip")
             await pilot.pause()
-            reached_summary = isinstance(app.screen, SummaryScreen)
-            text = _rendered_text(app.screen)
+            # Still on the download panel: the stop is pending, not finished.
+            stayed = app.screen is screen
+            pending = str(screen.query_one("#download-status", Static).content)
             gate.set()
             await _wait_for_the_download(pilot, app)
+            summary = app.screen
+            text = _rendered_text(summary)
     finally:
         gate.set()
 
-    assert reached_summary
-    assert copy.SUMMARY_MODEL_SKIPPED in text
+    assert stayed, "skip mid-download must not reach the summary before the stop"
+    assert pending == copy.CANCEL_PENDING_NOTE
+    assert isinstance(summary, SummaryScreen)
+    assert copy.SUMMARY_MODEL_STOPPED in text
+    assert copy.SUMMARY_MODEL_SKIPPED not in text
     assert downloader.calls == [DOWNLOAD_MODEL_REPO]
 
 

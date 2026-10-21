@@ -20,8 +20,11 @@ Four rules this panel exists to keep:
    from the downloader's own callbacks. A new attempt (or a new file bar, which
    reports its own total) starts a new measurement; inside one measurement the
    shown value is clamped to stay non-decreasing.
-3. **Downloading is optional (D-09).** The skip action always reaches the
-   summary with no downloader call, and quitting is never blocked.
+3. **Downloading is optional (D-09).** Skip from an idle panel reaches the
+   summary with no downloader call. Skip while a transfer is running first asks
+   it to stop and waits for the worker's outcome, so the closing page never
+   claims nothing was written while an attempt is still writing (WR-03).
+   Quitting is never blocked.
 4. **One model, sequential (D-09).** The screen holds exactly the single model
    the suitability panel recorded — no queue, no persistence.
 
@@ -123,6 +126,9 @@ class DownloadScreen(Screen):
         self._total = 0
         self._downloading = False
         self._finished = False
+        #: Set when Skip is pressed mid-transfer: the summary waits for the
+        #: worker's own outcome, so it can describe what really happened.
+        self._skip_pending = False
 
     @property
     def _preflight_app(self) -> DNALLMPreflightApp:
@@ -226,6 +232,17 @@ class DownloadScreen(Screen):
         if self._finished:
             return
         self._stop_running()
+        if self._skip_pending:
+            # Skip was pressed while the transfer was running. Only now can the
+            # closing page tell the truth: the files are in place, or the stop
+            # left them incomplete — it must never claim nothing was written
+            # while an attempt was (WR-03).
+            self._skip_pending = False
+            self._show_summary(
+                path,
+                model_note=None if path is not None else copy.SUMMARY_MODEL_STOPPED,
+            )
+            return
         if path is not None and not cancelled and error is None:
             self.query_one(f"#{_STATUS_ID}", Static).update(copy.DOWNLOAD_DONE)
             self._show_summary(path)
@@ -287,22 +304,38 @@ class DownloadScreen(Screen):
         self._set_status(copy.CANCEL_PENDING_NOTE)
 
     def _skip(self) -> None:
-        """Leave for the summary without downloading (D-09's first-class skip)."""
+        """Leave for the summary without downloading (D-09's first-class skip).
+
+        While a transfer is running this only *asks* it to stop: cancelling is
+        cooperative, so the attempt in flight keeps writing until it returns.
+        Jumping to the summary now would state that nothing was downloaded while
+        bytes are still landing, so the summary waits for the worker's outcome
+        (WR-03).
+        """
         if self._downloading:
+            self._skip_pending = True
             self._cancel()
+            return
         self._stop_running()
         self._show_summary(None)
 
-    def _show_summary(self, model_path: str | None) -> None:
+    def _show_summary(self, model_path: str | None, *, model_note: str | None = None) -> None:
         """Push the closing summary with the path exactly as it came back.
 
         Args:
             model_path: The downloader's return value, or None when skipped.
+            model_note: What to say instead of the plain "skipped" sentence
+                when there is no path (a stopped transfer may have written
+                part of the files).
         """
         self._finished = True
         self._stop_running()
         self._preflight_app.push_screen(
-            SummaryScreen(model_path=model_path, config_path=self._preflight_app.state.export_path)
+            SummaryScreen(
+                model_path=model_path,
+                config_path=self._preflight_app.state.export_path,
+                model_note=model_note,
+            )
         )
 
     def _stop_running(self) -> None:

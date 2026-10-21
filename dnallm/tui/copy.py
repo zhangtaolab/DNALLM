@@ -115,6 +115,7 @@ __all__ = [
     "SUMMARY_CONFIG_MISSING",
     "SUMMARY_HEADINGS",
     "SUMMARY_MODEL_SKIPPED",
+    "SUMMARY_MODEL_STOPPED",
     "SUMMARY_PANEL_TITLE",
     "SUMMARY_QUIT_ACTION",
     "THIRD_PARTY_ROW_FLAG",
@@ -490,6 +491,14 @@ SUMMARY_HEADINGS = {
 }
 
 SUMMARY_MODEL_SKIPPED = "No model files were downloaded — that step was skipped."
+
+# WR-03: the user stopped a transfer that had already started. The attempt in
+# flight finishes cooperatively, so files may be partly written; the closing
+# page must not repeat the "nothing was downloaded" claim.
+SUMMARY_MODEL_STOPPED = (
+    "You stopped the download. The model files may be incomplete — you can "
+    "download them again later; nothing you set up is lost."
+)
 
 SUMMARY_CONFIG_MISSING = "No config file was saved in this run."
 

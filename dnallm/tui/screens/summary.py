@@ -48,6 +48,7 @@ class SummaryScreen(Screen):
         *,
         model_path: str | None = None,
         config_path: str | None = None,
+        model_note: str | None = None,
     ) -> None:
         """Store the two paths exactly as the core returned them.
 
@@ -56,10 +57,15 @@ class SummaryScreen(Screen):
                 download was skipped or stopped.
             config_path: The path the config panel wrote, or None when no
                 config was saved in this run.
+            model_note: What to say instead of the plain "skipped" sentence
+                when no path came back. A stopped transfer passes
+                :data:`~dnallm.tui.copy.SUMMARY_MODEL_STOPPED`, because part of
+                the files may have been written (WR-03).
         """
         super().__init__()
         self._model_path = model_path
         self._config_path = config_path
+        self._model_note = model_note
 
     def compose(self) -> ComposeResult:
         """Lay out the two paths in the fixed order, both rendered literally."""
@@ -88,10 +94,14 @@ class SummaryScreen(Screen):
         self.app.exit()
 
     def _shown_model_path(self) -> str:
-        """The model path verbatim, or the plain "skipped" sentence."""
+        """The model path verbatim, or the honest no-path sentence for the run.
+
+        A skipped step says nothing was downloaded; a stopped transfer says the
+        files may be incomplete, because that is what actually happened.
+        """
         if self._model_path:
             return self._model_path
-        return copy.SUMMARY_MODEL_SKIPPED
+        return self._model_note or copy.SUMMARY_MODEL_SKIPPED
 
     def _shown_config_path(self) -> str:
         """The config path verbatim, or the plain "not saved" sentence."""
